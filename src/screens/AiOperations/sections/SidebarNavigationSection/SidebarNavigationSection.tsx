@@ -23,15 +23,32 @@ const secondaryNavigation = [
   { label: "Settings", icon: Cog        },
 ];
 
-const itemBase =
-  "flex h-auto w-full items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-[#3b82f61a]";
+interface SidebarProps {
+  /** When true, always show labels regardless of breakpoint (used in mobile overlay). */
+  forceExpanded?: boolean;
+}
 
-export const SidebarNavigationSection = (): JSX.Element => {
+export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.Element => {
+  const itemBase = [
+    "flex h-auto w-full items-center gap-3 rounded-lg py-2.5 text-sm transition-colors hover:bg-[#3b82f61a]",
+    forceExpanded
+      ? "justify-start px-3"
+      : "justify-center px-2 lg:justify-start lg:px-3",
+  ].join(" ");
+
+  const labelCls = forceExpanded ? "block" : "hidden lg:block";
+  const padX     = forceExpanded ? "px-4" : "px-2 lg:px-4";
+
   return (
-    <aside className="relative flex h-full min-h-screen w-full flex-col border-r border-gray-800 bg-[#090b10] px-4 py-5">
-      <header className="flex h-10 items-center px-2">
-        <NavLink to="/" aria-label="Vorta home" className="inline-flex items-center">
-          <VortaLogo />
+    <aside className={`relative flex h-full min-h-screen w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5`}>
+      <header className={`flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 lg:justify-start lg:px-2"}`}>
+        <NavLink to="/" aria-label="Vorta home" className="inline-flex items-center overflow-hidden">
+          <span className={forceExpanded ? "block" : "hidden lg:block"}>
+            <VortaLogo />
+          </span>
+          {!forceExpanded && (
+            <span className="block select-none font-mono text-sm font-bold text-white lg:hidden">&gt;&lt;</span>
+          )}
         </NavLink>
       </header>
 
@@ -41,12 +58,13 @@ export const SidebarNavigationSection = (): JSX.Element => {
             key={label}
             to={to}
             end={to === "/"}
+            title={label}
             className={({ isActive }) =>
               `${itemBase} ${isActive ? "bg-[#3b82f61a] text-blue-500" : "text-slate-400 hover:text-slate-200"}`
             }
           >
             <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)]">
+            <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
               {label}
             </span>
           </NavLink>
@@ -59,10 +77,11 @@ export const SidebarNavigationSection = (): JSX.Element => {
             <button
               key={label}
               type="button"
+              title={label}
               className={`${itemBase} text-slate-400 hover:text-slate-200`}
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span className="font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)]">
+              <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
                 {label}
               </span>
             </button>

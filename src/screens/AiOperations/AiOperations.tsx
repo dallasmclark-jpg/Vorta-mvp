@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
@@ -6,15 +8,56 @@ import { SkillsMatrixSection } from "../SkillsMatrix";
 import { EngineersSection } from "../Engineers";
 
 export const AiOperations = (): JSX.Element => {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   return (
     <main className="h-full overflow-hidden bg-[#0b0e14] text-white">
       <div className="flex h-full w-full items-stretch">
-        {/* Sidebar — hidden on mobile, visible from lg breakpoint */}
-        <aside className="hidden shrink-0 lg:flex lg:w-[17%]">
+
+        {/* ── Sidebar: icon-only on md, full on lg+ ────────────────────────── */}
+        <aside className="hidden shrink-0 md:flex md:w-[60px] lg:w-[17%]">
           <SidebarNavigationSection />
         </aside>
-        <section className="min-w-0 w-full flex-1 overflow-hidden">
-          <ScrollArea className="h-full w-full">
+
+        {/* ── Mobile overlay sidebar ────────────────────────────────────────── */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 flex md:hidden">
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="relative z-50 flex w-64 shrink-0 flex-col">
+              <SidebarNavigationSection forceExpanded />
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(false)}
+                className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
+                aria-label="Close sidebar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Main content ──────────────────────────────────────────────────── */}
+        <section className="flex min-w-0 w-full flex-1 flex-col overflow-hidden">
+          {/* Mobile top bar with hamburger */}
+          <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="font-mono text-sm font-bold text-white">&gt;&lt;</span>
+            <span className="text-sm font-bold tracking-widest text-blue-500">VORTA</span>
+          </div>
+
+          <ScrollArea className="h-full w-full flex-1">
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
