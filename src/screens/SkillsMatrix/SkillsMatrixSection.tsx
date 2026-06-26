@@ -627,7 +627,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
       {/* Skill Detail Drawer */}
       <SkillDrawer
@@ -662,10 +662,10 @@ export const SkillsMatrixSection = (): JSX.Element => {
         </div>
       </header>
 
-      <div className="flex w-full flex-col items-start gap-6">
+      <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
 
         {/* ── KPI cards ──────────────────────────────────────────────────────── */}
-        <section className="grid w-full grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
             { label: "Total Engineers",    value: String(stats.totalEngineers),                 sub: `${stats.criticalHolders} knowledge holders`,   icon: Users,          valueClass: "text-slate-50"   },
             { label: "Skills Assessed",    value: stats.skillsAssessed.toLocaleString(),        sub: "Individual skill records",                       icon: BookOpen,       valueClass: "text-slate-50"   },
@@ -886,8 +886,9 @@ export const SkillsMatrixSection = (): JSX.Element => {
             </div>
 
             {/* Heatmap — bounded height, dual scroll, sticky headers + sticky first col */}
-            <div className="max-h-[56vh] overflow-x-auto overflow-y-auto rounded-lg border border-gray-800">
-              <table className="min-w-full border-collapse text-sm">
+            <div className="w-full max-w-full overflow-hidden rounded-lg border border-gray-800">
+              <div className="max-h-[56vh] max-w-full overflow-x-auto overflow-y-auto">
+              <table className="w-max min-w-[720px] border-collapse text-sm">
                 <thead>
                   {/* Row 1: category group headers — sticky at top */}
                   <tr className="sticky top-0 z-30">
@@ -1056,6 +1057,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
                   </tfoot>
                 )}
               </table>
+              </div>
             </div>
 
             {/* Legend */}
@@ -1110,8 +1112,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-800">
-              <table className="min-w-full border-collapse text-sm">
+            <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-800">
+              <table className="w-max min-w-[720px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 bg-[#0f1318]">
                     {["Engineer", "Discipline", "Department", "Shift", "Score", "Risk", "Training Gaps", "SME"].map((h) => (

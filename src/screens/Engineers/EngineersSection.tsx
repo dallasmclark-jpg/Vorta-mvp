@@ -490,7 +490,7 @@ export const EngineersSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
+    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
 
       <EngineerDrawer
         engineer={selectedEngineer}
@@ -530,7 +530,7 @@ export const EngineersSection = (): JSX.Element => {
         </div>
       </header>
 
-      <div className="flex w-full flex-col items-start gap-6">
+      <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
 
         {/* ── KPI cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
@@ -868,8 +868,8 @@ export const EngineersSection = (): JSX.Element => {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-800">
-              <table className="min-w-full border-collapse text-sm">
+            <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-800">
+              <table className="w-max min-w-[720px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 bg-[#0f1318]">
                     {[

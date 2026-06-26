@@ -581,7 +581,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const focusArea = data?.focusArea ?? "—";
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
@@ -624,8 +624,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
       </header>
-      <div className="flex w-full flex-col items-start gap-6">
-        <section className="grid w-full grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
+        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {overviewCards.map((card) => (
             <Card
               key={card.title}
