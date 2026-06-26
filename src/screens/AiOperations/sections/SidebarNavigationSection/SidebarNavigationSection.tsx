@@ -33,21 +33,21 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
     "flex h-auto w-full items-center gap-3 rounded-lg py-2.5 text-sm transition-colors hover:bg-[#3b82f61a]",
     forceExpanded
       ? "justify-start px-3"
-      : "justify-center px-2 lg:justify-start lg:px-3",
+      : "justify-center px-2 xl:justify-start xl:px-3",
   ].join(" ");
 
-  const labelCls = forceExpanded ? "block" : "hidden lg:block";
-  const padX     = forceExpanded ? "px-4" : "px-2 lg:px-4";
+  const labelCls = forceExpanded ? "block" : "hidden xl:block";
+  const padX     = forceExpanded ? "px-4" : "px-2 xl:px-4";
 
   return (
     <aside className={`relative flex h-full min-h-screen w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5`}>
-      <header className={`flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 lg:justify-start lg:px-2"}`}>
+      <header className={`flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 xl:justify-start xl:px-2"}`}>
         <NavLink to="/" aria-label="Vorta home" className="inline-flex items-center overflow-hidden">
-          <span className={forceExpanded ? "block" : "hidden lg:block"}>
+          <span className={forceExpanded ? "block" : "hidden xl:block"}>
             <VortaLogo />
           </span>
           {!forceExpanded && (
-            <span className="block select-none font-mono text-sm font-bold text-white lg:hidden">&gt;&lt;</span>
+            <span className="block select-none font-mono text-sm font-bold text-white xl:hidden">&gt;&lt;</span>
           )}
         </NavLink>
       </header>

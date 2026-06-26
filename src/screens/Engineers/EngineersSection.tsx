@@ -535,14 +535,14 @@ export const EngineersSection = (): JSX.Element => {
         {/* ── KPI cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
           {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
-            <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="flex h-full flex-col gap-3 p-4 xl:p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-slate-400">{label}</p>
-                  <Icon className="h-4 w-4 text-slate-600" />
+            <Card key={label} className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="flex min-w-0 h-full flex-col gap-3 p-4 xl:p-5">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-xs font-medium text-slate-400">{label}</p>
+                  <Icon className="h-4 w-4 shrink-0 text-slate-600" />
                 </div>
-                <p className={`text-xl font-semibold tabular-nums ${valueClass}`}>{loading ? "—" : value}</p>
-                <p className="text-[11px] text-slate-500">{sub}</p>
+                <p className={`truncate text-xl font-semibold tabular-nums ${valueClass}`}>{loading ? "—" : value}</p>
+                <p className="truncate text-[11px] text-slate-500">{sub}</p>
               </CardContent>
             </Card>
           ))}
@@ -552,8 +552,8 @@ export const EngineersSection = (): JSX.Element => {
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
 
           {/* ── LEFT: Engineer Directory ──────────────────────────────────────── */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex flex-col gap-4 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-5">
 
               {/* Directory header */}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -585,24 +585,24 @@ export const EngineersSection = (): JSX.Element => {
                     className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30" />
                 </div>
                 <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
+                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
                   <option value="all">All Departments</option>
                   {deptNames.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
                 <select value={filterSite} onChange={(e) => { setFilterSite(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
+                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
                   <option value="all">All Sites</option>
                   {siteNames.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <select value={filterAvailability} onChange={(e) => { setFilterAvailability(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
+                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
                   <option value="all">All Availability</option>
                   <option value="available">Available</option>
                   <option value="on_shift">On Shift</option>
                   <option value="unavailable">Unavailable</option>
                 </select>
                 <select value={filterRisk} onChange={(e) => { setFilterRisk(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
+                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
                   <option value="all">All Risk Levels</option>
                   <option value="critical">Critical</option>
                   <option value="high">High</option>
@@ -738,8 +738,8 @@ export const EngineersSection = (): JSX.Element => {
           </Card>
 
           {/* ── RIGHT: Engineer Insights ──────────────────────────────────────── */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex flex-col gap-4 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-5">
 
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-slate-50">Engineer Insights</h2>
@@ -846,8 +846,8 @@ export const EngineersSection = (): JSX.Element => {
         </div>
 
         {/* ── Engineer Skills Overview (detailed table, internal scroll) ────── */}
-        <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-4 p-5">
+        <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="flex min-w-0 flex-col gap-4 p-5">
 
             <div className="flex items-center justify-between">
               <div>

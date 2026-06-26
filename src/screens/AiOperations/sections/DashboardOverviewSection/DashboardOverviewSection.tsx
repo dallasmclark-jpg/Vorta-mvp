@@ -629,32 +629,32 @@ export const DashboardOverviewSection = (): JSX.Element => {
           {overviewCards.map((card) => (
             <Card
               key={card.title}
-              className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+              className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
             >
-              <CardContent className="flex h-full flex-col gap-3 p-5">
-                <div className="flex items-center justify-between">
-                  <p className="mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
+              <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <p className="min-w-0 truncate mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
                     {card.title}
                   </p>
                   <span
-                    className={`mt-[-1.00px] font-text-xs-semibold text-[length:var(--text-xs-semibold-font-size)] font-[number:var(--text-xs-semibold-font-weight)] leading-[var(--text-xs-semibold-line-height)] tracking-[var(--text-xs-semibold-letter-spacing)] [font-style:var(--text-xs-semibold-font-style)] ${card.changeClassName}`}
+                    className={`shrink-0 mt-[-1.00px] font-text-xs-semibold text-[length:var(--text-xs-semibold-font-size)] font-[number:var(--text-xs-semibold-font-weight)] leading-[var(--text-xs-semibold-line-height)] tracking-[var(--text-xs-semibold-letter-spacing)] [font-style:var(--text-xs-semibold-font-style)] ${card.changeClassName}`}
                   >
                     {card.change}
                   </span>
                 </div>
-                <div className="flex items-end justify-between gap-3">
-                  <p className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+                <div className="flex min-w-0 items-end justify-between gap-2">
+                  <p className="min-w-0 truncate mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
                     {card.value}
                   </p>
-                  {card.sparkline}
+                  <div className="shrink-0">{card.sparkline}</div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </section>
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex h-full flex-col items-start gap-4 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 h-full flex-col items-start gap-4 p-5">
               <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
                 Critical Risks
               </h2>
@@ -662,20 +662,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 {criticalRisks.map((risk) => (
                   <article
                     key={risk.title}
-                    className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-[#141820] p-3 sm:flex-row sm:items-center"
+                    className="flex min-w-0 flex-col gap-3 rounded-lg border border-gray-800 bg-[#141820] p-3 sm:flex-row sm:items-center"
                   >
                     <Badge
-                      className={`inline-flex h-auto rounded px-2 py-1 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] shadow-none hover:${risk.levelClassName} ${risk.levelClassName} [font-style:var(--text-xs-medium-font-style)]`}
+                      className={`shrink-0 inline-flex h-auto rounded px-2 py-1 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] shadow-none hover:${risk.levelClassName} ${risk.levelClassName} [font-style:var(--text-xs-medium-font-style)]`}
                     >
                       {risk.level}
                     </Badge>
-                    <p className="flex-1 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-sm-semibold-font-style)]">
+                    <p className="min-w-0 flex-1 truncate font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-sm-semibold-font-style)]">
                       {risk.title}
                     </p>
                     <Button
                       type="button"
                       variant="outline"
-                      className={`h-auto rounded-md px-2.5 py-1.5 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] hover:bg-transparent [font-style:var(--text-xs-medium-font-style)] ${risk.actionClassName}`}
+                      className={`shrink-0 h-auto rounded-md px-2.5 py-1.5 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] hover:bg-transparent [font-style:var(--text-xs-medium-font-style)] ${risk.actionClassName}`}
                     >
                       Review
                     </Button>
@@ -684,8 +684,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex h-full flex-col items-start gap-5 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 h-full flex-col items-start gap-5 p-5">
               <div className="flex w-full items-center justify-between gap-4">
                 <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
                   Recommended Actions
@@ -701,17 +701,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 {recommendedActions.map((action, index) => (
                   <article
                     key={action.id}
-                    className={`flex w-full flex-col gap-3 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_80px] md:items-center md:gap-4 ${
+                    className={`flex min-w-0 w-full flex-col gap-3 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_80px] md:items-center md:gap-4 ${
                       index !== recommendedActions.length - 1
                         ? "border-b border-gray-800"
                         : ""
                     }`}
                   >
-                    <div className="flex flex-col items-start gap-0.5">
-                      <h3 className="font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-sm-semibold-font-style)]">
+                    <div className="flex min-w-0 flex-col items-start gap-0.5">
+                      <h3 className="w-full truncate font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-sm-semibold-font-style)]">
                         {action.title}
                       </h3>
-                      <p className="font-text-xs-regular text-[length:var(--text-xs-regular-font-size)] font-[number:var(--text-xs-regular-font-weight)] leading-[var(--text-xs-regular-line-height)] tracking-[var(--text-xs-regular-letter-spacing)] text-slate-400 [font-style:var(--text-xs-regular-font-style)]">
+                      <p className="w-full truncate font-text-xs-regular text-[length:var(--text-xs-regular-font-size)] font-[number:var(--text-xs-regular-font-weight)] leading-[var(--text-xs-regular-line-height)] tracking-[var(--text-xs-regular-letter-spacing)] text-slate-400 [font-style:var(--text-xs-regular-font-style)]">
                         {action.subtitle}
                       </p>
                     </div>
@@ -737,7 +737,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </Card>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex h-full flex-col items-start gap-6 p-5 md:p-8">
               <div className="flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div className="flex flex-col items-start gap-1">
@@ -761,7 +761,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               <SkillsHealthChart />
             </CardContent>
           </Card>
-          <aside className="flex w-full flex-col items-start gap-4">
+          <aside className="flex min-w-0 w-full flex-col items-start gap-4">
             <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex min-h-[360px] flex-col items-start gap-5 overflow-hidden p-5">
                 <h2 className="mt-[-1.00px] self-stretch font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
@@ -789,19 +789,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   ))}
                 </div>
                 <div className="flex w-full items-start gap-4 pt-2">
-                  <div className="flex flex-1 flex-col items-start gap-1">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
                       Top Gap
                     </span>
-                    <span className="font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
+                    <span className="w-full truncate font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
                       {topGap}
                     </span>
                   </div>
-                  <div className="flex flex-1 flex-col items-start gap-1">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
                       Focus Area
                     </span>
-                    <span className="font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
+                    <span className="w-full truncate font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
                       {focusArea}
                     </span>
                   </div>

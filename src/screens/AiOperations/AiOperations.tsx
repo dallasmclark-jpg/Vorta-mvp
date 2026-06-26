@@ -14,8 +14,8 @@ export const AiOperations = (): JSX.Element => {
     <main className="h-full w-screen max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
       <div className="flex h-full w-full max-w-full items-stretch overflow-x-hidden">
 
-        {/* ── Sidebar: icon-only 72px on md, expanded on lg/xl ────────────── */}
-        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[200px] xl:w-[220px]">
+        {/* ── Sidebar: icon-only 72px on md+lg, expanded on xl ────────────── */}
+        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[72px] xl:w-[220px]">
           <SidebarNavigationSection />
         </aside>
 
@@ -58,12 +58,14 @@ export const AiOperations = (): JSX.Element => {
           </div>
 
           <ScrollArea className="min-w-0 h-full w-full flex-1">
+            <div className="min-w-0 w-full max-w-full overflow-x-hidden">
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
               <Route path="/engineers" element={<EngineersSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </div>
           </ScrollArea>
         </section>
       </div>

@@ -673,14 +673,14 @@ export const SkillsMatrixSection = (): JSX.Element => {
             { label: "Training Required",  value: stats.trainingRequired.toLocaleString(),      sub: `${stats.skillsAssessed > 0 ? Math.round((stats.trainingRequired / stats.skillsAssessed) * 100) : 0}% of records`, icon: TrendingUp, valueClass: "text-orange-400" },
             { label: "Knowledge Holders",  value: String(stats.criticalHolders),                sub: "Critical SMEs",                                  icon: Shield,         valueClass: "text-blue-400"   },
           ].map(({ label, value, sub, icon: Icon, valueClass }) => (
-            <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="flex h-full flex-col gap-3 p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-slate-400">{label}</p>
-                  <Icon className="h-4 w-4 text-slate-600" />
+            <Card key={label} className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-xs font-medium text-slate-400">{label}</p>
+                  <Icon className="h-4 w-4 shrink-0 text-slate-600" />
                 </div>
-                <p className={`text-xl font-semibold ${valueClass}`}>{loading ? "—" : value}</p>
-                <p className="text-[11px] text-slate-500">{sub}</p>
+                <p className={`truncate text-xl font-semibold ${valueClass}`}>{loading ? "—" : value}</p>
+                <p className="truncate text-[11px] text-slate-500">{sub}</p>
               </CardContent>
             </Card>
           ))}
@@ -690,8 +690,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
 
           {/* Critical Skill Gaps */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex flex-col gap-4 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-5">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-slate-50">Critical Skill Gaps</h2>
                 <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#ef444420] px-2 py-1 text-xs font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
@@ -708,9 +708,9 @@ export const SkillsMatrixSection = (): JSX.Element => {
                       </div>
                     ))
                   : skillGaps.slice(0, 8).map((gap) => (
-                      <div key={gap.id} className="flex flex-wrap items-start gap-3 py-3">
+                      <div key={gap.id} className="flex min-w-0 flex-wrap items-start gap-3 py-3">
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => {
@@ -745,8 +745,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
           </Card>
 
           {/* AI Insights */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex flex-col gap-4 p-5">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-5">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-slate-50">AI Insights</h2>
                 <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-xs font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
@@ -796,8 +796,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
         </div>
 
         {/* ── Heatmap ─────────────────────────────────────────────────────────── */}
-        <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-4 p-5">
+        <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="flex min-w-0 flex-col gap-4 p-5">
 
             {/* Card header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -838,7 +838,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
               <select
                 value={filterRisk}
                 onChange={(e) => { setFilterRisk(e.target.value); setTablePage(0); }}
-                className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
+                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
               >
                 <option value="all">All Risk Levels</option>
                 <option value="critical">Critical</option>
@@ -849,7 +849,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
               <select
                 value={filterDept}
                 onChange={(e) => { setFilterDept(e.target.value); setTablePage(0); }}
-                className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
+                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
               >
                 <option value="all">All Departments</option>
                 {departments.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -1093,8 +1093,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
         </Card>
 
         {/* ── Engineer Detail Table ──────────────────────────────────────────── */}
-        <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-4 p-5">
+        <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="flex min-w-0 flex-col gap-4 p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-semibold text-slate-50">Engineer Detail</h2>
