@@ -11,8 +11,8 @@ export const AiOperations = (): JSX.Element => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <main className="h-full overflow-hidden bg-[#0b0e14] text-white">
-      <div className="flex h-full w-full items-stretch">
+    <main className="h-full w-screen max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
+      <div className="flex h-full w-full max-w-full items-stretch overflow-x-hidden">
 
         {/* ── Sidebar: icon-only 72px on md, expanded on lg/xl ────────────── */}
         <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[200px] xl:w-[220px]">
@@ -42,7 +42,7 @@ export const AiOperations = (): JSX.Element => {
         )}
 
         {/* ── Main content ──────────────────────────────────────────────────── */}
-        <section className="flex min-w-0 w-full flex-1 flex-col overflow-hidden">
+        <section className="flex min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden">
           {/* Mobile top bar with hamburger */}
           <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
             <button
@@ -57,7 +57,7 @@ export const AiOperations = (): JSX.Element => {
             <span className="text-sm font-bold tracking-widest text-blue-500">VORTA</span>
           </div>
 
-          <ScrollArea className="h-full w-full flex-1">
+          <ScrollArea className="min-w-0 h-full w-full flex-1">
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
