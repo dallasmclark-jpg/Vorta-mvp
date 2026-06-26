@@ -3,6 +3,7 @@ import { ScrollArea } from "../../components/ui/scroll-area";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
+import { EngineersSection } from "../Engineers";
 
 export const AiOperations = (): JSX.Element => {
   return (
@@ -17,6 +18,7 @@ export const AiOperations = (): JSX.Element => {
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
+              <Route path="/engineers" element={<EngineersSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ScrollArea>
