@@ -490,7 +490,7 @@ export const EngineersSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 lg:px-6 xl:px-8">
+    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
 
       <EngineerDrawer
         engineer={selectedEngineer}
@@ -533,7 +533,7 @@ export const EngineersSection = (): JSX.Element => {
       <div className="flex w-full flex-col items-start gap-6">
 
         {/* ── KPI cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
-        <section className="grid w-full grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
           {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
             <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex h-full flex-col gap-3 p-4 xl:p-5">
@@ -549,7 +549,7 @@ export const EngineersSection = (): JSX.Element => {
         </section>
 
         {/* ── Two-panel row: Directory + Insights ─────────────────────────────── */}
-        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px]">
+        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
 
           {/* ── LEFT: Engineer Directory ──────────────────────────────────────── */}
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">

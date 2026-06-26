@@ -652,7 +652,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </Card>
           ))}
         </section>
-        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex h-full flex-col items-start gap-4 p-5">
               <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
@@ -736,7 +736,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </CardContent>
           </Card>
         </div>
-        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex h-full flex-col items-start gap-6 p-5 md:p-8">
               <div className="flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center">
