@@ -9,7 +9,6 @@ import { RequirementsSection } from "../Requirements";
 import { TrainingSection } from "../Training";
 import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
-import { AiReportsSection } from "../AiReports";
 import { SettingsSection } from "../Settings";
 import { EquipmentSection } from "../Equipment";
 import { SupportSection } from "../Support";
@@ -74,7 +73,6 @@ export const AiOperations = (): JSX.Element => {
               <Route path="/training" element={<TrainingSection />} />
               <Route path="/training-providers" element={<TrainingProvidersSection />} />
               <Route path="/ai-matching" element={<AiMatchingSection />} />
-              <Route path="/ai-reports" element={<AiReportsSection />} />
               <Route path="/settings" element={<SettingsSection />} />
               <Route path="/equipment" element={<EquipmentSection />} />
               <Route path="/support" element={<SupportSection />} />

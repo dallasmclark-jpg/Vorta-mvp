@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TriangleAlert as AlertTriangle, Bell, RefreshCw, CircleUser as UserCircle } from "lucide-react";
+import { AiInsightsSection } from "../../../../screens/AiInsights";
 import {
   Alert,
   AlertDescription,
@@ -820,6 +821,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </Alert>
           </aside>
         </div>
+      </div>
+
+      {/* ── AI Insights ─────────────────────────────────────────────────── */}
+      <div className="w-full border-t border-gray-800 pt-8">
+        <AiInsightsSection />
       </div>
     </section>
   );
