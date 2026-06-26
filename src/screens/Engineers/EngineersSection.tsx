@@ -533,7 +533,7 @@ export const EngineersSection = (): JSX.Element => {
       <div className="flex w-full flex-col items-start gap-6">
 
         {/* ── KPI cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
-        <section className="grid w-full grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
+        <section className="grid w-full grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
           {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
             <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex h-full flex-col gap-3 p-4 xl:p-5">

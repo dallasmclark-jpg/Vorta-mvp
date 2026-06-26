@@ -581,7 +581,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const focusArea = data?.focusArea ?? "—";
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-8 px-8 pb-12 pt-0">
+    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
@@ -591,7 +591,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             Alpha Manufacturing — Skills &amp; Coverage Overview
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start lg:self-auto">
+        <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
           <Button
             type="button"
             variant="outline"
@@ -625,7 +625,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
         </div>
       </header>
       <div className="flex w-full flex-col items-start gap-6">
-        <section className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid w-full grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
           {overviewCards.map((card) => (
             <Card
               key={card.title}
@@ -652,7 +652,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </Card>
           ))}
         </section>
-        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex h-full flex-col items-start gap-4 p-5">
               <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
@@ -736,9 +736,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </CardContent>
           </Card>
         </div>
-        <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex h-full flex-col items-start gap-6 p-8">
+            <CardContent className="flex h-full flex-col items-start gap-6 p-5 md:p-8">
               <div className="flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div className="flex flex-col items-start gap-1">
                   <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
@@ -761,7 +761,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               <SkillsHealthChart />
             </CardContent>
           </Card>
-          <aside className="flex w-full flex-col items-start gap-4 xl:w-[340px]">
+          <aside className="flex w-full flex-col items-start gap-4">
             <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex min-h-[360px] flex-col items-start gap-5 overflow-hidden p-5">
                 <h2 className="mt-[-1.00px] self-stretch font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">

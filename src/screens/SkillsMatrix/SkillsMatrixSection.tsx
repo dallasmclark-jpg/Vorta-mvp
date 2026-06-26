@@ -627,7 +627,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full flex-1 grow flex-col items-start gap-8 px-6 pb-12 pt-0 lg:px-8">
+    <section className="relative flex w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
       {/* Skill Detail Drawer */}
       <SkillDrawer
@@ -665,7 +665,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
       <div className="flex w-full flex-col items-start gap-6">
 
         {/* ── KPI cards ──────────────────────────────────────────────────────── */}
-        <section className="grid w-full grid-cols-2 gap-4 xl:grid-cols-5">
+        <section className="grid w-full grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
           {[
             { label: "Total Engineers",    value: String(stats.totalEngineers),                 sub: `${stats.criticalHolders} knowledge holders`,   icon: Users,          valueClass: "text-slate-50"   },
             { label: "Skills Assessed",    value: stats.skillsAssessed.toLocaleString(),        sub: "Individual skill records",                       icon: BookOpen,       valueClass: "text-slate-50"   },
@@ -687,7 +687,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
         </section>
 
         {/* ── Critical Gaps + AI Insights ────────────────────────────────────── */}
-        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
 
           {/* Critical Skill Gaps */}
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
