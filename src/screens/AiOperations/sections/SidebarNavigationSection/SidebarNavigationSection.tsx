@@ -8,8 +8,8 @@ import {
   LayoutDashboard,
   LogOut,
   Network,
-  Settings,
   Sparkles,
+  Wrench,
   Users,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -25,7 +25,7 @@ const primaryNavigation = [
   { label: "Providers",     icon: Building2,       to: "/training-providers"  },
   { label: "AI Matching",   icon: Sparkles,        to: "/ai-matching"         },
   { label: "AI Reports",    icon: FileBarChart2,   to: "/ai-reports"          },
-  { label: "Equipment",     icon: Settings,        to: "/equipment"           },
+  { label: "Equipment",     icon: Wrench,          to: "/equipment"           },
 ];
 
 const secondaryNavigation = [
