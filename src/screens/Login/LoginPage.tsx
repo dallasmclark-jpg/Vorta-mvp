@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
@@ -20,53 +19,14 @@ function GoogleIcon() {
 
 // ─── Top navigation bar ───────────────────────────────────────────────────────
 
-const navItems = [
-  { label: "For Sites",     hasChevron: true  },
-  { label: "For Engineers", hasChevron: true  },
-  { label: "For Contractors", hasChevron: false },
-  { label: "How it Works",  hasChevron: true  },
-  { label: "Resources",     hasChevron: false },
-];
-
 function TopNav() {
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-[#ffffff0d] px-6 md:px-10">
-      {/* Logo */}
+    <header className="flex h-16 w-full items-center border-b border-[#ffffff0d] px-6 md:px-10">
       <a href="/" aria-label="Vorta home" className="flex items-center gap-2 select-none shrink-0">
         <span className="font-mono text-base font-bold text-white leading-none">&gt;&lt;</span>
         <span className="text-sm font-bold tracking-[0.15em] text-white uppercase">Vorta</span>
         <span className="hidden text-[10px] font-medium tracking-widest text-slate-500 uppercase lg:block">Network</span>
       </a>
-
-      {/* Nav links — hidden on small screens */}
-      <nav className="hidden items-center gap-1 md:flex" aria-label="Marketing navigation">
-        {navItems.map(({ label, hasChevron }) => (
-          <button
-            key={label}
-            type="button"
-            className="inline-flex items-center gap-0.5 rounded-md px-3 py-2 text-sm text-slate-300 transition-colors hover:text-white"
-          >
-            {label}
-            {hasChevron && <ChevronDown className="h-3.5 w-3.5 text-slate-500" />}
-          </button>
-        ))}
-      </nav>
-
-      {/* CTA buttons */}
-      <div className="flex items-center gap-2">
-        <a
-          href="/login"
-          className="rounded-lg border border-[#ffffff20] px-4 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-[#ffffff35] hover:text-white"
-        >
-          Log in
-        </a>
-        <button
-          type="button"
-          className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-        >
-          Sign up
-        </button>
-      </div>
     </header>
   );
 }
