@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { ScrollArea } from "../../components/ui/scroll-area";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
@@ -11,7 +10,7 @@ export const AiOperations = (): JSX.Element => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <main className="h-full w-screen max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
+    <main className="h-full w-full max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
       <div className="flex h-full w-full max-w-full items-stretch overflow-x-hidden">
 
         {/* ── Sidebar: icon-only 72px on md+lg, expanded on xl ────────────── */}
@@ -57,7 +56,7 @@ export const AiOperations = (): JSX.Element => {
             <span className="text-sm font-bold tracking-widest text-blue-500">VORTA</span>
           </div>
 
-          <ScrollArea className="min-w-0 h-full w-full flex-1">
+          <div className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">
             <div className="min-w-0 w-full max-w-full overflow-x-hidden">
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
@@ -66,7 +65,7 @@ export const AiOperations = (): JSX.Element => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </div>
-          </ScrollArea>
+          </div>
         </section>
       </div>
     </main>
