@@ -14,8 +14,8 @@ export const AiOperations = (): JSX.Element => {
     <main className="h-full overflow-hidden bg-[#0b0e14] text-white">
       <div className="flex h-full w-full items-stretch">
 
-        {/* ── Sidebar: icon-only on md, fixed 200px on lg, 220px on xl+ ────── */}
-        <aside className="hidden shrink-0 md:flex md:w-[60px] lg:w-[200px] xl:w-[220px]">
+        {/* ── Sidebar: icon-only 72px on md, expanded on lg/xl ────────────── */}
+        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[200px] xl:w-[220px]">
           <SidebarNavigationSection />
         </aside>
 

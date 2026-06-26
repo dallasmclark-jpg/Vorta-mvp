@@ -265,7 +265,7 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
 
       {/* Drawer panel — full-screen on mobile, fixed width on sm+ */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-[420px] ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-[420px] md:max-w-[480px] ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

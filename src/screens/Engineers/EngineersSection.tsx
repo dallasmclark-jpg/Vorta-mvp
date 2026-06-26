@@ -122,24 +122,25 @@ const RISK_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, lo
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function RingScore({ value }: { value: number }) {
-  const SIZE = 36, STROKE = 2.5, R = (SIZE - STROKE) / 2;
+function RingScore({ value, size = 36 }: { value: number; size?: number }) {
+  const STROKE = 2.5, R = (size - STROKE) / 2;
   const circ = 2 * Math.PI * R;
   const offset = circ * (1 - value / 100);
   const color = value >= 80 ? "#10b981" : value >= 68 ? "#facc15" : "#ef4444";
+  const fontSize = size <= 28 ? "8px" : "9px";
   return (
-    <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: SIZE, height: SIZE }}>
-      <svg width={SIZE} height={SIZE} style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#1f293780" strokeWidth={STROKE} />
+    <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={R} fill="none" stroke="#1f293780" strokeWidth={STROKE} />
         <circle
-          cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
+          cx={size / 2} cy={size / 2} r={R} fill="none"
           stroke={color} strokeWidth={STROKE}
           strokeDasharray={circ} strokeDashoffset={offset}
           strokeLinecap="round"
           style={{ transition: "stroke-dashoffset 0.5s ease" }}
         />
       </svg>
-      <span className="absolute text-[9px] font-bold tabular-nums leading-none" style={{ color }}>{value}</span>
+      <span className="absolute font-bold tabular-nums leading-none" style={{ color, fontSize }}>{value}</span>
     </div>
   );
 }
@@ -210,96 +211,47 @@ function CertDots({ certs }: { certs: CertEntry[] }) {
   );
 }
 
-/**
- * Compact tablet row — 3-column flex layout, no table, no fixed widths.
- * Used at md–xl (768px–1279px). Fits inside available width without scrolling.
- */
-function TabletEngineerRow({
-  eng, isSelected, isActive, onClick, onSelect,
-}: {
-  eng: DrawerEngineer;
-  isSelected: boolean;
-  isActive: boolean;
-  onClick: () => void;
-  onSelect: (e: React.MouseEvent) => void;
-}) {
-  const critPct = eng.critical_skills_count > 0
-    ? Math.round((eng.critical_skills_met / eng.critical_skills_count) * 100)
-    : 100;
-
-  const bg = isActive ? "bg-blue-500/10" : isSelected ? "bg-blue-500/[0.07]" : "";
-
+function BulkBar({ count, onClear }: { count: number; onClear: () => void }) {
   return (
-    <div
-      onClick={onClick}
-      className={`flex cursor-pointer items-center gap-3 border-b border-gray-800/60 px-3 py-2.5 transition-colors hover:bg-[#1a2030] ${bg} ${rowAccent(eng)}`}
-    >
-      {/* Checkbox */}
-      <div onClick={onSelect} className="shrink-0">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => {}}
-          className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
-          aria-label={`Select ${eng.full_name}`}
-        />
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-500/25 bg-blue-500/8 px-4 py-2.5">
+      <span className="text-sm font-semibold text-blue-400">{count} engineer{count !== 1 ? "s" : ""} selected</span>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {[
+          { icon: GraduationCap, label: "Assign Training" },
+          { icon: Download,      label: "Export"          },
+          { icon: Sparkles,      label: "AI Report"       },
+          { icon: Mail,          label: "Send Message"    },
+        ].map(({ icon: Icon, label }) => (
+          <button key={label} type="button"
+            className="flex items-center gap-1.5 rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200">
+            <Icon className="h-3.5 w-3.5" />{label}
+          </button>
+        ))}
       </div>
+      <button type="button" onClick={onClear}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+        aria-label="Clear selection">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
 
-      {/* Left: avatar + name + role + chips — flex-[2] */}
-      <div className="flex min-w-0 flex-[2] items-start gap-2">
-        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
-          {getInitials(eng.full_name)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1">
-            <p className="truncate text-xs font-medium leading-tight text-slate-200">{eng.full_name}</p>
-            {eng.verified && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-400" />}
-            <CertDots certs={eng.certifications} />
-          </div>
-          <p className="mt-0.5 truncate text-[10px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
-          <SkillChips skills={eng.top_skills} max={3} />
-        </div>
+function EmptyState({ hasFilters, onReset }: { hasFilters: boolean; onReset: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <Users className="h-8 w-8 text-slate-700" />
+      <div>
+        <p className="font-medium text-slate-400">No engineers found</p>
+        <p className="mt-1 text-sm text-slate-600">
+          {hasFilters ? "No engineers match the current filters." : "No engineers have been added yet."}
+        </p>
       </div>
-
-      {/* Middle: dept + site + availability + shift — flex-[1.5] */}
-      <div className="min-w-0 flex-[1.5]">
-        {(eng.department_name || eng.site_name) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            {eng.department_name && (
-              <span className="truncate text-[11px] text-slate-400">{eng.department_name}</span>
-            )}
-            {eng.site_name && (
-              <span className="hidden items-center gap-1 text-[10px] text-slate-500 lg:flex">
-                <MapPin className="h-2.5 w-2.5 shrink-0" />{eng.site_name}
-              </span>
-            )}
-          </div>
-        )}
-        <div className="mt-1 flex flex-wrap items-center gap-1">
-          <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
-            {formatAvailStatus(eng.availability_status)}
-          </Badge>
-          {eng.shift_pattern && (
-            <span className="hidden text-[10px] text-slate-500 lg:inline">{eng.shift_pattern}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Right: competency ring + stats + risk */}
-      <div className="flex shrink-0 items-center gap-2">
-        <RingScore value={eng.skills_score} />
-        <div className="hidden flex-col items-end gap-0.5 lg:flex">
-          <span className={`text-[10px] font-semibold tabular-nums ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
-            {eng.critical_skills_met}/{eng.critical_skills_count}
-          </span>
-          {eng.training_count > 0 && (
-            <span className="text-[10px] font-medium text-orange-400">{eng.training_count} gaps</span>
-          )}
-        </div>
-        <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
-          {capitalize(eng.risk_level)}
-        </Badge>
-      </div>
+      {hasFilters && (
+        <button type="button" onClick={onReset} className="text-sm font-medium text-blue-400 hover:underline">
+          Clear all filters
+        </button>
+      )}
     </div>
   );
 }
@@ -346,7 +298,7 @@ function MobileEngineerCard({
         </div>
         <RingScore value={eng.skills_score} />
       </div>
-      {eng.top_skills.length > 0 && <SkillChips skills={eng.top_skills} />}
+      {eng.top_skills.length > 0 && <SkillChips skills={eng.top_skills} max={3} />}
       {(eng.department_name || eng.site_name) && (
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {eng.department_name && <span>{eng.department_name}</span>}
@@ -374,53 +326,6 @@ function MobileEngineerCard({
           {eng.critical_skills_met}/{eng.critical_skills_count} critical
         </span>
       </div>
-    </div>
-  );
-}
-
-function BulkBar({ count, onClear }: { count: number; onClear: () => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-500/25 bg-blue-500/8 px-4 py-2.5">
-      <span className="text-sm font-semibold text-blue-400">{count} engineer{count !== 1 ? "s" : ""} selected</span>
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        {[
-          { icon: GraduationCap, label: "Assign Training" },
-          { icon: Download,      label: "Export"          },
-          { icon: Sparkles,      label: "AI Report"       },
-          { icon: Mail,          label: "Send Message"    },
-        ].map(({ icon: Icon, label }) => (
-          <button key={label} type="button"
-            className="flex items-center gap-1.5 rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200">
-            <Icon className="h-3.5 w-3.5" />{label}
-          </button>
-        ))}
-      </div>
-      <button type="button" onClick={onClear}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-        aria-label="Clear selection">
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-// ─── Shared empty / error / skeleton sub-renders ──────────────────────────────
-
-function EmptyState({ hasFilters, onReset }: { hasFilters: boolean; onReset: () => void }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center">
-      <Users className="h-8 w-8 text-slate-700" />
-      <div>
-        <p className="font-medium text-slate-400">No engineers found</p>
-        <p className="mt-1 text-sm text-slate-600">
-          {hasFilters ? "No engineers match the current filters." : "No engineers have been added yet."}
-        </p>
-      </div>
-      {hasFilters && (
-        <button type="button" onClick={onReset} className="text-sm font-medium text-blue-400 hover:underline">
-          Clear all filters
-        </button>
-      )}
     </div>
   );
 }
@@ -572,7 +477,7 @@ export const EngineersSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full max-w-full flex-1 grow flex-col items-start gap-4 overflow-x-hidden px-4 pb-12 pt-0 xl:gap-6 xl:px-8">
+    <section className="relative flex w-full max-w-full flex-1 grow flex-col items-start gap-4 overflow-x-hidden px-3 pb-12 pt-0 md:px-4 xl:gap-6 xl:px-8">
 
       <EngineerDrawer
         engineer={selectedEngineer}
@@ -583,24 +488,24 @@ export const EngineersSection = (): JSX.Element => {
       />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="flex w-full flex-col justify-between gap-3 py-4 lg:flex-row lg:items-center lg:py-5">
+      <header className="flex w-full flex-col justify-between gap-3 py-4 md:flex-row md:items-center md:py-4 xl:py-5">
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-          <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-slate-50 xl:text-2xl">
             Engineers
           </h1>
           <p className="text-sm text-slate-400">Workforce Management &amp; Engineer Profiles</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
           <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
             <Download className="h-4 w-4" />
             <span className="hidden md:inline">Export</span>
           </Button>
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
+          <Button type="button" variant="outline" title="AI Report" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
             <Sparkles className="h-4 w-4" />
             <span className="hidden xl:inline">AI Report</span>
           </Button>
-          <Button type="button" className="h-auto gap-2 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+          <Button type="button" title="Add Engineer" className="h-auto gap-2 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
             <Plus className="h-4 w-4" />
             <span className="hidden xl:inline">Add Engineer</span>
           </Button>
@@ -617,12 +522,11 @@ export const EngineersSection = (): JSX.Element => {
 
       <div className="flex w-full max-w-full flex-col gap-4 xl:gap-6">
 
-        {/* ── KPI Cards ──────────────────────────────────────────────────────── */}
-        {/* 2 cols mobile → 4 cols tablet → 8 cols desktop */}
-        <section className="grid w-full grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+        {/* ── KPI Cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
+        <section className="grid w-full grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
           {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
             <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="flex h-full flex-col gap-2 p-3">
+              <CardContent className="flex h-full flex-col gap-1.5 p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-medium leading-tight text-slate-400">{label}</p>
                   <Icon className="h-3.5 w-3.5 shrink-0 text-slate-600" />
@@ -634,7 +538,7 @@ export const EngineersSection = (): JSX.Element => {
           ))}
         </section>
 
-        {/* ── Engineer Directory Card ─────────────────────────────────────────── */}
+        {/* ── Engineer Directory Card ──────────────────────────────────────────── */}
         <Card className="w-full max-w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
           <CardContent className="flex flex-col gap-3 p-3 md:p-4 xl:p-5">
 
@@ -660,7 +564,7 @@ export const EngineersSection = (): JSX.Element => {
               </div>
             </div>
 
-            {/* Filters: search full-width, dropdowns in responsive grid */}
+            {/* Filters: search full-width, dropdowns wrap naturally */}
             <div className="flex flex-col gap-2">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
@@ -715,7 +619,7 @@ export const EngineersSection = (): JSX.Element => {
               </div>
             )}
 
-            {/* ── MOBILE: card list (< 768px) ─────────────────────────────────── */}
+            {/* ── MOBILE: card list (< 768px) ──────────────────────────────────── */}
             {!loadError && (
               <div className="block md:hidden">
                 {loading ? (
@@ -755,227 +659,231 @@ export const EngineersSection = (): JSX.Element => {
               </div>
             )}
 
-            {/* ── TABLET: compact row list (768px – 1279px) ──────────────────── */}
+            {/* ── TABLE: md+ — full enterprise table, dense on tablet ──────────── */}
             {!loadError && (
-              <div className="hidden md:block xl:hidden">
-                {loading ? (
-                  <div className="rounded-lg border border-gray-800 bg-[#0f1318]">
-                    {/* Tablet skeleton header */}
-                    <div className="flex items-center gap-3 border-b border-gray-800 px-3 py-2">
-                      <div className="h-3 w-3 animate-pulse rounded bg-gray-800" />
-                      <div className="h-3 w-24 animate-pulse rounded bg-gray-800" />
-                      <div className="ml-auto flex gap-2">
-                        <div className="h-3 w-16 animate-pulse rounded bg-gray-800" />
-                        <div className="h-3 w-12 animate-pulse rounded bg-gray-800" />
-                      </div>
-                    </div>
-                    {Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 border-b border-gray-800/50 px-3 py-2.5">
-                        <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-800" />
-                        <div className="h-8 w-8 animate-pulse rounded-lg bg-gray-800" />
-                        <div className="flex-[2]">
-                          <div className="h-3.5 w-28 animate-pulse rounded bg-gray-800" />
-                          <div className="mt-1 h-2.5 w-20 animate-pulse rounded bg-gray-800/60" />
-                          <div className="mt-1.5 flex gap-1">
-                            {[32, 28, 36].map((w, j) => <div key={j} className="h-3 animate-pulse rounded bg-gray-800/40" style={{ width: w }} />)}
-                          </div>
-                        </div>
-                        <div className="flex-[1.5]">
-                          <div className="h-3 w-20 animate-pulse rounded bg-gray-800" />
-                          <div className="mt-1 h-4 w-16 animate-pulse rounded bg-gray-800/60" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-9 w-9 animate-pulse rounded-full bg-gray-800" />
-                          <div className="h-4 w-12 animate-pulse rounded bg-gray-800" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : filteredEngineers.length === 0 ? (
-                  <EmptyState hasFilters={hasActiveFilters} onReset={resetFilters} />
-                ) : (
-                  <div className="rounded-lg border border-gray-800 bg-[#0f1318]">
-                    {/* Tablet column header */}
-                    <div className="flex items-center gap-3 border-b border-gray-800 px-3 py-2">
-                      <div className="w-3.5 shrink-0">
-                        <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll}
-                          className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
-                          aria-label="Select all on page" />
-                      </div>
-                      <span className="flex-[2] text-[10px] font-semibold uppercase tracking-wider text-slate-500">Engineer</span>
-                      <span className="flex-[1.5] text-[10px] font-semibold uppercase tracking-wider text-slate-500">Dept / Status</span>
-                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Score / Risk</span>
-                    </div>
-                    {pagedEngineers.map((eng) => {
-                      const isSelected = selectedIds.has(eng.id);
-                      const isActive   = selectedEngineer?.id === eng.id;
-                      return (
-                        <TabletEngineerRow key={eng.id} eng={eng} isSelected={isSelected} isActive={isActive}
-                          onClick={() => setSelectedEngineer(isActive ? null : eng)}
-                          onSelect={(e) => { e.stopPropagation(); toggleSelectOne(eng.id); }} />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── DESKTOP: full table (xl+, 1280px+) ─────────────────────────── */}
-            {!loadError && (
-              <div className="hidden xl:block">
-                <div className="overflow-x-auto rounded-lg border border-gray-800">
-                  <table className="min-w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-800 bg-[#0f1318]">
-                        <th className="w-10 px-3 py-2.5">
-                          <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll}
-                            className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
-                            aria-label="Select all on page" />
-                        </th>
-                        {[
-                          { label: "Engineer",        cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[220px]" },
-                          { label: "Department",      cls: "min-w-[130px]" },
-                          { label: "Site",            cls: "min-w-[110px]" },
-                          { label: "Type",            cls: "min-w-[90px]" },
-                          { label: "Availability",    cls: "min-w-[110px]" },
-                          { label: "Shift",           cls: "min-w-[110px]" },
-                          { label: "Competency",      cls: "min-w-[100px] text-center" },
-                          { label: "AI Confidence",   cls: "min-w-[100px] text-right" },
-                          { label: "Critical Skills", cls: "min-w-[110px] text-right" },
-                          { label: "Knowledge",       cls: "min-w-[90px]  text-center" },
-                          { label: "Training Gaps",   cls: "min-w-[110px] text-right" },
-                          { label: "Last Active",     cls: "min-w-[110px]" },
-                          { label: "Risk",            cls: "min-w-[90px]" },
-                          { label: "",                cls: "w-px" },
-                        ].map(({ label, cls }) => (
-                          <th key={label || "actions"} className={`px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
-                            {label}
+              <div className="hidden md:block">
+                {/*
+                  Double-wrapper: outer clips the page, inner scrolls only the table.
+                  The sticky Engineer column stays visible during horizontal scroll.
+                */}
+                <div className="overflow-hidden rounded-lg border border-gray-800">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse text-xs xl:text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-800 bg-[#0f1318]">
+                          {/* Checkbox */}
+                          <th className="w-8 px-2 py-2 xl:w-10 xl:px-3 xl:py-2.5">
+                            <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll}
+                              className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
+                              aria-label="Select all on page" />
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading
-                        ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
-                            <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
-                              <td className="w-10 px-3 py-3"><div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-800" /></td>
-                              <td className="sticky left-0 z-10 bg-[#141820] px-3 py-3">
-                                <div className="flex items-start gap-3">
-                                  <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-800" />
-                                  <div>
-                                    <div className="h-4 w-32 animate-pulse rounded bg-gray-800" />
-                                    <div className="mt-1 h-2.5 w-20 animate-pulse rounded bg-gray-800/60" />
-                                    <div className="mt-1.5 flex gap-1">
-                                      {[40, 32, 36].map((w, j) => <div key={j} className="h-3.5 animate-pulse rounded bg-gray-800/40" style={{ width: w }} />)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              {Array.from({ length: 12 }).map((_, j) => (
-                                <td key={j} className="px-3 py-3"><div className="h-4 w-14 animate-pulse rounded bg-gray-800" /></td>
-                              ))}
-                            </tr>
-                          ))
-                        : filteredEngineers.length === 0
-                        ? (
-                            <tr>
-                              <td colSpan={15} className="py-16 text-center">
-                                <EmptyState hasFilters={hasActiveFilters} onReset={resetFilters} />
-                              </td>
-                            </tr>
-                          )
-                        : pagedEngineers.map((eng, idx) => {
-                            const isSelected = selectedIds.has(eng.id);
-                            const isActive   = selectedEngineer?.id === eng.id;
-                            const baseOdd    = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
-                            const rowBg      = isActive ? "bg-blue-500/10" : isSelected ? "bg-blue-500/[0.07]" : baseOdd;
-                            const critPct    = eng.critical_skills_count > 0 ? Math.round((eng.critical_skills_met / eng.critical_skills_count) * 100) : 100;
-                            return (
-                              <tr key={eng.id} onClick={() => setSelectedEngineer(isActive ? null : eng)}
-                                className={`group/row cursor-pointer border-b border-gray-800/50 transition-colors duration-100 hover:bg-[#1a2030] ${rowBg} ${rowAccent(eng)}`}>
-                                <td className="w-10 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                                  <input type="checkbox" checked={isSelected} onChange={() => toggleSelectOne(eng.id)}
-                                    className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
-                                    aria-label={`Select ${eng.full_name}`} />
+
+                          {/* Always-visible columns */}
+                          <th className="sticky left-0 z-10 min-w-[180px] bg-[#0f1318] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[220px] xl:px-3 xl:py-2.5">
+                            Engineer
+                          </th>
+                          <th className="min-w-[110px] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[130px] xl:px-3 xl:py-2.5">
+                            Department
+                          </th>
+                          <th className="min-w-[90px] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[110px] xl:px-3 xl:py-2.5">
+                            Site
+                          </th>
+                          <th className="min-w-[90px] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[110px] xl:px-3 xl:py-2.5">
+                            Availability
+                          </th>
+                          <th className="min-w-[72px] px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[100px] xl:px-3 xl:py-2.5">
+                            Competency
+                          </th>
+                          <th className="min-w-[72px] px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[110px] xl:px-3 xl:py-2.5">
+                            Critical
+                          </th>
+                          <th className="min-w-[64px] px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[110px] xl:px-3 xl:py-2.5">
+                            Gaps
+                          </th>
+                          <th className="min-w-[64px] px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:min-w-[90px] xl:px-3 xl:py-2.5">
+                            Risk
+                          </th>
+
+                          {/* Lower-priority columns: hidden on tablet, visible on xl+ */}
+                          <th className="hidden min-w-[90px] px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:table-cell">
+                            Type
+                          </th>
+                          <th className="hidden min-w-[110px] px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:table-cell">
+                            Shift
+                          </th>
+                          <th className="hidden min-w-[100px] px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:table-cell">
+                            AI Confidence
+                          </th>
+                          <th className="hidden min-w-[90px] px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:table-cell">
+                            Knowledge
+                          </th>
+                          <th className="hidden min-w-[110px] px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:table-cell">
+                            Last Active
+                          </th>
+
+                          {/* Row actions — desktop only */}
+                          <th className="hidden w-px xl:table-cell" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loading
+                          ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
+                              <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
+                                <td className="w-8 px-2 py-2 xl:w-10 xl:px-3 xl:py-3">
+                                  <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-800" />
                                 </td>
-                                <td className={`sticky left-0 z-10 min-w-[220px] px-3 py-2.5 ${rowBg}`}>
-                                  <div className="flex items-start gap-3">
-                                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarColor(eng.full_name)}`}>
-                                      {getInitials(eng.full_name)}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5">
-                                        <p className="truncate font-medium leading-tight text-slate-200">{eng.full_name}</p>
-                                        {eng.verified && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />}
-                                        <CertDots certs={eng.certifications} />
+                                <td className="sticky left-0 z-10 bg-[#141820] px-2 py-2 xl:px-3 xl:py-3">
+                                  <div className="flex items-start gap-2.5">
+                                    <div className="h-8 w-8 animate-pulse rounded-xl bg-gray-800 xl:h-9 xl:w-9" />
+                                    <div>
+                                      <div className="h-3.5 w-28 animate-pulse rounded bg-gray-800" />
+                                      <div className="mt-1 h-2.5 w-20 animate-pulse rounded bg-gray-800/60" />
+                                      <div className="mt-1.5 flex gap-1">
+                                        {[36, 28, 32].map((w, j) => <div key={j} className="h-3 animate-pulse rounded bg-gray-800/40" style={{ width: w }} />)}
                                       </div>
-                                      <p className="mt-0.5 truncate text-[11px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
-                                      <SkillChips skills={eng.top_skills} max={5} />
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-3 py-2.5 text-sm text-slate-400">{eng.department_name ?? "—"}</td>
-                                <td className="px-3 py-2.5">
-                                  {eng.site_name
-                                    ? <span className="flex items-center gap-1.5 text-sm text-slate-400"><MapPin className="h-3 w-3 shrink-0 text-slate-600" />{eng.site_name}</span>
-                                    : <span className="text-sm text-slate-600">—</span>}
-                                </td>
-                                <td className="px-3 py-2.5"><span className="text-xs text-slate-400">{capitalize(eng.employment_type)}</span></td>
-                                <td className="px-3 py-2.5">
-                                  <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
-                                    {formatAvailStatus(eng.availability_status)}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2.5 text-sm text-slate-400">{eng.shift_pattern ?? "—"}</td>
-                                <td className="px-3 py-2.5 text-center"><RingScore value={eng.skills_score} /></td>
-                                <td className="px-3 py-2.5 text-right">
-                                  <span className="text-sm font-semibold tabular-nums text-blue-400">{eng.ai_confidence}%</span>
-                                </td>
-                                <td className="px-3 py-2.5 text-right">
-                                  <span className={`text-sm font-semibold tabular-nums ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
-                                    {eng.critical_skills_met}
-                                  </span>
-                                  <span className="text-xs text-slate-600">/{eng.critical_skills_count}</span>
-                                </td>
-                                <td className="px-3 py-2.5 text-center">
-                                  {eng.critical_knowledge_holder
-                                    ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
-                                    : <span className="text-slate-700">—</span>}
-                                </td>
-                                <td className="px-3 py-2.5 text-right">
-                                  {eng.training_count > 0
-                                    ? <span className="text-sm font-semibold text-orange-400 tabular-nums">{eng.training_count}</span>
-                                    : <span className="text-sm text-slate-600">0</span>}
-                                </td>
-                                <td className="px-3 py-2.5 text-sm text-slate-400">{formatDate(eng.last_assessment_date)}</td>
-                                <td className="px-3 py-2.5">
-                                  <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
-                                    {capitalize(eng.risk_level)}
-                                  </Badge>
-                                </td>
-                                <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100">
-                                    {[
-                                      { icon: UserCircle,    title: "View profile",       action: () => setSelectedEngineer(eng) },
-                                      { icon: Network,       title: "Open Skills Matrix", action: () => {} },
-                                      { icon: GraduationCap, title: "Assign training",    action: () => {} },
-                                      { icon: Award,         title: "Certifications",     action: () => {} },
-                                      { icon: Sparkles,      title: "AI Report",          action: () => {} },
-                                      { icon: MessageSquare, title: "Message",            action: () => {} },
-                                    ].map(({ icon: Icon, title, action }) => (
-                                      <button key={title} type="button" title={title}
-                                        onClick={(e) => { e.stopPropagation(); action(); }}
-                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200">
-                                        <Icon className="h-3.5 w-3.5" />
-                                      </button>
-                                    ))}
-                                  </div>
+                                {Array.from({ length: 7 }).map((_, j) => (
+                                  <td key={j} className="px-2 py-2 xl:px-3 xl:py-3">
+                                    <div className="h-3.5 w-14 animate-pulse rounded bg-gray-800" />
+                                  </td>
+                                ))}
+                                {Array.from({ length: 5 }).map((_, j) => (
+                                  <td key={`h${j}`} className="hidden px-3 py-3 xl:table-cell">
+                                    <div className="h-3.5 w-14 animate-pulse rounded bg-gray-800" />
+                                  </td>
+                                ))}
+                                <td className="hidden xl:table-cell" />
+                              </tr>
+                            ))
+                          : filteredEngineers.length === 0
+                          ? (
+                              <tr>
+                                <td colSpan={15} className="py-16 text-center">
+                                  <EmptyState hasFilters={hasActiveFilters} onReset={resetFilters} />
                                 </td>
                               </tr>
-                            );
-                          })}
-                    </tbody>
-                  </table>
+                            )
+                          : pagedEngineers.map((eng, idx) => {
+                              const isSelected = selectedIds.has(eng.id);
+                              const isActive   = selectedEngineer?.id === eng.id;
+                              const baseOdd    = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
+                              const rowBg      = isActive ? "bg-blue-500/10" : isSelected ? "bg-blue-500/[0.07]" : baseOdd;
+                              const critPct    = eng.critical_skills_count > 0 ? Math.round((eng.critical_skills_met / eng.critical_skills_count) * 100) : 100;
+                              return (
+                                <tr key={eng.id} onClick={() => setSelectedEngineer(isActive ? null : eng)}
+                                  className={`group/row cursor-pointer border-b border-gray-800/50 transition-colors duration-100 hover:bg-[#1a2030] ${rowBg} ${rowAccent(eng)}`}>
+
+                                  {/* Checkbox */}
+                                  <td className="w-8 px-2 py-2 xl:w-10 xl:px-3 xl:py-2.5" onClick={(e) => e.stopPropagation()}>
+                                    <input type="checkbox" checked={isSelected} onChange={() => toggleSelectOne(eng.id)}
+                                      className="h-3.5 w-3.5 cursor-pointer rounded border-gray-600 accent-blue-500"
+                                      aria-label={`Select ${eng.full_name}`} />
+                                  </td>
+
+                                  {/* Engineer — sticky, always visible */}
+                                  <td className={`sticky left-0 z-10 min-w-[180px] px-2 py-2 xl:min-w-[220px] xl:px-3 xl:py-2.5 ${rowBg}`}>
+                                    <div className="flex items-start gap-2 xl:gap-3">
+                                      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[10px] font-bold xl:h-9 xl:w-9 xl:text-xs ${getAvatarColor(eng.full_name)}`}>
+                                        {getInitials(eng.full_name)}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1">
+                                          <p className="truncate font-medium leading-tight text-slate-200">{eng.full_name}</p>
+                                          {eng.verified && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-400" />}
+                                          <CertDots certs={eng.certifications} />
+                                        </div>
+                                        <p className="mt-0.5 truncate text-[10px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
+                                        <SkillChips skills={eng.top_skills} max={3} />
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Department */}
+                                  <td className="px-2 py-2 text-slate-400 xl:px-3 xl:py-2.5">{eng.department_name ?? "—"}</td>
+
+                                  {/* Site */}
+                                  <td className="px-2 py-2 xl:px-3 xl:py-2.5">
+                                    {eng.site_name
+                                      ? <span className="flex items-center gap-1 text-slate-400"><MapPin className="h-2.5 w-2.5 shrink-0 text-slate-600" />{eng.site_name}</span>
+                                      : <span className="text-slate-600">—</span>}
+                                  </td>
+
+                                  {/* Availability */}
+                                  <td className="px-2 py-2 xl:px-3 xl:py-2.5">
+                                    <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none xl:px-2 xl:text-[10px] ${availBadgeClass(eng.availability_status)}`}>
+                                      {formatAvailStatus(eng.availability_status)}
+                                    </Badge>
+                                  </td>
+
+                                  {/* Competency ring */}
+                                  <td className="px-2 py-2 text-center xl:px-3 xl:py-2.5">
+                                    <RingScore value={eng.skills_score} size={28} />
+                                  </td>
+
+                                  {/* Critical skills */}
+                                  <td className="px-2 py-2 text-right xl:px-3 xl:py-2.5">
+                                    <span className={`font-semibold tabular-nums ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
+                                      {eng.critical_skills_met}
+                                    </span>
+                                    <span className="text-slate-600">/{eng.critical_skills_count}</span>
+                                  </td>
+
+                                  {/* Training gaps */}
+                                  <td className="px-2 py-2 text-right xl:px-3 xl:py-2.5">
+                                    {eng.training_count > 0
+                                      ? <span className="font-semibold text-orange-400 tabular-nums">{eng.training_count}</span>
+                                      : <span className="text-slate-600">0</span>}
+                                  </td>
+
+                                  {/* Risk */}
+                                  <td className="px-2 py-2 xl:px-3 xl:py-2.5">
+                                    <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none xl:px-2 xl:text-[10px] ${riskBadgeClass(eng.risk_level)}`}>
+                                      {capitalize(eng.risk_level)}
+                                    </Badge>
+                                  </td>
+
+                                  {/* Lower-priority — hidden on tablet, xl+ only */}
+                                  <td className="hidden px-3 py-2.5 xl:table-cell">
+                                    <span className="text-slate-400">{capitalize(eng.employment_type)}</span>
+                                  </td>
+                                  <td className="hidden px-3 py-2.5 text-slate-400 xl:table-cell">{eng.shift_pattern ?? "—"}</td>
+                                  <td className="hidden px-3 py-2.5 text-right xl:table-cell">
+                                    <span className="font-semibold tabular-nums text-blue-400">{eng.ai_confidence}%</span>
+                                  </td>
+                                  <td className="hidden px-3 py-2.5 text-center xl:table-cell">
+                                    {eng.critical_knowledge_holder
+                                      ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
+                                      : <span className="text-slate-700">—</span>}
+                                  </td>
+                                  <td className="hidden px-3 py-2.5 text-slate-400 xl:table-cell">{formatDate(eng.last_assessment_date)}</td>
+
+                                  {/* Row actions — desktop only */}
+                                  <td className="hidden px-2 py-2.5 xl:table-cell" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100">
+                                      {[
+                                        { icon: UserCircle,    title: "View profile",       action: () => setSelectedEngineer(eng) },
+                                        { icon: Network,       title: "Open Skills Matrix", action: () => {} },
+                                        { icon: GraduationCap, title: "Assign training",    action: () => {} },
+                                        { icon: Award,         title: "Certifications",     action: () => {} },
+                                        { icon: Sparkles,      title: "AI Report",          action: () => {} },
+                                        { icon: MessageSquare, title: "Message",            action: () => {} },
+                                      ].map(({ icon: Icon, title, action }) => (
+                                        <button key={title} type="button" title={title}
+                                          onClick={(e) => { e.stopPropagation(); action(); }}
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200">
+                                          <Icon className="h-3.5 w-3.5" />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
