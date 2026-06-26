@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
       .order("full_name"),
     supabase
       .from("engineer_skills")
-      .select("engineer_id,skill_id,self_rating,manager_rating,validated_rating,training_required,verification_status,last_validated_at,expiry_date"),
+      .select("engineer_id,skill_id,self_rating,manager_rating,validated_rating,training_required,verification_status,last_validated_at,expiry_date,years_experience"),
     supabase
       .from("engineer_risk_profiles")
       .select("engineer_id,retirement_risk,leaving_risk,critical_knowledge_holder"),
@@ -53,35 +53,38 @@ Deno.serve(async (req: Request) => {
       .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,risk_level,recommendation,snapshot_date"),
   ]);
 
-  const engList = engineers ?? [];
-  const assignList = allAssignments ?? [];
-  const riskList = riskProfiles ?? [];
+  const engList     = engineers      ?? [];
+  const assignList  = allAssignments ?? [];
+  const riskList    = riskProfiles   ?? [];
   const bookingList = trainingBookings ?? [];
-  const courseList = trainingCourses ?? [];
-  const deptList = departments ?? [];
-  const siteList = sites ?? [];
-  const snapList = skillGapSnaps ?? [];
+  const courseList  = trainingCourses  ?? [];
+  const deptList    = departments ?? [];
+  const siteList    = sites       ?? [];
+  const snapList    = skillGapSnaps ?? [];
 
   // ── Skill metadata ────────────────────────────────────────────────────────
   const allSkillIds = [...new Set((assignList as { skill_id: string }[]).map((a) => a.skill_id))];
   const { data: allSkills } = await supabase
     .from("skills")
-    .select("id,name,category,is_critical")
+    .select("id,name,category,is_critical,certification_required,skill_type")
     .in("id", allSkillIds);
 
   const skillsById = new Map((allSkills ?? []).map((s: { id: string }) => [s.id, s]));
-  const deptMap = new Map(deptList.map((d: { id: string; name: string }) => [d.id, d.name]));
-  const siteMap = new Map(siteList.map((s: { id: string; name: string; region: string }) => [s.id, s]));
-  const riskMap = new Map((riskList as { engineer_id: string }[]).map((r) => [r.engineer_id, r]));
-  const courseMap = new Map((courseList as { id: string; title: string }[]).map((c) => [c.id, c.title]));
+  const deptMap    = new Map(deptList.map((d: { id: string; name: string }) => [d.id, d.name]));
+  const siteMap    = new Map(siteList.map((s: { id: string; name: string; region: string }) => [s.id, s]));
+  const riskMap    = new Map((riskList as { engineer_id: string }[]).map((r) => [r.engineer_id, r]));
+  const courseMap  = new Map((courseList as { id: string; title: string }[]).map((c) => [c.id, c.title]));
 
   // ── Per-engineer stats ────────────────────────────────────────────────────
+  type CertEntry = { skill_name: string; category: string; expiry_date: string | null; verification_status: string };
   type RatedSkill = { name: string; category: string; rating: number; is_critical: boolean };
   type EngStat = {
     total: number; count: number; trainingCount: number;
     criticalCount: number; criticalMet: number;
     expiredAny: boolean; lastAssessDate: string | null;
     ratedSkills: RatedSkill[];
+    certifications: CertEntry[];
+    maxYearsExperience: number | null;
   };
 
   const engStats = new Map<string, EngStat>();
@@ -90,14 +93,19 @@ Deno.serve(async (req: Request) => {
     engineer_id: string; skill_id: string;
     validated_rating: number | null; manager_rating: number | null; self_rating: number | null;
     training_required: boolean; verification_status: string; last_validated_at: string | null;
+    expiry_date: string | null; years_experience: number | null;
   }[]) {
-    const r = a.validated_rating ?? a.manager_rating ?? a.self_rating ?? null;
-    const skill = skillsById.get(a.skill_id) as { name: string; category: string; is_critical: boolean } | undefined;
+    const r     = a.validated_rating ?? a.manager_rating ?? a.self_rating ?? null;
+    const skill = skillsById.get(a.skill_id) as {
+      name: string; category: string; is_critical: boolean;
+      certification_required: boolean; skill_type: string;
+    } | undefined;
 
     if (!engStats.has(a.engineer_id)) {
       engStats.set(a.engineer_id, {
         total: 0, count: 0, trainingCount: 0, criticalCount: 0,
-        criticalMet: 0, expiredAny: false, lastAssessDate: null, ratedSkills: [],
+        criticalMet: 0, expiredAny: false, lastAssessDate: null,
+        ratedSkills: [], certifications: [], maxYearsExperience: null,
       });
     }
     const e = engStats.get(a.engineer_id)!;
@@ -105,7 +113,12 @@ Deno.serve(async (req: Request) => {
     if (r !== null) {
       e.total += r;
       e.count++;
-      e.ratedSkills.push({ name: skill?.name ?? "Unknown", category: skill?.category ?? "", rating: r, is_critical: skill?.is_critical ?? false });
+      e.ratedSkills.push({
+        name: skill?.name ?? "Unknown",
+        category: skill?.category ?? "",
+        rating: r,
+        is_critical: skill?.is_critical ?? false,
+      });
     }
     if (a.training_required) e.trainingCount++;
     if (skill?.is_critical) {
@@ -115,6 +128,19 @@ Deno.serve(async (req: Request) => {
     if (a.verification_status && a.verification_status !== "validated") e.expiredAny = true;
     if (a.last_validated_at && (!e.lastAssessDate || a.last_validated_at > e.lastAssessDate)) {
       e.lastAssessDate = a.last_validated_at;
+    }
+    if (skill?.certification_required) {
+      e.certifications.push({
+        skill_name: skill.name,
+        category: skill.category ?? "",
+        expiry_date: a.expiry_date,
+        verification_status: a.verification_status,
+      });
+    }
+    if (a.years_experience !== null && a.years_experience !== undefined) {
+      if (e.maxYearsExperience === null || Number(a.years_experience) > e.maxYearsExperience) {
+        e.maxYearsExperience = Number(a.years_experience);
+      }
     }
   }
 
@@ -135,37 +161,44 @@ Deno.serve(async (req: Request) => {
     department_id: string; site_id: string | null;
   }) => {
     const st = engStats.get(eng.id);
-    const avg = st && st.count > 0 ? st.total / st.count : 0;
+    const avg  = st && st.count > 0 ? st.total / st.count : 0;
     const score = Math.round((avg / 5) * 100);
-    const risk = score >= 80 ? "low" : score >= 68 ? "medium" : score >= 55 ? "high" : "critical";
-    const rp = riskMap.get(eng.id) as { retirement_risk: string; leaving_risk: string; critical_knowledge_holder: boolean } | undefined;
+    const risk  = score >= 80 ? "low" : score >= 68 ? "medium" : score >= 55 ? "high" : "critical";
+    const rp   = riskMap.get(eng.id) as { retirement_risk: string; leaving_risk: string; critical_knowledge_holder: boolean } | undefined;
     const site = siteMap.get(eng.site_id ?? "") as { name: string; region: string } | undefined;
     const topSkills = [...(st?.ratedSkills ?? [])].sort((a, b) => b.rating - a.rating).slice(0, 10);
-    const tb = trainingByEng.get(eng.id);
+    const tb   = trainingByEng.get(eng.id);
+
+    // AI confidence: blend of competency score and critical skills coverage
+    const critRatio = st && st.criticalCount > 0 ? st.criticalMet / st.criticalCount : 1;
+    const aiConfidence = Math.round(score * 0.6 + critRatio * 100 * 0.4);
 
     return {
       ...eng,
-      department_name: deptMap.get(eng.department_id) ?? null,
-      site_name: site?.name ?? null,
-      site_region: site?.region ?? null,
-      skills_score: score,
-      risk_level: risk,
-      training_count: st?.trainingCount ?? 0,
+      department_name:       deptMap.get(eng.department_id) ?? null,
+      site_name:             site?.name ?? null,
+      site_region:           site?.region ?? null,
+      skills_score:          score,
+      risk_level:            risk,
+      training_count:        st?.trainingCount ?? 0,
       total_skills_assessed: st?.count ?? 0,
       critical_skills_count: st?.criticalCount ?? 0,
-      critical_skills_met: st?.criticalMet ?? 0,
+      critical_skills_met:   st?.criticalMet ?? 0,
       has_expired_validation: st?.expiredAny ?? false,
-      last_assessment_date: st?.lastAssessDate ?? null,
-      top_skills: topSkills,
-      training_completed: tb?.completed ?? 0,
-      training_active: tb?.active ?? 0,
+      last_assessment_date:  st?.lastAssessDate ?? null,
+      top_skills:            topSkills,
+      training_completed:    tb?.completed ?? 0,
+      training_active:       tb?.active ?? 0,
       critical_knowledge_holder: rp?.critical_knowledge_holder ?? false,
-      retirement_risk: rp?.retirement_risk ?? null,
-      leaving_risk: rp?.leaving_risk ?? null,
+      retirement_risk:       rp?.retirement_risk ?? null,
+      leaving_risk:          rp?.leaving_risk ?? null,
+      certifications:        st?.certifications ?? [],
+      years_experience:      st?.maxYearsExperience ?? null,
+      ai_confidence:         aiConfidence,
     };
   });
 
-  // ── Enriched assignments (for detail drawer) ──────────────────────────────
+  // ── Enriched assignments ──────────────────────────────────────────────────
   const enrichedAssignments = (assignList as {
     engineer_id: string; skill_id: string;
     validated_rating: number | null; manager_rating: number | null; self_rating: number | null;
@@ -173,43 +206,43 @@ Deno.serve(async (req: Request) => {
   }[]).map((a) => {
     const skill = skillsById.get(a.skill_id) as { name: string; category: string; is_critical: boolean } | undefined;
     return {
-      engineer_id: a.engineer_id,
-      skill_id: a.skill_id,
-      skill_name: skill?.name ?? "Unknown",
-      skill_category: skill?.category ?? "",
-      is_critical: skill?.is_critical ?? false,
-      rating: a.validated_rating ?? a.manager_rating ?? a.self_rating ?? null,
+      engineer_id:       a.engineer_id,
+      skill_id:          a.skill_id,
+      skill_name:        skill?.name ?? "Unknown",
+      skill_category:    skill?.category ?? "",
+      is_critical:       skill?.is_critical ?? false,
+      rating:            a.validated_rating ?? a.manager_rating ?? a.self_rating ?? null,
       training_required: a.training_required,
       verification_status: a.verification_status,
       last_validated_at: a.last_validated_at,
     };
   });
 
-  // ── Enriched bookings (for detail drawer) ─────────────────────────────────
+  // ── Enriched bookings ─────────────────────────────────────────────────────
   const enrichedBookings = (bookingList as {
     engineer_id: string; course_id: string; status: string; booking_date: string | null;
   }[]).map((b) => ({
-    engineer_id: b.engineer_id,
+    engineer_id:  b.engineer_id,
     course_title: courseMap.get(b.course_id) ?? "Unknown Course",
-    status: b.status,
+    status:       b.status,
     booking_date: b.booking_date,
   }));
 
-  // ── Enriched skill gaps ───────────────────────────────────────────────────
+  // ── Enriched gaps ─────────────────────────────────────────────────────────
   const enrichedGaps = (snapList as { skill_id: string; department_id: string | null }[]).map((sg) => ({
     ...sg,
-    skill_name: (skillsById.get(sg.skill_id) as { name: string } | undefined)?.name ?? "Unknown",
-    skill_category: (skillsById.get(sg.skill_id) as { category: string } | undefined)?.category ?? "",
+    skill_name:      (skillsById.get(sg.skill_id) as { name: string }  | undefined)?.name     ?? "Unknown",
+    skill_category:  (skillsById.get(sg.skill_id) as { category: string } | undefined)?.category ?? "",
     department_name: sg.department_id ? (deptMap.get(sg.department_id) ?? null) : null,
   }));
 
   // ── KPI stats ─────────────────────────────────────────────────────────────
   const today = new Date();
-  const thirtyDaysOut = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const thirtyOut = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
   const certsExpiring = (assignList as { expiry_date: string | null }[]).filter((a) => {
     if (!a.expiry_date) return false;
     const d = new Date(a.expiry_date);
-    return d >= today && d <= thirtyDaysOut;
+    return d >= today && d <= thirtyOut;
   }).length;
 
   const inTrainingSet = new Set(
@@ -224,24 +257,24 @@ Deno.serve(async (req: Request) => {
       : 0;
 
   const stats = {
-    totalEngineers: engList.length,
-    verifiedEngineers: (engList as { verified: boolean }[]).filter((e) => e.verified).length,
-    currentlyAvailable: (engList as { availability_status: string }[]).filter((e) => e.availability_status === "available").length,
-    onShiftToday: (engList as { availability_status: string }[]).filter((e) => e.availability_status === "on_shift").length,
-    inTraining: inTrainingSet.size,
-    criticalHolders: (riskList as { critical_knowledge_holder: boolean }[]).filter((r) => r.critical_knowledge_holder).length,
-    avgCompetencyScore: avgScore,
+    totalEngineers:           engList.length,
+    verifiedEngineers:        (engList as { verified: boolean }[]).filter((e) => e.verified).length,
+    currentlyAvailable:       (engList as { availability_status: string }[]).filter((e) => e.availability_status === "available").length,
+    onShiftToday:             (engList as { availability_status: string }[]).filter((e) => e.availability_status === "on_shift").length,
+    inTraining:               inTrainingSet.size,
+    criticalHolders:          (riskList as { critical_knowledge_holder: boolean }[]).filter((r) => r.critical_knowledge_holder).length,
+    avgCompetencyScore:       avgScore,
     certificationsExpiring30d: certsExpiring,
   };
 
   return new Response(
     JSON.stringify({
-      engineers: enrichedEngineers,
-      assignments: enrichedAssignments,
+      engineers:        enrichedEngineers,
+      assignments:      enrichedAssignments,
       trainingBookings: enrichedBookings,
-      skillGaps: enrichedGaps,
-      departments: deptList,
-      sites: siteList,
+      skillGaps:        enrichedGaps,
+      departments:      deptList,
+      sites:            siteList,
       stats,
     }),
     { headers: { "Content-Type": "application/json", ...corsHeaders } }

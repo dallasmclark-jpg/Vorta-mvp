@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   AlertTriangle,
+  Award,
   BookOpen,
   Brain,
   Building2,
@@ -21,6 +22,13 @@ import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface CertEntry {
+  skill_name: string;
+  category: string;
+  expiry_date: string | null;
+  verification_status: string;
+}
 
 export interface DrawerEngineer {
   id: string;
@@ -47,6 +55,9 @@ export interface DrawerEngineer {
   critical_knowledge_holder: boolean;
   retirement_risk: string | null;
   leaving_risk: string | null;
+  certifications: CertEntry[];
+  years_experience: number | null;
+  ai_confidence: number;
 }
 
 export interface EnrichedAssignment {
@@ -137,8 +148,7 @@ function availBadgeClass(status: string): string {
   switch (status) {
     case "available":   return "bg-[#10b98120] text-emerald-400";
     case "on_shift":    return "bg-[#3b82f620] text-blue-400";
-    case "unavailable": return "bg-[#ef444420] text-red-400";
-    default:            return "bg-gray-800 text-slate-400";
+    default:            return "bg-[#ef444420] text-red-400";
   }
 }
 
@@ -164,6 +174,17 @@ const RATING_LABELS: Record<number, string> = {
   5: "Competent", 4: "Proficient", 3: "Developing", 2: "Basic", 1: "Gap",
 };
 
+function certStatus(c: CertEntry): { label: string; cls: string; dot: string } {
+  const now = Date.now();
+  const thirty = 30 * 24 * 60 * 60 * 1000;
+  const isExpired = c.expiry_date && new Date(c.expiry_date).getTime() < now;
+  const isExpiring = c.expiry_date && !isExpired && new Date(c.expiry_date).getTime() < now + thirty;
+  if (isExpired)  return { label: "Expired",        cls: "text-red-400",     dot: "bg-red-500"     };
+  if (isExpiring) return { label: "Expiring soon",  cls: "text-amber-400",   dot: "bg-amber-400"   };
+  if (c.verification_status === "validated") return { label: "Valid",   cls: "text-emerald-400", dot: "bg-emerald-400" };
+  return { label: capitalize(c.verification_status), cls: "text-amber-400", dot: "bg-amber-400" };
+}
+
 // ─── EngineerDrawer ───────────────────────────────────────────────────────────
 
 export function EngineerDrawer({ engineer, assignments, trainingBookings, skillGaps, onClose }: DrawerProps) {
@@ -179,15 +200,8 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
     [engineer, trainingBookings]
   );
 
-  const completedBookings = useMemo(
-    () => engBookings.filter((b) => b.status === "completed"),
-    [engBookings]
-  );
-
-  const activeBookings = useMemo(
-    () => engBookings.filter((b) => b.status !== "completed"),
-    [engBookings]
-  );
+  const completedBookings = useMemo(() => engBookings.filter((b) => b.status === "completed"), [engBookings]);
+  const activeBookings    = useMemo(() => engBookings.filter((b) => b.status !== "completed"), [engBookings]);
 
   const criticalAssignments = useMemo(
     () => engAssignments.filter((a) => a.is_critical).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)),
@@ -200,52 +214,42 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
 
     if (engineer.retirement_risk === "high" || engineer.leaving_risk === "high") {
       items.push({
-        severity: "critical",
-        icon: Shield,
+        severity: "critical", icon: Shield,
         title: "High attrition risk",
-        text: `${engineer.retirement_risk === "high" ? "Retirement" : "Leaving"} risk flagged. Initiate knowledge transfer plan and identify successor candidates.`,
+        text: `${engineer.retirement_risk === "high" ? "Retirement" : "Leaving"} risk flagged. Initiate knowledge transfer and identify successor candidates.`,
       });
     }
-
     if (engineer.critical_knowledge_holder) {
       const unmet = engineer.critical_skills_count - engineer.critical_skills_met;
       if (unmet > 0) {
         items.push({
-          severity: "high",
-          icon: Zap,
+          severity: "high", icon: Zap,
           title: "Critical knowledge holder with skill gaps",
-          text: `${unmet} of ${engineer.critical_skills_count} critical skills rated below target. Cross-train a backup to reduce SPOF exposure.`,
+          text: `${unmet} of ${engineer.critical_skills_count} critical skills below target. Cross-train a backup to reduce SPOF exposure.`,
         });
       }
     }
-
     if (engineer.training_count > 0) {
       items.push({
-        severity: engineer.training_count > 5 ? "high" : "medium",
-        icon: TrendingUp,
-        title: `${engineer.training_count} skill gaps require training`,
-        text: `Prioritise critical and compliance skills first to reduce site risk. ${activeBookings.length > 0 ? `${activeBookings.length} course(s) already booked.` : "No active bookings yet."}`,
+        severity: engineer.training_count > 5 ? "high" : "medium", icon: TrendingUp,
+        title: `${engineer.training_count} skill gap${engineer.training_count !== 1 ? "s" : ""} require training`,
+        text: `Prioritise critical and compliance skills first. ${activeBookings.length > 0 ? `${activeBookings.length} course(s) already booked.` : "No active bookings yet."}`,
       });
     }
-
     if (engineer.has_expired_validation) {
       items.push({
-        severity: "medium",
-        icon: AlertTriangle,
+        severity: "medium", icon: AlertTriangle,
         title: "Validation records require renewal",
         text: "One or more skill assessments are marked as pending re-validation. Schedule a competency review.",
       });
     }
-
     if (items.length === 0 && engineer.skills_score >= 80) {
       items.push({
-        severity: "medium",
-        icon: Brain,
+        severity: "medium", icon: Brain,
         title: "Strong competency profile",
-        text: "This engineer is performing above the team average. Consider them for mentoring or SME designation.",
+        text: "Performing above team average. Consider this engineer for mentoring or SME designation.",
       });
     }
-
     return items.slice(0, 4);
   }, [engineer, activeBookings]);
 
@@ -259,7 +263,7 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
         onClick={onClose}
       />
 
-      {/* Drawer */}
+      {/* Drawer panel */}
       <div
         className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
@@ -268,19 +272,15 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex items-start gap-4 border-b border-gray-800 p-5">
           {engineer && (
-            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold ${getAvatarColor(engineer.full_name)}`}>
+            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold ${getAvatarColor(engineer.full_name)}`}>
               {getInitials(engineer.full_name)}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-semibold text-slate-50">{engineer?.full_name ?? "—"}</h2>
-              {engineer?.verified && (
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" title="Verified" />
-              )}
-              {engineer?.critical_knowledge_holder && (
-                <Shield className="h-4 w-4 text-blue-400 shrink-0" title="Critical knowledge holder" />
-              )}
+              {engineer?.verified && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" title="Verified" />}
+              {engineer?.critical_knowledge_holder && <Shield className="h-4 w-4 text-blue-400 shrink-0" title="Critical knowledge holder" />}
             </div>
             <p className="mt-0.5 text-sm text-slate-400">{engineer?.discipline ?? "—"}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -309,12 +309,11 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
           </button>
         </div>
 
-        {/* ── Info row ────────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5 border-b border-gray-800 px-5 py-3">
+        {/* ── Info row ──────────────────────────────────────────────────────── */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-b border-gray-800 px-5 py-3">
           {engineer?.department_name && (
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Building2 className="h-3.5 w-3.5 text-slate-600" />
-              {engineer.department_name}
+              <Building2 className="h-3.5 w-3.5 text-slate-600" />{engineer.department_name}
             </span>
           )}
           {engineer?.site_name && (
@@ -324,20 +323,44 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             </span>
           )}
           {engineer?.shift_pattern && (
-            <span className="text-xs text-slate-400">Shift: <span className="text-slate-300">{engineer.shift_pattern}</span></span>
+            <span className="text-xs text-slate-400">
+              Shift: <span className="text-slate-300">{engineer.shift_pattern}</span>
+            </span>
+          )}
+          {engineer?.years_experience !== null && engineer?.years_experience !== undefined && (
+            <span className="text-xs text-slate-400">
+              Experience: <span className="text-slate-300">{engineer.years_experience.toFixed(1)} yrs</span>
+            </span>
           )}
           {engineer?.last_assessment_date && (
-            <span className="text-xs text-slate-400">Last assessed: <span className="text-slate-300">{formatDate(engineer.last_assessment_date)}</span></span>
+            <span className="text-xs text-slate-400">
+              Assessed: <span className="text-slate-300">{formatDate(engineer.last_assessment_date)}</span>
+            </span>
           )}
         </div>
 
-        {/* ── Stats row ───────────────────────────────────────────────────────── */}
+        {/* ── Stats row ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-4 divide-x divide-gray-800 border-b border-gray-800">
           {[
-            { label: "Competency", value: engineer ? `${engineer.skills_score}%` : "—", cls: engineer ? (engineer.skills_score >= 80 ? "text-emerald-400" : engineer.skills_score >= 68 ? "text-yellow-400" : "text-red-400") : "text-slate-50" },
-            { label: "Skills",     value: engineer ? String(engineer.total_skills_assessed) : "—", cls: "text-slate-50" },
-            { label: "Training",   value: engineer ? String(engineer.training_count) : "—", cls: engineer && engineer.training_count > 0 ? "text-orange-400" : "text-slate-50" },
-            { label: "Critical",   value: engineer ? `${engineer.critical_skills_met}/${engineer.critical_skills_count}` : "—", cls: engineer && engineer.critical_skills_met < engineer.critical_skills_count ? "text-yellow-400" : "text-emerald-400" },
+            {
+              label: "Competency",
+              value: engineer ? `${engineer.skills_score}%` : "—",
+              cls: engineer
+                ? engineer.skills_score >= 80 ? "text-emerald-400"
+                : engineer.skills_score >= 68 ? "text-yellow-400" : "text-red-400"
+                : "text-slate-50",
+            },
+            { label: "AI Score",  value: engineer ? `${engineer.ai_confidence}%` : "—", cls: "text-blue-400" },
+            {
+              label: "Training",
+              value: engineer ? String(engineer.training_count) : "—",
+              cls: engineer && engineer.training_count > 0 ? "text-orange-400" : "text-slate-50",
+            },
+            {
+              label: "Critical",
+              value: engineer ? `${engineer.critical_skills_met}/${engineer.critical_skills_count}` : "—",
+              cls: engineer && engineer.critical_skills_met < engineer.critical_skills_count ? "text-yellow-400" : "text-emerald-400",
+            },
           ].map(({ label, value, cls }) => (
             <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
               <p className="text-[10px] font-medium text-slate-500">{label}</p>
@@ -346,34 +369,30 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
           ))}
         </div>
 
-        {/* ── Scrollable body ─────────────────────────────────────────────────── */}
+        {/* ── Scrollable body ────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
 
           {/* Skills Summary */}
           <div className="border-b border-gray-800 p-5">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Skills Summary</p>
 
-            {/* Competency bar */}
             <div className="mb-4">
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-xs text-slate-400">Overall Competency</span>
                 <span className={`text-xs font-semibold tabular-nums ${
-                  (engineer?.skills_score ?? 0) >= 80 ? "text-emerald-400" : (engineer?.skills_score ?? 0) >= 68 ? "text-yellow-400" : "text-red-400"
-                }`}>
-                  {engineer?.skills_score ?? 0}%
-                </span>
+                  (engineer?.skills_score ?? 0) >= 80 ? "text-emerald-400" :
+                  (engineer?.skills_score ?? 0) >= 68 ? "text-yellow-400" : "text-red-400"
+                }`}>{engineer?.skills_score ?? 0}%</span>
               </div>
               <Progress
                 value={engineer?.skills_score ?? 0}
                 className={`h-2 rounded bg-gray-800 ${
-                  (engineer?.skills_score ?? 0) >= 80 ? "[&>div]:bg-emerald-500"
-                  : (engineer?.skills_score ?? 0) >= 68 ? "[&>div]:bg-yellow-400"
-                  : "[&>div]:bg-red-500"
+                  (engineer?.skills_score ?? 0) >= 80 ? "[&>div]:bg-emerald-500" :
+                  (engineer?.skills_score ?? 0) >= 68 ? "[&>div]:bg-yellow-400" : "[&>div]:bg-red-500"
                 }`}
               />
             </div>
 
-            {/* Critical skills */}
             {criticalAssignments.length > 0 && (
               <div className="mb-4">
                 <p className="mb-2 text-[10px] font-medium text-slate-500">Critical Skills</p>
@@ -396,8 +415,7 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
               </div>
             )}
 
-            {/* Top skills */}
-            {(engineer?.top_skills ?? []).length > 0 && (
+            {(engineer?.top_skills ?? []).filter((s) => !s.is_critical).length > 0 && (
               <div>
                 <p className="mb-2 text-[10px] font-medium text-slate-500">Top Rated Skills</p>
                 <div className="flex flex-col gap-1.5">
@@ -418,16 +436,55 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             )}
           </div>
 
+          {/* Certifications */}
+          <div className="border-b border-gray-800 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Certifications</p>
+              <span className="rounded-full bg-gray-800 px-1.5 py-0.5 text-[9px] font-medium text-slate-400">
+                {(engineer?.certifications ?? []).length}
+              </span>
+            </div>
+            {(engineer?.certifications ?? []).length === 0 ? (
+              <p className="text-xs text-slate-600">No certifications on record.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {(engineer?.certifications ?? []).map((cert, i) => {
+                  const { label, cls, dot } = certStatus(cert);
+                  return (
+                    <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0b0e14] p-2.5">
+                      <Award className="h-4 w-4 shrink-0 text-slate-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-200">{cert.skill_name}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">{cert.category}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                          <span className={`text-[10px] font-medium ${cls}`}>{label}</span>
+                        </div>
+                        {cert.expiry_date && (
+                          <span className="text-[9px] text-slate-600">Expires {formatDate(cert.expiry_date)}</span>
+                        )}
+                        {!cert.expiry_date && (
+                          <span className="text-[9px] text-slate-600">No expiry</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Training */}
           <div className="border-b border-gray-800 p-5">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Training</p>
               <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{engineer?.training_completed ?? 0} completed</span>
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{engineer?.training_active ?? 0} active</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{completedBookings.length} completed</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{activeBookings.length} active</span>
               </div>
             </div>
-
             {engBookings.length === 0 ? (
               <p className="text-xs text-slate-600">No training records linked to this engineer.</p>
             ) : (
@@ -437,17 +494,13 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
                     <GraduationCap className={`mt-0.5 h-4 w-4 shrink-0 ${b.status === "completed" ? "text-emerald-400" : "text-blue-400"}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-200">{b.course_title}</p>
-                      {b.booking_date && (
-                        <p className="mt-0.5 text-[10px] text-slate-500">{formatDate(b.booking_date)}</p>
-                      )}
+                      {b.booking_date && <p className="mt-0.5 text-[10px] text-slate-500">{formatDate(b.booking_date)}</p>}
                     </div>
                     <Badge className={`shrink-0 inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${
-                      b.status === "completed" ? "bg-[#10b98120] text-emerald-400" :
-                      b.status === "booked" || b.status === "approved" ? "bg-[#3b82f620] text-blue-400" :
-                      "bg-gray-800 text-slate-400"
-                    }`}>
-                      {capitalize(b.status)}
-                    </Badge>
+                      b.status === "completed"                              ? "bg-[#10b98120] text-emerald-400" :
+                      b.status === "booked" || b.status === "approved"     ? "bg-[#3b82f620] text-blue-400" :
+                                                                             "bg-gray-800 text-slate-400"
+                    }`}>{capitalize(b.status)}</Badge>
                   </div>
                 ))}
               </div>
@@ -465,11 +518,9 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             <div className="flex flex-col gap-2.5">
               {insights.map((ins, i) => {
                 const conf =
-                  ins.severity === "critical"
-                    ? { bg: "bg-[#ef444408]", border: "border-red-500/20", icon: "text-red-500", title: "text-red-400" }
-                    : ins.severity === "high"
-                    ? { bg: "bg-[#f9731608]", border: "border-orange-400/20", icon: "text-orange-400", title: "text-orange-300" }
-                    : { bg: "bg-[#facc1508]", border: "border-yellow-400/20", icon: "text-yellow-400", title: "text-yellow-300" };
+                  ins.severity === "critical" ? { bg: "bg-[#ef444408]", border: "border-red-500/20",    icon: "text-red-500",    title: "text-red-400"    } :
+                  ins.severity === "high"     ? { bg: "bg-[#f9731608]", border: "border-orange-400/20", icon: "text-orange-400", title: "text-orange-300" } :
+                                               { bg: "bg-[#facc1508]", border: "border-yellow-400/20", icon: "text-yellow-400", title: "text-yellow-300" };
                 const Icon = ins.icon;
                 return (
                   <div key={i} className={`flex items-start gap-2.5 rounded-lg border ${conf.border} ${conf.bg} p-3`}>
@@ -489,14 +540,14 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Quick Actions</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: UserCircle,    label: "View Full Profile" },
-                { icon: ExternalLink,  label: "Open Skills Matrix" },
-                { icon: FileText,      label: "Training History" },
-                { icon: BookOpen,      label: "View Certifications" },
-                { icon: GraduationCap, label: "Assign Training" },
-                { icon: Sparkles,      label: "Generate AI Report" },
-                { icon: MessageSquare, label: "Message Engineer" },
-                { icon: CheckCircle2,  label: "Book Assessment" },
+                { icon: UserCircle,    label: "View Full Profile"     },
+                { icon: ExternalLink,  label: "Open Skills Matrix"    },
+                { icon: FileText,      label: "Training History"      },
+                { icon: Award,         label: "View Certifications"   },
+                { icon: GraduationCap, label: "Assign Training"       },
+                { icon: Sparkles,      label: "Generate AI Report"    },
+                { icon: MessageSquare, label: "Message Engineer"      },
+                { icon: BookOpen,      label: "Book Assessment"       },
               ].map(({ icon: Icon, label }) => (
                 <button
                   key={label}
