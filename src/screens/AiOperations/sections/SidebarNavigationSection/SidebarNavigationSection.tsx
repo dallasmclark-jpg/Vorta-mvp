@@ -1,4 +1,5 @@
 import {
+  Building2,
   ClipboardList,
   Cog,
   GraduationCap,
@@ -16,8 +17,9 @@ const primaryNavigation = [
   { label: "Engineers",     icon: Users,           to: "/engineers"      },
   { label: "Skills Matrix", icon: Network,         to: "/skills-matrix"  },
   { label: "Requirements",  icon: ClipboardList,   to: "/requirements"   },
-  { label: "Training",      icon: GraduationCap,   to: "/training"       },
-  { label: "Equipment",     icon: Settings,        to: "/equipment"      },
+  { label: "Training",      icon: GraduationCap,   to: "/training"            },
+  { label: "Providers",     icon: Building2,       to: "/training-providers"  },
+  { label: "Equipment",     icon: Settings,        to: "/equipment"           },
 ];
 
 const secondaryNavigation = [
