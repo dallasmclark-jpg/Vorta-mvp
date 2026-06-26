@@ -92,13 +92,6 @@ export const LoginPage = (): JSX.Element => {
             Welcome back! Please enter your details.
           </p>
 
-          {/* Log in tab */}
-          <div className="mb-6 flex w-full rounded-lg bg-[#111518] p-1">
-            <div className="flex-1 rounded-md bg-[#1c2338] py-2 text-center text-sm font-semibold text-white">
-              Log in
-            </div>
-          </div>
-
           {/* Form */}
           <form onSubmit={handleSignIn} noValidate className="w-full space-y-5">
 
