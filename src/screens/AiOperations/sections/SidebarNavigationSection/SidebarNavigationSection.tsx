@@ -2,6 +2,7 @@ import {
   Building2,
   ClipboardList,
   Cog,
+  FileBarChart2,
   GraduationCap,
   Headphones,
   LayoutDashboard,
@@ -23,6 +24,7 @@ const primaryNavigation = [
   { label: "Training",      icon: GraduationCap,   to: "/training"            },
   { label: "Providers",     icon: Building2,       to: "/training-providers"  },
   { label: "AI Matching",   icon: Sparkles,        to: "/ai-matching"         },
+  { label: "AI Reports",    icon: FileBarChart2,   to: "/ai-reports"          },
   { label: "Equipment",     icon: Settings,        to: "/equipment"           },
 ];
 
