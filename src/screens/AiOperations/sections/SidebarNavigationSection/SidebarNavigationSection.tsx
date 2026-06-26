@@ -29,7 +29,7 @@ const primaryNavigation = [
 ];
 
 const secondaryNavigation = [
-  { label: "Support",  icon: Headphones, to: null        },
+  { label: "Support",  icon: Headphones, to: "/support"  },
   { label: "Settings", icon: Cog,        to: "/settings" },
 ];
 
