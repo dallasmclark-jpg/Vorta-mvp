@@ -29,8 +29,8 @@ const primaryNavigation = [
 ];
 
 const secondaryNavigation = [
-  { label: "Support",  icon: Headphones },
-  { label: "Settings", icon: Cog        },
+  { label: "Support",  icon: Headphones, to: null        },
+  { label: "Settings", icon: Cog,        to: "/settings" },
 ];
 
 interface SidebarProps {
@@ -89,19 +89,35 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
 
       <nav aria-label="Secondary" className="mt-6 flex flex-1 flex-col justify-between">
         <div className="flex flex-col gap-1">
-          {secondaryNavigation.map(({ label, icon: Icon }) => (
-            <button
-              key={label}
-              type="button"
-              title={label}
-              className={`${itemBase} text-slate-400 hover:text-slate-200`}
-            >
-              <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
-                {label}
-              </span>
-            </button>
-          ))}
+          {secondaryNavigation.map(({ label, icon: Icon, to }) =>
+            to ? (
+              <NavLink
+                key={label}
+                to={to}
+                title={label}
+                className={({ isActive }) =>
+                  `${itemBase} ${isActive ? "bg-[#3b82f61a] text-blue-500" : "text-slate-400 hover:text-slate-200"}`
+                }
+              >
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
+                  {label}
+                </span>
+              </NavLink>
+            ) : (
+              <button
+                key={label}
+                type="button"
+                title={label}
+                className={`${itemBase} text-slate-400 hover:text-slate-200`}
+              >
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
+                  {label}
+                </span>
+              </button>
+            )
+          )}
         </div>
 
         {/* Logout — pinned to sidebar bottom */}
