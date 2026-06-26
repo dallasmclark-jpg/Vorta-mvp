@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   Cog,
   GraduationCap,
   Headphones,
@@ -11,11 +12,12 @@ import { NavLink } from "react-router-dom";
 import { VortaLogo } from "../../../../components/VortaLogo";
 
 const primaryNavigation = [
-  { label: "Dashboard",     icon: LayoutDashboard, to: "/"              },
-  { label: "Engineers",     icon: Users,           to: "/engineers"     },
-  { label: "Skills Matrix", icon: Network,         to: "/skills-matrix" },
-  { label: "Training",      icon: GraduationCap,   to: "/training"      },
-  { label: "Equipment",     icon: Settings,        to: "/equipment"     },
+  { label: "Dashboard",     icon: LayoutDashboard, to: "/"               },
+  { label: "Engineers",     icon: Users,           to: "/engineers"      },
+  { label: "Skills Matrix", icon: Network,         to: "/skills-matrix"  },
+  { label: "Requirements",  icon: ClipboardList,   to: "/requirements"   },
+  { label: "Training",      icon: GraduationCap,   to: "/training"       },
+  { label: "Equipment",     icon: Settings,        to: "/equipment"      },
 ];
 
 const secondaryNavigation = [

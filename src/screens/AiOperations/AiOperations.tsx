@@ -5,6 +5,7 @@ import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
 import { EngineersSection } from "../Engineers";
+import { RequirementsSection } from "../Requirements";
 
 export const AiOperations = (): JSX.Element => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -62,6 +63,7 @@ export const AiOperations = (): JSX.Element => {
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
               <Route path="/engineers" element={<EngineersSection />} />
+              <Route path="/requirements" element={<RequirementsSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </div>
