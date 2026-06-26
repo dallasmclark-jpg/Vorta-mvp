@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../../lib/auth";
 
 // ─── Microsoft logo SVG ───────────────────────────────────────────────────────
 
@@ -145,35 +146,35 @@ function DashboardPreview() {
 
 export const LoginPage = (): JSX.Element => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { session, loading } = useAuth();
 
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember,     setRemember]     = useState(false);
-  const [loading,      setLoading]      = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
-  // Redirect already-authenticated users straight to the dashboard
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/", { replace: true });
-    });
-  }, [navigate]);
+  // If a valid session already exists, send the user to their intended destination
+  // (or the dashboard root if they arrived at /login directly).
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
+  if (!loading && session) return <Navigate to={from} replace />;
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError("Please enter your email and password."); return; }
     setError(null);
-    setLoading(true);
+    setSubmitting(true);
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
     // TODO: Implement role-based routing once user profiles (e.g. profiles.role) are available.
-    // For now all authenticated users are directed to the main dashboard.
-    navigate("/", { replace: true });
+    // For now all authenticated users are directed to their intended destination or the dashboard.
+    navigate(from, { replace: true });
   };
 
   const handleMicrosoft = async () => {
@@ -273,10 +274,10 @@ export const LoginPage = (): JSX.Element => {
                   {/* Sign in button */}
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={submitting}
                     className="relative h-11 w-full overflow-hidden rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-500 disabled:opacity-70"
                   >
-                    {loading ? (
+                    {submitting ? (
                       <span className="flex items-center justify-center gap-2">
                         <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

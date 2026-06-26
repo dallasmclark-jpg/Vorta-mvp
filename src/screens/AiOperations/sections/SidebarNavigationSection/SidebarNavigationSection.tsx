@@ -5,12 +5,14 @@ import {
   GraduationCap,
   Headphones,
   LayoutDashboard,
+  LogOut,
   Network,
   Settings,
   Users,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { VortaLogo } from "../../../../components/VortaLogo";
+import { supabase } from "../../../../lib/supabaseClient";
 
 const primaryNavigation = [
   { label: "Dashboard",     icon: LayoutDashboard, to: "/"               },
@@ -33,6 +35,12 @@ interface SidebarProps {
 }
 
 export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.Element => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login", { replace: true });
+  };
   const itemBase = [
     "flex h-auto w-full items-center gap-3 rounded-lg py-2.5 text-sm transition-colors hover:bg-[#3b82f61a]",
     forceExpanded
@@ -90,6 +98,21 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
               </span>
             </button>
           ))}
+        </div>
+
+        {/* Logout — pinned to sidebar bottom */}
+        <div className="mt-4 border-t border-gray-800 pt-4">
+          <button
+            type="button"
+            title="Log out"
+            onClick={handleLogout}
+            className={`${itemBase} text-slate-500 hover:text-red-400`}
+          >
+            <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className={`font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] [font-style:var(--text-sm-medium-font-style)] ${labelCls}`}>
+              Log out
+            </span>
+          </button>
         </div>
       </nav>
     </aside>
