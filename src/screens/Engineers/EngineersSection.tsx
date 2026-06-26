@@ -117,8 +117,8 @@ function chipLabel(name: string): string {
 }
 
 /** Coloured skill chips displayed under engineer name */
-function SkillChips({ skills }: { skills: DrawerEngineer["top_skills"] }) {
-  const shown = skills.slice(0, 5);
+function SkillChips({ skills, max = 5 }: { skills: DrawerEngineer["top_skills"]; max?: number }) {
+  const shown = skills.slice(0, max);
   const extra = skills.length - shown.length;
   if (shown.length === 0) return null;
   return (
@@ -494,7 +494,7 @@ export const EngineersSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 sm:px-6 lg:px-8">
+    <section className="relative flex w-full max-w-full flex-1 grow flex-col items-start gap-4 overflow-x-hidden px-4 pb-12 pt-0 sm:px-5 xl:gap-6 xl:px-8">
 
       <EngineerDrawer
         engineer={selectedEngineer}
@@ -514,17 +514,17 @@ export const EngineersSection = (): JSX.Element => {
           <p className="text-sm text-slate-400">Workforce Management &amp; Engineer Profiles</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50 sm:px-4">
+          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50 lg:px-4">
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden lg:inline">Export</span>
           </Button>
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50 sm:px-4">
+          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50 xl:px-4">
             <Sparkles className="h-4 w-4" />
-            <span className="hidden sm:inline">AI Report</span>
+            <span className="hidden xl:inline">AI Report</span>
           </Button>
-          <Button type="button" className="h-auto gap-2 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 sm:px-4">
+          <Button type="button" className="h-auto gap-2 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 xl:px-4">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Engineer</span>
+            <span className="hidden xl:inline">Add Engineer</span>
           </Button>
           <button type="button" onClick={() => setTick((t) => t + 1)} disabled={loading} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
@@ -535,10 +535,10 @@ export const EngineersSection = (): JSX.Element => {
         </div>
       </header>
 
-      <div className="flex w-full max-w-full flex-col items-start gap-6">
+      <div className="flex w-full max-w-full flex-col items-start gap-4 xl:gap-6">
 
-        {/* ── KPI Cards ──────────────────────────────────────────────────────── */}
-        <section className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+        {/* ── KPI Cards: 2 cols mobile, 4 cols tablet, 8 cols desktop ────────── */}
+        <section className="grid w-full grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
           {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
             <Card key={label} className="h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex h-full flex-col gap-2 p-3 sm:p-4">
@@ -555,7 +555,7 @@ export const EngineersSection = (): JSX.Element => {
 
         {/* ── Engineer Table Card ─────────────────────────────────────────────── */}
         <Card className="w-full max-w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+          <CardContent className="flex flex-col gap-3 p-3 md:gap-4 md:p-4 xl:p-5">
 
             {/* Card header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -578,7 +578,7 @@ export const EngineersSection = (): JSX.Element => {
               </div>
             </div>
 
-            {/* Toolbar: search full-width on mobile, filters wrap */}
+            {/* Toolbar: search full-width, filters in responsive grid */}
             <div className="flex flex-col gap-2">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
@@ -588,7 +588,7 @@ export const EngineersSection = (): JSX.Element => {
                   className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
                 {[
                   { value: filterDept,           onChange: (v: string) => { setFilterDept(v); setTablePage(0); },           def: "All Departments", opts: deptNames },
                   { value: filterSite,           onChange: (v: string) => { setFilterSite(v); setTablePage(0); },           def: "All Locations",   opts: siteNames },
@@ -598,7 +598,7 @@ export const EngineersSection = (): JSX.Element => {
                   { value: filterRisk,           onChange: (v: string) => { setFilterRisk(v); setTablePage(0); },           def: "All Risk Levels",  opts: ["critical", "high", "medium", "low"] },
                 ].map(({ value, onChange, def, opts }) => (
                   <select key={def} value={value} onChange={(e) => onChange(e.target.value)}
-                    className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-2 text-xs text-slate-300 focus:outline-none sm:px-3 sm:text-sm"
+                    className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] px-2 text-xs text-slate-300 focus:outline-none"
                   >
                     <option value="all">{def}</option>
                     {opts.map((o) => <option key={o} value={o}>{capitalize(o)}</option>)}
@@ -700,11 +700,12 @@ export const EngineersSection = (): JSX.Element => {
             {/* ── Desktop / tablet table (>= md) ─────────────────────────────── */}
             {!loadError && (
               <div className="hidden md:block">
-                <div className="overflow-x-auto rounded-lg border border-gray-800">
+                <div className="max-w-full overflow-hidden rounded-lg border border-gray-800">
+                  <div className="overflow-x-auto">
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-gray-800 bg-[#0f1318]">
-                        <th className="w-10 px-3 py-2.5">
+                        <th className="w-10 px-3 py-2">
                           <input
                             type="checkbox"
                             checked={allPageSelected}
@@ -714,22 +715,22 @@ export const EngineersSection = (): JSX.Element => {
                           />
                         </th>
                         {[
-                          { label: "Engineer",        cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[220px] max-w-[280px]" },
-                          { label: "Department",      cls: "min-w-[130px] hidden lg:table-cell" },
-                          { label: "Site",            cls: "min-w-[110px] hidden xl:table-cell" },
-                          { label: "Type",            cls: "min-w-[90px]  hidden xl:table-cell" },
-                          { label: "Availability",    cls: "min-w-[110px]" },
-                          { label: "Shift",           cls: "min-w-[110px] hidden xl:table-cell" },
-                          { label: "Competency",      cls: "min-w-[100px] text-center" },
-                          { label: "AI Confidence",   cls: "min-w-[100px] text-right hidden xl:table-cell" },
-                          { label: "Critical Skills", cls: "min-w-[110px] text-right hidden lg:table-cell" },
-                          { label: "Knowledge",       cls: "min-w-[90px]  text-center hidden xl:table-cell" },
-                          { label: "Training Gaps",   cls: "min-w-[110px] text-right hidden lg:table-cell" },
-                          { label: "Last Active",     cls: "min-w-[110px] hidden xl:table-cell" },
-                          { label: "Risk",            cls: "min-w-[90px]" },
+                          { label: "Engineer",        cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[170px] max-w-[240px] lg:min-w-[200px]" },
+                          { label: "Department",      cls: "min-w-[120px] hidden md:table-cell" },
+                          { label: "Site",            cls: "min-w-[100px] hidden md:table-cell" },
+                          { label: "Type",            cls: "min-w-[80px]  hidden xl:table-cell" },
+                          { label: "Availability",    cls: "min-w-[100px]" },
+                          { label: "Shift",           cls: "min-w-[100px] hidden xl:table-cell" },
+                          { label: "Competency",      cls: "min-w-[90px]  text-center" },
+                          { label: "AI Confidence",   cls: "min-w-[90px]  text-right hidden xl:table-cell" },
+                          { label: "Critical Skills", cls: "min-w-[100px] text-right hidden md:table-cell" },
+                          { label: "Knowledge",       cls: "min-w-[80px]  text-center hidden xl:table-cell" },
+                          { label: "Training Gaps",   cls: "min-w-[100px] text-right hidden md:table-cell" },
+                          { label: "Last Active",     cls: "min-w-[100px] hidden xl:table-cell" },
+                          { label: "Risk",            cls: "min-w-[80px]" },
                           { label: "",                cls: "w-px" },
                         ].map(({ label, cls }) => (
-                          <th key={label || "actions"} className={`px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
+                          <th key={label || "actions"} className={`px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 lg:px-3 ${cls}`}>
                             {label}
                           </th>
                         ))}
@@ -740,10 +741,10 @@ export const EngineersSection = (): JSX.Element => {
                       {loading
                         ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
                             <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
-                              <td className="w-10 px-3 py-3">
+                              <td className="w-10 px-3 py-2.5">
                                 <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-800" />
                               </td>
-                              <td className="sticky left-0 z-10 bg-[#141820] px-3 py-3">
+                              <td className="sticky left-0 z-10 bg-[#141820] px-3 py-2.5">
                                 <div className="flex items-start gap-3">
                                   <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-800" />
                                   <div>
@@ -756,7 +757,7 @@ export const EngineersSection = (): JSX.Element => {
                                 </div>
                               </td>
                               {Array.from({ length: 12 }).map((_, j) => (
-                                <td key={j} className="px-3 py-3">
+                                <td key={j} className="px-3 py-2.5">
                                   <div className="h-4 w-14 animate-pulse rounded bg-gray-800" />
                                 </td>
                               ))}
@@ -799,7 +800,7 @@ export const EngineersSection = (): JSX.Element => {
                                 className={`group/row cursor-pointer border-b border-gray-800/50 transition-colors duration-100 hover:bg-[#1a2030] ${rowBg} ${rowAccent(eng)}`}
                               >
                                 {/* Checkbox */}
-                                <td className="w-10 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                <td className="w-10 px-2 py-2 lg:px-3" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
@@ -810,93 +811,93 @@ export const EngineersSection = (): JSX.Element => {
                                 </td>
 
                                 {/* Engineer (sticky) */}
-                                <td className={`sticky left-0 z-10 min-w-[220px] max-w-[280px] px-3 py-2.5 ${rowBg}`}>
-                                  <div className="flex items-start gap-3">
-                                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarColor(eng.full_name)}`}>
+                                <td className={`sticky left-0 z-10 min-w-[170px] max-w-[240px] px-2 py-2 lg:min-w-[200px] lg:px-3 ${rowBg}`}>
+                                  <div className="flex items-start gap-2">
+                                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
                                       {getInitials(eng.full_name)}
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5">
-                                        <p className="truncate font-medium leading-tight text-slate-200">{eng.full_name}</p>
-                                        {eng.verified && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />}
+                                      <div className="flex items-center gap-1">
+                                        <p className="truncate text-xs font-medium leading-tight text-slate-200 lg:text-sm">{eng.full_name}</p>
+                                        {eng.verified && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-400" />}
                                         <CertDots certs={eng.certifications} />
                                       </div>
-                                      <p className="mt-0.5 truncate text-[11px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
-                                      <SkillChips skills={eng.top_skills} />
+                                      <p className="mt-0.5 truncate text-[10px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
+                                      <SkillChips skills={eng.top_skills} max={3} />
                                     </div>
                                   </div>
                                 </td>
 
                                 {/* Department */}
-                                <td className="hidden px-3 py-2.5 text-sm text-slate-400 lg:table-cell">{eng.department_name ?? "—"}</td>
+                                <td className="hidden px-2 py-2 text-xs text-slate-400 md:table-cell lg:px-3 lg:text-sm">{eng.department_name ?? "—"}</td>
 
                                 {/* Site */}
-                                <td className="hidden px-3 py-2.5 xl:table-cell">
+                                <td className="hidden px-2 py-2 md:table-cell lg:px-3">
                                   {eng.site_name
-                                    ? <span className="flex items-center gap-1.5 text-sm text-slate-400"><MapPin className="h-3 w-3 shrink-0 text-slate-600" />{eng.site_name}</span>
-                                    : <span className="text-sm text-slate-600">—</span>}
+                                    ? <span className="flex items-center gap-1 text-xs text-slate-400 lg:gap-1.5 lg:text-sm"><MapPin className="h-3 w-3 shrink-0 text-slate-600" />{eng.site_name}</span>
+                                    : <span className="text-xs text-slate-600">—</span>}
                                 </td>
 
                                 {/* Employment type */}
-                                <td className="hidden px-3 py-2.5 xl:table-cell">
+                                <td className="hidden px-2 py-2 xl:table-cell lg:px-3">
                                   <span className="text-xs text-slate-400">{capitalize(eng.employment_type)}</span>
                                 </td>
 
                                 {/* Availability */}
-                                <td className="px-3 py-2.5">
-                                  <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
+                                <td className="px-2 py-2 lg:px-3">
+                                  <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
                                     {formatAvailStatus(eng.availability_status)}
                                   </Badge>
                                 </td>
 
                                 {/* Shift */}
-                                <td className="hidden px-3 py-2.5 text-sm text-slate-400 xl:table-cell">{eng.shift_pattern ?? "—"}</td>
+                                <td className="hidden px-2 py-2 text-xs text-slate-400 xl:table-cell lg:px-3">{eng.shift_pattern ?? "—"}</td>
 
                                 {/* Competency ring */}
-                                <td className="px-3 py-2.5 text-center">
+                                <td className="px-2 py-2 text-center lg:px-3">
                                   <RingScore value={eng.skills_score} />
                                 </td>
 
                                 {/* AI Confidence */}
-                                <td className="hidden px-3 py-2.5 text-right xl:table-cell">
-                                  <span className="text-sm font-semibold tabular-nums text-blue-400">{eng.ai_confidence}%</span>
+                                <td className="hidden px-2 py-2 text-right xl:table-cell lg:px-3">
+                                  <span className="text-xs font-semibold tabular-nums text-blue-400 lg:text-sm">{eng.ai_confidence}%</span>
                                 </td>
 
                                 {/* Critical skills */}
-                                <td className="hidden px-3 py-2.5 text-right lg:table-cell">
-                                  <span className={`text-sm font-semibold tabular-nums ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
+                                <td className="hidden px-2 py-2 text-right md:table-cell lg:px-3">
+                                  <span className={`text-xs font-semibold tabular-nums lg:text-sm ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
                                     {eng.critical_skills_met}
                                   </span>
-                                  <span className="text-xs text-slate-600">/{eng.critical_skills_count}</span>
+                                  <span className="text-[10px] text-slate-600">/{eng.critical_skills_count}</span>
                                 </td>
 
                                 {/* Knowledge holder */}
-                                <td className="hidden px-3 py-2.5 text-center xl:table-cell">
+                                <td className="hidden px-2 py-2 text-center xl:table-cell lg:px-3">
                                   {eng.critical_knowledge_holder
-                                    ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
+                                    ? <Shield className="mx-auto h-3.5 w-3.5 text-blue-400" title="Critical knowledge holder" />
                                     : <span className="text-slate-700">—</span>}
                                 </td>
 
                                 {/* Training gaps */}
-                                <td className="hidden px-3 py-2.5 text-right lg:table-cell">
+                                <td className="hidden px-2 py-2 text-right md:table-cell lg:px-3">
                                   {eng.training_count > 0
-                                    ? <span className="text-sm font-semibold text-orange-400 tabular-nums">{eng.training_count}</span>
-                                    : <span className="text-sm text-slate-600">0</span>}
+                                    ? <span className="text-xs font-semibold text-orange-400 tabular-nums lg:text-sm">{eng.training_count}</span>
+                                    : <span className="text-xs text-slate-600">0</span>}
                                 </td>
 
                                 {/* Last active */}
-                                <td className="hidden px-3 py-2.5 text-sm text-slate-400 xl:table-cell">{formatDate(eng.last_assessment_date)}</td>
+                                <td className="hidden px-2 py-2 text-xs text-slate-400 xl:table-cell lg:px-3">{formatDate(eng.last_assessment_date)}</td>
 
                                 {/* Risk */}
-                                <td className="px-3 py-2.5">
-                                  <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
+                                <td className="px-2 py-2 lg:px-3">
+                                  <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
                                     {capitalize(eng.risk_level)}
                                   </Badge>
                                 </td>
 
                                 {/* Quick actions — visible on hover */}
-                                <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100">
+                                <td className="px-1 py-2 lg:px-2" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center gap-0 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100">
                                     {[
                                       { icon: UserCircle,    title: "View profile",       action: () => setSelectedEngineer(eng) },
                                       { icon: Network,       title: "Open Skills Matrix", action: () => {} },
@@ -910,9 +911,9 @@ export const EngineersSection = (): JSX.Element => {
                                         type="button"
                                         title={title}
                                         onClick={(e) => { e.stopPropagation(); action(); }}
-                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
                                       >
-                                        <Icon className="h-3.5 w-3.5" />
+                                        <Icon className="h-3 w-3" />
                                       </button>
                                     ))}
                                   </div>
@@ -922,6 +923,7 @@ export const EngineersSection = (): JSX.Element => {
                           })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}
