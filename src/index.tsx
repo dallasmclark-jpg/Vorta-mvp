@@ -1,9 +1,9 @@
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "../tailwind.css";
 import { AiOperations } from "./screens/AiOperations";
 import { LoginPage } from "./screens/Login";
-import { EngineerDashboardSection } from "./screens/EngineerDashboard";
+import { EngineerPortal } from "./screens/EngineerPortal";
 import { AuthProvider } from "./lib/auth";
 import { ToastProvider } from "./components/Toast";
 
@@ -15,15 +15,11 @@ createRoot(document.getElementById("app") as HTMLElement).render(
           {/* Public route — always accessible */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Engineer dashboard — standalone, no MM sidebar */}
-          <Route
-            path="/engineer-dashboard"
-            element={
-              <main className="min-h-screen w-full overflow-y-auto bg-[#0b0e14] text-white">
-                <EngineerDashboardSection />
-              </main>
-            }
-          />
+          {/* Legacy redirect — keep old URL working */}
+          <Route path="/engineer-dashboard" element={<Navigate to="/engineer/dashboard" replace />} />
+
+          {/* Engineer Portal — standalone shell with its own sidebar */}
+          <Route path="/engineer/*" element={<EngineerPortal />} />
 
           {/* Maintenance Manager dashboard and all sub-routes
               TODO: add RequireAuth once role-based routing is implemented */}
@@ -33,3 +29,4 @@ createRoot(document.getElementById("app") as HTMLElement).render(
     </AuthProvider>
   </BrowserRouter>,
 );
+
