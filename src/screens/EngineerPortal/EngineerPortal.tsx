@@ -17,6 +17,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { EngineerDashboardSection } from "../EngineerDashboard";
 import { MyTrainingSection } from "./MyTrainingSection";
 import { MyBookingsSection } from "./MyBookingsSection";
+import { MyCertificationsSection } from "./MyCertificationsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export const EngineerPortal = (): JSX.Element => (
         <Route path="skills"            element={<Placeholder title="My Skills" />} />
         <Route path="training"          element={<MyTrainingSection />} />
         <Route path="bookings"          element={<MyBookingsSection />} />
-        <Route path="certifications"    element={<Placeholder title="My Certifications" />} />
+        <Route path="certifications"    element={<MyCertificationsSection />} />
         <Route path="opportunities"     element={<Placeholder title="Opportunities" />} />
         <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
         <Route path="career-path"        element={<Placeholder title="Career Path" />} />
