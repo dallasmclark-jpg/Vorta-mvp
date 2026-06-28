@@ -15,6 +15,7 @@ import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom"
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { EngineerDashboardSection } from "../EngineerDashboard";
+import { MyTrainingSection } from "./MyTrainingSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ export const EngineerPortal = (): JSX.Element => (
       <Routes>
         <Route path="dashboard"         element={<EngineerDashboardSection />} />
         <Route path="skills"            element={<Placeholder title="My Skills" />} />
-        <Route path="training"          element={<Placeholder title="My Training" />} />
+        <Route path="training"          element={<MyTrainingSection />} />
         <Route path="bookings"          element={<Placeholder title="My Bookings" />} />
         <Route path="certifications"    element={<Placeholder title="My Certifications" />} />
         <Route path="opportunities"     element={<Placeholder title="Opportunities" />} />
