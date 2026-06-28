@@ -18,6 +18,7 @@ import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { ContractorDashboardSection } from "./ContractorDashboardSection";
 import { CompanyProfileSection } from "./CompanyProfileSection";
+import { ContractorEngineersSection } from "./ContractorEngineersSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -139,7 +140,7 @@ export const ContractorPortal = (): JSX.Element => (
       <Routes>
         <Route path="dashboard"          element={<ContractorDashboardSection />} />
         <Route path="company-profile"    element={<CompanyProfileSection />} />
-        <Route path="engineers"          element={<Placeholder title="Engineers" />} />
+        <Route path="engineers"          element={<ContractorEngineersSection />} />
         <Route path="availability"       element={<Placeholder title="Availability" />} />
         <Route path="opportunities"      element={<Placeholder title="Opportunities" />} />
         <Route path="assignments"        element={<Placeholder title="Assignments" />} />
