@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles } from "lucide-react";
+import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles, X } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
@@ -610,15 +610,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
   const [analysing, setAnalysing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
-  const [showCompletion, setShowCompletion] = useState(false);
+  const [completionTime, setCompletionTime] = useState<string | null>(null);
   const analysisTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const runAnalysis = () => {
     if (analysing) return;
     setAnalysing(true);
     setAnalysisStep(0);
-    setShowCompletion(false);
+    setCompletionTime(null);
     let step = 0;
     analysisTimer.current = setInterval(() => {
       step += 1;
@@ -628,15 +627,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
         clearInterval(analysisTimer.current!);
         setAnalysing(false);
         setAnalysisStep(0);
-        setShowCompletion(true);
-        completionTimer.current = setTimeout(() => setShowCompletion(false), 4000);
+        const now = new Date();
+        setCompletionTime(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
       }
     }, 1100);
   };
 
   useEffect(() => () => {
     if (analysisTimer.current) clearInterval(analysisTimer.current);
-    if (completionTimer.current) clearTimeout(completionTimer.current);
   }, []);
 
   const overviewCards      = data?.overviewCards      ?? [];
@@ -702,22 +700,49 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </span>
             </Button>
 
-            {/* Inline completion panel — slides down beneath button */}
-            {showCompletion && (
+            {/* Persistent AI Analysis Result card — dismissed by user, replaced on re-run */}
+            {completionTime && (
               <div
-                className="absolute top-full left-0 mt-2 w-[248px] rounded-lg border border-emerald-500/30 bg-[#0f1a14] px-4 py-3 shadow-lg"
-                style={{ animation: "fade-slide-down 0.2s ease-out both" }}
+                className="absolute top-full left-0 mt-2 w-[248px] rounded-xl border border-blue-500/25 bg-[#0d1520] shadow-[0_0_20px_rgba(59,130,246,0.08)]"
+                style={{ animation: "fade-slide-down 0.22s ease-out both" }}
               >
-                <div className="flex items-start gap-2.5">
-                  <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" viewBox="0 0 16 16" fill="none" aria-hidden>
-                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M5 8.5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-xs font-semibold text-emerald-400">Site analysis complete</p>
-                    <p className="text-xs text-slate-400">3 critical risks reviewed</p>
-                    <p className="text-xs text-slate-400">4 recommendations updated</p>
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-blue-500/15 px-3.5 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                    <span className="text-xs font-semibold text-slate-100">AI Analysis Complete</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setCompletionTime(null)}
+                    className="flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:text-slate-300 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {/* Body */}
+                <div className="flex flex-col gap-1.5 px-3.5 py-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="h-1 w-1 shrink-0 rounded-full bg-blue-400" />
+                    Workforce analysed successfully
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="h-1 w-1 shrink-0 rounded-full bg-amber-400" />
+                    3 critical risks reviewed
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                    4 recommendations updated
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="h-1 w-1 shrink-0 rounded-full bg-blue-300" />
+                    AI Confidence: 94%
+                  </div>
+                </div>
+                {/* Footer */}
+                <div className="border-t border-blue-500/10 px-3.5 py-2">
+                  <p className="text-[10px] text-slate-500">Analysis completed at {completionTime}</p>
                 </div>
               </div>
             )}
