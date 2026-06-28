@@ -20,7 +20,7 @@ function GoogleIcon() {
 
 function TopNav() {
   return (
-    <header className="flex h-16 w-full items-center border-b border-[#ffffff0d] px-6 md:px-10">
+    <header className="flex h-16 w-full items-center border-b border-gray-800 bg-[#090b10] px-6 md:px-10">
       <a href="/" aria-label="Vorta home" className="flex items-center gap-2 select-none shrink-0">
         <span className="font-mono text-base font-bold text-white leading-none">&gt;&lt;</span>
         <span className="text-sm font-bold tracking-[0.15em] text-white uppercase">Vorta</span>
@@ -71,7 +71,7 @@ export const LoginPage = (): JSX.Element => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-[#0b0e14]">
       <TopNav />
 
       {/* ── Centered content ──────────────────────────────────────────────── */}
@@ -92,7 +92,7 @@ export const LoginPage = (): JSX.Element => {
           </p>
 
           {/* Sign up / Log in toggle */}
-          <div className="mb-6 flex w-full rounded-lg bg-[#111518] p-1">
+          <div className="mb-6 flex w-full rounded-lg bg-[#141820] p-1 border border-gray-800">
             <button
               type="button"
               className="flex-1 rounded-md py-2 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
@@ -101,7 +101,7 @@ export const LoginPage = (): JSX.Element => {
             </button>
             <button
               type="button"
-              className="flex-1 rounded-md bg-[#1c2338] py-2 text-sm font-semibold text-white"
+              className="flex-1 rounded-md bg-[#1e2535] py-2 text-sm font-semibold text-slate-50"
             >
               Log in
             </button>
@@ -122,7 +122,7 @@ export const LoginPage = (): JSX.Element => {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11 w-full rounded-lg border border-[#ffffff18] bg-[#0d0d0d] px-3.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none transition-colors focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
+                className="h-11 w-full rounded-lg border border-gray-700 bg-[#0b0e14] px-3.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none transition-colors focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
               />
             </div>
 
@@ -139,7 +139,7 @@ export const LoginPage = (): JSX.Element => {
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#ffffff18] bg-[#0d0d0d] px-3.5 pr-11 text-sm text-slate-200 placeholder:text-slate-600 outline-none transition-colors focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
+                  className="h-11 w-full rounded-lg border border-gray-700 bg-[#0b0e14] px-3.5 pr-11 text-sm text-slate-200 placeholder:text-slate-600 outline-none transition-colors focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
                 />
                 <button
                   type="button"
@@ -161,7 +161,7 @@ export const LoginPage = (): JSX.Element => {
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
-                  className="h-4 w-4 cursor-pointer rounded border-[#ffffff25] bg-[#0d0d0d] accent-blue-600"
+                  className="h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#0b0e14] accent-blue-600"
                 />
                 <span className="text-sm text-slate-300">Remember for 30 days</span>
               </label>
@@ -198,7 +198,7 @@ export const LoginPage = (): JSX.Element => {
             <button
               type="button"
               onClick={handleGoogle}
-              className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-[#ffffff18] bg-transparent text-sm font-semibold text-slate-300 transition-colors hover:bg-[#ffffff06] hover:text-white"
+              className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-gray-700 bg-transparent text-sm font-semibold text-slate-300 transition-colors hover:bg-[#ffffff08] hover:text-slate-50"
             >
               <GoogleIcon />
               Sign in with Google
@@ -214,7 +214,7 @@ export const LoginPage = (): JSX.Element => {
           </p>
 
           {/* Demo access */}
-          <div className="mt-8 w-full border-t border-[#ffffff0d] pt-6">
+          <div className="mt-8 w-full border-t border-gray-800 pt-6">
             <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-widest text-slate-600">
               MVP Demo Access
             </p>
