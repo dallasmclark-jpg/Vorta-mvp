@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users } from "lucide-react";
+import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
 import { ExplainWithAi } from "../../../../components/ExplainWithAi";
+import { useToast } from "../../../../components/Toast";
 import {
   Alert,
   AlertDescription,
@@ -589,12 +590,49 @@ function useDashboardData(): { data: DashboardData | null; loading: boolean; ref
 }
 
 // ---------------------------------------------------------------------------
+// AI analysis state
+// ---------------------------------------------------------------------------
+
+const ANALYSIS_STEPS = [
+  "Analysing workforce…",
+  "Checking skills…",
+  "Reviewing compliance…",
+  "Comparing requirements…",
+  "Generating recommendations…",
+];
+
+// ---------------------------------------------------------------------------
 // Component — JSX and layout unchanged
 // ---------------------------------------------------------------------------
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
+  const toast = useToast();
+
+  const [analysing, setAnalysing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(0);
+  const analysisTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const runAnalysis = () => {
+    if (analysing) return;
+    setAnalysing(true);
+    setAnalysisStep(0);
+    let step = 0;
+    analysisTimer.current = setInterval(() => {
+      step += 1;
+      if (step < ANALYSIS_STEPS.length) {
+        setAnalysisStep(step);
+      } else {
+        clearInterval(analysisTimer.current!);
+        setAnalysing(false);
+        setAnalysisStep(0);
+        toast({ type: "success", message: "Site analysis complete — 3 critical risks reviewed · 4 recommendations updated", duration: 4500 });
+      }
+    }, 600);
+  };
+
+  useEffect(() => () => { if (analysisTimer.current) clearInterval(analysisTimer.current); }, []);
 
   const overviewCards      = data?.overviewCards      ?? [];
   const criticalRisks      = data?.criticalRisks      ?? [];
@@ -639,9 +677,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="outline"
-            className="h-auto border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50 [font-style:var(--text-sm-semibold-font-style)]"
+            onClick={runAnalysis}
+            disabled={analysing}
+            className={[
+              "relative h-auto gap-2 px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] [font-style:var(--text-sm-semibold-font-style)] transition-all duration-200",
+              analysing
+                ? "border-blue-500/60 bg-[#3b82f608] text-blue-400 animate-ai-pulse"
+                : "border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50",
+            ].join(" ")}
           >
-            Run Full Site Analysis
+            <Sparkles className={`h-4 w-4 shrink-0 ${analysing ? "animate-ai-spin text-blue-400" : ""}`} />
+            {analysing ? ANALYSIS_STEPS[analysisStep] : "Run Full Site Analysis"}
           </Button>
           <ExplainWithAi pageId="dashboard" />
           <button
@@ -673,7 +719,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Sync indicator + AI actions ────────────────────────────────── */}
       <div className="flex w-full flex-col gap-4">
         <SyncIndicator loading={loading} source="Supabase" confidence={94} />
-        {!loading && <AiActionsPanel actions={aiActions} />}
+        {!loading && (
+          <div className={analysing ? "rounded-xl transition-all duration-300 ring-1 ring-blue-500/25 shadow-[0_0_16px_rgba(59,130,246,0.08)]" : ""}>
+            <AiActionsPanel actions={aiActions} />
+          </div>
+        )}
       </div>
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">

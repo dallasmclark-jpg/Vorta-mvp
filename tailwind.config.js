@@ -91,12 +91,22 @@ module.exports = {
           "0%, 80%, 100%": { opacity: "0.2", transform: "scale(0.8)" },
           "40%":           { opacity: "1",   transform: "scale(1)"   },
         },
+        "ai-pulse": {
+          "0%, 100%": { opacity: "0.5", boxShadow: "0 0 0 0 rgba(59,130,246,0)" },
+          "50%":      { opacity: "1",   boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" },
+        },
+        "ai-spin": {
+          from: { transform: "rotate(0deg)" },
+          to:   { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
         "fade-in":      "fade-in 0.18s ease-out both",
         "dropdown-in":  "dropdown-in 0.15s ease-out both",
+        "ai-pulse":     "ai-pulse 2s ease-in-out infinite",
+        "ai-spin":      "ai-spin 1.4s linear infinite",
       },
     },
     container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },
