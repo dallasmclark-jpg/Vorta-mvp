@@ -13,7 +13,8 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { ContractorDashboardSection } from "./ContractorDashboardSection";
@@ -139,28 +140,37 @@ function Placeholder({ title }: { title: string }) {
 
 // ─── Shell ───────────────────────────────────────────────────────────────────
 
-export const ContractorPortal = (): JSX.Element => (
-  <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
-    <div className="flex h-full w-14 shrink-0 flex-col xl:w-56">
-      <ContractorSidebar />
-    </div>
+export const ContractorPortal = (): JSX.Element => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const location  = useLocation();
 
-    <div className="min-w-0 flex-1 overflow-y-auto">
-      <Routes>
-        <Route path="dashboard"          element={<ContractorDashboardSection />} />
-        <Route path="company-profile"    element={<CompanyProfileSection />} />
-        <Route path="engineers"          element={<ContractorEngineersSection />} />
-        <Route path="availability"       element={<ContractorAvailabilitySection />} />
-        <Route path="opportunities"      element={<ContractorOpportunitiesSection />} />
-        <Route path="assignments"        element={<ContractorAssignmentsSection />} />
-        <Route path="job-reports"        element={<ContractorJobReportsSection />} />
-        <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
-        <Route path="invoices"           element={<ContractorInvoicesSection />} />
-        <Route path="compliance"         element={<ContractorComplianceSection />} />
-        <Route path="ai-recommendations" element={<ContractorAiRecommendationsSection />} />
-        <Route path="settings"           element={<ContractorSettingsSection />} />
-        <Route path="*"                  element={<Navigate to="dashboard" replace />} />
-      </Routes>
-    </div>
-  </main>
-);
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
+      <div className="flex h-full w-14 shrink-0 flex-col xl:w-56">
+        <ContractorSidebar />
+      </div>
+
+      <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="dashboard"          element={<ContractorDashboardSection />} />
+          <Route path="company-profile"    element={<CompanyProfileSection />} />
+          <Route path="engineers"          element={<ContractorEngineersSection />} />
+          <Route path="availability"       element={<ContractorAvailabilitySection />} />
+          <Route path="opportunities"      element={<ContractorOpportunitiesSection />} />
+          <Route path="assignments"        element={<ContractorAssignmentsSection />} />
+          <Route path="job-reports"        element={<ContractorJobReportsSection />} />
+          <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
+          <Route path="invoices"           element={<ContractorInvoicesSection />} />
+          <Route path="compliance"         element={<ContractorComplianceSection />} />
+          <Route path="ai-recommendations" element={<ContractorAiRecommendationsSection />} />
+          <Route path="settings"           element={<ContractorSettingsSection />} />
+          <Route path="*"                  element={<Navigate to="dashboard" replace />} />
+        </Routes>
+      </div>
+    </main>
+  );
+};

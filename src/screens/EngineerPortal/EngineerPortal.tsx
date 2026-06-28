@@ -11,7 +11,8 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { EngineerDashboardSection } from "../EngineerDashboard";
@@ -132,27 +133,36 @@ function Placeholder({ title }: { title: string }) {
 
 // ─── Shell ───────────────────────────────────────────────────────────────────
 
-export const EngineerPortal = (): JSX.Element => (
-  <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
-    {/* Sidebar */}
-    <div className="flex h-full w-14 shrink-0 flex-col xl:w-56">
-      <EngineerSidebar />
-    </div>
+export const EngineerPortal = (): JSX.Element => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const location  = useLocation();
 
-    {/* Content */}
-    <div className="min-w-0 flex-1 overflow-y-auto">
-      <Routes>
-        <Route path="dashboard"         element={<EngineerDashboardSection />} />
-        <Route path="skills"            element={<MySkillsSection />} />
-        <Route path="training"          element={<MyTrainingSection />} />
-        <Route path="bookings"          element={<MyBookingsSection />} />
-        <Route path="certifications"    element={<MyCertificationsSection />} />
-        <Route path="opportunities"     element={<OpportunitiesSection />} />
-        <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
-        <Route path="career-path"        element={<CareerPathSection />} />
-        <Route path="settings"          element={<ProfileSettingsSection />} />
-        <Route path="*"                 element={<Navigate to="dashboard" replace />} />
-      </Routes>
-    </div>
-  </main>
-);
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
+      {/* Sidebar */}
+      <div className="flex h-full w-14 shrink-0 flex-col xl:w-56">
+        <EngineerSidebar />
+      </div>
+
+      {/* Content */}
+      <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="dashboard"         element={<EngineerDashboardSection />} />
+          <Route path="skills"            element={<MySkillsSection />} />
+          <Route path="training"          element={<MyTrainingSection />} />
+          <Route path="bookings"          element={<MyBookingsSection />} />
+          <Route path="certifications"    element={<MyCertificationsSection />} />
+          <Route path="opportunities"     element={<OpportunitiesSection />} />
+          <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
+          <Route path="career-path"        element={<CareerPathSection />} />
+          <Route path="settings"          element={<ProfileSettingsSection />} />
+          <Route path="*"                 element={<Navigate to="dashboard" replace />} />
+        </Routes>
+      </div>
+    </main>
+  );
+};
