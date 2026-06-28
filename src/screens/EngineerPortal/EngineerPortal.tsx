@@ -22,6 +22,7 @@ import { OpportunitiesSection } from "./OpportunitiesSection";
 import { AiRecommendationsSection } from "./AiRecommendationsSection";
 import { MySkillsSection } from "./MySkillsSection";
 import { CareerPathSection } from "./CareerPathSection";
+import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ export const EngineerPortal = (): JSX.Element => (
         <Route path="opportunities"     element={<OpportunitiesSection />} />
         <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
         <Route path="career-path"        element={<CareerPathSection />} />
-        <Route path="settings"          element={<Placeholder title="Profile Settings" />} />
+        <Route path="settings"          element={<ProfileSettingsSection />} />
         <Route path="*"                 element={<Navigate to="dashboard" replace />} />
       </Routes>
     </div>
