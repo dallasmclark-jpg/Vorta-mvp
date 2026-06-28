@@ -20,6 +20,7 @@ import { MyBookingsSection } from "./MyBookingsSection";
 import { MyCertificationsSection } from "./MyCertificationsSection";
 import { OpportunitiesSection } from "./OpportunitiesSection";
 import { AiRecommendationsSection } from "./AiRecommendationsSection";
+import { MySkillsSection } from "./MySkillsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export const EngineerPortal = (): JSX.Element => (
     <div className="min-w-0 flex-1 overflow-y-auto">
       <Routes>
         <Route path="dashboard"         element={<EngineerDashboardSection />} />
-        <Route path="skills"            element={<Placeholder title="My Skills" />} />
+        <Route path="skills"            element={<MySkillsSection />} />
         <Route path="training"          element={<MyTrainingSection />} />
         <Route path="bookings"          element={<MyBookingsSection />} />
         <Route path="certifications"    element={<MyCertificationsSection />} />
