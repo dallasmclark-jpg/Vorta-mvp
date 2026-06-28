@@ -680,7 +680,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             onClick={runAnalysis}
             disabled={analysing}
             className={[
-              "relative h-auto gap-2 px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] [font-style:var(--text-sm-semibold-font-style)] transition-all duration-200",
+              "relative h-auto w-[248px] justify-center gap-2 px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] [font-style:var(--text-sm-semibold-font-style)] transition-all duration-200",
               analysing
                 ? "border-blue-500/60 bg-[#3b82f608] text-blue-400 animate-ai-pulse"
                 : "border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50",
