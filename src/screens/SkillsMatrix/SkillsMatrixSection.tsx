@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -231,6 +231,8 @@ interface DrawerProps {
 
 function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
   const isOpen = skill !== null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (skill && scrollRef.current) scrollRef.current.scrollTop = 0; }, [skill?.id]);
 
   const { ratings, trainingCount, gapInfo, sorted } = useMemo(() => {
     if (!skill) return { ratings: [], trainingCount: 0, gapInfo: undefined, sorted: [] };
@@ -371,7 +373,7 @@ function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
         )}
 
         {/* Engineer list */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0d1117] px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Engineers · sorted by rating

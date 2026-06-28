@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   AlertTriangle,
   Award,
@@ -189,6 +189,11 @@ function certStatus(c: CertEntry): { label: string; cls: string; dot: string } {
 
 export function EngineerDrawer({ engineer, assignments, trainingBookings, skillGaps, onClose }: DrawerProps) {
   const isOpen = engineer !== null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (engineer && scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [engineer?.id]);
 
   const engAssignments = useMemo(
     () => (engineer ? assignments.filter((a) => a.engineer_id === engineer.id) : []),
@@ -370,7 +375,7 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
         </div>
 
         {/* ── Scrollable body ────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
 
           {/* Skills Summary */}
           <div className="border-b border-gray-800 p-5">

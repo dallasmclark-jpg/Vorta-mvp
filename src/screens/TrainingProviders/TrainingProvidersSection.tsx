@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -168,6 +168,8 @@ function ProviderDrawer({
   onClose: () => void;
 }) {
   const isOpen = provider !== null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (provider && scrollRef.current) scrollRef.current.scrollTop = 0; }, [provider?.id]);
 
   const matchedGaps = useMemo(
     () => gapMatches.filter((g) => provider && g.matched_partner_ids.includes(provider.id)),
@@ -233,7 +235,7 @@ function ProviderDrawer({
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
 
           {/* Overview */}
           <div className="border-b border-gray-800 p-5">

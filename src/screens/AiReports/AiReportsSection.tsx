@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -458,6 +458,8 @@ function Toast({ message, onDismiss }: { message: string; onDismiss: () => void 
 // ─── Recommendation Drawer ────────────────────────────────────────────────────
 
 function RecDrawer({ rec, onClose }: { rec: AiRecommendation; onClose: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [rec.id]);
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
@@ -472,7 +474,7 @@ function RecDrawer({ rec, onClose }: { rec: AiRecommendation; onClose: () => voi
           </button>
         </header>
 
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
           <div>
             <h2 className="text-base font-semibold text-slate-50">{rec.title}</h2>
             <Badge className={`mt-2 inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(rec.riskCategory === "Compliance" ? "medium" : rec.riskCategory === "Coverage Risk" ? "critical" : "high")}`}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -294,6 +294,8 @@ function coverageTextClass(pct: number): string {
 // ─── Detail Drawer ────────────────────────────────────────────────────────────
 
 function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [eq.id]);
   return (
     <>
       <div
@@ -317,7 +319,7 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
           </button>
         </header>
 
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
           {/* Name + status */}
           <div className="flex flex-col gap-2">
             <h2 className="text-base font-semibold text-slate-50">{eq.name}</h2>
