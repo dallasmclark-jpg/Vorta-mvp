@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LayoutDashboard, User } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../lib/auth";
-
 // ─── Google logo SVG (matches screenshot) ────────────────────────────────────
 
 function GoogleIcon() {
@@ -213,6 +212,33 @@ export const LoginPage = (): JSX.Element => {
               Sign up
             </button>
           </p>
+
+          {/* Demo access */}
+          <div className="mt-8 w-full border-t border-[#ffffff0d] pt-6">
+            <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-widest text-slate-600">
+              MVP Demo Access
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 text-left transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+              >
+                <LayoutDashboard className="h-4 w-4 text-blue-400" />
+                <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Maintenance Manager</span>
+                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/demo/engineer")}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 text-left transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
+              >
+                <User className="h-4 w-4 text-emerald-400" />
+                <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Engineer</span>
+                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>
