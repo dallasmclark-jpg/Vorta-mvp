@@ -21,6 +21,7 @@ import { ProductionShiftCoverageSection } from "./ProductionShiftCoverageSection
 import { ProductionTrainingSection } from "./ProductionTrainingSection";
 import { ProductionOperatorsSection } from "./ProductionOperatorsSection";
 import { ProductionComplianceSection } from "./ProductionComplianceSection";
+import { ProductionRiskSection } from "./ProductionRiskSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ const navGroups = [
     items: [
       { label: "Training & Competency", icon: GraduationCap, to: "/production/training"    },
       { label: "Compliance",  icon: ShieldCheck,   to: "/production/compliance"  },
-      { label: "Risk",        icon: ShieldAlert,   to: "/production/risk"        },
+      { label: "Production Risk", icon: ShieldAlert,   to: "/production/risk"        },
     ],
   },
   {
@@ -179,7 +180,7 @@ export const ProductionManagerPortal = (): JSX.Element => {
             <Route path="skills-matrix"      element={<ProductionSkillsMatrixSection />} />
             <Route path="training"           element={<ProductionTrainingSection />} />
             <Route path="compliance"         element={<ProductionComplianceSection />} />
-            <Route path="risk"               element={<Placeholder title="Production Risk" />} />
+            <Route path="risk"               element={<ProductionRiskSection />} />
             <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
             <Route path="settings"           element={<Placeholder title="Settings" />} />
             <Route path="*"                  element={<Navigate to="dashboard" replace />} />
