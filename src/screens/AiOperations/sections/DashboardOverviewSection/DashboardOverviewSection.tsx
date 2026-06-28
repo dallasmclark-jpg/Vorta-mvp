@@ -6,7 +6,6 @@ import { ContextHelp } from "../../../../components/ContextHelp";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
 import { ExplainWithAi } from "../../../../components/ExplainWithAi";
-import { useToast } from "../../../../components/Toast";
 import {
   Alert,
   AlertDescription,
@@ -608,16 +607,18 @@ const ANALYSIS_STEPS = [
 export const DashboardOverviewSection = (): JSX.Element => {
   const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
-  const toast = useToast();
 
   const [analysing, setAnalysing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
+  const [showCompletion, setShowCompletion] = useState(false);
   const analysisTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const runAnalysis = () => {
     if (analysing) return;
     setAnalysing(true);
     setAnalysisStep(0);
+    setShowCompletion(false);
     let step = 0;
     analysisTimer.current = setInterval(() => {
       step += 1;
@@ -627,12 +628,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
         clearInterval(analysisTimer.current!);
         setAnalysing(false);
         setAnalysisStep(0);
-        toast({ type: "success", message: "Site analysis complete — 3 risks reviewed · 4 recommendations updated", duration: 5000 });
+        setShowCompletion(true);
+        completionTimer.current = setTimeout(() => setShowCompletion(false), 4000);
       }
     }, 1100);
   };
 
-  useEffect(() => () => { if (analysisTimer.current) clearInterval(analysisTimer.current); }, []);
+  useEffect(() => () => {
+    if (analysisTimer.current) clearInterval(analysisTimer.current);
+    if (completionTimer.current) clearTimeout(completionTimer.current);
+  }, []);
 
   const overviewCards      = data?.overviewCards      ?? [];
   const criticalRisks      = data?.criticalRisks      ?? [];
@@ -674,21 +679,49 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={runAnalysis}
-            disabled={analysing}
-            className={[
-              "relative h-auto w-[248px] justify-center gap-2 px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] [font-style:var(--text-sm-semibold-font-style)] transition-all duration-200",
-              analysing
-                ? "border-blue-500/60 bg-[#3b82f608] text-blue-400 animate-ai-pulse"
-                : "border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50",
-            ].join(" ")}
-          >
-            <Sparkles className={`h-4 w-4 shrink-0 ${analysing ? "animate-ai-spin text-blue-400" : ""}`} />
-            {analysing ? ANALYSIS_STEPS[analysisStep] : "Run Full Site Analysis"}
-          </Button>
+          {/* Button + inline completion panel share a column so the panel sits directly below */}
+          <div className="relative flex flex-col items-start gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={runAnalysis}
+              disabled={analysing}
+              className={[
+                "relative h-auto w-[248px] px-4 py-2 font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] [font-style:var(--text-sm-semibold-font-style)] transition-all duration-200",
+                analysing
+                  ? "border-blue-500/60 bg-[#3b82f608] text-blue-400 animate-ai-pulse"
+                  : "border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50",
+              ].join(" ")}
+            >
+              {/* Icon pinned left, text fills remaining space */}
+              <span className="flex w-full items-center gap-2">
+                <Sparkles className={`h-4 w-4 shrink-0 ${analysing ? "animate-ai-spin text-blue-400" : ""}`} />
+                <span className="flex-1 text-left transition-opacity duration-300">
+                  {analysing ? ANALYSIS_STEPS[analysisStep] : "Run Full Site Analysis"}
+                </span>
+              </span>
+            </Button>
+
+            {/* Inline completion panel — slides down beneath button */}
+            {showCompletion && (
+              <div
+                className="absolute top-full left-0 mt-2 w-[248px] rounded-lg border border-emerald-500/30 bg-[#0f1a14] px-4 py-3 shadow-lg"
+                style={{ animation: "fade-slide-down 0.2s ease-out both" }}
+              >
+                <div className="flex items-start gap-2.5">
+                  <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" viewBox="0 0 16 16" fill="none" aria-hidden>
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M5 8.5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs font-semibold text-emerald-400">Site analysis complete</p>
+                    <p className="text-xs text-slate-400">3 critical risks reviewed</p>
+                    <p className="text-xs text-slate-400">4 recommendations updated</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <ExplainWithAi pageId="dashboard" />
           <button
             type="button"

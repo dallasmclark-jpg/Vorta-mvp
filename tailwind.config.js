@@ -99,6 +99,10 @@ module.exports = {
           from: { transform: "rotate(0deg)" },
           to:   { transform: "rotate(360deg)" },
         },
+        "fade-slide-down": {
+          from: { opacity: "0", transform: "translateY(-6px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
