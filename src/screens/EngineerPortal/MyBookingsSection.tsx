@@ -22,6 +22,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ShiftCalendar } from "../../components/ShiftCalendar";
 import { supabase } from "../../lib/supabaseClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -61,6 +62,44 @@ const AI_ACTIONS: AiAction[] = [
   { label: "Bring forward PSSR Refresher",     description: "Cert expires 14 Sep. Course booked for 18 Jul — confirm attendance and logistics.",                  priority: "high",     icon: Zap           },
   { label: "Book ATEX Certification",          description: "No booking exists for ATEX. Closing this gap adds +9 pts to your AI match score.",                   priority: "high",     icon: GraduationCap },
   { label: "Explore career-step courses",      description: "Vibration Analysis II and Project Management Fundamentals are available. Both support Senior role.",  priority: "low",      icon: BookOpen      },
+];
+
+// ─── Calendar mock events ─────────────────────────────────────────────────────
+
+const engToday = new Date();
+const engY = engToday.getFullYear();
+const engM = String(engToday.getMonth() + 1).padStart(2, "0");
+const ed = (n: number) => `${engY}-${engM}-${String(n).padStart(2, "0")}`;
+
+const ENGINEER_CALENDAR_EVENTS: import("../../components/ShiftCalendar").ShiftEvent[] = [
+  { date: ed(1),  type: "day",          label: "On Shift"         },
+  { date: ed(2),  type: "day",          label: "On Shift"         },
+  { date: ed(3),  type: "off",          label: "Rest"             },
+  { date: ed(4),  type: "off",          label: "Rest"             },
+  { date: ed(5),  type: "day",          label: "On Shift"         },
+  { date: ed(6),  type: "booking",      label: "PSSR Refresher"   },
+  { date: ed(7),  type: "day",          label: "On Shift"         },
+  { date: ed(8),  type: "day",          label: "On Shift"         },
+  { date: ed(9),  type: "day",          label: "On Shift"         },
+  { date: ed(10), type: "off",          label: "Rest"             },
+  { date: ed(11), type: "off",          label: "Rest"             },
+  { date: ed(12), type: "booking",      label: "ATEX Cert"        },
+  { date: ed(13), type: "day",          label: "On Shift"         },
+  { date: ed(14), type: "day",          label: "On Shift"         },
+  { date: ed(15), type: "day",          label: "On Shift"         },
+  { date: ed(16), type: "cert-renewal", label: "Manual Handling",  warn: true },
+  { date: ed(17), type: "off",          label: "Rest"             },
+  { date: ed(18), type: "off",          label: "Rest"             },
+  { date: ed(19), type: "booking",      label: "PSSR Book"        },
+  { date: ed(20), type: "day",          label: "On Shift"         },
+  { date: ed(21), type: "day",          label: "On Shift"         },
+  { date: ed(22), type: "day",          label: "On Shift"         },
+  { date: ed(23), type: "training",     label: "Career Dev"       },
+  { date: ed(24), type: "off",          label: "Rest"             },
+  { date: ed(25), type: "off",          label: "Rest"             },
+  { date: ed(26), type: "day",          label: "On Shift"         },
+  { date: ed(27), type: "cert-renewal", label: "PSSR Expiry",      warn: true },
+  { date: ed(28), type: "day",          label: "On Shift"         },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -249,6 +288,13 @@ export function MyBookingsSection(): JSX.Element {
 
       {/* ── AI Actions ──────────────────────────────────────────────────────── */}
       {!loading && <AiActionsPanel actions={AI_ACTIONS} />}
+
+      {/* ── Monthly Bookings Calendar ── */}
+      <ShiftCalendar
+        title="My Bookings Calendar"
+        events={ENGINEER_CALENDAR_EVENTS}
+        role="engineer"
+      />
 
       {/* ── Upcoming Bookings table ──────────────────────────────────────────── */}
       <SectionCard

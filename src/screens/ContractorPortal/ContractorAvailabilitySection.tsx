@@ -16,6 +16,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,44 @@ const aiActions: AiAction[] = [
   { label: "Resolve Dan Hurst certification block",     description: "Dan is blocked from all HVAC assignments until his F-Gas cert is renewed. Book renewal this week.",              priority: "critical", icon: ShieldCheck  },
   { label: "Keep Amy Clarke on call through Wednesday", description: "3 breakdown opportunities are open this week. Amy's on-call cover maximises rapid response capability.",          priority: "medium",   icon: Clock        },
   { label: "Plan Kate Wilson cert renewal",             description: "Book Kate's 18th Edition renewal before 10 Jul to prevent an assignment gap on the Diageo contract.",            priority: "high",     icon: Brain        },
+];
+
+// ─── Calendar mock events ─────────────────────────────────────────────────────
+
+const calToday = new Date();
+const calY = calToday.getFullYear();
+const calM = String(calToday.getMonth() + 1).padStart(2, "0");
+const cd = (n: number) => `${calY}-${calM}-${String(n).padStart(2, "0")}`;
+
+const CONTRACTOR_CALENDAR_EVENTS: ShiftEvent[] = [
+  { date: cd(1),  type: "assigned",    label: "Sarah – Krones"      },
+  { date: cd(2),  type: "assigned",    label: "James – Britvic"     },
+  { date: cd(3),  type: "overtime",    label: "Amy – On Call"       },
+  { date: cd(4),  type: "day",         label: "Kate – Available"    },
+  { date: cd(5),  type: "training",    label: "Lisa – Training"     },
+  { date: cd(6),  type: "off",         label: "Rest"                },
+  { date: cd(7),  type: "off",         label: "Rest"                },
+  { date: cd(8),  type: "assigned",    label: "Sarah – Krones"      },
+  { date: cd(9),  type: "restricted",  label: "Dan – Restricted",   warn: true },
+  { date: cd(10), type: "assigned",    label: "Tom – Heineken"      },
+  { date: cd(11), type: "day",         label: "Kate – Available"    },
+  { date: cd(12), type: "training",    label: "Lisa – Training"     },
+  { date: cd(13), type: "off",         label: "Rest"                },
+  { date: cd(14), type: "off",         label: "Rest"                },
+  { date: cd(15), type: "assigned",    label: "Raj – Unilever"      },
+  { date: cd(16), type: "unavailable", label: "Dan – Unavailable",  warn: true },
+  { date: cd(17), type: "day",         label: "Amy – Available"     },
+  { date: cd(18), type: "overtime",    label: "Kate – Cover"        },
+  { date: cd(19), type: "training",    label: "Lisa – Available"    },
+  { date: cd(20), type: "off",         label: "Rest"                },
+  { date: cd(21), type: "off",         label: "Rest"                },
+  { date: cd(22), type: "assigned",    label: "James – Britvic"     },
+  { date: cd(23), type: "assigned",    label: "Sarah – Krones"      },
+  { date: cd(24), type: "day",         label: "Amy – Available"     },
+  { date: cd(25), type: "restricted",  label: "Dan – Cert Exp",     warn: true },
+  { date: cd(26), type: "assigned",    label: "Raj – Unilever"      },
+  { date: cd(27), type: "off",         label: "Rest"                },
+  { date: cd(28), type: "off",         label: "Rest"                },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -220,6 +259,13 @@ export const ContractorAvailabilitySection = (): JSX.Element => {
           </Card>
         ))}
       </div>
+
+      {/* ── Monthly Availability Calendar ── */}
+      <ShiftCalendar
+        title="Team Availability Calendar"
+        events={CONTRACTOR_CALENDAR_EVENTS}
+        role="contractor"
+      />
 
       {/* Availability board */}
       <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">

@@ -15,6 +15,7 @@ import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { TrendIndicator } from "../../components/TrendIndicator";
 import { Card, CardContent } from "../../components/ui/card";
+import { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,44 @@ const safetyIcon = (status: string) =>
     ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-400" aria-hidden="true" />
     : <Clock className="h-3.5 w-3.5 shrink-0 text-yellow-400" aria-hidden="true" />;
 
+// ─── Calendar mock events ─────────────────────────────────────────────────────
+
+const today = new Date();
+const yy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, "0");
+const d = (n: number) => `${yy}-${mm}-${String(n).padStart(2, "0")}`;
+
+const SHIFT_EVENTS: ShiftEvent[] = [
+  { date: d(1),  type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(2),  type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(3),  type: "off",      label: "Rest"       },
+  { date: d(4),  type: "off",      label: "Rest"       },
+  { date: d(5),  type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(6),  type: "training", label: "Quality",   time: "09:00–13:00" },
+  { date: d(7),  type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(8),  type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(9),  type: "night",    label: "Line 2",    time: "18:00–06:00" },
+  { date: d(10), type: "night",    label: "Line 2",    time: "18:00–06:00" },
+  { date: d(11), type: "off",      label: "Rest"       },
+  { date: d(12), type: "off",      label: "Rest"       },
+  { date: d(13), type: "day",      label: "Line 3",    time: "06:00–18:00" },
+  { date: d(14), type: "day",      label: "Line 3",    time: "06:00–18:00" },
+  { date: d(15), type: "overtime", label: "Cover",     time: "06:00–18:00" },
+  { date: d(16), type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(17), type: "restricted",label: "Restricted",warn: true          },
+  { date: d(18), type: "off",      label: "Rest"       },
+  { date: d(19), type: "off",      label: "Rest"       },
+  { date: d(20), type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(21), type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(22), type: "training", label: "SAP",       time: "09:00–12:00" },
+  { date: d(23), type: "day",      label: "Line 2",    time: "06:00–18:00" },
+  { date: d(24), type: "night",    label: "Line 2",    time: "18:00–06:00" },
+  { date: d(25), type: "night",    label: "Line 2",    time: "18:00–06:00" },
+  { date: d(26), type: "off",      label: "Rest"       },
+  { date: d(27), type: "off",      label: "Rest"       },
+  { date: d(28), type: "day",      label: "Line 2",    time: "06:00–18:00" },
+];
+
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 
 function KpiCard({ label, value, sub, icon: Icon, valueClass, trend, index = 0 }: typeof kpis[number] & { index?: number }) {
@@ -230,6 +269,11 @@ export const OperatorMyShiftSection = (): JSX.Element => (
           <KpiCard {...k} index={i} />
         </div>
       ))}
+    </div>
+
+    {/* ── Monthly Shift Calendar ── */}
+    <div className="motion-safe:animate-card-enter" style={{ animationDelay: "520ms" }}>
+      <ShiftCalendar title="My Shift Calendar" events={SHIFT_EVENTS} role="operator" />
     </div>
 
     {/* ── Shift Summary ── */}

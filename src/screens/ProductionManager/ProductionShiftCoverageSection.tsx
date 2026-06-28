@@ -18,6 +18,7 @@ import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { TrendIndicator } from "../../components/TrendIndicator";
 import { Card, CardContent } from "../../components/ui/card";
+import { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -151,6 +152,46 @@ const availBadge: Record<string, string> = {
   low:    "bg-[#10b98118] text-emerald-400 border border-emerald-500/20",
 };
 
+// ─── Calendar mock events ─────────────────────────────────────────────────────
+
+const covToday = new Date();
+const covY = covToday.getFullYear();
+const covM = String(covToday.getMonth() + 1).padStart(2, "0");
+const covD = (n: number) => `${covY}-${covM}-${String(n).padStart(2, "0")}`;
+
+const COVERAGE_CALENDAR_EVENTS: ShiftEvent[] = [
+  { date: covD(1),  type: "day",         label: "Day – Full"       },
+  { date: covD(1),  type: "night",       label: "Night – Full"     },
+  { date: covD(2),  type: "day",         label: "Day – Full"       },
+  { date: covD(2),  type: "night",       label: "Night – At Risk",  warn: true },
+  { date: covD(3),  type: "day",         label: "Day – Full"       },
+  { date: covD(4),  type: "day",         label: "Day – Full"       },
+  { date: covD(5),  type: "restricted",  label: "Compliance Gap",   warn: true },
+  { date: covD(6),  type: "off",         label: "Weekend"          },
+  { date: covD(7),  type: "off",         label: "Weekend"          },
+  { date: covD(8),  type: "day",         label: "Day – Full"       },
+  { date: covD(9),  type: "unavailable", label: "Under-staffed",    warn: true },
+  { date: covD(10), type: "day",         label: "Day – Full"       },
+  { date: covD(11), type: "training",    label: "Training Day"     },
+  { date: covD(12), type: "day",         label: "Day – Full"       },
+  { date: covD(13), type: "off",         label: "Weekend"          },
+  { date: covD(14), type: "off",         label: "Weekend"          },
+  { date: covD(15), type: "overtime",    label: "OT Cover"         },
+  { date: covD(16), type: "day",         label: "Day – Full"       },
+  { date: covD(17), type: "restricted",  label: "Compliance Gap",   warn: true },
+  { date: covD(18), type: "day",         label: "Day – Full"       },
+  { date: covD(19), type: "day",         label: "Day – Full"       },
+  { date: covD(20), type: "off",         label: "Weekend"          },
+  { date: covD(21), type: "off",         label: "Weekend"          },
+  { date: covD(22), type: "day",         label: "Day – Full"       },
+  { date: covD(23), type: "training",    label: "Training"         },
+  { date: covD(24), type: "day",         label: "Day – Full"       },
+  { date: covD(25), type: "unavailable", label: "Under-staffed",    warn: true },
+  { date: covD(26), type: "day",         label: "Day – Full"       },
+  { date: covD(27), type: "off",         label: "Weekend"          },
+  { date: covD(28), type: "off",         label: "Weekend"          },
+];
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function KpiCard({ label, value, sub, icon: Icon, valueClass, trend, index = 0 }: typeof kpis[number] & { index?: number }) {
@@ -199,6 +240,15 @@ export const ProductionShiftCoverageSection = (): JSX.Element => (
           <KpiCard {...k} index={i} />
         </div>
       ))}
+    </div>
+
+    {/* ── Monthly Coverage Calendar ── */}
+    <div className="motion-safe:animate-card-enter" style={{ animationDelay: "520ms" }}>
+      <ShiftCalendar
+        title="Monthly Shift Coverage"
+        events={COVERAGE_CALENDAR_EVENTS}
+        role="production"
+      />
     </div>
 
     {/* ── Main shift coverage table ── */}
