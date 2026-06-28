@@ -18,6 +18,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { PageTransition } from "../../components/PageTransition";
 import { OperatorDashboardSection } from "./OperatorDashboardSection";
 import { OperatorMyShiftSection } from "./OperatorMyShiftSection";
+import { OperatorMySkillsSection } from "./OperatorMySkillsSection";
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ export const OperatorPortal = (): JSX.Element => {
           <Routes>
             <Route path="dashboard"  element={<OperatorDashboardSection />} />
             <Route path="shift"      element={<OperatorMyShiftSection />} />
-            <Route path="skills"     element={<Placeholder title="My Skills" />} />
+            <Route path="skills"     element={<OperatorMySkillsSection />} />
             <Route path="training"   element={<Placeholder title="Training" />} />
             <Route path="compliance" element={<Placeholder title="Compliance" />} />
             <Route path="tasks"      element={<Placeholder title="Tasks" />} />
