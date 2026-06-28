@@ -23,6 +23,7 @@ import { ProductionOperatorsSection } from "./ProductionOperatorsSection";
 import { ProductionComplianceSection } from "./ProductionComplianceSection";
 import { ProductionRiskSection } from "./ProductionRiskSection";
 import { ProductionAiImprovementsSection } from "./ProductionAiImprovementsSection";
+import { ProductionSettingsSection } from "./ProductionSettingsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ export const ProductionManagerPortal = (): JSX.Element => {
             <Route path="compliance"         element={<ProductionComplianceSection />} />
             <Route path="risk"               element={<ProductionRiskSection />} />
             <Route path="ai-recommendations" element={<ProductionAiImprovementsSection />} />
-            <Route path="settings"           element={<Placeholder title="Settings" />} />
+            <Route path="settings"           element={<ProductionSettingsSection />} />
             <Route path="*"                  element={<Navigate to="dashboard" replace />} />
           </Routes>
         </PageTransition>
