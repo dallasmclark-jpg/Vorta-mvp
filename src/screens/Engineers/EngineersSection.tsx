@@ -29,6 +29,7 @@ import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";
 import {
   CertEntry,
   DrawerEngineer,
@@ -225,6 +226,44 @@ async function fetchEngineers(): Promise<{
     stats: data.stats as EngineersStats,
   };
 }
+
+// ─── Team availability calendar mock data ────────────────────────────────────
+
+const mmToday = new Date();
+const mmY = mmToday.getFullYear();
+const mmM = String(mmToday.getMonth() + 1).padStart(2, "0");
+const mmD = (n: number) => `${mmY}-${mmM}-${String(n).padStart(2, "0")}`;
+
+const MM_CALENDAR_EVENTS: ShiftEvent[] = [
+  { date: mmD(1),  type: "day",          label: "Full coverage"       },
+  { date: mmD(2),  type: "day",          label: "Full coverage"       },
+  { date: mmD(3),  type: "training",     label: "Training – J.Patel"  },
+  { date: mmD(4),  type: "unavailable",  label: "Shift gap – Line 3",  warn: true },
+  { date: mmD(5),  type: "day",          label: "Full coverage"       },
+  { date: mmD(6),  type: "off",          label: "Weekend"             },
+  { date: mmD(7),  type: "off",          label: "Weekend"             },
+  { date: mmD(8),  type: "restricted",   label: "Cert expiry – K.Wilson", warn: true },
+  { date: mmD(9),  type: "day",          label: "Full coverage"       },
+  { date: mmD(10), type: "overtime",     label: "Contractor cover"    },
+  { date: mmD(11), type: "day",          label: "Full coverage"       },
+  { date: mmD(12), type: "training",     label: "ATEX – S.Chen"       },
+  { date: mmD(13), type: "off",          label: "Weekend"             },
+  { date: mmD(14), type: "off",          label: "Weekend"             },
+  { date: mmD(15), type: "unavailable",  label: "SPOF gap – Controls", warn: true },
+  { date: mmD(16), type: "day",          label: "Full coverage"       },
+  { date: mmD(17), type: "overtime",     label: "Contractor cover"    },
+  { date: mmD(18), type: "day",          label: "Full coverage"       },
+  { date: mmD(19), type: "restricted",   label: "Cert expiry – D.Hurst", warn: true },
+  { date: mmD(20), type: "off",          label: "Weekend"             },
+  { date: mmD(21), type: "off",          label: "Weekend"             },
+  { date: mmD(22), type: "training",     label: "PLC – T.Briggs"      },
+  { date: mmD(23), type: "day",          label: "Full coverage"       },
+  { date: mmD(24), type: "day",          label: "Full coverage"       },
+  { date: mmD(25), type: "unavailable",  label: "Shift gap – Night",   warn: true },
+  { date: mmD(26), type: "day",          label: "Full coverage"       },
+  { date: mmD(27), type: "off",          label: "Weekend"             },
+  { date: mmD(28), type: "off",          label: "Weekend"             },
+];
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -440,7 +479,32 @@ export const EngineersSection = (): JSX.Element => {
         )}
       </div>
 
+      {/* ── Monthly Team Availability Calendar ── */}
+      <ShiftCalendar
+        title="Team Availability & Coverage Calendar"
+        events={MM_CALENDAR_EVENTS}
+        role="engineer"
+      />
+
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
+
+        {/* ── Coverage summary KPIs ── */}
+        <section className="grid w-full grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            { label: "Engineers Available Today", value: loading ? "—" : String(stats.currentlyAvailable),  sub: "Ready to deploy",       valueClass: "text-emerald-400" },
+            { label: "At-Risk Shifts This Month",  value: "4",  sub: "Understaffed dates",    valueClass: "text-orange-400" },
+            { label: "Training Conflicts",          value: "3",  sub: "Overlap with shifts",   valueClass: "text-yellow-400" },
+            { label: "Contractor Cover Required",   value: "2",  sub: "Days needing cover",    valueClass: "text-blue-400"   },
+          ].map(({ label, value, sub, valueClass }) => (
+            <Card key={label} className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="flex flex-col gap-2 p-4">
+                <p className="text-xs font-medium text-slate-400">{label}</p>
+                <p className={`text-xl font-semibold tabular-nums ${valueClass}`}>{value}</p>
+                <p className="text-[11px] text-slate-500">{sub}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
 
         {/* ── KPI cards: 2 mobile → 4 tablet → 8 desktop ─────────────────────── */}
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
