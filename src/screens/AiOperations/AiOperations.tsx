@@ -25,11 +25,11 @@ export const AiOperations = (): JSX.Element => {
   }, [location.pathname]);
 
   return (
-    <main className="h-full w-full max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
-      <div className="flex h-full w-full max-w-full items-stretch overflow-x-hidden">
+    <main className="h-screen w-full max-w-full overflow-hidden bg-[#0b0e14] text-white">
+      <div className="flex h-full w-full max-w-full items-stretch overflow-hidden">
 
         {/* ── Sidebar: icon-only 72px on md+lg, expanded on xl ────────────── */}
-        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[72px] xl:w-[220px]">
+        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[72px] xl:w-[220px] sticky top-0 h-screen overflow-y-auto">
           <SidebarNavigationSection />
         </aside>
 

@@ -70,7 +70,7 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
   const padX     = forceExpanded ? "px-4" : "px-2 xl:px-4";
 
   return (
-    <aside className={`relative flex h-full min-h-screen w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5`}>
+    <aside className={`relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5`}>
       {/* Logo */}
       <header className={`flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 xl:justify-start xl:px-2"}`}>
         <NavLink to="/" aria-label="Vorta home" className="inline-flex items-center overflow-hidden">
