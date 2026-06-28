@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
@@ -15,6 +16,12 @@ import { SupportSection } from "../Support";
 
 export const AiOperations = (): JSX.Element => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const location  = useLocation();
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <main className="h-full w-full max-w-full overflow-x-hidden bg-[#0b0e14] text-white">
@@ -63,7 +70,7 @@ export const AiOperations = (): JSX.Element => {
             <span className="text-sm font-bold tracking-widest text-blue-500">VORTA</span>
           </div>
 
-          <div className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">
+          <div ref={scrollRef} className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">
             <div className="min-w-0 w-full max-w-full overflow-x-hidden">
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
