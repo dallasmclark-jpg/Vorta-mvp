@@ -22,6 +22,7 @@ import { ProductionTrainingSection } from "./ProductionTrainingSection";
 import { ProductionOperatorsSection } from "./ProductionOperatorsSection";
 import { ProductionComplianceSection } from "./ProductionComplianceSection";
 import { ProductionRiskSection } from "./ProductionRiskSection";
+import { ProductionAiImprovementsSection } from "./ProductionAiImprovementsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ const navGroups = [
   {
     label: "Intelligence",
     items: [
-      { label: "AI Recommendations", icon: Sparkles, to: "/production/ai-recommendations" },
+      { label: "AI Improvements", icon: Sparkles, to: "/production/ai-recommendations" },
     ],
   },
 ];
@@ -181,7 +182,7 @@ export const ProductionManagerPortal = (): JSX.Element => {
             <Route path="training"           element={<ProductionTrainingSection />} />
             <Route path="compliance"         element={<ProductionComplianceSection />} />
             <Route path="risk"               element={<ProductionRiskSection />} />
-            <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
+            <Route path="ai-recommendations" element={<ProductionAiImprovementsSection />} />
             <Route path="settings"           element={<Placeholder title="Settings" />} />
             <Route path="*"                  element={<Navigate to="dashboard" replace />} />
           </Routes>
