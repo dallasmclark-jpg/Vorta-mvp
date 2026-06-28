@@ -19,6 +19,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContractorDashboardSection } from "./ContractorDashboardSection";
 import { CompanyProfileSection } from "./CompanyProfileSection";
 import { ContractorEngineersSection } from "./ContractorEngineersSection";
+import { ContractorAvailabilitySection } from "./ContractorAvailabilitySection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ export const ContractorPortal = (): JSX.Element => (
         <Route path="dashboard"          element={<ContractorDashboardSection />} />
         <Route path="company-profile"    element={<CompanyProfileSection />} />
         <Route path="engineers"          element={<ContractorEngineersSection />} />
-        <Route path="availability"       element={<Placeholder title="Availability" />} />
+        <Route path="availability"       element={<ContractorAvailabilitySection />} />
         <Route path="opportunities"      element={<Placeholder title="Opportunities" />} />
         <Route path="assignments"        element={<Placeholder title="Assignments" />} />
         <Route path="job-reports"        element={<Placeholder title="Job Reports" />} />
