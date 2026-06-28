@@ -216,7 +216,7 @@ function DirectoryRow({
   return (
     <div
       onClick={onClick}
-      className={`flex cursor-pointer items-center gap-3 border-b border-gray-800/60 px-4 py-3 transition-colors hover:bg-[#1a2030] ${
+      className={`flex cursor-pointer items-center gap-3 border-b border-gray-800/60 px-4 py-3.5 transition-colors hover:bg-[#1a2030] ${
         isActive ? "bg-blue-500/10 border-l-2 border-l-blue-500/60" : "border-l-2 border-l-transparent"
       }`}
     >
@@ -244,8 +244,8 @@ function DirectoryRow({
         <SkillChips skills={eng.top_skills} max={3} />
       </div>
 
-      {/* Right: availability + competency ring + risk */}
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
+      {/* Right: availability · score · risk stacked cleanly */}
+      <div className="flex w-[110px] shrink-0 flex-col items-end gap-1">
         <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
           {formatAvailStatus(eng.availability_status)}
         </Badge>
@@ -495,7 +495,7 @@ export const EngineersSection = (): JSX.Element => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
+    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-4 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
 
       <EngineerDrawer
         engineer={selectedEngineer}
@@ -576,7 +576,7 @@ export const EngineersSection = (): JSX.Element => {
         </section>
 
         {/* ── Two-panel row: Directory + Insights ─────────────────────────────── */}
-        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
+        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
 
           {/* ── LEFT: Engineer Directory ──────────────────────────────────────── */}
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
@@ -736,7 +736,7 @@ export const EngineersSection = (): JSX.Element => {
                       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
                         <span className="w-9 shrink-0" />
                         <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Engineer</span>
-                        <span className="shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500">Availability · Score · Risk</span>
+                        <span className="w-[110px] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500">Avail · Score · Risk</span>
                       </div>
                       {pagedDirectory.map((eng) => (
                         <DirectoryRow key={eng.id} eng={eng}
