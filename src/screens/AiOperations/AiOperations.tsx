@@ -14,6 +14,7 @@ import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
 import { EquipmentSection } from "../Equipment";
 import { SupportSection } from "../Support";
+import { DesignSystemSection } from "../DesignSystem";
 
 export const AiOperations = (): JSX.Element => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -84,6 +85,7 @@ export const AiOperations = (): JSX.Element => {
               <Route path="/settings" element={<SettingsSection />} />
               <Route path="/equipment" element={<EquipmentSection />} />
               <Route path="/support" element={<SupportSection />} />
+              <Route path="/design-system" element={<DesignSystemSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </PageTransition>
