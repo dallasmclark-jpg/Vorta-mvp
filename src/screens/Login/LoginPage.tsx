@@ -262,7 +262,7 @@ export const LoginPage = (): JSX.Element => {
               >
                 <HardHat className="h-4 w-4 text-emerald-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Operator</span>
-                <span className="text-[10px] text-slate-600 text-center">Coming soon</span>
+                <span className="text-[10px] text-slate-500 text-center">View demo</span>
               </button>
             </div>
           </div>
