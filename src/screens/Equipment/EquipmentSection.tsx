@@ -20,6 +20,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -478,9 +479,17 @@ export const EquipmentSection = (): JSX.Element => {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-            Equipment
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+              Equipment
+            </h1>
+            <ContextHelp content={{
+              title: "Equipment",
+              body:  "Manage your site's critical assets and understand capability coverage. Each asset is linked to the skills engineers need to operate and maintain it safely.",
+              usage: "Click any asset row to open the detail panel. Use the filters to focus on gaps or high-risk assets. The Skills Coverage section shows how well your team covers each discipline.",
+              aiNote: "Vorta AI analyses equipment criticality against current engineer skill coverage to surface SPOF risks and recommend training priorities.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">
             Track critical assets, capability coverage and equipment risk across your site.
           </p>

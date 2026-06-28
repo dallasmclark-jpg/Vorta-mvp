@@ -24,6 +24,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -498,9 +499,17 @@ export const TrainingProvidersSection = (): JSX.Element => {
         <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
           <div className="flex flex-col items-start gap-1">
             <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-            <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
-              Training Providers
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+                Training Providers
+              </h1>
+              <ContextHelp content={{
+                title: "Training Providers",
+                body:  "Approved training partners matched to your site's skill gaps and compliance requirements. Each provider is rated and linked to the skills they cover.",
+                usage: "Click a provider card to see their courses and how they match your open skill gaps. Use Add provider to bring new partners into the system.",
+                aiNote: "Vorta AI matches providers to your live skill gaps automatically — surfacing the most relevant courses for your highest-risk areas.",
+              }} />
+            </div>
             <p className="text-sm text-slate-400">Approved training partners matched to your site skill gaps, compliance requirements, and upcoming training demand.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">

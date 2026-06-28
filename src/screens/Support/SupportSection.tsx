@@ -24,6 +24,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -207,9 +208,16 @@ export const SupportSection = (): JSX.Element => {
       {/* ── Page header ──────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-            Support
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+              Support
+            </h1>
+            <ContextHelp content={{
+              title: "Support",
+              body:  "Raise support requests, track open tickets and access help guides for all Vorta features. The Vorta team responds within 4 business hours during Monday–Friday, 8:00–18:00.",
+              usage: "Use Raise Support Request to report issues. View Recent Tickets to track status. Browse Help Guides for step-by-step answers.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">
             Get help with skills matrix, engineers, training, bookings and account setup.
           </p>

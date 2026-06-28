@@ -24,7 +24,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
-
+import { ContextHelp } from "../../components/ContextHelp";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Booking {
@@ -344,9 +344,17 @@ export const TrainingSection = (): JSX.Element => {
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-          <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
-            Training
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+              Training
+            </h1>
+            <ContextHelp content={{
+              title: "Training Bookings",
+              body:  "Manage and track all training bookings for your engineering team. View upcoming courses, completion rates, costs and compliance gaps.",
+              usage: "Use Add Booking to schedule training. Filter by status or engineer to find specific records. Export to share training plans with management.",
+              aiNote: "Vorta AI ranks engineers for training based on skill gaps, SPOF risk and equipment criticality — helping you prioritise training investment.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">Prioritise training gaps, compliance risks and development needs across your maintenance team.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">

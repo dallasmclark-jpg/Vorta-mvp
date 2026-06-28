@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { TriangleAlert as AlertTriangle, Bell, RefreshCw, CircleUser as UserCircle } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
+import { ContextHelp } from "../../../../components/ContextHelp";
 import {
   Alert,
   AlertDescription,
@@ -585,9 +586,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-            Workforce Capability Dashboard
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+              Workforce Capability Dashboard
+            </h1>
+            <ContextHelp content={{
+              title: "Workforce Capability Dashboard",
+              body:  "Your primary operations view — showing live engineer coverage, skill readiness, critical risks and AI-generated recommendations across the site.",
+              usage: "Review the KPI cards daily for coverage changes. Use the Critical Risks and Recommended Actions panels to prioritise your team's activities.",
+              aiNote: "Vorta AI continuously scores your site readiness against requirements and surfaces recommended actions ranked by impact.",
+            }} />
+          </div>
           <p className="font-text-sm-regular text-[length:var(--text-sm-regular-font-size)] font-[number:var(--text-sm-regular-font-weight)] leading-[var(--text-sm-regular-line-height)] tracking-[var(--text-sm-regular-letter-spacing)] text-slate-400 [font-style:var(--text-sm-regular-font-style)]">
             Alpha Manufacturing — Skills &amp; Coverage Overview
           </p>
@@ -656,9 +665,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex min-w-0 h-full flex-col items-start gap-4 p-5">
-              <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
-                Critical Risks
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
+                  Critical Risks
+                </h2>
+                <ContextHelp content={{ title: "Critical Risks", body: "Skill areas where engineer coverage falls below the required minimum, posing immediate operational risk. These are ordered by severity.", usage: "Click Review on any risk to investigate. Prioritise CRITICAL items before HIGH items." }} />
+              </div>
               <div className="flex w-full flex-col gap-3">
                 {criticalRisks.map((risk) => (
                   <article
@@ -688,9 +700,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex min-w-0 h-full flex-col items-start gap-5 p-5">
               <div className="flex w-full items-center justify-between gap-4">
-                <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
-                  Recommended Actions
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
+                    Recommended Actions
+                  </h2>
+                  <ContextHelp content={{ title: "Recommended Actions", body: "AI-prioritised list of actions to improve site readiness and reduce skills risk. Items are ranked by impact and urgency.", aiNote: "Vorta AI generates these from live skills gaps, training records and engineer coverage data." }} />
+                </div>
                 <button
                   type="button"
                   className="font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] text-blue-500 [font-style:var(--text-sm-medium-font-style)]"

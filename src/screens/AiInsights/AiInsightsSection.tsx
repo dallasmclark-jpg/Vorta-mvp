@@ -14,6 +14,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types (matching AiReportsSection shapes) ─────────────────────────────────
 
@@ -267,7 +268,15 @@ export const AiInsightsSection = (): JSX.Element => {
           <Brain className="h-4 w-4 text-blue-400" />
         </div>
         <div>
-          <h2 className="font-semibold text-slate-50">AI Insights</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-slate-50">AI Insights</h2>
+            <ContextHelp content={{
+              title: "AI Insights",
+              body:  "AI-generated analysis of your site's skills coverage, training gaps, compliance risks and recommended actions — updated from live Supabase data.",
+              usage: "Review the KPI cards and Executive Summary for the current state. Scroll down for predicted risks and prioritised recommended actions.",
+              aiNote: "Vorta AI analyses requirements, certifications and training records to score site readiness and surface the highest-impact actions.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">AI-generated analysis across site readiness, skills risk, training and compliance.</p>
         </div>
         <Badge className="ml-auto inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-[10px] font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">

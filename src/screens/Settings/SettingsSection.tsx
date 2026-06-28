@@ -27,6 +27,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -301,9 +302,16 @@ export const SettingsSection = (): JSX.Element => {
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-            Settings
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+              Settings
+            </h1>
+            <ContextHelp content={{
+              title: "Settings",
+              body:  "Configure your site profile, team access, notification preferences and approval rules for training bookings.",
+              usage: "Use the tabs to navigate between Site Config, Team Access, Notifications and Approval Rules. Changes take effect immediately.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">
             Manage your site, team access, notifications and approval rules.
           </p>

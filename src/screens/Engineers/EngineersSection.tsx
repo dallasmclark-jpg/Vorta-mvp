@@ -29,6 +29,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 import {
   CertEntry,
   DrawerEngineer,
@@ -504,9 +505,17 @@ export const EngineersSection = (): JSX.Element => {
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-          <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
-            Engineers
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+              Engineers
+            </h1>
+            <ContextHelp content={{
+              title: "Engineers",
+              body:  "View and manage all engineers on site. Profiles include skills ratings, certifications, training records, availability status and risk indicators.",
+              usage: "Click an engineer row to open their full profile. Use filters to identify skill gaps, expiring certifications or engineers needing training.",
+              aiNote: "Vorta AI scores each engineer's capability against site requirements and flags retirement risk, leaving risk and single-point-of-failure status.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">Workforce Management &amp; Engineer Profiles</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">

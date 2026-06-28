@@ -20,6 +20,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -641,9 +642,17 @@ export const SkillsMatrixSection = (): JSX.Element => {
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
-            Skills Matrix
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+              Skills Matrix
+            </h1>
+            <ContextHelp content={{
+              title: "Skills Matrix",
+              body:  "A live heat map of engineer skills against required competency levels. Colour coding highlights coverage gaps, expiring certifications and single-point-of-failure risks.",
+              usage: "Click any skill column to open the detail drawer. Use the filters to focus on specific departments, categories or risk levels.",
+              aiNote: "Vorta AI identifies SPOF risks and coverage trends automatically, flagging areas needing cross-training or certification renewal.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">Engineer Skills &amp; Coverage Overview</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">

@@ -19,6 +19,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,9 +254,17 @@ export const AiMatchingSection = (): JSX.Element => {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-            AI Matching
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
+              AI Matching
+            </h1>
+            <ContextHelp content={{
+              title: "AI Matching",
+              body:  "Matches engineers to open requirements using skills, certifications, shift availability, experience and training gaps. Scores are 0–100.",
+              usage: "Select a requirement to see ranked engineer matches. Review match scores, skill gaps and training recommendations before assigning an engineer.",
+              aiNote: "Vorta AI weights skills coverage, certification status and SPOF risk to produce ranked match scores. Higher data completeness improves accuracy.",
+            }} />
+          </div>
           <p className="font-text-sm-regular text-[length:var(--text-sm-regular-font-size)] font-[number:var(--text-sm-regular-font-weight)] leading-[var(--text-sm-regular-line-height)] tracking-[var(--text-sm-regular-letter-spacing)] text-slate-400 [font-style:var(--text-sm-regular-font-style)]">
             Match engineers to requirements using skills, certifications, experience, availability and training gaps.
           </p>

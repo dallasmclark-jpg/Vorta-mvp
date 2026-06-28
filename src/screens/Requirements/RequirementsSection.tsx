@@ -23,6 +23,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
+import { ContextHelp } from "../../components/ContextHelp";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -332,9 +333,17 @@ export const RequirementsSection = (): JSX.Element => {
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
-          <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
-            Requirements
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+              Requirements
+            </h1>
+            <ContextHelp content={{
+              title: "Requirements",
+              body:  "Define and track the skill coverage requirements for your site. Each requirement specifies how many engineers need to be competent in a given skill area.",
+              usage: "Add requirements for each critical skill. Monitor coverage percentages and risk levels. Click any row to see engineer breakdown and AI recommendations.",
+              aiNote: "Vorta AI scores each requirement against live engineer data and assigns a risk level, flagging SPOFs and coverage shortfalls.",
+            }} />
+          </div>
           <p className="text-sm text-slate-400">Define, track, and manage site capability requirements across skills, equipment, departments, and risk areas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
