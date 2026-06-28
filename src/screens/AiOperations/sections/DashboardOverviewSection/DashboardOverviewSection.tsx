@@ -604,6 +604,42 @@ const ANALYSIS_STEPS = [
 // Component — JSX and layout unchanged
 // ---------------------------------------------------------------------------
 
+const COLOR_MAP = {
+  emerald: { dot: "bg-emerald-400", text: "text-emerald-300" },
+  red:     { dot: "bg-red-400",     text: "text-red-300"     },
+  blue:    { dot: "bg-blue-400",    text: "text-blue-300"    },
+  cyan:    { dot: "bg-cyan-400",    text: "text-cyan-300"    },
+} as const;
+
+function MetricRow({ color, countTo, suffix, text }: {
+  color: keyof typeof COLOR_MAP;
+  countTo?: number;
+  suffix?: string;
+  text?: string;
+}) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (countTo === undefined) return;
+    let frame = 0;
+    const total = 16; // ~400ms at 60fps
+    const tick = () => {
+      frame += 1;
+      setVal(Math.round((frame / total) * countTo));
+      if (frame < total) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [countTo]);
+
+  const { dot, text: tc } = COLOR_MAP[color];
+  const label = countTo !== undefined ? <><span className={`font-semibold ${tc}`}>{val}</span>{suffix}</> : text;
+  return (
+    <div className="flex items-center gap-2.5 text-xs text-slate-300">
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      {label}
+    </div>
+  );
+}
+
 export const DashboardOverviewSection = (): JSX.Element => {
   const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
@@ -703,11 +739,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Persistent AI Analysis Result card — dismissed by user, replaced on re-run */}
             {completionTime && (
               <div
-                className="absolute top-full left-0 mt-2 w-[248px] rounded-xl border border-blue-500/25 bg-[#0d1520] shadow-[0_0_20px_rgba(59,130,246,0.08)]"
+                className="absolute top-full left-0 mt-3 w-[308px] rounded-xl border border-blue-500/30 bg-[#0d1520] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_24px_rgba(59,130,246,0.1)]"
                 style={{ animation: "fade-slide-down 0.22s ease-out both" }}
               >
+                {/* Pointer arrow */}
+                <div className="absolute -top-[7px] left-6 h-3 w-3 rotate-45 rounded-sm border-l border-t border-blue-500/30 bg-[#0d1520]" />
+
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-blue-500/15 px-3.5 py-2.5">
+                <div className="flex items-center justify-between border-b border-blue-500/15 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 shrink-0 text-blue-400" />
                     <span className="text-xs font-semibold text-slate-100">AI Analysis Complete</span>
@@ -721,28 +760,36 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <X className="h-3 w-3" />
                   </button>
                 </div>
+
                 {/* Body */}
-                <div className="flex flex-col gap-1.5 px-3.5 py-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-blue-400" />
-                    Workforce analysed successfully
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-amber-400" />
-                    3 critical risks reviewed
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-                    4 recommendations updated
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-blue-300" />
-                    AI Confidence: 94%
-                  </div>
+                <div className="flex flex-col gap-2 px-4 py-3.5">
+                  <MetricRow color="emerald" text="Workforce analysed successfully" />
+                  <MetricRow color="red" countTo={3} suffix=" critical risks reviewed" />
+                  <MetricRow color="blue" countTo={4} suffix=" recommendations updated" />
+                  <MetricRow color="cyan" countTo={94} suffix="% AI Confidence" />
                 </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2 border-t border-blue-500/10 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/requirements")}
+                    className="flex-1 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
+                  >
+                    Review Risks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/ai-matching")}
+                    className="flex-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-colors"
+                  >
+                    View Recommendations
+                  </button>
+                </div>
+
                 {/* Footer */}
-                <div className="border-t border-blue-500/10 px-3.5 py-2">
-                  <p className="text-[10px] text-slate-500">Analysis completed at {completionTime}</p>
+                <div className="border-t border-blue-500/10 px-4 py-2">
+                  <p className="text-[10px] text-slate-500">Completed just now</p>
                 </div>
               </div>
             )}
