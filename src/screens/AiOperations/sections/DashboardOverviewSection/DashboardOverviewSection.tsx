@@ -627,9 +627,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
         clearInterval(analysisTimer.current!);
         setAnalysing(false);
         setAnalysisStep(0);
-        toast({ type: "success", message: "Site analysis complete — 3 critical risks reviewed · 4 recommendations updated", duration: 4500 });
+        toast({ type: "success", message: "Site analysis complete — 3 risks reviewed · 4 recommendations updated", duration: 5000 });
       }
-    }, 600);
+    }, 1100);
   };
 
   useEffect(() => () => { if (analysisTimer.current) clearInterval(analysisTimer.current); }, []);

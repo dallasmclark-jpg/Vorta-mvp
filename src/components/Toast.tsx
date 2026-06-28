@@ -97,7 +97,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {createPortal(
         <div
           aria-label="Notifications"
-          className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2"
+          className="fixed top-6 right-6 z-[9999] flex flex-col items-end gap-2"
         >
           {toasts.map((t) => (
             <ToastItem key={t.id} {...t} onDismiss={() => dismiss(t.id)} />
