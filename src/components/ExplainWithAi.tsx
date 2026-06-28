@@ -146,6 +146,21 @@ const EXPLANATIONS: Record<string, PageExplanation> = {
       "Check data integration settings to ensure Vorta is pulling the latest engineer and equipment data.",
     ],
   },
+  "engineer-dashboard": {
+    title: "Engineer Dashboard",
+    summary:
+      "Your personal dashboard shows your live competency profile, upcoming training, certification status, AI match score and personalised career recommendations. Everything here is specific to you and updated in real time.",
+    risks: [
+      "Expired certifications create compliance risk and may prevent you from being assigned to certain work orders — renew them promptly.",
+      "Skill gaps reduce your AI match score and limit the roles and requirements you can be matched to.",
+      "If your profile is incomplete, AI cannot generate accurate match scores or career recommendations.",
+    ],
+    actions: [
+      "Review your Today's Priorities section and address any expired or expiring certifications immediately.",
+      "Book training for your highest-priority skill gaps to improve your match score and unlock new opportunities.",
+      "Complete your profile and validate pending skills to maximise your AI match accuracy.",
+    ],
+  },
 };
 
 // ─── Panel component ──────────────────────────────────────────────────────────
