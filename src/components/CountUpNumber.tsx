@@ -1,15 +1,9 @@
 import { useEffect, useState } from "react";
 
-// Checked once at module load — avoids per-render matchMedia calls.
 const REDUCED =
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Extracts the first integer/decimal from a string.
-// e.g. "74%" → { pre:"", num:74, suf:"%" }
-//      "3"   → { pre:"", num:3,  suf:"" }
-//      "—"   → { pre:"—", num:null, suf:"" }
-//      "Medium" → { pre:"Medium", num:null, suf:"" }
 function parse(v: string): { pre: string; num: number | null; suf: string } {
   const m = v.match(/^([^0-9]*)(\d+(?:\.\d+)?)(.*)$/);
   if (!m) return { pre: v, num: null, suf: "" };
@@ -27,17 +21,27 @@ interface CountUpNumberProps {
 
 export function CountUpNumber({ value, duration = 600, delay = 0, className }: CountUpNumberProps): JSX.Element {
   const { pre, num, suf } = parse(value);
-  const [count, setCount] = useState(REDUCED ? (num ?? 0) : 0);
+  const [count, setCount] = useState(0);
+  const [counting, setCounting] = useState(false);
 
   useEffect(() => {
-    if (num === null) return;
-    if (REDUCED) { setCount(num); return; }
+    if (num === null) {
+      setCounting(false);
+      return;
+    }
+    if (REDUCED) {
+      setCount(num);
+      setCounting(false);
+      return;
+    }
 
-    setCount(0);
+    setCounting(false);
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let raf: number;
+    let raf = 0;
 
     timeoutId = setTimeout(() => {
+      setCount(0);
+      setCounting(true);
       const startTime = performance.now();
       const step = (now: number) => {
         const progress = Math.min((now - startTime) / duration, 1);
@@ -55,5 +59,5 @@ export function CountUpNumber({ value, duration = 600, delay = 0, className }: C
   }, [num, duration, delay]);
 
   if (num === null) return <span className={className}>{value}</span>;
-  return <span className={className}>{pre}{count}{suf}</span>;
+  return <span className={className}>{pre}{counting ? count : num}{suf}</span>;
 }
