@@ -7,6 +7,14 @@ export interface SelectOption {
   label: string;
 }
 
+type SelectSize = "sm" | "md" | "lg";
+
+const SIZE_WIDTH: Record<SelectSize, string> = {
+  sm: "w-[160px]",
+  md: "w-[200px]",
+  lg: "w-[240px]",
+};
+
 interface SelectProps {
   value: string;
   onChange: (value: string) => void;
@@ -15,11 +23,12 @@ interface SelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** sm=160px · md=200px · lg=240px. When omitted the button has no fixed width. */
+  size?: SelectSize;
   /** Force a fixed pixel width; otherwise matches trigger width */
   menuWidth?: number;
 }
 
-const MIN_MENU_WIDTH = 160;
 const MAX_MENU_HEIGHT = 260;
 const EDGE_GAP = 8;
 
@@ -48,7 +57,7 @@ function DropdownPortal({
   menuWidth,
   listRef,
 }: DropdownPortalProps) {
-  const width = Math.max(menuWidth ?? anchorRect.width, MIN_MENU_WIDTH);
+  const width = menuWidth ?? anchorRect.width;
 
   // Prefer below; fall back to above
   const spaceBelow = window.innerHeight - anchorRect.bottom;
@@ -159,6 +168,7 @@ export const Select = ({
   placeholder,
   className = "",
   disabled = false,
+  size,
   menuWidth,
 }: SelectProps): JSX.Element => {
   const [open,       setOpen]       = useState(false);
@@ -248,7 +258,8 @@ export const Select = ({
         onKeyDown={onTriggerKeyDown}
         onKeyUp={(e) => { if (open) onListKeyDown(e as unknown as React.KeyboardEvent); }}
         className={[
-          "inline-flex h-8 items-center justify-between gap-2 rounded-lg border bg-[#0b0e14] px-3 text-sm transition-colors",
+          "inline-flex h-8 shrink-0 items-center justify-between gap-2 rounded-lg border bg-[#0b0e14] px-3 text-sm transition-colors",
+          size ? SIZE_WIDTH[size] : "",
           "border-gray-800 text-slate-300",
           "hover:border-[#3b82f650] hover:text-slate-200",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 focus-visible:border-blue-500/40",

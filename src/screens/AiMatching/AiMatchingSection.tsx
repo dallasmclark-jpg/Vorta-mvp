@@ -406,6 +406,7 @@ export const AiMatchingSection = (): JSX.Element => {
                   onChange={(v) => { setFilterDept(v); setPage(1); }}
                   options={[{ value: "", label: "Department" }, ...(data?.departments ?? []).map((d) => ({ value: d, label: d }))]}
                   placeholder="Department"
+                  size="md"
                   className="h-9"
                 />
 
@@ -415,6 +416,7 @@ export const AiMatchingSection = (): JSX.Element => {
                   onChange={(v) => { setFilterSkill(v); setPage(1); }}
                   options={[{ value: "", label: "Skill" }, ...(data?.skills ?? []).slice(0, 30).map((s) => ({ value: s, label: s }))]}
                   placeholder="Skill"
+                  size="md"
                   className="h-9"
                 />
 
@@ -424,6 +426,7 @@ export const AiMatchingSection = (): JSX.Element => {
                   onChange={(v) => { setFilterCert(v); setPage(1); }}
                   options={[{ value: "", label: "Certification" }, ...(data?.certifications ?? []).map((c) => ({ value: c, label: c }))]}
                   placeholder="Certification"
+                  size="lg"
                   className="h-9"
                 />
 
@@ -438,6 +441,7 @@ export const AiMatchingSection = (): JSX.Element => {
                     { value: "55", label: "55%+ Partial Match" },
                   ]}
                   placeholder="Min Score"
+                  size="sm"
                   className="h-9"
                 />
 

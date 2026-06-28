@@ -596,19 +596,20 @@ export const EquipmentSection = (): JSX.Element => {
           </div>
           {(
             [
-              { label: "Area",          value: filterArea,     onChange: (v: string) => { setFilterArea(v);     setTablePage(0); }, options: areas,                                               placeholder: "All Areas"         },
-              { label: "Criticality",   value: filterCrit,     onChange: (v: string) => { setFilterCrit(v);     setTablePage(0); }, options: ["Critical","High","Medium","Low"],                   placeholder: "All Criticalities" },
-              { label: "OEM",           value: filterOem,      onChange: (v: string) => { setFilterOem(v);      setTablePage(0); }, options: oems,                                                placeholder: "All OEMs"          },
-              { label: "Status",        value: filterStatus,   onChange: (v: string) => { setFilterStatus(v);   setTablePage(0); }, options: ["Healthy","Watch","At Risk","Offline"],              placeholder: "All Statuses"      },
-              { label: "Coverage",      value: filterCoverage, onChange: (v: string) => { setFilterCoverage(v); setTablePage(0); }, options: ["Strong","Partial","Gap"],                          placeholder: "All Coverage"      },
-            ] as const
-          ).map(({ label, value, onChange, options, placeholder }) => (
+              { label: "Area",          value: filterArea,     onChange: (v: string) => { setFilterArea(v);     setTablePage(0); }, options: areas,                                               placeholder: "All Areas",          size: "md" as const },
+              { label: "Criticality",   value: filterCrit,     onChange: (v: string) => { setFilterCrit(v);     setTablePage(0); }, options: ["Critical","High","Medium","Low"],                   placeholder: "All Criticalities",  size: "sm" as const },
+              { label: "OEM",           value: filterOem,      onChange: (v: string) => { setFilterOem(v);      setTablePage(0); }, options: oems,                                                placeholder: "All OEMs",           size: "lg" as const },
+              { label: "Status",        value: filterStatus,   onChange: (v: string) => { setFilterStatus(v);   setTablePage(0); }, options: ["Healthy","Watch","At Risk","Offline"],              placeholder: "All Statuses",       size: "sm" as const },
+              { label: "Coverage",      value: filterCoverage, onChange: (v: string) => { setFilterCoverage(v); setTablePage(0); }, options: ["Strong","Partial","Gap"],                          placeholder: "All Coverage",       size: "sm" as const },
+            ]
+          ).map(({ label, value, onChange, options, placeholder, size }) => (
             <Select
               key={label}
               value={value}
               onChange={onChange}
               options={[{ value: "all", label: placeholder }, ...options.map((o) => ({ value: o, label: o }))]}
               placeholder={placeholder}
+              size={size}
             />
           ))}
           {hasFilters && (

@@ -860,12 +860,14 @@ export const SkillsMatrixSection = (): JSX.Element => {
                   { value: "low",      label: "Low"             },
                 ]}
                 placeholder="All Risk Levels"
+                size="sm"
               />
               <Select
                 value={filterDept}
                 onChange={(v) => { setFilterDept(v); setTablePage(0); }}
                 options={[{ value: "all", label: "All Departments" }, ...departments.map((d) => ({ value: d, label: d }))]}
                 placeholder="All Departments"
+                size="md"
               />
             </div>
 

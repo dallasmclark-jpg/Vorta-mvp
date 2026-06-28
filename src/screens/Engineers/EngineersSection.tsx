@@ -502,21 +502,21 @@ export const EngineersSection = (): JSX.Element => {
                 </div>
                 <Select value={filterDept} onChange={(v) => { setFilterDept(v); setTablePage(0); }}
                   options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
-                  placeholder="All Departments" />
+                  placeholder="All Departments" size="md" />
                 <Select value={filterSite} onChange={(v) => { setFilterSite(v); setTablePage(0); }}
                   options={[{ value: "all", label: "All Sites" }, ...siteNames.map((s) => ({ value: s, label: s }))]}
-                  placeholder="All Sites" />
+                  placeholder="All Sites" size="md" />
                 <Select value={filterAvailability} onChange={(v) => { setFilterAvailability(v); setTablePage(0); }}
                   options={[
                     { value: "all", label: "All Availability" }, { value: "available", label: "Available" },
                     { value: "on_shift", label: "On Shift" },    { value: "unavailable", label: "Unavailable" },
-                  ]} placeholder="All Availability" />
+                  ]} placeholder="All Availability" size="sm" />
                 <Select value={filterRisk} onChange={(v) => { setFilterRisk(v); setTablePage(0); }}
                   options={[
                     { value: "all", label: "All Risk Levels" }, { value: "critical", label: "Critical" },
                     { value: "high", label: "High" },           { value: "medium", label: "Medium" },
                     { value: "low",  label: "Low"  },
-                  ]} placeholder="All Risk Levels" />
+                  ]} placeholder="All Risk Levels" size="sm" />
               </div>
             </div>
 

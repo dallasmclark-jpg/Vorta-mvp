@@ -623,6 +623,7 @@ export const TrainingProvidersSection = (): JSX.Element => {
                   onChange={setFilterDelivery}
                   options={[{ value: "all", label: "All Delivery" }, ...allDeliveryTypes.map((d) => ({ value: d, label: d }))]}
                   placeholder="All Delivery"
+                  size="sm"
                   className="h-9"
                 />
                 <Select
@@ -630,6 +631,7 @@ export const TrainingProvidersSection = (): JSX.Element => {
                   onChange={setFilterLocation}
                   options={[{ value: "all", label: "All Locations" }, ...allLocations.map((l) => ({ value: l, label: l }))]}
                   placeholder="All Locations"
+                  size="md"
                   className="h-9"
                 />
                 <Select
@@ -642,6 +644,7 @@ export const TrainingProvidersSection = (): JSX.Element => {
                     { value: "pending",   label: "Pending Review" },
                   ]}
                   placeholder="All Statuses"
+                  size="sm"
                   className="h-9"
                 />
                 {hasActiveFilters && (

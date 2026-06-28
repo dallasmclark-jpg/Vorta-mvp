@@ -746,6 +746,7 @@ export const AiReportsSection = (): JSX.Element => {
             onChange={setFilterDept}
             options={[{ value: "all", label: "Department" }, ...(liveData?.departments ?? []).map((d) => ({ value: d, label: d }))]}
             placeholder="Department"
+            size="md"
           />
 
           {/* Category */}
@@ -754,6 +755,7 @@ export const AiReportsSection = (): JSX.Element => {
             onChange={(v) => { setFilterCategory(v); setRiskPage(0); }}
             options={[{ value: "all", label: "Skill Category" }, ...(liveData?.categories ?? []).map((c) => ({ value: c, label: c }))]}
             placeholder="Skill Category"
+            size="md"
           />
 
           {/* Risk level */}
@@ -768,6 +770,7 @@ export const AiReportsSection = (): JSX.Element => {
               { value: "low",      label: "Low"        },
             ]}
             placeholder="Risk Level"
+            size="sm"
           />
 
           {/* Report type */}
@@ -781,6 +784,7 @@ export const AiReportsSection = (): JSX.Element => {
               { value: "Compliance",           label: "Compliance"           },
               { value: "Workforce Readiness",  label: "Workforce Readiness"  },
             ]}
+            size="lg"
           />
 
           {hasFilters && (

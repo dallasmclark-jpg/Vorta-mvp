@@ -563,12 +563,14 @@ export const RequirementsSection = (): JSX.Element => {
                 onChange={(v) => { setFilterDept(v); setTablePage(0); }}
                 options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
                 placeholder="All Departments"
+                size="md"
               />
               <Select
                 value={filterCategory}
                 onChange={(v) => { setFilterCategory(v); setTablePage(0); }}
                 options={[{ value: "all", label: "All Trades" }, ...categories.map((c) => ({ value: c, label: c }))]}
                 placeholder="All Trades"
+                size="md"
               />
               <Select
                 value={filterPriority}
@@ -581,6 +583,7 @@ export const RequirementsSection = (): JSX.Element => {
                   { value: "Low",      label: "Low"            },
                 ]}
                 placeholder="All Priorities"
+                size="sm"
               />
               <Select
                 value={filterStatus}
@@ -593,6 +596,7 @@ export const RequirementsSection = (): JSX.Element => {
                   { value: "Covered",             label: "Covered"             },
                 ]}
                 placeholder="All Statuses"
+                size="sm"
               />
             </div>
 

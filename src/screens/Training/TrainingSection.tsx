@@ -703,6 +703,7 @@ export const TrainingSection = (): JSX.Element => {
                       { value: "Low",      label: "Low"            },
                     ]}
                     placeholder="All Priorities"
+                    size="sm"
                   />
                 </div>
 
