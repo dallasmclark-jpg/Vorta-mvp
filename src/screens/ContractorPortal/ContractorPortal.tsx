@@ -33,18 +33,38 @@ import { ContractorSettingsSection } from "./ContractorSettingsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
-const primaryNav = [
-  { label: "Dashboard",          icon: LayoutDashboard, to: "/contractor/dashboard"          },
-  { label: "Company Profile",    icon: Building2,       to: "/contractor/company-profile"    },
-  { label: "Engineers",          icon: Users,           to: "/contractor/engineers"          },
-  { label: "Availability",       icon: BookOpen,        to: "/contractor/availability"       },
-  { label: "Opportunities",      icon: Briefcase,       to: "/contractor/opportunities"      },
-  { label: "Assignments",        icon: ClipboardList,   to: "/contractor/assignments"        },
-  { label: "Job Reports",        icon: BarChart2,       to: "/contractor/job-reports"        },
-  { label: "Timesheets",         icon: FileText,        to: "/contractor/timesheets"         },
-  { label: "Invoices",           icon: Receipt,         to: "/contractor/invoices"           },
-  { label: "Compliance",         icon: ShieldCheck,     to: "/contractor/compliance"         },
-  { label: "AI Recommendations", icon: Sparkles,        to: "/contractor/ai-recommendations" },
+const navGroups = [
+  {
+    label: "Work",
+    items: [
+      { label: "Dashboard",     icon: LayoutDashboard, to: "/contractor/dashboard"      },
+      { label: "Opportunities", icon: Briefcase,       to: "/contractor/opportunities"  },
+      { label: "Assignments",   icon: ClipboardList,   to: "/contractor/assignments"    },
+      { label: "Availability",  icon: BookOpen,        to: "/contractor/availability"   },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "Job Reports", icon: BarChart2, to: "/contractor/job-reports" },
+      { label: "Timesheets",  icon: FileText,  to: "/contractor/timesheets"  },
+      { label: "Invoices",    icon: Receipt,   to: "/contractor/invoices"    },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { label: "Engineers",       icon: Users,       to: "/contractor/engineers"       },
+      { label: "Company Profile", icon: Building2,   to: "/contractor/company-profile" },
+      { label: "Compliance",      icon: ShieldCheck, to: "/contractor/compliance"      },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { label: "AI Recommendations", icon: Sparkles, to: "/contractor/ai-recommendations" },
+    ],
+  },
 ];
 
 const secondaryNav = [
@@ -76,19 +96,26 @@ function ContractorSidebar() {
         </NavLink>
       </header>
 
-      <nav aria-label="Contractor primary" className="mt-4 flex flex-col gap-1">
-        {primaryNav.map(({ label, icon: Icon, to }) => (
-          <NavLink
-            key={label}
-            to={to}
-            title={label}
-            className={({ isActive }) =>
-              `${itemBase} ${isActive ? "bg-[#3b82f615] text-blue-400" : "text-slate-400 hover:text-slate-200"}`
-            }
-          >
-            <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className={`${labelBase} ${labelCls}`}>{label}</span>
-          </NavLink>
+      <nav aria-label="Contractor primary" className="mt-4 flex flex-col gap-4">
+        {navGroups.map(({ label: groupLabel, items }) => (
+          <div key={groupLabel} className="flex flex-col gap-1">
+            <p className="hidden xl:block px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              {groupLabel}
+            </p>
+            {items.map(({ label, icon: Icon, to }) => (
+              <NavLink
+                key={label}
+                to={to}
+                title={label}
+                className={({ isActive }) =>
+                  `${itemBase} ${isActive ? "bg-[#3b82f615] text-blue-400" : "text-slate-400 hover:text-slate-200"}`
+                }
+              >
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className={`${labelBase} ${labelCls}`}>{label}</span>
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
 
