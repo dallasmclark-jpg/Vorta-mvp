@@ -4,6 +4,7 @@ import "../tailwind.css";
 import { AiOperations } from "./screens/AiOperations";
 import { LoginPage } from "./screens/Login";
 import { EngineerPortal } from "./screens/EngineerPortal";
+import { ContractorPortal } from "./screens/ContractorPortal";
 import { AuthProvider } from "./lib/auth";
 import { ToastProvider } from "./components/Toast";
 
@@ -17,9 +18,13 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 
           {/* Legacy redirect — keep old URL working */}
           <Route path="/engineer-dashboard" element={<Navigate to="/engineer/dashboard" replace />} />
+          <Route path="/contractor-dashboard" element={<Navigate to="/contractor/dashboard" replace />} />
 
           {/* Engineer Portal — standalone shell with its own sidebar */}
           <Route path="/engineer/*" element={<EngineerPortal />} />
+
+          {/* Contractor Portal — standalone shell with its own sidebar */}
+          <Route path="/contractor/*" element={<ContractorPortal />} />
 
           {/* Maintenance Manager dashboard and all sub-routes
               TODO: add RequireAuth once role-based routing is implemented */}
