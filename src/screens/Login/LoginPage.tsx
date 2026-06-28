@@ -230,7 +230,7 @@ export const LoginPage = (): JSX.Element => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/demo/engineer")}
+                onClick={() => navigate("/engineer-dashboard")}
                 className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 text-left transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
               >
                 <User className="h-4 w-4 text-emerald-400" />
