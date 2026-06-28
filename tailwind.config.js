@@ -103,6 +103,10 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(-6px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
+        "card-enter": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to:   { opacity: "1", transform: "translateY(0)"    },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -111,6 +115,7 @@ module.exports = {
         "dropdown-in":  "dropdown-in 0.15s ease-out both",
         "ai-pulse":     "ai-pulse 2s ease-in-out infinite",
         "ai-spin":      "ai-spin 1.4s linear infinite",
+        "card-enter":   "card-enter 0.45s ease-out both",
       },
     },
     container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },

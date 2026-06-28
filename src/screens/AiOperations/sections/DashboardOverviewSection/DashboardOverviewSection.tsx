@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles, X } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
+import { CountUpNumber } from "../../../../components/CountUpNumber";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
 import { ExplainWithAi } from "../../../../components/ExplainWithAi";
@@ -646,8 +647,24 @@ function MetricRow({ color, countTo, suffix, text }: {
   );
 }
 
-export const DashboardOverviewSection = (): JSX.Element => {
-  const { data, loading, refetch } = useDashboardData();
+// Progress bar that starts at 0 and transitions to its target value on first
+// render, giving a smooth fill animation using the indicator's existing
+// transition-all. Respects prefers-reduced-motion via CSS.
+function AnimatedProgress({ value, className }: { value: number; className: string }) {
+  const [current, setCurrent] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setCurrent(value), 50);
+    return () => clearTimeout(t);
+  }, [value]);
+  return (
+    <Progress
+      value={current}
+      className={`${className} [&>div]:duration-700 [&>div]:ease-out`}
+    />
+  );
+}
+
+export const DashboardOverviewSection = (): JSX.Element => {  const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
 
   const [analysing, setAnalysing] = useState(false);
@@ -840,9 +857,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {overviewCards.map((card) => (
-            <Card
+          {overviewCards.map((card, i) => (
+            <div
               key={card.title}
+              className="motion-safe:animate-card-enter"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+            <Card
               role="button"
               tabIndex={0}
               aria-label={`${card.title}: ${card.value} — navigate to ${card.route.replace("/", "")}`}
@@ -862,17 +883,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   </span>
                 </div>
                 <div className="flex min-w-0 items-end justify-between gap-2">
-                  <p className="min-w-0 truncate mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-                    {card.value}
-                  </p>
+                  <CountUpNumber
+                    value={card.value}
+                    className="min-w-0 truncate mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]"
+                  />
                   <div className="shrink-0">{card.sparkline}</div>
                 </div>
               </CardContent>
             </Card>
+            </div>
           ))}
         </section>
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '400ms' }}>
             <CardContent className="flex min-w-0 h-full flex-col items-start gap-4 p-5">
               <div className="flex items-center gap-2">
                 <h2 className="mt-[-1.00px] font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
@@ -907,7 +930,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
             </CardContent>
           </Card>
-          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '480ms' }}>
             <CardContent className="flex min-w-0 h-full flex-col items-start gap-5 p-5">
               <div className="flex w-full items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
@@ -1012,7 +1035,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           {item.value}
                         </span>
                       </div>
-                      <Progress
+                      <AnimatedProgress
                         value={item.progress}
                         className={`h-2 overflow-hidden rounded bg-gray-800 ${item.indicatorClassName}`}
                       />

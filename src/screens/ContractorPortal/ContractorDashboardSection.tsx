@@ -19,6 +19,7 @@ import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { TrendIndicator } from "../../components/TrendIndicator";
+import { CountUpNumber } from "../../components/CountUpNumber";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function KpiCard({ label, value, sub, icon: Icon, valueClass, trend }: typeof kp
           <p className="text-xs font-medium text-slate-400">{label}</p>
           <Icon className="h-4 w-4 shrink-0 text-slate-600" />
         </div>
-        <p className={`text-2xl font-semibold tabular-nums ${valueClass}`}>{value}</p>
+        <CountUpNumber value={value} className={`text-2xl font-semibold tabular-nums ${valueClass}`} />
         <div className="flex items-center gap-2">
           <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />
           <span className="text-[11px] text-slate-600">·</span>
@@ -138,11 +139,15 @@ export const ContractorDashboardSection = (): JSX.Element => (
 
     {/* KPI row */}
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
+      {kpis.map((k, i) => (
+        <div key={k.label} className="motion-safe:animate-card-enter" style={{ animationDelay: `${i * 80}ms` }}>
+          <KpiCard {...k} />
+        </div>
+      ))}
     </div>
 
     {/* Opportunity Centre */}
-    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '360ms' }}>
       <CardContent className="p-0">
         <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
           <div className="flex items-center gap-2">

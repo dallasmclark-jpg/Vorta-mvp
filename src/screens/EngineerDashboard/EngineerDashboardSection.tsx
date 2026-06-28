@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { AiAnalysing } from "../../components/AiAnalysing";
+import { CountUpNumber } from "../../components/CountUpNumber";
 import { EmptyState } from "../../components/EmptyState";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { SyncIndicator } from "../../components/SyncIndicator";
@@ -283,17 +284,20 @@ function profileCompletion(p: EngineerProfile): number {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, icon: Icon, valueClass = "text-slate-100" }: {
-  label: string; value: string; sub: string; icon: React.ElementType; valueClass?: string;
+function KpiCard({ label, value, sub, icon: Icon, valueClass = "text-slate-100", index = 0 }: {
+  label: string; value: string; sub: string; icon: React.ElementType; valueClass?: string; index?: number;
 }) {
   return (
-    <Card className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+    <Card
+      className="motion-safe:animate-card-enter min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
       <CardContent className="flex min-w-0 h-full flex-col gap-3 p-4 xl:p-5">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 truncate text-xs font-medium text-slate-400">{label}</p>
           <Icon className="h-4 w-4 shrink-0 text-slate-600" />
         </div>
-        <p className={`truncate text-xl font-semibold tabular-nums ${valueClass}`}>{value}</p>
+        <CountUpNumber value={value} className={`truncate text-xl font-semibold tabular-nums ${valueClass}`} />
         <p className="truncate text-[11px] text-slate-500">{sub}</p>
       </CardContent>
     </Card>
@@ -479,7 +483,7 @@ export function EngineerDashboardSection(): JSX.Element {
               <p className="text-xs font-medium text-slate-300">Profile {completion}% complete</p>
               <span className="text-[11px] text-slate-500">Add missing details to improve your match score</span>
             </div>
-            <Progress value={completion} className="h-1.5 bg-gray-800 [&>div]:bg-blue-500" />
+            <Progress value={completion} className="h-1.5 bg-gray-800 [&>div]:bg-blue-500 [&>div]:duration-700 [&>div]:ease-out" />
           </div>
           <Button size="sm" variant="outline" className="shrink-0 h-7 border-[#3b82f640] bg-transparent text-blue-400 hover:bg-[#3b82f618] hover:text-blue-300 text-xs">
             Complete Profile
@@ -490,6 +494,7 @@ export function EngineerDashboardSection(): JSX.Element {
       {/* ── KPI cards ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5">
         <KpiCard
+          index={0}
           label="Skills Score"
           value={loading ? "—" : `${p?.skills_score ?? 0}`}
           sub={loading ? "" : `${p?.total_skills_assessed ?? 0} skills assessed`}
@@ -497,6 +502,7 @@ export function EngineerDashboardSection(): JSX.Element {
           valueClass={!loading && p ? (p.skills_score >= 80 ? "text-emerald-400" : p.skills_score >= 60 ? "text-blue-400" : "text-orange-400") : "text-slate-100"}
         />
         <KpiCard
+          index={1}
           label="Training Readiness"
           value={loading ? "—" : `${p ? Math.round((p.training_completed / Math.max(p.training_count, 1)) * 100) : 0}%`}
           sub={loading ? "" : `${p?.training_completed ?? 0} of ${p?.training_count ?? 0} complete`}
@@ -504,6 +510,7 @@ export function EngineerDashboardSection(): JSX.Element {
           valueClass="text-slate-100"
         />
         <KpiCard
+          index={2}
           label="Certifications"
           value={loading ? "—" : `${expiringCerts.length > 0 ? expiringCerts.length + " issue" + (expiringCerts.length !== 1 ? "s" : "") : "All Valid"}`}
           sub={loading ? "" : expiringCerts.length > 0 ? `${expiringCerts.filter(c => certStatusLabel(c) === "Expired").length} expired` : `${p?.certifications?.length ?? 0} total certifications`}
@@ -511,6 +518,7 @@ export function EngineerDashboardSection(): JSX.Element {
           valueClass={!loading ? (expiringCerts.some(c => certStatusLabel(c) === "Expired") ? "text-red-400" : expiringCerts.length > 0 ? "text-orange-400" : "text-emerald-400") : "text-slate-100"}
         />
         <KpiCard
+          index={3}
           label="AI Match Score"
           value={loading ? "—" : `${p?.ai_confidence ?? 0}%`}
           sub={loading ? "" : `${p?.critical_skills_met ?? 0}/${p?.critical_skills_count ?? 0} critical skills met`}
@@ -518,6 +526,7 @@ export function EngineerDashboardSection(): JSX.Element {
           valueClass={!loading && p ? matchScoreClass(p.ai_confidence) : "text-slate-100"}
         />
         <KpiCard
+          index={4}
           label="Availability"
           value={loading ? "—" : availLabel(p?.availability_status ?? "unavailable")}
           sub={loading ? "" : p?.employment_type ?? ""}
