@@ -79,7 +79,7 @@ export const LoginPage = (): JSX.Element => {
 
           {/* Vorta icon mark */}
           <div className="mb-6">
-            <VortaIcon />
+            <VortaIcon className="w-[72px] h-10" />
           </div>
 
           {/* Heading */}
