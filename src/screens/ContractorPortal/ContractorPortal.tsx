@@ -17,6 +17,7 @@ import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom"
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { ContractorDashboardSection } from "./ContractorDashboardSection";
+import { CompanyProfileSection } from "./CompanyProfileSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export const ContractorPortal = (): JSX.Element => (
     <div className="min-w-0 flex-1 overflow-y-auto">
       <Routes>
         <Route path="dashboard"          element={<ContractorDashboardSection />} />
-        <Route path="company-profile"    element={<Placeholder title="Company Profile" />} />
+        <Route path="company-profile"    element={<CompanyProfileSection />} />
         <Route path="engineers"          element={<Placeholder title="Engineers" />} />
         <Route path="availability"       element={<Placeholder title="Availability" />} />
         <Route path="opportunities"      element={<Placeholder title="Opportunities" />} />
