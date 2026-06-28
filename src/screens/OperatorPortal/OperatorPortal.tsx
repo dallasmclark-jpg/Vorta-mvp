@@ -24,6 +24,7 @@ import { OperatorComplianceSection } from "./OperatorComplianceSection";
 import { OperatorTasksSection } from "./OperatorTasksSection";
 import { OperatorAiGuidanceSection } from "./OperatorAiGuidanceSection";
 import { OperatorKnowledgeBaseSection } from "./OperatorKnowledgeBaseSection";
+import { OperatorProfileSettingsSection } from "./OperatorProfileSettingsSection";
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ export const OperatorPortal = (): JSX.Element => {
             <Route path="tasks"      element={<OperatorTasksSection />} />
             <Route path="ai-guidance"element={<OperatorAiGuidanceSection />} />
             <Route path="knowledge"  element={<OperatorKnowledgeBaseSection />} />
-            <Route path="settings"   element={<Placeholder title="Profile Settings" />} />
+            <Route path="settings"   element={<OperatorProfileSettingsSection />} />
             <Route path="*"          element={<Navigate to="dashboard" replace />} />
           </Routes>
         </PageTransition>
