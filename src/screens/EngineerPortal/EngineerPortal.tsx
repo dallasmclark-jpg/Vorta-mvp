@@ -19,6 +19,7 @@ import { MyTrainingSection } from "./MyTrainingSection";
 import { MyBookingsSection } from "./MyBookingsSection";
 import { MyCertificationsSection } from "./MyCertificationsSection";
 import { OpportunitiesSection } from "./OpportunitiesSection";
+import { AiRecommendationsSection } from "./AiRecommendationsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ export const EngineerPortal = (): JSX.Element => (
         <Route path="bookings"          element={<MyBookingsSection />} />
         <Route path="certifications"    element={<MyCertificationsSection />} />
         <Route path="opportunities"     element={<OpportunitiesSection />} />
-        <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
+        <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
         <Route path="career-path"        element={<Placeholder title="Career Path" />} />
         <Route path="settings"          element={<Placeholder title="Profile Settings" />} />
         <Route path="*"                 element={<Navigate to="dashboard" replace />} />
