@@ -109,7 +109,9 @@ export const AiActionsPanel = ({ actions, className = "" }: AiActionsPanelProps)
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         {actions.map((a, i) => (
-          <ActionCard key={i} action={a} />
+          <div key={i} className="h-full motion-safe:animate-card-enter" style={{ animationDelay: `${i * 60}ms` }}>
+            <ActionCard action={a} />
+          </div>
         ))}
       </div>
     </div>

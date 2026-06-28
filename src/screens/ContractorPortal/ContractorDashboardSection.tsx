@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { AnimatedProgress } from "../../components/AnimatedProgress";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { TrendIndicator } from "../../components/TrendIndicator";
@@ -100,7 +100,7 @@ const scoreColor = (s: number) =>
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, icon: Icon, valueClass, trend }: typeof kpis[number]) {
+function KpiCard({ label, value, sub, icon: Icon, valueClass, trend, index = 0 }: typeof kpis[number] & { index?: number }) {
   return (
     <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
       <CardContent className="flex flex-col gap-3 p-5">
@@ -108,7 +108,7 @@ function KpiCard({ label, value, sub, icon: Icon, valueClass, trend }: typeof kp
           <p className="text-xs font-medium text-slate-400">{label}</p>
           <Icon className="h-4 w-4 shrink-0 text-slate-600" />
         </div>
-        <CountUpNumber value={value} className={`text-2xl font-semibold tabular-nums ${valueClass}`} />
+        <CountUpNumber value={value} className={`text-2xl font-semibold tabular-nums ${valueClass}`} delay={index * 80 + 200} />
         <div className="flex items-center gap-2">
           <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />
           <span className="text-[11px] text-slate-600">·</span>
@@ -141,7 +141,7 @@ export const ContractorDashboardSection = (): JSX.Element => (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {kpis.map((k, i) => (
         <div key={k.label} className="motion-safe:animate-card-enter" style={{ animationDelay: `${i * 80}ms` }}>
-          <KpiCard {...k} />
+          <KpiCard {...k} index={i} />
         </div>
       ))}
     </div>
@@ -221,7 +221,7 @@ export const ContractorDashboardSection = (): JSX.Element => (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
 
       {/* Engineer Availability */}
-      <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '440ms' }}>
         <CardContent className="p-0">
           <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
             <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ export const ContractorDashboardSection = (): JSX.Element => (
       </Card>
 
       {/* Active Assignments */}
-      <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '440ms' }}>
         <CardContent className="p-0">
           <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
             <div className="flex items-center gap-2">
@@ -297,7 +297,7 @@ export const ContractorDashboardSection = (): JSX.Element => (
                       <span className="text-slate-500">Progress</span>
                       <span className="tabular-nums text-slate-500">{a.progress}%</span>
                     </div>
-                    <Progress
+                    <AnimatedProgress
                       value={a.progress}
                       className={`h-1.5 overflow-hidden rounded bg-gray-800 ${a.progress >= 60 ? "[&>div]:bg-emerald-500" : a.progress >= 30 ? "[&>div]:bg-blue-500" : "[&>div]:bg-slate-500"}`}
                     />

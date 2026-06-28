@@ -20,16 +20,12 @@ interface CountUpNumberProps {
   value: string;
   /** Animation duration in ms. Default 600. */
   duration?: number;
+  /** Delay before counting starts in ms. Default 0. */
+  delay?: number;
   className?: string;
 }
 
-/**
- * Renders a string value. If the value contains a number, that number counts
- * up from 0 to the final value on mount / when the numeric value changes.
- * Non-numeric values (e.g. "—", "Medium") render instantly and statically.
- * Respects prefers-reduced-motion.
- */
-export function CountUpNumber({ value, duration = 600, className }: CountUpNumberProps): JSX.Element {
+export function CountUpNumber({ value, duration = 600, delay = 0, className }: CountUpNumberProps): JSX.Element {
   const { pre, num, suf } = parse(value);
   const [count, setCount] = useState(REDUCED ? (num ?? 0) : 0);
 
@@ -38,20 +34,25 @@ export function CountUpNumber({ value, duration = 600, className }: CountUpNumbe
     if (REDUCED) { setCount(num); return; }
 
     setCount(0);
-    const startTime = performance.now();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let raf: number;
 
-    const step = (now: number) => {
-      const progress = Math.min((now - startTime) / duration, 1);
-      // Ease-out quadratic: fast start, decelerate to final value.
-      const eased = 1 - Math.pow(1 - progress, 2);
-      setCount(Math.round(eased * num));
-      if (progress < 1) raf = requestAnimationFrame(step);
-    };
+    timeoutId = setTimeout(() => {
+      const startTime = performance.now();
+      const step = (now: number) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 2);
+        setCount(Math.round(eased * num));
+        if (progress < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, delay);
 
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [num, duration]);
+    return () => {
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(raf);
+    };
+  }, [num, duration, delay]);
 
   if (num === null) return <span className={className}>{value}</span>;
   return <span className={className}>{pre}{count}{suf}</span>;

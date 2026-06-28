@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles, X } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
+import { AnimatedProgress } from "../../../../components/AnimatedProgress";
 import { ContextHelp } from "../../../../components/ContextHelp";
 import { CountUpNumber } from "../../../../components/CountUpNumber";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
@@ -15,7 +16,6 @@ import {
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
-import { Progress } from "../../../../components/ui/progress";
 import { supabase } from "../../../../lib/supabaseClient";
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,8 @@ const SkillsHealthChart = (): JSX.Element => {
     <svg
       viewBox="0 0 720 100"
       preserveAspectRatio="none"
-      className="h-36 w-full"
+      className="h-36 w-full motion-safe:animate-fade-in"
+      style={{ animationDelay: '0.85s' }}
       aria-label="Skills Matrix Health Trend chart"
     >
       <defs>
@@ -650,20 +651,6 @@ function MetricRow({ color, countTo, suffix, text }: {
 // Progress bar that starts at 0 and transitions to its target value on first
 // render, giving a smooth fill animation using the indicator's existing
 // transition-all. Respects prefers-reduced-motion via CSS.
-function AnimatedProgress({ value, className }: { value: number; className: string }) {
-  const [current, setCurrent] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setCurrent(value), 50);
-    return () => clearTimeout(t);
-  }, [value]);
-  return (
-    <Progress
-      value={current}
-      className={`${className} [&>div]:duration-700 [&>div]:ease-out`}
-    />
-  );
-}
-
 export const DashboardOverviewSection = (): JSX.Element => {  const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
 
@@ -886,6 +873,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                   <CountUpNumber
                     value={card.value}
                     className="min-w-0 truncate mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]"
+                    delay={i * 80 + 200}
                   />
                   <div className="shrink-0">{card.sparkline}</div>
                 </div>
@@ -991,7 +979,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
           </Card>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '560ms' }}>
             <CardContent className="flex h-full flex-col items-start gap-6 p-5 md:p-8">
               <div className="flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div className="flex flex-col items-start gap-1">
@@ -1016,7 +1004,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
             </CardContent>
           </Card>
           <aside className="flex min-w-0 w-full flex-col items-start gap-4">
-            <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '560ms' }}>
               <CardContent className="flex min-h-[360px] flex-col items-start gap-5 overflow-hidden p-5">
                 <h2 className="mt-[-1.00px] self-stretch font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-md-semibold-font-style)]">
                   Executive Summary
@@ -1062,7 +1050,8 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                 </div>
               </CardContent>
             </Card>
-            <Alert className="w-full rounded-xl border border-red-500 bg-[#ef444410] p-5 text-slate-50">
+            <div className="motion-safe:animate-card-enter" style={{ animationDelay: '640ms' }}>
+              <Alert className="w-full rounded-xl border border-red-500 bg-[#ef444410] p-5 text-slate-50">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <AlertTitle className="font-text-sm-semibold text-[length:var(--text-sm-semibold-font-size)] font-[number:var(--text-sm-semibold-font-weight)] leading-[var(--text-sm-semibold-line-height)] tracking-[var(--text-sm-semibold-letter-spacing)] text-red-500 [font-style:var(--text-sm-semibold-font-style)]">
                 CRITICAL RISK
@@ -1071,7 +1060,8 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                 PLC fault-finding gap is affecting 15 operators across Lines 1
                 &amp; 2.
               </AlertDescription>
-            </Alert>
+              </Alert>
+            </div>
           </aside>
         </div>
       </div>

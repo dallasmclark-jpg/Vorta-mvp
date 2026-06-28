@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { AiAnalysing } from "../../components/AiAnalysing";
+import { AnimatedProgress } from "../../components/AnimatedProgress";
 import { CountUpNumber } from "../../components/CountUpNumber";
 import { EmptyState } from "../../components/EmptyState";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
@@ -29,7 +30,6 @@ import { TrendIndicator } from "../../components/TrendIndicator";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -297,7 +297,7 @@ function KpiCard({ label, value, sub, icon: Icon, valueClass = "text-slate-100",
           <p className="min-w-0 truncate text-xs font-medium text-slate-400">{label}</p>
           <Icon className="h-4 w-4 shrink-0 text-slate-600" />
         </div>
-        <CountUpNumber value={value} className={`truncate text-xl font-semibold tabular-nums ${valueClass}`} />
+        <CountUpNumber value={value} className={`truncate text-xl font-semibold tabular-nums ${valueClass}`} delay={index * 80 + 200} />
         <p className="truncate text-[11px] text-slate-500">{sub}</p>
       </CardContent>
     </Card>
@@ -430,6 +430,13 @@ export function EngineerDashboardSection(): JSX.Element {
   const careerPct     = 62;
   const missingSkills = ["ATEX Certification", "Vibration Analysis Level II", "Project Management Fundamentals"];
 
+  const [careerBarPct, setCareerBarPct] = useState(0);
+  useEffect(() => {
+    if (loading) { setCareerBarPct(0); return; }
+    const t = setTimeout(() => setCareerBarPct(careerPct), 80);
+    return () => clearTimeout(t);
+  }, [loading, careerPct]);
+
   return (
     <div ref={scrollRef} className="flex flex-col gap-6 px-4 pb-12 pt-5 md:px-6 xl:px-8">
 
@@ -483,7 +490,7 @@ export function EngineerDashboardSection(): JSX.Element {
               <p className="text-xs font-medium text-slate-300">Profile {completion}% complete</p>
               <span className="text-[11px] text-slate-500">Add missing details to improve your match score</span>
             </div>
-            <Progress value={completion} className="h-1.5 bg-gray-800 [&>div]:bg-blue-500 [&>div]:duration-700 [&>div]:ease-out" />
+            <AnimatedProgress value={completion} className="h-1.5 bg-gray-800 [&>div]:bg-blue-500" />
           </div>
           <Button size="sm" variant="outline" className="shrink-0 h-7 border-[#3b82f640] bg-transparent text-blue-400 hover:bg-[#3b82f618] hover:text-blue-300 text-xs">
             Complete Profile
@@ -618,8 +625,8 @@ export function EngineerDashboardSection(): JSX.Element {
                       </div>
                       <div className="relative h-2 overflow-hidden rounded-full bg-gray-800">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500"
-                          style={{ width: `${careerPct}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 motion-safe:transition-all motion-safe:duration-700"
+                          style={{ width: `${careerBarPct}%` }}
                         />
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-slate-600">
@@ -895,7 +902,8 @@ export function EngineerDashboardSection(): JSX.Element {
             pagedOpps.map((opp, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-[#141820] p-4 transition-all hover:border-blue-500/30 hover:shadow-[0_0_0_1px_rgba(59,130,246,0.1)]"
+                className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-[#141820] p-4 transition-all hover:border-blue-500/30 hover:shadow-[0_0_0_1px_rgba(59,130,246,0.1)] motion-safe:animate-card-enter"
+                style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
