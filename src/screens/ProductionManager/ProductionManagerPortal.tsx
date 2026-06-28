@@ -16,6 +16,7 @@ import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { PageTransition } from "../../components/PageTransition";
 import { ProductionManagerDashboard } from "./ProductionManagerDashboard";
+import { ProductionSkillsMatrixSection } from "./ProductionSkillsMatrixSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ export const ProductionManagerPortal = (): JSX.Element => {
             <Route path="dashboard"          element={<ProductionManagerDashboard />} />
             <Route path="shift-coverage"     element={<Placeholder title="Shift Coverage" />} />
             <Route path="operators"          element={<Placeholder title="Operators" />} />
-            <Route path="skills-matrix"      element={<Placeholder title="Skills Matrix" />} />
+            <Route path="skills-matrix"      element={<ProductionSkillsMatrixSection />} />
             <Route path="training"           element={<Placeholder title="Training" />} />
             <Route path="compliance"         element={<Placeholder title="Compliance" />} />
             <Route path="risk"               element={<Placeholder title="Production Risk" />} />
