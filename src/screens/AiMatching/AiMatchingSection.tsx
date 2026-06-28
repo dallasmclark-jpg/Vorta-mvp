@@ -25,6 +25,8 @@ import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
+import { AiAnalysing } from "../../components/AiAnalysing";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -297,6 +299,7 @@ export const AiMatchingSection = (): JSX.Element => {
             <Download className="mr-1.5 h-4 w-4" />
             Export Report
           </Button>
+          <ExplainWithAi pageId="ai-matching" />
           <button
             type="button"
             onClick={() => setTick((t) => t + 1)}
@@ -326,6 +329,12 @@ export const AiMatchingSection = (): JSX.Element => {
       {/* ── Sync + AI actions ────────────────────────────────────────────── */}
       <div className="flex w-full flex-col gap-4">
         <SyncIndicator loading={loading} source="Supabase" confidence={stats?.bestMatchScore ? Math.min(97, Math.round(stats.bestMatchScore * 0.95 + 5)) : undefined} />
+        {loading && (
+          <AiAnalysing
+            message="AI is matching engineers against open requirements…"
+            block
+          />
+        )}
         {!loading && <AiActionsPanel actions={aiActions} />}
       </div>
 

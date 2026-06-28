@@ -33,6 +33,7 @@ import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 import {
   CertEntry,
   DrawerEngineer,
@@ -531,6 +532,7 @@ export const EngineersSection = (): JSX.Element => {
           <Button type="button" className="h-auto gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
             <Plus className="h-4 w-4" /> Add Engineer
           </Button>
+          <ExplainWithAi pageId="engineers" />
           <button type="button" onClick={() => setTick((t) => t + 1)} disabled={loading}
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />

@@ -26,6 +26,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { ContextHelp } from "../../components/ContextHelp";
 import { Select } from "../../components/Select";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -237,6 +238,7 @@ export const SupportSection = (): JSX.Element => {
           >
             <BookOpen className="h-4 w-4" /> View Help Guides
           </Button>
+          <ExplainWithAi pageId="support" />
           <button type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
             <RefreshCw className="h-5 w-5" />

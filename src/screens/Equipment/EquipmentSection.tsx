@@ -26,6 +26,8 @@ import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { TrendIndicator } from "../../components/TrendIndicator";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -529,6 +531,7 @@ export const EquipmentSection = (): JSX.Element => {
           <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
             <Download className="h-4 w-4" /> Export Report
           </Button>
+          <ExplainWithAi pageId="equipment" />
           <button type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
             <RefreshCw className="h-5 w-5" />
@@ -550,11 +553,11 @@ export const EquipmentSection = (): JSX.Element => {
             ))
           ) : (
             [
-              { label: "Total Equipment",           value: totalEquipment, sub: "Assets registered on site",                     icon: Shield,        vc: "text-slate-50"    },
-              { label: "Critical Assets",           value: criticalCount,  sub: "Assets rated critical criticality",             icon: Zap,           vc: "text-red-500"     },
-              { label: "Equipment with Skill Gaps", value: withGaps,       sub: "Assets with coverage below threshold",          icon: AlertTriangle, vc: "text-orange-400"  },
-              { label: "High-Risk Assets",          value: highRisk,       sub: "High or critical combined risk rating",         icon: Brain,         vc: "text-yellow-400"  },
-            ].map(({ label, value, sub, icon: Icon, vc }) => (
+              { label: "Total Equipment",           value: totalEquipment, sub: "Assets registered on site",                     icon: Shield,        vc: "text-slate-50",    trend: { direction: "up",   label: "+1 this month",   positiveIsUp: true  } as const },
+              { label: "Critical Assets",           value: criticalCount,  sub: "Assets rated critical criticality",             icon: Zap,           vc: "text-red-500",     trend: { direction: "flat", label: "No change",        positiveIsUp: false } as const },
+              { label: "Equipment with Skill Gaps", value: withGaps,       sub: "Assets with coverage below threshold",          icon: AlertTriangle, vc: "text-orange-400",  trend: { direction: "down", label: "-1 vs last month", positiveIsUp: false } as const },
+              { label: "High-Risk Assets",          value: highRisk,       sub: "High or critical combined risk rating",         icon: Brain,         vc: "text-yellow-400",  trend: { direction: "down", label: "-1 vs last month", positiveIsUp: false } as const },
+            ].map(({ label, value, sub, icon: Icon, vc, trend }) => (
               <Card key={label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
                 <CardContent className="flex flex-col gap-3 p-5">
                   <div className="flex items-center justify-between gap-2">
@@ -562,7 +565,10 @@ export const EquipmentSection = (): JSX.Element => {
                     <Icon className="h-4 w-4 shrink-0 text-slate-600" />
                   </div>
                   <p className={`text-2xl font-semibold tabular-nums ${vc}`}>{value}</p>
-                  <p className="text-[11px] text-slate-500">{sub}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-slate-500">{sub}</p>
+                    <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />
+                  </div>
                 </CardContent>
               </Card>
             ))

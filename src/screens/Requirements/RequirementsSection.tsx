@@ -27,6 +27,8 @@ import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { TrendIndicator } from "../../components/TrendIndicator";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -303,6 +305,7 @@ export const RequirementsSection = (): JSX.Element => {
       sub: "Site skill requirements",
       icon: ClipboardList,
       valueClass: "text-slate-50",
+      trend: { direction: "up" as const,   label: "Growing",         positiveIsUp: true  },
     },
     {
       label: "Fully Covered",
@@ -310,6 +313,7 @@ export const RequirementsSection = (): JSX.Element => {
       sub: `${stats.totalReqs > 0 ? Math.round((stats.fullyCovered / stats.totalReqs) * 100) : 0}% coverage rate`,
       icon: CheckCircle2,
       valueClass: stats.fullyCovered > 0 ? "text-emerald-400" : "text-slate-50",
+      trend: { direction: "up" as const,   label: "+2 this week",    positiveIsUp: true  },
     },
     {
       label: "Skills at Risk",
@@ -317,6 +321,7 @@ export const RequirementsSection = (): JSX.Element => {
       sub: "Partial gap or training needed",
       icon: TrendingUp,
       valueClass: stats.skillsAtRisk > 0 ? "text-yellow-400" : "text-emerald-400",
+      trend: { direction: "down" as const, label: "-1 vs last week",  positiveIsUp: false },
     },
     {
       label: "Critical Gaps",
@@ -324,6 +329,7 @@ export const RequirementsSection = (): JSX.Element => {
       sub: "Zero or insufficient coverage",
       icon: AlertTriangle,
       valueClass: stats.criticalGaps > 0 ? "text-red-500" : "text-emerald-400",
+      trend: { direction: "flat" as const, label: "No change",        positiveIsUp: false },
     },
   ], [stats]);
 
@@ -356,6 +362,7 @@ export const RequirementsSection = (): JSX.Element => {
           <Button type="button" className="h-auto gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
             <Plus className="h-4 w-4" /> Add Requirement
           </Button>
+          <ExplainWithAi pageId="requirements" />
           <button type="button" onClick={() => setTick((t) => t + 1)} disabled={loading}
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
@@ -384,7 +391,7 @@ export const RequirementsSection = (): JSX.Element => {
 
         {/* ── KPI cards ──────────────────────────────────────────────────────── */}
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {kpiCards.map(({ label, value, sub, icon: Icon, valueClass }) => (
+          {kpiCards.map(({ label, value, sub, icon: Icon, valueClass, trend }) => (
             <Card key={label} className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
                 <div className="flex min-w-0 items-center justify-between gap-2">
@@ -394,7 +401,10 @@ export const RequirementsSection = (): JSX.Element => {
                 <p className={`truncate text-xl font-semibold tabular-nums ${valueClass}`}>
                   {loading ? "—" : value}
                 </p>
-                <p className="truncate text-[11px] text-slate-500">{sub}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-[11px] text-slate-500">{sub}</p>
+                  {!loading && <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />}
+                </div>
               </CardContent>
             </Card>
           ))}

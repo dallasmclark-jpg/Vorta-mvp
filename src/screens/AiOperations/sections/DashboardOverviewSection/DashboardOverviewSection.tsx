@@ -4,6 +4,7 @@ import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
+import { ExplainWithAi } from "../../../../components/ExplainWithAi";
 import {
   Alert,
   AlertDescription,
@@ -624,6 +625,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           >
             Run Full Site Analysis
           </Button>
+          <ExplainWithAi pageId="dashboard" />
           <button
             type="button"
             onClick={refetch}

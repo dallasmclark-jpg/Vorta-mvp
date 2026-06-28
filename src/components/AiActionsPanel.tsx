@@ -1,4 +1,5 @@
-import { ArrowRight, LucideIcon, Sparkles } from "lucide-react";
+import { ArrowRight, Check, LucideIcon, Sparkles, X } from "lucide-react";
+import { useToast } from "./Toast";
 
 export interface AiAction {
   label: string;
@@ -16,11 +17,84 @@ interface AiActionsPanelProps {
 }
 
 const priorityStyle: Record<AiAction["priority"], { badge: string; dot: string }> = {
-  critical: { badge: "bg-[#ef444418] text-red-400 border border-red-500/20",   dot: "bg-red-500"    },
+  critical: { badge: "bg-[#ef444418] text-red-400 border border-red-500/20",       dot: "bg-red-500"    },
   high:     { badge: "bg-[#f9731618] text-orange-400 border border-orange-500/20", dot: "bg-orange-400" },
   medium:   { badge: "bg-[#facc1518] text-yellow-400 border border-yellow-500/20", dot: "bg-yellow-400" },
   low:      { badge: "bg-[#10b98118] text-emerald-400 border border-emerald-500/20", dot: "bg-emerald-400" },
 };
+
+interface ActionCardProps {
+  action: AiAction;
+}
+
+function ActionCard({ action: a }: ActionCardProps) {
+  const toast  = useToast();
+  const style  = priorityStyle[a.priority];
+  const Icon   = a.icon;
+
+  function accept()  { toast({ type: "success", message: `Action accepted: ${a.label}` }); }
+  function dismiss() { toast({ type: "info",    message: `Dismissed: ${a.label}` }); }
+  function review()  { toast({ type: "info",    message: `Opening review for: ${a.label}` }); if (a.onClick) a.onClick(); }
+
+  const card = (
+    <div className="flex h-full flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-3 transition-colors hover:border-[#3b82f640] hover:bg-[#141b2a]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />}
+          <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+            {a.priority}
+          </span>
+        </div>
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden="true" />
+      </div>
+      <p className="text-xs font-semibold leading-snug text-slate-200">{a.label}</p>
+      <p className="flex-1 text-[11px] leading-relaxed text-slate-500">{a.description}</p>
+
+      {/* Action buttons */}
+      <div className="mt-1 flex items-center gap-1.5 border-t border-gray-800/60 pt-2">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); accept(); }}
+          className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+          aria-label={`Accept: ${a.label}`}
+        >
+          <Check className="h-3 w-3" aria-hidden /> Accept
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); review(); }}
+          className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
+          aria-label={`Review: ${a.label}`}
+        >
+          Review
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); dismiss(); }}
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-[#ffffff08] hover:text-slate-400"
+          aria-label={`Dismiss: ${a.label}`}
+        >
+          <X className="h-3 w-3" aria-hidden /> Dismiss
+        </button>
+      </div>
+    </div>
+  );
+
+  if (a.href) {
+    return (
+      <a href={a.href} className="block h-full no-underline" aria-label={a.label}>
+        {card}
+      </a>
+    );
+  }
+
+  return (
+    <div className="h-full">
+      {card}
+    </div>
+  );
+}
 
 export const AiActionsPanel = ({ actions, className = "" }: AiActionsPanelProps): JSX.Element => {
   if (!actions.length) return <></>;
@@ -34,38 +108,9 @@ export const AiActionsPanel = ({ actions, className = "" }: AiActionsPanelProps)
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-        {actions.map((a, i) => {
-          const style  = priorityStyle[a.priority];
-          const Icon   = a.icon;
-          const isLink = !!a.href;
-
-          const inner = (
-            <div className="flex h-full flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-3 transition-colors hover:border-[#3b82f640] hover:bg-[#141b2a]">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />}
-                  <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                    {a.priority}
-                  </span>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden="true" />
-              </div>
-              <p className="text-xs font-semibold leading-snug text-slate-200">{a.label}</p>
-              <p className="text-[11px] leading-relaxed text-slate-500">{a.description}</p>
-            </div>
-          );
-
-          return isLink ? (
-            <a key={i} href={a.href} className="block h-full no-underline" aria-label={a.label}>
-              {inner}
-            </a>
-          ) : (
-            <button key={i} type="button" onClick={a.onClick} className="block h-full w-full text-left" aria-label={a.label}>
-              {inner}
-            </button>
-          );
-        })}
+        {actions.map((a, i) => (
+          <ActionCard key={i} action={a} />
+        ))}
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { Select } from "../../components/Select";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -663,6 +664,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
           <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
             <Sparkles className="h-4 w-4" /> Generate AI Report
           </Button>
+          <ExplainWithAi pageId="skills-matrix" />
           <button type="button" onClick={() => setTick((t) => t + 1)} disabled={loading} className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </button>

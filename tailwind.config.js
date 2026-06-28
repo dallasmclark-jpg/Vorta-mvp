@@ -83,6 +83,14 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(-6px) scaleY(0.96)" },
           to:   { opacity: "1", transform: "translateY(0) scaleY(1)"        },
         },
+        "shrink-x": {
+          from: { width: "100%" },
+          to:   { width: "0%"   },
+        },
+        "dot-blink": {
+          "0%, 80%, 100%": { opacity: "0.2", transform: "scale(0.8)" },
+          "40%":           { opacity: "1",   transform: "scale(1)"   },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
