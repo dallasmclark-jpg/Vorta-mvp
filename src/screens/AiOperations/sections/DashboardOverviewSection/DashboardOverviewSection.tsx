@@ -527,6 +527,7 @@ interface DashboardData {
   executiveSummary: ExecutiveSummaryItem[];
   topGap: string;
   focusArea: string;
+  aiConfidence: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -560,8 +561,12 @@ function useDashboardData(): { data: DashboardData | null; loading: boolean; ref
           topGap,
           focusArea,
         } = buildExecutiveSummary(metrics, insights);
+        const aiConfidence =
+          insights.length > 0
+            ? Math.round(insights.reduce((s, i) => s + Number(i.confidence_score), 0) / insights.length)
+            : 94;
 
-        setData({ overviewCards, criticalRisks, recommendedActions, executiveSummary, topGap, focusArea });
+        setData({ overviewCards, criticalRisks, recommendedActions, executiveSummary, topGap, focusArea, aiConfidence });
       } catch {
         // Ensure the component always renders even if queries fail
         if (!cancelled) {
@@ -572,6 +577,7 @@ function useDashboardData(): { data: DashboardData | null; loading: boolean; ref
             executiveSummary: [],
             topGap: "—",
             focusArea: "—",
+            aiConfidence: 94,
           });
         }
       } finally {
@@ -679,6 +685,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const executiveSummary   = data?.executiveSummary   ?? [];
   const topGap             = data?.topGap             ?? "—";
   const focusArea          = data?.focusArea          ?? "—";
+  const aiConfidence       = data?.aiConfidence       ?? 94;
 
   // Derive 4 AI suggested actions from live data
   const aiActions: AiAction[] = (() => {
@@ -766,7 +773,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <MetricRow color="emerald" text="Workforce analysed successfully" />
                   <MetricRow color="red" countTo={3} suffix=" critical risks reviewed" />
                   <MetricRow color="blue" countTo={4} suffix=" recommendations updated" />
-                  <MetricRow color="cyan" countTo={avgConfidence} suffix="% AI Confidence" />
+                  <MetricRow color="cyan" countTo={aiConfidence} suffix="% AI Confidence" />
                 </div>
 
                 {/* Action buttons */}
@@ -823,7 +830,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Sync indicator + AI actions ────────────────────────────────── */}
       <div className="flex w-full flex-col gap-4">
-        <SyncIndicator loading={loading} source="Supabase" confidence={avgConfidence} />
+        <SyncIndicator loading={loading} source="Supabase" confidence={aiConfidence} />
         {!loading && (
           <div className={analysing ? "rounded-xl transition-all duration-300 ring-1 ring-blue-500/25 shadow-[0_0_16px_rgba(59,130,246,0.08)]" : ""}>
             <AiActionsPanel actions={aiActions} />
@@ -978,7 +985,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     AI Live
                   </Badge>
                   <span className="mt-[-1.00px] font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] text-slate-50 [font-style:var(--text-sm-medium-font-style)]">
-                    {avgConfidence}% confidence
+                    {aiConfidence}% confidence
                   </span>
                 </div>
               </div>
