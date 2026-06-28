@@ -17,6 +17,7 @@ import { useEffect, useRef } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
+import { PageTransition } from "../../components/PageTransition";
 import { ContractorDashboardSection } from "./ContractorDashboardSection";
 import { CompanyProfileSection } from "./CompanyProfileSection";
 import { ContractorEngineersSection } from "./ContractorEngineersSection";
@@ -155,21 +156,23 @@ export const ContractorPortal = (): JSX.Element => {
       </div>
 
       <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto">
-        <Routes>
-          <Route path="dashboard"          element={<ContractorDashboardSection />} />
-          <Route path="company-profile"    element={<CompanyProfileSection />} />
-          <Route path="engineers"          element={<ContractorEngineersSection />} />
-          <Route path="availability"       element={<ContractorAvailabilitySection />} />
-          <Route path="opportunities"      element={<ContractorOpportunitiesSection />} />
-          <Route path="assignments"        element={<ContractorAssignmentsSection />} />
-          <Route path="job-reports"        element={<ContractorJobReportsSection />} />
-          <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
-          <Route path="invoices"           element={<ContractorInvoicesSection />} />
-          <Route path="compliance"         element={<ContractorComplianceSection />} />
-          <Route path="ai-recommendations" element={<ContractorAiRecommendationsSection />} />
-          <Route path="settings"           element={<ContractorSettingsSection />} />
-          <Route path="*"                  element={<Navigate to="dashboard" replace />} />
-        </Routes>
+        <PageTransition>
+          <Routes>
+            <Route path="dashboard"          element={<ContractorDashboardSection />} />
+            <Route path="company-profile"    element={<CompanyProfileSection />} />
+            <Route path="engineers"          element={<ContractorEngineersSection />} />
+            <Route path="availability"       element={<ContractorAvailabilitySection />} />
+            <Route path="opportunities"      element={<ContractorOpportunitiesSection />} />
+            <Route path="assignments"        element={<ContractorAssignmentsSection />} />
+            <Route path="job-reports"        element={<ContractorJobReportsSection />} />
+            <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
+            <Route path="invoices"           element={<ContractorInvoicesSection />} />
+            <Route path="compliance"         element={<ContractorComplianceSection />} />
+            <Route path="ai-recommendations" element={<ContractorAiRecommendationsSection />} />
+            <Route path="settings"           element={<ContractorSettingsSection />} />
+            <Route path="*"                  element={<Navigate to="dashboard" replace />} />
+          </Routes>
+        </PageTransition>
       </div>
     </main>
   );

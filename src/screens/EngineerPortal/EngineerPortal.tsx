@@ -15,6 +15,7 @@ import { useEffect, useRef } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
+import { PageTransition } from "../../components/PageTransition";
 import { EngineerDashboardSection } from "../EngineerDashboard";
 import { MyTrainingSection } from "./MyTrainingSection";
 import { MyBookingsSection } from "./MyBookingsSection";
@@ -150,18 +151,20 @@ export const EngineerPortal = (): JSX.Element => {
 
       {/* Content */}
       <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto">
-        <Routes>
-          <Route path="dashboard"         element={<EngineerDashboardSection />} />
-          <Route path="skills"            element={<MySkillsSection />} />
-          <Route path="training"          element={<MyTrainingSection />} />
-          <Route path="bookings"          element={<MyBookingsSection />} />
-          <Route path="certifications"    element={<MyCertificationsSection />} />
-          <Route path="opportunities"     element={<OpportunitiesSection />} />
-          <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
-          <Route path="career-path"        element={<CareerPathSection />} />
-          <Route path="settings"          element={<ProfileSettingsSection />} />
-          <Route path="*"                 element={<Navigate to="dashboard" replace />} />
-        </Routes>
+        <PageTransition>
+          <Routes>
+            <Route path="dashboard"         element={<EngineerDashboardSection />} />
+            <Route path="skills"            element={<MySkillsSection />} />
+            <Route path="training"          element={<MyTrainingSection />} />
+            <Route path="bookings"          element={<MyBookingsSection />} />
+            <Route path="certifications"    element={<MyCertificationsSection />} />
+            <Route path="opportunities"     element={<OpportunitiesSection />} />
+            <Route path="ai-recommendations" element={<AiRecommendationsSection />} />
+            <Route path="career-path"        element={<CareerPathSection />} />
+            <Route path="settings"          element={<ProfileSettingsSection />} />
+            <Route path="*"                 element={<Navigate to="dashboard" replace />} />
+          </Routes>
+        </PageTransition>
       </div>
     </main>
   );
