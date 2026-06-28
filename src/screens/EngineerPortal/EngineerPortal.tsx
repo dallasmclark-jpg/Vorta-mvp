@@ -16,6 +16,7 @@ import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { EngineerDashboardSection } from "../EngineerDashboard";
 import { MyTrainingSection } from "./MyTrainingSection";
+import { MyBookingsSection } from "./MyBookingsSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ export const EngineerPortal = (): JSX.Element => (
         <Route path="dashboard"         element={<EngineerDashboardSection />} />
         <Route path="skills"            element={<Placeholder title="My Skills" />} />
         <Route path="training"          element={<MyTrainingSection />} />
-        <Route path="bookings"          element={<Placeholder title="My Bookings" />} />
+        <Route path="bookings"          element={<MyBookingsSection />} />
         <Route path="certifications"    element={<Placeholder title="My Certifications" />} />
         <Route path="opportunities"     element={<Placeholder title="Opportunities" />} />
         <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
