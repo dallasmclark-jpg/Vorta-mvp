@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Award,
-  BookOpen,
   Brain,
   CheckCircle2,
   ChevronLeft,
@@ -10,10 +8,7 @@ import {
   CircleUser as UserCircle,
   Download,
   GraduationCap,
-  Mail,
   MapPin,
-  MessageSquare,
-  Network,
   Plus,
   RefreshCw,
   Search,
@@ -64,7 +59,6 @@ interface Site       { id: string; name: string; region: string }
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TABLE_PAGE_SIZE = 10;
-const DIR_PAGE_SIZE   = 8;
 
 const RISK_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -130,52 +124,6 @@ function RingScore({ value, size = 34 }: { value: number; size?: number }) {
   );
 }
 
-const CAT_CHIP: Record<string, string> = {
-  "Automation & Controls":           "border-blue-500/20 bg-blue-500/10 text-blue-400",
-  "Electrical Maintenance":          "border-yellow-400/20 bg-yellow-400/10 text-yellow-300",
-  "Mechanical Maintenance":          "border-orange-400/20 bg-orange-400/10 text-orange-300",
-  "Pharmaceutical Compliance":       "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-  "Pharmaceutical Equipment":        "border-teal-500/20 bg-teal-500/10 text-teal-400",
-  "CMMS / Maintenance Systems":      "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  "Reliability Engineering":         "border-cyan-500/20 bg-cyan-500/10 text-cyan-400",
-  "Certifications & Qualifications": "border-amber-400/20 bg-amber-400/10 text-amber-300",
-  "Bosch OEM Expertise":             "border-rose-500/20 bg-rose-500/10 text-rose-400",
-  "Pharmaceutical OEM Expertise":    "border-pink-500/20 bg-pink-500/10 text-pink-400",
-};
-
-function catChipClass(cat: string) { return CAT_CHIP[cat] ?? "border-gray-700 bg-gray-800 text-slate-400"; }
-
-function chipLabel(name: string): string {
-  const map: Record<string, string> = {
-    "Allen Bradley PLC": "A-B PLC", "Siemens TIA Portal": "Siemens TIA",
-    "Groninger Filling Lines": "Groninger", "Bausch+Stroebel Filling Lines": "B+S Lines",
-    "Bosch Vial Fillers": "Bosch Fill", "Electrical Fault Finding": "Elec. Fault",
-    "Data Integrity": "Data Int.", "Freeze Dryers": "Freeze Dry",
-    "Condition Monitoring": "Cond. Mon.", "Hydraulic Systems": "Hydraulics",
-  };
-  return map[name] ?? (name.length > 13 ? `${name.slice(0, 12)}…` : name);
-}
-
-function SkillChips({ skills, max = 3 }: { skills: DrawerEngineer["top_skills"]; max?: number }) {
-  const shown = skills.slice(0, max);
-  const extra = skills.length - shown.length;
-  if (shown.length === 0) return null;
-  return (
-    <div className="mt-1 flex flex-wrap gap-1">
-      {shown.map((s, i) => (
-        <span key={i} className={`inline-flex items-center rounded border px-1.5 py-[1px] text-[9px] font-medium leading-snug ${catChipClass(s.category)}`}>
-          {chipLabel(s.name)}
-        </span>
-      ))}
-      {extra > 0 && (
-        <span className="inline-flex items-center rounded border border-gray-700 px-1.5 py-[1px] text-[9px] font-medium text-slate-500">
-          +{extra}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function CertDots({ certs }: { certs: CertEntry[] }) {
   if (!certs.length) return null;
   const now   = Date.now();
@@ -202,67 +150,6 @@ function CertDots({ certs }: { certs: CertEntry[] }) {
   );
 }
 
-/** Single row in the Engineer Directory list panel */
-function DirectoryRow({
-  eng, isActive, onClick,
-}: {
-  eng: DrawerEngineer;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  const critPct = eng.critical_skills_count > 0
-    ? Math.round((eng.critical_skills_met / eng.critical_skills_count) * 100) : 100;
-
-  return (
-    <div
-      onClick={onClick}
-      className={`flex cursor-pointer items-center gap-3 border-b border-gray-800/60 px-4 py-3.5 transition-colors hover:bg-[#1a2030] ${
-        isActive ? "bg-blue-500/10 border-l-2 border-l-blue-500/60" : "border-l-2 border-l-transparent"
-      }`}
-    >
-      {/* Avatar */}
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${getAvatarColor(eng.full_name)}`}>
-        {getInitials(eng.full_name)}
-      </div>
-
-      {/* Name + role + chips */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-sm font-medium leading-tight text-slate-200">{eng.full_name}</p>
-          {eng.verified && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />}
-          <CertDots certs={eng.certifications} />
-        </div>
-        <p className="mt-0.5 truncate text-[11px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          {eng.department_name && <span className="truncate text-[10px] text-slate-500">{eng.department_name}</span>}
-          {eng.site_name && (
-            <span className="flex items-center gap-0.5 text-[10px] text-slate-600">
-              <MapPin className="h-2.5 w-2.5 shrink-0" />{eng.site_name}
-            </span>
-          )}
-        </div>
-        <SkillChips skills={eng.top_skills} max={3} />
-      </div>
-
-      {/* Right: availability · score · risk stacked cleanly */}
-      <div className="flex w-[110px] shrink-0 flex-col items-end gap-1">
-        <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
-          {formatAvailStatus(eng.availability_status)}
-        </Badge>
-        <div className="flex items-center gap-1.5">
-          <RingScore value={eng.skills_score} size={28} />
-          <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
-            {capitalize(eng.risk_level)}
-          </Badge>
-        </div>
-        {eng.training_count > 0 && (
-          <span className="text-[9px] font-medium text-orange-400">{eng.training_count} gap{eng.training_count !== 1 ? "s" : ""}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /** Mobile engineer card */
 function MobileEngineerCard({ eng, isActive, onClick }: { eng: DrawerEngineer; isActive: boolean; onClick: () => void }) {
   return (
@@ -283,7 +170,6 @@ function MobileEngineerCard({ eng, isActive, onClick }: { eng: DrawerEngineer; i
             <CertDots certs={eng.certifications} />
           </div>
           <p className="mt-0.5 truncate text-[11px] leading-tight text-slate-500">{eng.discipline ?? "—"}</p>
-          <SkillChips skills={eng.top_skills} max={3} />
         </div>
         <RingScore value={eng.skills_score} />
       </div>
@@ -365,7 +251,6 @@ export const EngineersSection = (): JSX.Element => {
   const [filterAvailability,   setFilterAvailability]   = useState("all");
   const [filterRisk,           setFilterRisk]           = useState("all");
 
-  const [dirPage,   setDirPage]   = useState(0);
   const [tablePage, setTablePage] = useState(0);
 
   useEffect(() => {
@@ -408,11 +293,9 @@ export const EngineersSection = (): JSX.Element => {
   const resetFilters = () => {
     setSearch(""); setFilterDept("all"); setFilterSite("all");
     setFilterAvailability("all"); setFilterRisk("all");
-    setDirPage(0); setTablePage(0);
+    setTablePage(0);
   };
 
-  const totalDirPages   = Math.ceil(filteredEngineers.length / DIR_PAGE_SIZE);
-  const pagedDirectory  = filteredEngineers.slice(dirPage * DIR_PAGE_SIZE, (dirPage + 1) * DIR_PAGE_SIZE);
   const totalTablePages = Math.ceil(filteredEngineers.length / TABLE_PAGE_SIZE);
   const pagedTable      = filteredEngineers.slice(tablePage * TABLE_PAGE_SIZE, (tablePage + 1) * TABLE_PAGE_SIZE);
 
@@ -575,19 +458,17 @@ export const EngineersSection = (): JSX.Element => {
           ))}
         </section>
 
-        {/* ── Two-panel row: Directory + Insights ─────────────────────────────── */}
-        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
+        {/* ── Engineer Register (full-width table, Asset Register style) ──── */}
+        <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="flex flex-col gap-0 p-0">
 
-          {/* ── LEFT: Engineer Directory ──────────────────────────────────────── */}
-          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex min-w-0 flex-col gap-4 p-5">
-
-              {/* Directory header */}
+            {/* Register header + filters */}
+            <div className="flex flex-col gap-3 px-5 pt-5 pb-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-semibold text-slate-50">Engineer Directory</h2>
+                  <h2 className="font-semibold text-slate-50">Engineer Register</h2>
                   <p className="text-sm text-slate-400">
-                    {loading ? "Loading…" : `${filteredEngineers.length} of ${engineers.length} engineers`}
+                    {loading ? "Loading engineers…" : `${filteredEngineers.length} engineer${filteredEngineers.length !== 1 ? "s" : ""}${totalTablePages > 1 ? ` · page ${tablePage + 1} of ${totalTablePages}` : ""}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -600,6 +481,14 @@ export const EngineersSection = (): JSX.Element => {
                   <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-xs font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
                   </Badge>
+                  <button type="button" onClick={() => setTablePage((p) => Math.max(0, p - 1))} disabled={tablePage === 0 || loading}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => setTablePage((p) => Math.min(totalTablePages - 1, p + 1))} disabled={tablePage >= totalTablePages - 1 || loading}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
@@ -608,187 +497,232 @@ export const EngineersSection = (): JSX.Element => {
                 <div className="relative min-w-[160px] flex-1">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                   <input type="text" placeholder="Search engineers…" value={search}
-                    onChange={(e) => { setSearch(e.target.value); setDirPage(0); setTablePage(0); }}
+                    onChange={(e) => { setSearch(e.target.value); setTablePage(0); }}
                     className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30" />
                 </div>
-                <Select
-                  value={filterDept}
-                  onChange={(v) => { setFilterDept(v); setDirPage(0); setTablePage(0); }}
+                <Select value={filterDept} onChange={(v) => { setFilterDept(v); setTablePage(0); }}
                   options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
-                  placeholder="All Departments"
-                />
-                <Select
-                  value={filterSite}
-                  onChange={(v) => { setFilterSite(v); setDirPage(0); setTablePage(0); }}
+                  placeholder="All Departments" />
+                <Select value={filterSite} onChange={(v) => { setFilterSite(v); setTablePage(0); }}
                   options={[{ value: "all", label: "All Sites" }, ...siteNames.map((s) => ({ value: s, label: s }))]}
-                  placeholder="All Sites"
-                />
-                <Select
-                  value={filterAvailability}
-                  onChange={(v) => { setFilterAvailability(v); setDirPage(0); setTablePage(0); }}
+                  placeholder="All Sites" />
+                <Select value={filterAvailability} onChange={(v) => { setFilterAvailability(v); setTablePage(0); }}
                   options={[
-                    { value: "all",         label: "All Availability" },
-                    { value: "available",   label: "Available"        },
-                    { value: "on_shift",    label: "On Shift"         },
-                    { value: "unavailable", label: "Unavailable"      },
-                  ]}
-                  placeholder="All Availability"
-                />
-                <Select
-                  value={filterRisk}
-                  onChange={(v) => { setFilterRisk(v); setDirPage(0); setTablePage(0); }}
+                    { value: "all", label: "All Availability" }, { value: "available", label: "Available" },
+                    { value: "on_shift", label: "On Shift" },    { value: "unavailable", label: "Unavailable" },
+                  ]} placeholder="All Availability" />
+                <Select value={filterRisk} onChange={(v) => { setFilterRisk(v); setTablePage(0); }}
                   options={[
-                    { value: "all",      label: "All Risk Levels" },
-                    { value: "critical", label: "Critical"        },
-                    { value: "high",     label: "High"            },
-                    { value: "medium",   label: "Medium"          },
-                    { value: "low",      label: "Low"             },
-                  ]}
-                  placeholder="All Risk Levels"
-                />
+                    { value: "all", label: "All Risk Levels" }, { value: "critical", label: "Critical" },
+                    { value: "high", label: "High" },           { value: "medium", label: "Medium" },
+                    { value: "low",  label: "Low"  },
+                  ]} placeholder="All Risk Levels" />
               </div>
+            </div>
 
-              {/* Error */}
-              {loadError && (
-                <div className="flex flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-[#ef444408] py-10 text-center">
-                  <AlertTriangle className="h-7 w-7 text-red-500/60" />
-                  <div>
-                    <p className="font-medium text-red-400">Failed to load engineers</p>
-                    <p className="mt-1 text-sm text-slate-500">Unable to connect to the database.</p>
-                  </div>
-                  <button type="button" onClick={() => setTick((t) => t + 1)}
-                    className="rounded-lg border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10">
-                    Try again
-                  </button>
+            {/* Error state */}
+            {loadError && (
+              <div className="mx-5 mb-5 flex flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-[#ef444408] py-10 text-center">
+                <AlertTriangle className="h-7 w-7 text-red-500/60" />
+                <div>
+                  <p className="font-medium text-red-400">Failed to load engineers</p>
+                  <p className="mt-1 text-sm text-slate-500">Unable to connect to the database.</p>
                 </div>
-              )}
+                <button type="button" onClick={() => setTick((t) => t + 1)}
+                  className="rounded-lg border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10">
+                  Try again
+                </button>
+              </div>
+            )}
 
-              {/* Mobile cards < md */}
-              {!loadError && (
-                <div className="block md:hidden">
-                  {loading ? (
-                    <div className="flex flex-col gap-3">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="rounded-xl border border-gray-800 bg-[#141820] p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-800" />
-                            <div className="flex-1">
-                              <div className="h-4 w-32 animate-pulse rounded bg-gray-800" />
-                              <div className="mt-1 h-2.5 w-20 animate-pulse rounded bg-gray-800/60" />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : filteredEngineers.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <Users className="h-8 w-8 text-slate-700" />
-                      <p className="text-sm text-slate-500">No engineers match the current filters.</p>
-                      {hasActiveFilters && (
-                        <button type="button" onClick={resetFilters} className="text-sm font-medium text-blue-400 hover:underline">Clear filters</button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {pagedDirectory.map((eng) => (
-                        <MobileEngineerCard key={eng.id} eng={eng}
-                          isActive={selectedEngineer?.id === eng.id}
-                          onClick={() => setSelectedEngineer(selectedEngineer?.id === eng.id ? null : eng)} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Desktop/tablet list rows md+ */}
-              {!loadError && (
-                <div className="hidden md:block">
-                  {loading ? (
-                    <div className="divide-y divide-gray-800/60">
-                      {Array.from({ length: DIR_PAGE_SIZE }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-3 px-4 py-3">
-                          <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-800" />
+            {/* Mobile cards */}
+            {!loadError && (
+              <div className="block md:hidden px-5 pb-5">
+                {loading ? (
+                  <div className="flex flex-col gap-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-gray-800 bg-[#141820] p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-800" />
                           <div className="flex-1">
-                            <div className="h-3.5 w-32 animate-pulse rounded bg-gray-800" />
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-800" />
                             <div className="mt-1 h-2.5 w-20 animate-pulse rounded bg-gray-800/60" />
-                            <div className="mt-1.5 flex gap-1">
-                              {[32, 28, 36].map((w, j) => <div key={j} className="h-3 animate-pulse rounded bg-gray-800/40" style={{ width: w }} />)}
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            <div className="h-4 w-16 animate-pulse rounded bg-gray-800" />
-                            <div className="h-4 w-12 animate-pulse rounded bg-gray-800/60" />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : filteredEngineers.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <Users className="h-8 w-8 text-slate-700" />
-                      <p className="text-sm text-slate-500">No engineers match the current filters.</p>
-                      {hasActiveFilters && (
-                        <button type="button" onClick={resetFilters} className="text-sm font-medium text-blue-400 hover:underline">Clear filters</button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-gray-800/60 bg-[#0f1318]">
-                      {/* Column header */}
-                      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-                        <span className="w-9 shrink-0" />
-                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Engineer</span>
-                        <span className="w-[110px] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500">Avail · Score · Risk</span>
                       </div>
-                      {pagedDirectory.map((eng) => (
-                        <DirectoryRow key={eng.id} eng={eng}
-                          isActive={selectedEngineer?.id === eng.id}
-                          onClick={() => setSelectedEngineer(selectedEngineer?.id === eng.id ? null : eng)} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Directory pagination */}
-              {!loading && !loadError && totalDirPages > 1 && (
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>{dirPage * DIR_PAGE_SIZE + 1}–{Math.min((dirPage + 1) * DIR_PAGE_SIZE, filteredEngineers.length)} of {filteredEngineers.length}</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => setDirPage((p) => Math.max(0, p - 1))} disabled={dirPage === 0}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] disabled:opacity-30">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    {Array.from({ length: Math.min(totalDirPages, 5) }).map((_, i) => (
-                      <button key={i} type="button" onClick={() => setDirPage(i)}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === dirPage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}>
-                        {i + 1}
-                      </button>
                     ))}
-                    <button type="button" onClick={() => setDirPage((p) => Math.min(totalDirPages - 1, p + 1))} disabled={dirPage >= totalDirPages - 1}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] disabled:opacity-30">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
                   </div>
+                ) : filteredEngineers.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-10 text-center">
+                    <Users className="h-8 w-8 text-slate-700" />
+                    <p className="text-sm text-slate-500">No engineers match the current filters.</p>
+                    {hasActiveFilters && (
+                      <button type="button" onClick={resetFilters} className="text-sm font-medium text-blue-400 hover:underline">Clear filters</button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {pagedTable.map((eng) => (
+                      <MobileEngineerCard key={eng.id} eng={eng}
+                        isActive={selectedEngineer?.id === eng.id}
+                        onClick={() => setSelectedEngineer(selectedEngineer?.id === eng.id ? null : eng)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Desktop register table */}
+            {!loadError && (
+              <div className="hidden md:block w-full overflow-x-auto">
+                <table className="w-max min-w-[960px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-800 bg-[#0f1318]">
+                      {[
+                        { label: "Engineer",       cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[180px]" },
+                        { label: "Discipline",     cls: "min-w-[130px]" },
+                        { label: "Department",     cls: "min-w-[130px]" },
+                        { label: "Site",           cls: "min-w-[110px]" },
+                        { label: "Availability",   cls: "min-w-[110px]" },
+                        { label: "Score",          cls: "min-w-[70px] text-center" },
+                        { label: "Risk",           cls: "min-w-[80px]"  },
+                        { label: "Training Gaps",  cls: "min-w-[110px] text-right" },
+                        { label: "SME",            cls: "min-w-[60px] text-center"  },
+                        { label: "Actions",        cls: "min-w-[80px]"  },
+                      ].map(({ label, cls }) => (
+                        <th key={label} className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading
+                      ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
+                          <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
+                            {Array.from({ length: 10 }).map((_, j) => (
+                              <td key={j} className="px-4 py-3">
+                                <div className="h-4 animate-pulse rounded bg-gray-800" style={{ width: j === 0 ? "140px" : "60px" }} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      : pagedTable.length === 0
+                      ? (
+                          <tr>
+                            <td colSpan={10} className="py-12 text-center text-sm text-slate-500">
+                              No engineers match the current filters.{" "}
+                              {hasActiveFilters && (
+                                <button type="button" onClick={resetFilters} className="font-medium text-blue-400 hover:underline">
+                                  Clear filters
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      : pagedTable.map((eng, idx) => {
+                          const rowBg  = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
+                          const isActive = selectedEngineer?.id === eng.id;
+                          return (
+                            <tr key={eng.id}
+                              onClick={() => setSelectedEngineer(isActive ? null : eng)}
+                              className={`cursor-pointer border-b border-gray-800/50 transition-colors hover:bg-[#1a2030] ${isActive ? "bg-blue-500/10" : rowBg}`}>
+
+                              {/* Engineer — sticky */}
+                              <td className={`sticky left-0 z-10 min-w-[180px] px-4 py-2.5 ${isActive ? "bg-blue-500/10" : rowBg}`}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
+                                    {getInitials(eng.full_name)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1">
+                                      <p className="truncate text-sm font-medium text-slate-100 leading-tight">{eng.full_name}</p>
+                                      {eng.verified && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-400" />}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <CertDots certs={eng.certifications} />
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-sm text-slate-400">{eng.discipline ?? "—"}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-400">{eng.department_name ?? "—"}</td>
+                              <td className="px-4 py-2.5">
+                                {eng.site_name
+                                  ? <span className="flex items-center gap-1 text-sm text-slate-400"><MapPin className="h-3 w-3 shrink-0 text-slate-600" />{eng.site_name}</span>
+                                  : <span className="text-slate-600">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
+                                  {formatAvailStatus(eng.availability_status)}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <RingScore value={eng.skills_score} size={28} />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
+                                  {capitalize(eng.risk_level)}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                {eng.training_count > 0
+                                  ? <span className="text-sm font-semibold text-orange-400 tabular-nums">{eng.training_count}</span>
+                                  : <span className="text-slate-600">0</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                {eng.critical_knowledge_holder
+                                  ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
+                                  : <span className="text-slate-700">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <button type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedEngineer(isActive ? null : eng); }}
+                                  className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200">
+                                  Review
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination footer */}
+            {!loading && !loadError && totalTablePages > 1 && (
+              <div className="flex items-center justify-between border-t border-gray-800 px-5 py-3 text-xs text-slate-500">
+                <span>{tablePage * TABLE_PAGE_SIZE + 1}–{Math.min((tablePage + 1) * TABLE_PAGE_SIZE, filteredEngineers.length)} of {filteredEngineers.length}</span>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalTablePages, 8) }).map((_, i) => (
+                    <button key={i} type="button" onClick={() => setTablePage(i)}
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === tablePage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}>
+                      {i + 1}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-            </CardContent>
-          </Card>
+          </CardContent>
+        </Card>
 
-          {/* ── RIGHT: Engineer Insights ──────────────────────────────────────── */}
+        {/* ── Insights + Knowledge Holders (secondary, below register) ──────── */}
+        <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
+
+          {/* Engineer Insights */}
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex min-w-0 flex-col gap-4 p-5">
-
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-slate-50">Engineer Insights</h2>
                 <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-xs font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
                   <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
                 </Badge>
               </div>
-
-              {/* Insight cards */}
               <div className="flex flex-col gap-3">
                 {loading
-                  ? Array.from({ length: 4 }).map((_, i) => (
+                  ? Array.from({ length: 3 }).map((_, i) => (
                       <div key={i} className="rounded-lg border border-gray-800 p-4">
                         <div className="h-4 w-48 animate-pulse rounded bg-gray-800" />
                         <div className="mt-2 h-3 w-full animate-pulse rounded bg-gray-800/60" />
@@ -821,7 +755,7 @@ export const EngineersSection = (): JSX.Element => {
                           </div>
                           {ins.filterKey && (
                             <button type="button"
-                              onClick={() => { setFilterRisk(ins.filterKey === "critical" ? "critical" : "all"); setDirPage(0); }}
+                              onClick={() => { setFilterRisk(ins.filterKey === "critical" ? "critical" : "all"); setTablePage(0); }}
                               className={`self-start rounded-lg border ${conf.border} px-3 py-1.5 text-xs font-medium ${conf.title} transition-colors hover:bg-[#ffffff08]`}>
                               Filter Engineers →
                             </button>
@@ -830,221 +764,72 @@ export const EngineersSection = (): JSX.Element => {
                       );
                     })}
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Quick stats: knowledge holders */}
+          {/* Knowledge Holders + Availability */}
+          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="flex min-w-0 flex-col gap-5 p-5">
+
               {!loading && !loadError && (
-                <div className="mt-2 border-t border-gray-800 pt-4">
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Knowledge Holders</p>
-                  <div className="flex flex-col gap-2">
-                    {engineers.filter((e) => e.critical_knowledge_holder).slice(0, 5).map((eng) => (
-                      <div key={eng.id}
-                        onClick={() => setSelectedEngineer(selectedEngineer?.id === eng.id ? null : eng)}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 py-2 transition-colors hover:border-gray-700 hover:bg-[#141820]">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
-                          {getInitials(eng.full_name)}
+                <>
+                  <div>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Knowledge Holders</p>
+                    <div className="flex flex-col gap-2">
+                      {engineers.filter((e) => e.critical_knowledge_holder).slice(0, 6).map((eng) => (
+                        <div key={eng.id}
+                          onClick={() => setSelectedEngineer(selectedEngineer?.id === eng.id ? null : eng)}
+                          className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 py-2 transition-colors hover:border-gray-700 hover:bg-[#141820]">
+                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
+                            {getInitials(eng.full_name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium text-slate-200">{eng.full_name}</p>
+                            <p className="truncate text-[10px] text-slate-500">{eng.department_name ?? eng.discipline ?? "—"}</p>
+                          </div>
+                          <Shield className="h-3.5 w-3.5 shrink-0 text-blue-400" />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-slate-200">{eng.full_name}</p>
-                          <p className="truncate text-[10px] text-slate-500">{eng.department_name ?? eng.discipline ?? "—"}</p>
-                        </div>
-                        <Shield className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+
+                  {engineers.length > 0 && (
+                    <div className="border-t border-gray-800 pt-4">
+                      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Availability Overview</p>
+                      {[
+                        { label: "Available",   key: "available",   cls: "bg-emerald-500" },
+                        { label: "On Shift",    key: "on_shift",    cls: "bg-blue-500"    },
+                        { label: "Unavailable", key: "unavailable", cls: "bg-red-500"     },
+                      ].map(({ label, key, cls }) => {
+                        const count = engineers.filter((e) => e.availability_status === key).length;
+                        const pct   = engineers.length > 0 ? (count / engineers.length) * 100 : 0;
+                        return (
+                          <div key={key} className="mb-2 flex items-center gap-2">
+                            <span className="w-20 shrink-0 text-[11px] text-slate-400">{label}</span>
+                            <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-gray-800">
+                              <div className={`h-1.5 rounded-full transition-all ${cls}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="w-6 text-right text-[11px] tabular-nums text-slate-500">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Availability summary */}
-              {!loading && !loadError && engineers.length > 0 && (
-                <div className="border-t border-gray-800 pt-4">
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Availability Overview</p>
-                  {[
-                    { label: "Available", key: "available",   cls: "bg-emerald-500" },
-                    { label: "On Shift",  key: "on_shift",    cls: "bg-blue-500"    },
-                    { label: "Unavailable", key: "unavailable", cls: "bg-red-500"   },
-                  ].map(({ label, key, cls }) => {
-                    const count = engineers.filter((e) => e.availability_status === key).length;
-                    const pct   = engineers.length > 0 ? (count / engineers.length) * 100 : 0;
-                    return (
-                      <div key={key} className="mb-2 flex items-center gap-2">
-                        <span className="w-20 shrink-0 text-[11px] text-slate-400">{label}</span>
-                        <div className="flex-1 overflow-hidden rounded-full bg-gray-800 h-1.5">
-                          <div className={`h-1.5 rounded-full transition-all ${cls}`} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="w-6 text-right text-[11px] tabular-nums text-slate-500">{count}</span>
-                      </div>
-                    );
-                  })}
+              {loading && (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-800/40" />
+                  ))}
                 </div>
               )}
 
             </CardContent>
           </Card>
+
         </div>
-
-        {/* ── Engineer Skills Overview (detailed table, internal scroll) ────── */}
-        <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex min-w-0 flex-col gap-4 p-5">
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-slate-50">Engineer Skills Overview</h2>
-                <p className="text-sm text-slate-400">
-                  {filteredEngineers.length} engineers · page {Math.min(tablePage + 1, totalTablePages || 1)} of {totalTablePages || 1}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setTablePage((p) => Math.max(0, p - 1))} disabled={tablePage === 0 || loading}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] disabled:opacity-30">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => setTablePage((p) => Math.min(totalTablePages - 1, p + 1))} disabled={tablePage >= totalTablePages - 1 || loading}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] disabled:opacity-30">
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-800">
-              <table className="w-max min-w-[720px] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-gray-800 bg-[#0f1318]">
-                    {[
-                      { label: "Engineer",       cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[160px]" },
-                      { label: "Department",     cls: "min-w-[120px]" },
-                      { label: "Site",           cls: "min-w-[100px]" },
-                      { label: "Availability",   cls: "min-w-[100px]" },
-                      { label: "Competency",     cls: "min-w-[90px] text-center" },
-                      { label: "AI Confidence",  cls: "min-w-[100px] text-right" },
-                      { label: "Critical Skills",cls: "min-w-[110px] text-right" },
-                      { label: "Training Gaps",  cls: "min-w-[110px] text-right" },
-                      { label: "Knowledge",      cls: "min-w-[90px] text-center"  },
-                      { label: "Certs",          cls: "min-w-[60px] text-center"  },
-                      { label: "Last Active",    cls: "min-w-[110px]" },
-                      { label: "Risk",           cls: "min-w-[80px]"  },
-                    ].map(({ label, cls }) => (
-                      <th key={label} className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading
-                    ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
-                        <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
-                          {Array.from({ length: 12 }).map((_, j) => (
-                            <td key={j} className="px-4 py-3">
-                              <div className="h-4 w-16 animate-pulse rounded bg-gray-800" />
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    : pagedTable.length === 0
-                    ? (
-                        <tr>
-                          <td colSpan={12} className="py-12 text-center text-sm text-slate-500">
-                            No engineers match the current filters.{" "}
-                            {hasActiveFilters && (
-                              <button type="button" onClick={resetFilters} className="font-medium text-blue-400 hover:underline">
-                                Clear filters
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    : pagedTable.map((eng, idx) => {
-                        const rowBg   = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
-                        const critPct = eng.critical_skills_count > 0 ? Math.round((eng.critical_skills_met / eng.critical_skills_count) * 100) : 100;
-                        const isActive = selectedEngineer?.id === eng.id;
-                        return (
-                          <tr key={eng.id}
-                            onClick={() => setSelectedEngineer(isActive ? null : eng)}
-                            className={`group/row cursor-pointer border-b border-gray-800/50 transition-colors hover:bg-[#1a2030] ${isActive ? "bg-blue-500/10" : rowBg}`}>
-
-                            {/* Engineer — sticky */}
-                            <td className={`sticky left-0 z-10 min-w-[160px] px-4 py-2.5 ${isActive ? "bg-blue-500/10" : rowBg}`}>
-                              <div className="flex items-center gap-2">
-                                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
-                                  {getInitials(eng.full_name)}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1">
-                                    <p className="truncate text-sm font-medium text-slate-200">{eng.full_name}</p>
-                                    {eng.verified && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-400" />}
-                                  </div>
-                                  <p className="truncate text-[10px] text-slate-500">{eng.discipline ?? "—"}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-sm text-slate-400">{eng.department_name ?? "—"}</td>
-                            <td className="px-4 py-2.5">
-                              {eng.site_name
-                                ? <span className="flex items-center gap-1 text-sm text-slate-400"><MapPin className="h-3 w-3 shrink-0 text-slate-600" />{eng.site_name}</span>
-                                : <span className="text-slate-600">—</span>}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(eng.availability_status)}`}>
-                                {formatAvailStatus(eng.availability_status)}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <RingScore value={eng.skills_score} size={28} />
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-semibold tabular-nums text-blue-400">{eng.ai_confidence}%</span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className={`text-sm font-semibold tabular-nums ${critPct >= 80 ? "text-emerald-400" : critPct >= 60 ? "text-yellow-400" : "text-red-400"}`}>
-                                {eng.critical_skills_met}
-                              </span>
-                              <span className="text-xs text-slate-600">/{eng.critical_skills_count}</span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              {eng.training_count > 0
-                                ? <span className="text-sm font-semibold text-orange-400 tabular-nums">{eng.training_count}</span>
-                                : <span className="text-slate-600">0</span>}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              {eng.critical_knowledge_holder
-                                ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
-                                : <span className="text-slate-700">—</span>}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <div className="flex justify-center gap-1">
-                                <CertDots certs={eng.certifications} />
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-sm text-slate-400">{formatDate(eng.last_assessment_date)}</td>
-                            <td className="px-4 py-2.5">
-                              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(eng.risk_level)}`}>
-                                {capitalize(eng.risk_level)}
-                              </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table pagination */}
-            {!loading && totalTablePages > 1 && (
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{tablePage * TABLE_PAGE_SIZE + 1}–{Math.min((tablePage + 1) * TABLE_PAGE_SIZE, filteredEngineers.length)} of {filteredEngineers.length}</span>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalTablePages }).map((_, i) => (
-                    <button key={i} type="button" onClick={() => setTablePage(i)}
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === tablePage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}>
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
 
       </div>
     </section>
