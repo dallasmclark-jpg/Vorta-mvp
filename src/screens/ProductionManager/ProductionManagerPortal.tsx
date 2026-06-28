@@ -17,6 +17,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { PageTransition } from "../../components/PageTransition";
 import { ProductionManagerDashboard } from "./ProductionManagerDashboard";
 import { ProductionSkillsMatrixSection } from "./ProductionSkillsMatrixSection";
+import { ProductionShiftCoverageSection } from "./ProductionShiftCoverageSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -170,7 +171,7 @@ export const ProductionManagerPortal = (): JSX.Element => {
         <PageTransition>
           <Routes>
             <Route path="dashboard"          element={<ProductionManagerDashboard />} />
-            <Route path="shift-coverage"     element={<Placeholder title="Shift Coverage" />} />
+            <Route path="shift-coverage"     element={<ProductionShiftCoverageSection />} />
             <Route path="operators"          element={<Placeholder title="Operators" />} />
             <Route path="skills-matrix"      element={<ProductionSkillsMatrixSection />} />
             <Route path="training"           element={<Placeholder title="Training" />} />
