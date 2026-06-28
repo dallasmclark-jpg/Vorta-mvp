@@ -17,6 +17,7 @@ import { VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { PageTransition } from "../../components/PageTransition";
 import { OperatorDashboardSection } from "./OperatorDashboardSection";
+import { OperatorMyShiftSection } from "./OperatorMyShiftSection";
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ export const OperatorPortal = (): JSX.Element => {
         <PageTransition>
           <Routes>
             <Route path="dashboard"  element={<OperatorDashboardSection />} />
-            <Route path="shift"      element={<Placeholder title="My Shift" />} />
+            <Route path="shift"      element={<OperatorMyShiftSection />} />
             <Route path="skills"     element={<Placeholder title="My Skills" />} />
             <Route path="training"   element={<Placeholder title="Training" />} />
             <Route path="compliance" element={<Placeholder title="Compliance" />} />
