@@ -19,7 +19,7 @@ import { SyncIndicator } from "../../components/SyncIndicator";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AvailStatus = "Available" | "Assigned" | "On Call" | "Training" | "Unavailable";
-type DayStatus   = "available" | "assigned" | "oncall" | "training" | "leave" | "off";
+type DayStatus   = "available" | "assigned" | "oncall" | "training" | "leave" | "unavailable" | "off";
 
 interface Engineer {
   id: number;
@@ -102,6 +102,7 @@ const dayConfig: Record<DayStatus, { label: string; cls: string }> = {
   oncall:      { label: "Call",   cls: "bg-[#facc1520] text-yellow-400"  },
   training:    { label: "Train",  cls: "bg-[#f9731620] text-orange-400"  },
   leave:       { label: "Leave",  cls: "bg-[#ffffff0f] text-slate-400"   },
+  unavailable: { label: "N/A",    cls: "bg-[#ef444415] text-red-400"     },
   off:         { label: "Off",    cls: "bg-transparent text-slate-700"   },
 };
 
@@ -291,7 +292,7 @@ export const ContractorAvailabilitySection = (): JSX.Element => {
                       </div>
                     </td>
                     {e.week.map((day, di) => {
-                      const cfg = dayConfig[day];
+                      const cfg = dayConfig[day as DayStatus] ?? dayConfig["off"];
                       return (
                         <td key={di} className="px-1 py-2.5 text-center">
                           {day !== "off" && (
