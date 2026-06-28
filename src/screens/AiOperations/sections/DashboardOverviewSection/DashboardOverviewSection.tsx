@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
@@ -68,6 +69,7 @@ interface OverviewCard {
   changeClassName: string;
   value: string;
   sparkline: JSX.Element;
+  route: string;
 }
 
 interface CriticalRisk {
@@ -344,6 +346,7 @@ function buildKpiCards(metrics: DbMetric[], insights: DbInsight[]): OverviewCard
       ...metricTrendChange(skills),
       value: skills ? `${Math.round(Number(skills.metric_value))}%` : "—",
       sparkline: skills ? sparklineForDirection(skills.trend_direction) : sparklines.up,
+      route: "/skills-matrix",
     },
     {
       title: "Critical Skill Gaps",
@@ -351,18 +354,21 @@ function buildKpiCards(metrics: DbMetric[], insights: DbInsight[]): OverviewCard
       changeClassName: "text-slate-400",
       value: String(criticalHighCount),
       sparkline: criticalHighCount > 0 ? sparklines.down : sparklines.up,
+      route: "/requirements",
     },
     {
       title: "Training Readiness",
       ...metricTrendChange(training),
       value: training ? `${Math.round(Number(training.metric_value))}%` : "—",
       sparkline: training ? sparklineForDirection(training.trend_direction) : sparklines.warn,
+      route: "/training",
     },
     {
       title: "Coverage Risk",
       ...coverageChange,
       value: coverageLabel,
       sparkline: sparklines.flat,
+      route: "/requirements",
     },
     {
       title: "AI Confidence",
@@ -370,6 +376,7 @@ function buildKpiCards(metrics: DbMetric[], insights: DbInsight[]): OverviewCard
       changeClassName: "text-slate-400",
       value: insights.length > 0 ? `${avgConfidence}%` : "—",
       sparkline: sparklines.high,
+      route: "/ai-matching",
     },
   ];
 }
@@ -447,6 +454,16 @@ function buildRecommendedActions(
       ...statusClasses(status),
     };
   });
+}
+
+function inferActionRoute(title: string, subtitle: string): string {
+  const text = `${title} ${subtitle}`.toLowerCase();
+  if (text.includes("training") || text.includes("book") || text.includes("course")) return "/training";
+  if (text.includes("engineer") || text.includes("backup") || text.includes("cross-train") || text.includes("headcount")) return "/engineers";
+  if (text.includes("ai") || text.includes("match") || text.includes("analysis") || text.includes("gap analysis")) return "/ai-matching";
+  if (text.includes("equipment") || text.includes("asset") || text.includes("machine") || text.includes("plc") || text.includes("robot")) return "/equipment";
+  if (text.includes("skill") || text.includes("matrix") || text.includes("competency")) return "/skills-matrix";
+  return "/requirements";
 }
 
 function formatModuleName(raw: string): string {
@@ -577,6 +594,7 @@ function useDashboardData(): { data: DashboardData | null; loading: boolean; ref
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const { data, loading, refetch } = useDashboardData();
+  const navigate = useNavigate();
 
   const overviewCards      = data?.overviewCards      ?? [];
   const criticalRisks      = data?.criticalRisks      ?? [];
@@ -663,11 +681,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
           {overviewCards.map((card) => (
             <Card
               key={card.title}
-              className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+              role="button"
+              tabIndex={0}
+              aria-label={`${card.title}: ${card.value} — navigate to ${card.route.replace("/", "")}`}
+              onClick={() => navigate(card.route)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(card.route); } }}
+              className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-all duration-150 hover:border-blue-500/40 hover:bg-[#141820] hover:shadow-[0_0_0_1px_rgba(59,130,246,0.15),0_4px_16px_rgba(0,0,0,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-0 group"
             >
               <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <p className="min-w-0 truncate mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
+                  <p className="min-w-0 truncate mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 group-hover:text-slate-300 transition-colors [font-style:var(--text-xs-medium-font-style)]">
                     {card.title}
                   </p>
                   <span
@@ -699,7 +722,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 {criticalRisks.map((risk) => (
                   <article
                     key={risk.title}
-                    className="flex min-w-0 flex-col gap-3 rounded-lg border border-gray-800 bg-[#141820] p-3 sm:flex-row sm:items-center"
+                    className="flex min-w-0 flex-col gap-3 rounded-lg border border-gray-800 bg-[#141820] p-3 sm:flex-row sm:items-center transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
                   >
                     <Badge
                       className={`shrink-0 inline-flex h-auto rounded px-2 py-1 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] shadow-none hover:${risk.levelClassName} ${risk.levelClassName} [font-style:var(--text-xs-medium-font-style)]`}
@@ -712,6 +735,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <Button
                       type="button"
                       variant="outline"
+                      onClick={() => navigate("/requirements")}
                       className={`shrink-0 h-auto rounded-md px-2.5 py-1.5 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] hover:bg-transparent [font-style:var(--text-xs-medium-font-style)] ${risk.actionClassName}`}
                     >
                       Review
@@ -741,7 +765,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 {recommendedActions.map((action, index) => (
                   <article
                     key={action.id}
-                    className={`flex min-w-0 w-full flex-col gap-3 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_80px] md:items-center md:gap-4 ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${action.title} — navigate to ${inferActionRoute(action.title, action.subtitle).replace("/", "")}`}
+                    onClick={() => navigate(inferActionRoute(action.title, action.subtitle))}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(inferActionRoute(action.title, action.subtitle)); } }}
+                    className={`flex min-w-0 w-full flex-col gap-3 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_80px] md:items-center md:gap-4 cursor-pointer rounded transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 px-2 -mx-2 ${
                       index !== recommendedActions.length - 1
                         ? "border-b border-gray-800"
                         : ""
