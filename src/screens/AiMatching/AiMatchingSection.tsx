@@ -8,9 +8,11 @@ import {
   ChevronRight,
   CircleUser as UserCircle,
   Download,
+  GraduationCap,
   RefreshCw,
   Search,
   Sparkles,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -20,6 +22,8 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { SyncIndicator } from "../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -248,6 +252,13 @@ export const AiMatchingSection = (): JSX.Element => {
 
   const stats = data?.stats;
 
+  const aiActions: AiAction[] = [
+    { label: "Run AI match on open requirements", description: "Select a requirement below to see ranked engineer matches with skill gap analysis and confidence scores.", priority: "high", icon: Sparkles },
+    { label: "Book training for unmatched engineers", description: `${stats?.criticalSkillGaps ?? 0} critical skill gaps detected. Use Training Bookings to close the highest-risk gaps.`, priority: "high", icon: GraduationCap, href: "/training" },
+    { label: "Assign engineers to open requirements", description: "Review the match list and assign the best-fit engineer to each open requirement to reduce coverage risk.", priority: "medium", icon: Users },
+    { label: "Export match report", description: "Download the AI matching results as a CSV or PDF to share with management or use in workforce planning.", priority: "low", icon: Download },
+  ];
+
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
@@ -310,6 +321,12 @@ export const AiMatchingSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Sync + AI actions ────────────────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-4">
+        <SyncIndicator loading={loading} source="Supabase" confidence={stats?.bestMatchScore ? Math.min(97, Math.round(stats.bestMatchScore * 0.95 + 5)) : undefined} />
+        {!loading && <AiActionsPanel actions={aiActions} />}
+      </div>
 
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
       <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { TriangleAlert as AlertTriangle, Bell, RefreshCw, CircleUser as UserCircle } from "lucide-react";
+import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { ContextHelp } from "../../../../components/ContextHelp";
+import { SyncIndicator } from "../../../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
 import {
   Alert,
   AlertDescription,
@@ -575,12 +577,25 @@ function useDashboardData(): { data: DashboardData | null; loading: boolean; ref
 export const DashboardOverviewSection = (): JSX.Element => {
   const { data, loading, refetch } = useDashboardData();
 
-  const overviewCards = data?.overviewCards ?? [];
-  const criticalRisks = data?.criticalRisks ?? [];
+  const overviewCards      = data?.overviewCards      ?? [];
+  const criticalRisks      = data?.criticalRisks      ?? [];
   const recommendedActions = data?.recommendedActions ?? [];
-  const executiveSummary = data?.executiveSummary ?? [];
-  const topGap = data?.topGap ?? "—";
-  const focusArea = data?.focusArea ?? "—";
+  const executiveSummary   = data?.executiveSummary   ?? [];
+  const topGap             = data?.topGap             ?? "—";
+  const focusArea          = data?.focusArea          ?? "—";
+
+  // Derive 4 AI suggested actions from live data
+  const aiActions: AiAction[] = (() => {
+    const actions: AiAction[] = [];
+    const critRisk = criticalRisks[0];
+    if (critRisk)
+      actions.push({ label: `Review critical risk: ${critRisk.title}`, description: "This skill gap poses immediate operational risk. Open the Requirements page to review coverage and book training.", priority: "critical", icon: AlertTriangle, href: "/requirements" });
+    actions.push({ label: "Book training for top skill gaps", description: "AI has identified engineers who need skills development. Use AI Matching to find best-fit training options.", priority: "high", icon: GraduationCap, href: "/training" });
+    if (topGap && topGap !== "—")
+      actions.push({ label: `Assign backup engineer — ${topGap}`, description: "This skill has single-point-of-failure risk. Cross-train a second engineer to eliminate coverage gap.", priority: "high", icon: Users, href: "/engineers" });
+    actions.push({ label: "Run AI skills gap analysis", description: "Generate a full site readiness report with training recommendations ranked by impact and urgency.", priority: "medium", icon: BookOpen, href: "/ai-matching" });
+    return actions.slice(0, 4);
+  })();
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
@@ -634,6 +649,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Sync indicator + AI actions ────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-4">
+        <SyncIndicator loading={loading} source="Supabase" confidence={94} />
+        {!loading && <AiActionsPanel actions={aiActions} />}
+      </div>
+
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {overviewCards.map((card) => (

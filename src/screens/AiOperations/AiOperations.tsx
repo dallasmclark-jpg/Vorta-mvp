@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { PageTransition } from "../../components/PageTransition";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
@@ -71,7 +72,7 @@ export const AiOperations = (): JSX.Element => {
           </div>
 
           <div ref={scrollRef} className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="min-w-0 w-full max-w-full overflow-x-hidden">
+            <PageTransition>
             <Routes>
               <Route path="/" element={<DashboardOverviewSection />} />
               <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
@@ -85,7 +86,7 @@ export const AiOperations = (): JSX.Element => {
               <Route path="/support" element={<SupportSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-            </div>
+            </PageTransition>
           </div>
         </section>
       </div>

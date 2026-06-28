@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -8,11 +8,13 @@ import {
   ChevronRight,
   CircleUser as UserCircle,
   Download,
+  GraduationCap,
   Plus,
   RefreshCw,
   Search,
   Shield,
   Upload,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -21,6 +23,8 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { ContextHelp } from "../../components/ContextHelp";
+import { SyncIndicator } from "../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -437,6 +441,13 @@ export const EquipmentSection = (): JSX.Element => {
   const [filterCoverage, setFilterCoverage] = useState("all");
   const [tablePage,      setTablePage]      = useState(0);
   const [selected,       setSelected]       = useState<Equipment | null>(null);
+  const [loading,        setLoading]        = useState(true);
+  const [syncedAt]                          = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   const areas = useMemo(() => [...new Set(MOCK_EQUIPMENT.map((e) => e.area))].sort(), []);
   const oems  = useMemo(() => [...new Set(MOCK_EQUIPMENT.map((e) => e.oem))].sort(), []);
@@ -470,6 +481,19 @@ export const EquipmentSection = (): JSX.Element => {
   const criticalCount    = MOCK_EQUIPMENT.filter((e) => e.criticality === "Critical").length;
   const withGaps         = MOCK_EQUIPMENT.filter((e) => e.coverage === "Gap").length;
   const highRisk         = MOCK_EQUIPMENT.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
+
+  const aiActions: AiAction[] = useMemo(() => {
+    const actions: AiAction[] = [];
+    const gapAssets = MOCK_EQUIPMENT.filter((e) => e.coverage === "Gap");
+    if (gapAssets.length > 0)
+      actions.push({ label: `Book training for ${gapAssets[0].name}`, description: `${gapAssets[0].engineersNeedingTraining} engineers need training to close this skill gap.`, priority: "critical", icon: GraduationCap });
+    const spofAsset = MOCK_EQUIPMENT.find((e) => e.riskLevel === "Critical");
+    if (spofAsset)
+      actions.push({ label: `Assign backup engineer to ${spofAsset.name}`, description: "Critical asset with limited cover — cross-train a second engineer to eliminate SPOF risk.", priority: "high", icon: Users });
+    actions.push({ label: "Review skills coverage report", description: `${withGaps} assets have skill gaps. Generate an AI report to prioritise training investment.`, priority: "medium", icon: Brain });
+    actions.push({ label: "Import CMMS asset list", description: "Link your CMMS asset data to keep equipment records automatically in sync.", priority: "low", icon: Upload });
+    return actions.slice(0, 4);
+  }, [withGaps]);
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
@@ -516,25 +540,37 @@ export const EquipmentSection = (): JSX.Element => {
       </header>
 
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
-      <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Total Equipment",          value: totalEquipment, sub: "Assets registered on site",                     icon: Shield,        vc: "text-slate-50"    },
-          { label: "Critical Assets",          value: criticalCount,  sub: "Assets rated critical criticality",             icon: Zap,           vc: "text-red-500"     },
-          { label: "Equipment with Skill Gaps", value: withGaps,      sub: "Assets with coverage below threshold",          icon: AlertTriangle, vc: "text-orange-400"  },
-          { label: "High-Risk Assets",         value: highRisk,       sub: "High or critical combined risk rating",         icon: Brain,         vc: "text-yellow-400"  },
-        ].map(({ label, value, sub, icon: Icon, vc }) => (
-          <Card key={label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="flex flex-col gap-3 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-slate-400">{label}</p>
-                <Icon className="h-4 w-4 shrink-0 text-slate-600" />
-              </div>
-              <p className={`text-2xl font-semibold tabular-nums ${vc}`}>{value}</p>
-              <p className="text-[11px] text-slate-500">{sub}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex w-full flex-col gap-2">
+        <SyncIndicator syncedAt={syncedAt} source="Asset Register" confidence={88} loading={loading} />
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[108px] animate-pulse rounded-xl bg-gray-800" />
+            ))
+          ) : (
+            [
+              { label: "Total Equipment",           value: totalEquipment, sub: "Assets registered on site",                     icon: Shield,        vc: "text-slate-50"    },
+              { label: "Critical Assets",           value: criticalCount,  sub: "Assets rated critical criticality",             icon: Zap,           vc: "text-red-500"     },
+              { label: "Equipment with Skill Gaps", value: withGaps,       sub: "Assets with coverage below threshold",          icon: AlertTriangle, vc: "text-orange-400"  },
+              { label: "High-Risk Assets",          value: highRisk,       sub: "High or critical combined risk rating",         icon: Brain,         vc: "text-yellow-400"  },
+            ].map(({ label, value, sub, icon: Icon, vc }) => (
+              <Card key={label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                <CardContent className="flex flex-col gap-3 p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-slate-400">{label}</p>
+                    <Icon className="h-4 w-4 shrink-0 text-slate-600" />
+                  </div>
+                  <p className={`text-2xl font-semibold tabular-nums ${vc}`}>{value}</p>
+                  <p className="text-[11px] text-slate-500">{sub}</p>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
+
+      {/* ── AI Suggested Actions ──────────────────────────────────────────── */}
+      {!loading && <AiActionsPanel actions={aiActions} />}
 
       {/* ── Filter bar ──────────────────────────────────────────────────────── */}
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
@@ -584,8 +620,7 @@ export const EquipmentSection = (): JSX.Element => {
             <div>
               <h2 className="font-semibold text-slate-50">Asset Register</h2>
               <p className="text-sm text-slate-400">
-                {filtered.length} asset{filtered.length !== 1 ? "s" : ""}
-                {totalPages > 1 ? ` · page ${tablePage + 1} of ${totalPages}` : ""}
+                {loading ? "Loading assets…" : `${filtered.length} asset${filtered.length !== 1 ? "s" : ""}${totalPages > 1 ? ` · page ${tablePage + 1} of ${totalPages}` : ""}`}
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -623,7 +658,17 @@ export const EquipmentSection = (): JSX.Element => {
                 </tr>
               </thead>
               <tbody>
-                {paged.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
+                      {Array.from({ length: 10 }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-4 animate-pulse rounded bg-gray-800" style={{ width: j === 0 ? "140px" : j === 8 ? "180px" : "60px" }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-sm text-slate-500">
                       No equipment matches the current filters.{" "}

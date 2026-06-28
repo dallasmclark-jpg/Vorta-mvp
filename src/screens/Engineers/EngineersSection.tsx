@@ -30,6 +30,8 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { SyncIndicator } from "../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import {
   CertEntry,
   DrawerEngineer,
@@ -538,6 +540,19 @@ export const EngineersSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Sync + AI actions ────────────────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-4">
+        <SyncIndicator loading={loading} source="Supabase" confidence={stats.totalEngineers > 0 ? 92 : undefined} />
+        {!loading && !loadError && (
+          <AiActionsPanel actions={[
+            { label: "Book training for engineers with gaps", description: `${stats.criticalHolders > 0 ? `${stats.criticalHolders} engineers hold critical SPOF skills.` : "Review engineer skill gaps."} Use AI Matching to identify the best training.`, priority: "high", icon: GraduationCap, href: "/training" },
+            { label: "Review expiring certifications", description: `${stats.certificationsExpiring30d} certification${stats.certificationsExpiring30d !== 1 ? "s" : ""} expire within 30 days. Book renewals before skills become non-compliant.`, priority: stats.certificationsExpiring30d > 0 ? "critical" : "medium", icon: Shield },
+            { label: "Add backup engineers for SPOF skills", description: "Engineers holding skills with no backup create single-point-of-failure risk. Cross-train colleagues to reduce site exposure.", priority: "high", icon: Users, href: "/skills-matrix" },
+            { label: "View AI engineer insights", description: "See AI-generated risk scores, readiness ratings and development recommendations for each engineer.", priority: "low", icon: Brain },
+          ] as AiAction[]} />
+        )}
+      </div>
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
 

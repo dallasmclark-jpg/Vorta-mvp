@@ -25,6 +25,8 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { SyncIndicator } from "../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Booking {
@@ -374,6 +376,19 @@ export const TrainingSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Sync + AI actions ────────────────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-4">
+        <SyncIndicator loading={loading} source="Supabase" confidence={stats.compliancePct > 0 ? Math.min(95, Math.round(stats.compliancePct * 0.9 + 10)) : undefined} />
+        {!loading && !loadError && (
+          <AiActionsPanel actions={[
+            { label: "Book priority training now", description: `${stats.criticalGaps} critical skill gap${stats.criticalGaps !== 1 ? "s" : ""} require immediate training. AI has identified engineers and ranked recommended courses.`, priority: "critical", icon: GraduationCap, href: "/training-providers" },
+            { label: "Renew expiring certifications", description: `${stats.expiringIn30Days} certification${stats.expiringIn30Days !== 1 ? "s" : ""} expire within 30 days. Book renewals before skills lapse and create compliance risk.`, priority: stats.expiringIn30Days > 0 ? "high" : "medium", icon: AlertTriangle },
+            { label: "Create training plan for the quarter", description: "Use AI Matching to generate a prioritised training plan based on skill gaps, equipment risk and compliance deadlines.", priority: "medium", icon: BookOpen, href: "/ai-matching" },
+            { label: "Review training spend vs ROI", description: `£${stats.totalSpendGBP.toLocaleString()} spent on training to date. Compare this against risk reduction and compliance improvements.`, priority: "low", icon: TrendingUp },
+          ] as AiAction[]} />
+        )}
+      </div>
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
 

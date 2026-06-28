@@ -24,6 +24,8 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { SyncIndicator } from "../../components/SyncIndicator";
+import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -363,6 +365,19 @@ export const RequirementsSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Sync + AI actions ────────────────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-4">
+        <SyncIndicator loading={loading} source="Supabase" confidence={stats.totalReqs > 0 ? Math.min(96, 70 + Math.round((stats.fullyCovered / stats.totalReqs) * 26)) : undefined} />
+        {!loading && !loadError && (
+          <AiActionsPanel actions={[
+            { label: "Review critical skill gaps", description: `${stats.criticalGaps} critical gap${stats.criticalGaps !== 1 ? "s" : ""} with insufficient coverage. Prioritise training or recruitment to close these first.`, priority: "critical", icon: AlertTriangle },
+            { label: "Book training for at-risk skills", description: `${stats.skillsAtRisk} skill${stats.skillsAtRisk !== 1 ? "s" : ""} are at risk. Use AI Matching to find the best-fit training for each engineer.`, priority: "high", icon: Sparkles, href: "/ai-matching" },
+            { label: "Add missing requirements", description: "Ensure all critical equipment and processes have defined skill requirements so AI can track coverage accurately.", priority: "medium", icon: ClipboardList },
+            { label: "Export requirements report", description: "Share the current requirements and coverage status with management or your compliance team.", priority: "low", icon: Download },
+          ] as AiAction[]} />
+        )}
+      </div>
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
 
