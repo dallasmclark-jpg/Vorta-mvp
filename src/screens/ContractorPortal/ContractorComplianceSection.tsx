@@ -18,6 +18,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -368,6 +369,7 @@ export const ContractorComplianceSection = (): JSX.Element => {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <SyncIndicator source="Vorta" confidence={86} syncedAt={new Date(Date.now() - 90000)} />
+          <ExplainWithAi pageId="contractor-compliance" />
           <Button className="bg-blue-600 text-white hover:bg-blue-500">
             <Upload className="h-4 w-4" />Upload Document
           </Button>

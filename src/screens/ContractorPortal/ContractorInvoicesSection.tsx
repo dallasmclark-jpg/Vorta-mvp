@@ -17,6 +17,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -436,6 +437,7 @@ export const ContractorInvoicesSection = (): JSX.Element => {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <SyncIndicator source="Vorta" confidence={90} syncedAt={new Date(Date.now() - 75000)} />
+          <ExplainWithAi pageId="contractor-invoices" />
           <Button className="bg-blue-600 text-white hover:bg-blue-500">
             <Receipt className="h-4 w-4" />Create Invoice
           </Button>

@@ -22,6 +22,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export const CompanyProfileSection = (): JSX.Element => (
       </div>
       <div className="flex shrink-0 items-center">
         <SyncIndicator source="Vorta" confidence={94} syncedAt={new Date(Date.now() - 180000)} />
+        <ExplainWithAi pageId="contractor-company-profile" />
       </div>
     </header>
 

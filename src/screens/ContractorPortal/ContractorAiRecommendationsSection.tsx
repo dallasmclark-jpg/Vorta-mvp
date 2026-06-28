@@ -20,6 +20,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -327,6 +328,7 @@ export const ContractorAiRecommendationsSection = (): JSX.Element => {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <SyncIndicator source="Vorta AI" confidence={94} syncedAt={new Date(Date.now() - 45000)} />
+          <ExplainWithAi pageId="contractor-ai-recommendations" />
           <Button className="bg-blue-600 text-white hover:bg-blue-500">
             <RefreshCw className="h-4 w-4" />Run AI Review
           </Button>

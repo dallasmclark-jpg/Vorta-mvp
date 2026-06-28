@@ -17,6 +17,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { SyncIndicator } from "../../components/SyncIndicator";
+import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { TrendIndicator } from "../../components/TrendIndicator";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ export const ContractorDashboardSection = (): JSX.Element => (
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <SyncIndicator source="Vorta" confidence={91} syncedAt={new Date(Date.now() - 120000)} />
+        <ExplainWithAi pageId="contractor-dashboard" />
       </div>
     </header>
 

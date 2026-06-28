@@ -146,6 +146,186 @@ const EXPLANATIONS: Record<string, PageExplanation> = {
       "Check data integration settings to ensure Vorta is pulling the latest engineer and equipment data.",
     ],
   },
+  "contractor-dashboard": {
+    title: "Contractor Dashboard",
+    summary:
+      "Your contractor company command centre showing workforce availability, matched opportunities, active assignments and AI-prioritised actions. Everything here is specific to your contractor company and updated in real time.",
+    risks: [
+      "Low engineer availability reduces your ability to respond to new opportunities — review utilisation and free up capacity.",
+      "Unresponded opportunities expire — high-match requirements should be actioned within 24–48 hours.",
+      "Compliance gaps in engineer certifications can block assignment readiness and delay site access approvals.",
+    ],
+    actions: [
+      "Review AI Recommendations for the highest-priority workforce and compliance actions.",
+      "Check Opportunities for new matched requirements and respond before they expire.",
+      "Confirm engineer availability is up to date before accepting new assignments.",
+    ],
+  },
+  "contractor-company-profile": {
+    title: "Company Profile",
+    summary:
+      "Manage your contractor company's Vorta profile, marketplace presence, capabilities and compliance status. This is the information sites and customers see when evaluating your company for opportunities.",
+    risks: [
+      "An incomplete profile reduces your visibility to manufacturing sites browsing the marketplace.",
+      "Outdated capability descriptions may cause mismatches between your skills and site requirements.",
+      "Missing compliance documentation can block automatic verification and delay opportunity responses.",
+    ],
+    actions: [
+      "Ensure your service regions, capabilities and emergency callout availability are accurate.",
+      "Upload any missing company compliance documents to maintain verified status.",
+      "Review your marketplace visibility settings to confirm you are visible to relevant sites.",
+    ],
+  },
+  "contractor-engineers": {
+    title: "Contractor Engineers",
+    summary:
+      "Manage your contractor workforce — skills coverage, certifications, availability and assignment readiness. This is the foundation of your company's capability scoring and opportunity matching.",
+    risks: [
+      "Engineers with expiring certifications may become ineligible for specific site or assignment requirements.",
+      "Low skills coverage in key disciplines reduces your match scores and opportunity eligibility.",
+      "Engineers without up-to-date availability status may be excluded from AI matching.",
+    ],
+    actions: [
+      "Review engineers with certifications expiring in the next 30 days and arrange renewals.",
+      "Update availability status for any engineer whose circumstances have changed.",
+      "Cross-train engineers in high-demand disciplines to improve your company's match score.",
+    ],
+  },
+  "contractor-availability": {
+    title: "Engineer Availability",
+    summary:
+      "Monitor your engineer workforce availability, utilisation rates and readiness for new customer opportunities. Accurate availability data directly improves your AI opportunity match scores.",
+    risks: [
+      "Over-utilised engineers with no available capacity will reduce your ability to accept new assignments.",
+      "Stale availability data causes AI to mis-score your capacity and may result in missed opportunities.",
+      "Conflicts between existing assignments and new opportunities need early identification to avoid delivery risk.",
+    ],
+    actions: [
+      "Update engineer availability immediately after assignment completions or schedule changes.",
+      "Flag engineers who are approaching full utilisation so they are excluded from new opportunity matching.",
+      "Use the availability matrix to identify which engineers can be offered for upcoming requirements.",
+    ],
+  },
+  "contractor-opportunities": {
+    title: "Opportunities",
+    summary:
+      "Review matched customer requirements, compare engineer fit scores and decide which opportunities to respond to. AI ranks opportunities by match quality and urgency to help you prioritise.",
+    risks: [
+      "High-match opportunities that go unresponded within 24 hours are at risk of being taken by competing contractors.",
+      "Accepting opportunities without confirming engineer availability leads to delivery risk and customer friction.",
+      "Low match scores on visible opportunities suggest a skills or certification gap in your workforce.",
+    ],
+    actions: [
+      "Sort by AI match score and respond to the highest-ranked opportunities first.",
+      "Confirm engineer availability and certifications before committing to an opportunity.",
+      "Review declined or expired opportunities to identify skills gaps worth addressing through training.",
+    ],
+  },
+  "contractor-assignments": {
+    title: "Assignments",
+    summary:
+      "Track active, upcoming and completed assignments — including engineer allocation, delivery progress, job reports, timesheets and customer approval status.",
+    risks: [
+      "Assignments without submitted job reports block invoice creation and delay payment.",
+      "Timesheets that are overdue or unapproved create invoice blockers that affect cashflow.",
+      "Assignments approaching their end date without a completion sign-off create customer satisfaction risk.",
+    ],
+    actions: [
+      "Review active assignments and identify any without submitted job reports or approved timesheets.",
+      "Chase engineer timesheets that are overdue to unblock invoice readiness.",
+      "Monitor assignment delivery status and raise any risks with the customer early.",
+    ],
+  },
+  "contractor-job-reports": {
+    title: "Job Reports",
+    summary:
+      "Review completed work evidence, outstanding reports and customer approval status. Job reports are required to trigger invoice readiness for each assignment.",
+    risks: [
+      "Missing job reports block invoicing — every completed assignment needs a signed-off report to generate an invoice.",
+      "Reports awaiting customer approval delay payment — follow up promptly on outstanding approvals.",
+      "Incomplete or rejected reports require engineer re-submission which extends the billing cycle.",
+    ],
+    actions: [
+      "Identify all completed assignments with missing or unsubmitted job reports and chase engineers.",
+      "Follow up with customers on reports awaiting approval to unblock invoicing.",
+      "Review rejected reports and work with engineers to resubmit corrected versions promptly.",
+    ],
+  },
+  "contractor-timesheets": {
+    title: "Timesheets",
+    summary:
+      "Track submitted hours, approval status, missing entries and invoice readiness across all assignments. Accurate timesheet data is required for invoicing and revenue recognition.",
+    risks: [
+      "Missing timesheets block invoice creation — all hours must be submitted and approved before invoicing.",
+      "Disputed timesheets delay payment and create customer friction if not resolved promptly.",
+      "Late timesheet submissions reduce your ability to forecast accurate monthly revenue.",
+    ],
+    actions: [
+      "Review engineers with missing or overdue timesheet entries and issue reminders.",
+      "Follow up on timesheets awaiting customer approval to unblock invoice readiness.",
+      "Reconcile timesheet hours against assignment scope before submitting invoices.",
+    ],
+  },
+  "contractor-invoices": {
+    title: "Invoices",
+    summary:
+      "Monitor invoice readiness, draft and submitted invoices, payment status and blockers. This page gives you full visibility of your revenue pipeline from assignment completion to payment.",
+    risks: [
+      "Invoices blocked by missing job reports or unapproved timesheets delay your cashflow.",
+      "Overdue invoices that have not been followed up create revenue risk.",
+      "Disputed invoices can escalate into relationship issues if not resolved within the agreed timeframe.",
+    ],
+    actions: [
+      "Review all invoice blockers and resolve the underlying job report or timesheet issues.",
+      "Follow up on submitted invoices that are past their payment due date.",
+      "Check draft invoices for accuracy before submission to avoid disputes.",
+    ],
+  },
+  "contractor-compliance": {
+    title: "Compliance",
+    summary:
+      "Monitor company documents, engineer certifications, site access readiness and expiry risks. Compliance status directly affects your marketplace visibility and assignment eligibility.",
+    risks: [
+      "Expired company documents can trigger automatic suspension of your marketplace listing.",
+      "Engineers with expired certifications may be rejected at site induction — this creates assignment delivery risk.",
+      "Compliance gaps that are not resolved before assignment start dates cause customer and reputational damage.",
+    ],
+    actions: [
+      "Upload and renew any company documents flagged as expiring or expired.",
+      "Review engineer certifications expiring within 30 days and arrange renewals.",
+      "Confirm all engineers on active assignments meet the site's specific compliance requirements.",
+    ],
+  },
+  "contractor-ai-recommendations": {
+    title: "AI Recommendations",
+    summary:
+      "Vorta AI prioritises the most impactful workforce actions, opportunity responses, compliance risks and revenue opportunities for your contractor company. Recommendations are ranked by urgency and impact.",
+    risks: [
+      "Ignoring high-priority recommendations can cause compliance failures, missed opportunities or delayed revenue.",
+      "Recommendations marked as urgent typically have a 24–48 hour action window before the risk escalates.",
+      "AI confidence scores below 80% indicate limited data — complete your engineer profiles to improve accuracy.",
+    ],
+    actions: [
+      "Review and action high-priority recommendations before moving to medium and low priority items.",
+      "Dismiss recommendations that are no longer relevant so AI can recalibrate its prioritisation.",
+      "Complete engineer profiles and certifications to improve AI match accuracy and recommendation quality.",
+    ],
+  },
+  "contractor-settings": {
+    title: "Contractor Settings",
+    summary:
+      "Manage contractor portal preferences, users, permissions, notifications and marketplace configuration. Settings here control how your company appears to sites and how your team accesses the portal.",
+    risks: [
+      "Incorrect marketplace visibility settings may hide your company from relevant site requirements.",
+      "User permission gaps can leave operations managers unable to respond to opportunities in time.",
+      "Notification settings that are too infrequent may delay awareness of compliance expiries or opportunity matches.",
+    ],
+    actions: [
+      "Review user roles and ensure all team members have the correct access level.",
+      "Confirm marketplace visibility and region settings are accurate before the next opportunity cycle.",
+      "Enable compliance expiry and opportunity alerts to ensure timely awareness of critical events.",
+    ],
+  },
   "engineer-dashboard": {
     title: "Engineer Dashboard",
     summary:
