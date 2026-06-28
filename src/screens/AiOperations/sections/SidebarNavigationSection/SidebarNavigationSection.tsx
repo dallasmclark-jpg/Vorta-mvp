@@ -15,7 +15,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { VortaLogo } from "../../../../components/VortaLogo";
+import { VortaLogo, VortaIcon } from "../../../../components/VortaLogo";
 import { supabase } from "../../../../lib/supabaseClient";
 
 // ─── Primary navigation (no Training here — it is the expandable group below) ─
@@ -78,7 +78,7 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
             <VortaLogo />
           </span>
           {!forceExpanded && (
-            <span className="block select-none font-mono text-sm font-bold text-white xl:hidden">&gt;&lt;</span>
+            <span className="block xl:hidden"><VortaIcon /></span>
           )}
         </NavLink>
       </header>

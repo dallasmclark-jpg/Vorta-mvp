@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { VortaLogo } from "../../components/VortaLogo";
+import { VortaLogo, VortaIcon } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 import { PageTransition } from "../../components/PageTransition";
 import { EngineerDashboardSection } from "../EngineerDashboard";
@@ -65,7 +65,7 @@ function EngineerSidebar() {
       <header className="flex h-10 items-center justify-center xl:justify-start xl:px-2">
         <NavLink to="/engineer/dashboard" aria-label="Vorta home" className="inline-flex items-center overflow-hidden">
           <span className="hidden xl:block"><VortaLogo /></span>
-          <span className="block select-none font-mono text-sm font-bold text-white xl:hidden">&gt;&lt;</span>
+          <span className="block xl:hidden"><VortaIcon /></span>
         </NavLink>
       </header>
 

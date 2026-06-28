@@ -1,39 +1,53 @@
 /**
- * Placeholder for the Vorta logo exported from Figma.
- * Replace the inner <svg> content with the actual asset once exported.
- * Expected: >< symbol + VORTA wordmark, approx 24px tall.
+ * Official Vorta branding components.
+ *
+ * VortaLogo  — full horizontal lockup (icon + wordmark). Use in expanded sidebars and login.
+ * VortaIcon  — icon mark only (the >< motif). Use in collapsed sidebars and mobile headers.
  */
-export const VortaLogo = (): JSX.Element => {
-  return (
-    <svg
-      width="96"
-      height="24"
-      viewBox="0 0 96 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="Vorta"
-      role="img"
+
+interface LogoProps {
+  className?: string;
+}
+
+export const VortaIcon = ({ className = "" }: LogoProps): JSX.Element => (
+  <span
+    aria-label="Vorta"
+    role="img"
+    className={`inline-flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg bg-[#1e2535] ${className}`}
+  >
+    <span
+      aria-hidden="true"
+      className="font-mono text-[13px] font-black leading-none tracking-[-2px] text-white"
     >
-      {/* >< bracket symbol — replace with Figma path data */}
-      <text
-        x="0"
-        y="18"
-        fontFamily="monospace"
-        fontSize="16"
-        fontWeight="700"
-        fill="#ffffff"
-        letterSpacing="-0.5"
-      >&gt;&lt;</text>
-      {/* VORTA wordmark — replace with Figma path data */}
-      <text
-        x="26"
-        y="18"
-        fontFamily="sans-serif"
-        fontSize="14"
-        fontWeight="700"
-        fill="#3b82f6"
-        letterSpacing="2"
-      >VORTA</text>
-    </svg>
-  );
-};
+      {">&lt;".replace("&lt;", "<")}
+    </span>
+  </span>
+);
+
+export const VortaLogo = ({ className = "" }: LogoProps): JSX.Element => (
+  <span
+    aria-label="Vorta"
+    role="img"
+    className={`inline-flex shrink-0 select-none items-center gap-2.5 ${className}`}
+  >
+    {/* Icon mark */}
+    <span
+      aria-hidden="true"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[#1e2535]"
+    >
+      <span className="font-mono text-[12px] font-black leading-none tracking-[-2px] text-white">
+        &gt;&lt;
+      </span>
+    </span>
+
+    {/* Wordmark */}
+    <span className="flex flex-col leading-none">
+      <span className="text-[13px] font-bold tracking-[0.18em] text-white uppercase">
+        Vorta
+      </span>
+      <span className="text-[8px] font-medium tracking-[0.22em] text-slate-500 uppercase">
+        Platform
+      </span>
+    </span>
+  </span>
+);

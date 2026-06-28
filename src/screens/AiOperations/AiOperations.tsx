@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { PageTransition } from "../../components/PageTransition";
+import { VortaIcon } from "../../components/VortaLogo";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
@@ -68,8 +69,7 @@ export const AiOperations = (): JSX.Element => {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="font-mono text-sm font-bold text-white">&gt;&lt;</span>
-            <span className="text-sm font-bold tracking-widest text-blue-500">VORTA</span>
+            <VortaIcon />
           </div>
 
           <div ref={scrollRef} className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">

@@ -3,6 +3,7 @@ import { Building2, Eye, EyeOff, Factory, HardHat, LayoutDashboard, User } from 
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../lib/auth";
+import { VortaLogo, VortaIcon } from "../../components/VortaLogo";
 // ─── Google logo SVG (matches screenshot) ────────────────────────────────────
 
 function GoogleIcon() {
@@ -22,9 +23,7 @@ function TopNav() {
   return (
     <header className="flex h-16 w-full items-center border-b border-gray-800 bg-[#090b10] px-6 md:px-10">
       <a href="/" aria-label="Vorta home" className="flex items-center gap-2 select-none shrink-0">
-        <span className="font-mono text-base font-bold text-white leading-none">&gt;&lt;</span>
-        <span className="text-sm font-bold tracking-[0.15em] text-white uppercase">Vorta</span>
-        <span className="hidden text-[10px] font-medium tracking-widest text-slate-500 uppercase lg:block">Network</span>
+        <VortaLogo />
       </a>
     </header>
   );
@@ -78,9 +77,9 @@ export const LoginPage = (): JSX.Element => {
       <main className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="flex w-full max-w-[400px] flex-col items-center">
 
-          {/* "><" icon mark */}
-          <div className="mb-6 select-none font-mono text-3xl font-bold text-white leading-none">
-            &gt;&lt;
+          {/* Vorta icon mark */}
+          <div className="mb-6">
+            <VortaIcon />
           </div>
 
           {/* Heading */}
