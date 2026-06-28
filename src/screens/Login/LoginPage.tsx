@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Eye, EyeOff, LayoutDashboard, User } from "lucide-react";
+import { Building2, Eye, EyeOff, Factory, HardHat, LayoutDashboard, User } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../lib/auth";
@@ -218,11 +218,11 @@ export const LoginPage = (): JSX.Element => {
             <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-widest text-slate-600">
               MVP Demo Access
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 text-left transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
               >
                 <LayoutDashboard className="h-4 w-4 text-blue-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Maintenance Manager</span>
@@ -231,7 +231,7 @@ export const LoginPage = (): JSX.Element => {
               <button
                 type="button"
                 onClick={() => navigate("/engineer/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 text-left transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
               >
                 <User className="h-4 w-4 text-emerald-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Engineer</span>
@@ -240,11 +240,29 @@ export const LoginPage = (): JSX.Element => {
               <button
                 type="button"
                 onClick={() => navigate("/contractor/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 text-left transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
               >
                 <Building2 className="h-4 w-4 text-blue-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Contractor</span>
                 <span className="text-[10px] text-slate-600 text-center">View demo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/production/dashboard")}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#f9731625] bg-[#f9731608] px-3 py-3 transition-colors hover:border-[#f9731645] hover:bg-[#f9731612]"
+              >
+                <Factory className="h-4 w-4 text-orange-400" />
+                <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Production Manager</span>
+                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/operator/dashboard")}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
+              >
+                <HardHat className="h-4 w-4 text-emerald-400" />
+                <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Operator</span>
+                <span className="text-[10px] text-slate-600 text-center">Coming soon</span>
               </button>
             </div>
           </div>
