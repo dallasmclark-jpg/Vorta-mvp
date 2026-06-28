@@ -25,6 +25,7 @@ import { ContractorAssignmentsSection } from "./ContractorAssignmentsSection";
 import { ContractorJobReportsSection } from "./ContractorJobReportsSection";
 import { ContractorTimesheetsSection } from "./ContractorTimesheetsSection";
 import { ContractorInvoicesSection } from "./ContractorInvoicesSection";
+import { ContractorComplianceSection } from "./ContractorComplianceSection";
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -153,7 +154,7 @@ export const ContractorPortal = (): JSX.Element => (
         <Route path="job-reports"        element={<ContractorJobReportsSection />} />
         <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
         <Route path="invoices"           element={<ContractorInvoicesSection />} />
-        <Route path="compliance"         element={<Placeholder title="Compliance" />} />
+        <Route path="compliance"         element={<ContractorComplianceSection />} />
         <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
         <Route path="settings"           element={<Placeholder title="Settings" />} />
         <Route path="*"                  element={<Navigate to="dashboard" replace />} />
