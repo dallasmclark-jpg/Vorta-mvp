@@ -25,6 +25,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -615,23 +616,32 @@ export const TrainingProvidersSection = (): JSX.Element => {
                     className="h-9 w-full rounded-lg border border-gray-800 bg-[#141820] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                   />
                 </div>
-                <select value={filterDelivery} onChange={(e) => setFilterDelivery(e.target.value)}
-                  className="h-9 rounded-lg border border-gray-800 bg-[#141820] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Delivery</option>
-                  {allDeliveryTypes.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)}
-                  className="h-9 rounded-lg border border-gray-800 bg-[#141820] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Locations</option>
-                  {allLocations.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                  className="h-9 rounded-lg border border-gray-800 bg-[#141820] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Statuses</option>
-                  <option value="active">Approved</option>
-                  <option value="preferred">Preferred</option>
-                  <option value="pending">Pending Review</option>
-                </select>
+                <Select
+                  value={filterDelivery}
+                  onChange={setFilterDelivery}
+                  options={[{ value: "all", label: "All Delivery" }, ...allDeliveryTypes.map((d) => ({ value: d, label: d }))]}
+                  placeholder="All Delivery"
+                  className="h-9"
+                />
+                <Select
+                  value={filterLocation}
+                  onChange={setFilterLocation}
+                  options={[{ value: "all", label: "All Locations" }, ...allLocations.map((l) => ({ value: l, label: l }))]}
+                  placeholder="All Locations"
+                  className="h-9"
+                />
+                <Select
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                  options={[
+                    { value: "all",       label: "All Statuses"  },
+                    { value: "active",    label: "Approved"      },
+                    { value: "preferred", label: "Preferred"     },
+                    { value: "pending",   label: "Pending Review" },
+                  ]}
+                  placeholder="All Statuses"
+                  className="h-9"
+                />
                 {hasActiveFilters && (
                   <button type="button" onClick={resetFilters}
                     className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-200">

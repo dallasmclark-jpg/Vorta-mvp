@@ -22,6 +22,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -738,38 +739,47 @@ export const AiReportsSection = (): JSX.Element => {
           </div>
 
           {/* Department */}
-          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
-            className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-            <option value="all">Department</option>
-            {(liveData?.departments ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
+          <Select
+            value={filterDept}
+            onChange={setFilterDept}
+            options={[{ value: "all", label: "Department" }, ...(liveData?.departments ?? []).map((d) => ({ value: d, label: d }))]}
+            placeholder="Department"
+          />
 
           {/* Category */}
-          <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setRiskPage(0); }}
-            className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-            <option value="all">Skill Category</option>
-            {(liveData?.categories ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <Select
+            value={filterCategory}
+            onChange={(v) => { setFilterCategory(v); setRiskPage(0); }}
+            options={[{ value: "all", label: "Skill Category" }, ...(liveData?.categories ?? []).map((c) => ({ value: c, label: c }))]}
+            placeholder="Skill Category"
+          />
 
           {/* Risk level */}
-          <select value={filterRisk} onChange={(e) => { setFilterRisk(e.target.value); setRiskPage(0); }}
-            className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-            <option value="all">Risk Level</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+          <Select
+            value={filterRisk}
+            onChange={(v) => { setFilterRisk(v); setRiskPage(0); }}
+            options={[
+              { value: "all",      label: "Risk Level" },
+              { value: "critical", label: "Critical"   },
+              { value: "high",     label: "High"       },
+              { value: "medium",   label: "Medium"     },
+              { value: "low",      label: "Low"        },
+            ]}
+            placeholder="Risk Level"
+          />
 
           {/* Report type */}
-          <select value={filterReport} onChange={(e) => setFilterReport(e.target.value)}
-            className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-            <option>Executive Summary</option>
-            <option>Skills Risk</option>
-            <option>Training Priorities</option>
-            <option>Compliance</option>
-            <option>Workforce Readiness</option>
-          </select>
+          <Select
+            value={filterReport}
+            onChange={setFilterReport}
+            options={[
+              { value: "Executive Summary",    label: "Executive Summary"    },
+              { value: "Skills Risk",          label: "Skills Risk"          },
+              { value: "Training Priorities",  label: "Training Priorities"  },
+              { value: "Compliance",           label: "Compliance"           },
+              { value: "Workforce Readiness",  label: "Workforce Readiness"  },
+            ]}
+          />
 
           {hasFilters && (
             <button type="button" onClick={clearFilters}

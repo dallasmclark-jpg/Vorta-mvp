@@ -79,11 +79,16 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(6px)" },
           to:   { opacity: "1", transform: "translateY(0)"  },
         },
+        "dropdown-in": {
+          from: { opacity: "0", transform: "translateY(-6px) scaleY(0.96)" },
+          to:   { opacity: "1", transform: "translateY(0) scaleY(1)"        },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
-        "fade-in":        "fade-in 0.18s ease-out both",
+        "fade-in":      "fade-in 0.18s ease-out both",
+        "dropdown-in":  "dropdown-in 0.15s ease-out both",
       },
     },
     container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },

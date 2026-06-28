@@ -21,6 +21,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -844,25 +845,24 @@ export const SkillsMatrixSection = (): JSX.Element => {
                   className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                 />
               </div>
-              <select
+              <Select
                 value={filterRisk}
-                onChange={(e) => { setFilterRisk(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
-              >
-                <option value="all">All Risk Levels</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-              <select
+                onChange={(v) => { setFilterRisk(v); setTablePage(0); }}
+                options={[
+                  { value: "all",      label: "All Risk Levels" },
+                  { value: "critical", label: "Critical"        },
+                  { value: "high",     label: "High"            },
+                  { value: "medium",   label: "Medium"          },
+                  { value: "low",      label: "Low"             },
+                ]}
+                placeholder="All Risk Levels"
+              />
+              <Select
                 value={filterDept}
-                onChange={(e) => { setFilterDept(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none"
-              >
-                <option value="all">All Departments</option>
-                {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
+                onChange={(v) => { setFilterDept(v); setTablePage(0); }}
+                options={[{ value: "all", label: "All Departments" }, ...departments.map((d) => ({ value: d, label: d }))]}
+                placeholder="All Departments"
+              />
             </div>
 
             {/* Quick filter chips */}

@@ -28,6 +28,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { ContextHelp } from "../../components/ContextHelp";
+import { Select } from "../../components/Select";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -76,13 +77,17 @@ function InviteModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-300">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)}
-                className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none focus:border-blue-500/60">
-                <option>Admin</option>
-                <option>Manager</option>
-                <option>Editor</option>
-                <option>Viewer</option>
-              </select>
+              <Select
+                value={role}
+                onChange={setRole}
+                options={[
+                  { value: "Admin",   label: "Admin"   },
+                  { value: "Manager", label: "Manager" },
+                  { value: "Editor",  label: "Editor"  },
+                  { value: "Viewer",  label: "Viewer"  },
+                ]}
+                className="h-9"
+              />
             </div>
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={onClose}
@@ -171,10 +176,12 @@ function SelectRow({ label, value, onChange, options }: {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-medium text-slate-400">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none focus:border-blue-500/60">
-        {options.map((o) => <option key={o}>{o}</option>)}
-      </select>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options.map((o) => ({ value: o, label: o }))}
+        className="h-9"
+      />
     </div>
   );
 }

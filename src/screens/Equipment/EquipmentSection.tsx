@@ -25,6 +25,7 @@ import { Progress } from "../../components/ui/progress";
 import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -587,18 +588,20 @@ export const EquipmentSection = (): JSX.Element => {
           </div>
           {(
             [
-              { label: "Area",          value: filterArea,     onChange: (v: string) => { setFilterArea(v);     setTablePage(0); }, options: areas,                                               placeholder: "All Areas"          },
-              { label: "Criticality",   value: filterCrit,     onChange: (v: string) => { setFilterCrit(v);     setTablePage(0); }, options: ["Critical","High","Medium","Low"],                   placeholder: "All Criticalities"  },
-              { label: "OEM",           value: filterOem,      onChange: (v: string) => { setFilterOem(v);      setTablePage(0); }, options: oems,                                                placeholder: "All OEMs"           },
-              { label: "Status",        value: filterStatus,   onChange: (v: string) => { setFilterStatus(v);   setTablePage(0); }, options: ["Healthy","Watch","At Risk","Offline"],              placeholder: "All Statuses"       },
-              { label: "Coverage",      value: filterCoverage, onChange: (v: string) => { setFilterCoverage(v); setTablePage(0); }, options: ["Strong","Partial","Gap"],                          placeholder: "All Coverage"       },
+              { label: "Area",          value: filterArea,     onChange: (v: string) => { setFilterArea(v);     setTablePage(0); }, options: areas,                                               placeholder: "All Areas"         },
+              { label: "Criticality",   value: filterCrit,     onChange: (v: string) => { setFilterCrit(v);     setTablePage(0); }, options: ["Critical","High","Medium","Low"],                   placeholder: "All Criticalities" },
+              { label: "OEM",           value: filterOem,      onChange: (v: string) => { setFilterOem(v);      setTablePage(0); }, options: oems,                                                placeholder: "All OEMs"          },
+              { label: "Status",        value: filterStatus,   onChange: (v: string) => { setFilterStatus(v);   setTablePage(0); }, options: ["Healthy","Watch","At Risk","Offline"],              placeholder: "All Statuses"      },
+              { label: "Coverage",      value: filterCoverage, onChange: (v: string) => { setFilterCoverage(v); setTablePage(0); }, options: ["Strong","Partial","Gap"],                          placeholder: "All Coverage"      },
             ] as const
           ).map(({ label, value, onChange, options, placeholder }) => (
-            <select key={label} value={value} onChange={(e) => onChange(e.target.value)}
-              className="h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-              <option value="all">{placeholder}</option>
-              {options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
+            <Select
+              key={label}
+              value={value}
+              onChange={onChange}
+              options={[{ value: "all", label: placeholder }, ...options.map((o) => ({ value: o, label: o }))]}
+              placeholder={placeholder}
+            />
           ))}
           {hasFilters && (
             <button type="button" onClick={clearFilters}

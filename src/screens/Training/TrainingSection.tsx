@@ -27,6 +27,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { Select } from "../../components/Select";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Booking {
@@ -689,14 +690,18 @@ export const TrainingSection = (): JSX.Element => {
                       className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                     />
                   </div>
-                  <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPriorityPage(0); }}
-                    className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                    <option value="all">All Priorities</option>
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  <Select
+                    value={filterPriority}
+                    onChange={(v) => { setFilterPriority(v); setPriorityPage(0); }}
+                    options={[
+                      { value: "all",      label: "All Priorities" },
+                      { value: "Critical", label: "Critical"       },
+                      { value: "High",     label: "High"           },
+                      { value: "Medium",   label: "Medium"         },
+                      { value: "Low",      label: "Low"            },
+                    ]}
+                    placeholder="All Priorities"
+                  />
                 </div>
 
                 <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-800">

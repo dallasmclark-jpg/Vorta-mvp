@@ -26,6 +26,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -547,32 +548,42 @@ export const RequirementsSection = (): JSX.Element => {
                   className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                 />
               </div>
-              <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                <option value="all">All Departments</option>
-                {deptNames.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                <option value="all">All Trades</option>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                <option value="all">All Priorities</option>
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-              <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setTablePage(0); }}
-                className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                <option value="all">All Statuses</option>
-                <option value="Critical Gap">Critical Gap</option>
-                <option value="Partial Gap">Partial Gap</option>
-                <option value="Training Required">Training Required</option>
-                <option value="Covered">Covered</option>
-              </select>
+              <Select
+                value={filterDept}
+                onChange={(v) => { setFilterDept(v); setTablePage(0); }}
+                options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
+                placeholder="All Departments"
+              />
+              <Select
+                value={filterCategory}
+                onChange={(v) => { setFilterCategory(v); setTablePage(0); }}
+                options={[{ value: "all", label: "All Trades" }, ...categories.map((c) => ({ value: c, label: c }))]}
+                placeholder="All Trades"
+              />
+              <Select
+                value={filterPriority}
+                onChange={(v) => { setFilterPriority(v); setTablePage(0); }}
+                options={[
+                  { value: "all",      label: "All Priorities" },
+                  { value: "Critical", label: "Critical"       },
+                  { value: "High",     label: "High"           },
+                  { value: "Medium",   label: "Medium"         },
+                  { value: "Low",      label: "Low"            },
+                ]}
+                placeholder="All Priorities"
+              />
+              <Select
+                value={filterStatus}
+                onChange={(v) => { setFilterStatus(v); setTablePage(0); }}
+                options={[
+                  { value: "all",                label: "All Statuses"        },
+                  { value: "Critical Gap",        label: "Critical Gap"        },
+                  { value: "Partial Gap",         label: "Partial Gap"         },
+                  { value: "Training Required",   label: "Training Required"   },
+                  { value: "Covered",             label: "Covered"             },
+                ]}
+                placeholder="All Statuses"
+              />
             </div>
 
             {/* Error state */}

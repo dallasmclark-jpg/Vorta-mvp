@@ -24,6 +24,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -391,52 +392,45 @@ export const AiMatchingSection = (): JSX.Element => {
                 </div>
 
                 {/* Department */}
-                <select
+                <Select
                   value={filterDept}
-                  onChange={(e) => { setFilterDept(e.target.value); setPage(1); }}
-                  className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none transition-colors focus:border-blue-500/60 hover:border-[#ffffff25]"
-                >
-                  <option value="">Department</option>
-                  {(data?.departments ?? []).map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                  onChange={(v) => { setFilterDept(v); setPage(1); }}
+                  options={[{ value: "", label: "Department" }, ...(data?.departments ?? []).map((d) => ({ value: d, label: d }))]}
+                  placeholder="Department"
+                  className="h-9"
+                />
 
                 {/* Skill */}
-                <select
+                <Select
                   value={filterSkill}
-                  onChange={(e) => { setFilterSkill(e.target.value); setPage(1); }}
-                  className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none transition-colors focus:border-blue-500/60 hover:border-[#ffffff25]"
-                >
-                  <option value="">Skill</option>
-                  {(data?.skills ?? []).slice(0, 30).map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                  onChange={(v) => { setFilterSkill(v); setPage(1); }}
+                  options={[{ value: "", label: "Skill" }, ...(data?.skills ?? []).slice(0, 30).map((s) => ({ value: s, label: s }))]}
+                  placeholder="Skill"
+                  className="h-9"
+                />
 
                 {/* Certification */}
-                <select
+                <Select
                   value={filterCert}
-                  onChange={(e) => { setFilterCert(e.target.value); setPage(1); }}
-                  className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none transition-colors focus:border-blue-500/60 hover:border-[#ffffff25]"
-                >
-                  <option value="">Certification</option>
-                  {(data?.certifications ?? []).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  onChange={(v) => { setFilterCert(v); setPage(1); }}
+                  options={[{ value: "", label: "Certification" }, ...(data?.certifications ?? []).map((c) => ({ value: c, label: c }))]}
+                  placeholder="Certification"
+                  className="h-9"
+                />
 
                 {/* Min Score */}
-                <select
-                  value={filterMinScore}
-                  onChange={(e) => { setFilterMinScore(Number(e.target.value)); setPage(1); }}
-                  className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none transition-colors focus:border-blue-500/60 hover:border-[#ffffff25]"
-                >
-                  <option value={0}>Min Score</option>
-                  <option value={85}>85%+ Strong Match</option>
-                  <option value={70}>70%+ Good Match</option>
-                  <option value={55}>55%+ Partial Match</option>
-                </select>
+                <Select
+                  value={String(filterMinScore)}
+                  onChange={(v) => { setFilterMinScore(Number(v)); setPage(1); }}
+                  options={[
+                    { value: "0",  label: "Min Score"         },
+                    { value: "85", label: "85%+ Strong Match" },
+                    { value: "70", label: "70%+ Good Match"   },
+                    { value: "55", label: "55%+ Partial Match" },
+                  ]}
+                  placeholder="Min Score"
+                  className="h-9"
+                />
 
                 {hasFilters && (
                   <button

@@ -32,6 +32,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
+import { Select } from "../../components/Select";
 import {
   CertEntry,
   DrawerEngineer,
@@ -608,31 +609,41 @@ export const EngineersSection = (): JSX.Element => {
                     onChange={(e) => { setSearch(e.target.value); setDirPage(0); setTablePage(0); }}
                     className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30" />
                 </div>
-                <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Departments</option>
-                  {deptNames.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <select value={filterSite} onChange={(e) => { setFilterSite(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Sites</option>
-                  {siteNames.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select value={filterAvailability} onChange={(e) => { setFilterAvailability(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Availability</option>
-                  <option value="available">Available</option>
-                  <option value="on_shift">On Shift</option>
-                  <option value="unavailable">Unavailable</option>
-                </select>
-                <select value={filterRisk} onChange={(e) => { setFilterRisk(e.target.value); setDirPage(0); setTablePage(0); }}
-                  className="min-w-0 max-w-full h-8 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-300 focus:outline-none">
-                  <option value="all">All Risk Levels</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
+                <Select
+                  value={filterDept}
+                  onChange={(v) => { setFilterDept(v); setDirPage(0); setTablePage(0); }}
+                  options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
+                  placeholder="All Departments"
+                />
+                <Select
+                  value={filterSite}
+                  onChange={(v) => { setFilterSite(v); setDirPage(0); setTablePage(0); }}
+                  options={[{ value: "all", label: "All Sites" }, ...siteNames.map((s) => ({ value: s, label: s }))]}
+                  placeholder="All Sites"
+                />
+                <Select
+                  value={filterAvailability}
+                  onChange={(v) => { setFilterAvailability(v); setDirPage(0); setTablePage(0); }}
+                  options={[
+                    { value: "all",         label: "All Availability" },
+                    { value: "available",   label: "Available"        },
+                    { value: "on_shift",    label: "On Shift"         },
+                    { value: "unavailable", label: "Unavailable"      },
+                  ]}
+                  placeholder="All Availability"
+                />
+                <Select
+                  value={filterRisk}
+                  onChange={(v) => { setFilterRisk(v); setDirPage(0); setTablePage(0); }}
+                  options={[
+                    { value: "all",      label: "All Risk Levels" },
+                    { value: "critical", label: "Critical"        },
+                    { value: "high",     label: "High"            },
+                    { value: "medium",   label: "Medium"          },
+                    { value: "low",      label: "Low"             },
+                  ]}
+                  placeholder="All Risk Levels"
+                />
               </div>
 
               {/* Error */}

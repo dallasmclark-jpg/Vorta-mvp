@@ -25,6 +25,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { ContextHelp } from "../../components/ContextHelp";
+import { Select } from "../../components/Select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -299,23 +300,23 @@ export const SupportSection = (): JSX.Element => {
                 {/* Category */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-slate-400">Issue category</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)}
-                    className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none focus:border-blue-500/60">
-                    {["Skills Matrix", "Engineer Profiles", "Training Bookings", "AI Matching", "Equipment", "Account / Billing", "Technical Issue"].map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={category}
+                    onChange={setCategory}
+                    options={["Skills Matrix", "Engineer Profiles", "Training Bookings", "AI Matching", "Equipment", "Account / Billing", "Technical Issue"].map((o) => ({ value: o, label: o }))}
+                    className="h-9"
+                  />
                 </div>
 
                 {/* Priority */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-slate-400">Priority</label>
-                  <select value={priority} onChange={(e) => setPriority(e.target.value)}
-                    className="h-9 rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 text-sm text-slate-300 outline-none focus:border-blue-500/60">
-                    {["Low", "Medium", "High", "Urgent"].map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={priority}
+                    onChange={setPriority}
+                    options={["Low", "Medium", "High", "Urgent"].map((o) => ({ value: o, label: o }))}
+                    className="h-9"
+                  />
                 </div>
 
                 {/* Subject */}
