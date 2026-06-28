@@ -11,7 +11,6 @@ import {
   LogOut,
   Network,
   Sparkles,
-  User,
   Users,
   Wrench,
 } from "lucide-react";
@@ -22,13 +21,12 @@ import { supabase } from "../../../../lib/supabaseClient";
 // ─── Primary navigation (no Training here — it is the expandable group below) ─
 
 const primaryNavigation = [
-  { label: "Dashboard",          icon: LayoutDashboard, to: "/"                   },
-  { label: "Engineer Dashboard", icon: User,            to: "/engineer-dashboard" },
-  { label: "Equipment",          icon: Wrench,          to: "/equipment"          },
-  { label: "Skills Matrix",      icon: Network,         to: "/skills-matrix"      },
-  { label: "Engineers",          icon: Users,           to: "/engineers"          },
-  { label: "Requirements",       icon: ClipboardList,   to: "/requirements"       },
-  { label: "AI Matching",        icon: Sparkles,        to: "/ai-matching"        },
+  { label: "Dashboard",     icon: LayoutDashboard, to: "/"              },
+  { label: "Equipment",     icon: Wrench,          to: "/equipment"     },
+  { label: "Skills Matrix", icon: Network,         to: "/skills-matrix" },
+  { label: "Engineers",     icon: Users,           to: "/engineers"     },
+  { label: "Requirements",  icon: ClipboardList,   to: "/requirements"  },
+  { label: "AI Matching",   icon: Sparkles,        to: "/ai-matching"   },
 ];
 
 // Training sub-items

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "../tailwind.css";
 import { AiOperations } from "./screens/AiOperations";
 import { LoginPage } from "./screens/Login";
+import { EngineerDashboardSection } from "./screens/EngineerDashboard";
 import { AuthProvider, RequireAuth } from "./lib/auth";
 import { ToastProvider } from "./components/Toast";
 
@@ -14,7 +15,19 @@ createRoot(document.getElementById("app") as HTMLElement).render(
           {/* Public route — always accessible */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* All dashboard routes are protected — unauthenticated users are redirected to /login */}
+          {/* Engineer-facing dashboard — standalone, no MM sidebar */}
+          <Route
+            path="/engineer-dashboard"
+            element={
+              <RequireAuth>
+                <main className="min-h-screen w-full overflow-y-auto bg-[#0b0e14] text-white">
+                  <EngineerDashboardSection />
+                </main>
+              </RequireAuth>
+            }
+          />
+
+          {/* All Maintenance Manager routes — protected */}
           <Route
             path="/*"
             element={
