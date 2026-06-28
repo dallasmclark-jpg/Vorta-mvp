@@ -25,8 +25,8 @@ const primaryNav = [
   { label: "My Bookings",        icon: Calendar,        to: "/engineer/bookings"           },
   { label: "My Certifications",  icon: Award,           to: "/engineer/certifications"     },
   { label: "Opportunities",      icon: BriefcaseBusiness, to: "/engineer/opportunities"   },
-  { label: "AI Recommendations", icon: Sparkles,        to: "/engineer/recommendations"   },
-  { label: "Career Path",        icon: TrendingUp,      to: "/engineer/career"            },
+  { label: "AI Recommendations", icon: Sparkles,        to: "/engineer/ai-recommendations" },
+  { label: "Career Path",        icon: TrendingUp,      to: "/engineer/career-path"        },
 ];
 
 const secondaryNav = [
@@ -140,8 +140,8 @@ export const EngineerPortal = (): JSX.Element => (
         <Route path="bookings"          element={<Placeholder title="My Bookings" />} />
         <Route path="certifications"    element={<Placeholder title="My Certifications" />} />
         <Route path="opportunities"     element={<Placeholder title="Opportunities" />} />
-        <Route path="recommendations"   element={<Placeholder title="AI Recommendations" />} />
-        <Route path="career"            element={<Placeholder title="Career Path" />} />
+        <Route path="ai-recommendations" element={<Placeholder title="AI Recommendations" />} />
+        <Route path="career-path"        element={<Placeholder title="Career Path" />} />
         <Route path="settings"          element={<Placeholder title="Profile Settings" />} />
         <Route path="*"                 element={<Navigate to="dashboard" replace />} />
       </Routes>
