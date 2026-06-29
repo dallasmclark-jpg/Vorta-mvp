@@ -45,24 +45,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Loading screen ───────────────────────────────────────────────────────────
-
-function AuthLoading() {
-  return <VortaLoadingScreen />;
-}
-
 // ─── Route guard ─────────────────────────────────────────────────────────────
 
-/**
- * Wrap any route that requires authentication.
- * Redirects unauthenticated users to /login, preserving the intended destination
- * so they can be returned there after a successful sign-in.
- */
 export function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
   const { session, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <AuthLoading />;
+  if (loading) return <VortaLoadingScreen />;
   if (!session) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
+}
+
+// ─── Boot loader with fade-out ───────────────────────────────────────────────
+
+// Wraps the entire app during initial auth resolution, fading the loader out
+// over 250ms once loading completes so the transition into the app is smooth.
+export function AuthGate({ children }: { children: React.ReactNode }) {
+  const { loading } = useAuth();
+  const [showLoader, setShowLoader] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setFadeOut(true);
+      const t = setTimeout(() => setShowLoader(false), 260);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  return (
+    <>
+      {showLoader && <VortaLoadingScreen fadeOut={fadeOut} />}
+      {!loading && children}
+    </>
+  );
 }

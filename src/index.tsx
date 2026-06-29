@@ -7,13 +7,14 @@ import { EngineerPortal } from "./screens/EngineerPortal";
 import { ContractorPortal } from "./screens/ContractorPortal";
 import { ProductionManagerPortal } from "./screens/ProductionManager";
 import { OperatorPortal } from "./screens/OperatorPortal";
-import { AuthProvider } from "./lib/auth";
+import { AuthGate, AuthProvider } from "./lib/auth";
 import { ToastProvider } from "./components/Toast";
 
 createRoot(document.getElementById("app") as HTMLElement).render(
   <BrowserRouter>
     <AuthProvider>
-      <ToastProvider>
+      <AuthGate>
+        <ToastProvider>
         <Routes>
           {/* Login — default entry point */}
           <Route path="/" element={<LoginPage />} />
@@ -40,7 +41,8 @@ createRoot(document.getElementById("app") as HTMLElement).render(
           {/* Maintenance Manager — all sub-routes */}
           <Route path="/*" element={<AiOperations />} />
         </Routes>
-      </ToastProvider>
+        </ToastProvider>
+      </AuthGate>
     </AuthProvider>
   </BrowserRouter>,
 );
