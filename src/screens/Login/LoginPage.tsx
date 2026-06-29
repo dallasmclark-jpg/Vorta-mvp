@@ -76,7 +76,7 @@ export const LoginPage = (): JSX.Element => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0e14]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#0b0e14]">
       <TopNav />
 
       {/* ── Centered content ──────────────────────────────────────────────── */}
