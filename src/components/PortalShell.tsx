@@ -150,7 +150,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   };
 
   return (
-    <aside className="relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 xl:px-4 overflow-y-auto">
+    <aside className="relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 xl:px-4 overflow-hidden">
       {/* Close button (mobile overlay only) */}
       {onClose && (
         <button
