@@ -43,9 +43,9 @@ export const LoginPage = (): JSX.Element => {
 
   const [submittingLinkedIn, setSubmittingLinkedIn] = useState(false);
 
-  // If already authenticated, redirect to intended destination or dashboard
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/dashboard";
-  if (!loading && session) return <Navigate to={from} replace />;
+  // Redirect only when arriving via RequireAuth (i.e. a protected route sent the user here)
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
+  if (!loading && session && from) return <Navigate to={from} replace />;
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +59,7 @@ export const LoginPage = (): JSX.Element => {
       return;
     }
     // TODO: Implement role-based routing once user profiles (e.g. profiles.role) are available.
-    navigate(from, { replace: true });
+    navigate(from ?? "/dashboard", { replace: true });
   };
 
   const handleLinkedIn = async () => {
