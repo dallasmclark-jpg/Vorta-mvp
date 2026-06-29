@@ -1,11 +1,19 @@
-import { useRef, useState } from "react";
-import { Menu, X } from "lucide-react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { useEffect } from "react";
-import { PageTransition } from "../../components/PageTransition";
-import { VortaIcon } from "../../components/VortaLogo";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { PortalShell } from "../../components/PortalShell";
+import type { NavGroup } from "../../components/PortalShell";
+import {
+  Building2,
+  ClipboardList,
+  Cog,
+  GraduationCap,
+  Headphones,
+  LayoutDashboard,
+  Network,
+  Sparkles,
+  Users,
+  Wrench,
+} from "lucide-react";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
-import { SidebarNavigationSection } from "./sections/SidebarNavigationSection/SidebarNavigationSection";
 import { SkillsMatrixSection } from "../SkillsMatrix";
 import { EngineersSection } from "../Engineers";
 import { RequirementsSection } from "../Requirements";
@@ -17,81 +25,52 @@ import { EquipmentSection } from "../Equipment";
 import { SupportSection } from "../Support";
 import { DesignSystemSection } from "../DesignSystem";
 
-export const AiOperations = (): JSX.Element => {
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const location  = useLocation();
+const nav: NavGroup[] = [
+  {
+    groupLabel: "Overview",
+    items: [
+      { label: "Dashboard",    icon: LayoutDashboard, to: "/"             },
+      { label: "Equipment",    icon: Wrench,          to: "/equipment"    },
+      { label: "AI Matching",  icon: Sparkles,        to: "/ai-matching"  },
+    ],
+  },
+  {
+    groupLabel: "Workforce",
+    items: [
+      { label: "Skills Matrix", icon: Network,       to: "/skills-matrix" },
+      { label: "Engineers",     icon: Users,         to: "/engineers"     },
+      { label: "Requirements",  icon: ClipboardList, to: "/requirements"  },
+    ],
+  },
+  {
+    groupLabel: "Training",
+    items: [
+      { label: "Bookings",  icon: GraduationCap, to: "/training"           },
+      { label: "Providers", icon: Building2,     to: "/training-providers" },
+    ],
+  },
+];
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo(0, 0);
-  }, [location.pathname]);
+const secondaryNav = [
+  { label: "Support",  icon: Headphones, to: "/support"  },
+  { label: "Settings", icon: Cog,        to: "/settings" },
+];
 
-  return (
-    <main className="h-screen w-full max-w-full overflow-hidden bg-[#0b0e14] text-white">
-      <div className="flex h-full w-full max-w-full items-stretch overflow-hidden">
-
-        {/* ── Sidebar: icon-only 72px on md+lg, expanded on xl ────────────── */}
-        <aside className="hidden shrink-0 md:flex md:w-[72px] lg:w-[72px] xl:w-[220px] sticky top-0 h-screen overflow-y-auto">
-          <SidebarNavigationSection />
-        </aside>
-
-        {/* ── Mobile overlay sidebar ────────────────────────────────────────── */}
-        {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 flex md:hidden">
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
-              onClick={() => setMobileSidebarOpen(false)}
-              aria-hidden="true"
-            />
-            <div className="relative z-50 flex w-64 shrink-0 flex-col">
-              <SidebarNavigationSection forceExpanded />
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
-                aria-label="Close sidebar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Main content ──────────────────────────────────────────────────── */}
-        <section className="flex min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden">
-          {/* Mobile top bar with hamburger */}
-          <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(true)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <VortaIcon />
-          </div>
-
-          <div ref={scrollRef} className="min-w-0 h-full w-full flex-1 overflow-y-auto overflow-x-hidden">
-            <PageTransition>
-            <Routes>
-              <Route path="/" element={<DashboardOverviewSection />} />
-              <Route path="/skills-matrix" element={<SkillsMatrixSection />} />
-              <Route path="/engineers" element={<EngineersSection />} />
-              <Route path="/requirements" element={<RequirementsSection />} />
-              <Route path="/training" element={<TrainingSection />} />
-              <Route path="/training-providers" element={<TrainingProvidersSection />} />
-              <Route path="/ai-matching" element={<AiMatchingSection />} />
-              <Route path="/settings" element={<SettingsSection />} />
-              <Route path="/equipment" element={<EquipmentSection />} />
-              <Route path="/support" element={<SupportSection />} />
-              <Route path="/design-system" element={<DesignSystemSection />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            </PageTransition>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
-};
+export const AiOperations = (): JSX.Element => (
+  <PortalShell homeRoute="/" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
+    <Routes>
+      <Route path="/"                  element={<DashboardOverviewSection />} />
+      <Route path="/skills-matrix"     element={<SkillsMatrixSection />} />
+      <Route path="/engineers"         element={<EngineersSection />} />
+      <Route path="/requirements"      element={<RequirementsSection />} />
+      <Route path="/training"          element={<TrainingSection />} />
+      <Route path="/training-providers" element={<TrainingProvidersSection />} />
+      <Route path="/ai-matching"       element={<AiMatchingSection />} />
+      <Route path="/settings"          element={<SettingsSection />} />
+      <Route path="/equipment"         element={<EquipmentSection />} />
+      <Route path="/support"           element={<SupportSection />} />
+      <Route path="/design-system"     element={<DesignSystemSection />} />
+      <Route path="*"                  element={<Navigate to="/" replace />} />
+    </Routes>
+  </PortalShell>
+);
