@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Award,
@@ -6,11 +7,8 @@ import {
   Brain,
   Building2,
   CheckCircle2,
-  ExternalLink,
-  FileText,
   GraduationCap,
   MapPin,
-  MessageSquare,
   Shield,
   Sparkles,
   TrendingUp,
@@ -188,7 +186,8 @@ function certStatus(c: CertEntry): { label: string; cls: string; dot: string } {
 // ─── EngineerDrawer ───────────────────────────────────────────────────────────
 
 export function EngineerDrawer({ engineer, assignments, trainingBookings, skillGaps, onClose }: DrawerProps) {
-  const isOpen = engineer !== null;
+  const isOpen   = engineer !== null;
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -545,19 +544,18 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Quick Actions</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: UserCircle,    label: "View Full Profile"     },
-                { icon: ExternalLink,  label: "Open Skills Matrix"    },
-                { icon: FileText,      label: "Training History"      },
-                { icon: Award,         label: "View Certifications"   },
-                { icon: GraduationCap, label: "Assign Training"       },
-                { icon: Sparkles,      label: "Generate AI Report"    },
-                { icon: MessageSquare, label: "Message Engineer"      },
-                { icon: BookOpen,      label: "Book Assessment"       },
-              ].map(({ icon: Icon, label }) => (
+                { icon: Sparkles,      label: "View Skills",        route: "/skills-matrix" },
+                { icon: BookOpen,      label: "View Equipment",     route: "/equipment"     },
+                { icon: GraduationCap, label: "View Training",      route: "/training"      },
+                { icon: Shield,        label: "View Requirements",  route: "/requirements"  },
+                { icon: Brain,         label: "View AI Match",      route: "/ai-matching"   },
+                { icon: UserCircle,    label: "View AI Insights",   route: "/ai-insights"   },
+              ].map(({ icon: Icon, label, route }) => (
                 <button
                   key={label}
                   type="button"
-                  className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 py-2 text-left text-xs font-medium text-slate-300 transition-colors hover:border-gray-700 hover:bg-[#141820] hover:text-slate-100"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 py-2 text-left text-xs font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                   {label}
