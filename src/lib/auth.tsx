@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./supabaseClient";
+import { VortaLoadingScreen } from "../components/VortaLoadingScreen";
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
@@ -47,14 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
 function AuthLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0b0e14]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-gray-700 border-t-blue-500" />
-        <span className="text-sm text-slate-500">Loading…</span>
-      </div>
-    </div>
-  );
+  return <VortaLoadingScreen />;
 }
 
 // ─── Route guard ─────────────────────────────────────────────────────────────
