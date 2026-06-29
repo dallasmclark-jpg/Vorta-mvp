@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -233,6 +234,212 @@ async function fetchTraining(): Promise<{
   };
 }
 
+// ─── Booking Drawer ───────────────────────────────────────────────────────────
+
+interface BookingDrawerItem {
+  id: string;
+  course_title: string;
+  engineer_name: string | null;
+  department: string | null;
+  status: string;
+  booking_date: string | null;
+  cost: number | null;
+  currency: string;
+  delivery_type: string | null;
+  partner_name: string | null;
+  // Course extras (optional, only when opened from course card)
+  skills_covered?: string[];
+  duration_days?: number;
+}
+
+function BookingDrawer({
+  item,
+  onClose,
+  onStatusChange,
+}: {
+  item: BookingDrawerItem | null;
+  onClose: () => void;
+  onStatusChange: (id: string, status: string) => void;
+}) {
+  const isOpen   = item !== null;
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (item && scrollRef.current) scrollRef.current.scrollTop = 0; }, [item?.id]);
+
+  const canApprove  = item?.status === "pending_approval";
+  const canComplete = item?.status === "approved" || item?.status === "booked";
+  const canReject   = item?.status === "pending_approval" || item?.status === "booked";
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-800 p-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {item && (
+                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${bookingStatusBadgeClass(item.status)}`}>
+                  {item.status.replace("_", " ")}
+                </Badge>
+              )}
+              {item?.delivery_type && (
+                <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${deliveryBadgeClass(item.delivery_type)}`}>
+                  {item.delivery_type}
+                </Badge>
+              )}
+            </div>
+            <h2 className="text-base font-semibold leading-snug text-slate-50">{item?.course_title ?? "—"}</h2>
+            {item?.partner_name && <p className="text-sm text-slate-400">{item.partner_name}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+            aria-label="Close drawer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
+          {[
+            { label: "Engineer",  value: item?.engineer_name ?? "—",                          cls: "text-slate-200" },
+            { label: "Department", value: item?.department ?? "—",                             cls: "text-slate-200" },
+            { label: "Date",      value: fmtDate(item?.booking_date ?? null),                  cls: "text-slate-200" },
+          ].map(({ label, value, cls }) => (
+            <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
+              <p className="text-[10px] font-medium text-slate-500">{label}</p>
+              <p className={`truncate text-xs font-semibold ${cls}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div ref={scrollRef} className="flex flex-1 flex-col overflow-y-auto">
+
+          {/* Details */}
+          <div className="border-b border-gray-800 p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Booking Details</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Cost",          value: item?.cost ? fmtCurrency(item.cost, item.currency) : "—" },
+                { label: "Delivery",      value: item?.delivery_type ?? "—" },
+                { label: "Provider",      value: item?.partner_name ?? "—" },
+                { label: "Status",        value: item?.status.replace("_", " ") ?? "—" },
+                ...(item?.duration_days ? [{ label: "Duration", value: `${item.duration_days} day${item.duration_days !== 1 ? "s" : ""}` }] : []),
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#111620] p-2.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
+                  <span className="text-xs font-medium text-slate-200">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Skills covered */}
+          {(item?.skills_covered ?? []).length > 0 && (
+            <div className="border-b border-gray-800 p-5">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Skills Covered</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(item!.skills_covered!).map((s) => (
+                  <span key={s} className="rounded-full border border-gray-700 bg-[#111620] px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI note */}
+          <div className="border-b border-gray-800 p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-4 w-4 text-blue-400" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">AI Recommendation</p>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">
+              {item?.status === "pending_approval"
+                ? "Approve this booking promptly — delayed approvals push back training completion dates and extend skill gap exposure."
+                : item?.status === "completed"
+                ? "Training completed. Update the skills matrix to reflect the new competency level and check if any SPOF risks are now resolved."
+                : "Ensure the engineer is available for the full course duration. Check for any prerequisite skills or certification requirements beforehand."}
+            </p>
+          </div>
+
+          {/* Local actions */}
+          {(canApprove || canComplete || canReject) && (
+            <div className="border-b border-gray-800 p-5">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Actions</p>
+              <div className="flex flex-wrap gap-2">
+                {canApprove && (
+                  <button
+                    type="button"
+                    onClick={() => { onStatusChange(item!.id, "approved"); onClose(); }}
+                    className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                  >
+                    Approve Booking
+                  </button>
+                )}
+                {canComplete && (
+                  <button
+                    type="button"
+                    onClick={() => { onStatusChange(item!.id, "completed"); onClose(); }}
+                    className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
+                  >
+                    Mark Completed
+                  </button>
+                )}
+                {canReject && (
+                  <button
+                    type="button"
+                    onClick={() => { onStatusChange(item!.id, "cancelled"); onClose(); }}
+                    className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                  >
+                    Reject / Query
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Workflow navigation */}
+          <div className="p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "View Skills",       route: "/skills-matrix"     },
+                { label: "View Engineers",    route: "/engineers"         },
+                { label: "View Equipment",    route: "/equipment"         },
+                { label: "View Requirements", route: "/requirements"      },
+                { label: "View Providers",    route: "/training-providers"},
+                { label: "View AI Match",     route: "/ai-matching"       },
+              ].map(({ label, route }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Skeleton line ────────────────────────────────────────────────────────────
 
 function SkeletonLine({ w = "w-24", h = "h-4" }: { w?: string; h?: string }) {
@@ -255,10 +462,21 @@ export const TrainingSection = (): JSX.Element => {
   const [loadError,          setLoadError]          = useState(false);
   const [tick,               setTick]               = useState(0);
 
+  const [selectedItem,       setSelectedItem]       = useState<BookingDrawerItem | null>(null);
+  const [toast,              setToast]              = useState<string | null>(null);
+  const [localStatuses,      setLocalStatuses]      = useState<Record<string, string>>({});
+
   // Priority table filters
   const [prioritySearch,  setPrioritySearch]  = useState("");
   const [filterPriority,  setFilterPriority]  = useState("all");
   const [priorityPage,    setPriorityPage]    = useState(0);
+
+  const handleStatusChange = (id: string, status: string) => {
+    setLocalStatuses((prev) => ({ ...prev, [id]: status }));
+    const msg = status === "approved" ? "Booking approved" : status === "completed" ? "Marked as completed" : "Booking rejected / queried";
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -343,6 +561,15 @@ export const TrainingSection = (): JSX.Element => {
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+
+      <BookingDrawer item={selectedItem} onClose={() => setSelectedItem(null)} onStatusChange={handleStatusChange} />
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-emerald-500/30 bg-[#0d1117] px-5 py-3 text-sm font-medium text-emerald-400 shadow-2xl">
+          {toast}
+        </div>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -624,7 +851,11 @@ export const TrainingSection = (): JSX.Element => {
                   ) : (
                     <div className="flex flex-col gap-2">
                       {recommendedCourses.slice(0, 6).map((c) => (
-                        <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-800 bg-[#0b0e14] px-4 py-3">
+                        <div
+                          key={c.id}
+                          onClick={() => setSelectedItem({ id: c.id, course_title: c.title, engineer_name: null, department: null, status: "booked", booking_date: null, cost: c.price, currency: c.currency, delivery_type: c.delivery_type, partner_name: c.partner_name, skills_covered: c.skills_covered, duration_days: c.duration_days })}
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-800 bg-[#0b0e14] px-4 py-3 transition-colors hover:border-gray-700 hover:bg-[#141820]"
+                        >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-slate-200">{c.title}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -873,9 +1104,14 @@ export const TrainingSection = (): JSX.Element => {
                 ) : (
                   <div className="flex flex-col divide-y divide-gray-800/60">
                     {recentActivity.slice(0, 8).map((b) => {
-                      const verb = b.status === "completed" ? "completed" : b.status === "approved" ? "approved" : b.status === "pending_approval" ? "pending" : "booked";
+                      const effectiveStatus = localStatuses[b.id] ?? b.status;
+                      const verb = effectiveStatus === "completed" ? "completed" : effectiveStatus === "approved" ? "approved" : effectiveStatus === "pending_approval" ? "pending" : effectiveStatus === "cancelled" ? "rejected" : "booked";
                       return (
-                        <div key={b.id} className="flex items-center gap-3 py-2.5">
+                        <div
+                          key={b.id}
+                          onClick={() => setSelectedItem({ ...b, status: effectiveStatus })}
+                          className="flex cursor-pointer items-center gap-3 py-2.5 transition-colors hover:bg-[#ffffff04]"
+                        >
                           <div className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold ${avatarColor(b.engineer_name)}`}>
                             {getInitials(b.engineer_name)}
                           </div>
@@ -888,7 +1124,7 @@ export const TrainingSection = (): JSX.Element => {
                           </div>
                           <div className="flex shrink-0 items-center gap-3">
                             <span className="hidden text-[11px] text-slate-500 sm:block">{fmtDate(b.booking_date)}</span>
-                            <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${bookingStatusBadgeClass(b.status)}`}>
+                            <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${bookingStatusBadgeClass(effectiveStatus)}`}>
                               {verb}
                             </Badge>
                           </div>
