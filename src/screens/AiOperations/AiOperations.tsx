@@ -59,17 +59,17 @@ const secondaryNav = [
 export const AiOperations = (): JSX.Element => (
   <PortalShell homeRoute="/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
-      <Route path="/dashboard"         element={<DashboardOverviewSection />} />
-      <Route path="/skills-matrix"     element={<SkillsMatrixSection />} />
-      <Route path="/engineers"         element={<EngineersSection />} />
-      <Route path="/requirements"      element={<RequirementsSection />} />
-      <Route path="/training"          element={<TrainingSection />} />
-      <Route path="/training-providers" element={<TrainingProvidersSection />} />
-      <Route path="/ai-matching"       element={<AiMatchingSection />} />
-      <Route path="/settings"          element={<SettingsSection />} />
-      <Route path="/equipment"         element={<EquipmentSection />} />
-      <Route path="/support"           element={<SupportSection />} />
-      <Route path="/design-system"     element={<DesignSystemSection />} />
+      <Route path="dashboard"          element={<DashboardOverviewSection />} />
+      <Route path="skills-matrix"      element={<SkillsMatrixSection />} />
+      <Route path="engineers"          element={<EngineersSection />} />
+      <Route path="requirements"       element={<RequirementsSection />} />
+      <Route path="training"           element={<TrainingSection />} />
+      <Route path="training-providers" element={<TrainingProvidersSection />} />
+      <Route path="ai-matching"        element={<AiMatchingSection />} />
+      <Route path="settings"           element={<SettingsSection />} />
+      <Route path="equipment"          element={<EquipmentSection />} />
+      <Route path="support"            element={<SupportSection />} />
+      <Route path="design-system"      element={<DesignSystemSection />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </PortalShell>
