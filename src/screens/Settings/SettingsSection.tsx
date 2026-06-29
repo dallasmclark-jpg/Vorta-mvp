@@ -51,7 +51,7 @@ function Toast({ message, onDismiss }: { message: string; onDismiss: () => void 
 
 // ─── Invite modal ─────────────────────────────────────────────────────────────
 
-function InviteModal({ onClose }: { onClose: () => void }) {
+function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (email: string, role: string) => void }) {
   const [email, setEmail] = useState("");
   const [role, setRole]   = useState("Viewer");
   return (
@@ -95,8 +95,10 @@ function InviteModal({ onClose }: { onClose: () => void }) {
                 className="flex-1 rounded-lg border border-[#ffffff20] py-2 text-sm font-medium text-slate-300 hover:bg-[#ffffff0a]">
                 Cancel
               </button>
-              <button type="button" onClick={onClose}
-                className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+              <button type="button"
+                onClick={() => { if (email.trim()) { onInvite(email.trim(), role); onClose(); } }}
+                disabled={!email.trim()}
+                className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed">
                 Send Invite
               </button>
             </div>
@@ -305,7 +307,7 @@ export const SettingsSection = (): JSX.Element => {
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvite={(email, role) => toast_(`Invite sent to ${email} as ${role}`)} />}
 
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -392,7 +394,12 @@ export const SettingsSection = (): JSX.Element => {
                         {m.status}
                       </Badge>
                       <button type="button" title="Change role"
-                        onClick={() => toast_(`Role updated for ${m.name}`)}
+                        onClick={() => {
+                          const cycle: Record<string, string> = { Admin: "Manager", Manager: "Editor", Editor: "Viewer", Viewer: "Admin" };
+                          const next = cycle[m.role] ?? "Viewer";
+                          setMembers((prev) => prev.map((x) => x.id === m.id ? { ...x, role: next } : x));
+                          toast_(`${m.name} role changed to ${next}`);
+                        }}
                         className="rounded border border-gray-700 px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200">
                         Role
                       </button>
@@ -417,13 +424,13 @@ export const SettingsSection = (): JSX.Element => {
             <CardContent className="flex flex-col gap-4 p-5 md:p-6">
               <SectionHeading icon={Bell} title="Notification Preferences" subtitle="Choose what alerts you receive" />
               <div className="flex flex-col">
-                <ToggleRow label="Skills gaps becoming critical"   subtitle="Alert when a skill reaches critical risk level" checked={notifs.skillsGapCritical}  onChange={() => setNotifs((n) => ({ ...n, skillsGapCritical: !n.skillsGapCritical }))} />
-                <ToggleRow label="Certifications expiring soon"    subtitle="30-day and 60-day expiry warnings"             checked={notifs.certExpiry}           onChange={() => setNotifs((n) => ({ ...n, certExpiry: !n.certExpiry }))} />
-                <ToggleRow label="Training booking approvals"      subtitle="Requests awaiting your approval"               checked={notifs.trainingApprovals}     onChange={() => setNotifs((n) => ({ ...n, trainingApprovals: !n.trainingApprovals }))} />
-                <ToggleRow label="Contractor match recommendations" subtitle="New AI-matched contractor suggestions"       checked={notifs.contractorMatch}       onChange={() => setNotifs((n) => ({ ...n, contractorMatch: !n.contractorMatch }))} />
-                <ToggleRow label="AI weekly summary report"        subtitle="Delivered every Monday morning"               checked={notifs.aiWeeklySummary}       onChange={() => setNotifs((n) => ({ ...n, aiWeeklySummary: !n.aiWeeklySummary }))} />
-                <ToggleRow label="Budget threshold alerts"         subtitle="Notify when spend approaches your limit"      checked={notifs.budgetAlerts}          onChange={() => setNotifs((n) => ({ ...n, budgetAlerts: !n.budgetAlerts }))} />
-                <ToggleRow label="New supplier / training provider matches" subtitle="When new providers match your skill gaps" checked={notifs.newProviderMatch} onChange={() => setNotifs((n) => ({ ...n, newProviderMatch: !n.newProviderMatch }))} />
+                <ToggleRow label="Skills gaps becoming critical"   subtitle="Alert when a skill reaches critical risk level" checked={notifs.skillsGapCritical}  onChange={() => { setNotifs((n) => ({ ...n, skillsGapCritical: !n.skillsGapCritical })); toast_(!notifs.skillsGapCritical ? "Critical gap alerts enabled" : "Critical gap alerts disabled"); }} />
+                <ToggleRow label="Certifications expiring soon"    subtitle="30-day and 60-day expiry warnings"             checked={notifs.certExpiry}           onChange={() => { setNotifs((n) => ({ ...n, certExpiry: !n.certExpiry })); toast_(!notifs.certExpiry ? "Certification expiry alerts enabled" : "Certification expiry alerts disabled"); }} />
+                <ToggleRow label="Training booking approvals"      subtitle="Requests awaiting your approval"               checked={notifs.trainingApprovals}     onChange={() => { setNotifs((n) => ({ ...n, trainingApprovals: !n.trainingApprovals })); toast_(!notifs.trainingApprovals ? "Training approval alerts enabled" : "Training approval alerts disabled"); }} />
+                <ToggleRow label="Contractor match recommendations" subtitle="New AI-matched contractor suggestions"       checked={notifs.contractorMatch}       onChange={() => { setNotifs((n) => ({ ...n, contractorMatch: !n.contractorMatch })); toast_(!notifs.contractorMatch ? "Contractor match alerts enabled" : "Contractor match alerts disabled"); }} />
+                <ToggleRow label="AI weekly summary report"        subtitle="Delivered every Monday morning"               checked={notifs.aiWeeklySummary}       onChange={() => { setNotifs((n) => ({ ...n, aiWeeklySummary: !n.aiWeeklySummary })); toast_(!notifs.aiWeeklySummary ? "Weekly AI summary enabled" : "Weekly AI summary disabled"); }} />
+                <ToggleRow label="Budget threshold alerts"         subtitle="Notify when spend approaches your limit"      checked={notifs.budgetAlerts}          onChange={() => { setNotifs((n) => ({ ...n, budgetAlerts: !n.budgetAlerts })); toast_(!notifs.budgetAlerts ? "Budget alerts enabled" : "Budget alerts disabled"); }} />
+                <ToggleRow label="New supplier / training provider matches" subtitle="When new providers match your skill gaps" checked={notifs.newProviderMatch} onChange={() => { setNotifs((n) => ({ ...n, newProviderMatch: !n.newProviderMatch })); toast_(!notifs.newProviderMatch ? "Provider match alerts enabled" : "Provider match alerts disabled"); }} />
               </div>
             </CardContent>
           </Card>
@@ -494,9 +501,9 @@ export const SettingsSection = (): JSX.Element => {
                 </div>
               </div>
               <div className="flex flex-col">
-                <ToggleRow label="Preferred providers only"     subtitle="Restrict bookings to your approved provider list" checked={preferredOnly}   onChange={() => setPreferredOnly((v) => !v)} />
-                <ToggleRow label="Allow external providers"     subtitle="Permit training from non-listed providers"        checked={allowExternal}   onChange={() => setAllowExternal((v) => !v)} />
-                <ToggleRow label="Require business justification" subtitle="Mandatory field when submitting any booking"   checked={requireJustif}   onChange={() => setRequireJustif((v) => !v)} />
+                <ToggleRow label="Preferred providers only"     subtitle="Restrict bookings to your approved provider list" checked={preferredOnly}   onChange={() => { setPreferredOnly((v) => !v); toast_(preferredOnly ? "Provider restriction removed" : "Restricted to preferred providers"); }} />
+                <ToggleRow label="Allow external providers"     subtitle="Permit training from non-listed providers"        checked={allowExternal}   onChange={() => { setAllowExternal((v) => !v); toast_(allowExternal ? "External providers blocked" : "External providers allowed"); }} />
+                <ToggleRow label="Require business justification" subtitle="Mandatory field when submitting any booking"   checked={requireJustif}   onChange={() => { setRequireJustif((v) => !v); toast_(requireJustif ? "Justification no longer required" : "Business justification now required"); }} />
               </div>
               <SaveButton label="Save approval rules" onClick={() => toast_("Training approval rules saved")} />
             </CardContent>
@@ -518,9 +525,9 @@ export const SettingsSection = (): JSX.Element => {
                   options={["Monday to Friday", "Tuesday to Thursday", "Monday to Wednesday", "Any weekday"]} />
               </div>
               <div className="flex flex-col">
-                <ToggleRow label="Avoid shift conflicts"            subtitle="Block bookings that clash with engineer shifts"        checked={avoidConflict}  onChange={() => setAvoidConflict((v) => !v)} />
-                <ToggleRow label="Include travel time"             subtitle="Add travel buffer to shift planning around training"    checked={includeTravel}  onChange={() => setIncludeTravel((v) => !v)} />
-                <ToggleRow label="Notify engineer when confirmed"  subtitle="Send confirmation notification to the engineer"        checked={notifyEngineer} onChange={() => setNotifyEngineer((v) => !v)} />
+                <ToggleRow label="Avoid shift conflicts"            subtitle="Block bookings that clash with engineer shifts"        checked={avoidConflict}  onChange={() => { setAvoidConflict((v) => !v); toast_(avoidConflict ? "Shift conflict check disabled" : "Shift conflict check enabled"); }} />
+                <ToggleRow label="Include travel time"             subtitle="Add travel buffer to shift planning around training"    checked={includeTravel}  onChange={() => { setIncludeTravel((v) => !v); toast_(includeTravel ? "Travel time buffer disabled" : "Travel time buffer enabled"); }} />
+                <ToggleRow label="Notify engineer when confirmed"  subtitle="Send confirmation notification to the engineer"        checked={notifyEngineer} onChange={() => { setNotifyEngineer((v) => !v); toast_(notifyEngineer ? "Engineer notifications disabled" : "Engineer notifications enabled"); }} />
               </div>
               <SaveButton label="Save booking preferences" onClick={() => toast_("Booking preferences saved")} />
             </CardContent>
