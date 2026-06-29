@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -161,13 +162,20 @@ async function fetchProviders(): Promise<{
 function ProviderDrawer({
   provider,
   gapMatches,
+  shortlisted,
   onClose,
+  onShortlist,
+  onRequestAvailability,
 }: {
   provider: Provider | null;
   gapMatches: GapMatch[];
+  shortlisted: Set<string>;
   onClose: () => void;
+  onShortlist: (id: string) => void;
+  onRequestAvailability: (name: string) => void;
 }) {
-  const isOpen = provider !== null;
+  const isOpen   = provider !== null;
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (provider && scrollRef.current) scrollRef.current.scrollTop = 0; }, [provider?.id]);
 
@@ -364,22 +372,58 @@ function ProviderDrawer({
             )}
           </div>
 
-          {/* Actions */}
-          <div className="p-5">
+          {/* Local actions */}
+          <div className="border-b border-gray-800 p-5">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Actions</p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { onShortlist(provider!.id); }}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                  shortlisted.has(provider?.id ?? "")
+                    ? "border-blue-500/40 bg-blue-500/15 text-blue-300"
+                    : "border-gray-700 bg-[#0b0e14] text-slate-300 hover:border-blue-500/30 hover:bg-[#141820] hover:text-blue-300"
+                }`}
+              >
+                <Star className="h-3.5 w-3.5 shrink-0" />
+                {shortlisted.has(provider?.id ?? "") ? "Shortlisted" : "Shortlist Provider"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { onRequestAvailability(provider?.name ?? ""); }}
+                className="flex items-center gap-2 rounded-lg border border-gray-700 bg-[#0b0e14] px-3 py-2 text-left text-xs font-semibold text-slate-300 transition-colors hover:border-gray-600 hover:bg-[#141820] hover:text-slate-100"
+              >
+                <Mail className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                Request Availability
+              </button>
+              <button
+                type="button"
+                onClick={() => { onClose(); navigate("/training"); }}
+                className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-left text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+              >
+                <GraduationCap className="h-3.5 w-3.5 shrink-0" />
+                Book Course
+              </button>
+            </div>
+          </div>
+
+          {/* Workflow navigation */}
+          <div className="p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: Mail,         label: "Contact Provider" },
-                { icon: BookOpen,     label: "View All Courses" },
-                { icon: GraduationCap,label: "Book Training"    },
-                { icon: ExternalLink, label: "Provider Website" },
-              ].map(({ icon: Icon, label }) => (
+                { label: "View Bookings",     route: "/training"      },
+                { label: "View Skills",       route: "/skills-matrix" },
+                { label: "View Engineers",    route: "/engineers"     },
+                { label: "View Requirements", route: "/requirements"  },
+                { label: "View AI Match",     route: "/ai-matching"   },
+              ].map(({ label, route }) => (
                 <button
                   key={label}
                   type="button"
-                  className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 py-2 text-left text-xs font-medium text-slate-300 transition-colors hover:border-gray-700 hover:bg-[#141820] hover:text-slate-100"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                   {label}
                 </button>
               ))}
@@ -400,6 +444,29 @@ export const TrainingProvidersSection = (): JSX.Element => {
   const [loading,     setLoading]     = useState(true);
   const [loadError,   setLoadError]   = useState(false);
   const [tick,        setTick]        = useState(0);
+
+  const [shortlisted, setShortlisted] = useState<Set<string>>(new Set());
+  const [toast,       setToast]       = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleShortlist = (id: string) => {
+    setShortlisted((prev) => {
+      const next = new Set(prev);
+      const added = !next.has(id);
+      if (added) next.add(id); else next.delete(id);
+      const p = providers.find((x) => x.id === id);
+      showToast(added ? `${p?.name ?? "Provider"} added to shortlist` : `${p?.name ?? "Provider"} removed from shortlist`);
+      return next;
+    });
+  };
+
+  const handleRequestAvailability = (name: string) => {
+    showToast(`Availability request sent to ${name}`);
+  };
 
   // Filters
   const [search,          setSearch]          = useState("");
@@ -497,6 +564,13 @@ export const TrainingProvidersSection = (): JSX.Element => {
   return (
     <>
       <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-emerald-500/30 bg-[#0d1117] px-5 py-3 text-sm font-medium text-emerald-400 shadow-2xl">
+          {toast}
+        </div>
+      )}
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -707,7 +781,11 @@ export const TrainingProvidersSection = (): JSX.Element => {
                       : filteredProviders.map((p, idx) => {
                           const rowBg = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
                           return (
-                            <tr key={p.id} className={`border-b border-gray-800/50 ${rowBg} transition-colors hover:bg-[#1a2030]`}>
+                            <tr
+                              key={p.id}
+                              onClick={() => setSelectedProvider(p)}
+                              className={`cursor-pointer border-b border-gray-800/50 ${rowBg} transition-colors hover:bg-[#1a2030]`}
+                            >
                               <td className="px-4 py-3">
                                 <div className="flex flex-col gap-0.5">
                                   <span className="font-medium text-slate-200">{p.name}</span>
@@ -757,13 +835,14 @@ export const TrainingProvidersSection = (): JSX.Element => {
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedProvider(p)}
+                                    onClick={(e) => { e.stopPropagation(); setSelectedProvider(p); }}
                                     className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
                                   >
                                     View
                                   </button>
                                   <button
                                     type="button"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedProvider(p); }}
                                     className="rounded-lg border border-blue-500/30 px-2.5 py-1 text-[10px] font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
                                   >
                                     Book course
@@ -800,7 +879,11 @@ export const TrainingProvidersSection = (): JSX.Element => {
                       </div>
                     )
                   : filteredProviders.map((p) => (
-                      <Card key={p.id} className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                      <Card
+                        key={p.id}
+                        onClick={() => setSelectedProvider(p)}
+                        className="min-w-0 cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#1a2030]"
+                      >
                         <CardContent className="flex flex-col gap-4 p-5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
@@ -841,13 +924,14 @@ export const TrainingProvidersSection = (): JSX.Element => {
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => setSelectedProvider(p)}
+                              onClick={(e) => { e.stopPropagation(); setSelectedProvider(p); }}
                               className="flex-1 rounded-lg border border-gray-700 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
                             >
                               View details
                             </button>
                             <button
                               type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedProvider(p); }}
                               className="flex-1 rounded-lg border border-blue-500/30 py-2 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
                             >
                               Book course
@@ -933,6 +1017,7 @@ export const TrainingProvidersSection = (): JSX.Element => {
 
                               <button
                                 type="button"
+                                onClick={() => { const p = providers.find((x) => gap.matched_partner_ids.includes(x.id)); if (p) setSelectedProvider(p); }}
                                 className="mt-auto rounded-lg border border-blue-500/30 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
                               >
                                 Book training
@@ -953,7 +1038,10 @@ export const TrainingProvidersSection = (): JSX.Element => {
       <ProviderDrawer
         provider={selectedProvider}
         gapMatches={gapMatches}
+        shortlisted={shortlisted}
         onClose={() => setSelectedProvider(null)}
+        onShortlist={handleShortlist}
+        onRequestAvailability={handleRequestAvailability}
       />
     </>
   );
