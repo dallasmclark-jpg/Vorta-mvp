@@ -119,7 +119,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    /* Keep dark navy at all times — prevents white flash before CSS variables load */
+    background-color: #0b0e14;
+    @apply text-foreground;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;

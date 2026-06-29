@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./supabaseClient";
@@ -56,27 +56,46 @@ export function RequireAuth({ children }: { children: JSX.Element }): JSX.Elemen
   return children;
 }
 
-// ─── Boot loader with fade-out ───────────────────────────────────────────────
+// ─── Boot loader with delay threshold + fade-out ─────────────────────────────
 
-// Wraps the entire app during initial auth resolution, fading the loader out
-// over 250ms once loading completes so the transition into the app is smooth.
+// Wraps the entire app during initial auth resolution.
+// Only shows the loader if auth takes longer than 250ms (avoids flash for
+// cached sessions). Fades the loader out over 250ms once loading completes.
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
-  const [showLoader, setShowLoader] = useState(true);
-  const [fadeOut, setFadeOut] = useState(false);
+  // Whether the 250ms threshold has passed and we committed to showing the loader
+  const thresholdFired = useRef(false);
+  const [showLoader, setShowLoader] = useState(false);
+  const [fadeOut,    setFadeOut]    = useState(false);
+  const [ready,      setReady]      = useState(false);
 
+  // Threshold: show loader only if auth is still pending after 250ms
   useEffect(() => {
-    if (!loading) {
-      setFadeOut(true);
-      const t = setTimeout(() => setShowLoader(false), 260);
-      return () => clearTimeout(t);
+    const t = setTimeout(() => {
+      thresholdFired.current = true;
+      if (!ready) setShowLoader(true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When auth resolves, either reveal children immediately or fade out the loader
+  useEffect(() => {
+    if (loading) return;
+    if (!thresholdFired.current) {
+      // Resolved before threshold — skip the loader entirely
+      setReady(true);
+      return;
     }
+    // Loader was shown — fade it out then reveal children
+    setFadeOut(true);
+    const t = setTimeout(() => { setShowLoader(false); setReady(true); }, 260);
+    return () => clearTimeout(t);
   }, [loading]);
 
   return (
     <>
       {showLoader && <VortaLoadingScreen fadeOut={fadeOut} />}
-      {!loading && children}
+      {ready && children}
     </>
   );
 }

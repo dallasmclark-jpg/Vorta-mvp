@@ -3,6 +3,8 @@
 // Fades out over 250ms when unmounted via the fadeOut prop.
 // Respects prefers-reduced-motion — pulse animation is disabled when set.
 
+import { useEffect, useState } from "react";
+
 interface VortaLoadingScreenProps {
   fadeOut?: boolean;
 }
@@ -107,4 +109,15 @@ export function VortaLoadingScreen({ fadeOut = false }: VortaLoadingScreenProps)
       </svg>
     </div>
   );
+}
+
+// Suspense fallback that waits 250ms before showing the loader, preventing
+// a flash for chunks that load quickly from cache.
+export function DelayedLoader() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 250);
+    return () => clearTimeout(t);
+  }, []);
+  return show ? <VortaLoadingScreen /> : null;
 }
