@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TriangleAlert as AlertTriangle, Bell, BookOpen, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles, X } from "lucide-react";
+import { TriangleAlert as AlertTriangle, Bell, BookOpen, ChevronDown, ChevronUp, GraduationCap, RefreshCw, CircleUser as UserCircle, Users, Sparkles, X, ClipboardList, Award, Network } from "lucide-react";
 import { AiInsightsSection } from "../../../../screens/AiInsights";
 import { AnimatedProgress } from "../../../../components/AnimatedProgress";
 import { ContextHelp } from "../../../../components/ContextHelp";
@@ -373,14 +373,6 @@ function buildKpiCards(metrics: DbMetric[], insights: DbInsight[]): OverviewCard
       sparkline: sparklines.flat,
       route: "/requirements",
     },
-    {
-      title: "AI Confidence",
-      change: "—",
-      changeClassName: "text-slate-400",
-      value: insights.length > 0 ? `${avgConfidence}%` : "—",
-      sparkline: sparklines.high,
-      route: "/ai-matching",
-    },
   ];
 }
 
@@ -723,6 +715,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
   const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [analysisStep, setAnalysisStep] = useState(0);
   const [completionTime, setCompletionTime] = useState<string | null>(null);
+  const [aiInsightsOpen, setAiInsightsOpen] = useState(false);
   const analysisTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const runAnalysis = () => {
@@ -910,8 +903,75 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
         )}
       </div>
 
+      {/* ── Today's Priorities command panel ────────────────────────────── */}
+      {!loading && (() => {
+        const priorities: { severity: "critical" | "high" | "medium"; title: string; reason: string; route: string; }[] = [];
+        criticalRisks.slice(0, 2).forEach((r) => {
+          priorities.push({
+            severity: r.level === "CRITICAL" ? "critical" : "high",
+            title: r.title,
+            reason: r.level === "CRITICAL" ? "Critical skill gap — engineer coverage below minimum" : "High-risk skill gap — coverage at risk",
+            route: "/requirements",
+          });
+        });
+        recommendedActions.filter((a) => a.status === "Risk" || a.priority === "High").slice(0, 1).forEach((a) => {
+          if (priorities.length < 3)
+            priorities.push({ severity: "high", title: a.title, reason: a.subtitle || "Recommended priority action", route: inferActionRoute(a.title, a.subtitle) });
+        });
+        if (priorities.length === 0) return null;
+        const severityStyle: Record<string, { dot: string; badge: string; btn: string }> = {
+          critical: { dot: "bg-red-500", badge: "bg-[#ef444420] text-red-400", btn: "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20" },
+          high:     { dot: "bg-orange-400", badge: "bg-[#f9731620] text-orange-400", btn: "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" },
+          medium:   { dot: "bg-yellow-400", badge: "bg-[#facc1520] text-yellow-400", btn: "border-yellow-400/30 bg-yellow-400/10 text-yellow-400 hover:bg-yellow-400/20" },
+        };
+        const iconMap: Record<string, React.ElementType> = { critical: AlertTriangle, high: ClipboardList, medium: Network };
+        return (
+          <div className="w-full rounded-xl border border-[#facc1520] bg-[#0d1118] p-4 md:p-5 motion-safe:animate-card-enter" style={{ animationDelay: "200ms" }}>
+            <div className="mb-4 flex items-center gap-2">
+              <Award className="h-4 w-4 shrink-0 text-yellow-400" aria-hidden="true" />
+              <span className="text-sm font-semibold text-slate-200">Today's Priorities</span>
+              <span className="ml-auto inline-flex items-center rounded bg-[#ef444420] px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                {priorities.filter((p) => p.severity === "critical" || p.severity === "high").length} urgent
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              {priorities.slice(0, 3).map((item, i) => {
+                const s = severityStyle[item.severity];
+                const Icon = iconMap[item.severity] ?? ClipboardList;
+                return (
+                  <div key={i} className="flex flex-col gap-2.5 rounded-lg border border-gray-800 bg-[#111620] p-3">
+                    <div className="flex items-start gap-2">
+                      <div className="relative mt-0.5 shrink-0">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0b0e14]">
+                          <Icon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                        </div>
+                        <span className={`absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ${s.dot}`} />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <p className="truncate text-xs font-semibold text-slate-200">{item.title}</p>
+                        <p className="text-[11px] leading-relaxed text-slate-500">{item.reason}</p>
+                      </div>
+                    </div>
+                    <span className={`self-start inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${s.badge}`}>
+                      {item.severity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigate(item.route)}
+                      className={`mt-auto w-full rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${s.btn}`}
+                    >
+                      Take Action
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
-        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
           {overviewCards.map((card, i) => (
             <div
               key={card.title}
@@ -1173,9 +1233,27 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
         </div>
       </div>
 
-      {/* ── AI Insights ─────────────────────────────────────────────────── */}
-      <div className="w-full border-t border-gray-800 pt-8">
-        <AiInsightsSection />
+      {/* ── AI Insights (collapsed by default) ─────────────────────────── */}
+      <div className="w-full border-t border-gray-800 pt-6">
+        <button
+          type="button"
+          onClick={() => setAiInsightsOpen((v) => !v)}
+          className="flex w-full items-center gap-2 rounded-lg px-1 py-2 text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+        >
+          <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
+          <span className="text-sm font-semibold text-slate-200">Full AI Report</span>
+          <span className="ml-2 text-xs text-slate-500">Detailed AI insights and analysis</span>
+          {aiInsightsOpen ? (
+            <ChevronUp className="ml-auto h-4 w-4 shrink-0" />
+          ) : (
+            <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+          )}
+        </button>
+        {aiInsightsOpen && (
+          <div className="mt-4">
+            <AiInsightsSection />
+          </div>
+        )}
       </div>
 
       {/* ── Detail panel ─────────────────────────────────────────────────── */}
