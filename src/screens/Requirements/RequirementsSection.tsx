@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -15,6 +16,7 @@ import {
   Shield,
   Sparkles,
   TrendingUp,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -221,6 +223,156 @@ function buildInsights(requirements: Requirement[], stats: ReqStats): InsightIte
   return items.slice(0, 5);
 }
 
+// ─── Requirement Drawer ───────────────────────────────────────────────────────
+
+function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose: () => void }) {
+  const isOpen   = req !== null;
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (req && scrollRef.current) scrollRef.current.scrollTop = 0; }, [req?.id]);
+
+  const coveragePct = req?.coverage_pct ?? 0;
+  const coverageColor = coveragePct >= 80 ? "text-emerald-400" : coveragePct >= 50 ? "text-yellow-400" : "text-red-400";
+  const coverageBarFill = coveragePct >= 80 ? "bg-emerald-500" : coveragePct >= 50 ? "bg-yellow-400" : "bg-red-500";
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-800 p-5">
+          <div className="flex flex-col gap-1.5 min-w-0 pr-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {req && (
+                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(req.priority)}`}>
+                  {req.priority}
+                </Badge>
+              )}
+              {req?.single_point_of_failure && (
+                <Badge className="inline-flex h-auto rounded bg-[#ef444420] px-1.5 py-0.5 text-[10px] font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
+                  SPOF
+                </Badge>
+              )}
+              {req?.certification_required && (
+                <span className="flex items-center gap-1 text-[10px] font-medium text-blue-400">
+                  <Shield className="h-3 w-3" />Cert required
+                </span>
+              )}
+            </div>
+            <h2 className="text-base font-semibold text-slate-50 leading-snug">{req?.title ?? "—"}</h2>
+            <p className="text-sm text-slate-400">{req?.skill_category ?? ""}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+            aria-label="Close drawer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-4 divide-x divide-gray-800 border-b border-gray-800">
+          {[
+            { label: "Coverage",    value: req ? `${coveragePct}%` : "—",                  cls: coverageColor },
+            { label: "Qualified",   value: req ? String(req.engineers_qualified) : "—",     cls: (req?.engineers_qualified ?? 0) > 0 ? "text-emerald-400" : "text-red-400" },
+            { label: "Gap",         value: req ? (req.gap > 0 ? String(req.gap) : "—") : "—", cls: (req?.gap ?? 0) > 0 ? "text-orange-400" : "text-emerald-400" },
+            { label: "Training",    value: req ? String(req.training_required) : "—",       cls: (req?.training_required ?? 0) > 0 ? "text-yellow-400" : "text-slate-50" },
+          ].map(({ label, value, cls }) => (
+            <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
+              <p className="text-[10px] font-medium text-slate-500">{label}</p>
+              <p className={`text-base font-semibold tabular-nums ${cls}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-0 overflow-y-auto">
+
+          {/* Details */}
+          <div className="border-b border-gray-800 p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Details</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { label: "Area / Line",   value: req?.area ?? "—"             },
+                { label: "Group",         value: req?.group ?? "—"            },
+                { label: "Department",    value: req?.department_name ?? "—"  },
+                { label: "Required Level", value: req ? `${req.required_level}/5` : "—" },
+                { label: "Current Avg",   value: req ? `${req.current_avg.toFixed(1)}/5` : "—" },
+                { label: "Status",        value: req?.status ?? "—"           },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#111620] p-2.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
+                  <span className="text-xs font-medium text-slate-200">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Coverage bar */}
+          <div className="border-b border-gray-800 p-5">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Coverage</p>
+              <span className={`text-sm font-semibold tabular-nums ${coverageColor}`}>{coveragePct}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+              <div className={`h-2 rounded-full transition-all ${coverageBarFill}`} style={{ width: `${coveragePct}%` }} />
+            </div>
+            <div className="mt-2 flex items-center gap-4 text-[11px] text-slate-500">
+              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{req?.engineers_qualified ?? 0} qualified</span>
+              {(req?.engineers_below ?? 0) > 0 && <span>{req?.engineers_below} below target</span>}
+              {(req?.training_required ?? 0) > 0 && <span className="text-orange-400">{req?.training_required} need training</span>}
+            </div>
+          </div>
+
+          {/* AI Recommendation */}
+          {req?.recommendation && (
+            <div className="border-b border-gray-800 p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-4 w-4 text-blue-400" />
+                <p className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">AI Recommendation</p>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-300">{req.recommendation}</p>
+            </div>
+          )}
+
+          {/* Workflow navigation */}
+          <div className="p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "View Skills",       route: "/skills-matrix" },
+                { label: "View Engineers",    route: "/engineers"     },
+                { label: "View Equipment",    route: "/equipment"     },
+                { label: "View Training",     route: "/training"      },
+                { label: "View AI Match",     route: "/ai-matching"   },
+              ].map(({ label, route }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const RequirementsSection = (): JSX.Element => {
@@ -232,6 +384,8 @@ export const RequirementsSection = (): JSX.Element => {
   const [loading,         setLoading]         = useState(true);
   const [loadError,       setLoadError]       = useState(false);
   const [tick,            setTick]            = useState(0);
+
+  const [selectedReq, setSelectedReq] = useState<Requirement | null>(null);
 
   // Filters
   const [search,         setSearch]         = useState("");
@@ -337,6 +491,8 @@ export const RequirementsSection = (): JSX.Element => {
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+
+      <RequirementDrawer req={selectedReq} onClose={() => setSelectedReq(null)} />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -665,10 +821,15 @@ export const RequirementsSection = (): JSX.Element => {
                       : pagedReqs.map((req, idx) => {
                           const rowBg = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
                           const gapColor = req.gap === 0 ? "text-emerald-400" : req.gap <= 3 ? "text-yellow-400" : "text-red-400";
+                          const isActive = selectedReq?.id === req.id;
                           return (
-                            <tr key={req.id} className={`border-b border-gray-800/50 ${rowBg} transition-colors hover:bg-[#1a2030]`}>
+                            <tr
+                              key={req.id}
+                              onClick={() => setSelectedReq(isActive ? null : req)}
+                              className={`cursor-pointer border-b border-gray-800/50 ${isActive ? "bg-blue-500/10" : rowBg} transition-colors hover:bg-[#1a2030]`}
+                            >
                               {/* Requirement title — sticky */}
-                              <td className={`sticky left-0 z-10 min-w-[200px] px-4 py-2.5 ${rowBg}`}>
+                              <td className={`sticky left-0 z-10 min-w-[200px] px-4 py-2.5 ${isActive ? "bg-blue-500/10" : rowBg}`}>
                                 <div className="flex flex-col gap-0.5">
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-medium text-slate-200 leading-tight">{req.title}</span>
@@ -711,8 +872,11 @@ export const RequirementsSection = (): JSX.Element => {
                                 </Badge>
                               </td>
                               <td className="px-4 py-2.5 text-center">
-                                <button type="button"
-                                  className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedReq(isActive ? null : req); }}
+                                  className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
+                                >
                                   Review
                                 </button>
                               </td>
