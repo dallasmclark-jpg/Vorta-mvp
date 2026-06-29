@@ -63,30 +63,34 @@ export function RequireAuth({ children }: { children: JSX.Element }): JSX.Elemen
 // cached sessions). Fades the loader out over 250ms once loading completes.
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
-  // Whether the 250ms threshold has passed and we committed to showing the loader
-  const thresholdFired = useRef(false);
+  // Tracks whether auth resolved — readable inside timer callbacks without stale closure
+  const resolvedRef    = useRef(false);
+  // Tracks whether the threshold timer committed to showing the loader
+  const loaderShownRef = useRef(false);
   const [showLoader, setShowLoader] = useState(false);
   const [fadeOut,    setFadeOut]    = useState(false);
   const [ready,      setReady]      = useState(false);
 
-  // Threshold: show loader only if auth is still pending after 250ms
+  // Threshold: only show loader if auth is still pending after 250ms
   useEffect(() => {
     const t = setTimeout(() => {
-      thresholdFired.current = true;
-      if (!ready) setShowLoader(true);
+      if (resolvedRef.current) return; // auth already resolved — don't show loader
+      loaderShownRef.current = true;
+      setShowLoader(true);
     }, 250);
     return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // When auth resolves, either reveal children immediately or fade out the loader
   useEffect(() => {
     if (loading) return;
-    if (!thresholdFired.current) {
-      // Resolved before threshold — skip the loader entirely
+    resolvedRef.current = true;
+    if (!loaderShownRef.current) {
+      // Resolved before threshold — skip loader entirely
       setReady(true);
       return;
     }
-    // Loader was shown — fade it out then reveal children
+    // Loader is visible — fade it out then reveal children
     setFadeOut(true);
     const t = setTimeout(() => { setShowLoader(false); setReady(true); }, 260);
     return () => clearTimeout(t);
