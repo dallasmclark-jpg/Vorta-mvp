@@ -44,7 +44,7 @@ export const LoginPage = (): JSX.Element => {
   const [error,        setError]        = useState<string | null>(null);
 
   // If already authenticated, redirect to intended destination or dashboard
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/dashboard";
   if (!loading && session) return <Navigate to={from} replace />;
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -220,7 +220,7 @@ export const LoginPage = (): JSX.Element => {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/dashboard")}
                 className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
               >
                 <LayoutDashboard className="h-4 w-4 text-blue-400" />

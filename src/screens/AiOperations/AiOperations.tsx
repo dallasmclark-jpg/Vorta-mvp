@@ -29,7 +29,7 @@ const nav: NavGroup[] = [
   {
     groupLabel: "Overview",
     items: [
-      { label: "Dashboard",    icon: LayoutDashboard, to: "/"             },
+      { label: "Dashboard",    icon: LayoutDashboard, to: "/dashboard"    },
       { label: "Equipment",    icon: Wrench,          to: "/equipment"    },
       { label: "AI Matching",  icon: Sparkles,        to: "/ai-matching"  },
     ],
@@ -57,9 +57,9 @@ const secondaryNav = [
 ];
 
 export const AiOperations = (): JSX.Element => (
-  <PortalShell homeRoute="/" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
+  <PortalShell homeRoute="/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
-      <Route path="/"                  element={<DashboardOverviewSection />} />
+      <Route path="/dashboard"         element={<DashboardOverviewSection />} />
       <Route path="/skills-matrix"     element={<SkillsMatrixSection />} />
       <Route path="/engineers"         element={<EngineersSection />} />
       <Route path="/requirements"      element={<RequirementsSection />} />
@@ -70,7 +70,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="/equipment"         element={<EquipmentSection />} />
       <Route path="/support"           element={<SupportSection />} />
       <Route path="/design-system"     element={<DesignSystemSection />} />
-      <Route path="*"                  element={<Navigate to="/" replace />} />
+      <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </PortalShell>
 );

@@ -15,10 +15,13 @@ createRoot(document.getElementById("app") as HTMLElement).render(
     <AuthProvider>
       <ToastProvider>
         <Routes>
-          {/* Public route — always accessible */}
-          <Route path="/login" element={<LoginPage />} />
+          {/* Login — default entry point */}
+          <Route path="/" element={<LoginPage />} />
 
-          {/* Legacy redirect — keep old URL working */}
+          {/* /login kept for backward compat (logout redirects here) */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+
+          {/* Legacy redirects — keep old URLs working */}
           <Route path="/engineer-dashboard" element={<Navigate to="/engineer/dashboard" replace />} />
           <Route path="/contractor-dashboard" element={<Navigate to="/contractor/dashboard" replace />} />
 
@@ -34,8 +37,7 @@ createRoot(document.getElementById("app") as HTMLElement).render(
           {/* Operator Portal */}
           <Route path="/operator/*" element={<OperatorPortal />} />
 
-          {/* Maintenance Manager dashboard and all sub-routes
-              TODO: add RequireAuth once role-based routing is implemented */}
+          {/* Maintenance Manager — all sub-routes */}
           <Route path="/*" element={<AiOperations />} />
         </Routes>
       </ToastProvider>
