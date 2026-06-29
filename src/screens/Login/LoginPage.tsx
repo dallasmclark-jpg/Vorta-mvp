@@ -80,8 +80,8 @@ export const LoginPage = (): JSX.Element => {
       <TopNav />
 
       {/* ── Centered content ──────────────────────────────────────────────── */}
-      <main className="flex flex-1 items-center justify-center px-4 py-16">
-        <div className="flex w-full max-w-[400px] flex-col items-center">
+      <main className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-16">
+        <div className="flex w-full max-w-[400px] flex-col items-center mx-auto">
 
           {/* Vorta icon mark */}
           <div className="mb-6">
