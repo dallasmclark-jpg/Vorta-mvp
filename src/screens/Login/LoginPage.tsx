@@ -76,11 +76,11 @@ export const LoginPage = (): JSX.Element => {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[#0b0e14]">
+    <div className="flex min-h-[100dvh] flex-col bg-[#0b0e14] overflow-y-auto">
       <TopNav />
 
       {/* ── Centered content ──────────────────────────────────────────────── */}
-      <main className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-16" style={{ paddingBottom: "max(4rem, env(safe-area-inset-bottom))" }}>
+      <main className="flex flex-1 flex-col items-center px-4 py-16" style={{ paddingBottom: "max(4rem, env(safe-area-inset-bottom))" }}>
         <div className="flex w-full max-w-[400px] flex-col items-center mx-auto">
 
           {/* Vorta icon mark */}
