@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -123,6 +123,143 @@ const FAQ_ITEMS = [
   },
 ];
 
+// ─── Ticket Drawer ────────────────────────────────────────────────────────────
+
+const TICKET_REPLIES: Record<string, string> = {
+  "VRT-0041": "Our team is investigating the import parsing issue. We'll push a fix in the next maintenance window. In the meantime, you can manually update skills from the engineer profile drawer.",
+  "VRT-0038": "The AI matching score is calculated from 4 weighted dimensions: skills coverage, certification status, shift availability and SPOF risk. Scores above 85 are classified as a Strong Match.",
+  "VRT-0035": "This is a sync delay caused by a caching issue on the engineer profile page. We've identified the cause — please clear your browser cache and reload. If it persists, reply here with your browser version.",
+  "VRT-0031": "The invite email was sent but landed in spam for some domains. Please ask your colleague to check their spam folder. You can also re-send the invite from Settings → Team Access.",
+  "VRT-0028": "The PLC requirement count discrepancy was caused by a deleted engineer record still being counted. This has been corrected — the count should now be accurate.",
+};
+
+function TicketDrawer({
+  ticket,
+  onClose,
+  onToast,
+}: {
+  ticket: SupportTicket | null;
+  onClose: () => void;
+  onToast: (msg: string) => void;
+}) {
+  const isOpen = ticket !== null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (ticket && scrollRef.current) scrollRef.current.scrollTop = 0; }, [ticket?.id]);
+
+  const reply = ticket ? TICKET_REPLIES[ticket.id] ?? "Our team is reviewing your request. We'll respond within 4 business hours during Monday–Friday, 8:00–18:00." : "";
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-800 p-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+            <span className="font-mono text-xs text-slate-500">{ticket?.id ?? "—"}</span>
+            <h2 className="text-sm font-semibold leading-snug text-slate-50">{ticket?.subject ?? "—"}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Badges strip */}
+        <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
+          <div className="flex flex-col gap-0.5 px-3 py-3">
+            <p className="text-[10px] font-medium text-slate-500">Category</p>
+            <p className="text-xs font-semibold text-slate-300">{ticket?.category ?? "—"}</p>
+          </div>
+          <div className="flex flex-col gap-0.5 px-3 py-3">
+            <p className="text-[10px] font-medium text-slate-500">Priority</p>
+            {ticket && (
+              <Badge className={`inline-flex h-auto w-fit rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${priorityBadgeClass(ticket.priority)}`}>
+                {ticket.priority}
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-col gap-0.5 px-3 py-3">
+            <p className="text-[10px] font-medium text-slate-500">Status</p>
+            {ticket && (
+              <Badge className={`inline-flex h-auto w-fit rounded px-1.5 py-0.5 text-[9px] font-medium shadow-none ${statusBadgeClass(ticket.status)}`}>
+                {ticket.status}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
+          {/* Latest reply */}
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Vorta Support Response</p>
+            <div className="rounded-lg border border-blue-500/20 bg-[#3b82f608] p-4">
+              <p className="text-xs leading-relaxed text-slate-300">{reply}</p>
+            </div>
+          </div>
+
+          {/* Last updated */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            Last updated: {ticket?.lastUpdated ?? "—"}
+          </div>
+
+          {/* Reply box */}
+          {ticket?.status !== "Resolved" && (
+            <div className="flex flex-col gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Add Reply</p>
+              <ReplyBox ticketId={ticket?.id ?? ""} onSend={(msg) => { onToast(`Reply added to ${ticket?.id}`); }} />
+            </div>
+          )}
+
+          {ticket?.status === "Resolved" && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+              <span className="text-xs font-semibold text-emerald-400">This ticket has been resolved.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ReplyBox({ ticketId, onSend }: { ticketId: string; onSend: (msg: string) => void }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="flex flex-col gap-2">
+      <textarea
+        rows={3}
+        placeholder="Add more detail or a reply…"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="resize-none rounded-lg border border-[#ffffff15] bg-[#0d0d0d] px-3 py-2.5 text-xs text-slate-200 placeholder:text-slate-600 outline-none focus:border-blue-500/60"
+      />
+      <button
+        type="button"
+        disabled={!value.trim()}
+        onClick={() => { onSend(value); setValue(""); }}
+        className="flex h-8 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Send className="h-3.5 w-3.5" />
+        Send Reply
+      </button>
+    </div>
+  );
+}
+
 // ─── FAQ Accordion item ───────────────────────────────────────────────────────
 
 function FaqItem({ item }: { item: typeof FAQ_ITEMS[number] }) {
@@ -160,6 +297,7 @@ function FaqItem({ item }: { item: typeof FAQ_ITEMS[number] }) {
 export const SupportSection = (): JSX.Element => {
   const [toast,         setToast]         = useState<string | null>(null);
   const [tickets,       setTickets]       = useState<SupportTicket[]>(INITIAL_TICKETS);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
   // Form state
   const [category,     setCategory]     = useState("Skills Matrix");
@@ -206,6 +344,7 @@ export const SupportSection = (): JSX.Element => {
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      <TicketDrawer ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onToast={(msg) => setToast(msg)} />
 
       {/* ── Page header ──────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -415,7 +554,11 @@ export const SupportSection = (): JSX.Element => {
                     tickets.map((t, idx) => {
                       const rowBg = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
                       return (
-                        <tr key={t.id} className={`border-b border-gray-800/50 ${rowBg} transition-colors hover:bg-[#1a2030]`}>
+                        <tr
+                          key={t.id}
+                          onClick={() => setSelectedTicket(t)}
+                          className={`cursor-pointer border-b border-gray-800/50 ${rowBg} transition-colors hover:bg-[#1a2030]`}
+                        >
                           <td className="px-4 py-2.5">
                             <span className="font-mono text-xs font-medium text-slate-400">{t.id}</span>
                           </td>
@@ -528,14 +671,20 @@ export const SupportSection = (): JSX.Element => {
               <h2 className="font-semibold text-slate-50">Quick Links</h2>
               <div className="flex flex-col gap-2">
                 {[
-                  { label: "System status",          icon: CheckCircle2 },
-                  { label: "Release notes",           icon: BookOpen     },
-                  { label: "Download data export",    icon: Download     },
-                  { label: "View all help articles",  icon: HelpCircle   },
-                ].map(({ label, icon: Icon }) => (
+                  { label: "System status",          icon: CheckCircle2, toast: "All systems operational — last checked just now"       },
+                  { label: "Release notes",           icon: BookOpen,     toast: "Release notes: v2.4.1 — AI matching improvements"       },
+                  { label: "Download data export",    icon: Download,     toast: "Data export queued — you'll receive an email when ready" },
+                  { label: "View all help articles",  icon: HelpCircle,   toast: "Help centre scrolled into view"                         },
+                ].map(({ label, icon: Icon, toast: msg }) => (
                   <button
                     key={label}
                     type="button"
+                    onClick={() => {
+                      setToast(msg);
+                      if (label === "View all help articles") {
+                        document.getElementById("help-guides")?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
                     className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2.5 text-left transition-colors hover:border-gray-700 hover:bg-[#1a2030]"
                   >
                     <Icon className="h-4 w-4 shrink-0 text-slate-500" />
