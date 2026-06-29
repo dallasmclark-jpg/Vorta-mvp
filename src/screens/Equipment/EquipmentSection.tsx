@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -294,6 +295,7 @@ function coverageTextClass(pct: number): string {
 // ─── Detail Drawer ────────────────────────────────────────────────────────────
 
 function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }) {
+  const navigate  = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [eq.id]);
   return (
@@ -423,9 +425,29 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
             <p className="text-sm text-slate-200">{eq.nextAction}</p>
           </div>
 
+          {/* Workflow navigation */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "View Skills",        route: "/skills-matrix" },
+              { label: "View Engineers",     route: "/engineers"     },
+              { label: "View Requirements",  route: "/requirements"  },
+              { label: "View AI Match",      route: "/ai-matching"   },
+            ].map(({ label, route }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => { onClose(); navigate(route); }}
+                className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
-            className="mt-auto h-10 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+            onClick={() => { onClose(); navigate("/requirements"); }}
+            className="h-10 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
           >
             Create Action Plan
           </button>
@@ -438,6 +460,7 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const EquipmentSection = (): JSX.Element => {
+  const navigate = useNavigate();
   const [search,         setSearch]         = useState("");
   const [filterArea,     setFilterArea]     = useState("all");
   const [filterCrit,     setFilterCrit]     = useState("all");
@@ -801,9 +824,18 @@ export const EquipmentSection = (): JSX.Element => {
                 <h2 className="font-semibold text-slate-50">Skills Coverage by Equipment Type</h2>
                 <p className="text-sm text-slate-400">Engineer competency coverage for key equipment disciplines</p>
               </div>
-              <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-[10px] font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
-              </Badge>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate("/skills-matrix")}
+                  className="text-xs font-medium text-blue-500 transition-colors hover:text-blue-400"
+                >
+                  View All
+                </button>
+                <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-[10px] font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
+                </Badge>
+              </div>
             </div>
 
             <div className="flex flex-col gap-4">
