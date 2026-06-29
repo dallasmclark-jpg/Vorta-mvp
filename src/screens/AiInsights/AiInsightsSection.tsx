@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -8,6 +9,7 @@ import {
   Sparkles,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
@@ -15,6 +17,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
+import { useToast } from "../../components/Toast";
 
 // ─── Types (matching AiReportsSection shapes) ─────────────────────────────────
 
@@ -121,11 +124,16 @@ function Skeleton({ className }: { className?: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const AiInsightsSection = (): JSX.Element => {
+  const navigate = useNavigate();
+  const toast    = useToast();
   const [loading,  setLoading]  = useState(true);
   const [reqs,     setReqs]     = useState<ReqRow[]>([]);
   const [expiries, setExpiries] = useState<CertExpiry[]>([]);
   const [training, setTraining] = useState<TrainingStats | null>(null);
   const [match,    setMatch]    = useState<MatchStats | null>(null);
+  const [dismissedRecs, setDismissedRecs] = useState<Set<number>>(new Set());
+  const [acceptedRecs,  setAcceptedRecs]  = useState<Set<number>>(new Set());
+  const [reviewRec, setReviewRec] = useState<{ label: string; priority: string; badgeCls: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,6 +268,7 @@ export const AiInsightsSection = (): JSX.Element => {
   }, [reqs, kpis]);
 
   return (
+    <>
     <div className="flex w-full flex-col gap-6">
 
       {/* ── Section heading ──────────────────────────────────────────────── */}
@@ -290,7 +299,12 @@ export const AiInsightsSection = (): JSX.Element => {
           Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-[100px]" />)
         ) : kpis ? (
           <>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card
+              role="button" tabIndex={0}
+              onClick={() => navigate("/skills-matrix")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/skills-matrix"); }}
+              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+            >
               <CardContent className="flex flex-col gap-2 p-4">
                 <p className="text-[11px] font-medium text-slate-400">Site Readiness</p>
                 <p className={`text-xl font-semibold tabular-nums ${kpis.siteReadiness >= 80 ? "text-emerald-400" : kpis.siteReadiness >= 65 ? "text-yellow-400" : "text-red-400"}`}>
@@ -299,7 +313,12 @@ export const AiInsightsSection = (): JSX.Element => {
                 <p className="text-[10px] text-slate-500">Overall coverage score</p>
               </CardContent>
             </Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card
+              role="button" tabIndex={0}
+              onClick={() => navigate("/requirements")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/requirements"); }}
+              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+            >
               <CardContent className="flex flex-col gap-2 p-4">
                 <p className="text-[11px] font-medium text-slate-400">Critical Skill Gaps</p>
                 <p className={`text-xl font-semibold tabular-nums ${kpis.criticalGaps > 0 ? "text-red-500" : "text-emerald-400"}`}>
@@ -308,7 +327,12 @@ export const AiInsightsSection = (): JSX.Element => {
                 <p className="text-[10px] text-slate-500">Immediate attention required</p>
               </CardContent>
             </Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card
+              role="button" tabIndex={0}
+              onClick={() => navigate("/training")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/training"); }}
+              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+            >
               <CardContent className="flex flex-col gap-2 p-4">
                 <p className="text-[11px] font-medium text-slate-400">Compliance Risk</p>
                 <p className={`text-xl font-semibold ${kpis.complianceRisk === "High" ? "text-red-500" : kpis.complianceRisk === "Medium" ? "text-yellow-400" : "text-emerald-400"}`}>
@@ -317,7 +341,12 @@ export const AiInsightsSection = (): JSX.Element => {
                 <p className="text-[10px] text-slate-500">{kpis.expiring90} certs expiring soon</p>
               </CardContent>
             </Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card
+              role="button" tabIndex={0}
+              onClick={() => navigate("/engineers")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/engineers"); }}
+              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+            >
               <CardContent className="flex flex-col gap-2 p-4">
                 <p className="text-[11px] font-medium text-slate-400">Eng. Needing Training</p>
                 <p className={`text-xl font-semibold tabular-nums ${kpis.engNeedTraining > 5 ? "text-orange-400" : kpis.engNeedTraining > 0 ? "text-yellow-400" : "text-emerald-400"}`}>
@@ -326,7 +355,12 @@ export const AiInsightsSection = (): JSX.Element => {
                 <p className="text-[10px] text-slate-500">Flagged for development</p>
               </CardContent>
             </Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <Card
+              role="button" tabIndex={0}
+              onClick={() => navigate("/ai-matching")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/ai-matching"); }}
+              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+            >
               <CardContent className="flex flex-col gap-2 p-4">
                 <p className="text-[11px] font-medium text-slate-400">AI Confidence</p>
                 <p className="text-xl font-semibold tabular-nums text-blue-400">{kpis.aiConf}%</p>
@@ -384,6 +418,7 @@ export const AiInsightsSection = (): JSX.Element => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-400" />
               <h3 className="font-semibold text-slate-50">Top 5 Highest Risk Areas</h3>
+              <button type="button" onClick={() => navigate("/requirements")} className="ml-auto text-[11px] font-medium text-blue-500 hover:text-blue-400 transition-colors">View All</button>
             </div>
             {loading ? (
               <div className="flex flex-col gap-3">
@@ -396,7 +431,14 @@ export const AiInsightsSection = (): JSX.Element => {
                 {topRiskAreas.map((r) => {
                   const covPct = r.coverage_pct ?? 0;
                   return (
-                    <div key={r.title} className="flex flex-col gap-1.5">
+                    <div
+                      key={r.title}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate("/requirements")}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/requirements"); }}
+                      className="flex flex-col gap-1.5 cursor-pointer rounded-lg px-2 py-1.5 -mx-2 hover:bg-[#1a2030] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2">
                           <Badge className={`inline-flex h-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeCls(r.risk_level)}`}>
@@ -451,6 +493,7 @@ export const AiInsightsSection = (): JSX.Element => {
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-blue-400" />
               <h3 className="font-semibold text-slate-50">Training Recommendations</h3>
+              <button type="button" onClick={() => navigate("/training")} className="ml-auto text-[11px] font-medium text-blue-500 hover:text-blue-400 transition-colors">View All</button>
             </div>
             {loading ? (
               <div className="flex flex-col gap-3">
@@ -461,14 +504,28 @@ export const AiInsightsSection = (): JSX.Element => {
             ) : (
               <div className="flex flex-col gap-2.5">
                 {trainingRecs.map((r) => (
-                  <div key={r.skill} className="flex items-start gap-3 rounded-lg border border-gray-800 bg-[#111620] p-3">
+                  <div
+                    key={r.skill}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate("/training")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/training"); }}
+                    className="flex items-start gap-3 rounded-lg border border-gray-800 bg-[#111620] p-3 cursor-pointer hover:border-blue-500/30 hover:bg-[#141b2a] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                  >
                     <Badge className={`mt-0.5 inline-flex h-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeCls(r.risk)}`}>
                       {r.risk.charAt(0).toUpperCase() + r.risk.slice(1)}
                     </Badge>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-200">{r.skill}</p>
                       <p className="text-xs text-slate-500">{r.engineers} engineer{r.engineers !== 1 ? "s" : ""} below target</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); navigate("/training"); }}
+                      className="shrink-0 rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    >
+                      Book
+                    </button>
                   </div>
                 ))}
               </div>
@@ -507,19 +564,34 @@ export const AiInsightsSection = (): JSX.Element => {
               <Skeleton className="h-20" />
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3">
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => navigate("/engineers")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/engineers"); }}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3 cursor-pointer hover:border-blue-500/30 hover:bg-[#141b2a] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                >
                   <span className="text-sm text-slate-300">Flagged for training</span>
                   <span className={`text-lg font-semibold tabular-nums ${engAttentionCount > 5 ? "text-orange-400" : engAttentionCount > 0 ? "text-yellow-400" : "text-emerald-400"}`}>
                     {engAttentionCount}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3">
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => navigate("/engineers")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/engineers"); }}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3 cursor-pointer hover:border-blue-500/30 hover:bg-[#141b2a] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                >
                   <span className="text-sm text-slate-300">Certifications expiring ≤ 90 days</span>
                   <span className={`text-lg font-semibold tabular-nums ${(kpis?.expiring90 ?? 0) > 0 ? "text-yellow-400" : "text-emerald-400"}`}>
                     {kpis?.expiring90 ?? 0}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3">
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => navigate("/engineers")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/engineers"); }}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-gray-800 bg-[#111620] px-4 py-3 cursor-pointer hover:border-blue-500/30 hover:bg-[#141b2a] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                >
                   <span className="text-sm text-slate-300">Holding a SPOF skill</span>
                   <span className={`text-lg font-semibold tabular-nums ${reqs.filter((r) => r.single_point_of_failure).length > 0 ? "text-red-500" : "text-emerald-400"}`}>
                     {reqs.filter((r) => r.single_point_of_failure).length}
@@ -577,19 +649,118 @@ export const AiInsightsSection = (): JSX.Element => {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {recActions.map((a, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2.5">
-                    <Badge className={`inline-flex h-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${a.badgeCls}`}>
-                      {a.priority}
-                    </Badge>
-                    <span className="text-sm text-slate-300">{a.label}</span>
-                  </div>
-                ))}
+                {recActions.map((a, i) => {
+                  if (dismissedRecs.has(i)) return null;
+                  const accepted = acceptedRecs.has(i);
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-3 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2.5 transition-opacity ${accepted ? "opacity-40" : ""}`}
+                    >
+                      <Badge className={`inline-flex h-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${a.badgeCls}`}>
+                        {a.priority}
+                      </Badge>
+                      <span className="flex-1 text-sm text-slate-300">{a.label}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {!accepted && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { toast({ type: "success", message: `Accepted: ${a.label}` }); setAcceptedRecs((s) => new Set([...s, i])); }}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setReviewRec(a)}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            >
+                              Review
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDismissedRecs((s) => new Set([...s, i]))}
+                          className="rounded px-1 py-0.5 text-[10px] font-semibold text-slate-500 hover:text-slate-400 hover:bg-[#ffffff08] transition-colors"
+                          aria-label="Dismiss"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {recActions.every((_, i) => dismissedRecs.has(i)) && (
+                  <p className="text-sm text-slate-500">All actions cleared.</p>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
+
+      {/* ── Review modal ────────────────────────────────────────────────── */}
+      {reviewRec && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setReviewRec(null)}
+        >
+          <div className="absolute inset-0 bg-[#090b10]/80 backdrop-blur-sm" />
+          <div
+            className="relative z-10 w-full max-w-md rounded-xl border border-gray-700 bg-[#141820] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Badge className={`inline-flex h-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${reviewRec.badgeCls}`}>
+                  {reviewRec.priority}
+                </Badge>
+                <h3 className="text-sm font-semibold text-slate-100">Action Review</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewRec(null)}
+                className="text-slate-500 transition-colors hover:text-slate-300"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mb-5 text-sm leading-relaxed text-slate-200">{reviewRec.label}</p>
+            <div className="flex gap-2 border-t border-gray-800 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  toast({ type: "success", message: `Accepted: ${reviewRec.label}` });
+                  const idx = recActions.findIndex((a) => a.label === reviewRec.label);
+                  if (idx >= 0) setAcceptedRecs((s) => new Set([...s, idx]));
+                  setReviewRec(null);
+                }}
+                className="flex-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+              >
+                Accept
+              </button>
+              <button
+                type="button"
+                onClick={() => { navigate("/training"); setReviewRec(null); }}
+                className="flex-1 rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
+              >
+                Go to Training
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewRec(null)}
+                className="rounded-md px-3 py-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-[#ffffff08] hover:text-slate-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
