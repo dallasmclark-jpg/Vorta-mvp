@@ -15,16 +15,18 @@
 </head>
 <body>
 <style>
-  #vls{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b0e14;gap:28px;z-index:9999;font-family:'Inter',sans-serif}
-  #vls-halo{position:absolute;width:180px;height:180px;border-radius:44px;background:radial-gradient(ellipse at center,rgba(59,130,246,.22) 0%,transparent 72%);pointer-events:none;animation:vls-glow 2.4s ease-in-out infinite}
-  @keyframes vls-pulse{0%{stroke-dashoffset:393}100%{stroke-dashoffset:-393}}
-  @keyframes vls-glow{0%,100%{opacity:.55}50%{opacity:1}}
-  @media(prefers-reduced-motion:reduce){#vls-track{animation:none!important}#vls-halo{animation:none!important;opacity:.7}}
+  #vls{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b0e14;gap:24px;z-index:9999;font-family:'Inter',sans-serif}
+  #vls-halo{position:absolute;width:155px;height:155px;border-radius:38px;background:radial-gradient(ellipse at center,rgba(59,130,246,.07) 0%,transparent 70%);pointer-events:none;animation:vls-halo 2.4s ease-in-out infinite}
+  @keyframes vls-pulse{0%{stroke-dashoffset:341}100%{stroke-dashoffset:-341}}
+  @keyframes vls-halo{0%,100%{opacity:.3}50%{opacity:.55}}
+  @keyframes vls-dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}100%{content:''}}
+  #vls-label::after{content:'';animation:vls-dots 2s steps(1,end) infinite;display:inline-block;width:1.6ch;text-align:left}
+  @media(prefers-reduced-motion:reduce){#vls-track{animation:none!important}#vls-halo{animation:none!important;opacity:.35}#vls-label::after{animation:none!important;content:'...'}}
 </style>
 <div id="app">
   <div id="vls">
     <div id="vls-halo"></div>
-    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1">
+    <svg width="104" height="104" viewBox="0 0 104 104" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1">
       <defs>
         <linearGradient id="vls-g" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stop-color="#60a5fa" stop-opacity="0"/>
@@ -32,21 +34,21 @@
           <stop offset="100%" stop-color="#93c5fd" stop-opacity="1"/>
         </linearGradient>
       </defs>
-      <rect x="4" y="4" width="112" height="112" rx="28" ry="28" fill="#0d1117"/>
-      <rect x="4" y="4" width="112" height="112" rx="28" ry="28" stroke="#1e3a5f" stroke-width="1.5" fill="none"/>
-      <rect id="vls-track" x="4" y="4" width="112" height="112" rx="28" ry="28"
+      <rect x="4" y="4" width="96" height="96" rx="24" ry="24" fill="#0d1117"/>
+      <rect x="4" y="4" width="96" height="96" rx="24" ry="24" stroke="#1a2e4a" stroke-width="1.5" fill="none"/>
+      <rect id="vls-track" x="4" y="4" width="96" height="96" rx="24" ry="24"
         stroke="url(#vls-g)" stroke-width="2" fill="none" stroke-linecap="round"
-        stroke-dasharray="86.46 306.54" stroke-dashoffset="393"
-        style="animation:vls-pulse 2s linear infinite;filter:drop-shadow(0 0 5px #3b82f6) drop-shadow(0 0 12px rgba(59,130,246,.6))"/>
-      <!-- Official Vorta logomark paths (viewBox 0 0 78 44), scaled to 54×30.5, centred at (60,60) -->
-      <svg x="33" y="45" width="54" height="30.5" viewBox="0 0 78 44" fill="none">
+        stroke-dasharray="75.02 265.98" stroke-dashoffset="341"
+        style="animation:vls-pulse 2s linear infinite;filter:drop-shadow(0 0 4px #3b82f6) drop-shadow(0 0 10px rgba(59,130,246,.5))"/>
+      <!-- Official Vorta logomark, scaled to 47×26.5, centred at (52,52) -->
+      <svg x="28.5" y="39" width="47" height="26.5" viewBox="0 0 78 44" fill="none">
         <path d="M78 44L48.2658 26.4635C46.7603 25.5598 44 23.8524 44 22H51.0345L78 38.2105V44Z" fill="#F8FAFC"/>
         <path d="M78 0L48.2658 17.5365C46.7603 18.4402 44 20.1476 44 22H51.0345L78 5.78947V0Z" fill="#F8FAFC"/>
         <path d="M0 44L29.7342 26.4635C31.2397 25.5598 34 23.8524 34 22H26.9655L0 38.2105V44Z" fill="#F8FAFC"/>
         <path d="M0 0L29.7342 17.5365C31.2397 18.4402 34 20.1476 34 22H26.9655L0 5.78947V0Z" fill="#F8FAFC"/>
       </svg>
     </svg>
-    <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#60a5fa;opacity:.7;position:relative;z-index:1">Loading…</span>
+    <span id="vls-label" style="font-size:12px;font-weight:500;letter-spacing:.04em;color:#60a5fa;opacity:.6;position:relative;z-index:1">Loading</span>
   </div>
 </div>
 <script type="module" src="./src/index.tsx"></script>
