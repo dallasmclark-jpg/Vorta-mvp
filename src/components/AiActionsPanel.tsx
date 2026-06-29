@@ -1,4 +1,5 @@
 import { ArrowRight, Check, LucideIcon, Sparkles, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "./Toast";
 
 export interface AiAction {
@@ -28,16 +29,28 @@ interface ActionCardProps {
 }
 
 function ActionCard({ action: a }: ActionCardProps) {
-  const toast  = useToast();
-  const style  = priorityStyle[a.priority];
-  const Icon   = a.icon;
+  const toast    = useToast();
+  const navigate = useNavigate();
+  const style    = priorityStyle[a.priority];
+  const Icon     = a.icon;
 
   function accept()  { toast({ type: "success", message: `Action accepted: ${a.label}` }); }
   function dismiss() { toast({ type: "info",    message: `Dismissed: ${a.label}` }); }
-  function review()  { toast({ type: "info",    message: `Opening review for: ${a.label}` }); if (a.onClick) a.onClick(); }
+  function review()  {
+    toast({ type: "info", message: `Opening review for: ${a.label}` });
+    if (a.onClick) a.onClick();
+    if (a.href) navigate(a.href);
+  }
 
-  const card = (
-    <div className="flex h-full flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-3 transition-colors hover:border-[#3b82f640] hover:bg-[#141b2a]">
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={a.label}
+      onClick={() => { if (a.href) navigate(a.href); }}
+      onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && a.href) { e.preventDefault(); navigate(a.href); } }}
+      className="flex h-full flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-3 transition-colors hover:border-[#3b82f640] hover:bg-[#141b2a] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />}
@@ -78,20 +91,6 @@ function ActionCard({ action: a }: ActionCardProps) {
           <X className="h-3 w-3" aria-hidden /> Dismiss
         </button>
       </div>
-    </div>
-  );
-
-  if (a.href) {
-    return (
-      <a href={a.href} className="block h-full no-underline" aria-label={a.label}>
-        {card}
-      </a>
-    );
-  }
-
-  return (
-    <div className="h-full">
-      {card}
     </div>
   );
 }

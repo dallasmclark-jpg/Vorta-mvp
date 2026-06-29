@@ -8,6 +8,7 @@ import { CountUpNumber } from "../../../../components/CountUpNumber";
 import { SyncIndicator } from "../../../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../../../components/AiActionsPanel";
 import { ExplainWithAi } from "../../../../components/ExplainWithAi";
+import { useToast } from "../../../../components/Toast";
 import {
   Alert,
   AlertDescription,
@@ -653,6 +654,7 @@ function MetricRow({ color, countTo, suffix, text }: {
 // transition-all. Respects prefers-reduced-motion via CSS.
 export const DashboardOverviewSection = (): JSX.Element => {  const { data, loading, refetch } = useDashboardData();
   const navigate = useNavigate();
+  const toast    = useToast();
 
   const [analysing, setAnalysing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
@@ -817,6 +819,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
           </button>
           <button
             type="button"
+            onClick={() => toast({ type: "info", message: "No new notifications" })}
             className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 hover:bg-[#ffffff1a] hover:text-slate-200 transition-colors"
             aria-label="Notifications"
           >
@@ -824,6 +827,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
           </button>
           <button
             type="button"
+            onClick={() => navigate("/settings")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-[#ffffff1a] hover:text-slate-200 transition-colors"
             aria-label="User profile"
           >
@@ -929,7 +933,8 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                 </div>
                 <button
                   type="button"
-                  className="font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] text-blue-500 [font-style:var(--text-sm-medium-font-style)]"
+                  onClick={() => navigate("/requirements")}
+                  className="font-text-sm-medium text-[length:var(--text-sm-medium-font-size)] font-[number:var(--text-sm-medium-font-weight)] leading-[var(--text-sm-medium-line-height)] tracking-[var(--text-sm-medium-letter-spacing)] text-blue-500 [font-style:var(--text-sm-medium-font-style)] hover:text-blue-400 transition-colors"
                 >
                   View All
                 </button>
@@ -1060,6 +1065,13 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                 PLC fault-finding gap is affecting 15 operators across Lines 1
                 &amp; 2.
               </AlertDescription>
+              <button
+                type="button"
+                onClick={() => navigate("/requirements")}
+                className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
+              >
+                Review Risk
+              </button>
               </Alert>
             </div>
           </aside>
