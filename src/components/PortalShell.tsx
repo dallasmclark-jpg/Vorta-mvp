@@ -178,7 +178,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
       </header>
 
       {/* Primary nav */}
-      <nav aria-label="Primary navigation" className="flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto">
+      <nav aria-label="Primary navigation" className="flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto pb-4">
         {isGrouped(nav)
           ? <NavGroups groups={nav} accent={accent} labelVisible={labelVisible} />
           : <NavList   items={nav}  accent={accent} labelVisible={labelVisible} />
@@ -186,28 +186,26 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
       </nav>
 
       {/* Secondary nav + logout */}
-      <nav aria-label="Secondary navigation" className="mt-4 flex flex-col gap-1 shrink-0">
+      <nav aria-label="Secondary navigation" className="shrink-0 mt-auto flex flex-col gap-1 border-t border-gray-800 bg-[#090b10] pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         {secondaryNav && secondaryNav.length > 0 && (
-          <div className="flex flex-col gap-0.5 mb-2">
+          <div className="flex flex-col gap-0.5 mb-1">
             {secondaryNav.map((item) => (
               <NavItemRow key={item.to} item={item} accent={accent} labelVisible={labelVisible} />
             ))}
           </div>
         )}
 
-        <div className="border-t border-gray-800 pt-4">
-          <button
-            type="button"
-            title="Log out"
-            onClick={handleLogout}
-            className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
-          >
-            <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
-              Log out
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          title="Log out"
+          onClick={handleLogout}
+          className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
+        >
+          <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
+            Log out
+          </span>
+        </button>
       </nav>
     </aside>
   );
@@ -245,10 +243,10 @@ export const PortalShell = ({
   }, [location.pathname]);
 
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
+    <main className="flex h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
-      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-screen flex-col sticky top-0">
+      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-[100dvh] max-h-[100dvh] flex-col sticky top-0 overflow-hidden">
         <Sidebar
           homeRoute={homeRoute}
           nav={nav}
@@ -267,7 +265,7 @@ export const PortalShell = ({
             aria-hidden="true"
           />
           {/* Drawer */}
-          <div className="relative z-50 flex w-64 shrink-0 flex-col">
+          <div className="relative z-50 flex w-64 shrink-0 flex-col h-[100dvh] max-h-[100dvh] overflow-hidden">
             <Sidebar
               homeRoute={homeRoute}
               nav={nav}
@@ -281,7 +279,7 @@ export const PortalShell = ({
       )}
 
       {/* ── Main content ────────────────────────────────────────────────── */}
-      <section className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+      <section className="flex min-w-0 flex-1 flex-col overflow-x-hidden h-[100dvh] min-h-0">
         {/* Mobile top bar */}
         <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
           <button

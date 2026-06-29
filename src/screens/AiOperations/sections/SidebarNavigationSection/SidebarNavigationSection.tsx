@@ -70,9 +70,9 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
   const padX     = forceExpanded ? "px-4" : "px-2 xl:px-4";
 
   return (
-    <aside className={`relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5`}>
+    <aside className={`relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] ${padX} py-5 overflow-hidden`}>
       {/* Logo */}
-      <header className={`flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 xl:justify-start xl:px-2"}`}>
+      <header className={`shrink-0 flex h-10 items-center ${forceExpanded ? "px-2" : "justify-center px-0 xl:justify-start xl:px-2"}`}>
         <NavLink to="/" aria-label="Vorta home" className="inline-flex items-center overflow-hidden">
           <span className={forceExpanded ? "block" : "hidden xl:block"}>
             <VortaLogo />
@@ -84,7 +84,7 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
       </header>
 
       {/* Primary nav */}
-      <nav aria-label="Primary" className="mt-4 flex flex-col gap-1">
+      <nav aria-label="Primary" className="mt-4 flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto pb-4">
         {primaryNavigation.map(({ label, icon: Icon, to }) => (
           <NavLink
             key={label}
@@ -139,7 +139,7 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
       </nav>
 
       {/* Secondary nav */}
-      <nav aria-label="Secondary" className="mt-6 flex flex-1 flex-col justify-between">
+      <nav aria-label="Secondary" className="shrink-0 mt-auto flex flex-col gap-1 border-t border-gray-800 bg-[#090b10] pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         <div className="flex flex-col gap-1">
           {secondaryNavigation.map(({ label, icon: Icon, to }) => (
             <NavLink
@@ -157,17 +157,15 @@ export const SidebarNavigationSection = ({ forceExpanded }: SidebarProps): JSX.E
         </div>
 
         {/* Logout */}
-        <div className="mt-4 border-t border-gray-800 pt-4">
-          <button
-            type="button"
-            title="Log out"
-            onClick={handleLogout}
-            className={`${itemBase} text-slate-500 hover:text-red-400`}
-          >
-            <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className={`${labelBase} ${labelCls}`}>Log out</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          title="Log out"
+          onClick={handleLogout}
+          className={`${itemBase} text-slate-500 hover:text-red-400`}
+        >
+          <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className={`${labelBase} ${labelCls}`}>Log out</span>
+        </button>
       </nav>
     </aside>
   );
