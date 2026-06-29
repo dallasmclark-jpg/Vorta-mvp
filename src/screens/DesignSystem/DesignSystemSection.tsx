@@ -65,15 +65,20 @@ function StateLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-[10px] text-slate-600">{children}</span>;
 }
 
-function Token({ name, value, swatch }: { name: string; value: string; swatch?: string }) {
+function Token({ name, value, swatch, onCopy }: { name: string; value: string; swatch?: string; onCopy?: () => void }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2">
+    <button
+      type="button"
+      onClick={onCopy}
+      className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2 text-left transition-colors hover:border-gray-700 hover:bg-[#1a2030] cursor-copy"
+      title={`Copy ${name}`}
+    >
       {swatch && <span className="h-4 w-4 shrink-0 rounded" style={{ background: swatch }} />}
       <div>
         <p className="text-[10px] font-mono text-slate-300">{name}</p>
         <p className="text-[10px] text-slate-500">{value}</p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -190,7 +195,7 @@ function KpiCard({ label, value, sub, icon: Icon, valueClass = "text-slate-50", 
 
 // ─── Table row component ───────────────────────────────────────────────────────
 
-function TableDemo({ loading }: { loading: boolean }) {
+function TableDemo({ loading, onReview }: { loading: boolean; onReview?: (name: string) => void }) {
   const rows = [
     { name: "Sarah Chen", dept: "Electrical", site: "Site A", avail: "Available",   avCls: "bg-[#10b98120] text-emerald-400", risk: "Low",      rCls: "bg-[#10b98120] text-emerald-500", score: 92 },
     { name: "James Patel", dept: "Mechanical", site: "Site B", avail: "On Shift",    avCls: "bg-[#3b82f620] text-blue-400",    risk: "Medium",   rCls: "bg-[#facc1520] text-yellow-400",  score: 74 },
@@ -241,7 +246,7 @@ function TableDemo({ loading }: { loading: boolean }) {
                     <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${r.rCls}`}>{r.risk}</Badge>
                   </td>
                   <td className="px-4 py-2.5">
-                    <button type="button" className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200">Review</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onReview?.(r.name); }} className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200">Review</button>
                   </td>
                 </tr>
               ))}
@@ -352,13 +357,17 @@ export const DesignSystemSection = (): JSX.Element => {
       <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
         <CardContent className="flex flex-wrap gap-2 p-4">
           {NAV_SECTIONS.map((s) => (
-            <a
+            <button
               key={s}
-              href={`#ds-${s.toLowerCase().replace(/\s+/g, "-")}`}
+              type="button"
+              onClick={() => {
+                const id = `ds-${s.toLowerCase().replace(/\s+/g, "-")}`;
+                document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
               className="rounded-md border border-gray-800 bg-[#0b0e14] px-2.5 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-blue-500/30 hover:bg-[#1a2030] hover:text-slate-200"
             >
               {s}
-            </a>
+            </button>
           ))}
         </CardContent>
       </Card>
@@ -379,7 +388,7 @@ export const DesignSystemSection = (): JSX.Element => {
             { name: "--orange-400",  value: "#fb923c", swatch: "#fb923c" },
             { name: "--yellow-400",  value: "#facc15", swatch: "#facc15" },
             { name: "--slate-50",    value: "#f8fafc", swatch: "#f8fafc" },
-          ].map((t) => <Token key={t.name} {...t} />)}
+          ].map((t) => <Token key={t.name} {...t} onCopy={() => { navigator.clipboard?.writeText(t.value); toast({ type: "success", message: `Copied ${t.value}` }); }} />)}
         </div>
       </Section>
 
@@ -419,44 +428,49 @@ export const DesignSystemSection = (): JSX.Element => {
             { icon: Bell, label: "Bell" }, { icon: Star, label: "Star" },
             { icon: Trash2, label: "Trash2" }, { icon: Zap, label: "Zap" },
           ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-800 bg-[#111620] p-3">
+            <button
+              key={label}
+              type="button"
+              onClick={() => { navigator.clipboard?.writeText(label); toast({ type: "success", message: `Copied <${label} />` }); }}
+              className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-800 bg-[#111620] p-3 cursor-copy transition-colors hover:border-gray-700 hover:bg-[#1a2030]"
+              title={`Copy ${label}`}
+            >
               <Icon className="h-5 w-5 text-slate-400" />
               <span className="text-[10px] text-slate-500">{label}</span>
-            </div>
+            </button>
           ))}
         </div>
       </Section>
 
-      {/* ── 4 · BUTTONS ────────────────────────────────────────────────────── */}
       <Section id="ds-buttons" title="Buttons">
         <Row label="Primary">
-          <Button className="bg-blue-600 text-white hover:bg-blue-500">Primary</Button>
+          <Button className="bg-blue-600 text-white hover:bg-blue-500" onClick={() => toast({ type: "success", message: "Primary button clicked" })}>Primary</Button>
           <Button className="bg-blue-600 text-white hover:bg-blue-500" disabled>Disabled</Button>
           <Button className="bg-blue-600 text-white hover:bg-blue-500 opacity-70 cursor-wait">
             <RefreshCw className="h-4 w-4 animate-spin" />Loading
           </Button>
-          <div className="flex flex-col gap-0.5"><Button className="bg-blue-600 text-white hover:bg-blue-500 ring-2 ring-blue-500/50">Focused</Button><StateLabel>focused</StateLabel></div>
+          <div className="flex flex-col gap-0.5"><Button className="bg-blue-600 text-white hover:bg-blue-500 ring-2 ring-blue-500/50" onClick={() => toast({ type: "info", message: "Focused button clicked" })}>Focused</Button><StateLabel>focused</StateLabel></div>
         </Row>
         <Row label="Secondary / Outline">
-          <Button variant="outline" className="border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">Secondary</Button>
+          <Button variant="outline" className="border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50" onClick={() => toast({ type: "info", message: "Secondary button clicked" })}>Secondary</Button>
           <Button variant="outline" className="border-[#ffffff20] bg-[#ffffff1a] text-slate-50" disabled>Disabled</Button>
-          <Button variant="outline" className="border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
+          <Button variant="outline" className="border-[#ffffff20] bg-[#ffffff1a] text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50" onClick={() => toast({ type: "success", message: "Export triggered" })}>
             <Download className="h-4 w-4" />With Icon
           </Button>
         </Row>
         <Row label="Destructive">
-          <Button className="bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20">Delete</Button>
+          <Button className="bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20" onClick={() => toast({ type: "warning", message: "Delete action — confirm required" })}>Delete</Button>
           <Button className="bg-red-600/20 text-red-400 border border-red-500/20" disabled>Disabled</Button>
         </Row>
         <Row label="Ghost / Icon">
-          <Button variant="ghost" className="text-slate-400 hover:bg-[#ffffff1a] hover:text-slate-200">Ghost</Button>
-          <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"><RefreshCw className="h-4 w-4" /></button>
-          <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"><Plus className="h-5 w-5" /></button>
+          <Button variant="ghost" className="text-slate-400 hover:bg-[#ffffff1a] hover:text-slate-200" onClick={() => toast({ type: "info", message: "Ghost button clicked" })}>Ghost</Button>
+          <button type="button" onClick={() => toast({ type: "success", message: "Refreshed" })} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"><RefreshCw className="h-4 w-4" /></button>
+          <button type="button" onClick={() => toast({ type: "success", message: "Add action triggered" })} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"><Plus className="h-5 w-5" /></button>
         </Row>
         <Row label="Sizes">
-          <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-500">Small</Button>
-          <Button className="bg-blue-600 text-white hover:bg-blue-500">Default</Button>
-          <Button size="lg" className="bg-blue-600 text-white hover:bg-blue-500">Large</Button>
+          <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-500" onClick={() => toast({ type: "info", message: "Small button" })}>Small</Button>
+          <Button className="bg-blue-600 text-white hover:bg-blue-500" onClick={() => toast({ type: "info", message: "Default button" })}>Default</Button>
+          <Button size="lg" className="bg-blue-600 text-white hover:bg-blue-500" onClick={() => toast({ type: "info", message: "Large button" })}>Large</Button>
         </Row>
       </Section>
 
@@ -624,7 +638,7 @@ export const DesignSystemSection = (): JSX.Element => {
             Toggle loading
           </button>
         </Row>
-        <TableDemo loading={tableLoading} />
+        <TableDemo loading={tableLoading} onReview={(name) => toast({ type: "info", message: `Reviewing ${name}` })} />
         <div className="rounded-xl border border-gray-800 bg-[#141820] px-4 py-3">
           <Pagination page={1} total={24} onChange={() => {}} />
         </div>
@@ -669,7 +683,7 @@ export const DesignSystemSection = (): JSX.Element => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-0">
-              <EmptyState icon={Users} title="No engineers found" description="No engineers match the current filters. Try adjusting your search." action={{ label: "Clear filters", onClick: () => {} }} />
+              <EmptyState icon={Users} title="No engineers found" description="No engineers match the current filters. Try adjusting your search." action={{ label: "Clear filters", onClick: () => toast({ type: "info", message: "Filters cleared" }) }} />
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
@@ -679,7 +693,7 @@ export const DesignSystemSection = (): JSX.Element => {
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-0">
-              <EmptyState icon={AlertTriangle} title="Connection error" description="Unable to load data. Check your connection and try again." action={{ label: "Retry", onClick: () => {} }} />
+              <EmptyState icon={AlertTriangle} title="Connection error" description="Unable to load data. Check your connection and try again." action={{ label: "Retry", onClick: () => toast({ type: "info", message: "Retrying…" }) }} />
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
