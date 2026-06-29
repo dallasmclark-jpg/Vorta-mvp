@@ -65,15 +65,6 @@ export function VortaLoadingScreen() {
             <stop offset="60%"  stopColor="#3b82f6" stopOpacity="0.9" />
             <stop offset="100%" stopColor="#93c5fd" stopOpacity="1" />
           </linearGradient>
-
-          {/* Drop shadow filter for the >< mark */}
-          <filter id="vls-mark-glow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
         {/* Squircle background fill */}
@@ -104,17 +95,14 @@ export function VortaLoadingScreen() {
           }}
         />
 
-        {/* Vorta >< mark — two chevrons pointing inward */}
-        {/* Left chevron > */}
-        <g filter="url(#vls-mark-glow)">
-          <line x1="30" y1="38" x2="48" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round" />
-          <line x1="48" y1="60" x2="30" y2="82" stroke="white" strokeWidth="5" strokeLinecap="round" />
-        </g>
-        {/* Right chevron < */}
-        <g filter="url(#vls-mark-glow)">
-          <line x1="90" y1="38" x2="72" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round" />
-          <line x1="72" y1="60" x2="90" y2="82" stroke="white" strokeWidth="5" strokeLinecap="round" />
-        </g>
+        {/* Official Vorta logomark — paths from VortaLogo.tsx, viewBox 0 0 78 44
+            Scaled to ~54×30.5 and centred in the 112×112 inner area (centre = 60,60) */}
+        <svg x="33" y="45" width="54" height="30.5" viewBox="0 0 78 44" fill="none">
+          <path d="M78 44L48.2658 26.4635C46.7603 25.5598 44 23.8524 44 22H51.0345L78 38.2105V44Z" fill="#F8FAFC"/>
+          <path d="M78 0L48.2658 17.5365C46.7603 18.4402 44 20.1476 44 22H51.0345L78 5.78947V0Z" fill="#F8FAFC"/>
+          <path d="M0 44L29.7342 26.4635C31.2397 25.5598 34 23.8524 34 22H26.9655L0 38.2105V44Z" fill="#F8FAFC"/>
+          <path d="M0 0L29.7342 17.5365C31.2397 18.4402 34 20.1476 34 22H26.9655L0 5.78947V0Z" fill="#F8FAFC"/>
+        </svg>
       </svg>
 
       {/* "Loading…" label */}

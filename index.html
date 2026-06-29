@@ -31,10 +31,6 @@
           <stop offset="60%" stop-color="#3b82f6" stop-opacity=".9"/>
           <stop offset="100%" stop-color="#93c5fd" stop-opacity="1"/>
         </linearGradient>
-        <filter id="vls-f" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="1.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
       </defs>
       <rect x="4" y="4" width="112" height="112" rx="28" ry="28" fill="#0d1117"/>
       <rect x="4" y="4" width="112" height="112" rx="28" ry="28" stroke="#1e3a5f" stroke-width="1.5" fill="none"/>
@@ -42,14 +38,13 @@
         stroke="url(#vls-g)" stroke-width="2" fill="none" stroke-linecap="round"
         stroke-dasharray="86.46 306.54" stroke-dashoffset="393"
         style="animation:vls-pulse 2s linear infinite;filter:drop-shadow(0 0 5px #3b82f6) drop-shadow(0 0 12px rgba(59,130,246,.6))"/>
-      <g filter="url(#vls-f)">
-        <line x1="30" y1="38" x2="48" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
-        <line x1="48" y1="60" x2="30" y2="82" stroke="white" stroke-width="5" stroke-linecap="round"/>
-      </g>
-      <g filter="url(#vls-f)">
-        <line x1="90" y1="38" x2="72" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
-        <line x1="72" y1="60" x2="90" y2="82" stroke="white" stroke-width="5" stroke-linecap="round"/>
-      </g>
+      <!-- Official Vorta logomark paths (viewBox 0 0 78 44), scaled to 54×30.5, centred at (60,60) -->
+      <svg x="33" y="45" width="54" height="30.5" viewBox="0 0 78 44" fill="none">
+        <path d="M78 44L48.2658 26.4635C46.7603 25.5598 44 23.8524 44 22H51.0345L78 38.2105V44Z" fill="#F8FAFC"/>
+        <path d="M78 0L48.2658 17.5365C46.7603 18.4402 44 20.1476 44 22H51.0345L78 5.78947V0Z" fill="#F8FAFC"/>
+        <path d="M0 44L29.7342 26.4635C31.2397 25.5598 34 23.8524 34 22H26.9655L0 38.2105V44Z" fill="#F8FAFC"/>
+        <path d="M0 0L29.7342 17.5365C31.2397 18.4402 34 20.1476 34 22H26.9655L0 5.78947V0Z" fill="#F8FAFC"/>
+      </svg>
     </svg>
     <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#60a5fa;opacity:.7;position:relative;z-index:1">Loading…</span>
   </div>
