@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -230,7 +231,8 @@ interface DrawerProps {
 }
 
 function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
-  const isOpen = skill !== null;
+  const isOpen   = skill !== null;
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (skill && scrollRef.current) scrollRef.current.scrollTop = 0; }, [skill?.id]);
 
@@ -414,6 +416,29 @@ function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
                 </div>
               );
             })}
+          </div>
+
+          {/* Workflow navigation */}
+          <div className="border-t border-gray-800 p-4">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "View Engineers",    route: "/engineers"    },
+                { label: "View Equipment",    route: "/equipment"    },
+                { label: "View Requirements", route: "/requirements" },
+                { label: "View Training",     route: "/training"     },
+                { label: "View AI Match",     route: "/ai-matching"  },
+              ].map(({ label, route }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
