@@ -4,15 +4,13 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../lib/auth";
 import { VortaLogo, VortaIcon } from "../../components/VortaLogo";
-// ─── Google logo SVG (matches screenshot) ────────────────────────────────────
+// ─── LinkedIn logo SVG (official mark, white) ─────────────────────────────────
 
-function GoogleIcon() {
+function LinkedInIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.909-2.259c-.806.54-1.837.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-      <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="#ffffff">
+      <path d="M0 1.292C0 .578.592 0 1.322 0h15.356C17.408 0 18 .578 18 1.292v15.416C18 17.422 17.408 18 16.678 18H1.322C.592 18 0 17.422 0 16.708V1.292z" fill="#0A66C2"/>
+      <path d="M5.452 15.168V6.953H2.694v8.215H5.452zm-1.38-9.336c.962 0 1.56-.638 1.56-1.434-.018-.814-.598-1.434-1.542-1.434-.944 0-1.56.62-1.56 1.434 0 .796.598 1.434 1.524 1.434h.018zM9.738 15.168V10.57c0-.248.018-.496.09-.674.201-.495.655-1.009 1.42-1.009.999 0 1.398.761 1.398 1.879v4.402h2.757V10.43c0-2.549-1.362-3.733-3.177-3.733-1.489 0-2.143.831-2.506 1.397h.018V6.953H6.98c.036.779 0 8.215 0 8.215h2.758z" fill="#ffffff"/>
     </svg>
   );
 }
@@ -43,6 +41,8 @@ export const LoginPage = (): JSX.Element => {
   const [submitting,   setSubmitting]   = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
+  const [submittingLinkedIn, setSubmittingLinkedIn] = useState(false);
+
   // If already authenticated, redirect to intended destination or dashboard
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/dashboard";
   if (!loading && session) return <Navigate to={from} replace />;
@@ -62,11 +62,17 @@ export const LoginPage = (): JSX.Element => {
     navigate(from, { replace: true });
   };
 
-  const handleGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
+  const handleLinkedIn = async () => {
+    setSubmittingLinkedIn(true);
+    const { error: authError } = await supabase.auth.signInWithOAuth({
+      provider: "linkedin_oidc",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
+    if (authError) {
+      setError(authError.message);
+      setSubmittingLinkedIn(false);
+    }
+    // On success the browser redirects — no further action needed
   };
 
   return (
@@ -193,14 +199,22 @@ export const LoginPage = (): JSX.Element => {
               ) : "Sign in"}
             </button>
 
-            {/* Google SSO */}
+            {/* LinkedIn SSO */}
             <button
               type="button"
-              onClick={handleGoogle}
-              className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-gray-700 bg-transparent text-sm font-semibold text-slate-300 transition-colors hover:bg-[#ffffff08] hover:text-slate-50"
+              onClick={handleLinkedIn}
+              disabled={submittingLinkedIn}
+              className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-gray-700 bg-transparent text-sm font-semibold text-slate-300 transition-colors hover:bg-[#ffffff08] hover:text-slate-50 disabled:opacity-70"
             >
-              <GoogleIcon />
-              Sign in with Google
+              {submittingLinkedIn ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <LinkedInIcon />
+              )}
+              {submittingLinkedIn ? "Redirecting…" : "Sign in with LinkedIn"}
             </button>
           </form>
 
