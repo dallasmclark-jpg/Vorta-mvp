@@ -469,6 +469,69 @@ function inferActionRoute(title: string, subtitle: string): string {
   return "/requirements";
 }
 
+const ROUTE_LABELS: Record<string, string> = {
+  "/requirements":      "Open Requirements",
+  "/training":          "Open Training",
+  "/engineers":         "Open Engineers",
+  "/ai-matching":       "Open AI Matching",
+  "/skills-matrix":     "Open Skills Matrix",
+  "/equipment":         "Open Equipment",
+  "/settings":          "Open Settings",
+  "/support":           "Open Support",
+};
+
+function routeLabel(path: string): string {
+  return ROUTE_LABELS[path] ?? "Open Page";
+}
+
+// ---------------------------------------------------------------------------
+// Detail panel item shape
+// ---------------------------------------------------------------------------
+
+interface DetailItem {
+  title: string;
+  level: string;
+  levelClassName: string;
+  description: string;
+  route: string;
+}
+
+function aiActionToDetail(a: AiAction): DetailItem {
+  const levelClassMap: Record<string, string> = {
+    critical: "bg-[#ef444420] text-red-400",
+    high:     "bg-[#f9731620] text-orange-400",
+    medium:   "bg-[#facc1520] text-yellow-400",
+    low:      "bg-[#10b98120] text-emerald-400",
+  };
+  return {
+    title:          a.label,
+    level:          a.priority.toUpperCase(),
+    levelClassName: levelClassMap[a.priority] ?? "bg-gray-800 text-slate-400",
+    description:    a.description,
+    route:          a.href ?? "/requirements",
+  };
+}
+
+function recToDetail(action: RecommendedActionView): DetailItem {
+  return {
+    title:          action.title,
+    level:          action.priority,
+    levelClassName: action.statusClassName,
+    description:    action.subtitle || "Review this action and take the appropriate steps to resolve the underlying skill gap.",
+    route:          inferActionRoute(action.title, action.subtitle),
+  };
+}
+
+function riskToDetail(risk: CriticalRisk): DetailItem {
+  return {
+    title:          risk.title,
+    level:          risk.level,
+    levelClassName: risk.levelClassName,
+    description:    `This skill gap is at ${risk.level} risk level. Engineer coverage is below the required minimum for this capability area. Immediate action is required to maintain operational continuity.`,
+    route:          "/requirements",
+  };
+}
+
 function formatModuleName(raw: string): string {
   return raw
     .split("_")
@@ -657,6 +720,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
   const toast    = useToast();
 
   const [analysing, setAnalysing] = useState(false);
+  const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [analysisStep, setAnalysisStep] = useState(0);
   const [completionTime, setCompletionTime] = useState<string | null>(null);
   const analysisTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -841,7 +905,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
         <SyncIndicator loading={loading} source="Supabase" confidence={aiConfidence} />
         {!loading && (
           <div className={analysing ? "rounded-xl transition-all duration-300 ring-1 ring-blue-500/25 shadow-[0_0_16px_rgba(59,130,246,0.08)]" : ""}>
-            <AiActionsPanel actions={aiActions} />
+            <AiActionsPanel actions={aiActions} onReview={(a) => setDetailItem(aiActionToDetail(a))} />
           </div>
         )}
       </div>
@@ -912,7 +976,7 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => navigate("/requirements")}
+                      onClick={() => setDetailItem(riskToDetail(risk))}
                       className={`shrink-0 h-auto rounded-md px-2.5 py-1.5 font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] hover:bg-transparent [font-style:var(--text-xs-medium-font-style)] ${risk.actionClassName}`}
                     >
                       Review
@@ -945,9 +1009,9 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                     key={action.id}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${action.title} — navigate to ${inferActionRoute(action.title, action.subtitle).replace("/", "")}`}
-                    onClick={() => navigate(inferActionRoute(action.title, action.subtitle))}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(inferActionRoute(action.title, action.subtitle)); } }}
+                    aria-label={`${action.title} — open details`}
+                    onClick={() => setDetailItem(recToDetail(action))}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailItem(recToDetail(action)); } }}
                     className={`flex min-w-0 w-full flex-col gap-3 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_80px] md:items-center md:gap-4 cursor-pointer rounded transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 px-2 -mx-2 ${
                       index !== recommendedActions.length - 1
                         ? "border-b border-gray-800"
@@ -1067,7 +1131,13 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
               </AlertDescription>
               <button
                 type="button"
-                onClick={() => navigate("/requirements")}
+                onClick={() => setDetailItem({
+                  title: "PLC Fault-Finding Gap",
+                  level: "CRITICAL",
+                  levelClassName: "bg-[#ef444420] text-red-400",
+                  description: "PLC fault-finding gap is affecting 15 operators across Lines 1 & 2. Engineer coverage is below the required minimum. Immediate training or cross-skilling is required to restore operational safety.",
+                  route: "/requirements",
+                })}
                 className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
               >
                 Review Risk
@@ -1082,6 +1152,59 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
       <div className="w-full border-t border-gray-800 pt-8">
         <AiInsightsSection />
       </div>
+
+      {/* ── Detail panel ─────────────────────────────────────────────────── */}
+      {detailItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.72)" }}
+          onClick={() => setDetailItem(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-gray-700 bg-[#0d1523] shadow-[0_16px_48px_rgba(0,0,0,0.6)] focus:outline-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-gray-800 px-5 py-4">
+              <div className="flex flex-col gap-1.5">
+                <Badge className={`inline-flex h-auto self-start rounded px-2 py-1 text-xs font-semibold shadow-none ${detailItem.levelClassName}`}>
+                  {detailItem.level}
+                </Badge>
+                <h3 className="text-sm font-semibold leading-snug text-slate-50">{detailItem.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailItem(null)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-300"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-5 py-4">
+              <p className="text-sm leading-relaxed text-slate-400">{detailItem.description}</p>
+            </div>
+            {/* Footer */}
+            <div className="flex gap-3 border-t border-gray-800 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => { navigate(detailItem.route); setDetailItem(null); }}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+              >
+                {routeLabel(detailItem.route)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailItem(null)}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-[#ffffff08] hover:text-slate-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
