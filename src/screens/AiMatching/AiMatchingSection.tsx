@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   Bell,
   BookOpen,
   Brain,
@@ -158,6 +160,183 @@ async function fetchAiMatchData(): Promise<AiMatchData | null> {
   return data as AiMatchData;
 }
 
+// ─── Gap Rec Drawer ───────────────────────────────────────────────────────────
+
+function GapRecDrawer({
+  rec,
+  onClose,
+  onAccept,
+  onDismiss,
+}: {
+  rec: GapRec | null;
+  onClose: () => void;
+  onAccept: (skillName: string) => void;
+  onDismiss: (skillName: string) => void;
+}) {
+  const isOpen   = rec !== null;
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (rec && scrollRef.current) scrollRef.current.scrollTop = 0; }, [rec?.skill_name]);
+
+  const riskConf = rec ? {
+    critical: { bg: "bg-[#ef444408]", border: "border-red-500/20",    text: "text-red-400",    sub: "Immediate action required — this gap creates critical site risk." },
+    high:     { bg: "bg-[#f9731608]", border: "border-orange-400/20", text: "text-orange-300", sub: "Address within this planning cycle to reduce operational exposure." },
+    medium:   { bg: "bg-[#facc1508]", border: "border-yellow-400/20", text: "text-yellow-300", sub: "Schedule training in the next quarter to prevent escalation." },
+  }[rec.risk_level as "critical" | "high" | "medium"] ?? { bg: "bg-[#10b98108]", border: "border-emerald-500/20", text: "text-emerald-300", sub: "Low risk — include in routine training plan." } : null;
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-800 p-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {rec && (
+                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(rec.priority)}`}>
+                  {rec.priority}
+                </Badge>
+              )}
+              {rec && (
+                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(rec.risk_level)}`}>
+                  {rec.risk_level} risk
+                </Badge>
+              )}
+            </div>
+            <h2 className="text-base font-semibold leading-snug text-slate-50">{rec?.skill_name ?? "—"}</h2>
+            <p className="text-sm text-slate-400">{rec?.category ?? ""}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
+          {[
+            { label: "Engineers Below",  value: rec ? String(rec.engineers_below) : "—",    cls: (rec?.engineers_below ?? 0) > 0 ? "text-orange-400" : "text-emerald-400" },
+            { label: "Score Impact",     value: rec ? `+${rec.score_impact}pp` : "—",       cls: "text-emerald-400" },
+            { label: "Risk Level",       value: rec?.risk_level ?? "—",                     cls: riskConf?.text ?? "text-slate-50" },
+          ].map(({ label, value, cls }) => (
+            <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
+              <p className="text-[10px] font-medium text-slate-500">{label}</p>
+              <p className={`text-sm font-semibold tabular-nums ${cls}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div ref={scrollRef} className="flex flex-1 flex-col overflow-y-auto">
+
+          {/* Risk context */}
+          {riskConf && rec && (
+            <div className={`border-b border-gray-800 p-5`}>
+              <div className={`flex items-start gap-2.5 rounded-lg border ${riskConf.border} ${riskConf.bg} p-4`}>
+                <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${riskConf.text}`} />
+                <p className="text-xs leading-relaxed text-slate-300">{riskConf.sub}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Training recommendation */}
+          <div className="border-b border-gray-800 p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Recommended Training</p>
+            {rec?.recommended_course ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-3">
+                <p className="text-sm font-medium text-slate-200">{rec.recommended_course}</p>
+                {rec.provider_name && (
+                  <p className="text-[11px] text-slate-500">{rec.provider_name}{rec.provider_location ? ` · ${rec.provider_location}` : ""}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No course matched yet. Use AI Match to find suitable providers.</p>
+            )}
+          </div>
+
+          {/* AI Recommendation */}
+          <div className="border-b border-gray-800 p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Brain className="h-4 w-4 text-blue-400" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">AI Recommendation</p>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">
+              {rec?.priority === "Critical"
+                ? `Book ${rec.recommended_course ?? "relevant training"} immediately. ${rec.engineers_below} engineer${rec.engineers_below !== 1 ? "s are" : " is"} below target for ${rec.skill_name}. This gap is creating critical site risk.`
+                : rec?.priority === "High"
+                ? `Schedule ${rec.recommended_course ?? "relevant training"} in the next planning cycle. Closing this gap adds an estimated +${rec?.score_impact ?? 0}pp to match scores.`
+                : `Include ${rec.recommended_course ?? rec?.skill_name ?? "this training"} in your next quarterly plan to maintain compliance and reduce risk exposure.`}
+            </p>
+          </div>
+
+          {/* Local actions */}
+          <div className="border-b border-gray-800 p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Actions</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => { onAccept(rec!.skill_name); onClose(); }}
+                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+              >
+                Accept Recommendation
+              </button>
+              <button
+                type="button"
+                onClick={() => { onClose(); navigate("/training"); }}
+                className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
+              >
+                Book Training
+              </button>
+              <button
+                type="button"
+                onClick={() => { onDismiss(rec!.skill_name); onClose(); }}
+                className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:border-red-500/30 hover:text-red-400"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+
+          {/* Workflow navigation */}
+          <div className="p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "View Equipment",    route: "/equipment"     },
+                { label: "View Skills",       route: "/skills-matrix" },
+                { label: "View Engineers",    route: "/engineers"     },
+                { label: "View Requirements", route: "/requirements"  },
+                { label: "View Training",     route: "/training"      },
+              ].map(({ label, route }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { onClose(); navigate(route); }}
+                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Score breakdown bar ──────────────────────────────────────────────────────
 
 function ScoreBar({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
@@ -204,6 +383,8 @@ export const AiMatchingSection = (): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [tick, setTick]       = useState(0);
 
+  const navigate = useNavigate();
+
   // Filters
   const [filterDept,    setFilterDept]    = useState("");
   const [filterSkill,   setFilterSkill]   = useState("");
@@ -214,6 +395,40 @@ export const AiMatchingSection = (): JSX.Element => {
   // Selection + pagination
   const [selected, setSelected] = useState<MatchResult | null>(null);
   const [page, setPage]         = useState(1);
+
+  // Gap rec drawer + local state
+  const [selectedGap,  setSelectedGap]  = useState<GapRec | null>(null);
+  const [accepted,     setAccepted]     = useState<Set<string>>(new Set());
+  const [dismissed,    setDismissed]    = useState<Set<string>>(new Set());
+  const [toast,        setToast]        = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleAccept = (skillName: string) => {
+    setAccepted((prev) => { const s = new Set(prev); s.add(skillName); return s; });
+    showToast(`Recommendation accepted: ${skillName}`);
+  };
+
+  const handleDismiss = (skillName: string) => {
+    setDismissed((prev) => { const s = new Set(prev); s.add(skillName); return s; });
+    showToast(`Recommendation dismissed: ${skillName}`);
+  };
+
+  // Match-level accept/dismiss
+  const [acceptedEngineers, setAcceptedEngineers] = useState<Set<string>>(new Set());
+  const [dismissedEngineers, setDismissedEngineers] = useState<Set<string>>(new Set());
+
+  const handleAcceptEngineer = (id: string, name: string) => {
+    setAcceptedEngineers((prev) => { const s = new Set(prev); s.add(id); return s; });
+    showToast(`${name} accepted for this requirement`);
+  };
+  const handleDismissEngineer = (id: string, name: string) => {
+    setDismissedEngineers((prev) => { const s = new Set(prev); s.add(id); return s; });
+    showToast(`${name} dismissed from shortlist`);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -264,6 +479,15 @@ export const AiMatchingSection = (): JSX.Element => {
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+
+      <GapRecDrawer rec={selectedGap} onClose={() => setSelectedGap(null)} onAccept={handleAccept} onDismiss={handleDismiss} />
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-emerald-500/30 bg-[#0d1117] px-5 py-3 text-sm font-medium text-emerald-400 shadow-2xl">
+          {toast}
+        </div>
+      )}
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
@@ -746,6 +970,56 @@ export const AiMatchingSection = (): JSX.Element => {
                       </div>
                     </div>
                   )}
+
+                  {/* Accept / Dismiss actions */}
+                  {!dismissedEngineers.has(selected.engineer_id) && (
+                    <div className="flex flex-col gap-2 pt-1">
+                      {acceptedEngineers.has(selected.engineer_id) ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          <span className="text-xs font-semibold text-emerald-400">Accepted for this requirement</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptEngineer(selected.engineer_id, selected.engineer_name)}
+                          className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                        >
+                          Accept Recommendation
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDismissEngineer(selected.engineer_id, selected.engineer_name)}
+                        className="rounded-lg border border-gray-700 bg-[#111620] py-2 text-xs font-semibold text-slate-500 transition-colors hover:border-red-500/30 hover:text-red-400"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Workflow navigation */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: "View Equipment",    route: "/equipment"     },
+                        { label: "View Skills",       route: "/skills-matrix" },
+                        { label: "View Engineers",    route: "/engineers"     },
+                        { label: "View Requirements", route: "/requirements"  },
+                        { label: "View Training",     route: "/training"      },
+                      ].map(({ label, route }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => navigate(route)}
+                          className="rounded-lg border border-gray-700 bg-[#0b0e14] px-2.5 py-1.5 text-[10px] font-semibold text-slate-400 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-slate-500">Select an engineer from the table to see their AI match breakdown.</p>
@@ -792,10 +1066,11 @@ export const AiMatchingSection = (): JSX.Element => {
                     <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">No training gap recommendations available.</td>
                   </tr>
                 ) : (
-                  (data?.gapRecs ?? []).map((rec, idx) => (
+                  (data?.gapRecs ?? []).filter((r) => !dismissed.has(r.skill_name)).map((rec, idx) => (
                     <tr
                       key={`${rec.skill_name}-${idx}`}
-                      className={`border-b border-gray-800 ${idx % 2 === 1 ? "bg-[#111620]" : ""}`}
+                      onClick={() => setSelectedGap(rec)}
+                      className={`cursor-pointer border-b border-gray-800 transition-colors hover:bg-[#1c2338] ${accepted.has(rec.skill_name) ? "opacity-50" : ""} ${idx % 2 === 1 ? "bg-[#111620]" : ""}`}
                     >
                       {/* Skill Gap */}
                       <td className="px-4 py-3">
