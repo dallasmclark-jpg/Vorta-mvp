@@ -110,8 +110,13 @@
     height: 100%;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
     background-color: #0b0e14;
+  }
+
+  body,
+  #app {
+    overflow-y: hidden;
   }
 
   * {
@@ -129,7 +134,7 @@
 }
 
 .animate-fade-in {
-  animation: fade-in 1s var(--animation-delay, 0s) ease forwards;
+  animation: fade-in 0.15s ease forwards;
 }
 
 .animate-fade-up {
@@ -176,8 +181,8 @@
 
 @keyframes fade-in {
   0% {
-    opacity: 0;
-    transform: translateY(-10px);
+    opacity: 0.4;
+    transform: translateY(-4px);
   }
 
   to {
