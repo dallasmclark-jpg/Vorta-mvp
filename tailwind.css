@@ -111,6 +111,7 @@
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    background-color: #0b0e14;
   }
 
   * {
