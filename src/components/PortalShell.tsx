@@ -248,7 +248,7 @@ export const PortalShell = ({
     <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
-      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-full flex-col">
+      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-screen flex-col sticky top-0">
         <Sidebar
           homeRoute={homeRoute}
           nav={nav}
