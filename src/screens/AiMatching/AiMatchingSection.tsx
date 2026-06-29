@@ -29,6 +29,7 @@ import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
 import { AiAnalysing } from "../../components/AiAnalysing";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,44 +186,26 @@ function GapRecDrawer({
   }[rec.risk_level as "critical" | "high" | "medium"] ?? { bg: "bg-[#10b98108]", border: "border-emerald-500/20", text: "text-emerald-300", sub: "Low risk — include in routine training plan." } : null;
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-800 p-5">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {rec && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(rec.priority)}`}>
-                  {rec.priority}
-                </Badge>
-              )}
-              {rec && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(rec.risk_level)}`}>
-                  {rec.risk_level} risk
-                </Badge>
-              )}
-            </div>
-            <h2 className="text-base font-semibold leading-snug text-slate-50">{rec?.skill_name ?? "—"}</h2>
-            <p className="text-sm text-slate-400">{rec?.category ?? ""}</p>
+    <DetailDrawer open={isOpen} onClose={onClose}>
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-gray-800 p-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {rec && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(rec.priority)}`}>
+                {rec.priority}
+              </Badge>
+            )}
+            {rec && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(rec.risk_level)}`}>
+                {rec.risk_level} risk
+              </Badge>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <h2 className="text-base font-semibold leading-snug text-slate-50">{rec?.skill_name ?? "—"}</h2>
+          <p className="text-sm text-slate-400">{rec?.category ?? ""}</p>
+        </div>
+        <DrawerCloseButton onClose={onClose} />
         </div>
 
         {/* Stats strip */}
@@ -332,8 +315,7 @@ function GapRecDrawer({
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </DetailDrawer>
   );
 }
 

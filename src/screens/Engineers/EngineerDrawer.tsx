@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,60 +259,39 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
   }, [engineer, activeBookings]);
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
-
-      {/* Drawer panel — full-screen on mobile, fixed width on sm+ */}
-      <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-[420px] md:max-w-[480px] ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className="flex items-start gap-4 border-b border-gray-800 p-5">
-          {engineer && (
-            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold ${getAvatarColor(engineer.full_name)}`}>
-              {getInitials(engineer.full_name)}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-semibold text-slate-50">{engineer?.full_name ?? "—"}</h2>
-              {engineer?.verified && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" title="Verified" />}
-              {engineer?.critical_knowledge_holder && <Shield className="h-4 w-4 text-blue-400 shrink-0" title="Critical knowledge holder" />}
-            </div>
-            <p className="mt-0.5 text-sm text-slate-400">{engineer?.discipline ?? "—"}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {engineer && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(engineer.availability_status)}`}>
-                  {formatAvailStatus(engineer.availability_status)}
-                </Badge>
-              )}
-              {engineer && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(engineer.risk_level)}`}>
-                  {capitalize(engineer.risk_level)} Risk
-                </Badge>
-              )}
-              {engineer?.employment_type && (
-                <span className="text-[10px] font-medium text-slate-500">{capitalize(engineer.employment_type)}</span>
-              )}
-            </div>
+    <DetailDrawer open={isOpen} onClose={onClose} maxWidth="sm:max-w-[420px] md:max-w-[480px]">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-start gap-4 border-b border-gray-800 p-5">
+        {engineer && (
+          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold ${getAvatarColor(engineer.full_name)}`}>
+            {getInitials(engineer.full_name)}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-            aria-label="Close panel"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-semibold text-slate-50">{engineer?.full_name ?? "—"}</h2>
+            {engineer?.verified && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" title="Verified" />}
+            {engineer?.critical_knowledge_holder && <Shield className="h-4 w-4 text-blue-400 shrink-0" title="Critical knowledge holder" />}
+          </div>
+          <p className="mt-0.5 text-sm text-slate-400">{engineer?.discipline ?? "—"}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {engineer && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${availBadgeClass(engineer.availability_status)}`}>
+                {formatAvailStatus(engineer.availability_status)}
+              </Badge>
+            )}
+            {engineer && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadgeClass(engineer.risk_level)}`}>
+                {capitalize(engineer.risk_level)} Risk
+              </Badge>
+            )}
+            {engineer?.employment_type && (
+              <span className="text-[10px] font-medium text-slate-500">{capitalize(engineer.employment_type)}</span>
+            )}
+          </div>
         </div>
+        <DrawerCloseButton onClose={onClose} />
+      </div>
 
         {/* ── Info row ──────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-b border-gray-800 px-5 py-3">
@@ -564,7 +544,6 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </DetailDrawer>
   );
 }

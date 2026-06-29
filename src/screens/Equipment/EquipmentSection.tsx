@@ -29,6 +29,7 @@ import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
 import { TrendIndicator } from "../../components/TrendIndicator";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -299,29 +300,17 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [eq.id]);
   return (
-    <>
-      <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-gray-800 bg-[#090b10] shadow-2xl">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <span className="font-semibold text-slate-50">Equipment Detail</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </header>
+    <DetailDrawer open onClose={onClose}>
+      {/* Header */}
+      <header className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-blue-400" />
+          <span className="font-semibold text-slate-50">Equipment Detail</span>
+        </div>
+        <DrawerCloseButton onClose={onClose} />
+      </header>
 
-        <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+      <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
           {/* Name + status */}
           <div className="flex flex-col gap-2">
             <h2 className="text-base font-semibold text-slate-50">{eq.name}</h2>
@@ -452,8 +441,7 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
             Create Action Plan
           </button>
         </div>
-      </aside>
-    </>
+    </DetailDrawer>
   );
 }
 

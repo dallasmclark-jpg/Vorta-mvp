@@ -30,6 +30,7 @@ import { SyncIndicator } from "../../components/SyncIndicator";
 import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
 import { Select } from "../../components/Select";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Booking {
@@ -271,45 +272,27 @@ function BookingDrawer({
   const canReject   = item?.status === "pending_approval" || item?.status === "booked";
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-800 p-5">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {item && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${bookingStatusBadgeClass(item.status)}`}>
-                  {item.status.replace("_", " ")}
-                </Badge>
-              )}
-              {item?.delivery_type && (
-                <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${deliveryBadgeClass(item.delivery_type)}`}>
-                  {item.delivery_type}
-                </Badge>
-              )}
-            </div>
-            <h2 className="text-base font-semibold leading-snug text-slate-50">{item?.course_title ?? "—"}</h2>
-            {item?.partner_name && <p className="text-sm text-slate-400">{item.partner_name}</p>}
+    <DetailDrawer open={isOpen} onClose={onClose}>
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-gray-800 p-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {item && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${bookingStatusBadgeClass(item.status)}`}>
+                {item.status.replace("_", " ")}
+              </Badge>
+            )}
+            {item?.delivery_type && (
+              <Badge className={`inline-flex h-auto rounded px-1.5 py-0.5 text-[10px] font-medium shadow-none ${deliveryBadgeClass(item.delivery_type)}`}>
+                {item.delivery_type}
+              </Badge>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-            aria-label="Close drawer"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <h2 className="text-base font-semibold leading-snug text-slate-50">{item?.course_title ?? "—"}</h2>
+          {item?.partner_name && <p className="text-sm text-slate-400">{item.partner_name}</p>}
         </div>
+        <DrawerCloseButton onClose={onClose} />
+      </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
@@ -435,8 +418,7 @@ function BookingDrawer({
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </DetailDrawer>
   );
 }
 

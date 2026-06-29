@@ -24,6 +24,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { Select } from "../../components/Select";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,43 +260,22 @@ function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
   }));
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
-
-      {/* Drawer panel */}
-      <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-800 p-5">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-slate-50">{skill?.name}</h2>
-              {skill?.is_critical && (
-                <Badge className="inline-flex h-auto rounded bg-[#ef444420] px-1.5 py-0.5 text-[10px] font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
-                  Critical
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm text-slate-400">{skill?.category}</p>
+    <DetailDrawer open={isOpen} onClose={onClose}>
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-gray-800 p-5">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-slate-50">{skill?.name}</h2>
+            {skill?.is_critical && (
+              <Badge className="inline-flex h-auto rounded bg-[#ef444420] px-1.5 py-0.5 text-[10px] font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
+                Critical
+              </Badge>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-            aria-label="Close drawer"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <p className="text-sm text-slate-400">{skill?.category}</p>
         </div>
+        <DrawerCloseButton onClose={onClose} />
+      </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
@@ -441,8 +421,7 @@ function SkillDrawer({ skill, heatmapRows, skillGaps, onClose }: DrawerProps) {
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </DetailDrawer>
   );
 }
 

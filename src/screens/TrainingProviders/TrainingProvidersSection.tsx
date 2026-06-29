@@ -27,6 +27,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import { ContextHelp } from "../../components/ContextHelp";
 import { Select } from "../../components/Select";
+import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,48 +186,30 @@ function ProviderDrawer({
   );
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-200 ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-[440px] md:max-w-[500px] ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-start gap-4 border-b border-gray-800 p-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-800 bg-[#141820]">
-            <Building2 className="h-6 w-6 text-blue-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-slate-50 leading-tight">{provider?.name ?? "—"}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              {provider && (
-                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(provider.status)}`}>
-                  {statusLabel(provider.status)}
-                </Badge>
-              )}
-              {provider && provider.rating > 0 && (
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="text-[11px] font-semibold text-slate-300">{provider.rating.toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <DetailDrawer open={isOpen} onClose={onClose} maxWidth="sm:max-w-[440px] md:max-w-[500px]">
+      {/* Header */}
+      <div className="flex items-start gap-4 border-b border-gray-800 p-5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-800 bg-[#141820]">
+          <Building2 className="h-6 w-6 text-blue-400" />
         </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-slate-50 leading-tight">{provider?.name ?? "—"}</h2>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {provider && (
+              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(provider.status)}`}>
+                {statusLabel(provider.status)}
+              </Badge>
+            )}
+            {provider && provider.rating > 0 && (
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <span className="text-[11px] font-semibold text-slate-300">{provider.rating.toFixed(1)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <DrawerCloseButton onClose={onClose} />
+      </div>
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 divide-x divide-gray-800 border-b border-gray-800">
@@ -430,8 +413,7 @@ function ProviderDrawer({
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </DetailDrawer>
   );
 }
 
