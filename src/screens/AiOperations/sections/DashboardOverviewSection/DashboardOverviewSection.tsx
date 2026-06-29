@@ -1048,7 +1048,12 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
           </Card>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none motion-safe:animate-card-enter" style={{ animationDelay: '560ms' }}>
+          <Card
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("/skills-matrix")}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/skills-matrix"); } }}
+            className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none cursor-pointer transition-colors hover:border-blue-500/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 motion-safe:animate-card-enter" style={{ animationDelay: '560ms' }}>
             <CardContent className="flex h-full flex-col items-start gap-6 p-5 md:p-8">
               <div className="flex w-full flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div className="flex flex-col items-start gap-1">
@@ -1079,10 +1084,21 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                   Executive Summary
                 </h2>
                 <div className="flex w-full flex-col gap-5">
-                  {executiveSummary.map((item) => (
+                  {executiveSummary.map((item) => {
+                    const summaryRoute: Record<string, string> = {
+                      "Skills Capability":  "/skills-matrix",
+                      "Coverage Risk":      "/requirements",
+                      "Training Completion": "/training",
+                    };
+                    const route = summaryRoute[item.label];
+                    return (
                     <div
                       key={item.label}
-                      className="flex w-full flex-col gap-2"
+                      role={route ? "button" : undefined}
+                      tabIndex={route ? 0 : undefined}
+                      onClick={route ? () => navigate(route) : undefined}
+                      onKeyDown={route ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(route); } } : undefined}
+                      className={`flex w-full flex-col gap-2${route ? " cursor-pointer rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50" : ""}`}
                     >
                       <div className="flex items-start justify-between">
                         <span className="mt-[-1.00px] font-text-sm-regular text-[length:var(--text-sm-regular-font-size)] font-[number:var(--text-sm-regular-font-weight)] leading-[var(--text-sm-regular-line-height)] tracking-[var(--text-sm-regular-letter-spacing)] text-slate-400 [font-style:var(--text-sm-regular-font-style)]">
@@ -1097,24 +1113,33 @@ export const DashboardOverviewSection = (): JSX.Element => {  const { data, load
                         className={`h-2 overflow-hidden rounded bg-gray-800 ${item.indicatorClassName}`}
                       />
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="flex w-full items-start gap-4 pt-2">
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
                       Top Gap
                     </span>
-                    <span className="w-full truncate font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/requirements")}
+                      className="w-full truncate text-left font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 hover:text-blue-400 transition-colors [font-style:var(--text-md-semibold-font-style)]"
+                    >
                       {topGap}
-                    </span>
+                    </button>
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="mt-[-1.00px] font-text-xs-medium text-[length:var(--text-xs-medium-font-size)] font-[number:var(--text-xs-medium-font-weight)] leading-[var(--text-xs-medium-line-height)] tracking-[var(--text-xs-medium-letter-spacing)] text-slate-400 [font-style:var(--text-xs-medium-font-style)]">
                       Focus Area
                     </span>
-                    <span className="w-full truncate font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 [font-style:var(--text-md-semibold-font-style)]">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/skills-matrix")}
+                      className="w-full truncate text-left font-text-md-semibold text-[length:var(--text-md-semibold-font-size)] font-[number:var(--text-md-semibold-font-weight)] leading-[var(--text-md-semibold-line-height)] tracking-[var(--text-md-semibold-letter-spacing)] text-blue-500 hover:text-blue-400 transition-colors [font-style:var(--text-md-semibold-font-style)]"
+                    >
                       {focusArea}
-                    </span>
+                    </button>
                   </div>
                 </div>
               </CardContent>
