@@ -150,7 +150,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   };
 
   return (
-    <aside className="relative flex h-full w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 xl:px-4 overflow-y-auto">
+    <aside className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 xl:px-4 overflow-hidden">
       {/* Close button (mobile overlay only) */}
       {onClose && (
         <button
@@ -186,7 +186,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
       </nav>
 
       {/* Secondary nav + logout */}
-      <nav aria-label="Secondary navigation" className="mt-4 flex flex-col gap-1 shrink-0">
+      <nav aria-label="Secondary navigation" className="mt-auto shrink-0 flex flex-col gap-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {secondaryNav && secondaryNav.length > 0 && (
           <div className="flex flex-col gap-0.5 mb-2">
             {secondaryNav.map((item) => (
@@ -245,10 +245,10 @@ export const PortalShell = ({
   }, [location.pathname]);
 
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-[#0b0e14] text-white">
+    <main className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
-      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-full flex-col">
+      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
         <Sidebar
           homeRoute={homeRoute}
           nav={nav}
@@ -296,7 +296,7 @@ export const PortalShell = ({
         </div>
 
         {/* Scrollable content */}
-        <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div ref={scrollRef} className="min-w-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <PageTransition>
             {children}
           </PageTransition>
