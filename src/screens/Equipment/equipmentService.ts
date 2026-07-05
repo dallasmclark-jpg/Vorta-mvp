@@ -486,15 +486,16 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     // 3. All engineer_skills for these skill IDs
     const { data: engSkillRows, error: esErr } = await supabase
       .from("engineer_skills")
-      .select("engineer_id, skill_id, validated_level")
+      .select("engineer_id, skill_id, validated_rating, manager_rating")
       .in("skill_id", skillIds);
     if (esErr) throw esErr;
 
-    // Build map: skill_id -> list of {engineer_id, validated_level}
+    // Build map: skill_id -> list of {engineer_id, level}
     const skillToEngineers: Record<string, { engineerId: string; level: number }[]> = {};
     for (const es of engSkillRows ?? []) {
+      const level = es.validated_rating ?? es.manager_rating ?? 0;
       if (!skillToEngineers[es.skill_id]) skillToEngineers[es.skill_id] = [];
-      skillToEngineers[es.skill_id].push({ engineerId: es.engineer_id, level: es.validated_level ?? 0 });
+      skillToEngineers[es.skill_id].push({ engineerId: es.engineer_id, level });
     }
 
     // 4. All unique engineer IDs that have at least one relevant skill
@@ -503,7 +504,7 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     // 5. Engineer details
     const { data: engRows, error: engErr } = await supabase
       .from("engineers")
-      .select("id, name, role, availability, shift")
+      .select("id, full_name, discipline, employment_type, availability_status, shift_pattern")
       .in("id", allEngIds);
     if (engErr) throw engErr;
 
@@ -533,23 +534,24 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     // For each engineer count how many required skills they hold at >= required level
     const engineers: EngineerMatch[] = allEngIds.map((eid) => {
       const eng = engMap[eid];
-      const name: string = eng?.name ?? eid;
+      const name: string = eng?.full_name ?? eid;
       const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
-      // Count relevant skills (any validated level > 0 for a required skill)
+      // Count relevant skills (any rating > 0 for a required skill)
       const relevantSkillCount = (engSkillRows ?? []).filter(
-        (es: any) => es.engineer_id === eid && es.validated_level > 0,
+        (es: any) => es.engineer_id === eid && (es.validated_rating ?? es.manager_rating ?? 0) > 0,
       ).length;
       // Match % = (skills this engineer covers at or above required level) / total required skills * 100
       const matchCount = reqRows.filter((req: any) => {
-        const myLevel = (engSkillRows ?? []).find(
-          (es: any) => es.engineer_id === eid && es.skill_id === req.skill_id,
-        )?.validated_level ?? 0;
+        const es = (engSkillRows ?? []).find(
+          (e: any) => e.engineer_id === eid && e.skill_id === req.skill_id,
+        );
+        const myLevel = es ? (es.validated_rating ?? es.manager_rating ?? 0) : 0;
         return myLevel >= (req.required_level ?? 1);
       }).length;
       const matchPercent = Math.round((matchCount / reqRows.length) * 100);
-      const avail: string = eng?.availability ?? "Unknown";
-      const shift: string = eng?.shift ?? "Days";
-      return { id: eid, initials, name, role: eng?.role ?? "", availability: avail, shift, matchPercent, relevantSkillCount };
+      const avail: string = eng?.availability_status ?? "Unknown";
+      const shift: string = eng?.shift_pattern ?? "Days";
+      return { id: eid, initials, name, role: eng?.discipline ?? eng?.employment_type ?? "", availability: avail, shift, matchPercent, relevantSkillCount };
     }).sort((a, b) => b.matchPercent - a.matchPercent);
 
     // 8. Coverage summary
