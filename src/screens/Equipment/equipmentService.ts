@@ -365,7 +365,7 @@ function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
 
 function rowToCompletedWorkOrder(row: WorkOrderRow): CompletedWorkOrder {
   return {
-    id:             row.id,
+    id:             row.wo_number ?? row.id,
     equipmentId:    row.equipment_id ?? "",
     description:    row.description ?? "",
     type:           row.work_type ?? "—",
@@ -592,12 +592,16 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
       skills:    MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
       engineers: MOCK_ENGINEERS,
     };
+    const fallbackSkills = mockResult.skills;
+    const fallbackEngineers = MOCK_ENGINEERS;
     return {
       skills: [],
       engineers: [],
       coverageSummary: { covered: 0, atRisk: 0, missing: 0, coveragePercent: 0 },
-      legacySkills:    mockResult.skills,
-      legacyEngineers: mockResult.engineers,
+      legacySkills:    fallbackSkills.length > 0
+        ? fallbackSkills
+        : MOCK_SKILLS.filter((s) => s.equipmentId === DEFAULT_EQUIPMENT_ID),
+      legacyEngineers: fallbackEngineers,
     };
   }
 }
