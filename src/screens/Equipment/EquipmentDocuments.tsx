@@ -116,7 +116,7 @@ function statusBadgeClass(s: DocStatus) {
 export const EquipmentDocuments = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const eq = getEquipmentById(equipmentId);
+  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
   const [search, setSearch] = useState("");
 
   const riskBadgeClass =
@@ -131,7 +131,7 @@ export const EquipmentDocuments = (): JSX.Element => {
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
   const handleTabClick = (tabId: string) => {
-    const id = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+    const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
     if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
