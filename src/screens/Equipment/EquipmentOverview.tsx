@@ -346,7 +346,13 @@ const TABS = [
 export const EquipmentOverview = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab] = useState("overview");
+
+  const handleTabClick = (tabId: string) => {
+    const id = equipmentId ?? DEFAULT_ID;
+    if (tabId === "health") navigate(`/equipment/${id}/health`);
+    // other tabs are placeholders — no-op for now
+  };
 
   const eq = (equipmentId && EQUIPMENT_DATA[equipmentId]) ?? EQUIPMENT_DATA[DEFAULT_ID];
 
@@ -489,7 +495,7 @@ export const EquipmentOverview = (): JSX.Element => {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
                 activeTab === tab.id
                   ? "border-blue-500 text-blue-400"

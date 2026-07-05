@@ -21,7 +21,7 @@ import { TrainingSection } from "../Training";
 import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
-import { EquipmentSection, EquipmentOverview } from "../Equipment";
+import { EquipmentSection, EquipmentOverview, EquipmentHealth } from "../Equipment";
 import { SupportSection } from "../Support";
 import { DesignSystemSection } from "../DesignSystem";
 
@@ -69,6 +69,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="settings"           element={<SettingsSection />} />
       <Route path="equipment"          element={<EquipmentSection />} />
       <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
+      <Route path="equipment/:equipmentId/health"   element={<EquipmentHealth />} />
       <Route path="support"            element={<SupportSection />} />
       <Route path="design-system"      element={<DesignSystemSection />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
