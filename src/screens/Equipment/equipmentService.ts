@@ -445,7 +445,38 @@ export function getEquipmentDocuments(equipmentId: string): EquipmentDocument[] 
   return MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
 }
 
-export function getEquipmentActivity(equipmentId: string): EquipmentActivity[] {
+function formatDowntime(minutes: number | null): string {
+  if (minutes == null) return "0h 00m";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+export async function getEquipmentActivity(equipmentId: string): Promise<EquipmentActivity[]> {
+  try {
+    const { data, error } = await supabase
+      .from("work_orders")
+      .select("id, equipment_id, wo_number, work_type, priority, description, downtime_minutes, outcome, status, completed_date, requested_date")
+      .eq("equipment_id", equipmentId)
+      .order("completed_date", { ascending: false, nullsFirst: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((row) => ({
+        id:          row.id,
+        equipmentId: row.equipment_id ?? "",
+        date:        row.completed_date ?? row.requested_date ?? "",
+        woNumber:    row.wo_number ?? row.id,
+        type:        (row.work_type?.toUpperCase() ?? "CORRECTIVE") as EquipmentActivity["type"],
+        priority:    (row.priority?.toUpperCase() ?? "MEDIUM") as EquipmentActivity["priority"],
+        description: row.description ?? "",
+        downtime:    formatDowntime(row.downtime_minutes),
+        outcome:     (row.outcome?.toUpperCase() ?? row.status?.toUpperCase() ?? "OPEN") as EquipmentActivity["outcome"],
+      }));
+    }
+    if (error) console.warn("getEquipmentActivity Supabase error, using mock:", error.message);
+  } catch (e) {
+    console.warn("getEquipmentActivity threw, using mock:", e);
+  }
   return MOCK_ACTIVITY.filter((a) => a.equipmentId === equipmentId);
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -24,6 +24,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById, getEquipmentActivity } from "./equipmentService";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -40,15 +41,6 @@ interface HistoryRow {
   downtime: string;
   outcome: WoOutcome;
 }
-
-const HISTORY_ROWS: HistoryRow[] = [
-  { date: "24 Apr 2025", woNumber: "WO-10482", type: "BREAKDOWN",  priority: "CRITICAL", description: "High vibration on main arm — emergency stop triggered",  downtime: "3h 20m", outcome: "RESOLVED" },
-  { date: "23 Apr 2025", woNumber: "WO-10435", type: "CORRECTIVE", priority: "HIGH",     description: "PLC communication intermittent — board reseated",           downtime: "1h 45m", outcome: "PARTIAL"  },
-  { date: "21 Apr 2025", woNumber: "WO-10491", type: "PREVENTIVE", priority: "MEDIUM",   description: "Gripper alignment check — within tolerance",                 downtime: "0h 00m", outcome: "RESOLVED" },
-  { date: "20 Apr 2025", woNumber: "WO-10478", type: "INSPECTION", priority: "MEDIUM",   description: "Monthly visual inspection — no defects found",               downtime: "0h 00m", outcome: "RESOLVED" },
-  { date: "18 Apr 2025", woNumber: "WO-10465", type: "PARTS",      priority: "MEDIUM",   description: "Drive belt replaced — worn beyond 80% threshold",            downtime: "0h 30m", outcome: "RESOLVED" },
-  { date: "15 Apr 2025", woNumber: "WO-10452", type: "BREAKDOWN",  priority: "CRITICAL", description: "Bearing failure on arm joint — partial bearing replacement", downtime: "6h 10m", outcome: "PARTIAL"  },
-];
 
 interface SparePartRow {
   name: string;
@@ -202,7 +194,27 @@ export const EquipmentHistory = (): JSX.Element => {
   const [search, setSearch]       = useState("");
   const [page] = useState(1);
 
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEq);
+  }, [resolvedId]);
+
+  useEffect(() => {
+    getEquipmentActivity(resolvedId).then((rows) => {
+      setHistoryRows(rows.map((r) => ({
+        date:        r.date,
+        woNumber:    r.woNumber,
+        type:        r.type as WoType,
+        priority:    r.priority as WoPriority,
+        description: r.description,
+        downtime:    r.downtime,
+        outcome:     r.outcome as WoOutcome,
+      })));
+    });
+  }, [resolvedId]);
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -230,7 +242,7 @@ export const EquipmentHistory = (): JSX.Element => {
     // other tabs placeholder
   };
 
-  const filtered = HISTORY_ROWS.filter(
+  const filtered = historyRows.filter(
     (r) =>
       r.woNumber.toLowerCase().includes(search.toLowerCase()) ||
       r.description.toLowerCase().includes(search.toLowerCase()),
