@@ -43,8 +43,6 @@ interface InventoryRow {
   name: string; partNumber: string; stock: number; max: number; status: StockStatus;
 }
 
-const INVENTORY: never[] = [];
-
 const USAGE_BARS = [
   { label: "Drive Belt",  count: 12, color: "#3b82f6", pct: 100 },
   { label: "Filter",      count: 9,  color: "#3b82f6", pct: 75  },
@@ -52,8 +50,6 @@ const USAGE_BARS = [
   { label: "Encoder",     count: 5,  color: "#3b82f6", pct: 42  },
   { label: "O-Ring Set",  count: 4,  color: "#3b82f6", pct: 33  },
 ];
-
-const CRITICAL_SPARES: never[] = [];
 
 const UPCOMING_REQS = [
   { name: "Drive Belt",  when: "Due Tomorrow", urgentClass: "bg-red-500/20 text-red-400"     },
