@@ -16,8 +16,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentById } from "./equipmentService";
+import { DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -303,8 +302,15 @@ export const EquipmentOverview = (): JSX.Element => {
   };
 
   // Identity comes from the shared service; overview metrics stay local.
-  const eq   = getEquipmentById(equipmentId);
-  const ovw  = (equipmentId && OVERVIEW_DATA[equipmentId]) ?? DEFAULT_OVERVIEW;
+  const equipmentBase = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const overviewData =
+    OVERVIEW_DATA[equipmentBase.id] ??
+    OVERVIEW_DATA[DEFAULT_EQUIPMENT_ID];
+  const eq = {
+    ...overviewData,
+    ...equipmentBase,
+  };
+  const ovw = overviewData;
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
