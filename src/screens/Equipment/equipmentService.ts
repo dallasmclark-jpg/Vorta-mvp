@@ -623,7 +623,8 @@ export async function getEquipmentActivity(equipmentId: string): Promise<Equipme
       .from("work_orders")
       .select("id, equipment_id, wo_number, work_type, priority, description, downtime_minutes, outcome, status, completed_date, requested_date")
       .eq("equipment_id", equipmentId)
-      .order("completed_date", { ascending: false, nullsFirst: false });
+      .order("completed_date", { ascending: false, nullsFirst: false })
+      .order("requested_date", { ascending: false });
 
     if (!error && data && data.length > 0) {
       return data.map((row) => ({
@@ -642,7 +643,10 @@ export async function getEquipmentActivity(equipmentId: string): Promise<Equipme
   } catch (e) {
     console.warn("getEquipmentActivity threw, using mock:", e);
   }
-  return MOCK_ACTIVITY.filter((a) => a.equipmentId === equipmentId);
+  const activityMock = MOCK_ACTIVITY.filter((a) => a.equipmentId === equipmentId);
+  return activityMock.length > 0
+    ? activityMock
+    : MOCK_ACTIVITY.filter((a) => a.equipmentId === DEFAULT_EQUIPMENT_ID);
 }
 
 export function getEquipmentAiInsights(equipmentId: string): AiInsight[] {
