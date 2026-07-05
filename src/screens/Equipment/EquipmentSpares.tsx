@@ -112,9 +112,7 @@ export const EquipmentSpares = (): JSX.Element => {
   const loadEquipmentSpares = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
-    if (!hasLoadedComponents) {
-      setHasLoadedComponents(false);
-    }
+    setHasLoadedComponents((alreadyLoaded) => alreadyLoaded);
     try {
       const [identity, componentResult] = await Promise.all([
         getEquipmentIdentityById(resolvedId),
@@ -131,7 +129,7 @@ export const EquipmentSpares = (): JSX.Element => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [resolvedId, hasLoadedComponents]);
+  }, [resolvedId]);
   useEffect(() => {
     loadEquipmentSpares();
   }, [loadEquipmentSpares]);
