@@ -134,7 +134,7 @@ export const EquipmentSkills = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
 
-  const eq = getEquipmentById(equipmentId);
+  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -150,7 +150,7 @@ export const EquipmentSkills = (): JSX.Element => {
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
   const handleTabClick = (tabId: string) => {
-    const id = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+    const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
     if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
