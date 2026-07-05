@@ -21,7 +21,7 @@ import { TrainingSection } from "../Training";
 import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
-import { EquipmentSection, EquipmentOverview, EquipmentHealth } from "../Equipment";
+import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrders } from "../Equipment";
 import { SupportSection } from "../Support";
 import { DesignSystemSection } from "../DesignSystem";
 
@@ -68,8 +68,9 @@ export const AiOperations = (): JSX.Element => (
       <Route path="ai-matching"        element={<AiMatchingSection />} />
       <Route path="settings"           element={<SettingsSection />} />
       <Route path="equipment"          element={<EquipmentSection />} />
-      <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
-      <Route path="equipment/:equipmentId/health"   element={<EquipmentHealth />} />
+      <Route path="equipment/:equipmentId/overview"     element={<EquipmentOverview />} />
+      <Route path="equipment/:equipmentId/health"       element={<EquipmentHealth />} />
+      <Route path="equipment/:equipmentId/work-orders"  element={<EquipmentWorkOrders />} />
       <Route path="support"            element={<SupportSection />} />
       <Route path="design-system"      element={<DesignSystemSection />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />

@@ -351,6 +351,7 @@ export const EquipmentOverview = (): JSX.Element => {
   const handleTabClick = (tabId: string) => {
     const id = equipmentId ?? DEFAULT_ID;
     if (tabId === "health") navigate(`/equipment/${id}/health`);
+    if (tabId === "wo")     navigate(`/equipment/${id}/work-orders`);
     // other tabs are placeholders — no-op for now
   };
 

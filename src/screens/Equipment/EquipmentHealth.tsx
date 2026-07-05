@@ -521,7 +521,7 @@ export const EquipmentHealth = (): JSX.Element => {
 
   const handleTabClick = (tabId: string) => {
     if (tabId === "overview") navigate(`/equipment/${eq.id}/overview`);
-    else if (tabId === "health") {/* already here */}
+    if (tabId === "wo")       navigate(`/equipment/${eq.id}/work-orders`);
     // other tabs are placeholders — no-op for now
   };
 
