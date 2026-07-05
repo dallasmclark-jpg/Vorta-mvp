@@ -106,12 +106,17 @@ export const EquipmentSpares = (): JSX.Element => {
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  const loadEquipmentSpares = async () => {
+    const [identity, componentResult] = await Promise.all([
+      getEquipmentIdentityById(resolvedId),
+      getEquipmentComponents(resolvedId),
+    ]);
+    setEq(identity);
+    setComponents(componentResult);
+    setLastUpdated(new Date());
+  };
   useEffect(() => {
-    getEquipmentIdentityById(resolvedId).then(setEq);
-    getEquipmentComponents(resolvedId).then((result) => {
-      setComponents(result);
-      setLastUpdated(new Date());
-    });
+    loadEquipmentSpares();
   }, [resolvedId]);
 
   const inventoryValue = useMemo(
@@ -750,7 +755,12 @@ export const EquipmentSpares = (): JSX.Element => {
         {/* ── Footer ────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
           <span>All data is synced from Vorta Network and SAP PM. Last updated: {lastUpdatedLabel}</span>
-          <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
+          <button
+            type="button"
+            aria-label="Refresh spares data"
+            onClick={loadEquipmentSpares}
+            className="text-slate-600 hover:text-slate-400 transition-colors"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
