@@ -51,11 +51,6 @@ const USAGE_BARS = [
   { label: "O-Ring Set",  count: 4,  color: "#3b82f6", pct: 33  },
 ];
 
-const UPCOMING_REQS = [
-  { name: "Drive Belt",  when: "Due Tomorrow", urgentClass: "bg-red-500/20 text-red-400"     },
-  { name: "Encoder",     when: "Next Week",    urgentClass: "bg-orange-500/20 text-orange-400" },
-  { name: "Bearing Kit", when: "Next Month",   urgentClass: "bg-yellow-500/20 text-yellow-400" },
-];
 
 
 const RECENT_ISSUES = [
@@ -212,6 +207,32 @@ export const EquipmentSpares = (): JSX.Element => {
         if (b.componentCount !== a.componentCount) return b.componentCount - a.componentCount;
         return a.name.localeCompare(b.name);
       });
+  }, [components.inventory]);
+
+  const upcomingRequirements = useMemo(() => {
+    return components.inventory
+      .filter((item) => item.stock <= item.max)
+      .map((item) => {
+        const isOutOfStock = item.stock === 0 || item.status === "Out of Stock";
+        const isLowStock = item.status === "Low Stock" || item.stock < item.max;
+
+        return {
+          name: item.name,
+          when: isOutOfStock ? "Order Now" : isLowStock ? "Reorder Soon" : "Monitor",
+          urgentClass: isOutOfStock
+            ? "bg-red-500/20 text-red-400"
+            : isLowStock
+              ? "bg-orange-500/20 text-orange-400"
+              : "bg-yellow-500/20 text-yellow-400",
+          stock: item.stock,
+          max: item.max,
+        };
+      })
+      .sort((a, b) => {
+        if (a.stock !== b.stock) return a.stock - b.stock;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 3);
   }, [components.inventory]);
 
   if (!eq) {
@@ -564,19 +585,28 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Upcoming Spare Requirements</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {UPCOMING_REQS.map((r) => (
-                  <div key={r.name} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                        <Package className="h-3.5 w-3.5 text-slate-400" />
+                {upcomingRequirements.length > 0 ? (
+                  upcomingRequirements.map((r) => (
+                    <div key={r.name} className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
+                          <Package className="h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-medium text-slate-200">{r.name}</span>
+                          <span className="text-[10px] text-slate-500">Stock {r.stock} / {r.max}</span>
+                        </div>
                       </div>
-                      <span className="text-xs font-medium text-slate-200">{r.name}</span>
+                      <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold shadow-none ${r.urgentClass}`}>
+                        {r.when}
+                      </Badge>
                     </div>
-                    <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold shadow-none ${r.urgentClass}`}>
-                      {r.when}
-                    </Badge>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    No upcoming spare requirements for this equipment.
+                  </p>
+                )}
               </div>
               <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View Requirements →
