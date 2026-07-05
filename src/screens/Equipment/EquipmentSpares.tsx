@@ -19,7 +19,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentComponents, EquipmentComponentsResult } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -43,14 +43,7 @@ interface InventoryRow {
   name: string; partNumber: string; stock: number; max: number; status: StockStatus;
 }
 
-const INVENTORY: InventoryRow[] = [
-  { name: "Encoder Rotary 1024",       partNumber: "EN-2205", stock: 0, max: 2, status: "Out of Stock" },
-  { name: "Servo Motor AC 3kW",        partNumber: "SM-4521", stock: 2, max: 3, status: "Low Stock"    },
-  { name: "Pneumatic Cylinder 50mm",   partNumber: "PC-3301", stock: 1, max: 2, status: "Low Stock"    },
-  { name: "Drive Belt Poly-V 1200mm",  partNumber: "DB-1192", stock: 4, max: 4, status: "OK"           },
-  { name: "Bearing Kit 6205-2RS",      partNumber: "BK-411C", stock: 6, max: 4, status: "OK"           },
-  { name: "Filter Hydraulic 10µm",     partNumber: "FT-160",  stock: 3, max: 2, status: "OK"           },
-];
+const INVENTORY: never[] = [];
 
 const USAGE_BARS = [
   { label: "Drive Belt",  count: 12, color: "#3b82f6", pct: 100 },
@@ -60,11 +53,7 @@ const USAGE_BARS = [
   { label: "O-Ring Set",  count: 4,  color: "#3b82f6", pct: 33  },
 ];
 
-const CRITICAL_SPARES = [
-  { name: "Servo Motor",        status: "Out of Stock" as StockStatus },
-  { name: "Drive Belt",         status: "Low Stock"    as StockStatus },
-  { name: "Pneumatic Cylinder", status: "Low Stock"    as StockStatus },
-];
+const CRITICAL_SPARES: never[] = [];
 
 const UPCOMING_REQS = [
   { name: "Drive Belt",  when: "Due Tomorrow", urgentClass: "bg-red-500/20 text-red-400"     },
@@ -97,15 +86,16 @@ const QUICK_ACTIONS = [
 
 // ─── Donut chart ──────────────────────────────────────────────────────────────
 
-function StockDonut() {
+function StockDonut({ ok, low, out }: { ok: number; low: number; out: number }) {
   const size = 110; const sw = 14;
   const r = (size - sw) / 2; const circ = 2 * Math.PI * r;
+  const total = ok + low + out || 1;
+  const pct = Math.round((ok / total) * 100);
   const segs = [
-    { value: 121, color: "#10b981" },
-    { value: 18,  color: "#eab308" },
-    { value: 3,   color: "#ef4444" },
+    { value: ok,  color: "#10b981" },
+    { value: low, color: "#eab308" },
+    { value: out, color: "#ef4444" },
   ];
-  const total = segs.reduce((s, g) => s + g.value, 0);
   let offset = 0;
   const arcs = segs.map((s) => {
     const len = (s.value / total) * circ;
@@ -125,14 +115,14 @@ function StockDonut() {
           transform={`rotate(-90 ${cx} ${cy})`} />
       ))}
       <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle"
-        fill="white" fontSize="18" fontWeight="700">78%</text>
+        fill="white" fontSize="18" fontWeight="700">{pct}%</text>
       <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle"
         fill="#94a3b8" fontSize="8.5"></text>
     </svg>
   );
 }
 
-function statusBadgeClass(s: StockStatus) {
+function statusBadgeClass(s: string) {
   if (s === "Out of Stock") return "bg-[#ef444420] text-red-400";
   if (s === "Low Stock")    return "bg-[#eab30820] text-yellow-400";
   return "bg-[#10b98120] text-emerald-400";
@@ -145,9 +135,15 @@ export const EquipmentSpares = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+  const [components, setComponents] = useState<EquipmentComponentsResult>({
+    inventory: [],
+    criticalComponents: [],
+    stockSummary: { totalComponents: 0, outOfStock: 0, lowStock: 0, okStock: 0 },
+  });
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEq);
+    getEquipmentComponents(resolvedId).then(setComponents);
   }, [resolvedId]);
 
   if (!eq) {
@@ -309,9 +305,9 @@ export const EquipmentSpares = (): JSX.Element => {
         {/* ── KPI Row ───────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
           {[
-            { label: "Total Spares",     value: "142",      sub: "Active Parts",        valueClass: "text-slate-50" },
-            { label: "Critical Spares",  value: "18",       sub: "Low Stock",           valueClass: "text-orange-400" },
-            { label: "Out of Stock",     value: "3",        sub: "Requires Action",     valueClass: "text-red-400" },
+            { label: "Total Spares",     value: String(components.stockSummary.totalComponents), sub: "Active Parts",        valueClass: "text-slate-50" },
+            { label: "Critical Spares",  value: String(components.stockSummary.lowStock),        sub: "Low Stock",           valueClass: "text-orange-400" },
+            { label: "Out of Stock",     value: String(components.stockSummary.outOfStock),       sub: "Requires Action",     valueClass: "text-red-400" },
             { label: "Inventory Value",  value: "£48,760",  sub: "Current Stock Value", valueClass: "text-slate-50" },
             { label: "30 Day Usage",     value: "£7,920",   sub: "↑18% vs previous month", valueClass: "text-emerald-400" },
           ].map((kpi) => (
@@ -333,12 +329,16 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Stock Availability</h3>
               <div className="flex items-center gap-4">
-                <StockDonut />
+                <StockDonut
+                  ok={components.stockSummary.okStock}
+                  low={components.stockSummary.lowStock}
+                  out={components.stockSummary.outOfStock}
+                />
                 <div className="flex flex-col gap-1.5">
                   {[
-                    { label: "Available",    count: 121, color: "#10b981" },
-                    { label: "Low Stock",    count: 18,  color: "#eab308" },
-                    { label: "Out of Stock", count: 3,   color: "#ef4444" },
+                    { label: "Available",    count: components.stockSummary.okStock,  color: "#10b981" },
+                    { label: "Low Stock",    count: components.stockSummary.lowStock, color: "#eab308" },
+                    { label: "Out of Stock", count: components.stockSummary.outOfStock, color: "#ef4444" },
                   ].map((l) => (
                     <div key={l.label} className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-1.5">
@@ -361,7 +361,7 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Critical Spares Requiring Attention</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {CRITICAL_SPARES.map((s) => (
+                {components.criticalComponents.map((s) => (
                   <div key={s.name} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
@@ -434,8 +434,8 @@ export const EquipmentSpares = (): JSX.Element => {
                     </tr>
                   </thead>
                   <tbody>
-                    {INVENTORY.map((row, i) => (
-                      <tr key={row.partNumber} className={i !== INVENTORY.length - 1 ? "border-b border-gray-800" : ""}>
+                    {components.inventory.map((row, i) => (
+                      <tr key={row.partNumber} className={i !== components.inventory.length - 1 ? "border-b border-gray-800" : ""}>
                         <td className="py-3 pr-3">
                           <p className="font-semibold text-slate-200">{row.name}</p>
                           <p className="font-mono text-[10px] text-slate-500">{row.partNumber}</p>
@@ -457,7 +457,7 @@ export const EquipmentSpares = (): JSX.Element => {
                 </table>
               </div>
               <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-                <span>Showing 6 of 142 parts.</span>
+                <span>Showing {components.inventory.length} part{components.inventory.length !== 1 ? "s" : ""}.</span>
                 <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors">
                   View Full Inventory →
                 </button>
