@@ -691,30 +691,75 @@ export const MOCK_BUILDING_STATS: BuildingGroupStats[] = [
 
 export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
   try {
-    const [items, woResult] = await Promise.all([
-      getEquipmentList(),
-      supabase.from("work_orders").select("equipment_id, status, is_overdue"),
+    const [assetsResult, woResult] = await Promise.all([
+      supabase.from("equipment_assets").select("id, area, criticality"),
+      supabase.from("work_orders").select("equipment_id, status, is_overdue, priority"),
     ]);
 
-    const workOrders: { equipment_id: string | null; status: string | null; is_overdue: boolean | null }[] =
-      woResult.data ?? [];
+    const assets = (assetsResult.data ?? []) as {
+      id: string;
+      area: string | null;
+      criticality: string | null;
+    }[];
+
+    const workOrders = (woResult.data ?? []) as {
+      equipment_id: string | null;
+      status: string | null;
+      is_overdue: boolean | null;
+      priority: string | null;
+    }[];
+
+    // No data at all → fall back to mock
+    if (assets.length === 0) return MOCK_BUILDING_STATS;
+
+    // Build per-asset open-WO summary for risk score enrichment
+    const woMap = new Map<string, { open: number; overdue: number; criticalOpen: number }>();
+    for (const wo of workOrders) {
+      if (!wo.equipment_id) continue;
+      const isOpen = (wo.status ?? "").toLowerCase() !== "completed";
+      if (!isOpen) continue;
+      const entry = woMap.get(wo.equipment_id) ?? { open: 0, overdue: 0, criticalOpen: 0 };
+      entry.open += 1;
+      if (wo.is_overdue === true) entry.overdue += 1;
+      if ((wo.priority ?? "").toLowerCase() === "critical") entry.criticalOpen += 1;
+      woMap.set(wo.equipment_id, entry);
+    }
+
+    // Per-asset composite risk score: criticality base + work-order pressure
+    function assetRiskScore(criticality: string | null, wos: { open: number; overdue: number; criticalOpen: number }): number {
+      let base: number;
+      switch (criticality?.toLowerCase()) {
+        case "critical": base = 80; break;
+        case "high":     base = 60; break;
+        case "medium":   base = 40; break;
+        case "low":      base = 20; break;
+        default:         base = 10;
+      }
+      const woBonus = Math.min(20, wos.open * 3 + wos.overdue * 5 + wos.criticalOpen * 4);
+      return Math.min(100, base + woBonus);
+    }
 
     const stats = Object.entries(BUILDING_GROUPS).map(([code, group]) => {
-      const groupItems = items.filter((item) => group.areas.includes(item.area));
-      const groupIdSet = new Set(groupItems.map((i) => i.id));
-      const groupWOs   = workOrders.filter((wo) => wo.equipment_id && groupIdSet.has(wo.equipment_id));
+      const groupAssets = assets.filter((a) => group.areas.includes(a.area ?? ""));
+      const groupIdSet  = new Set(groupAssets.map((a) => a.id));
+      const groupWOs    = workOrders.filter((wo) => wo.equipment_id && groupIdSet.has(wo.equipment_id));
+
+      const scores = groupAssets.map((a) =>
+        assetRiskScore(a.criticality, woMap.get(a.id) ?? { open: 0, overdue: 0, criticalOpen: 0 })
+      );
 
       return {
         code,
         label:            group.label,
-        totalAssets:      groupItems.length,
-        highestRiskScore: groupItems.reduce((max, i) => Math.max(max, i.riskScore), 0),
-        criticalCount:    groupItems.filter((i) => i.riskLevel === "Critical").length,
+        totalAssets:      groupAssets.length,
+        highestRiskScore: scores.reduce((max, s) => Math.max(max, s), 0),
+        criticalCount:    groupAssets.filter((a) => a.criticality?.toLowerCase() === "critical").length,
         openWorkOrders:   groupWOs.filter((wo) => (wo.status ?? "").toLowerCase() !== "completed").length,
         overduePms:       groupWOs.filter((wo) => wo.is_overdue === true).length,
       };
     });
 
+    // If no group matched any area (e.g. live areas use different names), fall back to mock
     const hasData = stats.some((s) => s.totalAssets > 0);
     return hasData ? stats : MOCK_BUILDING_STATS;
   } catch (e) {
