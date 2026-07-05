@@ -40,14 +40,6 @@ const TABS = [
 
 
 
-const RECENT_ISSUES = [
-  { text: "Encoder issued to J. Wilson",           when: "2 hours ago",  dotColor: "bg-blue-400"    },
-  { text: "Drive Belt replaced on PL-02",          when: "Yesterday",    dotColor: "bg-emerald-400" },
-  { text: "Servo Motor ordered from Siemens",      when: "2 days ago",   dotColor: "bg-orange-400"  },
-  { text: "Filter replaced during PM",             when: "3 days ago",   dotColor: "bg-slate-400"   },
-  { text: "Bearing Kit reserved for WO-10442",     when: "5 days ago",   dotColor: "bg-slate-400"   },
-];
-
 const QUICK_ACTIONS = [
   { Icon: Package,      label: "Request Spare"           },
   { Icon: ShoppingCart, label: "Create Purchase Request" },
@@ -248,6 +240,38 @@ export const EquipmentSpares = (): JSX.Element => {
       ...item,
       pct: Math.max(8, Math.round((item.count / maxGap) * 100)),
     }));
+  }, [components.inventory]);
+
+  const recentStockIssues = useMemo(() => {
+    return components.inventory
+      .filter((item) => item.stock === 0 || item.status === "Out of Stock" || item.status === "Low Stock" || item.stock < item.max)
+      .map((item) => {
+        const isOutOfStock = item.stock === 0 || item.status === "Out of Stock";
+        const isLowStock = item.status === "Low Stock" || item.stock < item.max;
+
+        return {
+          text: isOutOfStock
+            ? `${item.name} is out of stock`
+            : isLowStock
+              ? `${item.name} below target stock`
+              : `${item.name} requires stock review`,
+          when: item.location ? `Stores: ${item.location}` : "Stores location not set",
+          dotColor: isOutOfStock
+            ? "bg-red-400"
+            : isLowStock
+              ? "bg-orange-400"
+              : "bg-slate-400",
+          severityRank: isOutOfStock ? 0 : isLowStock ? 1 : 2,
+          stock: item.stock,
+          max: item.max,
+        };
+      })
+      .sort((a, b) => {
+        if (a.severityRank !== b.severityRank) return a.severityRank - b.severityRank;
+        if (a.stock !== b.stock) return a.stock - b.stock;
+        return a.text.localeCompare(b.text);
+      })
+      .slice(0, 5);
   }, [components.inventory]);
 
   if (!eq) {
@@ -664,18 +688,26 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Recent Spare Issues</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {RECENT_ISSUES.map((item) => (
-                  <div key={item.text} className="flex items-start gap-2.5 py-3">
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[11px] font-medium text-slate-200">{item.text}</span>
-                      <span className="text-[10px] text-slate-500">{item.when}</span>
+                {recentStockIssues.length > 0 ? (
+                  recentStockIssues.map((item) => (
+                    <div key={item.text} className="flex items-start gap-2.5 py-3">
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] font-medium text-slate-200">{item.text}</span>
+                        <span className="text-[10px] text-slate-500">
+                          {item.when} · Stock {item.stock} / {item.max}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    No recent spare stock issues for this equipment.
+                  </p>
+                )}
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Issue History →
+                View Stock Issue History →
               </button>
             </CardContent>
           </Card>
