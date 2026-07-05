@@ -16,7 +16,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { Badge } from "../../components/ui/badge";
+import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
@@ -216,7 +216,7 @@ const EQUIPMENT_DATA: Record<string, EquipmentDetail> = {
   },
 };
 
-const DEFAULT_ID = "pl-02";
+const DEFAULT_ID = DEFAULT_EQUIPMENT_ID;
 
 // ─── Mini Components ──────────────────────────────────────────────────────────
 
