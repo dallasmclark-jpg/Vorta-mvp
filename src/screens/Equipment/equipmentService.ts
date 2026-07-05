@@ -430,7 +430,10 @@ export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMa
   } catch (e) {
     console.warn("getEquipmentPMs threw, using mock:", e);
   }
-  return MOCK_PMS.filter((p) => p.equipmentId === equipmentId);
+  const pmMock = MOCK_PMS.filter((p) => p.equipmentId === equipmentId);
+  return pmMock.length > 0
+    ? pmMock
+    : MOCK_PMS.filter((p) => p.equipmentId === DEFAULT_EQUIPMENT_ID);
 }
 
 export interface SkillCoverage {
