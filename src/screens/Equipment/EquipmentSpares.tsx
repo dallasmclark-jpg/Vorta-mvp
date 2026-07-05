@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -17,7 +18,8 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
-import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
+import { getEquipmentIdentityById } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -141,7 +143,23 @@ function statusBadgeClass(s: StockStatus) {
 export const EquipmentSpares = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [eq, setEq] = useState<EquipmentBase | null>(null);
+
+  useEffect(() => {
+    setEq(null);
+    getEquipmentIdentityById(resolvedId).then(setEq);
+  }, [resolvedId]);
+
+  if (!eq) {
+    return (
+      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+        </div>
+      </section>
+    );
+  }
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :

@@ -180,10 +180,11 @@ export const EquipmentPMs = (): JSX.Element => {
   const [scheduleView, setScheduleView] = useState<"week" | "month">("week");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [eq, setEq] = useState<EquipmentBase | null>(null);
   const [pmRows, setPmRows] = useState<PmRow[]>([]);
 
   useEffect(() => {
+    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 
@@ -201,6 +202,16 @@ export const EquipmentPMs = (): JSX.Element => {
       })));
     });
   }, [resolvedId]);
+
+  if (!eq) {
+    return (
+      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+        </div>
+      </section>
+    );
+  }
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :

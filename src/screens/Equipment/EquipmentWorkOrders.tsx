@@ -165,11 +165,12 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const [search, setSearch] = useState("");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [eq, setEq] = useState<EquipmentBase | null>(null);
   const [openWOs, setOpenWOs] = useState<WorkOrder[]>([]);
   const [completedWOs, setCompletedWOs] = useState<CompletedWO[]>([]);
 
   useEffect(() => {
+    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 
@@ -179,6 +180,16 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       setCompletedWOs(completed as CompletedWO[]);
     });
   }, [resolvedId]);
+
+  if (!eq) {
+    return (
+      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+        </div>
+      </section>
+    );
+  }
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :

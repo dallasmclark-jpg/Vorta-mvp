@@ -16,7 +16,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { DEFAULT_EQUIPMENT_ID, getEquipmentById, EquipmentBase } from "./equipmentData";
 import { getEquipmentIdentityById } from "./equipmentService";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -291,9 +291,10 @@ export const EquipmentOverview = (): JSX.Element => {
   const [activeTab] = useState("overview");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [equipmentBase, setEquipmentBase] = useState(getEquipmentById(resolvedId));
+  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(null);
 
   useEffect(() => {
+    setEquipmentBase(null);
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
   }, [resolvedId]);
 
@@ -310,6 +311,16 @@ export const EquipmentOverview = (): JSX.Element => {
   };
 
   // Identity comes from Supabase (with fallback); overview metrics stay local.
+  if (!equipmentBase) {
+    return (
+      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+        </div>
+      </section>
+    );
+  }
+
   const overviewData =
     OVERVIEW_DATA[equipmentBase.id] ??
     OVERVIEW_DATA[DEFAULT_EQUIPMENT_ID];

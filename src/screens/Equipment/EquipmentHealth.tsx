@@ -424,11 +424,22 @@ export const EquipmentHealth = (): JSX.Element => {
   const [trendWindow, setTrendWindow] = useState<TrendWindow>("30d");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [equipmentBase, setEquipmentBase] = useState(getEquipmentById(resolvedId));
+  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(null);
 
   useEffect(() => {
+    setEquipmentBase(null);
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
   }, [resolvedId]);
+
+  if (!equipmentBase) {
+    return (
+      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+        </div>
+      </section>
+    );
+  }
 
   const eq = equipmentBase;
   const hd =
