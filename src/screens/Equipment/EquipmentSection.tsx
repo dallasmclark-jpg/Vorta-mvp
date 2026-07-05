@@ -13,7 +13,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-import { getEquipmentList } from "./equipmentService";
+import { getEquipmentList, resolveBuilding } from "./equipmentService";
 import type { EquipmentListItem } from "./equipmentService";
 
 // ─── Local display-only constants ────────────────────────────────────────────
@@ -267,6 +267,9 @@ export const EquipmentSection = (): JSX.Element => {
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Derive building label for chip display (e.g. "B2" → "Building 2")
+  const areaChipLabel = activeArea ? (resolveBuilding(activeArea)?.label ?? activeArea) : "";
+
   useEffect(() => {
     getEquipmentList()
       .then((items) => {
@@ -279,7 +282,11 @@ export const EquipmentSection = (): JSX.Element => {
   const filtered = useMemo(() => {
     const items = [...equipmentList].sort((a, b) => b.riskScore - a.riskScore);
     return items.filter((e) => {
-      if (activeArea && e.area !== activeArea) return false;
+      if (activeArea) {
+        const resolved = resolveBuilding(activeArea);
+        const areas = resolved ? resolved.areas : [activeArea];
+        if (!areas.includes(e.area)) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -398,7 +405,7 @@ export const EquipmentSection = (): JSX.Element => {
                   : "border-gray-700 bg-[#141820] text-slate-400 hover:border-gray-600 hover:text-slate-200"
               }`}
             >
-              {chip}{chip === "Area" && activeArea ? `: ${activeArea}` : ""}
+              {chip}{chip === "Area" && activeArea ? `: ${areaChipLabel}` : ""}
             </button>
           );
         })}

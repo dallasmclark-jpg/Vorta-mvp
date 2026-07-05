@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
@@ -10,76 +11,48 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Progress } from "../../../../components/ui/progress";
+import {
+  getBuildingGroupStats,
+  type BuildingGroupStats,
+  MOCK_BUILDING_STATS,
+} from "../../../Equipment/equipmentService";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Building static display config (non-derivable fields) ──────────────────
 
-const plantAreaRiskCards = [
-  {
-    area: "Building 2",
+const BUILDING_STATIC: Record<string, { driver: string; trend: string }> = {
+  B1: { driver: "Skills Gap",        trend: "Stable" },
+  B2: { driver: "PM Backlog",        trend: "New highest risk" },
+  BU: { driver: "Calibration Due",   trend: "Stable" },
+  BW: { driver: "Equipment Failure", trend: "Risk reduced" },
+  BP: { driver: "Compliance Risk",   trend: "Stable" },
+};
+
+function cardStyleFromScore(score: number) {
+  if (score >= 80) return {
     severity: "Critical",
     severityTextClass: "text-red-500",
     severityBgClass: "bg-[#ef444420]",
-    driver: "PM Backlog",
-    score: 92,
-    overduePms: 4,
-    criticalAssets: 12,
     progressClass: "[&>div]:bg-red-500",
-    trend: "New highest risk",
-    buildingFilter: "Building 2",
-  },
-  {
-    area: "Packing",
+  };
+  if (score >= 60) return {
     severity: "High",
     severityTextClass: "text-yellow-400",
     severityBgClass: "bg-[#facc1520]",
-    driver: "Labour Shortage",
-    score: 78,
-    overduePms: 2,
-    criticalAssets: 8,
     progressClass: "[&>div]:bg-yellow-400",
-    trend: "Risk increased",
-    buildingFilter: null,
-  },
-  {
-    area: "Utilities",
+  };
+  if (score >= 40) return {
     severity: "Med",
     severityTextClass: "text-yellow-400",
     severityBgClass: "bg-[#facc1520]",
-    driver: "Calibration Due",
-    score: 64,
-    overduePms: 1,
-    criticalAssets: 5,
     progressClass: "[&>div]:bg-yellow-400",
-    trend: "Stable",
-    buildingFilter: null,
-  },
-  {
-    area: "Warehouse",
+  };
+  return {
     severity: "Low",
     severityTextClass: "text-emerald-500",
     severityBgClass: "bg-[#10b98120]",
-    driver: "Equipment Failure",
-    score: 42,
-    overduePms: 0,
-    criticalAssets: 2,
     progressClass: "[&>div]:bg-emerald-500",
-    trend: "Risk reduced",
-    buildingFilter: null,
-  },
-  {
-    area: "Processing",
-    severity: "Low",
-    severityTextClass: "text-emerald-500",
-    severityBgClass: "bg-[#10b98120]",
-    driver: "Compliance Risk",
-    score: 28,
-    overduePms: 0,
-    criticalAssets: 1,
-    progressClass: "[&>div]:bg-emerald-500",
-    trend: "Stable",
-    buildingFilter: null,
-  },
-];
+  };
+}
 
 const labourRiskItems = [
   {
@@ -211,12 +184,11 @@ const downtimeImpact = [
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
+  const [buildingCards, setBuildingCards] = useState<BuildingGroupStats[]>(MOCK_BUILDING_STATS);
 
-  const handleAreaCardClick = (card: typeof plantAreaRiskCards[0]) => {
-    if (card.buildingFilter) {
-      navigate(`/equipment?building=${encodeURIComponent(card.buildingFilter)}`);
-    }
-  };
+  useEffect(() => {
+    getBuildingGroupStats().then(setBuildingCards);
+  }, []);
 
   const handleAssetClick = (id: string) => {
     navigate(`/equipment/${id}/overview`);
@@ -336,43 +308,47 @@ export const DashboardOverviewSection = (): JSX.Element => {
       <section className="flex w-full flex-col gap-4">
         <h2 className="text-base font-semibold text-slate-50">Plant Area Risk</h2>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-          {plantAreaRiskCards.map((card) => (
-            <Card
-              key={card.area}
-              onClick={() => handleAreaCardClick(card)}
-              className={`rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors${card.buildingFilter ? " cursor-pointer hover:border-gray-700 hover:bg-[#181e2a]" : ""}`}
-            >
-              <CardContent className="flex h-full flex-col items-start gap-3 p-4">
-                <div className="flex w-full items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-50">{card.area}</h3>
-                  <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${card.severityBgClass} ${card.severityTextClass}`}>
-                    {card.severity}
-                  </span>
-                </div>
-                <p className="min-h-9 self-stretch text-xs text-slate-400">
-                  Primary Driver: {card.driver}
-                </p>
-                <div className="flex w-full flex-col gap-1">
-                  <p className="text-xs text-slate-400">Overall risk score</p>
-                  <p className="text-xl font-semibold text-slate-50">{card.score}</p>
-                </div>
-                <dl className="flex w-full flex-col gap-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <dt className="text-sm text-slate-400">Overdue PMs</dt>
-                    <dd className="text-sm font-semibold text-slate-50">{card.overduePms}</dd>
+          {buildingCards.map((stats) => {
+            const style      = cardStyleFromScore(stats.highestRiskScore);
+            const staticInfo = BUILDING_STATIC[stats.code] ?? { driver: "—", trend: "—" };
+            return (
+              <Card
+                key={stats.code}
+                onClick={() => navigate(`/equipment?building=${stats.code}`)}
+                className="rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors cursor-pointer hover:border-gray-700 hover:bg-[#181e2a]"
+              >
+                <CardContent className="flex h-full flex-col items-start gap-3 p-4">
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-50">{stats.label}</h3>
+                    <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${style.severityBgClass} ${style.severityTextClass}`}>
+                      {style.severity}
+                    </span>
                   </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <dt className="text-sm text-slate-400">Critical assets</dt>
-                    <dd className="text-sm font-semibold text-slate-50">{card.criticalAssets}</dd>
+                  <p className="min-h-9 self-stretch text-xs text-slate-400">
+                    Primary Driver: {staticInfo.driver}
+                  </p>
+                  <div className="flex w-full flex-col gap-1">
+                    <p className="text-xs text-slate-400">Overall risk score</p>
+                    <p className="text-xl font-semibold text-slate-50">{stats.highestRiskScore || "—"}</p>
                   </div>
-                </dl>
-                <div className="flex w-full flex-col gap-1.5">
-                  <Progress value={card.score} className={`h-2 w-full rounded bg-gray-800 ${card.progressClass}`} />
-                  <p className="text-xs text-slate-400">{card.trend}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <dl className="flex w-full flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-sm text-slate-400">Overdue PMs</dt>
+                      <dd className="text-sm font-semibold text-slate-50">{stats.overduePms}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-sm text-slate-400">Critical assets</dt>
+                      <dd className="text-sm font-semibold text-slate-50">{stats.criticalCount}</dd>
+                    </div>
+                  </dl>
+                  <div className="flex w-full flex-col gap-1.5">
+                    <Progress value={stats.highestRiskScore} className={`h-2 w-full rounded bg-gray-800 ${style.progressClass}`} />
+                    <p className="text-xs text-slate-400">{staticInfo.trend}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 

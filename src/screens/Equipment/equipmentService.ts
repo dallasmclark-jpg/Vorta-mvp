@@ -656,3 +656,69 @@ export async function getEquipmentActivity(equipmentId: string): Promise<Equipme
 export function getEquipmentAiInsights(equipmentId: string): AiInsight[] {
   return MOCK_AI_INSIGHTS.filter((i) => i.equipmentId === equipmentId);
 }
+
+// ─── Building group definitions ───────────────────────────────────────────────
+
+export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
+  B1: { label: "Building 1",   areas: ["Biologics", "Media Prep", "Sterile Prep"] },
+  B2: { label: "Building 2",   areas: ["Packaging", "Fill-Finish", "Inspection"] },
+  BU: { label: "Utilities",    areas: ["Utilities"] },
+  BW: { label: "Warehouse",    areas: ["Warehouse"] },
+  BP: { label: "Purification", areas: ["Purification", "Lyophilisation"] },
+};
+
+export function resolveBuilding(code: string): { label: string; areas: string[] } | null {
+  return BUILDING_GROUPS[code] ?? null;
+}
+
+export interface BuildingGroupStats {
+  code: string;
+  label: string;
+  totalAssets: number;
+  highestRiskScore: number;
+  criticalCount: number;
+  openWorkOrders: number;
+  overduePms: number;
+}
+
+export const MOCK_BUILDING_STATS: BuildingGroupStats[] = [
+  { code: "B1", label: "Building 1",   totalAssets: 28, highestRiskScore: 45, criticalCount: 3,  openWorkOrders: 2,  overduePms: 1 },
+  { code: "B2", label: "Building 2",   totalAssets: 34, highestRiskScore: 92, criticalCount: 12, openWorkOrders: 8,  overduePms: 4 },
+  { code: "BU", label: "Utilities",    totalAssets: 18, highestRiskScore: 64, criticalCount: 5,  openWorkOrders: 3,  overduePms: 1 },
+  { code: "BW", label: "Warehouse",    totalAssets: 12, highestRiskScore: 42, criticalCount: 2,  openWorkOrders: 1,  overduePms: 0 },
+  { code: "BP", label: "Purification", totalAssets: 22, highestRiskScore: 28, criticalCount: 1,  openWorkOrders: 1,  overduePms: 0 },
+];
+
+export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
+  try {
+    const [items, woResult] = await Promise.all([
+      getEquipmentList(),
+      supabase.from("work_orders").select("equipment_id, status, is_overdue"),
+    ]);
+
+    const workOrders: { equipment_id: string | null; status: string | null; is_overdue: boolean | null }[] =
+      woResult.data ?? [];
+
+    const stats = Object.entries(BUILDING_GROUPS).map(([code, group]) => {
+      const groupItems = items.filter((item) => group.areas.includes(item.area));
+      const groupIdSet = new Set(groupItems.map((i) => i.id));
+      const groupWOs   = workOrders.filter((wo) => wo.equipment_id && groupIdSet.has(wo.equipment_id));
+
+      return {
+        code,
+        label:            group.label,
+        totalAssets:      groupItems.length,
+        highestRiskScore: groupItems.reduce((max, i) => Math.max(max, i.riskScore), 0),
+        criticalCount:    groupItems.filter((i) => i.riskLevel === "Critical").length,
+        openWorkOrders:   groupWOs.filter((wo) => (wo.status ?? "").toLowerCase() !== "completed").length,
+        overduePms:       groupWOs.filter((wo) => wo.is_overdue === true).length,
+      };
+    });
+
+    const hasData = stats.some((s) => s.totalAssets > 0);
+    return hasData ? stats : MOCK_BUILDING_STATS;
+  } catch (e) {
+    console.warn("getBuildingGroupStats failed, using mock:", e);
+    return MOCK_BUILDING_STATS;
+  }
+}
