@@ -37,12 +37,6 @@ const TABS = [
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-type StockStatus = "Out of Stock" | "Low Stock" | "OK";
-
-interface InventoryRow {
-  name: string; partNumber: string; stock: number; max: number; status: StockStatus;
-}
-
 const USAGE_BARS = [
   { label: "Drive Belt",  count: 12, color: "#3b82f6", pct: 100 },
   { label: "Filter",      count: 9,  color: "#3b82f6", pct: 75  },
