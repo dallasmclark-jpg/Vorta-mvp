@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -23,6 +23,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById, getEquipmentPMs } from "./equipmentService";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -38,14 +39,6 @@ interface PmRow {
   status: PmStatus;
   compliance: number;
 }
-
-const PM_ROWS: PmRow[] = [
-  { name: "Daily Visual Inspection", code: "PM-PL-02-DAILY",   frequency: "Daily",     type: "Inspection", lastCompleted: "24 Apr 2025", nextDue: "25 Apr 2025", status: "ON TRACK",  compliance: 90 },
-  { name: "Conveyor Lubrication",    code: "PM-PL-02-LUB-01",  frequency: "Weekly",    type: "Lubrication",lastCompleted: "20 Apr 2025", nextDue: "27 Apr 2025", status: "DUE SOON",  compliance: 75 },
-  { name: "Bearing Inspection",      code: "PM-PL-02-BEAR-01", frequency: "Monthly",   type: "Inspection", lastCompleted: "15 Mar 2025", nextDue: "15 Apr 2025", status: "OVERDUE",   compliance: 45 },
-  { name: "PLC Logic Review",        code: "PM-PL-02-LOGIC",   frequency: "Quarterly", type: "Test",       lastCompleted: "10 Jan 2025", nextDue: "10 Apr 2025", status: "COMPLETED", compliance: 100 },
-  { name: "Drive-End Alignment",     code: "PM-PL-02-ALIGN",   frequency: "Monthly",   type: "Service",    lastCompleted: "05 Apr 2025", nextDue: "05 May 2025", status: "ON TRACK",  compliance: 95 },
-];
 
 interface ChecklistRow {
   name: string;
@@ -186,7 +179,28 @@ export const EquipmentPMs = (): JSX.Element => {
   const [search, setSearch] = useState("");
   const [scheduleView, setScheduleView] = useState<"week" | "month">("week");
 
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [pmRows, setPmRows] = useState<PmRow[]>([]);
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEq);
+  }, [resolvedId]);
+
+  useEffect(() => {
+    getEquipmentPMs(resolvedId).then((pms) => {
+      setPmRows(pms.map((p) => ({
+        name:          p.name,
+        code:          p.code,
+        frequency:     p.frequency,
+        type:          p.type,
+        lastCompleted: p.lastCompleted,
+        nextDue:       p.nextDue,
+        status:        p.status as PmStatus,
+        compliance:    p.compliance,
+      })));
+    });
+  }, [resolvedId]);
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -214,7 +228,7 @@ export const EquipmentPMs = (): JSX.Element => {
     // other tabs placeholder
   };
 
-  const filtered = PM_ROWS.filter(
+  const filtered = pmRows.filter(
     (r) =>
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       r.code.toLowerCase().includes(search.toLowerCase()),

@@ -399,7 +399,31 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   };
 }
 
-export function getEquipmentPMs(equipmentId: string): PreventiveMaintenance[] {
+export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMaintenance[]> {
+  try {
+    const { data, error } = await supabase
+      .from("preventive_maintenance")
+      .select("id, equipment_id, title, pm_number, frequency, pm_type, last_completed_date, next_due_date, status, completion_percentage")
+      .eq("equipment_id", equipmentId);
+
+    if (!error && data && data.length > 0) {
+      return data.map((row) => ({
+        id:            row.id,
+        equipmentId:   row.equipment_id ?? "",
+        name:          row.title ?? "",
+        code:          row.pm_number ?? "",
+        frequency:     row.frequency ?? "",
+        type:          row.pm_type ?? "",
+        lastCompleted: row.last_completed_date ?? "",
+        nextDue:       row.next_due_date ?? "",
+        status:        (row.status as PreventiveMaintenance["status"]) ?? "ON TRACK",
+        compliance:    row.completion_percentage ?? 0,
+      }));
+    }
+    if (error) console.warn("getEquipmentPMs Supabase error, using mock:", error.message);
+  } catch (e) {
+    console.warn("getEquipmentPMs threw, using mock:", e);
+  }
   return MOCK_PMS.filter((p) => p.equipmentId === equipmentId);
 }
 
