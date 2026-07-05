@@ -291,7 +291,9 @@ export const EquipmentOverview = (): JSX.Element => {
   const [activeTab] = useState("overview");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(() =>
+    getCachedEquipmentIdentity(resolvedId) ?? getCachedEquipmentIdentity(DEFAULT_EQUIPMENT_ID)
+  );
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);

@@ -276,7 +276,7 @@ function rowToEquipment(row: EquipmentAssetRow): Equipment {
     criticality:  row.criticality ?? "—",
     status:       (row.status as Equipment["status"]) ?? "Running",
     statusNote:   "",
-    image:        row.image_url ?? "",
+    image:        row.image_url || "https://images.pexels.com/photos/3912981/pexels-photo-3912981.jpeg?auto=compress&cs=tinysrgb&w=400",
     riskScore,
     riskLevel,
     riskBreakdown: riskBreakdownFor(riskLevel),
