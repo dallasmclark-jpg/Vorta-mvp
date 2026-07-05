@@ -8,3 +8,5 @@ export { EquipmentSkills } from "./EquipmentSkills";
 export { EquipmentSpares } from "./EquipmentSpares";
 export { EquipmentDocuments } from "./EquipmentDocuments";
 export { EquipmentAiInsights } from "./EquipmentAiInsights";
+export * from "./equipmentTypes";
+export * from "./equipmentService";
