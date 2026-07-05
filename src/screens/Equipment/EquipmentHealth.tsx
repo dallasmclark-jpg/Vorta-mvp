@@ -422,8 +422,10 @@ export const EquipmentHealth = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [trendWindow, setTrendWindow] = useState<TrendWindow>("30d");
 
-  const eq = getEquipmentById(equipmentId);
-  const hd = (equipmentId && HEALTH_DATA[equipmentId]) ?? HEALTH_DATA[DEFAULT_ID];
+  const eq = getEquipmentById(equipmentId ?? DEFAULT_ID);
+  const hd =
+    HEALTH_DATA[eq.id] ??
+    HEALTH_DATA[DEFAULT_ID];
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
