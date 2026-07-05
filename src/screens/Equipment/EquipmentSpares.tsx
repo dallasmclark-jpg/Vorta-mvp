@@ -340,6 +340,11 @@ export const EquipmentSpares = (): JSX.Element => {
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+      {loadError && (
+        <div className="mx-4 mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 md:mx-6">
+          {loadError}
+        </div>
+      )}
 
       {/* ── Sticky Header ─────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
@@ -443,11 +448,7 @@ export const EquipmentSpares = (): JSX.Element => {
       {/* ── Page Content ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
 
-        {loadError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-            {loadError}
-          </div>
-        )}
+        {/* Page title + actions */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-50">Spares</h2>
