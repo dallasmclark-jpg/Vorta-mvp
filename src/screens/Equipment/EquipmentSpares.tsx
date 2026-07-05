@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -141,6 +141,11 @@ export const EquipmentSpares = (): JSX.Element => {
     getEquipmentIdentityById(resolvedId).then(setEq);
     getEquipmentComponents(resolvedId).then(setComponents);
   }, [resolvedId]);
+
+  const inventoryValue = useMemo(
+    () => components.inventory.reduce((total, item) => total + item.stock * (item.unitCost ?? 0), 0),
+    [components.inventory]
+  );
 
   if (!eq) {
     return (
@@ -304,7 +309,7 @@ export const EquipmentSpares = (): JSX.Element => {
             { label: "Total Spares",     value: String(components.stockSummary.totalComponents), sub: "Active Parts",        valueClass: "text-slate-50" },
             { label: "Critical Spares",  value: String(components.stockSummary.lowStock),        sub: "Low Stock",           valueClass: "text-orange-400" },
             { label: "Out of Stock",     value: String(components.stockSummary.outOfStock),       sub: "Requires Action",     valueClass: "text-red-400" },
-            { label: "Inventory Value",  value: "£48,760",  sub: "Current Stock Value", valueClass: "text-slate-50" },
+            { label: "Inventory Value",  value: new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(inventoryValue),  sub: "Current Stock Value", valueClass: "text-slate-50" },
             { label: "30 Day Usage",     value: "£7,920",   sub: "↑18% vs previous month", valueClass: "text-emerald-400" },
           ].map((kpi) => (
             <Card key={kpi.label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
