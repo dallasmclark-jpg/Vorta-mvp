@@ -325,10 +325,59 @@ export function getEquipmentById(id: string | undefined): Equipment | undefined 
   return MOCK_EQUIPMENT.find((e) => e.id === id);
 }
 
-export function getEquipmentWorkOrders(equipmentId: string): {
+// ─── work_orders row shape (matches DB columns) ──────────────────────────────
+
+interface WorkOrderRow {
+  id: string;
+  equipment_id: string | null;
+  priority: string | null;
+  description: string | null;
+  work_type: string | null;
+  status: string | null;
+  assigned_engineer: string | null;
+  requested_date: string | null;
+  due_date: string | null;
+}
+
+function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
+  const priority = (row.priority?.toUpperCase() ?? "LOW") as WorkOrder["priority"];
+  const status   = (row.status?.toUpperCase()   ?? "OPEN") as WorkOrder["status"];
+  const requested = row.requested_date ?? "";
+  const due       = row.due_date ?? "";
+  return {
+    id:            row.id,
+    equipmentId:   row.equipment_id ?? "",
+    priority,
+    description:   row.description ?? "",
+    type:          row.work_type ?? "—",
+    status,
+    engineer:      row.assigned_engineer ?? "—",
+    requestedDate: requested,
+    dueDate:       due,
+    age:           "—",
+  };
+}
+
+export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   open: WorkOrder[];
   completed: CompletedWorkOrder[];
-} {
+}> {
+  try {
+    const { data, error } = await supabase
+      .from("work_orders")
+      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date")
+      .eq("equipment_id", equipmentId);
+
+    if (!error && data && data.length > 0) {
+      return {
+        open:      (data as WorkOrderRow[]).map(rowToWorkOrder),
+        completed: MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),
+      };
+    }
+    if (error) console.warn("getEquipmentWorkOrders Supabase error, using mock:", error.message);
+  } catch (e) {
+    console.warn("getEquipmentWorkOrders threw, using mock:", e);
+  }
   return {
     open:      MOCK_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),
     completed: MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),

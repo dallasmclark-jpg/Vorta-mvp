@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -22,8 +22,9 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById, getEquipmentWorkOrders } from "./equipmentService";
 
-// ─── Work Orders mock data ────────────────────────────────────────────────────
+// ─── Work Orders types (local, mirrors equipmentTypes.ts shapes) ─────────────
 
 type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type WoStatus = "OPEN" | "IN PROGRESS" | "ON HOLD" | "WAITING PARTS";
@@ -60,24 +61,6 @@ interface EngineerWorkload {
   medium: number;
   low: number;
 }
-
-const OPEN_WOS: WorkOrder[] = [
-  { id: "WO-10482", priority: "CRITICAL", description: "High vibration detected on main arm",    type: "Corrective",  status: "OPEN",          engineer: "James Wilson", requestedDate: "24 Apr 2025", dueDate: "25 Apr 2025", age: "1d", overdue: true },
-  { id: "WO-10491", priority: "HIGH",     description: "Gripper alignment check required",       type: "Inspection",  status: "IN PROGRESS",   engineer: "Sarah Chen",   requestedDate: "20 Apr 2025", dueDate: "27 Apr 2025", age: "4d" },
-  { id: "WO-10435", priority: "MEDIUM",   description: "PLC communication intermittent",         type: "Predictive",  status: "ON HOLD",        engineer: "Mike Torres",  requestedDate: "22 Apr 2025", dueDate: "29 Apr 2025", age: "2d" },
-  { id: "WO-10412", priority: "LOW",      description: "Conveyor belt tension check",            type: "Preventive",  status: "WAITING PARTS",  engineer: "Lisa Park",    requestedDate: "21 Apr 2025", dueDate: "30 Apr 2025", age: "3d" },
-  { id: "WO-10398", priority: "HIGH",     description: "Motor overload protection trip",         type: "Corrective",  status: "OPEN",           engineer: "James Wilson", requestedDate: "19 Apr 2025", dueDate: "28 Apr 2025", age: "5d", overdue: true },
-  { id: "WO-10374", priority: "MEDIUM",   description: "Sensor calibration required",            type: "Preventive",  status: "OPEN",           engineer: "Sarah Chen",   requestedDate: "18 Apr 2025", dueDate: "25 Apr 2025", age: "6d" },
-  { id: "WO-10356", priority: "LOW",      description: "Pneumatic leak inspection",              type: "Inspection",  status: "OPEN",           engineer: "Mike Torres",  requestedDate: "17 Apr 2025", dueDate: "24 Apr 2025", age: "7d" },
-  { id: "WO-10321", priority: "HIGH",     description: "Bearing inspection required",            type: "Preventive",  status: "OPEN",           engineer: "Lisa Park",    requestedDate: "16 Apr 2025", dueDate: "23 Apr 2025", age: "8d", overdue: true },
-];
-
-const COMPLETED_WOS: CompletedWO[] = [
-  { id: "WO-10420", description: "Routine lubrication",  type: "Preventive", completedBy: "James Wilson", completionDate: "23 Apr 2025", mttr: "0.5h", outcome: "SUCCESS" },
-  { id: "WO-10415", description: "Calibration check",   type: "Preventive", completedBy: "Sarah Chen",   completionDate: "21 Apr 2025", mttr: "1.2h", outcome: "SUCCESS" },
-  { id: "WO-10409", description: "Sensor replacement",  type: "Preventive", completedBy: "Mike Torres",  completionDate: "19 Apr 2025", mttr: "2.4h", outcome: "PARTIAL" },
-  { id: "WO-10402", description: "Bearing inspection",  type: "Preventive", completedBy: "Lisa Park",    completionDate: "18 Apr 2025", mttr: "3.1h", outcome: "SUCCESS" },
-];
 
 const ENGINEER_WORKLOAD: EngineerWorkload[] = [
   { name: "James Wilson", initials: "JW", critical: 1, high: 4, medium: 4, low: 3 },
@@ -181,7 +164,21 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [search, setSearch] = useState("");
 
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [openWOs, setOpenWOs] = useState<WorkOrder[]>([]);
+  const [completedWOs, setCompletedWOs] = useState<CompletedWO[]>([]);
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEq);
+  }, [resolvedId]);
+
+  useEffect(() => {
+    getEquipmentWorkOrders(resolvedId).then(({ open, completed }) => {
+      setOpenWOs(open as WorkOrder[]);
+      setCompletedWOs(completed as CompletedWO[]);
+    });
+  }, [resolvedId]);
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -210,7 +207,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     // other tabs placeholder
   };
 
-  const filteredWOs = OPEN_WOS.filter(
+  const filteredWOs = openWOs.filter(
     (wo) =>
       wo.id.toLowerCase().includes(search.toLowerCase()) ||
       wo.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -598,8 +595,8 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                     </tr>
                   </thead>
                   <tbody>
-                    {COMPLETED_WOS.map((wo, i) => (
-                      <tr key={wo.id} className={i !== COMPLETED_WOS.length - 1 ? "border-b border-gray-800" : ""}>
+                    {completedWOs.map((wo, i) => (
+                      <tr key={wo.id} className={i !== completedWOs.length - 1 ? "border-b border-gray-800" : ""}>
                         <td className="py-2.5 pr-3 font-mono text-[11px] font-semibold text-slate-200">{wo.id}</td>
                         <td className="py-2.5 pr-3 max-w-[140px]">
                           <span className="block truncate text-slate-300" title={wo.description}>{wo.description}</span>
