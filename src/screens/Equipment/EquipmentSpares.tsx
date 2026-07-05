@@ -57,12 +57,6 @@ const UPCOMING_REQS = [
   { name: "Bearing Kit", when: "Next Month",   urgentClass: "bg-yellow-500/20 text-yellow-400" },
 ];
 
-const SUPPLIERS = [
-  { name: "KUKA UK",              meta: "OEM Supplier · Lead 5 days"    },
-  { name: "RS Components",        meta: "Reliability 98% · Lead 1 day"  },
-  { name: "Festo UK",             meta: "Reliability 96% · Lead 3 days" },
-  { name: "Radwell International",meta: "Surplus · Lead 7 days"         },
-];
 
 const RECENT_ISSUES = [
   { text: "Encoder issued to J. Wilson",           when: "2 hours ago",  dotColor: "bg-blue-400"    },
@@ -146,6 +140,79 @@ export const EquipmentSpares = (): JSX.Element => {
     () => components.inventory.reduce((total, item) => total + item.stock * (item.unitCost ?? 0), 0),
     [components.inventory]
   );
+
+  const preferredSuppliers = useMemo(() => {
+    const supplierMap = new Map<
+      string,
+      {
+        name: string;
+        componentCount: number;
+        criticalCount: number;
+        leadDays: number[];
+      }
+    >();
+
+    for (const item of components.inventory) {
+      const supplier = item.supplier.trim();
+      if (!supplier) continue;
+
+      const existing = supplierMap.get(supplier) ?? {
+        name: supplier,
+        componentCount: 0,
+        criticalCount: 0,
+        leadDays: [],
+      };
+
+      existing.componentCount += 1;
+
+      const criticality = item.criticality.toLowerCase();
+      if (criticality === "high" || criticality === "critical") {
+        existing.criticalCount += 1;
+      }
+
+      if (item.leadDays > 0) {
+        existing.leadDays.push(item.leadDays);
+      }
+
+      supplierMap.set(supplier, existing);
+    }
+
+    return Array.from(supplierMap.values())
+      .map((supplier) => {
+        const averageLeadDays =
+          supplier.leadDays.length > 0
+            ? Math.round(
+                supplier.leadDays.reduce((total, days) => total + days, 0) /
+                  supplier.leadDays.length
+              )
+            : null;
+
+        const linkedPartsLabel =
+          supplier.componentCount === 1 ? "1 linked part" : `${supplier.componentCount} linked parts`;
+
+        const leadLabel =
+          averageLeadDays !== null
+            ? `Avg lead ${averageLeadDays} day${averageLeadDays === 1 ? "" : "s"}`
+            : "Lead time not set";
+
+        const criticalLabel =
+          supplier.criticalCount > 0
+            ? ` · ${supplier.criticalCount} critical`
+            : "";
+
+        return {
+          name: supplier.name,
+          componentCount: supplier.componentCount,
+          criticalCount: supplier.criticalCount,
+          meta: `${linkedPartsLabel} · ${leadLabel}${criticalLabel}`,
+        };
+      })
+      .sort((a, b) => {
+        if (b.criticalCount !== a.criticalCount) return b.criticalCount - a.criticalCount;
+        if (b.componentCount !== a.componentCount) return b.componentCount - a.componentCount;
+        return a.name.localeCompare(b.name);
+      });
+  }, [components.inventory]);
 
   if (!eq) {
     return (
@@ -522,12 +589,18 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Preferred Suppliers</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {SUPPLIERS.map((s) => (
-                  <div key={s.name} className="flex flex-col gap-0.5 py-3">
-                    <span className="text-xs font-semibold text-slate-200">{s.name}</span>
-                    <span className="text-[10px] text-slate-500">{s.meta}</span>
-                  </div>
-                ))}
+                {preferredSuppliers.length > 0 ? (
+                  preferredSuppliers.map((supplier) => (
+                    <div key={supplier.name} className="flex flex-col gap-0.5 py-3">
+                      <span className="text-xs font-semibold text-slate-200">{supplier.name}</span>
+                      <span className="text-[10px] text-slate-500">{supplier.meta}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    No preferred suppliers linked to this equipment yet.
+                  </p>
+                )}
               </div>
               <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 Manage Suppliers →
