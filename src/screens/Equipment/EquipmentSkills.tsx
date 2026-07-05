@@ -229,6 +229,7 @@ export const EquipmentSkills = (): JSX.Element => {
     if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
     if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
     if (tabId === "history")  navigate(`/equipment/${id}/history`);
+    if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
   };
 
   return (
