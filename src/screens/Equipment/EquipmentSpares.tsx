@@ -35,7 +35,7 @@ const TABS = [
   { label: "AI Insights",        id: "ai" },
 ];
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Static actions ────────────────────────────────────────────────────────────
 
 
 
@@ -104,16 +104,31 @@ export const EquipmentSpares = (): JSX.Element => {
     criticalComponents: [],
     stockSummary: { totalComponents: 0, outOfStock: 0, lowStock: 0, okStock: 0 },
   });
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEq);
-    getEquipmentComponents(resolvedId).then(setComponents);
+    getEquipmentComponents(resolvedId).then((result) => {
+      setComponents(result);
+      setLastUpdated(new Date());
+    });
   }, [resolvedId]);
 
   const inventoryValue = useMemo(
     () => components.inventory.reduce((total, item) => total + item.stock * (item.unitCost ?? 0), 0),
     [components.inventory]
   );
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (!lastUpdated) return "Loading latest data";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(lastUpdated);
+  }, [lastUpdated]);
 
   const preferredSuppliers = useMemo(() => {
     const supplierMap = new Map<
@@ -734,7 +749,7 @@ export const EquipmentSpares = (): JSX.Element => {
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: 24 Apr 2025, 14:45</span>
+          <span>All data is synced from Vorta Network and SAP PM. Last updated: {lastUpdatedLabel}</span>
           <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
