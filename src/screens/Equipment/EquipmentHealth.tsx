@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
@@ -23,6 +23,7 @@ import { Progress } from "../../components/ui/progress";
 // ─── Equipment data (shared shape) ───────────────────────────────────────────
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById } from "./equipmentService";
 
 // ─── Health-specific data ─────────────────────────────────────────────────────
 
@@ -422,7 +423,14 @@ export const EquipmentHealth = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [trendWindow, setTrendWindow] = useState<TrendWindow>("30d");
 
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [equipmentBase, setEquipmentBase] = useState(getEquipmentById(resolvedId));
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
+  }, [resolvedId]);
+
+  const eq = equipmentBase;
   const hd =
     HEALTH_DATA[eq.id] ??
     HEALTH_DATA[DEFAULT_ID];
@@ -453,14 +461,15 @@ export const EquipmentHealth = (): JSX.Element => {
   };
 
   const handleTabClick = (tabId: string) => {
-    if (tabId === "overview") navigate(`/equipment/${eq.id}/overview`);
-    if (tabId === "wo")       navigate(`/equipment/${eq.id}/work-orders`);
-    if (tabId === "pm")       navigate(`/equipment/${eq.id}/pms`);
-    if (tabId === "history")  navigate(`/equipment/${eq.id}/history`);
-    if (tabId === "skills")   navigate(`/equipment/${eq.id}/skills`);
-    if (tabId === "spares")   navigate(`/equipment/${eq.id}/spares`);
-    if (tabId === "docs")     navigate(`/equipment/${eq.id}/documents`);
-    if (tabId === "ai")       navigate(`/equipment/${eq.id}/ai-insights`);
+    const id = equipmentBase.id;
+    if (tabId === "overview") navigate(`/equipment/${id}/overview`);
+    if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
+    if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
+    if (tabId === "history")  navigate(`/equipment/${id}/history`);
+    if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
+    if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
+    if (tabId === "docs")     navigate(`/equipment/${id}/documents`);
+    if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
     // other tabs are placeholders — no-op for now
   };
 
