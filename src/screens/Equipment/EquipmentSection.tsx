@@ -1,887 +1,589 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  AlertTriangle,
-  BookOpen,
-  Brain,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CircleUser as UserCircle,
-  Download,
-  GraduationCap,
-  Plus,
-  RefreshCw,
-  Search,
-  Shield,
-  Upload,
-  Users,
-  X,
-  Zap,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Info, RefreshCw, Search, UserCircle } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
-import { ContextHelp } from "../../components/ContextHelp";
-import { SyncIndicator } from "../../components/SyncIndicator";
-import { AiActionsPanel, AiAction } from "../../components/AiActionsPanel";
-import { Select } from "../../components/Select";
-import { ExplainWithAi } from "../../components/ExplainWithAi";
-import { TrendIndicator } from "../../components/TrendIndicator";
-import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Equipment {
-  id: string;
-  name: string;
-  area: string;
-  oem: string;
-  model: string;
-  criticality: "Critical" | "High" | "Medium" | "Low";
-  status: "Healthy" | "Watch" | "At Risk" | "Offline";
-  linkedSkills: string[];
-  engineersCovered: number;
-  engineersTotal: number;
-  coverage: "Strong" | "Partial" | "Gap";
-  riskLevel: "Low" | "Medium" | "High" | "Critical";
-  nextAction: string;
-  requiredSkills: string[];
-  engineersNeedingTraining: number;
-  recommendedTraining: string;
-  linkedRequirements: string[];
-  aiInsight: string;
+interface RiskSegment {
+  label: string;
+  pct: number;
+  color: string;
+  dotClass: string;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+interface EquipmentItem {
+  id: string;
+  name: string;
+  assetNumber: string;
+  type: string;
+  area: string;
+  riskScore: number;
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  breakdown: RiskSegment[];
+}
 
-const MOCK_EQUIPMENT: Equipment[] = [
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const ALL_EQUIPMENT: EquipmentItem[] = [
+  // Building 2 equipment
   {
-    id: "eq-01",
-    name: "Siemens S7 PLC Line 3",
-    area: "Production Line 3",
-    oem: "Siemens",
-    model: "S7-1500 Series",
-    criticality: "Critical",
-    status: "Watch",
-    linkedSkills: ["Siemens PLC Fault Finding", "Automation & Controls", "SCADA Systems"],
-    engineersCovered: 2,
-    engineersTotal: 5,
-    coverage: "Gap",
-    riskLevel: "High",
-    nextAction: "Book Siemens S7 training for 3 engineers",
-    requiredSkills: ["Siemens S7 Programming", "PLC Fault Diagnosis", "HMI Configuration", "PROFIBUS/PROFINET"],
-    engineersNeedingTraining: 3,
-    recommendedTraining: "Siemens S7 Advanced Fault Finding — Automation Excellence Ltd",
-    linkedRequirements: ["PLC Automation Coverage", "Controls Skill Gap"],
-    aiInsight: "Line 3 PLC has limited cover on nights. Only 1 engineer is validated above Level 3. Recommend Siemens S7 refresher training for 2 engineers and cross-shift coverage review.",
-  },
-  {
-    id: "eq-02",
-    name: "Krones Filler",
-    area: "Filling Hall",
-    oem: "Krones",
-    model: "Modulfill VFS",
-    criticality: "Critical",
-    status: "Healthy",
-    linkedSkills: ["Krones OEM Operation", "Mechanical Maintenance", "Pneumatics"],
-    engineersCovered: 4,
-    engineersTotal: 5,
-    coverage: "Strong",
-    riskLevel: "Medium",
-    nextAction: "Add backup engineer for night shift cover",
-    requiredSkills: ["Krones Filler Operation", "Pneumatic Systems", "CIP Cleaning Procedures", "OEM Fault Diagnosis"],
-    engineersNeedingTraining: 1,
-    recommendedTraining: "Krones OEM Modulfill Training — Asset Reliability Partners",
-    linkedRequirements: ["OEM Specialist Coverage"],
-    aiInsight: "Filler coverage is strong across day shift. Night shift has one qualified engineer — consider cross-training one additional mechanical engineer for resilience.",
-  },
-  {
-    id: "eq-03",
-    name: "Atlas Copco Compressor",
-    area: "Utilities",
-    oem: "Atlas Copco",
-    model: "GA 90 VSD+",
-    criticality: "High",
-    status: "Healthy",
-    linkedSkills: ["Compressed Air Systems", "Mechanical Maintenance", "Electrical Maintenance"],
-    engineersCovered: 3,
-    engineersTotal: 4,
-    coverage: "Partial",
-    riskLevel: "Low",
-    nextAction: "Review contractor support arrangement",
-    requiredSkills: ["Compressed Air Systems", "Refrigeration Principles", "Preventive Maintenance"],
-    engineersNeedingTraining: 1,
-    recommendedTraining: "Compressed Air Systems Fundamentals",
-    linkedRequirements: [],
-    aiInsight: "Compressor is well-maintained with good contractor support in place. One additional internal engineer trained would eliminate contractor dependency risk.",
-  },
-  {
-    id: "eq-04",
-    name: "ABB Robot Cell",
-    area: "Palletising",
-    oem: "ABB",
-    model: "IRB 660",
-    criticality: "High",
-    status: "At Risk",
-    linkedSkills: ["Robotics Recovery", "Automation & Controls", "Safety Systems"],
-    engineersCovered: 1,
-    engineersTotal: 4,
-    coverage: "Gap",
+    id: "fl-03",
+    name: "Filling Line 3",
+    assetNumber: "FL-03",
+    type: "FILLING LINE",
+    area: "Building 2",
+    riskScore: 92,
     riskLevel: "Critical",
-    nextAction: "Validate robotics skill on night shift",
-    requiredSkills: ["ABB RobotStudio", "Robot Recovery Procedures", "Safety Category 3 PLd", "Gripper Mechanics"],
-    engineersNeedingTraining: 3,
-    recommendedTraining: "ABB IRB Robotics Recovery — Asset Reliability Partners",
-    linkedRequirements: ["Robotics Recovery Coverage"],
-    aiInsight: "Critical SPOF risk: only 1 engineer across all shifts is validated on ABB robot recovery. Any absence creates immediate breakdown risk. Urgent cross-training required.",
+    breakdown: [
+      { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
+      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 10, color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
   },
   {
-    id: "eq-05",
-    name: "Ishida Checkweigher",
-    area: "Packaging Line 1",
-    oem: "Ishida",
-    model: "DACS-G",
-    criticality: "Medium",
-    status: "Healthy",
-    linkedSkills: ["Weighing & Inspection Systems", "Electrical Maintenance", "GMP Compliance"],
-    engineersCovered: 3,
-    engineersTotal: 4,
-    coverage: "Partial",
+    id: "pl-02",
+    name: "Palletiser 2",
+    assetNumber: "PL-02",
+    type: "PALLETISER",
+    area: "Building 2",
+    riskScore: 71,
+    riskLevel: "High",
+    breakdown: [
+      { label: "High",       pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
+      { label: "Critical",   pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
+  },
+  {
+    id: "cv-04",
+    name: "Conveyor 4",
+    assetNumber: "CV-04",
+    type: "CONVEYOR",
+    area: "Building 2",
+    riskScore: 58,
+    riskLevel: "Medium",
+    breakdown: [
+      { label: "Medium",     pct: 58, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Critical",   pct: 21, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 10, color: "#84cc16", dotClass: "bg-lime-500" },
+      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 3,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
+  },
+  {
+    id: "ac-01",
+    name: "Air Compressor 1",
+    assetNumber: "AC-01",
+    type: "COMPRESSOR",
+    area: "Building 2",
+    riskScore: 33,
     riskLevel: "Low",
-    nextAction: "Schedule annual OEM calibration",
-    requiredSkills: ["Checkweigher Calibration", "Statistical Process Control", "GMP Documentation"],
-    engineersNeedingTraining: 1,
-    recommendedTraining: "Ishida OEM Operator & Maintenance Training",
-    linkedRequirements: [],
-    aiInsight: "Checkweigher is well-covered. Calibration records are up to date. One engineer pending GMP documentation refresher.",
+    breakdown: [
+      { label: "Low",        pct: 33, color: "#84cc16", dotClass: "bg-lime-500" },
+      { label: "Critical",   pct: 11, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 10, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
   },
   {
-    id: "eq-06",
-    name: "Domino Printer",
-    area: "Packaging Line 2",
-    oem: "Domino",
-    model: "A420i",
-    criticality: "Medium",
-    status: "Healthy",
-    linkedSkills: ["Inkjet Printer Maintenance", "Electrical Maintenance"],
-    engineersCovered: 4,
-    engineersTotal: 5,
-    coverage: "Strong",
-    riskLevel: "Low",
-    nextAction: "No immediate action required",
-    requiredSkills: ["Domino Printer Fault Finding", "Ink System Maintenance", "Print Head Cleaning"],
-    engineersNeedingTraining: 0,
-    recommendedTraining: "—",
-    linkedRequirements: [],
-    aiInsight: "Good coverage across all shifts. No training gaps identified for current operational needs.",
+    id: "lt-01",
+    name: "Lighting System",
+    assetNumber: "LT-01",
+    type: "FACILITIES",
+    area: "Building 2",
+    riskScore: 12,
+    riskLevel: "Minimal",
+    breakdown: [
+      { label: "Minimal",    pct: 12, color: "#10b981", dotClass: "bg-emerald-500" },
+      { label: "Critical",   pct: 5,  color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 4,  color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 3,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 2,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
+  },
+  // Other areas
+  {
+    id: "cp-04",
+    name: "Case Packer 4",
+    assetNumber: "CP-04",
+    type: "PACKING",
+    area: "Packing",
+    riskScore: 88,
+    riskLevel: "Critical",
+    breakdown: [
+      { label: "Breakdowns", pct: 45, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "PMs",        pct: 22, color: "#f97316", dotClass: "bg-orange-500" },
+      { label: "Skills",     pct: 18, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 9,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 6,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
   },
   {
-    id: "eq-07",
-    name: "Spirax Sarco Steam System",
+    id: "bl-01",
+    name: "Boiler 1",
+    assetNumber: "BL-01",
+    type: "UTILITIES",
     area: "Utilities",
-    oem: "Spirax Sarco",
-    model: "EasiHeat",
-    criticality: "High",
-    status: "Watch",
-    linkedSkills: ["Steam Systems", "Mechanical Maintenance", "Pressure Systems"],
-    engineersCovered: 2,
-    engineersTotal: 4,
-    coverage: "Partial",
-    riskLevel: "Medium",
-    nextAction: "Complete PSSR compliance check",
-    requiredSkills: ["Steam Distribution", "Pressure Vessel Inspection", "Condensate Recovery", "Trap Testing"],
-    engineersNeedingTraining: 2,
-    recommendedTraining: "Steam System Optimisation & Safety — Asset Reliability Partners",
-    linkedRequirements: ["Pressure Systems Coverage"],
-    aiInsight: "Steam system is under watchlist due to upcoming PSSR inspection. Two engineers require updated pressure systems training before the next inspection window.",
+    riskScore: 74,
+    riskLevel: "High",
+    breakdown: [
+      { label: "High",       pct: 38, color: "#f97316", dotClass: "bg-orange-400" },
+      { label: "Critical",   pct: 20, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
   },
   {
-    id: "eq-08",
-    name: "Schneider MCC Panel",
-    area: "Electrical Room",
-    oem: "Schneider Electric",
-    model: "Prisma G",
-    criticality: "Critical",
-    status: "Healthy",
-    linkedSkills: ["Electrical Isolation", "LV Switchgear", "MCC Operation"],
-    engineersCovered: 3,
-    engineersTotal: 5,
-    coverage: "Partial",
+    id: "l2-plc",
+    name: "Line 2 PLC",
+    assetNumber: "L2-PLC",
+    type: "AUTOMATION",
+    area: "Packing",
+    riskScore: 68,
+    riskLevel: "High",
+    breakdown: [
+      { label: "High",       pct: 35, color: "#f97316", dotClass: "bg-orange-400" },
+      { label: "Critical",   pct: 18, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 7,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
+  },
+  {
+    id: "pm-01",
+    name: "Press Line Motor",
+    assetNumber: "PM-01",
+    type: "PROCESSING",
+    area: "Processing",
+    riskScore: 52,
     riskLevel: "Medium",
-    nextAction: "Renew electrical authorisation certificates",
-    requiredSkills: ["HV/LV Isolation Procedures", "MCB/MCCB Testing", "18th Edition Wiring Regs", "LOTO Procedures"],
-    engineersNeedingTraining: 2,
-    recommendedTraining: "LV Switchgear & Isolation Refresher — Automation Excellence Ltd",
-    linkedRequirements: ["Electrical Isolation Coverage"],
-    aiInsight: "MCC panel coverage adequate for day shift but two electrical authorisation certificates expire within 60 days. Renewal training should be booked immediately.",
+    breakdown: [
+      { label: "Medium",     pct: 30, color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Critical",   pct: 14, color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 12, color: "#84cc16", dotClass: "bg-lime-500" },
+      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 4,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
+  },
+  {
+    id: "wf-03",
+    name: "Warehouse Forklift 3",
+    assetNumber: "WF-03",
+    type: "WAREHOUSE",
+    area: "Warehouse",
+    riskScore: 28,
+    riskLevel: "Low",
+    breakdown: [
+      { label: "Low",        pct: 28, color: "#84cc16", dotClass: "bg-lime-500" },
+      { label: "Critical",   pct: 8,  color: "#ef4444", dotClass: "bg-red-500" },
+      { label: "Skills",     pct: 6,  color: "#eab308", dotClass: "bg-yellow-400" },
+      { label: "Spares",     pct: 5,  color: "#6366f1", dotClass: "bg-indigo-500" },
+      { label: "Criticality",pct: 3,  color: "#6b7280", dotClass: "bg-slate-500" },
+    ],
   },
 ];
 
-// Skill coverage data (mock)
-const SKILL_COVERAGE = [
-  { label: "PLC / Automation",       covered: 2, total: 5, pct: 40  },
-  { label: "Mechanical",             covered: 5, total: 6, pct: 83  },
-  { label: "Electrical",             covered: 3, total: 5, pct: 60  },
-  { label: "Pneumatics",             covered: 4, total: 5, pct: 80  },
-  { label: "Hydraulics",             covered: 2, total: 4, pct: 50  },
-  { label: "Robotics",               covered: 1, total: 4, pct: 25  },
-  { label: "Instrumentation",        covered: 3, total: 5, pct: 60  },
-  { label: "OEM Specialist",         covered: 3, total: 6, pct: 50  },
+const TOP_RISK = [
+  { name: "Case Packer 4",       level: "Critical", badgeClass: "bg-[#ef444420] text-red-500" },
+  { name: "Boiler 1",            level: "High",     badgeClass: "bg-[#f9731620] text-orange-400" },
+  { name: "Line 2 PLC",          level: "High",     badgeClass: "bg-[#f9731620] text-orange-400" },
+  { name: "Press Line Motor",    level: "Medium",   badgeClass: "bg-[#eab30820] text-yellow-400" },
+  { name: "Warehouse Forklift 3",level: "Low",      badgeClass: "bg-[#10b98120] text-emerald-500" },
 ];
 
-// Priority actions (mock)
-const PRIORITY_ACTIONS = [
-  { icon: Zap,           cls: "text-red-500",    bg: "bg-[#ef444408]", border: "border-red-500/20",    title: "Train 2 engineers on Siemens S7 fault finding",          sub: "ABB Robot Cell and Line 3 PLC at critical cover risk"        },
-  { icon: AlertTriangle, cls: "text-orange-400", bg: "bg-[#f9731608]", border: "border-orange-400/20", title: "Validate robotics skill level on night shift",            sub: "Only 1 engineer validated — SPOF risk across all shifts"     },
-  { icon: AlertTriangle, cls: "text-orange-400", bg: "bg-[#f9731608]", border: "border-orange-400/20", title: "Add backup cover for Krones filler",                      sub: "Night shift resilience at minimum required threshold"        },
-  { icon: Brain,         cls: "text-yellow-400", bg: "bg-[#facc1508]", border: "border-yellow-400/20", title: "Renew electrical authorisation certs for Schneider panel", sub: "2 certs expiring within 60 days — block dates now"           },
-  { icon: BookOpen,      cls: "text-yellow-400", bg: "bg-[#facc1508]", border: "border-yellow-400/20", title: "Review compressor contractor support arrangement",         sub: "Reduce external dependency — train 1 additional internal eng" },
-  { icon: CheckCircle2,  cls: "text-blue-400",   bg: "bg-[#3b82f608]", border: "border-blue-400/20",   title: "Link OEM documentation to critical assets",               sub: "Siemens S7, Krones Filler and ABB Robot missing doc links"    },
+const RECENT_ACTIVITY = [
+  { text: "PM completed on Case Packer 3",    dotClass: "bg-emerald-500" },
+  { text: "Fault detected on Line 2 PLC",     dotClass: "bg-red-500" },
+  { text: "Work order raised for Boiler 1",   dotClass: "bg-yellow-400" },
+  { text: "Downtime logged on Press Line",    dotClass: "bg-orange-400" },
 ];
 
-const TABLE_PAGE_SIZE = 6;
+const AI_RECOMMENDATIONS = [
+  {
+    title: "Reallocate Sarah Jones to Case Packer 4.",
+    badges: [
+      { label: "CRITICAL", cls: "bg-[#ef444420] text-red-500" },
+      { label: "HIGH",     cls: "bg-[#f9731620] text-orange-400" },
+    ],
+  },
+  {
+    title: "Arrange contractor check for Boiler 1.",
+    badges: [
+      { label: "REVIEW",   cls: "bg-[#facc1520] text-yellow-400" },
+      { label: "HIGH",     cls: "bg-[#f9731620] text-orange-400" },
+    ],
+  },
+  {
+    title: "Train Liam on Siemens S7 before Press Line.",
+    badges: [
+      { label: "OPEN",     cls: "bg-[#10b98120] text-emerald-500" },
+      { label: "MID",      cls: "bg-[#3b82f620] text-blue-400" },
+      { label: "TRAINING", cls: "bg-[#a855f720] text-purple-400" },
+    ],
+  },
+];
+
+const FILTER_CHIPS = ["Area", "Risk", "Criticality", "Asset Type", "PM Status", "Engineer", "Calibration", "Training Status"];
+
+const RISK_LEGEND = [
+  { label: "0-20% Minimal",   dotClass: "bg-emerald-500" },
+  { label: "21-40% Low",      dotClass: "bg-lime-500" },
+  { label: "41-60% Medium",   dotClass: "bg-yellow-400" },
+  { label: "61-80% High",     dotClass: "bg-orange-400" },
+  { label: "81-100% Critical",dotClass: "bg-red-500" },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function critBadge(c: string) {
-  switch (c) {
-    case "Critical": return "bg-[#ef444420] text-red-500";
-    case "High":     return "bg-[#f9731620] text-orange-400";
-    case "Medium":   return "bg-[#facc1520] text-yellow-400";
-    default:         return "bg-[#10b98120] text-emerald-500";
+function riskScoreClasses(level: EquipmentItem["riskLevel"]): { text: string; badge: string } {
+  switch (level) {
+    case "Critical": return { text: "text-slate-50",    badge: "bg-[#ef444420] text-red-500" };
+    case "High":     return { text: "text-slate-50",    badge: "bg-[#f9731620] text-orange-400" };
+    case "Medium":   return { text: "text-slate-50",    badge: "bg-[#eab30820] text-yellow-400" };
+    case "Low":      return { text: "text-slate-50",    badge: "bg-[#84cc1620] text-lime-500" };
+    default:         return { text: "text-slate-50",    badge: "bg-[#10b98120] text-emerald-500" };
   }
 }
 
-function statusBadge(s: string) {
-  switch (s) {
-    case "Healthy":  return "bg-[#10b98120] text-emerald-500";
-    case "Watch":    return "bg-[#facc1520] text-yellow-400";
-    case "At Risk":  return "bg-[#f9731620] text-orange-400";
-    case "Offline":  return "bg-[#ef444420] text-red-500";
-    default:         return "bg-gray-800 text-slate-400";
-  }
-}
+// ─── Risk Breakdown Bar ───────────────────────────────────────────────────────
 
-function coverageBadge(c: string) {
-  switch (c) {
-    case "Strong":  return "bg-[#10b98120] text-emerald-500";
-    case "Partial": return "bg-[#facc1520] text-yellow-400";
-    default:        return "bg-[#ef444420] text-red-500";
-  }
-}
-
-function riskBadge(r: string) {
-  switch (r) {
-    case "Critical": return "bg-[#ef444420] text-red-500";
-    case "High":     return "bg-[#f9731620] text-orange-400";
-    case "Medium":   return "bg-[#facc1520] text-yellow-400";
-    default:         return "bg-[#10b98120] text-emerald-500";
-  }
-}
-
-function coverageBarClass(pct: number): string {
-  if (pct >= 75) return "[&>div]:bg-emerald-500";
-  if (pct >= 50) return "[&>div]:bg-yellow-400";
-  return "[&>div]:bg-red-500";
-}
-
-function coverageTextClass(pct: number): string {
-  if (pct >= 75) return "text-emerald-400";
-  if (pct >= 50) return "text-yellow-400";
-  return "text-red-400";
-}
-
-// ─── Detail Drawer ────────────────────────────────────────────────────────────
-
-function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }) {
-  const navigate  = useNavigate();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [eq.id]);
+function RiskBreakdownBar({ segments }: { segments: RiskSegment[] }) {
+  const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
-    <DetailDrawer open onClose={onClose}>
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-blue-400" />
-          <span className="font-semibold text-slate-50">Equipment Detail</span>
-        </div>
-        <DrawerCloseButton onClose={onClose} />
-      </header>
-
-      <div ref={scrollRef} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
-          {/* Name + status */}
-          <div className="flex flex-col gap-2">
-            <h2 className="text-base font-semibold text-slate-50">{eq.name}</h2>
-            <div className="flex flex-wrap gap-2">
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${critBadge(eq.criticality)}`}>
-                {eq.criticality}
-              </Badge>
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadge(eq.status)}`}>
-                {eq.status}
-              </Badge>
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadge(eq.riskLevel)}`}>
-                {eq.riskLevel} Risk
-              </Badge>
-            </div>
-          </div>
-
-          {/* Key details grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Site Area",   value: eq.area     },
-              { label: "OEM",         value: eq.oem      },
-              { label: "Model",       value: eq.model    },
-              { label: "Coverage",    value: eq.coverage },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#111620] p-3">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
-                <span className="text-sm font-medium text-slate-200">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Engineer coverage */}
-          <div className="flex flex-col gap-2 rounded-lg border border-gray-800 bg-[#111620] p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Engineer Coverage</span>
-              <span className={`text-sm font-semibold ${coverageTextClass(Math.round((eq.engineersCovered / eq.engineersTotal) * 100))}`}>
-                {eq.engineersCovered} / {eq.engineersTotal}
-              </span>
-            </div>
-            <Progress
-              value={Math.round((eq.engineersCovered / eq.engineersTotal) * 100)}
-              className={`h-2 overflow-hidden rounded bg-gray-800 ${coverageBarClass(Math.round((eq.engineersCovered / eq.engineersTotal) * 100))}`}
-            />
-            {eq.engineersNeedingTraining > 0 && (
-              <p className="text-xs text-slate-500">
-                {eq.engineersNeedingTraining} engineer{eq.engineersNeedingTraining !== 1 ? "s" : ""} require training
-              </p>
-            )}
-          </div>
-
-          {/* Required skills */}
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Required Skills</span>
-            <div className="flex flex-wrap gap-1.5">
-              {eq.requiredSkills.map((s) => (
-                <Badge key={s} className="inline-flex h-auto rounded bg-[#3b82f620] px-2 py-0.5 text-[10px] font-medium text-blue-400 shadow-none hover:bg-[#3b82f620]">
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Recommended training */}
-          {eq.recommendedTraining !== "—" && (
-            <div className="flex flex-col gap-1.5 rounded-lg border border-gray-800 bg-[#111620] p-4">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recommended Training</span>
-              <div className="flex items-start gap-2">
-                <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                <p className="text-sm text-slate-300">{eq.recommendedTraining}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Linked requirements */}
-          {eq.linkedRequirements.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Open Requirements</span>
-              <div className="flex flex-col gap-1.5">
-                {eq.linkedRequirements.map((r) => (
-                  <div key={r} className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#111620] px-3 py-2">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-400" />
-                    <span className="text-sm text-slate-300">{r}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI insight */}
-          <div className="flex flex-col gap-2 rounded-lg border border-blue-500/20 bg-[#3b82f610] p-4">
-            <div className="flex items-center gap-2">
-              <Brain className="h-4 w-4 text-blue-400" />
-              <span className="text-xs font-semibold text-blue-400">AI Insight</span>
-            </div>
-            <p className="text-xs leading-relaxed text-slate-300">{eq.aiInsight}</p>
-          </div>
-
-          {/* Next action */}
-          <div className="flex flex-col gap-1.5 rounded-lg border border-gray-800 bg-[#111620] p-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Next Action</span>
-            <p className="text-sm text-slate-200">{eq.nextAction}</p>
-          </div>
-
-          {/* Workflow navigation */}
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "View Skills",        route: "/skills-matrix" },
-              { label: "View Engineers",     route: "/engineers"     },
-              { label: "View Requirements",  route: "/requirements"  },
-              { label: "View AI Match",      route: "/ai-matching"   },
-            ].map(({ label, route }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => { onClose(); navigate(route); }}
-                className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => { onClose(); navigate("/requirements"); }}
-            className="h-10 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-          >
-            Create Action Plan
-          </button>
-        </div>
-    </DetailDrawer>
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex h-2 w-full overflow-hidden rounded-full">
+        {segments.map((seg) => (
+          <div
+            key={seg.label}
+            style={{ width: `${(seg.pct / total) * 100}%`, backgroundColor: seg.color }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {segments.map((seg) => (
+          <span key={seg.label} className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${seg.dotClass}`} />
+            {seg.label} {seg.pct}%
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+
+function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
+  label: string;
+  value: string;
+  badgeLabel?: string;
+  badgeClass?: string;
+  showBar?: boolean;
+  barValue?: number;
+}) {
+  return (
+    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <CardContent className="flex flex-col gap-1 p-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-slate-400 whitespace-nowrap">{label}</span>
+          {badgeLabel && (
+            <Badge className={`h-auto rounded px-1.5 py-0 text-[10px] font-semibold shadow-none ${badgeClass}`}>
+              {badgeLabel}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xl font-semibold text-slate-50">{value}</p>
+        {showBar && (
+          <Progress
+            value={barValue ?? 0}
+            className="mt-1 h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500"
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const EquipmentSection = (): JSX.Element => {
   const navigate = useNavigate();
+  const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [searchParams] = useSearchParams();
-  const buildingParam = searchParams.get("building") ?? "all";
-  const [search,         setSearch]         = useState("");
-  const [filterArea,     setFilterArea]     = useState(buildingParam);
-  const [filterCrit,     setFilterCrit]     = useState("all");
-  const [filterOem,      setFilterOem]      = useState("all");
-  const [filterStatus,   setFilterStatus]   = useState("all");
-  const [filterCoverage, setFilterCoverage] = useState("all");
-  const [tablePage,      setTablePage]      = useState(0);
-  const [selected,       setSelected]       = useState<Equipment | null>(null);
-  const [loading,        setLoading]        = useState(true);
-  const [syncedAt]                          = useState<Date>(() => new Date());
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  const areas = useMemo(() => [...new Set(MOCK_EQUIPMENT.map((e) => e.area))].sort(), []);
-  const oems  = useMemo(() => [...new Set(MOCK_EQUIPMENT.map((e) => e.oem))].sort(), []);
+  const buildingParam = searchParams.get("building");
+  const [search, setSearch] = useState("");
+  const [activeArea, setActiveArea] = useState<string | null>(buildingParam);
+  const [activeChip, setActiveChip] = useState<string | null>(buildingParam ? "Area" : null);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return MOCK_EQUIPMENT.filter((e) => {
-      if (search && !e.name.toLowerCase().includes(q) && !e.oem.toLowerCase().includes(q) && !e.area.toLowerCase().includes(q)) return false;
-      if (filterArea     !== "all" && e.area        !== filterArea)     return false;
-      if (filterCrit     !== "all" && e.criticality !== filterCrit)     return false;
-      if (filterOem      !== "all" && e.oem         !== filterOem)      return false;
-      if (filterStatus   !== "all" && e.status      !== filterStatus)   return false;
-      if (filterCoverage !== "all" && e.coverage    !== filterCoverage) return false;
+    const items = [...ALL_EQUIPMENT].sort((a, b) => b.riskScore - a.riskScore);
+    return items.filter((e) => {
+      if (activeArea && e.area !== activeArea) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!e.name.toLowerCase().includes(q) && !e.assetNumber.toLowerCase().includes(q) && !e.area.toLowerCase().includes(q) && !e.type.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [search, filterArea, filterCrit, filterOem, filterStatus, filterCoverage]);
+  }, [activeArea, search]);
 
-  const hasFilters = !!(search || filterArea !== "all" || filterCrit !== "all" || filterOem !== "all" || filterStatus !== "all" || filterCoverage !== "all");
+  const totalAssets   = ALL_EQUIPMENT.length;
+  const criticalCount = ALL_EQUIPMENT.filter((e) => e.riskLevel === "Critical").length;
+  const atRisk        = ALL_EQUIPMENT.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
+  const overduePms    = 8;
+  const openWorkOrders = 12;
+  const avgHealth     = 82;
+  const calDue        = 3;
 
-  function clearFilters() {
-    setSearch(""); setFilterArea("all"); setFilterCrit("all");
-    setFilterOem("all"); setFilterStatus("all"); setFilterCoverage("all");
-    setTablePage(0);
-  }
+  const handleChipClick = (chip: string) => {
+    if (chip === "Area") {
+      if (activeChip === "Area") {
+        setActiveChip(null);
+        setActiveArea(null);
+      } else {
+        setActiveChip("Area");
+        setActiveArea(buildingParam);
+      }
+    } else {
+      setActiveChip(activeChip === chip ? null : chip);
+    }
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / TABLE_PAGE_SIZE));
-  const paged      = filtered.slice(tablePage * TABLE_PAGE_SIZE, (tablePage + 1) * TABLE_PAGE_SIZE);
-
-  // KPI calcs
-  const totalEquipment   = MOCK_EQUIPMENT.length;
-  const criticalCount    = MOCK_EQUIPMENT.filter((e) => e.criticality === "Critical").length;
-  const withGaps         = MOCK_EQUIPMENT.filter((e) => e.coverage === "Gap").length;
-  const highRisk         = MOCK_EQUIPMENT.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
-
-  const aiActions: AiAction[] = useMemo(() => {
-    const actions: AiAction[] = [];
-    const gapAssets = MOCK_EQUIPMENT.filter((e) => e.coverage === "Gap");
-    if (gapAssets.length > 0)
-      actions.push({ label: `Book training for ${gapAssets[0].name}`, description: `${gapAssets[0].engineersNeedingTraining} engineers need training to close this skill gap.`, priority: "critical", icon: GraduationCap });
-    const spofAsset = MOCK_EQUIPMENT.find((e) => e.riskLevel === "Critical");
-    if (spofAsset)
-      actions.push({ label: `Assign backup engineer to ${spofAsset.name}`, description: "Critical asset with limited cover — cross-train a second engineer to eliminate SPOF risk.", priority: "high", icon: Users });
-    actions.push({ label: "Review skills coverage report", description: `${withGaps} assets have skill gaps. Generate an AI report to prioritise training investment.`, priority: "medium", icon: Brain });
-    actions.push({ label: "Import CMMS asset list", description: "Link your CMMS asset data to keep equipment records automatically in sync.", priority: "low", icon: Upload });
-    return actions.slice(0, 4);
-  }, [withGaps]);
+  const handleRowClick = (item: EquipmentItem) => {
+    navigate(`/equipment/${item.id}/overview`);
+  };
 
   return (
-    <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+    <section className="flex w-full flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-4 md:px-6 xl:px-8">
 
-      {selected && <EquipmentDrawer eq={selected} onClose={() => setSelected(null)} />}
-
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
-        <div className="flex flex-col items-start gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="mt-[-1.00px] font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50 [font-style:var(--text-xl-semibold-font-style)]">
-              Equipment
-            </h1>
-            <ContextHelp content={{
-              title: "Equipment",
-              body:  "Manage your site's critical assets and understand capability coverage. Each asset is linked to the skills engineers need to operate and maintain it safely.",
-              usage: "Click any asset row to open the detail panel. Use the filters to focus on gaps or high-risk assets. The Skills Coverage section shows how well your team covers each discipline.",
-              aiNote: "Vorta AI analyses equipment criticality against current engineer skill coverage to surface SPOF risks and recommend training priorities.",
-            }} />
-          </div>
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header className="flex w-full flex-col justify-between gap-4 md:flex-row md:items-start">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-50">Equipment</h1>
           <p className="text-sm text-slate-400">
-            Track critical assets, capability coverage and equipment risk across your site.
+            Monitor asset health, operational risk and maintenance readiness across your site.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-          <Button type="button" className="h-auto gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
-            <Plus className="h-4 w-4" /> Add Equipment
+        <div className="flex shrink-0 items-center gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
+          >
+            Run Full Site Analysis
           </Button>
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
-            <Upload className="h-4 w-4" /> Import Asset List
-          </Button>
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
-            <Download className="h-4 w-4" /> Export Report
-          </Button>
-          <ExplainWithAi pageId="equipment" />
-          <button type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
-            <RefreshCw className="h-5 w-5" />
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+            aria-label="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
           </button>
-          <button type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
+          <button
+            type="button"
+            onClick={() => navigate("/settings")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+            aria-label="User profile"
+          >
             <UserCircle className="h-8 w-8" />
           </button>
         </div>
       </header>
 
-      {/* ── KPI cards ─────────────────────────────────────────────────────── */}
-      <div className="flex w-full flex-col gap-2">
-        <SyncIndicator syncedAt={syncedAt} source="Asset Register" confidence={88} loading={loading} />
-        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-[108px] animate-pulse rounded-xl bg-gray-800" />
-            ))
-          ) : (
-            [
-              { label: "Total Equipment",           value: totalEquipment, sub: "Assets registered on site",                     icon: Shield,        vc: "text-slate-50",    trend: { direction: "up",   label: "+1 this month",   positiveIsUp: true  } as const },
-              { label: "Critical Assets",           value: criticalCount,  sub: "Assets rated critical criticality",             icon: Zap,           vc: "text-red-500",     trend: { direction: "flat", label: "No change",        positiveIsUp: false } as const },
-              { label: "Equipment with Skill Gaps", value: withGaps,       sub: "Assets with coverage below threshold",          icon: AlertTriangle, vc: "text-orange-400",  trend: { direction: "down", label: "-1 vs last month", positiveIsUp: false } as const },
-              { label: "High-Risk Assets",          value: highRisk,       sub: "High or critical combined risk rating",         icon: Brain,         vc: "text-yellow-400",  trend: { direction: "down", label: "-1 vs last month", positiveIsUp: false } as const },
-            ].map(({ label, value, sub, icon: Icon, vc, trend }) => (
-              <Card key={label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-                <CardContent className="flex flex-col gap-3 p-5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-slate-400">{label}</p>
-                    <Icon className="h-4 w-4 shrink-0 text-slate-600" />
+      {/* ── KPI Bar ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <KpiCard label="Total Assets"         value={String(totalAssets)} />
+        <KpiCard label="Critical Assets"      value={String(criticalCount)}  badgeLabel="CRITICAL" badgeClass="bg-[#ef444420] text-red-500" />
+        <KpiCard label="Assets At Risk"       value={String(atRisk)}         badgeLabel="HIGH"     badgeClass="bg-[#f9731620] text-orange-400" />
+        <KpiCard label="Overdue PMs"          value={String(overduePms)}     badgeLabel="CRITICAL" badgeClass="bg-[#ef444420] text-red-500" />
+        <KpiCard label="Open Work Orders"     value={String(openWorkOrders)} />
+        <KpiCard label="Average Asset Health" value={`${avgHealth}%`} showBar barValue={avgHealth} />
+        <KpiCard label="Calibration Due"      value={String(calDue)} />
+      </div>
+
+      {/* ── Search ──────────────────────────────────────────────────────── */}
+      <div className="relative w-full">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search equipment, asset number, area, manufacturer or production line..."
+          className="w-full rounded-xl border border-gray-800 bg-[#141820] py-3 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20"
+        />
+      </div>
+
+      {/* ── Filter Chips ────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {FILTER_CHIPS.map((chip) => {
+          const isActive = activeChip === chip || (chip === "Area" && activeArea !== null);
+          return (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => handleChipClick(chip)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                isActive
+                  ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
+                  : "border-gray-700 bg-[#141820] text-slate-400 hover:border-gray-600 hover:text-slate-200"
+              }`}
+            >
+              {chip}
+              {chip === "Area" && activeArea ? `: ${activeArea}` : ""}
+            </button>
+          );
+        })}
+        {(activeArea || search) && (
+          <button
+            type="button"
+            onClick={() => { setActiveArea(null); setActiveChip(null); setSearch(""); }}
+            className="rounded-full border border-gray-700 bg-[#141820] px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* ── Equipment Table ─────────────────────────────────────────────── */}
+      <div className="w-full rounded-xl border border-gray-800 bg-[#141820] overflow-hidden">
+        {/* Table header */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_120px] items-center gap-4 border-b border-gray-800 px-5 py-3">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Equipment</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Breakdown</span>
+            <Info className="h-3.5 w-3.5 text-slate-600" aria-hidden="true" />
+          </div>
+          <span className="text-right text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Score</span>
+        </div>
+
+        {/* Rows */}
+        {filtered.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">No equipment found.</div>
+        ) : (
+          filtered.map((item, index) => {
+            const { badge } = riskScoreClasses(item.riskLevel);
+            const isSelected = equipmentId === item.id;
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleRowClick(item)}
+                className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_minmax(0,2fr)_120px] items-center gap-4 px-5 py-4 transition-colors hover:bg-[#1a2030] ${
+                  index !== filtered.length - 1 ? "border-b border-gray-800" : ""
+                } ${isSelected ? "bg-[#1a2030]" : ""}`}
+              >
+                {/* Equipment info */}
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="h-4 w-4 shrink-0 flex items-center justify-center text-slate-600">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M4 5l2 2 2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                    <span className="truncate text-sm font-semibold text-slate-50">{item.name}</span>
                   </div>
-                  <p className={`text-2xl font-semibold tabular-nums ${vc}`}>{value}</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] text-slate-500">{sub}</p>
-                    <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+                  <span className="pl-6 text-xs text-slate-500">{item.assetNumber}</span>
+                  <span className="ml-6 mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">
+                    {item.type}
+                  </span>
+                </div>
+
+                {/* Risk breakdown bar */}
+                <RiskBreakdownBar segments={item.breakdown} />
+
+                {/* Risk score */}
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className="text-2xl font-bold text-slate-50">{item.riskScore}%</span>
+                  <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${badge}`}>
+                    {item.riskLevel}
+                  </Badge>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-800 px-5 py-3">
+          {RISK_LEGEND.map((l) => (
+            <span key={l.label} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+              <span className={`h-2 w-2 rounded-full ${l.dotClass}`} />
+              {l.label}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* ── AI Suggested Actions ──────────────────────────────────────────── */}
-      {!loading && <AiActionsPanel actions={aiActions} />}
+      {/* ── Bottom Panels ───────────────────────────────────────────────── */}
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
 
-      {/* ── Filter bar ──────────────────────────────────────────────────────── */}
-      <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-        <CardContent className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative min-w-[160px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search equipment…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setTablePage(0); }}
-              className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-            />
-          </div>
-          {(
-            [
-              { label: "Area",          value: filterArea,     onChange: (v: string) => { setFilterArea(v);     setTablePage(0); }, options: areas,                                               placeholder: "All Areas",          size: "md" as const },
-              { label: "Criticality",   value: filterCrit,     onChange: (v: string) => { setFilterCrit(v);     setTablePage(0); }, options: ["Critical","High","Medium","Low"],                   placeholder: "All Criticalities",  size: "sm" as const },
-              { label: "OEM",           value: filterOem,      onChange: (v: string) => { setFilterOem(v);      setTablePage(0); }, options: oems,                                                placeholder: "All OEMs",           size: "lg" as const },
-              { label: "Status",        value: filterStatus,   onChange: (v: string) => { setFilterStatus(v);   setTablePage(0); }, options: ["Healthy","Watch","At Risk","Offline"],              placeholder: "All Statuses",       size: "sm" as const },
-              { label: "Coverage",      value: filterCoverage, onChange: (v: string) => { setFilterCoverage(v); setTablePage(0); }, options: ["Strong","Partial","Gap"],                          placeholder: "All Coverage",       size: "sm" as const },
-            ]
-          ).map(({ label, value, onChange, options, placeholder, size }) => (
-            <Select
-              key={label}
-              value={value}
-              onChange={onChange}
-              options={[{ value: "all", label: placeholder }, ...options.map((o) => ({ value: o, label: o }))]}
-              placeholder={placeholder}
-              size={size}
-            />
-          ))}
-          {hasFilters && (
-            <button type="button" onClick={clearFilters}
-              className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-200">
-              <X className="h-3 w-3" /> Clear
-            </button>
-          )}
-          <span className="ml-auto text-xs text-slate-500">
-            {filtered.length} of {MOCK_EQUIPMENT.length} assets
-            {hasFilters ? " (filtered)" : ""}
-          </span>
-        </CardContent>
-      </Card>
-
-      {/* ── Equipment table ─────────────────────────────────────────────────── */}
-      <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-        <CardContent className="flex flex-col gap-4 p-0">
-          <div className="flex items-center justify-between gap-3 px-5 pt-5">
-            <div>
-              <h2 className="font-semibold text-slate-50">Asset Register</h2>
-              <p className="text-sm text-slate-400">
-                {loading ? "Loading assets…" : `${filtered.length} asset${filtered.length !== 1 ? "s" : ""}${totalPages > 1 ? ` · page ${tablePage + 1} of ${totalPages}` : ""}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setTablePage((p) => Math.max(0, p - 1))} disabled={tablePage === 0}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => setTablePage((p) => Math.min(totalPages - 1, p + 1))} disabled={tablePage >= totalPages - 1}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full overflow-x-auto">
-            <table className="w-max min-w-[900px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-gray-800 bg-[#0f1318]">
-                  {[
-                    { label: "Equipment",         cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[200px]" },
-                    { label: "Area",              cls: "min-w-[140px]" },
-                    { label: "OEM / Brand",       cls: "min-w-[150px]" },
-                    { label: "Criticality",       cls: "min-w-[100px]" },
-                    { label: "Status",            cls: "min-w-[90px]"  },
-                    { label: "Linked Skills",     cls: "min-w-[200px]" },
-                    { label: "Coverage",          cls: "min-w-[130px]" },
-                    { label: "Risk",              cls: "min-w-[90px]"  },
-                    { label: "Next Action",       cls: "min-w-[220px]" },
-                    { label: "",                  cls: "min-w-[80px]"  },
-                  ].map(({ label, cls }) => (
-                    <th key={label + cls} className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
-                      {Array.from({ length: 10 }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                          <div className="h-4 animate-pulse rounded bg-gray-800" style={{ width: j === 0 ? "140px" : j === 8 ? "180px" : "60px" }} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : paged.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-12 text-center text-sm text-slate-500">
-                      No equipment matches the current filters.{" "}
-                      {hasFilters && (
-                        <button type="button" onClick={clearFilters} className="font-medium text-blue-400 hover:underline">
-                          Clear filters
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((eq, idx) => {
-                    const rowBg   = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
-                    const covPct  = Math.round((eq.engineersCovered / eq.engineersTotal) * 100);
-                    const isSelected = selected?.id === eq.id;
-                    return (
-                      <tr
-                        key={eq.id}
-                        onClick={() => setSelected(eq)}
-                        className={`border-b border-gray-800/50 cursor-pointer transition-colors hover:bg-[#1a2030] ${isSelected ? "bg-[#1c2338]" : rowBg}`}
-                      >
-                        {/* Equipment name — sticky */}
-                        <td className={`sticky left-0 z-10 min-w-[200px] px-4 py-2.5 ${isSelected ? "bg-[#1c2338]" : rowBg}`}>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium text-slate-100 leading-tight">{eq.name}</span>
-                            <span className="text-[10px] text-slate-500">{eq.model}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-400">{eq.area}</td>
-                        <td className="px-4 py-2.5 text-sm text-slate-300">{eq.oem}</td>
-                        <td className="px-4 py-2.5">
-                          <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${critBadge(eq.criticality)}`}>
-                            {eq.criticality}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadge(eq.status)}`}>
-                            {eq.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-wrap gap-1">
-                            {eq.linkedSkills.slice(0, 2).map((s) => (
-                              <Badge key={s} className="inline-flex h-auto rounded bg-[#3b82f620] px-1.5 py-0.5 text-[10px] font-medium text-blue-400 shadow-none hover:bg-[#3b82f620]">
-                                {s}
-                              </Badge>
-                            ))}
-                            {eq.linkedSkills.length > 2 && (
-                              <span className="text-[10px] text-slate-500">+{eq.linkedSkills.length - 2}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${coverageBadge(eq.coverage)}`}>
-                                {eq.coverage}
-                              </Badge>
-                              <span className={`text-[10px] font-semibold tabular-nums ${coverageTextClass(covPct)}`}>
-                                {eq.engineersCovered}/{eq.engineersTotal}
-                              </span>
-                            </div>
-                            <Progress value={covPct} className={`h-1 overflow-hidden rounded bg-gray-800 ${coverageBarClass(covPct)}`} />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${riskBadge(eq.riskLevel)}`}>
-                            {eq.riskLevel}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-slate-400 max-w-[220px]">
-                          <span className="line-clamp-2">{eq.nextAction}</span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setSelected(eq); }}
-                            className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
-                          >
-                            Review
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-800 px-5 py-3 text-xs text-slate-500">
-              <span>
-                {tablePage * TABLE_PAGE_SIZE + 1}–{Math.min((tablePage + 1) * TABLE_PAGE_SIZE, filtered.length)} of {filtered.length}
-              </span>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(totalPages, 8) }).map((_, i) => (
-                  <button key={i} type="button" onClick={() => setTablePage(i)}
-                    className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === tablePage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}>
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Two-column bottom section ────────────────────────────────────────── */}
-      <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
-
-        {/* Skills Coverage by Type */}
+        {/* Top 10 Highest Risk */}
         <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-5 p-5 md:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="font-semibold text-slate-50">Skills Coverage by Equipment Type</h2>
-                <p className="text-sm text-slate-400">Engineer competency coverage for key equipment disciplines</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate("/skills-matrix")}
-                  className="text-xs font-medium text-blue-500 transition-colors hover:text-blue-400"
-                >
-                  View All
-                </button>
-                <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-[10px] font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
-                </Badge>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {SKILL_COVERAGE.map((row) => (
-                <div key={row.label} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-200">{row.label}</span>
-                      {row.pct < 50 && (
-                        <span className="rounded bg-[#ef444415] px-1.5 py-0.5 text-[10px] font-medium text-red-500">
-                          Gap
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold tabular-nums ${coverageTextClass(row.pct)}`}>
-                        {row.pct}%
-                      </span>
-                      <span className="text-[11px] text-slate-500">{row.covered}/{row.total}</span>
-                    </div>
+          <CardContent className="p-5">
+            <h2 className="mb-4 text-base font-semibold text-slate-50">Top 10 Highest Risk Equipment</h2>
+            <ol className="flex flex-col gap-3">
+              {TOP_RISK.map((item, i) => (
+                <li key={item.name} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="shrink-0 text-xs text-slate-500 w-4">{i + 1}.</span>
+                    <span className="truncate text-sm text-slate-200">{item.name}</span>
                   </div>
-                  <Progress value={row.pct} className={`h-2 overflow-hidden rounded bg-gray-800 ${coverageBarClass(row.pct)}`} />
+                  <Badge className={`shrink-0 h-auto rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${item.badgeClass}`}>
+                    {item.level}
+                  </Badge>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+
+        {/* Recent Equipment Activity */}
+        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="p-5">
+            <h2 className="mb-4 text-base font-semibold text-slate-50">Recent Equipment Activity</h2>
+            <ul className="flex flex-col gap-3">
+              {RECENT_ACTIVITY.map((item) => (
+                <li key={item.text} className="flex items-start gap-2.5">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotClass}`} aria-hidden="true" />
+                  <span className="text-sm text-slate-300">{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* AI Equipment Recommendations */}
+        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="p-5">
+            <h2 className="mb-4 text-base font-semibold text-slate-50">AI Equipment Recommendations</h2>
+            <div className="flex flex-col gap-4">
+              {AI_RECOMMENDATIONS.map((rec) => (
+                <div key={rec.title} className="flex flex-col gap-2">
+                  <p className="text-sm font-medium leading-snug text-slate-200">{rec.title}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {rec.badges.map((b) => (
+                      <Badge key={b.label} className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${b.cls}`}>
+                        {b.label}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Priority Actions */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="flex flex-col gap-5 p-5 md:p-6">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-slate-50">Priority Actions</h2>
-              <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-[10px] font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />AI Ranked
-              </Badge>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {PRIORITY_ACTIONS.map((action, i) => {
-                const Icon = action.icon;
-                return (
-                  <div key={i} className={`flex items-start gap-3 rounded-lg border ${action.border} ${action.bg} p-4`}>
-                    <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${action.cls}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-100">{action.title}</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{action.sub}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
     </section>
   );
 };
