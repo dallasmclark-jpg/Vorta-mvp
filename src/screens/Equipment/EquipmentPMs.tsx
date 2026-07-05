@@ -279,6 +279,7 @@ export const EquipmentPMs = (): JSX.Element => {
     if (tabId === "overview")    navigate(`/equipment/${id}/overview`);
     if (tabId === "health")      navigate(`/equipment/${id}/health`);
     if (tabId === "wo")          navigate(`/equipment/${id}/work-orders`);
+    if (tabId === "history")     navigate(`/equipment/${id}/history`);
     // other tabs placeholder
   };
 

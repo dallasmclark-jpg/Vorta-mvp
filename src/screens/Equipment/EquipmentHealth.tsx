@@ -523,6 +523,7 @@ export const EquipmentHealth = (): JSX.Element => {
     if (tabId === "overview") navigate(`/equipment/${eq.id}/overview`);
     if (tabId === "wo")       navigate(`/equipment/${eq.id}/work-orders`);
     if (tabId === "pm")       navigate(`/equipment/${eq.id}/pms`);
+    if (tabId === "history")  navigate(`/equipment/${eq.id}/history`);
     // other tabs are placeholders — no-op for now
   };
 
