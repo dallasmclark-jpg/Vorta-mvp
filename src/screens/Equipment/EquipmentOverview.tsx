@@ -17,30 +17,15 @@ import {
   Zap,
 } from "lucide-react";
 import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
+import { getEquipmentById } from "./equipmentService";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Overview-specific data (not in the shared service) ───────────────────────
 
-interface EquipmentDetail {
-  id: string;
-  name: string;
-  assetNumber: string;
-  type: string;
-  area: string;
-  manufacturer: string;
-  model: string;
-  serialNumber: string;
-  installDate: string;
-  warranty: string;
-  criticality: string;
-  status: string;
-  statusNote: string;
-  image: string;
-  riskScore: number;
-  riskLevel: string;
-  riskBreakdown: { label: string; pct: number; color: string; dotClass: string }[];
+interface OverviewData {
   healthScore: number;
   breakdownProbability: number;
   reliability: number;
@@ -77,30 +62,8 @@ interface EquipmentDetail {
   priorityActions: { icon: string; title: string; due: string; level: string; link: string; linkLabel: string }[];
 }
 
-const EQUIPMENT_DATA: Record<string, EquipmentDetail> = {
+const OVERVIEW_DATA: Record<string, OverviewData> = {
   "pl-02": {
-    id: "pl-02",
-    name: "Palletiser 2",
-    assetNumber: "PL-02",
-    type: "PALLETISER",
-    area: "Packaging Area",
-    manufacturer: "KUKA",
-    model: "KR 210 R2700",
-    serialNumber: "PL-02-2019-7731",
-    installDate: "12 Mar 2019",
-    warranty: "Expired",
-    criticality: "High",
-    status: "Running",
-    statusNote: "Operating normally",
-    image: "https://images.pexels.com/photos/3912981/pexels-photo-3912981.jpeg?auto=compress&cs=tinysrgb&w=400",
-    riskScore: 71,
-    riskLevel: "High",
-    riskBreakdown: [
-      { label: "High",        pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
-      { label: "Critical",    pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",      pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",      pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-    ],
     healthScore: 68,
     breakdownProbability: 86,
     reliability: 62,
@@ -130,11 +93,11 @@ const EQUIPMENT_DATA: Record<string, EquipmentDetail> = {
     docsReview: 12,
     docsSize: "2.48 GB",
     activity: [
-      { date: "24 Apr 2025", time: "10:15", type: "Work Order", description: "High vibration detected on main arm", ref: "WO-10482",        status: "OPEN" },
-      { date: "23 Apr 2025", time: "16:30", type: "PM",         description: "Daily Visual Inspection completed",  ref: "PM-PL-02-DAILY",  status: "COMPLETED" },
-      { date: "22 Apr 2025", time: "14:30", type: "Fault",      description: "PLC communication intermittent",     ref: "WO-10435",        status: "OPEN" },
-      { date: "21 Apr 2025", time: "10:30", type: "PM",         description: "Conveyor Lubrication completed",     ref: "PM-PL-02-WEEK-01",status: "COMPLETED" },
-      { date: "20 Apr 2025", time: "09:10", type: "Work Order", description: "Gripper alignment check required",   ref: "WO-10491",        status: "IN PROGRESS" },
+      { date: "24 Apr 2025", time: "10:15", type: "Work Order", description: "High vibration detected on main arm", ref: "WO-10482",         status: "OPEN" },
+      { date: "23 Apr 2025", time: "16:30", type: "PM",         description: "Daily Visual Inspection completed",  ref: "PM-PL-02-DAILY",   status: "COMPLETED" },
+      { date: "22 Apr 2025", time: "14:30", type: "Fault",      description: "PLC communication intermittent",     ref: "WO-10435",         status: "OPEN" },
+      { date: "21 Apr 2025", time: "10:30", type: "PM",         description: "Conveyor Lubrication completed",     ref: "PM-PL-02-WEEK-01", status: "COMPLETED" },
+      { date: "20 Apr 2025", time: "09:10", type: "Work Order", description: "Gripper alignment check required",   ref: "WO-10491",         status: "IN PROGRESS" },
     ],
     aiRecommendation: "High risk of downtime. Inspect vibration sensors and review PLC logic before next shift.",
     aiRiskImpact: "High",
@@ -142,33 +105,11 @@ const EQUIPMENT_DATA: Record<string, EquipmentDetail> = {
     aiDowntimeReduction: 23,
     priorityActions: [
       { icon: "alert", title: "Inspect drive-end bearing",     due: "Due in 3 days", level: "HIGH",   link: "/equipment", linkLabel: "Work Orders" },
-      { icon: "clock",  title: "Review overdue PM",             due: "Due in 3 days", level: "HIGH",   link: "/equipment", linkLabel: "PMs" },
+      { icon: "clock", title: "Review overdue PM",             due: "Due in 3 days", level: "HIGH",   link: "/equipment", linkLabel: "PMs" },
       { icon: "zap",   title: "Check PLC communication fault", due: "Due in 7 days", level: "MEDIUM", link: "/equipment", linkLabel: "Work Orders" },
     ],
   },
   "fl-03": {
-    id: "fl-03",
-    name: "Filling Line 3",
-    assetNumber: "FL-03",
-    type: "FILLING LINE",
-    area: "Building 2",
-    manufacturer: "Krones",
-    model: "Modulfill VFS 32",
-    serialNumber: "FL-03-2017-4421",
-    installDate: "8 Jun 2017",
-    warranty: "Expired",
-    criticality: "Critical",
-    status: "At Risk",
-    statusNote: "Fault detected",
-    image: "https://images.pexels.com/photos/1267338/pexels-photo-1267338.jpeg?auto=compress&cs=tinysrgb&w=400",
-    riskScore: 92,
-    riskLevel: "Critical",
-    riskBreakdown: [
-      { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
-      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
-    ],
     healthScore: 42,
     breakdownProbability: 94,
     reliability: 48,
@@ -198,25 +139,26 @@ const EQUIPMENT_DATA: Record<string, EquipmentDetail> = {
     docsReview: 18,
     docsSize: "3.12 GB",
     activity: [
-      { date: "2 May 2025",  time: "08:40", type: "Fault",      description: "Gearbox fault — running at reduced speed",  ref: "WO-10458",       status: "OPEN" },
-      { date: "1 May 2025",  time: "14:20", type: "Work Order", description: "PLC intermittent fault logged",              ref: "WO-10451",       status: "OPEN" },
-      { date: "30 Apr 2025", time: "09:00", type: "PM",         description: "Visual inspection completed",                ref: "PM-FL-03-DAILY", status: "COMPLETED" },
-      { date: "28 Apr 2025", time: "11:15", type: "Work Order", description: "Conveyor belt tension adjustment",           ref: "WO-10438",       status: "IN PROGRESS" },
-      { date: "27 Apr 2025", time: "15:30", type: "Fault",      description: "Line stop — product jam on exit conveyor",  ref: "WO-10431",       status: "COMPLETED" },
+      { date: "2 May 2025",  time: "08:40", type: "Fault",      description: "Gearbox fault — running at reduced speed", ref: "WO-10458",       status: "OPEN" },
+      { date: "1 May 2025",  time: "14:20", type: "Work Order", description: "PLC intermittent fault logged",             ref: "WO-10451",       status: "OPEN" },
+      { date: "30 Apr 2025", time: "09:00", type: "PM",         description: "Visual inspection completed",               ref: "PM-FL-03-DAILY", status: "COMPLETED" },
+      { date: "28 Apr 2025", time: "11:15", type: "Work Order", description: "Conveyor belt tension adjustment",          ref: "WO-10438",       status: "IN PROGRESS" },
+      { date: "27 Apr 2025", time: "15:30", type: "Fault",      description: "Line stop — product jam on exit conveyor", ref: "WO-10431",       status: "COMPLETED" },
     ],
     aiRecommendation: "Critical failure risk. Replace gearbox coupling before next shift. Escalate spare delivery timeline immediately.",
     aiRiskImpact: "Critical",
     aiConfidence: 94,
     aiDowntimeReduction: 34,
     priorityActions: [
-      { icon: "alert", title: "Inspect gearbox coupling",       due: "Overdue",       level: "HIGH",   link: "/equipment", linkLabel: "Work Orders" },
-      { icon: "clock",  title: "Complete overdue lubrication PM",due: "14 days late",  level: "HIGH",   link: "/equipment", linkLabel: "PMs" },
-      { icon: "zap",   title: "PLC fault diagnosis",            due: "Due today",     level: "MEDIUM", link: "/equipment", linkLabel: "Work Orders" },
+      { icon: "alert", title: "Inspect gearbox coupling",        due: "Overdue",      level: "HIGH",   link: "/equipment", linkLabel: "Work Orders" },
+      { icon: "clock", title: "Complete overdue lubrication PM", due: "14 days late", level: "HIGH",   link: "/equipment", linkLabel: "PMs" },
+      { icon: "zap",   title: "PLC fault diagnosis",             due: "Due today",    level: "MEDIUM", link: "/equipment", linkLabel: "Work Orders" },
     ],
   },
 };
 
-const DEFAULT_ID = DEFAULT_EQUIPMENT_ID;
+// Default overview data used for unknown equipment IDs.
+const DEFAULT_OVERVIEW: OverviewData = OVERVIEW_DATA[DEFAULT_EQUIPMENT_ID];
 
 // ─── Mini Components ──────────────────────────────────────────────────────────
 
@@ -330,7 +272,7 @@ function priorityIcon(icon: string) {
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { label: "Overview", id: "overview" },
+  { label: "Overview",        id: "overview" },
   { label: "Health",          id: "health" },
   { label: "Work Orders",     id: "wo",      badge: 12 },
   { label: "PMs",             id: "pm",      badge: 8 },
@@ -349,7 +291,7 @@ export const EquipmentOverview = (): JSX.Element => {
   const [activeTab] = useState("overview");
 
   const handleTabClick = (tabId: string) => {
-    const id = equipmentId ?? DEFAULT_ID;
+    const id = equipmentId ?? DEFAULT_EQUIPMENT_ID;
     if (tabId === "health")  navigate(`/equipment/${id}/health`);
     if (tabId === "wo")      navigate(`/equipment/${id}/work-orders`);
     if (tabId === "pm")      navigate(`/equipment/${id}/pms`);
@@ -358,10 +300,11 @@ export const EquipmentOverview = (): JSX.Element => {
     if (tabId === "spares")  navigate(`/equipment/${id}/spares`);
     if (tabId === "docs")    navigate(`/equipment/${id}/documents`);
     if (tabId === "ai")      navigate(`/equipment/${id}/ai-insights`);
-    // other tabs are placeholders — no-op for now
   };
 
-  const eq = (equipmentId && EQUIPMENT_DATA[equipmentId]) ?? EQUIPMENT_DATA[DEFAULT_ID];
+  // Identity comes from the shared service; overview metrics stay local.
+  const eq   = getEquipmentById(equipmentId);
+  const ovw  = (equipmentId && OVERVIEW_DATA[equipmentId]) ?? DEFAULT_OVERVIEW;
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -376,16 +319,16 @@ export const EquipmentOverview = (): JSX.Element => {
     "bg-yellow-400";
 
   const healthColor =
-    eq.healthScore >= 75 ? "#10b981" :
-    eq.healthScore >= 50 ? "#f97316" : "#ef4444";
+    ovw.healthScore >= 75 ? "#10b981" :
+    ovw.healthScore >= 50 ? "#f97316" : "#ef4444";
 
   const sparesColor =
-    eq.sparesHealth >= 75 ? "#10b981" :
-    eq.sparesHealth >= 50 ? "#f97316" : "#ef4444";
+    ovw.sparesHealth >= 75 ? "#10b981" :
+    ovw.sparesHealth >= 50 ? "#f97316" : "#ef4444";
 
   const pmColor =
-    eq.pmCompliance >= 80 ? "#10b981" :
-    eq.pmCompliance >= 60 ? "#f97316" : "#ef4444";
+    ovw.pmCompliance >= 80 ? "#10b981" :
+    ovw.pmCompliance >= 60 ? "#f97316" : "#ef4444";
 
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
@@ -538,22 +481,22 @@ export const EquipmentOverview = (): JSX.Element => {
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View Health →</button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <DonutChart value={eq.healthScore} size={72} strokeWidth={8} color={healthColor} />
+                  <DonutChart value={ovw.healthScore} size={72} strokeWidth={8} color={healthColor} />
                   <div className="flex flex-1 flex-col gap-2.5">
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-slate-500">Breakdown Probability</span>
                         <Badge className="h-auto rounded px-1.5 py-0 text-[10px] font-bold shadow-none bg-[#ef444420] text-red-400">HIGH</Badge>
                       </div>
-                      <span className="text-sm font-bold text-slate-50">{eq.breakdownProbability}%</span>
+                      <span className="text-sm font-bold text-slate-50">{ovw.breakdownProbability}%</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[11px] text-slate-500">Reliability</span>
-                      <span className="text-sm font-semibold text-orange-400">{eq.reliability}% Needs Attention</span>
+                      <span className="text-sm font-semibold text-orange-400">{ovw.reliability}% Needs Attention</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[11px] text-slate-500">OEE</span>
-                      <span className="text-sm font-semibold text-orange-400">{eq.oee}% Needs Attention</span>
+                      <span className="text-sm font-semibold text-orange-400">{ovw.oee}% Needs Attention</span>
                     </div>
                   </div>
                 </div>
@@ -561,7 +504,7 @@ export const EquipmentOverview = (): JSX.Element => {
                   <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-blue-400" aria-hidden="true" />
                   <div className="flex flex-col gap-0">
                     <span className="text-[10px] text-slate-500">Next predicted intervention</span>
-                    <span className="text-xs font-medium text-slate-200">{eq.nextIntervention}</span>
+                    <span className="text-xs font-medium text-slate-200">{ovw.nextIntervention}</span>
                   </div>
                 </div>
               </CardContent>
@@ -578,7 +521,7 @@ export const EquipmentOverview = (): JSX.Element => {
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View all actions →</button>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {eq.priorityActions.map((action) => (
+                  {ovw.priorityActions.map((action) => (
                     <div key={action.title} className="flex items-start gap-2.5 rounded-lg border border-gray-800 bg-[#0d1118] p-2.5">
                       <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-800">
                         {priorityIcon(action.icon)}
@@ -618,15 +561,15 @@ export const EquipmentOverview = (): JSX.Element => {
                 </div>
                 <div className="mb-3 flex items-end gap-4">
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-2xl font-bold text-slate-50">{eq.woOpen}</span>
+                    <span className="text-2xl font-bold text-slate-50">{ovw.woOpen}</span>
                     <span className="text-[10px] font-semibold uppercase text-slate-500">Open</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-2xl font-bold text-orange-400">{eq.woOverdue}</span>
+                    <span className="text-2xl font-bold text-orange-400">{ovw.woOverdue}</span>
                     <span className="text-[10px] font-semibold uppercase text-slate-500">Overdue</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-2xl font-bold text-red-400">{eq.woCritical}</span>
+                    <span className="text-2xl font-bold text-red-400">{ovw.woCritical}</span>
                     <span className="text-[10px] font-semibold uppercase text-slate-500">Critical</span>
                   </div>
                 </div>
@@ -635,12 +578,12 @@ export const EquipmentOverview = (): JSX.Element => {
                     <span className="text-[10px] text-slate-500">Latest Critical Work Order</span>
                     <Badge className="h-auto rounded px-1.5 py-0 text-[10px] font-bold uppercase shadow-none bg-[#f9731620] text-orange-400">HIGH</Badge>
                   </div>
-                  <span className="block text-sm font-bold text-slate-50">{eq.latestWo.ref}</span>
-                  <p className="mt-0.5 text-xs text-slate-400">{eq.latestWo.title}</p>
+                  <span className="block text-sm font-bold text-slate-50">{ovw.latestWo.ref}</span>
+                  <p className="mt-0.5 text-xs text-slate-400">{ovw.latestWo.title}</p>
                   <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500">
-                    <span>Created: {eq.latestWo.created}</span>
+                    <span>Created: {ovw.latestWo.created}</span>
                     <span>·</span>
-                    <span className={eq.latestWo.urgent ? "font-semibold text-red-400" : ""}>Due: {eq.latestWo.due}</span>
+                    <span className={ovw.latestWo.urgent ? "font-semibold text-red-400" : ""}>Due: {ovw.latestWo.due}</span>
                   </div>
                 </div>
                 <button type="button" className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors">
@@ -664,22 +607,22 @@ export const EquipmentOverview = (): JSX.Element => {
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View PMs →</button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <DonutChart value={eq.pmCompliance} size={68} strokeWidth={8} color={pmColor} />
+                  <DonutChart value={ovw.pmCompliance} size={68} strokeWidth={8} color={pmColor} />
                   <div className="flex flex-1 flex-col gap-1.5">
                     <div className="flex flex-col">
-                      <span className="text-xl font-bold text-slate-50">{eq.pmOverdue}</span>
+                      <span className="text-xl font-bold text-slate-50">{ovw.pmOverdue}</span>
                       <span className="text-[11px] font-semibold uppercase text-slate-500">Overdue PMs</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs text-slate-500">Next PM</span>
-                      <span className="text-xs font-semibold text-slate-200">{eq.nextPm}</span>
-                      <span className="text-[11px] font-medium text-orange-400">{eq.nextPmDue}</span>
+                      <span className="text-xs font-semibold text-slate-200">{ovw.nextPm}</span>
+                      <span className="text-[11px] font-medium text-orange-400">{ovw.nextPmDue}</span>
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
                   <CalendarDays className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
-                  <span>{eq.pmThisWeek} PMs scheduled this week</span>
+                  <span>{ovw.pmThisWeek} PMs scheduled this week</span>
                 </div>
               </CardContent>
             </Card>
@@ -696,38 +639,38 @@ export const EquipmentOverview = (): JSX.Element => {
                 </div>
                 <div className="mb-3 flex items-center gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600/30 text-xs font-bold text-blue-300">
-                    {eq.primaryEngineer.initials}
+                    {ovw.primaryEngineer.initials}
                   </div>
                   <div className="flex flex-col gap-0">
-                    <span className="text-sm font-semibold text-slate-200">{eq.primaryEngineer.name}</span>
-                    <span className="text-[11px] text-slate-500">{eq.primaryEngineer.role}</span>
+                    <span className="text-sm font-semibold text-slate-200">{ovw.primaryEngineer.name}</span>
+                    <span className="text-[11px] text-slate-500">{ovw.primaryEngineer.role}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">Skills Match</span>
-                      <span className="text-xs font-semibold text-emerald-400">{eq.skillsMatch}%</span>
+                      <span className="text-xs font-semibold text-emerald-400">{ovw.skillsMatch}%</span>
                     </div>
-                    <Progress value={eq.skillsMatch} className="h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500" />
+                    <Progress value={ovw.skillsMatch} className="h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500" />
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">Skills Coverage</span>
-                      <span className="text-xs font-semibold text-emerald-400">{eq.skillsCoverage}%</span>
+                      <span className="text-xs font-semibold text-emerald-400">{ovw.skillsCoverage}%</span>
                     </div>
-                    <Progress value={eq.skillsCoverage} className="h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500" />
+                    <Progress value={ovw.skillsCoverage} className="h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500">Knowledge Risk</span>
-                    <span className={`text-xs font-semibold ${eq.knowledgeRisk === "Low" ? "text-emerald-400" : eq.knowledgeRisk === "High" ? "text-red-400" : "text-yellow-400"}`}>
-                      {eq.knowledgeRisk}
+                    <span className={`text-xs font-semibold ${ovw.knowledgeRisk === "Low" ? "text-emerald-400" : ovw.knowledgeRisk === "High" ? "text-red-400" : "text-yellow-400"}`}>
+                      {ovw.knowledgeRisk}
                     </span>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
                   <Users className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
-                  <span>{eq.backupEngineers} backup engineer{eq.backupEngineers !== 1 ? "s" : ""} available</span>
+                  <span>{ovw.backupEngineers} backup engineer{ovw.backupEngineers !== 1 ? "s" : ""} available</span>
                 </div>
               </CardContent>
             </Card>
@@ -743,14 +686,14 @@ export const EquipmentOverview = (): JSX.Element => {
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View Spares →</button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <DonutChart value={eq.sparesHealth} size={68} strokeWidth={8} color={sparesColor} />
+                  <DonutChart value={ovw.sparesHealth} size={68} strokeWidth={8} color={sparesColor} />
                   <div className="flex flex-1 flex-col gap-1.5">
                     <div className="flex items-end gap-1.5">
-                      <span className="text-2xl font-bold text-red-400">{eq.sparesOutOfStock}</span>
+                      <span className="text-2xl font-bold text-red-400">{ovw.sparesOutOfStock}</span>
                       <span className="mb-0.5 text-xs text-slate-500">Out of Stock</span>
                     </div>
                     <div className="flex items-end gap-1.5">
-                      <span className="text-2xl font-bold text-slate-50">{eq.sparesCritical}</span>
+                      <span className="text-2xl font-bold text-slate-50">{ovw.sparesCritical}</span>
                       <span className="mb-0.5 text-xs text-slate-500">Critical Spares</span>
                     </div>
                   </div>
@@ -758,12 +701,12 @@ export const EquipmentOverview = (): JSX.Element => {
                 <div className="mt-3 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500">Top Risk Spare:</span>
-                    <span className="text-xs font-medium text-slate-200">{eq.topRiskSpare}</span>
+                    <span className="text-xs font-medium text-slate-200">{ovw.topRiskSpare}</span>
                     <Badge className="h-auto rounded px-1.5 py-0 text-[10px] font-bold uppercase shadow-none bg-[#ef444420] text-red-400">Critical</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500">Total Inventory Value</span>
-                    <span className="text-xs font-semibold text-slate-200">{eq.inventoryValue}</span>
+                    <span className="text-xs font-semibold text-slate-200">{ovw.inventoryValue}</span>
                   </div>
                 </div>
               </CardContent>
@@ -795,8 +738,8 @@ export const EquipmentOverview = (): JSX.Element => {
                       </tr>
                     </thead>
                     <tbody>
-                      {eq.activity.map((row, i) => (
-                        <tr key={i} className={i !== eq.activity.length - 1 ? "border-b border-gray-800" : ""}>
+                      {ovw.activity.map((row, i) => (
+                        <tr key={i} className={i !== ovw.activity.length - 1 ? "border-b border-gray-800" : ""}>
                           <td className="py-2.5 pr-4 text-slate-400 whitespace-nowrap">
                             {row.date} {row.time}
                           </td>
@@ -835,7 +778,7 @@ export const EquipmentOverview = (): JSX.Element => {
                       <CardNum n={8} />
                       <h2 className="text-sm font-semibold text-slate-200">Documents Summary</h2>
                     </div>
-                    <span className="text-sm font-semibold text-slate-300">{eq.inventoryValue}</span>
+                    <span className="text-sm font-semibold text-slate-300">{ovw.inventoryValue}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
@@ -843,7 +786,7 @@ export const EquipmentOverview = (): JSX.Element => {
                         <FileText className="h-4 w-4 text-blue-400" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-50">{eq.docsTotal}</span>
+                        <span className="text-sm font-bold text-slate-50">{ovw.docsTotal}</span>
                         <span className="text-[10px] text-slate-500">Total Documents</span>
                       </div>
                     </div>
@@ -852,7 +795,7 @@ export const EquipmentOverview = (): JSX.Element => {
                         <Clock className="h-4 w-4 text-orange-400" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-50">{eq.docsExpiring}</span>
+                        <span className="text-sm font-bold text-slate-50">{ovw.docsExpiring}</span>
                         <span className="text-[10px] text-slate-500">Expiring Soon</span>
                       </div>
                     </div>
@@ -861,7 +804,7 @@ export const EquipmentOverview = (): JSX.Element => {
                         <AlertTriangle className="h-4 w-4 text-yellow-400" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-50">{eq.docsReview}</span>
+                        <span className="text-sm font-bold text-slate-50">{ovw.docsReview}</span>
                         <span className="text-[10px] text-slate-500">Require Review</span>
                       </div>
                     </div>
@@ -870,7 +813,7 @@ export const EquipmentOverview = (): JSX.Element => {
                         <Settings className="h-4 w-4 text-slate-400" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-50">{eq.docsSize}</span>
+                        <span className="text-sm font-bold text-slate-50">{ovw.docsSize}</span>
                         <span className="text-[10px] text-slate-500">Total File Size</span>
                       </div>
                     </div>
@@ -892,22 +835,22 @@ export const EquipmentOverview = (): JSX.Element => {
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
                       <Sparkles className="h-4 w-4 text-blue-400" />
                     </div>
-                    <p className="text-sm leading-relaxed text-slate-300">{eq.aiRecommendation}</p>
+                    <p className="text-sm leading-relaxed text-slate-300">{ovw.aiRecommendation}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 border-t border-gray-800 pt-3 text-[11px]">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-slate-500">Risk Impact</span>
-                      <span className={`font-semibold ${eq.aiRiskImpact === "Critical" ? "text-red-400" : eq.aiRiskImpact === "High" ? "text-orange-400" : "text-yellow-400"}`}>
-                        {eq.aiRiskImpact}
+                      <span className={`font-semibold ${ovw.aiRiskImpact === "Critical" ? "text-red-400" : ovw.aiRiskImpact === "High" ? "text-orange-400" : "text-yellow-400"}`}>
+                        {ovw.aiRiskImpact}
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-slate-500">Confidence</span>
-                      <span className="font-semibold text-emerald-400">↑ {eq.aiConfidence}%</span>
+                      <span className="font-semibold text-emerald-400">↑ {ovw.aiConfidence}%</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-slate-500">Pot. Downtime Reduction</span>
-                      <span className="font-semibold text-emerald-400">↓ {eq.aiDowntimeReduction}%</span>
+                      <span className="font-semibold text-emerald-400">↓ {ovw.aiDowntimeReduction}%</span>
                     </div>
                   </div>
                 </CardContent>
