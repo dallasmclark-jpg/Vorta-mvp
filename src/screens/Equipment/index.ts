@@ -6,3 +6,4 @@ export { EquipmentPMs } from "./EquipmentPMs";
 export { EquipmentHistory } from "./EquipmentHistory";
 export { EquipmentSkills } from "./EquipmentSkills";
 export { EquipmentSpares } from "./EquipmentSpares";
+export { EquipmentDocuments } from "./EquipmentDocuments";
