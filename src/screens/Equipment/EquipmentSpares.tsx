@@ -105,15 +105,26 @@ export const EquipmentSpares = (): JSX.Element => {
     stockSummary: { totalComponents: 0, outOfStock: 0, lowStock: 0, okStock: 0 },
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadEquipmentSpares = useCallback(async () => {
-    const [identity, componentResult] = await Promise.all([
-      getEquipmentIdentityById(resolvedId),
-      getEquipmentComponents(resolvedId),
-    ]);
-    setEq(identity);
-    setComponents(componentResult);
-    setLastUpdated(new Date());
+    setIsRefreshing(true);
+    setLoadError(null);
+    try {
+      const [identity, componentResult] = await Promise.all([
+        getEquipmentIdentityById(resolvedId),
+        getEquipmentComponents(resolvedId),
+      ]);
+      setEq(identity);
+      setComponents(componentResult);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error("Failed to load equipment spares", error);
+      setLoadError("Unable to refresh spares data. Showing the latest available data.");
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [resolvedId]);
   useEffect(() => {
     loadEquipmentSpares();
@@ -432,7 +443,11 @@ export const EquipmentSpares = (): JSX.Element => {
       {/* ── Page Content ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
 
-        {/* Page title + actions */}
+        {loadError && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {loadError}
+          </div>
+        )}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-50">Spares</h2>
@@ -759,9 +774,10 @@ export const EquipmentSpares = (): JSX.Element => {
             type="button"
             aria-label="Refresh spares data"
             onClick={loadEquipmentSpares}
-            className="text-slate-600 hover:text-slate-400 transition-colors"
+            disabled={isRefreshing}
+            className="text-slate-600 transition-colors hover:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
