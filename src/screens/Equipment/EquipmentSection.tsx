@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
@@ -12,6 +12,9 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
+
+import { getAllEquipmentFromSupabase } from "./equipmentService";
+import type { Equipment as EquipmentRecord } from "./equipmentTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,36 @@ interface EquipmentItem {
   lastBreakdown: LastBreakdown;
   aiPrediction: AiPrediction;
   aiRecommendation: string;
+}
+
+// ─── Supabase → EquipmentItem adapter ────────────────────────────────────────
+
+function equipmentRecordToItem(eq: EquipmentRecord): EquipmentItem {
+  return {
+    id:           eq.id,
+    name:         eq.name,
+    assetNumber:  eq.assetNumber,
+    type:         eq.type,
+    area:         eq.area,
+    riskScore:    eq.riskScore,
+    riskLevel:    eq.riskLevel as EquipmentItem["riskLevel"],
+    breakdown:    eq.riskBreakdown.map((b) => ({
+      label:    b.label,
+      pct:      b.pct,
+      color:    b.color,
+      dotClass: b.dotClass,
+    })),
+    riskReasons: [
+      { label: "See equipment detail for risk breakdown", sub: "Click Open Equipment to view details", dotClass: "bg-blue-500" },
+    ],
+    lastBreakdown: {
+      daysAgo: 0, date: "—",
+      openWorkOrders: 0, priority: "—",
+      engineerInitials: "—", engineerName: "—", engineerRole: "—",
+    },
+    aiPrediction: { label: "Analysis pending", timeframe: "run analysis to view", confidence: 0 },
+    aiRecommendation: "Open this equipment to view detailed AI recommendations.",
+  };
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -613,10 +646,25 @@ export const EquipmentSection = (): JSX.Element => {
   const [search, setSearch] = useState("");
   const [activeArea, setActiveArea] = useState<string | null>(buildingParam);
   const [activeChip, setActiveChip] = useState<string | null>(buildingParam ? "Area" : null);
-  const [expandedId, setExpandedId] = useState<string>("fl-03");
+  const [expandedId, setExpandedId] = useState<string>("");
+  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>(
+    ALL_EQUIPMENT
+  );
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAllEquipmentFromSupabase()
+      .then((records) => {
+        if (records.length > 0) {
+          setEquipmentList(records.map(equipmentRecordToItem));
+          setExpandedId(records[0].id);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
-    const items = [...ALL_EQUIPMENT].sort((a, b) => b.riskScore - a.riskScore);
+    const items = [...equipmentList].sort((a, b) => b.riskScore - a.riskScore);
     return items.filter((e) => {
       if (activeArea && e.area !== activeArea) return false;
       if (search) {
@@ -630,11 +678,11 @@ export const EquipmentSection = (): JSX.Element => {
       }
       return true;
     });
-  }, [activeArea, search]);
+  }, [equipmentList, activeArea, search]);
 
-  const totalAssets    = ALL_EQUIPMENT.length;
-  const criticalCount  = ALL_EQUIPMENT.filter((e) => e.riskLevel === "Critical").length;
-  const atRisk         = ALL_EQUIPMENT.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
+  const totalAssets    = equipmentList.length;
+  const criticalCount  = equipmentList.filter((e) => e.riskLevel === "Critical").length;
+  const atRisk         = equipmentList.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
   const overduePms     = 8;
   const openWorkOrders = 12;
   const avgHealth      = 82;
@@ -766,7 +814,12 @@ export const EquipmentSection = (): JSX.Element => {
           <span className="text-right text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Score</span>
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 px-5 py-16 text-sm text-slate-500">
+            <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
+            Loading equipment...
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-slate-500">No equipment found.</div>
         ) : (
           filtered.map((item, index) => {
@@ -845,17 +898,24 @@ export const EquipmentSection = (): JSX.Element => {
           <CardContent className="p-5">
             <h2 className="mb-4 text-base font-semibold text-slate-50">Top 10 Highest Risk Equipment</h2>
             <ol className="flex flex-col gap-3">
-              {TOP_RISK.map((item, i) => (
-                <li key={item.name} className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
-                    <span className="truncate text-sm text-slate-200">{item.name}</span>
-                  </div>
-                  <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${item.badgeClass}`}>
-                    {item.level}
-                  </Badge>
-                </li>
-              ))}
+              {[...equipmentList]
+                .sort((a, b) => b.riskScore - a.riskScore)
+                .slice(0, 10)
+                .map((item, i) => {
+                  const { badge } = riskScoreClasses(item.riskLevel);
+                  return (
+                    <li key={item.id} className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
+                        <span className="truncate text-sm text-slate-200">{item.name}</span>
+                      </div>
+                      <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${badge}`}>
+                        {item.riskLevel}
+                      </Badge>
+                    </li>
+                  );
+                })
+              }
             </ol>
           </CardContent>
         </Card>

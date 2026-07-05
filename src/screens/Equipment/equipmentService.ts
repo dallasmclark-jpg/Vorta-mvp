@@ -1,8 +1,9 @@
 // ─── Equipment Service ────────────────────────────────────────────────────────
 // All data access for the Equipment section goes through this file.
-// Currently returns mock data. Replace function bodies with Supabase queries
-// when ready — no page files need to change.
+// Currently returns mock data for detail pages; equipment list fetches from
+// Supabase. Replace other function bodies with Supabase queries when ready.
 
+import { supabase } from "../../lib/supabaseClient";
 import {
   Equipment,
   WorkOrder,
@@ -164,6 +165,108 @@ const MOCK_AI_INSIGHTS: AiInsight[] = [
 
 // ─── Service functions ────────────────────────────────────────────────────────
 // Replace each function body with a Supabase query when ready.
+
+// ─── equipment_assets row shape (matches DB columns) ─────────────────────────
+
+interface EquipmentAssetRow {
+  id: string;
+  equipment_code: string | null;
+  name: string;
+  equipment_type: string | null;
+  area: string | null;
+  oem: string | null;
+  model: string | null;
+  criticality: string | null;
+  status: string | null;
+  image_url: string | null;
+}
+
+// Maps a DB status value to a display status + note.
+function mapStatus(dbStatus: string | null): { status: Equipment["status"]; statusNote: string } {
+  switch (dbStatus) {
+    case "attention_required": return { status: "At Risk",     statusNote: "Attention required" };
+    case "maintenance_due":    return { status: "Maintenance", statusNote: "Maintenance due" };
+    case "offline":            return { status: "Offline",     statusNote: "Offline" };
+    default:                   return { status: "Running",     statusNote: "Operating normally" };
+  }
+}
+
+// Maps a DB criticality value to a risk level + derived score.
+function mapCriticality(criticality: string | null): { riskLevel: Equipment["riskLevel"]; riskScore: number } {
+  switch (criticality?.toLowerCase()) {
+    case "critical": return { riskLevel: "Critical", riskScore: 88 };
+    case "high":     return { riskLevel: "High",     riskScore: 71 };
+    case "medium":   return { riskLevel: "Medium",   riskScore: 45 };
+    case "low":      return { riskLevel: "Low",       riskScore: 22 };
+    default:         return { riskLevel: "Medium",   riskScore: 45 };
+  }
+}
+
+// Produces a risk breakdown matching the criticality level.
+function riskBreakdownFor(riskLevel: Equipment["riskLevel"]): Equipment["riskBreakdown"] {
+  if (riskLevel === "Critical") return [
+    { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
+    { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
+    { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+  ];
+  if (riskLevel === "High") return [
+    { label: "High",     pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
+    { label: "Critical", pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
+    { label: "Skills",   pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",   pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+  ];
+  if (riskLevel === "Low") return [
+    { label: "Low",    pct: 30, color: "#84cc16", dotClass: "bg-lime-500" },
+    { label: "Skills", pct: 10, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares", pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+  ];
+  return [
+    { label: "Medium",  pct: 45, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Skills",  pct: 15, color: "#84cc16", dotClass: "bg-lime-500" },
+    { label: "Spares",  pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+  ];
+}
+
+function rowToEquipment(row: EquipmentAssetRow): Equipment {
+  const { status, statusNote } = mapStatus(row.status);
+  const { riskLevel, riskScore } = mapCriticality(row.criticality);
+  return {
+    id:           row.id,
+    name:         row.name,
+    assetNumber:  row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
+    type:         (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
+    area:         row.area ?? "—",
+    manufacturer: row.oem ?? "—",
+    model:        row.model ?? "—",
+    serialNumber: "—",
+    installDate:  "—",
+    warranty:     "—",
+    criticality:  row.criticality ?? "medium",
+    status,
+    statusNote,
+    image:        row.image_url ?? "https://images.pexels.com/photos/3912981/pexels-photo-3912981.jpeg?auto=compress&cs=tinysrgb&w=400",
+    riskScore,
+    riskLevel,
+    riskBreakdown: riskBreakdownFor(riskLevel),
+  };
+}
+
+export async function getAllEquipmentFromSupabase(): Promise<Equipment[]> {
+  const { data, error } = await supabase
+    .from("equipment_assets")
+    .select("id, equipment_code, name, equipment_type, area, oem, model, criticality, status, image_url")
+    .order("name");
+
+  if (error || !data) {
+    console.warn("equipment_assets fetch failed, using mock fallback:", error?.message);
+    return MOCK_EQUIPMENT;
+  }
+
+  return (data as EquipmentAssetRow[]).map(rowToEquipment);
+}
+
+// ─── Service functions (mock — replace with Supabase when ready) ──────────────
 
 export function getAllEquipment(): Equipment[] {
   return MOCK_EQUIPMENT;
