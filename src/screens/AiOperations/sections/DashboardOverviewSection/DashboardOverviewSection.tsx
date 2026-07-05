@@ -27,33 +27,6 @@ const BUILDING_STATIC: Record<string, { driver: string; trend: string }> = {
   BP: { driver: "Compliance Risk",   trend: "Stable" },
 };
 
-function cardStyleFromScore(score: number) {
-  if (score >= 80) return {
-    severity: "Critical",
-    severityTextClass: "text-red-500",
-    severityBgClass: "bg-[#ef444420]",
-    progressClass: "[&>div]:bg-red-500",
-  };
-  if (score >= 60) return {
-    severity: "High",
-    severityTextClass: "text-yellow-400",
-    severityBgClass: "bg-[#facc1520]",
-    progressClass: "[&>div]:bg-yellow-400",
-  };
-  if (score >= 40) return {
-    severity: "Med",
-    severityTextClass: "text-yellow-400",
-    severityBgClass: "bg-[#facc1520]",
-    progressClass: "[&>div]:bg-yellow-400",
-  };
-  return {
-    severity: "Low",
-    severityTextClass: "text-emerald-500",
-    severityBgClass: "bg-[#10b98120]",
-    progressClass: "[&>div]:bg-emerald-500",
-  };
-}
-
 const labourRiskItems = [
   {
     title: "Shift Cover",
@@ -308,9 +281,26 @@ export const DashboardOverviewSection = (): JSX.Element => {
       <section className="flex w-full flex-col gap-4">
         <h2 className="text-base font-semibold text-slate-50">Plant Area Risk</h2>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-          {buildingCards.map((stats) => {
-            const style      = cardStyleFromScore(stats.highestRiskScore);
+          {[...buildingCards].sort((a, b) => b.highestRiskScore - a.highestRiskScore).map((stats) => {
             const staticInfo = BUILDING_STATIC[stats.code] ?? { driver: "—", trend: "—" };
+            const riskLabel =
+              stats.highestRiskScore >= 81 ? "Critical" :
+              stats.highestRiskScore >= 61 ? "High" :
+              stats.highestRiskScore >= 41 ? "Medium" :
+              stats.highestRiskScore >= 21 ? "Low" :
+              "Minimal";
+            const badgeClass =
+              stats.highestRiskScore >= 81 ? "bg-red-500/20 text-red-400" :
+              stats.highestRiskScore >= 61 ? "bg-orange-500/20 text-orange-400" :
+              stats.highestRiskScore >= 41 ? "bg-yellow-500/20 text-yellow-400" :
+              stats.highestRiskScore >= 21 ? "bg-green-500/20 text-green-400" :
+              "bg-cyan-500/20 text-cyan-400";
+            const progressClass =
+              stats.highestRiskScore >= 81 ? "bg-red-500" :
+              stats.highestRiskScore >= 61 ? "bg-orange-500" :
+              stats.highestRiskScore >= 41 ? "bg-yellow-500" :
+              stats.highestRiskScore >= 21 ? "bg-green-500" :
+              "bg-cyan-500";
             return (
               <Card
                 key={stats.code}
@@ -320,8 +310,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <CardContent className="flex h-full flex-col items-start gap-3 p-4">
                   <div className="flex w-full items-center justify-between gap-3">
                     <h3 className="text-sm font-semibold text-slate-50">{stats.label}</h3>
-                    <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${style.severityBgClass} ${style.severityTextClass}`}>
-                      {style.severity}
+                    <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${badgeClass}`}>
+                      {riskLabel}
                     </span>
                   </div>
                   <p className="min-h-9 self-stretch text-xs text-slate-400">
@@ -342,7 +332,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     </div>
                   </dl>
                   <div className="flex w-full flex-col gap-1.5">
-                    <Progress value={stats.highestRiskScore} className={`h-2 w-full rounded bg-gray-800 ${style.progressClass}`} />
+                    <div className="relative h-2 w-full overflow-hidden rounded bg-gray-800">
+                      <div className={`h-full rounded ${progressClass}`} style={{ width: `${stats.highestRiskScore}%` }} />
+                    </div>
                     <p className="text-xs text-slate-400">{staticInfo.trend}</p>
                   </div>
                 </CardContent>
