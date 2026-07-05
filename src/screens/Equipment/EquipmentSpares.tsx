@@ -107,10 +107,12 @@ export const EquipmentSpares = (): JSX.Element => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoadedComponents, setHasLoadedComponents] = useState(false);
 
   const loadEquipmentSpares = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
+    setHasLoadedComponents(false);
     try {
       const [identity, componentResult] = await Promise.all([
         getEquipmentIdentityById(resolvedId),
@@ -118,10 +120,12 @@ export const EquipmentSpares = (): JSX.Element => {
       ]);
       setEq(identity);
       setComponents(componentResult);
+      setHasLoadedComponents(true);
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to load equipment spares", error);
       setLoadError("Unable to refresh spares data. Showing the latest available data.");
+      setHasLoadedComponents(true);
     } finally {
       setIsRefreshing(false);
     }
@@ -598,30 +602,48 @@ export const EquipmentSpares = (): JSX.Element => {
                     </tr>
                   </thead>
                   <tbody>
-                    {components.inventory.map((row, i) => (
-                      <tr key={row.partNumber} className={i !== components.inventory.length - 1 ? "border-b border-gray-800" : ""}>
-                        <td className="py-3 pr-3">
-                          <p className="font-semibold text-slate-200">{row.name}</p>
-                          <p className="font-mono text-[10px] text-slate-500">{row.partNumber}</p>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <span className={`font-bold ${row.stock === 0 ? "text-red-400" : row.stock < row.max ? "text-yellow-400" : "text-slate-200"}`}>
-                            {row.stock}
-                          </span>
-                          <span className="text-slate-500"> / {row.max}</span>
-                        </td>
-                        <td className="py-3">
-                          <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(row.status)}`}>
-                            {row.status}
-                          </Badge>
+                    {!hasLoadedComponents ? (
+                      <tr>
+                        <td colSpan={3} className="py-6 text-center text-[11px] text-slate-500">
+                          Loading spares inventory...
                         </td>
                       </tr>
-                    ))}
+                    ) : components.inventory.length > 0 ? (
+                      components.inventory.map((row, i) => (
+                        <tr key={row.partNumber} className={i !== components.inventory.length - 1 ? "border-b border-gray-800" : ""}>
+                          <td className="py-3 pr-3">
+                            <p className="font-semibold text-slate-200">{row.name}</p>
+                            <p className="font-mono text-[10px] text-slate-500">{row.partNumber}</p>
+                          </td>
+                          <td className="py-3 pr-3">
+                            <span className={`font-bold ${row.stock === 0 ? "text-red-400" : row.stock < row.max ? "text-yellow-400" : "text-slate-200"}`}>
+                              {row.stock}
+                            </span>
+                            <span className="text-slate-500"> / {row.max}</span>
+                          </td>
+                          <td className="py-3">
+                            <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(row.status)}`}>
+                              {row.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="py-6 text-center text-[11px] text-slate-500">
+                          No spares linked to this equipment yet.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
               <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-                <span>Showing {components.inventory.length} part{components.inventory.length !== 1 ? "s" : ""}.</span>
+                <span>
+                  {hasLoadedComponents
+                    ? `Showing ${components.inventory.length} part${components.inventory.length !== 1 ? "s" : ""}.`
+                    : "Loading linked parts..."}
+                </span>
                 <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors">
                   View Full Inventory →
                 </button>
@@ -635,7 +657,11 @@ export const EquipmentSpares = (): JSX.Element => {
               <h3 className="mb-1 text-sm font-semibold text-slate-200">Stock Gap Priority</h3>
               <p className="mb-4 text-[11px] text-slate-500">Top stock gaps against target holding</p>
               <div className="flex flex-col gap-3">
-                {usageBars.length > 0 ? (
+                {!hasLoadedComponents ? (
+                  <p className="text-[11px] text-slate-500">
+                    Loading stock gaps...
+                  </p>
+                ) : usageBars.length > 0 ? (
                   usageBars.map((bar) => (
                     <div key={bar.label} className="flex items-center gap-2">
                       <span className="w-20 shrink-0 truncate text-[11px] text-slate-300">{bar.label}</span>
@@ -666,7 +692,11 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Upcoming Spare Requirements</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {upcomingRequirements.length > 0 ? (
+                {!hasLoadedComponents ? (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    Loading spare requirements...
+                  </p>
+                ) : upcomingRequirements.length > 0 ? (
                   upcomingRequirements.map((r) => (
                     <div key={r.name} className="flex items-center justify-between py-3">
                       <div className="flex items-center gap-2">
@@ -700,7 +730,11 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Preferred Suppliers</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {preferredSuppliers.length > 0 ? (
+                {!hasLoadedComponents ? (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    Loading preferred suppliers...
+                  </p>
+                ) : preferredSuppliers.length > 0 ? (
                   preferredSuppliers.map((supplier) => (
                     <div key={supplier.name} className="flex flex-col gap-0.5 py-3">
                       <span className="text-xs font-semibold text-slate-200">{supplier.name}</span>
@@ -724,7 +758,11 @@ export const EquipmentSpares = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Recent Spare Issues</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {recentStockIssues.length > 0 ? (
+                {!hasLoadedComponents ? (
+                  <p className="py-3 text-[11px] text-slate-500">
+                    Loading stock issues...
+                  </p>
+                ) : recentStockIssues.length > 0 ? (
                   recentStockIssues.map((item) => (
                     <div key={item.text} className="flex items-start gap-2.5 py-3">
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
