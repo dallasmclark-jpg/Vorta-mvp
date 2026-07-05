@@ -16,6 +16,7 @@ import {
   EquipmentActivity,
   AiInsight,
 } from "./equipmentTypes";
+import { getEquipmentById as getEquipmentByIdFallback, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 
 // ─── Mock equipment data ──────────────────────────────────────────────────────
 
@@ -257,6 +258,47 @@ function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
     riskLevel,
     breakdown:   riskBreakdownFor(riskLevel),
   };
+}
+
+function rowToEquipment(row: EquipmentAssetRow): Equipment {
+  const { riskLevel, riskScore } = mapCriticality(row.criticality);
+  return {
+    id:           row.id,
+    name:         row.name,
+    assetNumber:  row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
+    type:         (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
+    area:         row.area ?? "—",
+    manufacturer: row.oem ?? "—",
+    model:        row.model ?? "—",
+    serialNumber: "—",
+    installDate:  "—",
+    warranty:     "—",
+    criticality:  row.criticality ?? "—",
+    status:       (row.status as Equipment["status"]) ?? "Running",
+    statusNote:   "",
+    image:        row.image_url ?? "",
+    riskScore,
+    riskLevel,
+    riskBreakdown: riskBreakdownFor(riskLevel),
+  };
+}
+
+export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
+  try {
+    const { data, error } = await supabase
+      .from("equipment_assets")
+      .select("id, equipment_code, name, equipment_type, area, oem, model, criticality, status, image_url")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!error && data) {
+      return rowToEquipment(data as EquipmentAssetRow);
+    }
+    if (error) console.warn("getEquipmentIdentityById failed, using fallback:", error.message);
+  } catch (e) {
+    console.warn("getEquipmentIdentityById threw, using fallback:", e);
+  }
+  return getEquipmentByIdFallback(id);
 }
 
 export async function getEquipmentList(): Promise<EquipmentListItem[]> {

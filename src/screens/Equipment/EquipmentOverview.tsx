@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById } from "./equipmentService";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -289,6 +290,13 @@ export const EquipmentOverview = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [activeTab] = useState("overview");
 
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [equipmentBase, setEquipmentBase] = useState(getEquipmentById(resolvedId));
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
+  }, [resolvedId]);
+
   const handleTabClick = (tabId: string) => {
     const id = equipmentId ?? DEFAULT_EQUIPMENT_ID;
     if (tabId === "health")  navigate(`/equipment/${id}/health`);
@@ -301,8 +309,7 @@ export const EquipmentOverview = (): JSX.Element => {
     if (tabId === "ai")      navigate(`/equipment/${id}/ai-insights`);
   };
 
-  // Identity comes from the shared service; overview metrics stay local.
-  const equipmentBase = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  // Identity comes from Supabase (with fallback); overview metrics stay local.
   const overviewData =
     OVERVIEW_DATA[equipmentBase.id] ??
     OVERVIEW_DATA[DEFAULT_EQUIPMENT_ID];
