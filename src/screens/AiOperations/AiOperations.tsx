@@ -68,6 +68,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="ai-matching"        element={<AiMatchingSection />} />
       <Route path="settings"           element={<SettingsSection />} />
       <Route path="equipment"          element={<EquipmentSection />} />
+      <Route path="equipment/:equipmentId/overview" element={<EquipmentSection />} />
       <Route path="support"            element={<SupportSection />} />
       <Route path="design-system"      element={<DesignSystemSection />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />

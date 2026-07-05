@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -449,8 +449,10 @@ function EquipmentDrawer({ eq, onClose }: { eq: Equipment; onClose: () => void }
 
 export const EquipmentSection = (): JSX.Element => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const buildingParam = searchParams.get("building") ?? "all";
   const [search,         setSearch]         = useState("");
-  const [filterArea,     setFilterArea]     = useState("all");
+  const [filterArea,     setFilterArea]     = useState(buildingParam);
   const [filterCrit,     setFilterCrit]     = useState("all");
   const [filterOem,      setFilterOem]      = useState("all");
   const [filterStatus,   setFilterStatus]   = useState("all");
