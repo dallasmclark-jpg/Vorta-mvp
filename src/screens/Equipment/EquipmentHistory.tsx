@@ -296,6 +296,7 @@ export const EquipmentHistory = (): JSX.Element => {
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
     if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
     if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
+    if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
     // other tabs placeholder
   };
 

@@ -4,3 +4,4 @@ export { EquipmentHealth } from "./EquipmentHealth";
 export { EquipmentWorkOrders } from "./EquipmentWorkOrders";
 export { EquipmentPMs } from "./EquipmentPMs";
 export { EquipmentHistory } from "./EquipmentHistory";
+export { EquipmentSkills } from "./EquipmentSkills";
