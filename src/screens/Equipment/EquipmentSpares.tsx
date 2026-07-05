@@ -204,6 +204,7 @@ export const EquipmentSpares = (): JSX.Element => {
     if (tabId === "history")  navigate(`/equipment/${id}/history`);
     if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
     if (tabId === "docs")     navigate(`/equipment/${id}/documents`);
+    if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
   };
 
   return (

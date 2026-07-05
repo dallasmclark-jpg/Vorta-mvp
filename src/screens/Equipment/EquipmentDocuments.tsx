@@ -180,6 +180,7 @@ export const EquipmentDocuments = (): JSX.Element => {
     if (tabId === "history")  navigate(`/equipment/${id}/history`);
     if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
     if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
+    if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
   };
 
   const filtered = DOCUMENTS.filter(
