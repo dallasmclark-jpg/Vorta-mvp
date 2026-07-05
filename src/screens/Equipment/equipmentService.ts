@@ -340,13 +340,16 @@ interface WorkOrderRow {
   completed_date: string | null;
   mttr_hours: number | null;
   outcome: string | null;
+  wo_number: string | null;
+  age_label: string | null;
+  is_overdue: boolean | null;
 }
 
 function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
   const priority = (row.priority?.toUpperCase() ?? "LOW") as WorkOrder["priority"];
   const status   = (row.status?.toUpperCase()   ?? "OPEN") as WorkOrder["status"];
   return {
-    id:            row.id,
+    id:            row.wo_number ?? row.id,
     equipmentId:   row.equipment_id ?? "",
     priority,
     description:   row.description ?? "",
@@ -355,7 +358,8 @@ function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
     engineer:      row.assigned_engineer ?? "—",
     requestedDate: row.requested_date ?? "",
     dueDate:       row.due_date ?? "",
-    age:           "—",
+    age:           row.age_label ?? "—",
+    overdue:       row.is_overdue ?? false,
   };
 }
 
@@ -379,7 +383,7 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from("work_orders")
-      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome")
+      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome, wo_number, age_label, is_overdue")
       .eq("equipment_id", equipmentId);
 
     if (!error && data && data.length > 0) {
@@ -393,9 +397,11 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   } catch (e) {
     console.warn("getEquipmentWorkOrders threw, using mock:", e);
   }
+  const openMock = MOCK_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId);
+  const completedMock = MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId);
   return {
-    open:      MOCK_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),
-    completed: MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),
+    open:      openMock.length > 0 ? openMock : MOCK_WORK_ORDERS.filter((w) => w.equipmentId === DEFAULT_EQUIPMENT_ID),
+    completed: completedMock.length > 0 ? completedMock : MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === DEFAULT_EQUIPMENT_ID),
   };
 }
 
