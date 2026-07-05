@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -22,6 +23,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
+import { getEquipmentIdentityById, getEquipmentSkills, SkillCoverage, EngineerMatch, SkillsCoverageSummary } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -37,22 +39,7 @@ const TABS = [
   { label: "AI Insights",        id: "ai" },
 ];
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const RISK_SKILLS = [
-  { name: "Siemens S7 PLC",    covered: false },
-  { name: "Safety Circuits",   covered: false },
-  { name: "Vision Systems",    covered: true  },
-  { name: "Hydraulics",        covered: true  },
-  { name: "Robot Programming", covered: true  },
-];
-
-const ENGINEERS = [
-  { initials: "JW", name: "James Wilson",  role: "Mechanical Engineer", match: 96, status: "Available",   shift: "Days",   statusClass: "bg-emerald-500/20 text-emerald-400", shiftClass: "bg-blue-500/20 text-blue-400" },
-  { initials: "SJ", name: "Sarah Jones",   role: "Senior Technician",   match: 91, status: "Night Shift", shift: "Nights", statusClass: "bg-yellow-500/20 text-yellow-400", shiftClass: "bg-slate-600/40 text-slate-300" },
-  { initials: "LE", name: "Liam Evans",    role: "Maintenance Lead",    match: 87, status: "Available",   shift: "Days",   statusClass: "bg-emerald-500/20 text-emerald-400", shiftClass: "bg-blue-500/20 text-blue-400" },
-  { initials: "MC", name: "Mike Chen",     role: "Junior Technician",   match: 84, status: "Busy",        shift: "Days",   statusClass: "bg-orange-500/20 text-orange-400",  shiftClass: "bg-blue-500/20 text-blue-400" },
-];
+// ─── Mock data (retained for non-live panels) ────────────────────────────────
 
 const AI_RANKED = [
   { name: "James Wilson",  role: "Mechanical Engineer", match: 96 },
@@ -89,17 +76,21 @@ const QUICK_ACTIONS = [
 
 // ─── Donut chart ──────────────────────────────────────────────────────────────
 
-function SkillsDonut() {
+function SkillsDonut({ summary }: { summary: SkillsCoverageSummary | null }) {
   const size = 120;
   const sw   = 16;
   const r    = (size - sw) / 2;
   const circ = 2 * Math.PI * r;
+  const covered = summary?.covered  ?? 7;
+  const atRisk  = summary?.atRisk   ?? 2;
+  const missing = summary?.missing  ?? 1;
+  const total   = covered + atRisk + missing || 10;
+  const pct     = summary ? summary.coveragePercent : 82;
   const segs = [
-    { value: 7, color: "#10b981" },
-    { value: 2, color: "#eab308" },
-    { value: 1, color: "#ef4444" },
+    { value: covered, color: "#10b981" },
+    { value: atRisk,  color: "#eab308" },
+    { value: missing, color: "#ef4444" },
   ];
-  const total = 10;
   let offset = 0;
   const arcs = segs.map((s) => {
     const len = (s.value / total) * circ;
@@ -121,7 +112,7 @@ function SkillsDonut() {
         />
       ))}
       <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle"
-        fill="white" fontSize="20" fontWeight="700">82%</text>
+        fill="white" fontSize="20" fontWeight="700">{pct}%</text>
       <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle"
         fill="#94a3b8" fontSize="9">Covered</text>
     </svg>
@@ -134,7 +125,29 @@ export const EquipmentSkills = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
 
-  const eq = getEquipmentById(equipmentId ?? DEFAULT_EQUIPMENT_ID);
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const [eq, setEq] = useState(getEquipmentById(resolvedId));
+  const [liveSkills, setLiveSkills] = useState<SkillCoverage[]>([]);
+  const [liveEngineers, setLiveEngineers] = useState<EngineerMatch[]>([]);
+  const [summary, setSummary] = useState<SkillsCoverageSummary | null>(null);
+  const [riskSkills, setRiskSkills] = useState<{ name: string; covered: boolean }[]>([]);
+
+  useEffect(() => {
+    getEquipmentIdentityById(resolvedId).then(setEq);
+  }, [resolvedId]);
+
+  useEffect(() => {
+    getEquipmentSkills(resolvedId).then((result) => {
+      if (result.skills.length > 0) {
+        setLiveSkills(result.skills);
+        setLiveEngineers(result.engineers);
+        setSummary(result.coverageSummary);
+        setRiskSkills(result.skills.map((s) => ({ name: s.name, covered: s.coverage === "green" })));
+      } else {
+        setRiskSkills(result.legacySkills.map((s) => ({ name: s.name, covered: s.covered })));
+      }
+    });
+  }, [resolvedId]);
 
   const riskBadgeClass =
     eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
@@ -293,12 +306,12 @@ export const EquipmentSkills = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Skills Coverage</h3>
               <div className="flex items-center gap-4">
-                <SkillsDonut />
+                <SkillsDonut summary={summary} />
                 <div className="flex flex-col gap-1.5">
                   {[
-                    { label: "Fully Covered", count: 7, color: "#10b981" },
-                    { label: "Partial Gap",   count: 2, color: "#eab308" },
-                    { label: "Not Covered",   count: 1, color: "#ef4444" },
+                    { label: "Fully Covered", count: summary?.covered  ?? 7, color: "#10b981" },
+                    { label: "At Risk",        count: summary?.atRisk   ?? 2, color: "#eab308" },
+                    { label: "Not Covered",    count: summary?.missing  ?? 1, color: "#ef4444" },
                   ].map((l) => (
                     <div key={l.label} className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-1.5">
@@ -310,7 +323,11 @@ export const EquipmentSkills = (): JSX.Element => {
                   ))}
                 </div>
               </div>
-              <p className="mt-3 text-[11px] text-slate-500">10 of 12 required skills covered</p>
+              <p className="mt-3 text-[11px] text-slate-500">
+                {summary
+                  ? `${summary.covered} of ${summary.covered + summary.atRisk + summary.missing} required skills covered`
+                  : "10 of 12 required skills covered"}
+              </p>
               <button type="button"
                 className="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400 hover:bg-blue-500/20 transition-colors">
                 View Skills Matrix
@@ -390,7 +407,13 @@ export const EquipmentSkills = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Highest Risk Skills</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {RISK_SKILLS.map((skill) => (
+                {(riskSkills.length > 0 ? riskSkills : [
+                  { name: "Siemens S7 PLC",    covered: false },
+                  { name: "Safety Circuits",   covered: false },
+                  { name: "Vision Systems",    covered: true  },
+                  { name: "Hydraulics",        covered: true  },
+                  { name: "Robot Programming", covered: true  },
+                ]).map((skill) => (
                   <div key={skill.name} className="flex items-center justify-between py-3">
                     <span className="text-xs text-slate-200">{skill.name}</span>
                     <Badge className={`h-auto rounded px-2.5 py-0.5 text-[10px] font-bold uppercase shadow-none ${
@@ -414,20 +437,36 @@ export const EquipmentSkills = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Qualified Engineers</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {ENGINEERS.map((eng) => (
+                {(liveEngineers.length > 0 ? liveEngineers.map((eng) => {
+                  const avail = eng.availability;
+                  const statusClass =
+                    avail === "Available"   ? "bg-emerald-500/20 text-emerald-400" :
+                    avail === "Night Shift" ? "bg-yellow-500/20 text-yellow-400"  :
+                    avail === "Busy"        ? "bg-orange-500/20 text-orange-400"  :
+                    "bg-slate-600/40 text-slate-300";
+                  const shiftClass = eng.shift === "Nights"
+                    ? "bg-slate-600/40 text-slate-300"
+                    : "bg-blue-500/20 text-blue-400";
+                  return { ...eng, statusClass, shiftClass };
+                }) : [
+                  { initials: "JW", name: "James Wilson",  role: "Mechanical Engineer", matchPercent: 96, availability: "Available",   shift: "Days",   statusClass: "bg-emerald-500/20 text-emerald-400", shiftClass: "bg-blue-500/20 text-blue-400", relevantSkillCount: 0 },
+                  { initials: "SJ", name: "Sarah Jones",   role: "Senior Technician",   matchPercent: 91, availability: "Night Shift", shift: "Nights", statusClass: "bg-yellow-500/20 text-yellow-400",  shiftClass: "bg-slate-600/40 text-slate-300", relevantSkillCount: 0 },
+                  { initials: "LE", name: "Liam Evans",    role: "Maintenance Lead",    matchPercent: 87, availability: "Available",   shift: "Days",   statusClass: "bg-emerald-500/20 text-emerald-400", shiftClass: "bg-blue-500/20 text-blue-400", relevantSkillCount: 0 },
+                  { initials: "MC", name: "Mike Chen",     role: "Junior Technician",   matchPercent: 84, availability: "Busy",        shift: "Days",   statusClass: "bg-orange-500/20 text-orange-400",  shiftClass: "bg-blue-500/20 text-blue-400", relevantSkillCount: 0 },
+                ]).map((eng) => (
                   <div key={eng.name} className="flex items-center gap-3 py-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-700 text-[11px] font-bold text-slate-200">
                       {eng.initials}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-200">{eng.name}</p>
-                      <p className="text-[10px] text-slate-500">{eng.role}</p>
+                      <p className="text-[10px] text-slate-500">{eng.role}{eng.relevantSkillCount > 0 ? ` · ${eng.relevantSkillCount} relevant skills` : ""}</p>
                     </div>
-                    <span className={`text-sm font-bold ${eng.match >= 90 ? "text-emerald-400" : eng.match >= 85 ? "text-yellow-400" : "text-orange-400"}`}>
-                      {eng.match}%
+                    <span className={`text-sm font-bold ${eng.matchPercent >= 90 ? "text-emerald-400" : eng.matchPercent >= 85 ? "text-yellow-400" : "text-orange-400"}`}>
+                      {eng.matchPercent}%
                     </span>
                     <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold shadow-none ${eng.statusClass}`}>
-                      {eng.status}
+                      {eng.availability}
                     </Badge>
                     <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold shadow-none ${eng.shiftClass}`}>
                       {eng.shift}

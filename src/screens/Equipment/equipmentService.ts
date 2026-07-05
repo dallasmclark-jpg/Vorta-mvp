@@ -427,14 +427,168 @@ export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMa
   return MOCK_PMS.filter((p) => p.equipmentId === equipmentId);
 }
 
-export function getEquipmentSkills(equipmentId: string): {
-  skills: EquipmentSkill[];
-  engineers: Engineer[];
-} {
-  return {
-    skills:    MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
-    engineers: MOCK_ENGINEERS,
-  };
+export interface SkillCoverage {
+  skillId: string;
+  name: string;
+  requiredLevel: number;
+  highestValidatedLevel: number;
+  coverage: "green" | "amber" | "red";
+  engineerCount: number;
+}
+
+export interface EngineerMatch {
+  id: string;
+  initials: string;
+  name: string;
+  role: string;
+  availability: string;
+  shift: string;
+  matchPercent: number;
+  relevantSkillCount: number;
+}
+
+export interface SkillsCoverageSummary {
+  covered: number;
+  atRisk: number;
+  missing: number;
+  coveragePercent: number;
+}
+
+export async function getEquipmentSkills(equipmentId: string): Promise<{
+  skills: SkillCoverage[];
+  engineers: EngineerMatch[];
+  coverageSummary: SkillsCoverageSummary;
+  legacySkills: EquipmentSkill[];
+  legacyEngineers: Engineer[];
+}> {
+  try {
+    // 1. Required skills for this equipment
+    const { data: reqRows, error: reqErr } = await supabase
+      .from("equipment_required_skills")
+      .select("skill_id, required_level")
+      .eq("equipment_id", equipmentId);
+
+    if (reqErr) throw reqErr;
+    if (!reqRows || reqRows.length === 0) throw new Error("no rows");
+
+    const skillIds: string[] = reqRows.map((r: any) => r.skill_id);
+
+    // 2. Skill names
+    const { data: skillRows, error: skillErr } = await supabase
+      .from("skills")
+      .select("id, name")
+      .in("id", skillIds);
+    if (skillErr) throw skillErr;
+
+    const skillNameMap: Record<string, string> = {};
+    for (const s of skillRows ?? []) skillNameMap[s.id] = s.name;
+
+    // 3. All engineer_skills for these skill IDs
+    const { data: engSkillRows, error: esErr } = await supabase
+      .from("engineer_skills")
+      .select("engineer_id, skill_id, validated_level")
+      .in("skill_id", skillIds);
+    if (esErr) throw esErr;
+
+    // Build map: skill_id -> list of {engineer_id, validated_level}
+    const skillToEngineers: Record<string, { engineerId: string; level: number }[]> = {};
+    for (const es of engSkillRows ?? []) {
+      if (!skillToEngineers[es.skill_id]) skillToEngineers[es.skill_id] = [];
+      skillToEngineers[es.skill_id].push({ engineerId: es.engineer_id, level: es.validated_level ?? 0 });
+    }
+
+    // 4. All unique engineer IDs that have at least one relevant skill
+    const allEngIds = [...new Set((engSkillRows ?? []).map((r: any) => r.engineer_id))];
+
+    // 5. Engineer details
+    const { data: engRows, error: engErr } = await supabase
+      .from("engineers")
+      .select("id, name, role, availability, shift")
+      .in("id", allEngIds);
+    if (engErr) throw engErr;
+
+    const engMap: Record<string, any> = {};
+    for (const e of engRows ?? []) engMap[e.id] = e;
+
+    // 6. Build SkillCoverage[]
+    const skills: SkillCoverage[] = reqRows.map((req: any) => {
+      const reqLevel: number = req.required_level ?? 1;
+      const engineers = skillToEngineers[req.skill_id] ?? [];
+      const highestLevel = engineers.reduce((max, e) => Math.max(max, e.level), 0);
+      let coverage: "green" | "amber" | "red";
+      if (highestLevel >= reqLevel)          coverage = "green";
+      else if (highestLevel === reqLevel - 1) coverage = "amber";
+      else                                    coverage = "red";
+      return {
+        skillId:               req.skill_id,
+        name:                  skillNameMap[req.skill_id] ?? req.skill_id,
+        requiredLevel:         reqLevel,
+        highestValidatedLevel: highestLevel,
+        coverage,
+        engineerCount:         engineers.length,
+      };
+    });
+
+    // 7. Build EngineerMatch[]
+    // For each engineer count how many required skills they hold at >= required level
+    const engineers: EngineerMatch[] = allEngIds.map((eid) => {
+      const eng = engMap[eid];
+      const name: string = eng?.name ?? eid;
+      const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+      // Count relevant skills (any validated level > 0 for a required skill)
+      const relevantSkillCount = (engSkillRows ?? []).filter(
+        (es: any) => es.engineer_id === eid && es.validated_level > 0,
+      ).length;
+      // Match % = (skills this engineer covers at or above required level) / total required skills * 100
+      const matchCount = reqRows.filter((req: any) => {
+        const myLevel = (engSkillRows ?? []).find(
+          (es: any) => es.engineer_id === eid && es.skill_id === req.skill_id,
+        )?.validated_level ?? 0;
+        return myLevel >= (req.required_level ?? 1);
+      }).length;
+      const matchPercent = Math.round((matchCount / reqRows.length) * 100);
+      const avail: string = eng?.availability ?? "Unknown";
+      const shift: string = eng?.shift ?? "Days";
+      return { id: eid, initials, name, role: eng?.role ?? "", availability: avail, shift, matchPercent, relevantSkillCount };
+    }).sort((a, b) => b.matchPercent - a.matchPercent);
+
+    // 8. Coverage summary
+    const covered = skills.filter((s) => s.coverage === "green").length;
+    const atRisk  = skills.filter((s) => s.coverage === "amber").length;
+    const missing = skills.filter((s) => s.coverage === "red").length;
+    const coveragePercent = Math.round((covered / skills.length) * 100);
+
+    // 9. Legacy shapes for unchanged parts of the UI
+    const legacySkills: EquipmentSkill[] = skills.map((s) => ({
+      equipmentId,
+      name:    s.name,
+      covered: s.coverage === "green",
+    }));
+    const legacyEngineers: Engineer[] = engineers.map((e) => ({
+      id:       e.id,
+      initials: e.initials,
+      name:     e.name,
+      role:     e.role,
+      match:    e.matchPercent,
+      status:   e.availability,
+      shift:    e.shift,
+    }));
+
+    return { skills, engineers, coverageSummary: { covered, atRisk, missing, coveragePercent }, legacySkills, legacyEngineers };
+  } catch (e: any) {
+    if (e?.message !== "no rows") console.warn("getEquipmentSkills Supabase error, using mock:", e?.message ?? e);
+    const mockResult = {
+      skills:    MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
+      engineers: MOCK_ENGINEERS,
+    };
+    return {
+      skills: [],
+      engineers: [],
+      coverageSummary: { covered: 0, atRisk: 0, missing: 0, coveragePercent: 0 },
+      legacySkills:    mockResult.skills,
+      legacyEngineers: mockResult.engineers,
+    };
+  }
 }
 
 export function getEquipmentSpares(equipmentId: string): SparePart[] {
