@@ -305,11 +305,11 @@ export const EquipmentHistory = (): JSX.Element => {
       r.description.toLowerCase().includes(search.toLowerCase()),
   );
 
-  // Timeline grid geometry
-  const TIMELINE_W = 520;
-  const TIMELINE_H = TIMELINE_ROWS.length * 24 + 32;
-  const LEFT_PAD   = 110;
-  const RIGHT_PAD  = 10;
+  // Timeline grid geometry — wider canvas so SVG scales up cleanly at full card width
+  const TIMELINE_W = 800;
+  const TIMELINE_H = TIMELINE_ROWS.length * 28 + 40;
+  const LEFT_PAD   = 120;
+  const RIGHT_PAD  = 16;
   const TOP_PAD    = 10;
   const chartW     = TIMELINE_W - LEFT_PAD - RIGHT_PAD;
   const colW       = chartW / (MONTHS.length - 1);
@@ -451,11 +451,10 @@ export const EquipmentHistory = (): JSX.Element => {
             </div>
 
             {/* SVG Timeline */}
-            <div className="overflow-x-auto">
+            <div className="w-full">
               <svg
                 viewBox={`0 0 ${TIMELINE_W} ${TIMELINE_H}`}
-                className="w-full min-w-[420px]"
-                style={{ height: TIMELINE_H }}
+                className="h-auto w-full"
                 aria-hidden="true"
               >
                 {/* Month grid lines */}
@@ -469,7 +468,7 @@ export const EquipmentHistory = (): JSX.Element => {
 
                 {/* Event rows */}
                 {TIMELINE_ROWS.map((row, ri) => {
-                  const y = TOP_PAD + ri * 24 + 8;
+                  const y = TOP_PAD + ri * 28 + 10;
                   return (
                     <g key={row.label}>
                       <text x={LEFT_PAD - 6} y={y + 4} textAnchor="end"
