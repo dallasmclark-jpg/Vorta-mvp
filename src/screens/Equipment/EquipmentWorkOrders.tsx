@@ -274,6 +274,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     const id = equipmentId ?? DEFAULT_ID;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
+    if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
     // other tabs placeholder
   };
 
