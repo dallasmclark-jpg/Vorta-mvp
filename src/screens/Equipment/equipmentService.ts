@@ -337,13 +337,14 @@ interface WorkOrderRow {
   assigned_engineer: string | null;
   requested_date: string | null;
   due_date: string | null;
+  completed_date: string | null;
+  mttr_hours: number | null;
+  outcome: string | null;
 }
 
 function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
   const priority = (row.priority?.toUpperCase() ?? "LOW") as WorkOrder["priority"];
   const status   = (row.status?.toUpperCase()   ?? "OPEN") as WorkOrder["status"];
-  const requested = row.requested_date ?? "";
-  const due       = row.due_date ?? "";
   return {
     id:            row.id,
     equipmentId:   row.equipment_id ?? "",
@@ -352,9 +353,22 @@ function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
     type:          row.work_type ?? "—",
     status,
     engineer:      row.assigned_engineer ?? "—",
-    requestedDate: requested,
-    dueDate:       due,
+    requestedDate: row.requested_date ?? "",
+    dueDate:       row.due_date ?? "",
     age:           "—",
+  };
+}
+
+function rowToCompletedWorkOrder(row: WorkOrderRow): CompletedWorkOrder {
+  return {
+    id:             row.id,
+    equipmentId:    row.equipment_id ?? "",
+    description:    row.description ?? "",
+    type:           row.work_type ?? "—",
+    completedBy:    row.assigned_engineer ?? "—",
+    completionDate: row.completed_date ?? "",
+    mttr:           row.mttr_hours != null ? `${row.mttr_hours}h` : "—",
+    outcome:        (row.outcome?.toUpperCase() ?? "SUCCESS") as CompletedWorkOrder["outcome"],
   };
 }
 
@@ -365,13 +379,14 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from("work_orders")
-      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date")
+      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome")
       .eq("equipment_id", equipmentId);
 
     if (!error && data && data.length > 0) {
+      const rows = data as WorkOrderRow[];
       return {
-        open:      (data as WorkOrderRow[]).map(rowToWorkOrder),
-        completed: MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId),
+        open:      rows.filter((r) => r.status?.toUpperCase() !== "COMPLETED").map(rowToWorkOrder),
+        completed: rows.filter((r) => r.status?.toUpperCase() === "COMPLETED").map(rowToCompletedWorkOrder),
       };
     }
     if (error) console.warn("getEquipmentWorkOrders Supabase error, using mock:", error.message);
