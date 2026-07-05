@@ -23,7 +23,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getEquipmentPMs } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentPMs } from "./equipmentService";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -180,11 +180,10 @@ export const EquipmentPMs = (): JSX.Element => {
   const [scheduleView, setScheduleView] = useState<"week" | "month">("week");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(null);
+  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [pmRows, setPmRows] = useState<PmRow[]>([]);
 
   useEffect(() => {
-    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 

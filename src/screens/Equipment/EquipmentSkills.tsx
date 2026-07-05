@@ -23,7 +23,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getEquipmentSkills, SkillCoverage, EngineerMatch, SkillsCoverageSummary } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentSkills, SkillCoverage, EngineerMatch, SkillsCoverageSummary } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -126,14 +126,13 @@ export const EquipmentSkills = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(null);
+  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [liveSkills, setLiveSkills] = useState<SkillCoverage[]>([]);
   const [liveEngineers, setLiveEngineers] = useState<EngineerMatch[]>([]);
   const [summary, setSummary] = useState<SkillsCoverageSummary | null>(null);
   const [riskSkills, setRiskSkills] = useState<{ name: string; covered: boolean }[]>([]);
 
   useEffect(() => {
-    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 

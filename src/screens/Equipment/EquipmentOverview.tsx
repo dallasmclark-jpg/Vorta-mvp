@@ -17,7 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { DEFAULT_EQUIPMENT_ID, getEquipmentById, EquipmentBase } from "./equipmentData";
-import { getEquipmentIdentityById } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -291,10 +291,9 @@ export const EquipmentOverview = (): JSX.Element => {
   const [activeTab] = useState("overview");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(null);
+  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
 
   useEffect(() => {
-    setEquipmentBase(null);
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
   }, [resolvedId]);
 

@@ -19,7 +19,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentIdentityById } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -144,10 +144,9 @@ export const EquipmentSpares = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(null);
+  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
 
   useEffect(() => {
-    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 

@@ -22,7 +22,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getEquipmentWorkOrders } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentWorkOrders } from "./equipmentService";
 
 // ─── Work Orders types (local, mirrors equipmentTypes.ts shapes) ─────────────
 
@@ -165,12 +165,11 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const [search, setSearch] = useState("");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(null);
+  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [openWOs, setOpenWOs] = useState<WorkOrder[]>([]);
   const [completedWOs, setCompletedWOs] = useState<CompletedWO[]>([]);
 
   useEffect(() => {
-    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 

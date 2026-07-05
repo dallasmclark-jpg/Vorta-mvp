@@ -24,7 +24,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getEquipmentActivity } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentActivity } from "./equipmentService";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -195,11 +195,10 @@ export const EquipmentHistory = (): JSX.Element => {
   const [page] = useState(1);
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(null);
+  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
 
   useEffect(() => {
-    setEq(null);
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
 

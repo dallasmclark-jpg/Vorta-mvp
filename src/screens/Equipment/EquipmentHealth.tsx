@@ -23,7 +23,7 @@ import { Progress } from "../../components/ui/progress";
 // ─── Equipment data (shared shape) ───────────────────────────────────────────
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
 
 // ─── Health-specific data ─────────────────────────────────────────────────────
 
@@ -424,10 +424,9 @@ export const EquipmentHealth = (): JSX.Element => {
   const [trendWindow, setTrendWindow] = useState<TrendWindow>("30d");
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(null);
+  const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
 
   useEffect(() => {
-    setEquipmentBase(null);
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
   }, [resolvedId]);
 

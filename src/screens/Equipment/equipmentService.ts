@@ -283,7 +283,16 @@ function rowToEquipment(row: EquipmentAssetRow): Equipment {
   };
 }
 
+// ─── Equipment identity cache ─────────────────────────────────────────────────
+// Populated on first fetch per ID so tab navigation never shows a stale flash.
+const equipmentIdentityCache: Record<string, Equipment> = {};
+
+export function getCachedEquipmentIdentity(id: string): Equipment | null {
+  return equipmentIdentityCache[id] ?? null;
+}
+
 export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
+  if (equipmentIdentityCache[id]) return equipmentIdentityCache[id];
   try {
     const { data, error } = await supabase
       .from("equipment_assets")
@@ -292,13 +301,17 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
       .maybeSingle();
 
     if (!error && data) {
-      return rowToEquipment(data as EquipmentAssetRow);
+      const result = rowToEquipment(data as EquipmentAssetRow);
+      equipmentIdentityCache[id] = result;
+      return result;
     }
     if (error) console.warn("getEquipmentIdentityById failed, using fallback:", error.message);
   } catch (e) {
     console.warn("getEquipmentIdentityById threw, using fallback:", e);
   }
-  return getEquipmentByIdFallback(id);
+  const fallback = getEquipmentByIdFallback(id);
+  equipmentIdentityCache[id] = fallback;
+  return fallback;
 }
 
 export async function getEquipmentList(): Promise<EquipmentListItem[]> {
