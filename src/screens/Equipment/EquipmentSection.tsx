@@ -13,378 +13,10 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-import { getAllEquipmentFromSupabase } from "./equipmentService";
-import type { Equipment as EquipmentRecord } from "./equipmentTypes";
+import { getEquipmentList } from "./equipmentService";
+import type { EquipmentListItem } from "./equipmentService";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface RiskSegment {
-  label: string;
-  pct: number;
-  color: string;
-  dotClass: string;
-}
-
-interface RiskReason {
-  label: string;
-  sub: string;
-  dotClass: string;
-}
-
-interface LastBreakdown {
-  daysAgo: number;
-  date: string;
-  openWorkOrders: number;
-  priority: string;
-  engineerInitials: string;
-  engineerName: string;
-  engineerRole: string;
-}
-
-interface AiPrediction {
-  label: string;
-  timeframe: string;
-  confidence: number;
-}
-
-interface EquipmentItem {
-  id: string;
-  name: string;
-  assetNumber: string;
-  type: string;
-  area: string;
-  riskScore: number;
-  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
-  breakdown: RiskSegment[];
-  riskReasons: RiskReason[];
-  lastBreakdown: LastBreakdown;
-  aiPrediction: AiPrediction;
-  aiRecommendation: string;
-}
-
-// ─── Supabase → EquipmentItem adapter ────────────────────────────────────────
-
-function equipmentRecordToItem(eq: EquipmentRecord): EquipmentItem {
-  return {
-    id:           eq.id,
-    name:         eq.name,
-    assetNumber:  eq.assetNumber,
-    type:         eq.type,
-    area:         eq.area,
-    riskScore:    eq.riskScore,
-    riskLevel:    eq.riskLevel as EquipmentItem["riskLevel"],
-    breakdown:    eq.riskBreakdown.map((b) => ({
-      label:    b.label,
-      pct:      b.pct,
-      color:    b.color,
-      dotClass: b.dotClass,
-    })),
-    riskReasons: [
-      { label: "See equipment detail for risk breakdown", sub: "Click Open Equipment to view details", dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 0, date: "—",
-      openWorkOrders: 0, priority: "—",
-      engineerInitials: "—", engineerName: "—", engineerRole: "—",
-    },
-    aiPrediction: { label: "Analysis pending", timeframe: "run analysis to view", confidence: 0 },
-    aiRecommendation: "Open this equipment to view detailed AI recommendations.",
-  };
-}
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const ALL_EQUIPMENT: EquipmentItem[] = [
-  {
-    id: "fl-03",
-    name: "Filling Line 3",
-    assetNumber: "FL-03",
-    type: "FILLING LINE",
-    area: "Building 2",
-    riskScore: 92,
-    riskLevel: "Critical",
-    breakdown: [
-      { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
-      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 10, color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "High number of breakdowns", sub: "6 breakdowns in last 90 days",   dotClass: "bg-red-500" },
-      { label: "3 overdue PMs",             sub: "Preventive maintenance overdue", dotClass: "bg-red-500" },
-      { label: "Skills gap in PLC programming", sub: "2 of 4 required skills missing", dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 11, date: "24 Apr 2025",
-      openWorkOrders: 3, priority: "High priority",
-      engineerInitials: "JW", engineerName: "James Wilson", engineerRole: "Mechanical",
-    },
-    aiPrediction: { label: "Breakdown likely", timeframe: "within 7 days", confidence: 86 },
-    aiRecommendation: "High risk of downtime. Inspect vibration sensors and review PLC logic before next shift.",
-  },
-  {
-    id: "pl-02",
-    name: "Palletiser 2",
-    assetNumber: "PL-02",
-    type: "PALLETISER",
-    area: "Building 2",
-    riskScore: 71,
-    riskLevel: "High",
-    breakdown: [
-      { label: "High",       pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
-      { label: "Critical",   pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Recurring gripper failures",  sub: "4 incidents in last 60 days",      dotClass: "bg-red-500" },
-      { label: "1 overdue PM",               sub: "Scheduled lubrication overdue",    dotClass: "bg-orange-400" },
-      { label: "Single-point engineer cover", sub: "Only 1 engineer validated on site", dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 5, date: "30 Apr 2025",
-      openWorkOrders: 2, priority: "High priority",
-      engineerInitials: "AS", engineerName: "Anna Smith", engineerRole: "Automation",
-    },
-    aiPrediction: { label: "Failure probable", timeframe: "within 14 days", confidence: 74 },
-    aiRecommendation: "Schedule gripper inspection and book ABB robotics refresher training for backup engineer.",
-  },
-  {
-    id: "cv-04",
-    name: "Conveyor 4",
-    assetNumber: "CV-04",
-    type: "CONVEYOR",
-    area: "Building 2",
-    riskScore: 58,
-    riskLevel: "Medium",
-    breakdown: [
-      { label: "Medium",     pct: 58, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Critical",   pct: 21, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 10, color: "#84cc16", dotClass: "bg-lime-500" },
-      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 3,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Belt wear detected",    sub: "Requires inspection within 30 days", dotClass: "bg-yellow-400" },
-      { label: "PM due next week",      sub: "Scheduled tensioner check pending",  dotClass: "bg-orange-400" },
-      { label: "Partial skills cover",  sub: "1 of 3 required skills missing",    dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 22, date: "13 Apr 2025",
-      openWorkOrders: 1, priority: "Medium priority",
-      engineerInitials: "TM", engineerName: "Tom Moore", engineerRole: "Mechanical",
-    },
-    aiPrediction: { label: "Watch required", timeframe: "within 21 days", confidence: 61 },
-    aiRecommendation: "Inspect belt tension and lubricate drive rollers. Monitor vibration levels over next 2 shifts.",
-  },
-  {
-    id: "ac-01",
-    name: "Air Compressor 1",
-    assetNumber: "AC-01",
-    type: "COMPRESSOR",
-    area: "Building 2",
-    riskScore: 33,
-    riskLevel: "Low",
-    breakdown: [
-      { label: "Low",        pct: 33, color: "#84cc16", dotClass: "bg-lime-500" },
-      { label: "Critical",   pct: 11, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 10, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Routine service due",     sub: "Annual service in 45 days",   dotClass: "bg-yellow-400" },
-      { label: "Contractor dependency",   sub: "No internal specialist cover", dotClass: "bg-orange-400" },
-      { label: "Good overall health",     sub: "No faults in last 90 days",   dotClass: "bg-emerald-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 62, date: "3 Mar 2025",
-      openWorkOrders: 0, priority: "Low priority",
-      engineerInitials: "RC", engineerName: "Rob Clark", engineerRole: "Utilities",
-    },
-    aiPrediction: { label: "Low failure risk", timeframe: "next 30 days", confidence: 88 },
-    aiRecommendation: "No immediate action required. Book annual service within 45 days. Consider training 1 internal engineer to reduce contractor dependency.",
-  },
-  {
-    id: "lt-01",
-    name: "Lighting System",
-    assetNumber: "LT-01",
-    type: "FACILITIES",
-    area: "Building 2",
-    riskScore: 12,
-    riskLevel: "Minimal",
-    breakdown: [
-      { label: "Minimal",    pct: 12, color: "#10b981", dotClass: "bg-emerald-500" },
-      { label: "Critical",   pct: 5,  color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 4,  color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 3,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 2,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "All lamps operational",    sub: "Last inspection 14 days ago", dotClass: "bg-emerald-500" },
-      { label: "No open work orders",      sub: "No outstanding faults",       dotClass: "bg-emerald-500" },
-      { label: "Emergency lighting tested",sub: "Compliant until Nov 2025",    dotClass: "bg-emerald-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 112, date: "13 Jan 2025",
-      openWorkOrders: 0, priority: "Low priority",
-      engineerInitials: "LP", engineerName: "Lisa Park", engineerRole: "Facilities",
-    },
-    aiPrediction: { label: "No failure risk", timeframe: "next 60 days", confidence: 97 },
-    aiRecommendation: "No action needed. System is healthy and compliant. Schedule next routine inspection for November 2025.",
-  },
-  // Other areas
-  {
-    id: "cp-04",
-    name: "Case Packer 4",
-    assetNumber: "CP-04",
-    type: "PACKING",
-    area: "Packing",
-    riskScore: 88,
-    riskLevel: "Critical",
-    breakdown: [
-      { label: "Breakdowns", pct: 45, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "PMs",        pct: 22, color: "#f97316", dotClass: "bg-orange-500" },
-      { label: "Skills",     pct: 18, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 9,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 6,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Gearbox failure pending",  sub: "Delivery awaited, running at 60%", dotClass: "bg-red-500" },
-      { label: "2 overdue PMs",           sub: "Both past due by 14+ days",        dotClass: "bg-red-500" },
-      { label: "Key skill gap",           sub: "Gearbox repair skill missing",     dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 3, date: "2 May 2025",
-      openWorkOrders: 4, priority: "Critical priority",
-      engineerInitials: "JW", engineerName: "James Wilson", engineerRole: "Mechanical",
-    },
-    aiPrediction: { label: "Failure imminent", timeframe: "within 3 days", confidence: 94 },
-    aiRecommendation: "Escalate gearbox delivery. Assign dedicated engineer. Do not run at full speed until repair is complete.",
-  },
-  {
-    id: "bl-01",
-    name: "Boiler 1",
-    assetNumber: "BL-01",
-    type: "UTILITIES",
-    area: "Utilities",
-    riskScore: 74,
-    riskLevel: "High",
-    breakdown: [
-      { label: "High",       pct: 38, color: "#f97316", dotClass: "bg-orange-400" },
-      { label: "Critical",   pct: 20, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 8,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Pressure variance noted",  sub: "Outside normal operating range", dotClass: "bg-red-500" },
-      { label: "Contractor reliance",      sub: "No internal boiler cert held",   dotClass: "bg-orange-400" },
-      { label: "Annual inspection due",    sub: "Due within 30 days",             dotClass: "bg-yellow-400" },
-    ],
-    lastBreakdown: {
-      daysAgo: 8, date: "27 Apr 2025",
-      openWorkOrders: 2, priority: "High priority",
-      engineerInitials: "RC", engineerName: "Rob Clark", engineerRole: "Utilities",
-    },
-    aiPrediction: { label: "Failure likely", timeframe: "within 10 days", confidence: 78 },
-    aiRecommendation: "Arrange contractor inspection immediately. Obtain internal boiler cert for one engineer as contingency.",
-  },
-  {
-    id: "l2-plc",
-    name: "Line 2 PLC",
-    assetNumber: "L2-PLC",
-    type: "AUTOMATION",
-    area: "Packing",
-    riskScore: 68,
-    riskLevel: "High",
-    breakdown: [
-      { label: "High",       pct: 35, color: "#f97316", dotClass: "bg-orange-400" },
-      { label: "Critical",   pct: 18, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 7,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Intermittent PLC fault",   sub: "Specialist not yet assigned",   dotClass: "bg-red-500" },
-      { label: "SPOF risk",               sub: "Only 1 PLC engineer on site",   dotClass: "bg-orange-400" },
-      { label: "PLC skill gap",           sub: "3 of 5 skills missing on shift", dotClass: "bg-blue-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 2, date: "3 May 2025",
-      openWorkOrders: 3, priority: "High priority",
-      engineerInitials: "AS", engineerName: "Anna Smith", engineerRole: "Automation",
-    },
-    aiPrediction: { label: "Recurrence likely", timeframe: "within 5 days", confidence: 81 },
-    aiRecommendation: "Assign PLC specialist immediately. Consider overnight cover. Book Siemens S7 training for backup engineer.",
-  },
-  {
-    id: "pm-01",
-    name: "Press Line Motor",
-    assetNumber: "PM-01",
-    type: "PROCESSING",
-    area: "Processing",
-    riskScore: 52,
-    riskLevel: "Medium",
-    breakdown: [
-      { label: "Medium",     pct: 30, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Critical",   pct: 14, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 12, color: "#84cc16", dotClass: "bg-lime-500" },
-      { label: "Spares",     pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 4,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Bearing noise reported",  sub: "Downtime logged 3 days ago",  dotClass: "bg-yellow-400" },
-      { label: "Spares reorder pending",  sub: "Lead time 7 days",            dotClass: "bg-orange-400" },
-      { label: "Good skill coverage",     sub: "3 of 3 engineers trained",    dotClass: "bg-emerald-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 3, date: "2 May 2025",
-      openWorkOrders: 1, priority: "Medium priority",
-      engineerInitials: "TM", engineerName: "Tom Moore", engineerRole: "Mechanical",
-    },
-    aiPrediction: { label: "Monitor closely", timeframe: "within 14 days", confidence: 65 },
-    aiRecommendation: "Replace bearing during next planned shutdown. Order spares now to avoid delay. Monitor bearing temperature.",
-  },
-  {
-    id: "wf-03",
-    name: "Warehouse Forklift 3",
-    assetNumber: "WF-03",
-    type: "WAREHOUSE",
-    area: "Warehouse",
-    riskScore: 28,
-    riskLevel: "Low",
-    breakdown: [
-      { label: "Low",        pct: 28, color: "#84cc16", dotClass: "bg-lime-500" },
-      { label: "Critical",   pct: 8,  color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",     pct: 6,  color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 5,  color: "#6366f1", dotClass: "bg-indigo-500" },
-      { label: "Criticality",pct: 3,  color: "#6b7280", dotClass: "bg-slate-500" },
-    ],
-    riskReasons: [
-      { label: "Tyre wear scheduled",   sub: "Replacement due in 60 days",   dotClass: "bg-yellow-400" },
-      { label: "Service up to date",    sub: "Last service 2 weeks ago",     dotClass: "bg-emerald-500" },
-      { label: "Full skill coverage",   sub: "All operators certified",      dotClass: "bg-emerald-500" },
-    ],
-    lastBreakdown: {
-      daysAgo: 45, date: "20 Mar 2025",
-      openWorkOrders: 0, priority: "Low priority",
-      engineerInitials: "LP", engineerName: "Lisa Park", engineerRole: "Facilities",
-    },
-    aiPrediction: { label: "Low failure risk", timeframe: "next 45 days", confidence: 91 },
-    aiRecommendation: "Schedule tyre replacement within 60 days. No other action required.",
-  },
-];
-
-const TOP_RISK = [
-  { name: "Case Packer 4",       level: "Critical", badgeClass: "bg-[#ef444420] text-red-500" },
-  { name: "Boiler 1",            level: "High",     badgeClass: "bg-[#f9731620] text-orange-400" },
-  { name: "Line 2 PLC",          level: "High",     badgeClass: "bg-[#f9731620] text-orange-400" },
-  { name: "Press Line Motor",    level: "Medium",   badgeClass: "bg-[#eab30820] text-yellow-400" },
-  { name: "Warehouse Forklift 3",level: "Low",      badgeClass: "bg-[#84cc1620] text-lime-500" },
-];
+// ─── Local display-only constants ────────────────────────────────────────────
 
 const RECENT_ACTIVITY = [
   { text: "PM completed on Case Packer 3",  dotClass: "bg-emerald-500" },
@@ -430,19 +62,19 @@ const RISK_LEGEND = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function riskScoreClasses(level: EquipmentItem["riskLevel"]): { badge: string } {
+function riskBadgeClass(level: EquipmentListItem["riskLevel"]): string {
   switch (level) {
-    case "Critical": return { badge: "bg-[#ef444420] text-red-500" };
-    case "High":     return { badge: "bg-[#f9731620] text-orange-400" };
-    case "Medium":   return { badge: "bg-[#eab30820] text-yellow-400" };
-    case "Low":      return { badge: "bg-[#84cc1620] text-lime-500" };
-    default:         return { badge: "bg-[#10b98120] text-emerald-500" };
+    case "Critical": return "bg-[#ef444420] text-red-500";
+    case "High":     return "bg-[#f9731620] text-orange-400";
+    case "Medium":   return "bg-[#eab30820] text-yellow-400";
+    case "Low":      return "bg-[#84cc1620] text-lime-500";
+    default:         return "bg-[#10b98120] text-emerald-500";
   }
 }
 
 // ─── Risk Breakdown Bar ───────────────────────────────────────────────────────
 
-function RiskBreakdownBar({ segments }: { segments: RiskSegment[] }) {
+function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown"] }) {
   const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
     <div className="flex w-full flex-col gap-2">
@@ -478,11 +110,7 @@ function RiskSparkline() {
           <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polyline
-        points={`0,48 ${pts} 160,48`}
-        fill="url(#sparkGrad)"
-        stroke="none"
-      />
+      <polyline points={`0,48 ${pts} 160,48`} fill="url(#sparkGrad)" stroke="none" />
       <polyline
         points={pts}
         fill="none"
@@ -498,79 +126,68 @@ function RiskSparkline() {
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
-function ExpandedPanel({ item, onNavigate }: { item: EquipmentItem; onNavigate: (id: string) => void }) {
+function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-        {/* 1 — Why risk is high */}
+        {/* 1 — Risk summary */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why risk is high</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk summary</h4>
           <div className="flex flex-col gap-3">
-            {item.riskReasons.map((r) => (
-              <div key={r.label} className="flex items-start gap-2">
-                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${r.dotClass}`} aria-hidden="true" />
+            {item.breakdown.map((seg) => (
+              <div key={seg.label} className="flex items-start gap-2">
+                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${seg.dotClass}`} aria-hidden="true" />
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium leading-snug text-slate-200">{r.label}</span>
-                  <span className="text-xs text-slate-500">{r.sub}</span>
+                  <span className="text-sm font-medium leading-snug text-slate-200">{seg.label}</span>
+                  <span className="text-xs text-slate-500">{seg.pct}% of risk score</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 2 — Last breakdown */}
+        {/* 2 — Asset info */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last breakdown</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Asset info</h4>
           <div className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-200">
-                {item.lastBreakdown.daysAgo} days ago
-              </span>
-              <span className="text-xs text-slate-500">• {item.lastBreakdown.date}</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-slate-500">Asset number</span>
+              <span className="text-sm font-semibold text-slate-200">{item.assetNumber}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">Open work orders</span>
-              <span className="text-sm font-semibold text-slate-200">
-                {item.lastBreakdown.openWorkOrders} • <span className="text-orange-400">{item.lastBreakdown.priority}</span>
-              </span>
+              <span className="text-xs text-slate-500">Type</span>
+              <span className="text-sm font-semibold text-slate-200">{item.type}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/30 text-[10px] font-bold text-blue-300">
-                {item.lastBreakdown.engineerInitials}
-              </div>
-              <div className="flex flex-col gap-0">
-                <span className="text-xs font-medium text-slate-200">{item.lastBreakdown.engineerName}</span>
-                <span className="text-[11px] text-slate-500">{item.lastBreakdown.engineerRole}</span>
-              </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-slate-500">Area</span>
+              <span className="text-sm font-semibold text-slate-200">{item.area}</span>
             </div>
           </div>
         </div>
 
-        {/* 3 — AI risk prediction */}
+        {/* 3 — AI risk trend */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk prediction</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
           <RiskSparkline />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-blue-400">{item.aiPrediction.label}</span>
-            <span className="text-xs text-slate-400">{item.aiPrediction.timeframe}</span>
-          </div>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Confidence</span>
-              <span className="text-xs font-semibold text-slate-200">{item.aiPrediction.confidence}%</span>
+              <span className="text-xs text-slate-500">Risk Score</span>
+              <span className="text-xs font-semibold text-slate-200">{item.riskScore}%</span>
             </div>
             <Progress
-              value={item.aiPrediction.confidence}
+              value={item.riskScore}
               className="h-1.5 rounded bg-gray-800 [&>div]:bg-blue-500"
             />
           </div>
         </div>
 
-        {/* 4 — AI recommendation */}
+        {/* 4 — Actions */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI recommendation</h4>
-          <p className="text-sm leading-relaxed text-slate-300">{item.aiRecommendation}</p>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
+          <p className="text-sm leading-relaxed text-slate-300">
+            Open this equipment to view AI recommendations, work orders, PMs, and full asset details.
+          </p>
           <div className="mt-auto flex flex-col gap-2">
             <Button
               type="button"
@@ -647,18 +264,14 @@ export const EquipmentSection = (): JSX.Element => {
   const [activeArea, setActiveArea] = useState<string | null>(buildingParam);
   const [activeChip, setActiveChip] = useState<string | null>(buildingParam ? "Area" : null);
   const [expandedId, setExpandedId] = useState<string>("");
-  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>(
-    ALL_EQUIPMENT
-  );
+  const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAllEquipmentFromSupabase()
-      .then((records) => {
-        if (records.length > 0) {
-          setEquipmentList(records.map(equipmentRecordToItem));
-          setExpandedId(records[0].id);
-        }
+    getEquipmentList()
+      .then((items) => {
+        setEquipmentList(items);
+        if (items.length > 0) setExpandedId(items[0].id);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -680,13 +293,13 @@ export const EquipmentSection = (): JSX.Element => {
     });
   }, [equipmentList, activeArea, search]);
 
-  const totalAssets    = equipmentList.length;
-  const criticalCount  = equipmentList.filter((e) => e.riskLevel === "Critical").length;
-  const atRisk         = equipmentList.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
-  const overduePms     = 8;
+  const totalAssets   = equipmentList.length;
+  const criticalCount = equipmentList.filter((e) => e.riskLevel === "Critical").length;
+  const atRisk        = equipmentList.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
+  const overduePms    = 8;
   const openWorkOrders = 12;
-  const avgHealth      = 82;
-  const calDue         = 3;
+  const avgHealth     = 82;
+  const calDue        = 3;
 
   const handleChipClick = (chip: string) => {
     if (chip === "Area") {
@@ -825,11 +438,11 @@ export const EquipmentSection = (): JSX.Element => {
           filtered.map((item, index) => {
             const isExpanded = expandedId === item.id;
             const isLast = index === filtered.length - 1;
-            const { badge } = riskScoreClasses(item.riskLevel);
+            const badge = riskBadgeClass(item.riskLevel);
             return (
               <div key={item.id} className={!isLast || isExpanded ? "border-b border-gray-800" : ""}>
 
-                {/* Row header */}
+                {/* Row */}
                 <div
                   role="button"
                   tabIndex={0}
@@ -838,7 +451,6 @@ export const EquipmentSection = (): JSX.Element => {
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(item.id); } }}
                   className={`grid cursor-pointer grid-cols-[40px_minmax(0,1fr)_minmax(0,2fr)_120px] items-center gap-4 px-4 py-4 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
                 >
-                  {/* Chevron */}
                   <div className="flex items-center justify-center">
                     {isExpanded
                       ? <ChevronUp className="h-4 w-4 text-blue-400" />
@@ -846,7 +458,6 @@ export const EquipmentSection = (): JSX.Element => {
                     }
                   </div>
 
-                  {/* Equipment info */}
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="truncate text-sm font-semibold text-slate-50">{item.name}</span>
                     <span className="text-xs text-slate-500">{item.assetNumber}</span>
@@ -855,10 +466,8 @@ export const EquipmentSection = (): JSX.Element => {
                     </span>
                   </div>
 
-                  {/* Risk breakdown bar */}
                   <RiskBreakdownBar segments={item.breakdown} />
 
-                  {/* Risk score */}
                   <div className="flex flex-col items-end gap-1.5">
                     <span className="text-2xl font-bold text-slate-50">{item.riskScore}%</span>
                     <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${badge}`}>
@@ -867,12 +476,8 @@ export const EquipmentSection = (): JSX.Element => {
                   </div>
                 </div>
 
-                {/* Expanded panel */}
                 {isExpanded && (
-                  <ExpandedPanel
-                    item={item}
-                    onNavigate={navigateToEquipment}
-                  />
+                  <ExpandedPanel item={item} onNavigate={navigateToEquipment} />
                 )}
               </div>
             );
@@ -901,20 +506,17 @@ export const EquipmentSection = (): JSX.Element => {
               {[...equipmentList]
                 .sort((a, b) => b.riskScore - a.riskScore)
                 .slice(0, 10)
-                .map((item, i) => {
-                  const { badge } = riskScoreClasses(item.riskLevel);
-                  return (
-                    <li key={item.id} className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
-                        <span className="truncate text-sm text-slate-200">{item.name}</span>
-                      </div>
-                      <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${badge}`}>
-                        {item.riskLevel}
-                      </Badge>
-                    </li>
-                  );
-                })
+                .map((item, i) => (
+                  <li key={item.id} className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
+                      <span className="truncate text-sm text-slate-200">{item.name}</span>
+                    </div>
+                    <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${riskBadgeClass(item.riskLevel)}`}>
+                      {item.riskLevel}
+                    </Badge>
+                  </li>
+                ))
               }
             </ol>
           </CardContent>

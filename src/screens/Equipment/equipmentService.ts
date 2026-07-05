@@ -181,16 +181,6 @@ interface EquipmentAssetRow {
   image_url: string | null;
 }
 
-// Maps a DB status value to a display status + note.
-function mapStatus(dbStatus: string | null): { status: Equipment["status"]; statusNote: string } {
-  switch (dbStatus) {
-    case "attention_required": return { status: "At Risk",     statusNote: "Attention required" };
-    case "maintenance_due":    return { status: "Maintenance", statusNote: "Maintenance due" };
-    case "offline":            return { status: "Offline",     statusNote: "Offline" };
-    default:                   return { status: "Running",     statusNote: "Operating normally" };
-  }
-}
-
 // Maps a DB criticality value to a risk level + derived score.
 function mapCriticality(criticality: string | null): { riskLevel: Equipment["riskLevel"]; riskScore: number } {
   switch (criticality?.toLowerCase()) {
@@ -228,42 +218,59 @@ function riskBreakdownFor(riskLevel: Equipment["riskLevel"]): Equipment["riskBre
   ];
 }
 
-function rowToEquipment(row: EquipmentAssetRow): Equipment {
-  const { status, statusNote } = mapStatus(row.status);
+// ─── EquipmentListItem — UI shape for the equipment list page ────────────────
+
+export interface EquipmentListItem {
+  id: string;
+  name: string;
+  assetNumber: string;
+  type: string;
+  area: string;
+  riskScore: number;
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  breakdown: { label: string; pct: number; color: string; dotClass: string }[];
+}
+
+// Fallback list used when Supabase is unavailable.
+const MOCK_LIST: EquipmentListItem[] = [
+  { id: "fl-03",  name: "Filling Line 3",       assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: [{ label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" }, { label: "PMs", pct: 25, color: "#f97316", dotClass: "bg-orange-500" }, { label: "Skills", pct: 15, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "cp-04",  name: "Case Packer 4",         assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: [{ label: "Breakdowns", pct: 45, color: "#ef4444", dotClass: "bg-red-500" }, { label: "PMs", pct: 22, color: "#f97316", dotClass: "bg-orange-500" }, { label: "Skills", pct: 18, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 9, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "bl-01",  name: "Boiler 1",              assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: [{ label: "High", pct: 38, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 20, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 16, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "pl-02",  name: "Palletiser 2",          assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: [{ label: "High", pct: 71, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 24, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 16, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "l2-plc", name: "Line 2 PLC",            assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: [{ label: "High", pct: 35, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 18, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 15, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "cv-04",  name: "Conveyor 4",            assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: [{ label: "Medium", pct: 58, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Critical", pct: 21, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 10, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "pm-01",  name: "Press Line Motor",      assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: [{ label: "Medium", pct: 30, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Critical", pct: 14, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 12, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "ac-01",  name: "Air Compressor 1",      assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: [{ label: "Low", pct: 33, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Skills", pct: 10, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "wf-03",  name: "Warehouse Forklift 3",  assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: [{ label: "Low", pct: 28, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Skills", pct: 6, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 5, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "lt-01",  name: "Lighting System",       assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: [{ label: "Minimal", pct: 12, color: "#10b981", dotClass: "bg-emerald-500" }, { label: "Skills", pct: 4, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 3, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+];
+
+function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
   const { riskLevel, riskScore } = mapCriticality(row.criticality);
   return {
-    id:           row.id,
-    name:         row.name,
-    assetNumber:  row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
-    type:         (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
-    area:         row.area ?? "—",
-    manufacturer: row.oem ?? "—",
-    model:        row.model ?? "—",
-    serialNumber: "—",
-    installDate:  "—",
-    warranty:     "—",
-    criticality:  row.criticality ?? "medium",
-    status,
-    statusNote,
-    image:        row.image_url ?? "https://images.pexels.com/photos/3912981/pexels-photo-3912981.jpeg?auto=compress&cs=tinysrgb&w=400",
+    id:          row.id,
+    name:        row.name,
+    assetNumber: row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
+    type:        (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
+    area:        row.area ?? "—",
     riskScore,
     riskLevel,
-    riskBreakdown: riskBreakdownFor(riskLevel),
+    breakdown:   riskBreakdownFor(riskLevel),
   };
 }
 
-export async function getAllEquipmentFromSupabase(): Promise<Equipment[]> {
+export async function getEquipmentList(): Promise<EquipmentListItem[]> {
   const { data, error } = await supabase
     .from("equipment_assets")
     .select("id, equipment_code, name, equipment_type, area, oem, model, criticality, status, image_url")
     .order("name");
 
-  if (error || !data) {
-    console.warn("equipment_assets fetch failed, using mock fallback:", error?.message);
-    return MOCK_EQUIPMENT;
+  if (error || !data || data.length === 0) {
+    if (error) console.warn("equipment_assets fetch failed, using mock fallback:", error.message);
+    return MOCK_LIST;
   }
 
-  return (data as EquipmentAssetRow[]).map(rowToEquipment);
+  return (data as EquipmentAssetRow[]).map(rowToListItem);
 }
 
 // ─── Service functions (mock — replace with Supabase when ready) ──────────────
