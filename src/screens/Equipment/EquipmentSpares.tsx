@@ -37,13 +37,6 @@ const TABS = [
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const USAGE_BARS = [
-  { label: "Drive Belt",  count: 12, color: "#3b82f6", pct: 100 },
-  { label: "Filter",      count: 9,  color: "#3b82f6", pct: 75  },
-  { label: "Bearing Kit", count: 7,  color: "#3b82f6", pct: 58  },
-  { label: "Encoder",     count: 5,  color: "#3b82f6", pct: 42  },
-  { label: "O-Ring Set",  count: 4,  color: "#3b82f6", pct: 33  },
-];
 
 
 
@@ -227,6 +220,34 @@ export const EquipmentSpares = (): JSX.Element => {
         return a.name.localeCompare(b.name);
       })
       .slice(0, 3);
+  }, [components.inventory]);
+
+  const usageBars = useMemo(() => {
+    const stockGapRows = components.inventory
+      .map((item) => {
+        const target = Math.max(item.max, 0);
+        const stock = Math.max(item.stock, 0);
+        const gap = Math.max(target - stock, 0);
+
+        return {
+          label: item.name,
+          count: gap,
+          pct: target > 0 ? Math.round((gap / target) * 100) : 0,
+        };
+      })
+      .filter((item) => item.count > 0)
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.label.localeCompare(b.label);
+      })
+      .slice(0, 5);
+
+    const maxGap = Math.max(...stockGapRows.map((item) => item.count), 1);
+
+    return stockGapRows.map((item) => ({
+      ...item,
+      pct: Math.max(8, Math.round((item.count / maxGap) * 100)),
+    }));
   }, [components.inventory]);
 
   if (!eq) {
@@ -551,21 +572,27 @@ export const EquipmentSpares = (): JSX.Element => {
           {/* Spare Usage */}
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <h3 className="mb-1 text-sm font-semibold text-slate-200">Spare Usage</h3>
-              <p className="mb-4 text-[11px] text-slate-500">Top 5 most used — last 90 days</p>
+              <h3 className="mb-1 text-sm font-semibold text-slate-200">Stock Gap Priority</h3>
+              <p className="mb-4 text-[11px] text-slate-500">Top stock gaps against target holding</p>
               <div className="flex flex-col gap-3">
-                {USAGE_BARS.map((bar) => (
-                  <div key={bar.label} className="flex items-center gap-2">
-                    <span className="w-20 shrink-0 text-[11px] text-slate-300">{bar.label}</span>
-                    <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-800">
-                      <div className="h-full rounded-full" style={{ width: `${bar.pct}%`, backgroundColor: bar.color }} />
+                {usageBars.length > 0 ? (
+                  usageBars.map((bar) => (
+                    <div key={bar.label} className="flex items-center gap-2">
+                      <span className="w-20 shrink-0 truncate text-[11px] text-slate-300">{bar.label}</span>
+                      <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-800">
+                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${bar.pct}%` }} />
+                      </div>
+                      <span className="w-4 shrink-0 text-right text-[11px] font-bold text-slate-200">{bar.count}</span>
                     </div>
-                    <span className="w-4 shrink-0 text-right text-[11px] font-bold text-slate-200">{bar.count}</span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-[11px] text-slate-500">
+                    No stock gaps against target holding.
+                  </p>
+                )}
               </div>
               <button type="button" className="mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Usage Report →
+                View Stock Gap Report →
               </button>
             </CardContent>
           </Card>
