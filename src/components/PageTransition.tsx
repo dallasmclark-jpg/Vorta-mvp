@@ -7,7 +7,7 @@ interface PageTransitionProps {
 export const PageTransition = ({ children }: PageTransitionProps): JSX.Element => {
   const { pathname } = useLocation();
   return (
-    <div key={pathname} className="animate-fade-in min-w-0 w-full max-w-full overflow-x-hidden">
+    <div key={pathname} className="min-w-0 w-full max-w-full overflow-x-hidden">
       {children}
     </div>
   );

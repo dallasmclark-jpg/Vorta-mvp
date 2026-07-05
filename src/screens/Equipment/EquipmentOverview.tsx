@@ -386,7 +386,7 @@ export const EquipmentOverview = (): JSX.Element => {
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+      <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
 
         {/* Top bar */}
         <div className="mb-4 flex items-center justify-between gap-4">
