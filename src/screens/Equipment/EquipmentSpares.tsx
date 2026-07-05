@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -106,7 +106,7 @@ export const EquipmentSpares = (): JSX.Element => {
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const loadEquipmentSpares = async () => {
+  const loadEquipmentSpares = useCallback(async () => {
     const [identity, componentResult] = await Promise.all([
       getEquipmentIdentityById(resolvedId),
       getEquipmentComponents(resolvedId),
@@ -114,10 +114,10 @@ export const EquipmentSpares = (): JSX.Element => {
     setEq(identity);
     setComponents(componentResult);
     setLastUpdated(new Date());
-  };
+  }, [resolvedId]);
   useEffect(() => {
     loadEquipmentSpares();
-  }, [resolvedId]);
+  }, [loadEquipmentSpares]);
 
   const inventoryValue = useMemo(
     () => components.inventory.reduce((total, item) => total + item.stock * (item.unitCost ?? 0), 0),
