@@ -54,13 +54,6 @@ const SIMILAR_EQ = [
   { id: "PL-01", name: "Palletiser 1", note: "Same vibration pattern 3 weeks before failure",noteClass: "text-orange-400"},
 ];
 
-const AI_ACTIONS = [
-  { pri: "HIGH",   label: "Schedule bearing inspection",  when: "Within 3 days",  priClass: "bg-red-500/20 text-red-400"     },
-  { pri: "HIGH",   label: "Order replacement bearing",    when: "Within 5 days",  priClass: "bg-red-500/20 text-red-400"     },
-  { pri: "MEDIUM", label: "Complete overdue PM",          when: "Within 7 days",  priClass: "bg-yellow-500/20 text-yellow-400"},
-  { pri: "LOW",    label: "Update vibration baseline",    when: "Within 14 days", priClass: "bg-emerald-500/20 text-emerald-400"},
-];
-
 const OPPORTUNITIES = [
   { label: "Spare Network",    saving: "£3,200/yr", desc: "Connect with Palletiser 4 spare pool to reduce stockholding by £3,200/yr.", color: "#10b981" },
   { label: "PM Optimisation",  saving: "£1,800/yr", desc: "AI suggests extending oil change interval from 3 to 4 months based on oil analysis trends.", color: "#3b82f6" },
