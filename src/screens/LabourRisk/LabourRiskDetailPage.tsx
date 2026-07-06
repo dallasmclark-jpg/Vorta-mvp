@@ -844,8 +844,9 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                     <div className="flex flex-wrap gap-3">
                       {SHIFT_STATUS_LEGEND.map((item) => (
                         <div key={item.label} className="flex items-center gap-1.5">
-                          <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
-                          <span className="text-[11px] text-slate-400">{item.label}</span>
+                          <span className={`inline-flex h-5 min-w-[92px] items-center justify-center rounded border border-transparent px-2 text-[10px] font-semibold text-white ${item.color}`}>
+                            {item.label}
+                          </span>
                         </div>
                       ))}
                     </div>
