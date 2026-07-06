@@ -186,6 +186,38 @@ export const EquipmentAiInsights = (): JSX.Element => {
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
   const topRiskFactor = [...eq.riskBreakdown].sort((a, b) => b.pct - a.pct)[0];
 
+  const openWorkOrderCount = summary?.workOrders.open.length ?? 0;
+  const overdueWorkOrderCount = summary?.workOrders.open.filter((wo) => wo.overdue).length ?? 0;
+  const overduePmCount = summary?.pms.filter((pm) => pm.status === "OVERDUE").length ?? 0;
+  const pmCompliance =
+    summary && summary.pms.length > 0
+      ? Math.round(summary.pms.reduce((total, pm) => total + pm.compliance, 0) / summary.pms.length)
+      : 0;
+  const criticalComponentCount = summary?.components.criticalComponents.length ?? 0;
+  const topRecommendation =
+    overdueWorkOrderCount > 0
+      ? "Review overdue work orders"
+      : overduePmCount > 0
+        ? "Complete overdue PMs"
+        : criticalComponentCount > 0
+          ? "Review critical spare availability"
+          : "Continue monitoring equipment risk";
+  const topRecommendationDescription =
+    overdueWorkOrderCount > 0
+      ? `${overdueWorkOrderCount} overdue work order${overdueWorkOrderCount === 1 ? "" : "s"} require review.`
+      : overduePmCount > 0
+        ? `${overduePmCount} overdue PM${overduePmCount === 1 ? "" : "s"} require completion.`
+        : criticalComponentCount > 0
+          ? `${criticalComponentCount} critical component${criticalComponentCount === 1 ? "" : "s"} need stock review.`
+          : "No urgent actions found in the current equipment summary.";
+  const patternTitle = topRiskFactor
+    ? `${topRiskFactor.label} pattern detected`
+    : "Pattern monitoring active";
+  const patternDescription =
+    topRiskFactor
+      ? `${topRiskFactor.label} is the highest current contributor in the live equipment risk breakdown.`
+      : "No dominant risk pattern is currently available.";
+
   const handleTabClick = (tabId: string) => {
     const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
@@ -348,7 +380,9 @@ export const EquipmentAiInsights = (): JSX.Element => {
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500">Failure Window</p>
-                  <p className="text-xl font-bold text-orange-400">5–8 days</p>
+                  <p className="text-xl font-bold text-orange-400">
+                    {eq.riskLevel === "Critical" ? "Immediate" : eq.riskLevel === "High" ? "Monitor" : "Stable"}
+                  </p>
                 </div>
               </div>
               <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
@@ -363,18 +397,22 @@ export const EquipmentAiInsights = (): JSX.Element => {
               <Badge className="mb-2 inline-flex h-auto gap-1 rounded bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold shadow-none text-blue-400">
                 <Zap className="h-3 w-3" /> Top Recommendation
               </Badge>
-              <h3 className="mb-1.5 text-sm font-bold text-slate-50">Schedule Bearing Inspection</h3>
+              <h3 className="mb-1.5 text-sm font-bold text-slate-50">{topRecommendation}</h3>
               <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
-                Inspect drive-end bearing and check alignment within 3 days.
+                {topRecommendationDescription}
               </p>
               <div className="mb-3 flex gap-4">
                 <div>
                   <p className="text-[10px] text-slate-500">Impact</p>
-                  <p className="text-sm font-bold text-orange-400">High</p>
+                  <p className="text-sm font-bold text-orange-400">
+                    {overdueWorkOrderCount > 0 || overduePmCount > 0 ? "High" : criticalComponentCount > 0 ? "Medium" : "Low"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500">Confidence</p>
-                  <p className="text-sm font-bold text-blue-400">91%</p>
+                  <p className="text-sm font-bold text-blue-400">
+                    {summary ? "Live" : "Loading"}
+                  </p>
                 </div>
               </div>
               <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
@@ -389,18 +427,20 @@ export const EquipmentAiInsights = (): JSX.Element => {
               <Badge className="mb-2 inline-flex h-auto gap-1 rounded bg-yellow-500/15 px-2 py-0.5 text-[10px] font-bold shadow-none text-yellow-400">
                 <Activity className="h-3 w-3" /> PM Compliance
               </Badge>
-              <h3 className="mb-1.5 text-sm font-bold text-slate-50">Overdue PM Compliance</h3>
+              <h3 className="mb-1.5 text-sm font-bold text-slate-50">
+                {overduePmCount > 0 ? "Overdue PM Compliance" : "PM Compliance"}
+              </h3>
               <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
-                PM compliance is 67%. Schedule quarterly inspection to prevent warranty impact.
+                PM compliance is derived from the current PM schedule for this equipment.
               </p>
               <div className="mb-3 flex gap-4">
                 <div>
                   <p className="text-[10px] text-slate-500">Compliance</p>
-                  <p className="text-xl font-bold text-red-400">67%</p>
+                  <p className="text-xl font-bold text-red-400">{pmCompliance}%</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500">Est. Cost Impact</p>
-                  <p className="text-xl font-bold text-orange-400">£9,400</p>
+                  <p className="text-[10px] text-slate-500">Overdue PMs</p>
+                  <p className="text-xl font-bold text-orange-400">{overduePmCount}</p>
                 </div>
               </div>
               <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
@@ -415,18 +455,18 @@ export const EquipmentAiInsights = (): JSX.Element => {
               <Badge className="mb-2 inline-flex h-auto gap-1 rounded bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold shadow-none text-purple-400">
                 <TrendingUp className="h-3 w-3" /> Pattern Detected
               </Badge>
-              <h3 className="mb-1.5 text-sm font-bold text-slate-50">Vibration Spike Detected</h3>
+              <h3 className="mb-1.5 text-sm font-bold text-slate-50">{patternTitle}</h3>
               <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
-                Unusual vibration pattern on drive-end bearing matches pre-failure signature.
+                {patternDescription}
               </p>
               <div className="mb-3 flex gap-4">
                 <div>
                   <p className="text-[10px] text-slate-500">Severity</p>
-                  <p className="text-sm font-bold text-red-400">High</p>
+                  <p className="text-sm font-bold text-red-400">{eq.riskLevel}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500">Confidence</p>
-                  <p className="text-sm font-bold text-orange-400">88%</p>
+                  <p className="text-sm font-bold text-orange-400">{topRiskFactor?.pct ?? eq.riskScore}%</p>
                 </div>
               </div>
               <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
