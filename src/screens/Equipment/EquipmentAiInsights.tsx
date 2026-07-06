@@ -528,12 +528,12 @@ export const EquipmentAiInsights = (): JSX.Element => {
               <h3 className="mb-1 text-sm font-semibold text-slate-200">Similar Equipment Insights</h3>
               <p className="mb-3 text-[11px] text-slate-500">Insights from similar palletisers across the network.</p>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {SIMILAR_EQ.map((s) => (
-                  <div key={s.id} className="py-3">
-                    <p className="text-xs font-semibold text-slate-200">{s.name} <span className="text-slate-500">({s.id})</span></p>
-                    <p className={`text-[11px] ${s.noteClass}`}>{s.note}</p>
-                  </div>
-                ))}
+                <div className="py-3">
+                  <p className="text-xs font-semibold text-slate-200">Fleet comparison unavailable</p>
+                  <p className="text-[11px] text-slate-500">
+                    Similar equipment insights will appear once enough fleet data is available for this asset type.
+                  </p>
+                </div>
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View Fleet Comparison →
