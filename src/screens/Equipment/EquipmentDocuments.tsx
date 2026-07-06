@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
@@ -48,17 +48,6 @@ interface DocRow {
   name: string; category: string; date: string; size: string;
   status: DocStatus; iconBg: string; iconColor: string;
 }
-
-const CATEGORIES = [
-  { label: "All Docs",    count: 86, color: "#3b82f6" },
-  { label: "Manuals",     count: 18, color: "#10b981" },
-  { label: "Drawings",    count: 14, color: "#6366f1" },
-  { label: "Schematics",  count: 10, color: "#f97316" },
-  { label: "Procedures",  count: 12, color: "#eab308" },
-  { label: "Certificates",count: 8,  color: "#ef4444" },
-  { label: "Compliance",  count: 9,  color: "#8b5cf6" },
-  { label: "Other",       count: 15, color: "#64748b" },
-];
 
 const EXPIRING = [
   { name: "Safety Certificate ISO-14001", sub: "Expires in 14 days",  subClass: "text-orange-400" },
@@ -170,6 +159,23 @@ export const EquipmentDocuments = (): JSX.Element => {
     (d) => d.name.toLowerCase().includes(search.toLowerCase()) ||
            d.category.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const categoryCounts = useMemo(() => {
+    const counts = documents.reduce<Record<string, number>>((acc, document) => {
+      acc[document.category] = (acc[document.category] ?? 0) + 1;
+      return acc;
+    }, {});
+    return [
+      { label: "All Docs", count: documents.length, color: "#3b82f6" },
+      { label: "Manuals", count: counts.Manual ?? 0, color: "#10b981" },
+      { label: "Drawings", count: counts.Drawing ?? 0, color: "#6366f1" },
+      { label: "Schematics", count: counts.Schematic ?? 0, color: "#f97316" },
+      { label: "Procedures", count: counts.Procedure ?? 0, color: "#eab308" },
+      { label: "Certificates", count: counts.Certificate ?? 0, color: "#ef4444" },
+      { label: "Compliance", count: counts.Compliance ?? 0, color: "#8b5cf6" },
+      { label: "Other", count: counts.Other ?? 0, color: "#64748b" },
+    ];
+  }, [documents]);
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
@@ -338,7 +344,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           <CardContent className="p-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-200">Document Categories</h3>
             <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-              {CATEGORIES.map((cat) => (
+              {categoryCounts.map((cat) => (
                 <button key={cat.label} type="button"
                   className="flex flex-col items-center overflow-hidden rounded-lg border border-gray-800 bg-[#0f1218] transition-colors hover:bg-[#1a2030]">
                   <div className="h-1 w-full" style={{ backgroundColor: cat.color }} />
