@@ -18,7 +18,7 @@ import { Progress } from "../../components/ui/progress";
 // SHIFT COVER — Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type CellStatus = "covered" | "partial" | "gap" | "off" | "contractor" | "sme";
+type CellStatus = "covered" | "partial" | "gap" | "off" | "contractor";
 type FilterType = "all" | "day" | "night" | "electrical" | "mechanical" | "plc" | "contractors";
 type DrawerMode = "risk-summary" | "shift-cell";
 
@@ -104,11 +104,13 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const ROTA_TEAMS: Array<{
   id: string;
   label: string;
+  shiftName: string;
+  shiftClass: string;
   day: (RotaCell | null)[];
   night: (RotaCell | null)[];
 }> = [
   {
-    id: "team-a", label: "Team A",
+    id: "team-a", label: "Team A", shiftName: "Yellow Shift", shiftClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
     day: [
       { status: "covered", engineers: ["JH", "SM"] },
       { status: "covered", engineers: ["JH", "SM"] },
@@ -122,7 +124,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-b", label: "Team B",
+    id: "team-b", label: "Team B", shiftName: "Red Shift", shiftClass: "bg-red-500/20 text-red-300 border-red-500/30",
     day: [
       null, null,
       { status: "covered", engineers: ["DF", "BT"] },
@@ -139,7 +141,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-c", label: "Team C",
+    id: "team-c", label: "Team C", shiftName: "Green Shift", shiftClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     day: [
       null, null, null,
       { status: "covered", engineers: ["PK", "AM"] },
@@ -147,14 +149,14 @@ const ROTA_TEAMS: Array<{
       null, null,
     ],
     night: [
-      { status: "sme", engineers: ["SM", "LD"], dotColor: "purple" },
+      { status: "covered", engineers: ["SM", "LD"], dotColor: "purple" },
       null, null, null, null,
       { status: "partial", engineers: ["SM"], dotColor: "amber" },
       null,
     ],
   },
   {
-    id: "team-d", label: "Team D",
+    id: "team-d", label: "Team D", shiftName: "Blue Shift", shiftClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
     day: [
       { status: "covered", engineers: ["EP", "AM"] },
       null, null, null, null, null,
@@ -170,7 +172,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-e", label: "Team E",
+    id: "team-e", label: "Team E", shiftName: "Days", shiftClass: "bg-slate-500/20 text-slate-300 border-slate-500/30",
     day: [
       null, null,
       { status: "covered", engineers: ["CW", "LD"] },
@@ -227,14 +229,19 @@ const KPI_ITEMS = [
   { label: "AI Confidence",      value: "94%", changeText: "+1", positive: true,  sub: "Updated 4 mins ago"  },
 ];
 
-const LEGEND_ITEMS = [
-  { label: "Day",        color: "bg-emerald-500"  },
-  { label: "Night",      color: "bg-slate-500"    },
-  { label: "Off",        color: "bg-gray-700"     },
-  { label: "Gap",        color: "bg-red-500"      },
-  { label: "Partial",    color: "bg-amber-400"    },
-  { label: "Contractor", color: "bg-blue-500"     },
-  { label: "SME",        color: "bg-purple-500"   },
+const SHIFT_STATUS_LEGEND = [
+  { label: "Fully Covered", color: "bg-emerald-500" },
+  { label: "Reduced Cover", color: "bg-amber-400" },
+  { label: "Critical Gap", color: "bg-red-500" },
+  { label: "Contractor Cover", color: "bg-blue-500" },
+  { label: "Off Shift", color: "bg-gray-700" },
+];
+
+const RISK_INDICATOR_LEGEND = [
+  { label: "Missing Skill", color: "bg-red-500" },
+  { label: "Reduced Resilience", color: "bg-amber-400" },
+  { label: "SME Dependency", color: "bg-purple-400" },
+  { label: "Contractor Involved", color: "bg-blue-400" },
 ];
 
 const COVER_ISSUES: CoverIssue[] = [
@@ -306,7 +313,6 @@ const CELL_BG: Record<CellStatus, string> = {
   gap:        "bg-red-500/20 border border-red-500/30",
   off:        "",
   contractor: "bg-blue-500/20 border border-blue-500/30",
-  sme:        "bg-purple-500/20 border border-purple-500/30",
 };
 
 const CELL_TEXT: Record<CellStatus, string> = {
@@ -315,7 +321,6 @@ const CELL_TEXT: Record<CellStatus, string> = {
   gap:        "text-red-400",
   off:        "text-slate-700",
   contractor: "text-blue-400",
-  sme:        "text-purple-400",
 };
 
 const DOT_BG: Record<NonNullable<RotaCell["dotColor"]>, string> = {
@@ -642,12 +647,18 @@ const ShiftCoverRiskPage = (): JSX.Element => {
         if (!cell) return;
         const engineers = cell.engineers.map((k) => SC_ENGINEERS[k]).filter(Boolean);
         const coverageMap: Record<CellStatus, string> = {
-          covered: "Full Cover", partial: "Partial Cover", gap: "Critical Gap",
-          off: "Off", contractor: "Contractor Cover", sme: "SME Dependency",
+          covered: "Full Cover",
+          partial: "Partial Cover",
+          gap: "Critical Gap",
+          off: "Off",
+          contractor: "Contractor Cover",
         };
         const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
-          covered: "Clear", partial: "Med", gap: "Critical",
-          off: "Clear", contractor: "Low", sme: "High",
+          covered: "Clear",
+          partial: "Med",
+          gap: "Critical",
+          off: "Clear",
+          contractor: "Low",
         };
         setCellDetail({
           teamLabel: team.label,
@@ -828,13 +839,38 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                     7-DAY LOOKAHEAD
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {LEGEND_ITEMS.map((item) => (
-                    <div key={item.label} className="flex items-center gap-1">
-                      <span className={`h-2 w-2 rounded-sm ${item.color}`} aria-hidden="true" />
-                      <span className="text-[10px] text-slate-400">{item.label}</span>
+                <div className="flex flex-wrap items-start gap-6">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Shift Status</p>
+                    <div className="flex flex-wrap gap-3">
+                      {SHIFT_STATUS_LEGEND.map((item) => (
+                        <div key={item.label} className="flex items-center gap-1.5">
+                          <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                          <span className="text-[11px] text-slate-400">{item.label}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Risk Indicators</p>
+                    <div className="flex flex-wrap gap-3">
+                      {RISK_INDICATOR_LEGEND.map((item) => (
+                        <div key={item.label} className="flex items-center gap-1.5">
+                          <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                          <span className="text-[11px] text-slate-400">{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Interaction</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full border border-blue-400 bg-transparent" />
+                      <span className="text-[11px] text-slate-400">Selected Shift</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -889,8 +925,13 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                           style={{ gridTemplateColumns: "110px repeat(7, minmax(0, 1fr))" }}
                         >
                           <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-50">{team.label}</span>
-                            <span className="text-[9px] text-slate-600">Day</span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-semibold text-slate-50">{team.label}</span>
+                              <span className={`w-fit rounded border px-2 py-0.5 text-[10px] font-semibold ${team.shiftClass}`}>
+                                {team.shiftName}
+                              </span>
+                            </div>
+                            <span className="mt-1 text-[9px] text-slate-600">Day</span>
                           </div>
                           {team.day.map((cell, di) => (
                             <RotaCellView
