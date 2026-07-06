@@ -13,6 +13,7 @@ import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import {
   getEquipmentSummary,
   getCachedEquipmentIdentity,
+  type EquipmentSummary,
 } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -152,12 +153,14 @@ export const EquipmentAiInsights = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+  const [summary, setSummary] = useState<EquipmentSummary | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState(CHAT_MESSAGES);
 
   useEffect(() => {
-    getEquipmentSummary(resolvedId).then((summary) => {
-      setEq(summary.equipment);
+    getEquipmentSummary(resolvedId).then((nextSummary) => {
+      setSummary(nextSummary);
+      setEq(nextSummary.equipment);
     });
   }, [resolvedId]);
 
