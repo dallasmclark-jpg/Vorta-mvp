@@ -492,15 +492,19 @@ export const EquipmentAiInsights = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-4 text-sm font-semibold text-slate-200">At-Risk Factors</h3>
               <div className="flex flex-col gap-3">
-                {RISK_FACTORS.map((f) => (
-                  <div key={f.label} className="flex items-center gap-3">
-                    <span className="w-28 shrink-0 text-[11px] text-slate-400">{f.label}</span>
-                    <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-800">
-                      <div className="h-full rounded-full" style={{ width: `${f.pct}%`, backgroundColor: f.color }} />
+                {eq.riskBreakdown.length > 0 ? (
+                  eq.riskBreakdown.map((factor) => (
+                    <div key={factor.label} className="flex items-center gap-3">
+                      <span className="w-28 shrink-0 text-[11px] text-slate-400">{factor.label}</span>
+                      <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-800">
+                        <div className="h-full rounded-full" style={{ width: `${factor.pct}%`, backgroundColor: factor.color }} />
+                      </div>
+                      <span className="w-20 shrink-0 text-right text-[11px] font-semibold text-slate-300">{factor.pct}%</span>
                     </div>
-                    <span className="w-20 shrink-0 text-right text-[11px] font-semibold text-slate-300">{f.value}</span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500">No risk breakdown available.</p>
+                )}
               </div>
               <button type="button" className="mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View Risk Analysis →
