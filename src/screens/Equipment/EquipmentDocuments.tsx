@@ -185,6 +185,8 @@ export const EquipmentDocuments = (): JSX.Element => {
     document.status === "Expiring",
   ).length;
 
+  const latestDocumentDate = documents.length > 0 ? documents[0].date : "No documents";
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -334,8 +336,10 @@ export const EquipmentDocuments = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last Updated</p>
-              <p className="text-2xl font-bold text-emerald-400">Today</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">24 Apr 2025</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                {documents.length > 0 ? "Latest" : "None"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-500">{latestDocumentDate}</p>
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
