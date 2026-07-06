@@ -187,6 +187,15 @@ export const EquipmentDocuments = (): JSX.Element => {
 
   const latestDocumentDate = documents.length > 0 ? documents[0].date : "No documents";
 
+  const totalDocumentSizeMb = documents.reduce((total, document) => {
+    const numericSize = Number.parseFloat(document.size);
+    return Number.isFinite(numericSize) ? total + numericSize : total;
+  }, 0);
+  const totalDocumentSizeLabel =
+    totalDocumentSizeMb >= 1024
+      ? `${(totalDocumentSizeMb / 1024).toFixed(2)} GB`
+      : `${totalDocumentSizeMb.toFixed(1)} MB`;
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -345,7 +354,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total File Size</p>
-              <p className="text-2xl font-bold text-slate-50">2.48 GB</p>
+              <p className="text-2xl font-bold text-slate-50">{totalDocumentSizeLabel}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">Across all documents</p>
             </CardContent>
           </Card>
