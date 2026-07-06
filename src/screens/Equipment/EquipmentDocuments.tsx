@@ -49,10 +49,6 @@ interface DocRow {
   status: DocStatus; iconBg: string; iconColor: string;
 }
 
-
-
-
-
 const PERMISSIONS = [
   { role: "Maintenance Engineers", level: "Full Access",  cls: "bg-emerald-500/20 text-emerald-400" },
   { role: "Operators",             level: "Read Only",    cls: "bg-blue-500/20 text-blue-400"       },
