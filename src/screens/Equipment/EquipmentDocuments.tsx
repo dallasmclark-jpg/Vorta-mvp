@@ -50,11 +50,6 @@ interface DocRow {
 }
 
 
-const PINNED = [
-  { name: "Operation Manual v4.2",      meta: "PDF • 4.2 MB",  iconBg: "bg-red-500/20",   iconColor: "text-red-400"   },
-  { name: "Electrical Schematic Rev.C", meta: "DWG • 8.1 MB",  iconBg: "bg-blue-500/20",  iconColor: "text-blue-400"  },
-  { name: "PM Procedure — Quarterly",   meta: "PDF • 2.8 MB",  iconBg: "bg-red-500/20",   iconColor: "text-red-400"   },
-];
 
 const RECENT = [
   { name: "Operation Manual v4.2",      meta: "D. Mitchell • 2 hours ago", dotColor: "bg-blue-400"    },
