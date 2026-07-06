@@ -32,14 +32,6 @@ const TABS = [
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const RISK_FACTORS = [
-  { label: "Vibration Level", value: "4.2 mm/s",   pct: 84, color: "#ef4444" },
-  { label: "Operating Hours", value: "12,450 hrs",  pct: 75, color: "#f97316" },
-  { label: "PM Compliance",   value: "67%",          pct: 67, color: "#eab308" },
-  { label: "Failure History", value: "6 events",    pct: 55, color: "#f97316" },
-  { label: "Age Factor",      value: "8.5 years",   pct: 62, color: "#eab308" },
-];
-
 const TREND_BARS = [
   { month: "Jan", pct: 30 },
   { month: "Feb", pct: 35 },
