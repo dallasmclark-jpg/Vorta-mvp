@@ -210,6 +210,12 @@ export const EquipmentDocuments = (): JSX.Element => {
     iconColor: document.iconColor,
   }));
 
+  const recentDocuments = documents.slice(0, 3).map((document, index) => ({
+    name: document.name,
+    meta: `${document.date} • ${document.category}`,
+    dotColor: index === 0 ? "bg-blue-400" : index === 1 ? "bg-emerald-400" : "bg-slate-400",
+  }));
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -525,15 +531,19 @@ export const EquipmentDocuments = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Recent Uploads</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {RECENT.map((item) => (
-                  <div key={item.name} className="flex items-center gap-2.5 py-3">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
-                      <p className="text-[10px] text-slate-500">{item.meta}</p>
+                {recentDocuments.length > 0 ? (
+                  recentDocuments.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2.5 py-3">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
+                        <p className="text-[10px] text-slate-500">{item.meta}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-xs text-slate-500">No recent document activity.</p>
+                )}
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View Upload History →
