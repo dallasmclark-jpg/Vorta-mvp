@@ -104,13 +104,12 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const ROTA_TEAMS: Array<{
   id: string;
   label: string;
-  shiftName: string;
   shiftClass: string;
   day: (RotaCell | null)[];
   night: (RotaCell | null)[];
 }> = [
   {
-    id: "team-a", label: "Team A", shiftName: "Yellow Shift", shiftClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    id: "team-a", label: "Yellow Shift", shiftClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
     day: [
       { status: "covered", engineers: ["JH", "SM"] },
       { status: "covered", engineers: ["JH", "SM"] },
@@ -124,7 +123,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-b", label: "Team B", shiftName: "Red Shift", shiftClass: "bg-red-500/20 text-red-300 border-red-500/30",
+    id: "team-b", label: "Red Shift", shiftClass: "bg-red-500/20 text-red-300 border-red-500/30",
     day: [
       null, null,
       { status: "covered", engineers: ["DF", "BT"] },
@@ -141,7 +140,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-c", label: "Team C", shiftName: "Green Shift", shiftClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    id: "team-c", label: "Green Shift", shiftClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     day: [
       null, null, null,
       { status: "covered", engineers: ["PK", "AM"] },
@@ -156,7 +155,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-d", label: "Team D", shiftName: "Blue Shift", shiftClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    id: "team-d", label: "Blue Shift", shiftClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
     day: [
       { status: "covered", engineers: ["EP", "AM"] },
       null, null, null, null, null,
@@ -172,7 +171,7 @@ const ROTA_TEAMS: Array<{
     ],
   },
   {
-    id: "team-e", label: "Team E", shiftName: "Days", shiftClass: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+    id: "team-e", label: "Days", shiftClass: "bg-slate-500/20 text-slate-300 border-slate-500/30",
     day: [
       null, null,
       { status: "covered", engineers: ["CW", "LD"] },
@@ -925,12 +924,9 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                           style={{ gridTemplateColumns: "110px repeat(7, minmax(0, 1fr))" }}
                         >
                           <div className="flex flex-col">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-semibold text-slate-50">{team.label}</span>
-                              <span className={`w-fit rounded border px-2 py-0.5 text-[10px] font-semibold ${team.shiftClass}`}>
-                                {team.shiftName}
-                              </span>
-                            </div>
+                            <span className={`w-fit rounded border px-2 py-1 text-xs font-semibold ${team.shiftClass}`}>
+                              {team.label}
+                            </span>
                             <span className="mt-1 text-[9px] text-slate-600">Day</span>
                           </div>
                           {team.day.map((cell, di) => (
