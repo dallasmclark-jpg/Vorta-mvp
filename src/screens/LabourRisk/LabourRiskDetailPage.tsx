@@ -644,8 +644,12 @@ const MonthDayDrawer = ({
     </div>
 
     <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
-      {detail.shifts.map((s) => (
-        <section key={s.shiftType} className="rounded-lg border border-gray-800 bg-[#0f1318] p-4">
+      {detail.shifts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-sm text-slate-400">No active shifts scheduled for this date.</p>
+        </div>
+      ) : detail.shifts.map((s, idx) => (
+        <section key={`${s.teamLabel}-${s.shiftType}-${idx}`} className="rounded-lg border border-gray-800 bg-[#0f1318] p-4">
           <div className="mb-3 flex items-center gap-2">
             <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${s.shiftClass}`}>
               {s.teamLabel}
@@ -683,16 +687,14 @@ const MonthDayDrawer = ({
                 ))}
               </div>
             </div>
-          ) : s.status !== "off" ? (
+          ) : (
             <p className="mb-3 text-xs text-red-400">No engineers assigned</p>
-          ) : null}
-
-          {s.status !== "off" && (
-            <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Recommended Action</p>
-              <p className="text-xs text-slate-300">{s.recommendedAction}</p>
-            </div>
           )}
+
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Recommended Action</p>
+            <p className="text-xs text-slate-300">{s.recommendedAction}</p>
+          </div>
         </section>
       ))}
     </div>
@@ -847,6 +849,10 @@ const ShiftCoverRiskPage = (): JSX.Element => {
     setTooltipEng(null);
     const dateLabel = date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const shifts: MonthDayShiftSummary[] = [];
+    const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
+      covered: "Clear", partial: "Med", gap: "Critical", off: "Clear", contractor: "Low",
+    };
+    const dayLabel = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
 
     for (const team of TEAM_CONFIGS) {
       const shiftType: ShiftPatternType =
@@ -854,16 +860,11 @@ const ShiftCoverRiskPage = (): JSX.Element => {
           ? (date.getUTCDay() >= 1 && date.getUTCDay() <= 5 ? "day" : "off")
           : getShiftType(date, team.offset);
 
-      const dayLabel = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
-
       if (shiftType === "day") {
         const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-day`];
         const status = ov?.status ?? "covered";
         const engKeys = ov?.engineers ?? team.dayEngineers;
         const engineers = engKeys.map((k) => SC_ENGINEERS[k]).filter(Boolean);
-        const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
-          covered: "Clear", partial: "Med", gap: "Critical", off: "Clear", contractor: "Low",
-        };
         shifts.push({
           shiftType: "Day",
           teamLabel: team.label,
@@ -872,26 +873,18 @@ const ShiftCoverRiskPage = (): JSX.Element => {
           engineers,
           riskLevel: riskMap[status],
           dotColor: ov?.dotColor,
-          recommendedAction: status === "covered"
-            ? "No action required — shift is fully covered."
-            : status === "gap"
-            ? "Assign on-call contractor or request overtime cover immediately."
-            : status === "partial"
-            ? "Review skill gaps and consider moving planned PMs to reduce load."
-            : status === "contractor"
-            ? "Confirm contractor availability and site induction status."
+          recommendedAction:
+            status === "covered"    ? "No action required — shift is fully covered."
+            : status === "gap"      ? "Assign on-call contractor or request overtime cover immediately."
+            : status === "partial"  ? "Review skill gaps and consider moving planned PMs to reduce load."
+            : status === "contractor" ? "Confirm contractor availability and site induction status."
             : "No action required.",
         });
-      }
-
-      if (shiftType === "night" && team.type !== "days") {
+      } else if (shiftType === "night" && team.type !== "days") {
         const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-night`];
         const status = ov?.status ?? "covered";
         const engKeys = ov?.engineers ?? team.nightEngineers;
         const engineers = engKeys.map((k) => SC_ENGINEERS[k]).filter(Boolean);
-        const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
-          covered: "Clear", partial: "Med", gap: "Critical", off: "Clear", contractor: "Low",
-        };
         shifts.push({
           shiftType: "Night",
           teamLabel: team.label,
@@ -900,29 +893,15 @@ const ShiftCoverRiskPage = (): JSX.Element => {
           engineers,
           riskLevel: riskMap[status],
           dotColor: ov?.dotColor,
-          recommendedAction: status === "covered"
-            ? "No action required — night shift is fully covered."
-            : status === "gap"
-            ? "Critical: assign on-call engineer or escalate to shift manager."
-            : status === "partial"
-            ? "Move critical PMs to day shift, assign additional engineer if available."
-            : status === "contractor"
-            ? "Confirm contractor night-shift clearance and emergency contacts."
+          recommendedAction:
+            status === "covered"    ? "No action required — night shift is fully covered."
+            : status === "gap"      ? "Critical: assign on-call engineer or escalate to shift manager."
+            : status === "partial"  ? "Move critical PMs to day shift, assign additional engineer if available."
+            : status === "contractor" ? "Confirm contractor night-shift clearance and emergency contacts."
             : "No action required.",
         });
       }
-
-      if (shiftType === "off") {
-        shifts.push({
-          shiftType: "Day",
-          teamLabel: team.label,
-          shiftClass: team.shiftClass,
-          status: "off",
-          engineers: [],
-          riskLevel: "Clear",
-          recommendedAction: "Team is off rotation.",
-        });
-      }
+      // skip "off" teams — do not push them into the shifts array
     }
 
     setMonthDayDetail({ dateLabel, dayOfMonth: dayNum, shifts });
@@ -1201,47 +1180,82 @@ const ShiftCoverRiskPage = (): JSX.Element => {
               const month = selectedDate.getMonth();
               const firstDay = new Date(Date.UTC(year, month, 1));
               const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-              // Monday = 0 offset; getUTCDay() returns 0=Sun,1=Mon,...6=Sat
-              const startOffset = (firstDay.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+              const startOffset = (firstDay.getUTCDay() + 6) % 7; // Mon=0…Sun=6
 
-              // Compute dominant RAG for a calendar day (first non-off active shift)
-              const getDayRag = (date: Date): CellStatus => {
+              // Status severity for worst-case comparison
+              const STATUS_RANK: Record<CellStatus, number> = { gap: 4, partial: 3, contractor: 2, covered: 1, off: 0 };
+
+              // For a given date, compute:
+              //   activeDay  = { teamLabel, status } | null
+              //   activeNight = { teamLabel, status } | null
+              //   worstRag (for card border colour)
+              type DayInfo = {
+                activeDay:   { teamLabel: string; status: CellStatus } | null;
+                activeNight: { teamLabel: string; status: CellStatus } | null;
+                worstRag:    CellStatus;
+              };
+
+              const getDayInfo = (date: Date): DayInfo => {
+                const dl = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
+                let activeDay:   DayInfo["activeDay"]   = null;
+                let activeNight: DayInfo["activeNight"] = null;
+                let worstRank = 0;
+
                 for (const team of TEAM_CONFIGS) {
                   const st: ShiftPatternType =
                     team.type === "days"
                       ? (date.getUTCDay() >= 1 && date.getUTCDay() <= 5 ? "day" : "off")
                       : getShiftType(date, team.offset);
-                  if (st === "day" || st === "night") {
-                    const dayLabel = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
-                    const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-${st}`];
-                    return ov?.status ?? "covered";
+
+                  if (st === "day") {
+                    const ov = ROTA_OVERLAYS[`${team.label}-${dl}-day`];
+                    const status = ov?.status ?? "covered";
+                    if (!activeDay || STATUS_RANK[status] > STATUS_RANK[activeDay.status]) {
+                      activeDay = { teamLabel: team.label, status };
+                    }
+                    if (STATUS_RANK[status] > worstRank) worstRank = STATUS_RANK[status];
+                  } else if (st === "night" && team.type !== "days") {
+                    const ov = ROTA_OVERLAYS[`${team.label}-${dl}-night`];
+                    const status = ov?.status ?? "covered";
+                    if (!activeNight || STATUS_RANK[status] > STATUS_RANK[activeNight.status]) {
+                      activeNight = { teamLabel: team.label, status };
+                    }
+                    if (STATUS_RANK[status] > worstRank) worstRank = STATUS_RANK[status];
                   }
                 }
-                return "off";
+
+                const RANK_TO_STATUS: Record<number, CellStatus> = { 0: "off", 1: "covered", 2: "contractor", 3: "partial", 4: "gap" };
+                return { activeDay, activeNight, worstRag: RANK_TO_STATUS[worstRank] ?? "off" };
               };
 
               // Build weeks array
               type CalCell = { dayNum: number; date: Date } | null;
               const cells: CalCell[] = [
                 ...Array<CalCell>(startOffset).fill(null),
-                ...Array.from({ length: daysInMonth }, (_, i) => {
-                  const d = new Date(Date.UTC(year, month, i + 1));
-                  return { dayNum: i + 1, date: d };
-                }),
+                ...Array.from({ length: daysInMonth }, (_, i) => ({
+                  dayNum: i + 1,
+                  date: new Date(Date.UTC(year, month, i + 1)),
+                })),
               ];
-              // Pad to full weeks
               while (cells.length % 7 !== 0) cells.push(null);
               const weeks: CalCell[][] = [];
               for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-              const RAG_CHIP: Record<CellStatus, string> = {
-                covered:    "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-                partial:    "bg-amber-500/20 text-amber-300 border-amber-500/30",
-                gap:        "bg-red-500/20 text-red-300 border-red-500/30",
-                contractor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-                off:        "bg-slate-700/40 text-slate-500 border-slate-600/30",
+              const RAG_BORDER: Record<CellStatus, string> = {
+                gap:        "border-red-500/40",
+                partial:    "border-amber-500/40",
+                contractor: "border-blue-500/40",
+                covered:    "border-emerald-500/30",
+                off:        "border-white/5",
               };
-              const RAG_LABEL: Record<CellStatus, string> = {
+              const RAG_CHIP: Record<CellStatus, string> = {
+                covered:    "bg-emerald-500/20 text-emerald-300",
+                partial:    "bg-amber-500/20 text-amber-300",
+                gap:        "bg-red-500/20 text-red-300",
+                contractor: "bg-blue-500/20 text-blue-300",
+                off:        "bg-slate-700/40 text-slate-500",
+              };
+              const STATUS_SHORT: Record<CellStatus, string> = {
                 covered: "Covered", partial: "Reduced", gap: "Gap", contractor: "Contractor", off: "Off",
               };
 
@@ -1263,18 +1277,37 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                           if (!cell) {
                             return <div key={`blank-${wi}-${ci}`} className="rounded-lg border border-transparent bg-slate-900/30 p-2" />;
                           }
-                          const rag = getDayRag(cell.date);
+                          const { activeDay, activeNight, worstRag } = getDayInfo(cell.date);
                           return (
                             <button
                               key={cell.dayNum}
                               type="button"
                               onClick={() => openMonthDay(cell.date, cell.dayNum)}
-                              className="flex flex-col items-start gap-1 rounded-lg border border-white/5 bg-slate-800/50 p-2 text-left transition-colors hover:border-blue-500/40 hover:bg-slate-700/50"
+                              className={`flex flex-col items-start gap-1 rounded-lg border bg-slate-800/50 p-2 text-left transition-colors hover:bg-slate-700/50 ${RAG_BORDER[worstRag]}`}
                             >
                               <span className="text-xs font-semibold text-slate-300">{cell.dayNum}</span>
-                              <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${RAG_CHIP[rag]}`}>
-                                {RAG_LABEL[rag]}
-                              </span>
+                              <div className="flex w-full flex-col gap-0.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-slate-500 shrink-0">Day</span>
+                                  {activeDay ? (
+                                    <span className={`rounded px-1 py-px text-[9px] font-medium leading-none ${RAG_CHIP[activeDay.status]}`}>
+                                      {STATUS_SHORT[activeDay.status]}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] text-slate-600">Off</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-slate-500 shrink-0">Night</span>
+                                  {activeNight ? (
+                                    <span className={`rounded px-1 py-px text-[9px] font-medium leading-none ${RAG_CHIP[activeNight.status]}`}>
+                                      {STATUS_SHORT[activeNight.status]}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] text-slate-600">Off</span>
+                                  )}
+                                </div>
+                              </div>
                             </button>
                           );
                         })}
