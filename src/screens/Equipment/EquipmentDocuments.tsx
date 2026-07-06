@@ -181,6 +181,10 @@ export const EquipmentDocuments = (): JSX.Element => {
     ["Review Due", "Expiring", "Expired"].includes(document.status),
   ).length;
 
+  const expiringDocumentCount = documents.filter((document) =>
+    document.status === "Expiring",
+  ).length;
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -323,7 +327,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Expiring Soon</p>
-              <p className="text-2xl font-bold text-red-400">7</p>
+              <p className="text-2xl font-bold text-red-400">{expiringDocumentCount}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">Within 30 days</p>
             </CardContent>
           </Card>
