@@ -39,12 +39,6 @@ const TIMELINE_ROWS = [
   { label: "Patterns",        color: "#8b5cf6", dots: [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0] },
 ];
 
-const OPPORTUNITIES = [
-  { label: "Spare Network",    saving: "£3,200/yr", desc: "Connect with Palletiser 4 spare pool to reduce stockholding by £3,200/yr.", color: "#10b981" },
-  { label: "PM Optimisation",  saving: "£1,800/yr", desc: "AI suggests extending oil change interval from 3 to 4 months based on oil analysis trends.", color: "#3b82f6" },
-  { label: "Energy Reduction", saving: "£940/yr",   desc: "Reduce idle power consumption by scheduling auto-shutdown during breaks.", color: "#eab308" },
-];
-
 const QUICK_ACTIONS = [
   { Icon: Play,     label: "Run Full Analysis"     },
   { Icon: BarChart2,label: "View Risk Dashboard"   },
