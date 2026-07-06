@@ -210,6 +210,21 @@ export const EquipmentAiInsights = (): JSX.Element => {
       ? `${topRiskFactor.label} is the highest current contributor in the live equipment risk breakdown.`
       : "No dominant risk pattern is currently available.";
 
+  const recommendedActions = [
+    ...(overdueWorkOrderCount > 0
+      ? [{ pri: "HIGH", label: "Review overdue work orders", when: `${overdueWorkOrderCount} overdue`, priClass: "bg-red-500/20 text-red-400" }]
+      : []),
+    ...(overduePmCount > 0
+      ? [{ pri: "HIGH", label: "Complete overdue PMs", when: `${overduePmCount} overdue`, priClass: "bg-red-500/20 text-red-400" }]
+      : []),
+    ...(criticalComponentCount > 0
+      ? [{ pri: "MEDIUM", label: "Review critical spares", when: `${criticalComponentCount} critical`, priClass: "bg-yellow-500/20 text-yellow-400" }]
+      : []),
+    ...(eq.riskLevel === "Critical" || eq.riskLevel === "High"
+      ? [{ pri: eq.riskLevel === "Critical" ? "HIGH" : "MEDIUM", label: "Monitor equipment risk", when: `${eq.riskLevel} risk`, priClass: eq.riskLevel === "Critical" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400" }]
+      : []),
+  ];
+
   const handleTabClick = (tabId: string) => {
     const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
@@ -547,7 +562,8 @@ export const EquipmentAiInsights = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">AI Recommended Actions</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {AI_ACTIONS.map((a) => (
+                {recommendedActions.length > 0 ? (
+                  recommendedActions.map((a) => (
                   <div key={a.label} className="flex items-center gap-3 py-3">
                     <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${a.priClass}`}>
                       {a.pri}
@@ -557,7 +573,10 @@ export const EquipmentAiInsights = (): JSX.Element => {
                       <p className="text-[10px] text-slate-500">{a.when}</p>
                     </div>
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-xs text-slate-500">No recommended actions at this time.</p>
+                )}
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View All Actions →
