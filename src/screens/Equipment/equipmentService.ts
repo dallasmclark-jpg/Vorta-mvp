@@ -750,6 +750,51 @@ export function getEquipmentAiInsights(equipmentId: string): AiInsight[] {
   return MOCK_AI_INSIGHTS.filter((i) => i.equipmentId === equipmentId);
 }
 
+// ─── Shared equipment summary ─────────────────────────────────────────────────
+
+export interface EquipmentSummary {
+  equipment: Equipment;
+  workOrders: Awaited<ReturnType<typeof getEquipmentWorkOrders>>;
+  pms: PreventiveMaintenance[];
+  skills: Awaited<ReturnType<typeof getEquipmentSkills>>;
+  components: EquipmentComponentsResult;
+  documents: EquipmentDocument[];
+  activity: EquipmentActivity[];
+  aiInsights: AiInsight[];
+}
+
+export async function getEquipmentSummary(equipmentId: string): Promise<EquipmentSummary> {
+  const [
+    equipment,
+    workOrders,
+    pms,
+    skills,
+    components,
+    documents,
+    activity,
+    aiInsights,
+  ] = await Promise.all([
+    getEquipmentIdentityById(equipmentId),
+    getEquipmentWorkOrders(equipmentId),
+    getEquipmentPMs(equipmentId),
+    getEquipmentSkills(equipmentId),
+    getEquipmentComponents(equipmentId),
+    Promise.resolve(getEquipmentDocuments(equipmentId)),
+    getEquipmentActivity(equipmentId),
+    Promise.resolve(getEquipmentAiInsights(equipmentId)),
+  ]);
+  return {
+    equipment,
+    workOrders,
+    pms,
+    skills,
+    components,
+    documents,
+    activity,
+    aiInsights,
+  };
+}
+
 // ─── Building group definitions ───────────────────────────────────────────────
 
 export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
