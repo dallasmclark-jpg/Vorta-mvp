@@ -32,13 +32,6 @@ const TABS = [
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const TIMELINE_ROWS = [
-  { label: "Failures",        color: "#ef4444", dots: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1] },
-  { label: "Warnings",        color: "#eab308", dots: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1] },
-  { label: "Recommendations", color: "#3b82f6", dots: [1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1] },
-  { label: "Patterns",        color: "#8b5cf6", dots: [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0] },
-];
-
 const QUICK_ACTIONS = [
   { Icon: Play,     label: "Run Full Analysis"     },
   { Icon: BarChart2,label: "View Risk Dashboard"   },
