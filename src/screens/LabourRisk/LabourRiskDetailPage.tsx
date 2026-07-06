@@ -737,10 +737,33 @@ const ShiftCoverRiskPage = (): JSX.Element => {
   const [selectedView, setSelectedView] = useState<"week" | "month">("week");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const weekLabel = `Week of ${selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  const periodLabel =
+    selectedView === "week"
+      ? `Week of ${selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+      : selectedDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const goToToday = () => setSelectedDate(new Date());
-  const prevWeek = () => setSelectedDate((d) => new Date(d.getTime() - 7 * 24 * 60 * 60 * 1000));
-  const nextWeek = () => setSelectedDate((d) => new Date(d.getTime() + 7 * 24 * 60 * 60 * 1000));
+  const goToPreviousPeriod = () => {
+    setSelectedDate((d) => {
+      const next = new Date(d);
+      if (selectedView === "week") {
+        next.setDate(next.getDate() - 7);
+      } else {
+        next.setMonth(next.getMonth() - 1);
+      }
+      return next;
+    });
+  };
+  const goToNextPeriod = () => {
+    setSelectedDate((d) => {
+      const next = new Date(d);
+      if (selectedView === "week") {
+        next.setDate(next.getDate() + 7);
+      } else {
+        next.setMonth(next.getMonth() + 1);
+      }
+      return next;
+    });
+  };
 
   const rotaTeams = useMemo(() => {
     const monday = getWeekMonday(selectedDate);
@@ -1124,18 +1147,18 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                 </button>
                 <button
                   type="button"
-                  onClick={prevWeek}
+                  onClick={goToPreviousPeriod}
                   className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
                   aria-label="Previous week"
                 >
                   ‹
                 </button>
                 <span className="min-w-[150px] text-center text-xs font-semibold text-slate-200">
-                  {weekLabel}
+                  {periodLabel}
                 </span>
                 <button
                   type="button"
-                  onClick={nextWeek}
+                  onClick={goToNextPeriod}
                   className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
                   aria-label="Next week"
                 >
