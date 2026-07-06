@@ -592,7 +592,7 @@ export const EquipmentDocuments = (): JSX.Element => {
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: 24 Apr 2025, 14:45</span>
+          <span>All data is synced from Vorta Network and SAP PM. Last updated: {latestDocumentDate}</span>
           <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
