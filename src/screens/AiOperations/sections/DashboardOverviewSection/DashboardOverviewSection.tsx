@@ -30,6 +30,7 @@ const BUILDING_STATIC: Record<string, { driver: string; trend: string }> = {
 const labourRiskItems = [
   {
     title: "Shift Cover",
+    slug: "shift-cover",
     level: "Critical",
     score: "85",
     label: "Night shift gap",
@@ -39,6 +40,7 @@ const labourRiskItems = [
   },
   {
     title: "Single Point of Failure",
+    slug: "single-point-failure",
     level: "High",
     score: "72",
     label: "1 SME for PLC",
@@ -48,6 +50,7 @@ const labourRiskItems = [
   },
   {
     title: "Annual Leave",
+    slug: "annual-leave",
     level: "Med",
     score: "68",
     label: "3 engineers off",
@@ -57,6 +60,7 @@ const labourRiskItems = [
   },
   {
     title: "Training Expiring",
+    slug: "training-expiring",
     level: "Med",
     score: "54",
     label: "2 certs expiring",
@@ -66,6 +70,7 @@ const labourRiskItems = [
   },
   {
     title: "Skill Gaps",
+    slug: "skill-gaps",
     level: "Low",
     score: "46",
     label: "PLC training needed",
@@ -75,6 +80,7 @@ const labourRiskItems = [
   },
   {
     title: "Contractor Reliance",
+    slug: "contractor-reliance",
     level: "Low",
     score: "32",
     label: "Stable",
@@ -351,7 +357,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
           {labourRiskItems.map((item) => (
             <Card
               key={item.title}
-              className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+              onClick={() => navigate(`/maintenance/labour-risk/${item.slug}`)}
+              className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
             >
               <CardContent className="flex h-[180px] flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">

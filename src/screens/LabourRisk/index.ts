@@ -1,0 +1,1 @@
+export { LabourRiskDetailPage } from "./LabourRiskDetailPage";

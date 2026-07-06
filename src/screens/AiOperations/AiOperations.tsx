@@ -24,6 +24,7 @@ import { SettingsSection } from "../Settings";
 import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentAiInsights } from "../Equipment";
 import { SupportSection } from "../Support";
 import { DesignSystemSection } from "../DesignSystem";
+import { LabourRiskDetailPage } from "../LabourRisk";
 
 const nav: NavGroup[] = [
   {
@@ -79,6 +80,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="equipment/:equipmentId/ai-insights"  element={<EquipmentAiInsights />} />
       <Route path="support"            element={<SupportSection />} />
       <Route path="design-system"      element={<DesignSystemSection />} />
+      <Route path="maintenance/labour-risk/:riskType" element={<LabourRiskDetailPage />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </PortalShell>
