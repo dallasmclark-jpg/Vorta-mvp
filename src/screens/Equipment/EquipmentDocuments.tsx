@@ -305,7 +305,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total Documents</p>
-              <p className="text-2xl font-bold text-slate-50">86</p>
+              <p className="text-2xl font-bold text-slate-50">{documents.length}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">All categories</p>
             </CardContent>
           </Card>
