@@ -20,7 +20,7 @@ import { Progress } from "../../components/ui/progress";
 
 type CellStatus = "covered" | "partial" | "gap" | "off" | "contractor";
 type FilterType = "all" | "day" | "night" | "electrical" | "mechanical" | "plc" | "contractors";
-type DrawerMode = "risk-summary" | "shift-cell";
+type DrawerMode = "risk-summary" | "shift-cell" | "month-day";
 type ShiftPatternType = "day" | "night" | "off";
 
 interface ScEngineer {
@@ -37,8 +37,24 @@ interface RotaCell {
   detailKey?: string;
 }
 
-interface ShiftCellDetail {
+interface MonthDayShiftSummary {
+  shiftType: "Day" | "Night";
   teamLabel: string;
+  shiftClass: string;
+  status: CellStatus;
+  engineers: ScEngineer[];
+  riskLevel: ShiftCellDetail["riskLevel"];
+  dotColor?: RotaCell["dotColor"];
+  recommendedAction: string;
+}
+
+interface MonthDayDetail {
+  dateLabel: string;
+  dayOfMonth: number;
+  shifts: MonthDayShiftSummary[];
+}
+
+interface ShiftCellDetail {
   day: string;
   shiftType: "Day" | "Night";
   coverage: string;
@@ -593,6 +609,109 @@ const ShiftCellDrawer = ({
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SHIFT COVER — Month Day Drawer
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<CellStatus, string> = {
+  covered:    "Full Cover",
+  partial:    "Reduced Cover",
+  gap:        "Critical Gap",
+  off:        "Off Shift",
+  contractor: "Contractor Cover",
+};
+
+const MonthDayDrawer = ({
+  detail,
+  onClose,
+}: {
+  detail: MonthDayDetail;
+  onClose: () => void;
+}): JSX.Element => (
+  <div className="flex h-full flex-col">
+    <div className="flex items-center justify-between border-b border-gray-800 p-5">
+      <div>
+        <h2 className="text-base font-bold text-slate-50">{detail.dateLabel}</h2>
+        <p className="text-xs text-slate-400">Shift Cover Summary</p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+        aria-label="Close"
+      >
+        <X className="h-5 w-5" />
+      </button>
+    </div>
+
+    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
+      {detail.shifts.map((s) => (
+        <section key={s.shiftType} className="rounded-lg border border-gray-800 bg-[#0f1318] p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${s.shiftClass}`}>
+              {s.teamLabel}
+            </span>
+            <span className="text-xs font-semibold text-slate-400">{s.shiftType} Shift</span>
+            {s.dotColor && (
+              <span className={`ml-auto h-2 w-2 rounded-full ${DOT_BG[s.dotColor]}`} aria-hidden="true" />
+            )}
+          </div>
+
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] text-slate-500">Status</p>
+              <p className={`text-sm font-semibold ${CELL_TEXT[s.status]}`}>
+                {STATUS_LABEL[s.status]}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500">Risk Level</p>
+              <p className={`text-sm font-bold ${RISK_LEVEL_TEXT[s.riskLevel]}`}>{s.riskLevel}</p>
+            </div>
+          </div>
+
+          {s.engineers.length > 0 ? (
+            <div className="mb-3">
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Engineers</p>
+              <div className="flex flex-wrap gap-1.5">
+                {s.engineers.map((eng) => (
+                  <div key={eng.initials} className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-1">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[9px] font-bold text-slate-200">
+                      {eng.initials}
+                    </div>
+                    <span className="text-xs text-slate-300">{eng.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : s.status !== "off" ? (
+            <p className="mb-3 text-xs text-red-400">No engineers assigned</p>
+          ) : null}
+
+          {s.status !== "off" && (
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Recommended Action</p>
+              <p className="text-xs text-slate-300">{s.recommendedAction}</p>
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+
+    <div className="flex gap-3 border-t border-gray-800 p-5">
+      <Button className="flex-1 bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
+        Assign Engineer
+      </Button>
+      <Button
+        variant="secondary"
+        className="flex-1 border border-white/10 bg-white/10 text-sm font-semibold text-slate-50 hover:bg-white/15"
+      >
+        Request Contractor
+      </Button>
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SHIFT COVER — Main page component
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -611,6 +730,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null);
   const [cellDetail, setCellDetail] = useState<ShiftCellDetail | null>(null);
+  const [monthDayDetail, setMonthDayDetail] = useState<MonthDayDetail | null>(null);
   const [tooltipEng, setTooltipEng] = useState<{ eng: ScEngineer; x: number; y: number } | null>(null);
   const [selectedView, setSelectedView] = useState<"week" | "month">("week");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -720,6 +840,94 @@ const ShiftCoverRiskPage = (): JSX.Element => {
   const closeDrawer = useCallback(() => {
     setDrawerMode(null);
     setCellDetail(null);
+    setMonthDayDetail(null);
+  }, []);
+
+  const openMonthDay = useCallback((date: Date, dayNum: number) => {
+    setTooltipEng(null);
+    const dateLabel = date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const shifts: MonthDayShiftSummary[] = [];
+
+    for (const team of TEAM_CONFIGS) {
+      const shiftType: ShiftPatternType =
+        team.type === "days"
+          ? (date.getUTCDay() >= 1 && date.getUTCDay() <= 5 ? "day" : "off")
+          : getShiftType(date, team.offset);
+
+      const dayLabel = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
+
+      if (shiftType === "day") {
+        const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-day`];
+        const status = ov?.status ?? "covered";
+        const engKeys = ov?.engineers ?? team.dayEngineers;
+        const engineers = engKeys.map((k) => SC_ENGINEERS[k]).filter(Boolean);
+        const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
+          covered: "Clear", partial: "Med", gap: "Critical", off: "Clear", contractor: "Low",
+        };
+        shifts.push({
+          shiftType: "Day",
+          teamLabel: team.label,
+          shiftClass: team.shiftClass,
+          status,
+          engineers,
+          riskLevel: riskMap[status],
+          dotColor: ov?.dotColor,
+          recommendedAction: status === "covered"
+            ? "No action required — shift is fully covered."
+            : status === "gap"
+            ? "Assign on-call contractor or request overtime cover immediately."
+            : status === "partial"
+            ? "Review skill gaps and consider moving planned PMs to reduce load."
+            : status === "contractor"
+            ? "Confirm contractor availability and site induction status."
+            : "No action required.",
+        });
+      }
+
+      if (shiftType === "night" && team.type !== "days") {
+        const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-night`];
+        const status = ov?.status ?? "covered";
+        const engKeys = ov?.engineers ?? team.nightEngineers;
+        const engineers = engKeys.map((k) => SC_ENGINEERS[k]).filter(Boolean);
+        const riskMap: Record<CellStatus, ShiftCellDetail["riskLevel"]> = {
+          covered: "Clear", partial: "Med", gap: "Critical", off: "Clear", contractor: "Low",
+        };
+        shifts.push({
+          shiftType: "Night",
+          teamLabel: team.label,
+          shiftClass: team.shiftClass,
+          status,
+          engineers,
+          riskLevel: riskMap[status],
+          dotColor: ov?.dotColor,
+          recommendedAction: status === "covered"
+            ? "No action required — night shift is fully covered."
+            : status === "gap"
+            ? "Critical: assign on-call engineer or escalate to shift manager."
+            : status === "partial"
+            ? "Move critical PMs to day shift, assign additional engineer if available."
+            : status === "contractor"
+            ? "Confirm contractor night-shift clearance and emergency contacts."
+            : "No action required.",
+        });
+      }
+
+      if (shiftType === "off") {
+        shifts.push({
+          shiftType: "Day",
+          teamLabel: team.label,
+          shiftClass: team.shiftClass,
+          status: "off",
+          engineers: [],
+          riskLevel: "Clear",
+          recommendedAction: "Team is off rotation.",
+        });
+      }
+    }
+
+    setMonthDayDetail({ dateLabel, dayOfMonth: dayNum, shifts });
+    setDrawerMode("month-day");
+    setCellDetail(null);
   }, []);
 
   const showDay   = activeFilter === "all" || activeFilter === "day"   || !["day", "night"].includes(activeFilter);
@@ -762,6 +970,9 @@ const ShiftCoverRiskPage = (): JSX.Element => {
         {drawerMode === "risk-summary" && <RiskSummaryDrawer onClose={closeDrawer} />}
         {drawerMode === "shift-cell" && cellDetail && (
           <ShiftCellDrawer detail={cellDetail} onClose={closeDrawer} />
+        )}
+        {drawerMode === "month-day" && monthDayDetail && (
+          <MonthDayDrawer detail={monthDayDetail} onClose={closeDrawer} />
         )}
       </div>
 
@@ -984,80 +1195,95 @@ const ShiftCoverRiskPage = (): JSX.Element => {
               )}
             </div>
 
-            {selectedView === "month" ? (
-              <div className="overflow-x-auto">
-                <div className="min-w-[560px]">
-                  <div className="mb-2 grid grid-cols-7 gap-1">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                      <div key={d} className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        {d}
+            {selectedView === "month" ? (() => {
+              // Build calendar grid for the selected month (Monday-start)
+              const year = selectedDate.getFullYear();
+              const month = selectedDate.getMonth();
+              const firstDay = new Date(Date.UTC(year, month, 1));
+              const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+              // Monday = 0 offset; getUTCDay() returns 0=Sun,1=Mon,...6=Sat
+              const startOffset = (firstDay.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+
+              // Compute dominant RAG for a calendar day (first non-off active shift)
+              const getDayRag = (date: Date): CellStatus => {
+                for (const team of TEAM_CONFIGS) {
+                  const st: ShiftPatternType =
+                    team.type === "days"
+                      ? (date.getUTCDay() >= 1 && date.getUTCDay() <= 5 ? "day" : "off")
+                      : getShiftType(date, team.offset);
+                  if (st === "day" || st === "night") {
+                    const dayLabel = DAYS[date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1];
+                    const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-${st}`];
+                    return ov?.status ?? "covered";
+                  }
+                }
+                return "off";
+              };
+
+              // Build weeks array
+              type CalCell = { dayNum: number; date: Date } | null;
+              const cells: CalCell[] = [
+                ...Array<CalCell>(startOffset).fill(null),
+                ...Array.from({ length: daysInMonth }, (_, i) => {
+                  const d = new Date(Date.UTC(year, month, i + 1));
+                  return { dayNum: i + 1, date: d };
+                }),
+              ];
+              // Pad to full weeks
+              while (cells.length % 7 !== 0) cells.push(null);
+              const weeks: CalCell[][] = [];
+              for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+              const RAG_CHIP: Record<CellStatus, string> = {
+                covered:    "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+                partial:    "bg-amber-500/20 text-amber-300 border-amber-500/30",
+                gap:        "bg-red-500/20 text-red-300 border-red-500/30",
+                contractor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+                off:        "bg-slate-700/40 text-slate-500 border-slate-600/30",
+              };
+              const RAG_LABEL: Record<CellStatus, string> = {
+                covered: "Covered", partial: "Reduced", gap: "Gap", contractor: "Contractor", off: "Off",
+              };
+
+              return (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[560px]">
+                    {/* Column headers */}
+                    <div className="mb-2 grid grid-cols-7 gap-1">
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                        <div key={d} className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Calendar weeks */}
+                    {weeks.map((week, wi) => (
+                      <div key={wi} className="mb-1 grid grid-cols-7 gap-1">
+                        {week.map((cell, ci) => {
+                          if (!cell) {
+                            return <div key={`blank-${wi}-${ci}`} className="rounded-lg border border-transparent bg-slate-900/30 p-2" />;
+                          }
+                          const rag = getDayRag(cell.date);
+                          return (
+                            <button
+                              key={cell.dayNum}
+                              type="button"
+                              onClick={() => openMonthDay(cell.date, cell.dayNum)}
+                              className="flex flex-col items-start gap-1 rounded-lg border border-white/5 bg-slate-800/50 p-2 text-left transition-colors hover:border-blue-500/40 hover:bg-slate-700/50"
+                            >
+                              <span className="text-xs font-semibold text-slate-300">{cell.dayNum}</span>
+                              <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${RAG_CHIP[rag]}`}>
+                                {RAG_LABEL[rag]}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
-                  {([
-                    [
-                      { day: 1,  status: "Covered" as const },
-                      { day: 2,  status: "Covered" as const },
-                      { day: 3,  status: "Reduced" as const },
-                      { day: 4,  status: "Covered" as const },
-                      { day: 5,  status: "Gap" as const },
-                      { day: 6,  status: "Off" as const },
-                      { day: 7,  status: "Off" as const },
-                    ],
-                    [
-                      { day: 8,  status: "Covered" as const },
-                      { day: 9,  status: "Contractor" as const },
-                      { day: 10, status: "Covered" as const },
-                      { day: 11, status: "Reduced" as const },
-                      { day: 12, status: "Covered" as const },
-                      { day: 13, status: "Off" as const },
-                      { day: 14, status: "Off" as const },
-                    ],
-                    [
-                      { day: 15, status: "Gap" as const },
-                      { day: 16, status: "Covered" as const },
-                      { day: 17, status: "Contractor" as const },
-                      { day: 18, status: "Covered" as const },
-                      { day: 19, status: "Reduced" as const },
-                      { day: 20, status: "Off" as const },
-                      { day: 21, status: "Off" as const },
-                    ],
-                    [
-                      { day: 22, status: "Covered" as const },
-                      { day: 23, status: "Covered" as const },
-                      { day: 24, status: "Gap" as const },
-                      { day: 25, status: "Contractor" as const },
-                      { day: 26, status: "Covered" as const },
-                      { day: 27, status: "Off" as const },
-                      { day: 28, status: "Off" as const },
-                    ],
-                  ] as Array<Array<{ day: number; status: "Covered" | "Reduced" | "Gap" | "Contractor" | "Off" }>>).map((week, wi) => (
-                    <div key={wi} className="mb-1 grid grid-cols-7 gap-1">
-                      {week.map(({ day, status }) => {
-                        const chipClass: Record<string, string> = {
-                          Covered:    "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-                          Reduced:    "bg-amber-500/20 text-amber-300 border-amber-500/30",
-                          Gap:        "bg-red-500/20 text-red-300 border-red-500/30",
-                          Contractor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-                          Off:        "bg-slate-700/40 text-slate-500 border-slate-600/30",
-                        };
-                        return (
-                          <div
-                            key={day}
-                            className="flex flex-col items-start gap-1 rounded-lg border border-white/5 bg-slate-800/50 p-2"
-                          >
-                            <span className="text-xs font-semibold text-slate-300">{day}</span>
-                            <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${chipClass[status]}`}>
-                              {status}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
                 </div>
-              </div>
-            ) : (
+              );
+            })() : (
             <div className="overflow-x-auto">
               <div className="min-w-[780px]">
                 {/* Day headers */}
