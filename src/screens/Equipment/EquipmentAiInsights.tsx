@@ -77,7 +77,6 @@ function TrendBars({ bars }: { bars: { month: string; pct: number }[] }) {
 }
 
 function InsightsTimeline() {
-  const months = ["May", "Jul", "Sep", "Nov", "Jan"];
   return (
     <div className="flex items-center justify-center rounded-lg border border-dashed border-gray-700 bg-[#0f1218] px-6 py-10">
       <div className="max-w-sm text-center">
