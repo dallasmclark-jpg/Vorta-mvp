@@ -51,11 +51,7 @@ interface DocRow {
 
 
 
-const RECENT = [
-  { name: "Operation Manual v4.2",      meta: "D. Mitchell • 2 hours ago", dotColor: "bg-blue-400"    },
-  { name: "Safety Inspection Report",   meta: "J. Wilson • Yesterday",     dotColor: "bg-emerald-400" },
-  { name: "PLC Program Backup",         meta: "S. Chen • 3 days ago",      dotColor: "bg-slate-400"   },
-];
+
 
 const PERMISSIONS = [
   { role: "Maintenance Engineers", level: "Full Access",  cls: "bg-emerald-500/20 text-emerald-400" },
