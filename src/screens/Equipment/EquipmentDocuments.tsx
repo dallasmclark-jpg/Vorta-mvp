@@ -208,6 +208,13 @@ export const EquipmentDocuments = (): JSX.Element => {
             : "text-yellow-400",
     }));
 
+  const pinnedDocuments = documents.slice(0, 3).map((document) => ({
+    name: document.name,
+    meta: `${document.category} • ${document.size}`,
+    iconBg: document.iconBg,
+    iconColor: document.iconColor,
+  }));
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -493,20 +500,24 @@ export const EquipmentDocuments = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Pinned Documents</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {PINNED.map((item) => (
-                  <div key={item.name} className="flex items-center gap-3 py-3">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${item.iconBg}`}>
-                      <FileText className={`h-3.5 w-3.5 ${item.iconColor}`} />
+                {pinnedDocuments.length > 0 ? (
+                  pinnedDocuments.map((item) => (
+                    <div key={item.name} className="flex items-center gap-3 py-3">
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${item.iconBg}`}>
+                        <FileText className={`h-3.5 w-3.5 ${item.iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
+                        <p className="text-[10px] text-slate-500">{item.meta}</p>
+                      </div>
+                      <button type="button" className="shrink-0 text-slate-600 hover:text-slate-400 transition-colors">
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
-                      <p className="text-[10px] text-slate-500">{item.meta}</p>
-                    </div>
-                    <button type="button" className="shrink-0 text-slate-600 hover:text-slate-400 transition-colors">
-                      <Download className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-xs text-slate-500">No pinned documents yet.</p>
+                )}
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 Manage Pinned →
