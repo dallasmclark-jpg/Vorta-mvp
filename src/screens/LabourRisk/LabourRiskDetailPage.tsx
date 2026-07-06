@@ -627,6 +627,13 @@ const ShiftCoverRiskPage = (): JSX.Element => {
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null);
   const [cellDetail, setCellDetail] = useState<ShiftCellDetail | null>(null);
   const [tooltipEng, setTooltipEng] = useState<{ eng: ScEngineer; x: number; y: number } | null>(null);
+  const [selectedView, setSelectedView] = useState<"week" | "month">("week");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const weekLabel = `Week of ${selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  const goToToday = () => setSelectedDate(new Date());
+  const prevWeek = () => setSelectedDate((d) => new Date(d.getTime() - 7 * 24 * 60 * 60 * 1000));
+  const nextWeek = () => setSelectedDate((d) => new Date(d.getTime() + 7 * 24 * 60 * 60 * 1000));
 
   const openRiskSummary = useCallback(() => {
     setTooltipEng(null);
@@ -892,12 +899,72 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                 ))}
               </div>
 
-              <p className="text-xs text-slate-500">
-                💡 Click a shift cell to view cover, skills, gaps and recommended actions.
-              </p>
+              {/* Date navigation */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goToToday}
+                  className="rounded border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-slate-50 hover:bg-white/15"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={prevWeek}
+                  className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+                  aria-label="Previous week"
+                >
+                  ‹
+                </button>
+                <span className="min-w-[150px] text-center text-xs font-semibold text-slate-200">
+                  {weekLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={nextWeek}
+                  className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+                  aria-label="Next week"
+                >
+                  ›
+                </button>
+                <div className="ml-auto flex overflow-hidden rounded border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedView("week")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                      selectedView === "week"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+                    }`}
+                  >
+                    Week
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedView("month")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                      selectedView === "month"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+                    }`}
+                  >
+                    Month
+                  </button>
+                </div>
+              </div>
+
+              {selectedView === "week" && (
+                <p className="text-xs text-slate-500">
+                  💡 Click a shift cell to view cover, skills, gaps and recommended actions.
+                </p>
+              )}
             </div>
 
-            {/* Grid */}
+            {selectedView === "month" ? (
+              <div className="flex items-center justify-center py-16">
+                <p className="text-sm text-slate-500">Month view coming soon</p>
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[780px]">
                 {/* Day headers */}
@@ -972,6 +1039,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                 </div>
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
