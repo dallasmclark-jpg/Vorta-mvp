@@ -24,7 +24,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentDocuments } from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -48,17 +48,6 @@ interface DocRow {
   name: string; category: string; date: string; size: string;
   status: DocStatus; iconBg: string; iconColor: string;
 }
-
-const DOCUMENTS: DocRow[] = [
-  { name: "Operation Manual v4.2",        category: "Manual",      date: "24 Apr 2025", size: "4.2 MB",  status: "Current",    iconBg: "bg-red-500/20",     iconColor: "text-red-400"     },
-  { name: "Electrical Schematic Rev.C",   category: "Schematic",   date: "18 Apr 2025", size: "8.1 MB",  status: "Current",    iconBg: "bg-blue-500/20",    iconColor: "text-blue-400"    },
-  { name: "Safety Certificate ISO-14001", category: "Certificate", date: "12 Apr 2025", size: "1.2 MB",  status: "Expiring",   iconBg: "bg-red-500/20",     iconColor: "text-red-400"     },
-  { name: "Hydraulic Assembly Drawing",   category: "Drawing",     date: "05 Apr 2025", size: "12.4 MB", status: "Current",    iconBg: "bg-orange-500/20",  iconColor: "text-orange-400"  },
-  { name: "PM Procedure — Quarterly",     category: "Procedure",   date: "28 Mar 2025", size: "2.8 MB",  status: "Current",    iconBg: "bg-red-500/20",     iconColor: "text-red-400"     },
-  { name: "Risk Assessment v2.1",         category: "Compliance",  date: "15 Mar 2025", size: "3.1 MB",  status: "Review Due", iconBg: "bg-yellow-500/20",  iconColor: "text-yellow-400"  },
-  { name: "PLC Program Backup",           category: "Other",       date: "10 Mar 2025", size: "18.6 MB", status: "Current",    iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400" },
-  { name: "Calibration Certificate",      category: "Certificate", date: "01 Mar 2025", size: "0.8 MB",  status: "Expired",    iconBg: "bg-red-500/20",     iconColor: "text-red-400"     },
-];
 
 const CATEGORIES = [
   { label: "All Docs",    count: 86, color: "#3b82f6" },
@@ -120,9 +109,28 @@ export const EquipmentDocuments = (): JSX.Element => {
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [search, setSearch] = useState("");
+  const [documents, setDocuments] = useState<DocRow[]>([]);
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEq);
+
+    const serviceDocuments = getEquipmentDocuments(resolvedId).map((document) => ({
+      ...document,
+      iconBg:
+        document.category === "Schematic" ? "bg-blue-500/20" :
+        document.category === "Drawing" ? "bg-orange-500/20" :
+        document.category === "Other" ? "bg-emerald-500/20" :
+        document.status === "Review Due" ? "bg-yellow-500/20" :
+        "bg-red-500/20",
+      iconColor:
+        document.category === "Schematic" ? "text-blue-400" :
+        document.category === "Drawing" ? "text-orange-400" :
+        document.category === "Other" ? "text-emerald-400" :
+        document.status === "Review Due" ? "text-yellow-400" :
+        "text-red-400",
+    }));
+
+    setDocuments(serviceDocuments);
   }, [resolvedId]);
 
   if (!eq) {
@@ -158,7 +166,7 @@ export const EquipmentDocuments = (): JSX.Element => {
     if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
   };
 
-  const filtered = DOCUMENTS.filter(
+  const filtered = documents.filter(
     (d) => d.name.toLowerCase().includes(search.toLowerCase()) ||
            d.category.toLowerCase().includes(search.toLowerCase()),
   );
