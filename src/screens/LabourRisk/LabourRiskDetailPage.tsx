@@ -229,11 +229,11 @@ const KPI_ITEMS = [
 ];
 
 const SHIFT_STATUS_LEGEND = [
-  { label: "Fully Covered", color: "bg-emerald-500" },
-  { label: "Reduced Cover", color: "bg-amber-400" },
-  { label: "Critical Gap", color: "bg-red-500" },
-  { label: "Contractor Cover", color: "bg-blue-500" },
-  { label: "Off Shift", color: "bg-gray-700" },
+  { label: "Fully Covered", color: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" },
+  { label: "Reduced Cover", color: "bg-amber-500/20 border-amber-500/30 text-amber-400" },
+  { label: "Critical Gap", color: "bg-red-500/20 border-red-500/30 text-red-400" },
+  { label: "Contractor Cover", color: "bg-blue-500/20 border-blue-500/30 text-blue-400" },
+  { label: "Off Shift", color: "bg-gray-700/40 border-gray-700 text-slate-500" },
 ];
 
 const RISK_INDICATOR_LEGEND = [
@@ -844,7 +844,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                     <div className="flex flex-wrap gap-3">
                       {SHIFT_STATUS_LEGEND.map((item) => (
                         <div key={item.label} className="flex items-center gap-1.5">
-                          <span className={`inline-flex h-5 min-w-[92px] items-center justify-center rounded border border-transparent px-2 text-[10px] font-semibold text-white ${item.color}`}>
+                          <span className={`inline-flex h-5 min-w-[92px] items-center justify-center rounded border px-2 text-[10px] font-semibold ${item.color}`}>
                             {item.label}
                           </span>
                         </div>
