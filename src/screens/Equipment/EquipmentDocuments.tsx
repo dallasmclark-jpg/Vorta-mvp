@@ -196,6 +196,24 @@ export const EquipmentDocuments = (): JSX.Element => {
       ? `${(totalDocumentSizeMb / 1024).toFixed(2)} GB`
       : `${totalDocumentSizeMb.toFixed(1)} MB`;
 
+  const expiringReviewDocuments = documents
+    .filter((document) => ["Expiring", "Review Due", "Expired"].includes(document.status))
+    .map((document) => ({
+      name: document.name,
+      sub:
+        document.status === "Expired"
+          ? "Expired"
+          : document.status === "Review Due"
+            ? "Review overdue"
+            : "Expires soon",
+      subClass:
+        document.status === "Expired"
+          ? "text-red-400"
+          : document.status === "Review Due"
+            ? "text-orange-400"
+            : "text-yellow-400",
+    }));
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -454,17 +472,21 @@ export const EquipmentDocuments = (): JSX.Element => {
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Expiring / Review Due</h3>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {EXPIRING.map((item) => (
-                  <div key={item.name} className="flex items-start gap-2.5 py-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                      <FileText className="h-3.5 w-3.5 text-slate-400" />
+                {expiringReviewDocuments.length > 0 ? (
+                  expiringReviewDocuments.map((item) => (
+                    <div key={item.name} className="flex items-start gap-2.5 py-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
+                        <FileText className="h-3.5 w-3.5 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-200">{item.name}</p>
+                        <p className={`text-[10px] font-medium ${item.subClass}`}>{item.sub}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-200">{item.name}</p>
-                      <p className={`text-[10px] font-medium ${item.subClass}`}>{item.sub}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-3 text-xs text-slate-500">No expiring or overdue documents.</p>
+                )}
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View All Expiring →
