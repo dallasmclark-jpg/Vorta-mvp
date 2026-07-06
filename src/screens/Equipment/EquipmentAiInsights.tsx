@@ -39,12 +39,6 @@ const TIMELINE_ROWS = [
   { label: "Patterns",        color: "#8b5cf6", dots: [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0] },
 ];
 
-const SIMILAR_EQ = [
-  { id: "PL-04", name: "Palletiser 4", note: "Bearing failed at 13,200 hrs",               noteClass: "text-red-400"    },
-  { id: "PL-07", name: "Palletiser 7", note: "PM schedule reduced failures by 40%",         noteClass: "text-emerald-400"},
-  { id: "PL-01", name: "Palletiser 1", note: "Same vibration pattern 3 weeks before failure",noteClass: "text-orange-400"},
-];
-
 const OPPORTUNITIES = [
   { label: "Spare Network",    saving: "£3,200/yr", desc: "Connect with Palletiser 4 spare pool to reduce stockholding by £3,200/yr.", color: "#10b981" },
   { label: "PM Optimisation",  saving: "£1,800/yr", desc: "AI suggests extending oil change interval from 3 to 4 months based on oil analysis trends.", color: "#3b82f6" },
