@@ -79,32 +79,15 @@ function TrendBars({ bars }: { bars: { month: string; pct: number }[] }) {
 function InsightsTimeline() {
   const months = ["May", "Jul", "Sep", "Nov", "Jan"];
   return (
-    <div className="flex flex-col gap-2 pt-1">
-      {TIMELINE_ROWS.map((row) => (
-        <div key={row.label} className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 w-28 shrink-0">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-            <span className="text-[10px] text-slate-400">{row.label}</span>
-          </div>
-          <div className="flex flex-1 items-center gap-0">
-            {row.dots.map((d, i) => (
-              <div key={i} className="flex flex-1 items-center justify-center">
-                {d ? (
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                ) : (
-                  <span className="h-px w-full" style={{ backgroundColor: "#1e2433" }} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-      <div className="mt-1 flex pl-28">
-        {months.map((m, i) => (
-          <div key={m} className="flex-1 text-center" style={{ marginLeft: i === 0 ? 0 : undefined }}>
-            <span className="text-[9px] text-slate-600">{m}</span>
-          </div>
-        ))}
+    <div className="flex items-center justify-center rounded-lg border border-dashed border-gray-700 bg-[#0f1218] px-6 py-10">
+      <div className="max-w-sm text-center">
+        <h4 className="text-sm font-semibold text-slate-200">
+          Timeline data unavailable
+        </h4>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          Equipment activity, work order history and PM events will populate this
+          timeline once historical operational data has been imported.
+        </p>
       </div>
     </div>
   );
