@@ -75,11 +75,11 @@ const CHAT_MESSAGES = [
 
 // ─── Mini chart components ────────────────────────────────────────────────────
 
-function TrendBars() {
-  const max = 88;
+function TrendBars({ bars }: { bars: { month: string; pct: number }[] }) {
+  const max = Math.max(...bars.map((b) => b.pct), 1);
   return (
     <div className="flex items-end gap-1.5 h-20">
-      {TREND_BARS.map((b) => (
+      {bars.map((b) => (
         <div key={b.month} className="flex flex-1 flex-col items-center gap-1">
           <div className="relative flex w-full flex-col justify-end" style={{ height: "64px" }}>
             <div
@@ -217,6 +217,21 @@ export const EquipmentAiInsights = (): JSX.Element => {
       ? [{ pri: eq.riskLevel === "Critical" ? "HIGH" : "MEDIUM", label: "Monitor equipment risk", when: `${eq.riskLevel} risk`, priClass: eq.riskLevel === "Critical" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400" }]
       : []),
   ];
+
+  const trendBars = [
+    { month: "Now", pct: Math.max(eq.riskScore - 20, 0) },
+    { month: "+1", pct: Math.max(eq.riskScore - 10, 0) },
+    { month: "+2", pct: eq.riskScore },
+    { month: "+3", pct: Math.min(eq.riskScore + 5, 100) },
+    { month: "+4", pct: Math.min(eq.riskScore + 10, 100) },
+    { month: "+5", pct: Math.min(eq.riskScore + 15, 100) },
+  ];
+  const trendMessage =
+    eq.riskLevel === "Critical"
+      ? "Critical risk — immediate intervention recommended"
+      : eq.riskLevel === "High"
+        ? "High risk — intervention recommended"
+        : "Risk stable — continue monitoring";
 
   const handleTabClick = (tabId: string) => {
     const id = eq.id;
@@ -539,10 +554,10 @@ export const EquipmentAiInsights = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-200">Predicted Risk Trend</h3>
-              <TrendBars />
+              <TrendBars bars={trendBars} />
               <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-orange-500/10 px-2.5 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-400" />
-                <span className="text-[11px] text-orange-400">Risk increasing — intervention recommended</span>
+                <span className="text-[11px] text-orange-400">{trendMessage}</span>
               </div>
               <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View Trend Analysis →
