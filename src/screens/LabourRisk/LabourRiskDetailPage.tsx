@@ -985,8 +985,77 @@ const ShiftCoverRiskPage = (): JSX.Element => {
             </div>
 
             {selectedView === "month" ? (
-              <div className="flex items-center justify-center py-16">
-                <p className="text-sm text-slate-500">Month view coming soon</p>
+              <div className="overflow-x-auto">
+                <div className="min-w-[560px]">
+                  <div className="mb-2 grid grid-cols-7 gap-1">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                      <div key={d} className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                  {([
+                    [
+                      { day: 1,  status: "Covered" as const },
+                      { day: 2,  status: "Covered" as const },
+                      { day: 3,  status: "Reduced" as const },
+                      { day: 4,  status: "Covered" as const },
+                      { day: 5,  status: "Gap" as const },
+                      { day: 6,  status: "Off" as const },
+                      { day: 7,  status: "Off" as const },
+                    ],
+                    [
+                      { day: 8,  status: "Covered" as const },
+                      { day: 9,  status: "Contractor" as const },
+                      { day: 10, status: "Covered" as const },
+                      { day: 11, status: "Reduced" as const },
+                      { day: 12, status: "Covered" as const },
+                      { day: 13, status: "Off" as const },
+                      { day: 14, status: "Off" as const },
+                    ],
+                    [
+                      { day: 15, status: "Gap" as const },
+                      { day: 16, status: "Covered" as const },
+                      { day: 17, status: "Contractor" as const },
+                      { day: 18, status: "Covered" as const },
+                      { day: 19, status: "Reduced" as const },
+                      { day: 20, status: "Off" as const },
+                      { day: 21, status: "Off" as const },
+                    ],
+                    [
+                      { day: 22, status: "Covered" as const },
+                      { day: 23, status: "Covered" as const },
+                      { day: 24, status: "Gap" as const },
+                      { day: 25, status: "Contractor" as const },
+                      { day: 26, status: "Covered" as const },
+                      { day: 27, status: "Off" as const },
+                      { day: 28, status: "Off" as const },
+                    ],
+                  ] as Array<Array<{ day: number; status: "Covered" | "Reduced" | "Gap" | "Contractor" | "Off" }>>).map((week, wi) => (
+                    <div key={wi} className="mb-1 grid grid-cols-7 gap-1">
+                      {week.map(({ day, status }) => {
+                        const chipClass: Record<string, string> = {
+                          Covered:    "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+                          Reduced:    "bg-amber-500/20 text-amber-300 border-amber-500/30",
+                          Gap:        "bg-red-500/20 text-red-300 border-red-500/30",
+                          Contractor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+                          Off:        "bg-slate-700/40 text-slate-500 border-slate-600/30",
+                        };
+                        return (
+                          <div
+                            key={day}
+                            className="flex flex-col items-start gap-1 rounded-lg border border-white/5 bg-slate-800/50 p-2"
+                          >
+                            <span className="text-xs font-semibold text-slate-300">{day}</span>
+                            <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${chipClass[status]}`}>
+                              {status}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
             <div className="overflow-x-auto">
