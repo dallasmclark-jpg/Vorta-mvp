@@ -177,6 +177,10 @@ export const EquipmentDocuments = (): JSX.Element => {
     ];
   }, [documents]);
 
+  const criticalDocumentCount = documents.filter((document) =>
+    ["Review Due", "Expiring", "Expired"].includes(document.status),
+  ).length;
+
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
@@ -312,7 +316,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Critical Documents</p>
-              <p className="text-2xl font-bold text-orange-400">12</p>
+              <p className="text-2xl font-bold text-orange-400">{criticalDocumentCount}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">Require review</p>
             </CardContent>
           </Card>
