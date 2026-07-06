@@ -176,6 +176,7 @@ export const EquipmentAiInsights = (): JSX.Element => {
     eq.status === "At Risk" ? "bg-orange-400" : "bg-red-500";
 
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
+  const topRiskFactor = [...eq.riskBreakdown].sort((a, b) => b.pct - a.pct)[0];
 
   const handleTabClick = (tabId: string) => {
     const id = eq.id;
@@ -328,14 +329,14 @@ export const EquipmentAiInsights = (): JSX.Element => {
               <Badge className="mb-2 inline-flex h-auto gap-1 rounded bg-red-500/15 px-2 py-0.5 text-[10px] font-bold shadow-none text-red-400">
                 <AlertTriangle className="h-3 w-3" /> Top Risk
               </Badge>
-              <h3 className="mb-1.5 text-sm font-bold text-slate-50">Bearing Wear</h3>
+              <h3 className="mb-1.5 text-sm font-bold text-slate-50">{topRiskFactor?.label ?? "Risk Factor"}</h3>
               <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
-                High probability of bearing failure based on vibration trend and failure history.
+                Highest current risk driver based on the live equipment risk breakdown.
               </p>
               <div className="mb-3 flex gap-4">
                 <div>
                   <p className="text-[10px] text-slate-500">Failure Probability</p>
-                  <p className="text-xl font-bold text-red-400">86%</p>
+                  <p className="text-xl font-bold text-red-400">{topRiskFactor?.pct ?? eq.riskScore}%</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500">Failure Window</p>
