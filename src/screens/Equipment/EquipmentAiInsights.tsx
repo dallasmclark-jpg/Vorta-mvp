@@ -10,7 +10,10 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
+import {
+  getEquipmentSummary,
+  getCachedEquipmentIdentity,
+} from "./equipmentService";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -153,7 +156,9 @@ export const EquipmentAiInsights = (): JSX.Element => {
   const [messages, setMessages] = useState(CHAT_MESSAGES);
 
   useEffect(() => {
-    getEquipmentIdentityById(resolvedId).then(setEq);
+    getEquipmentSummary(resolvedId).then((summary) => {
+      setEq(summary.equipment);
+    });
   }, [resolvedId]);
 
   if (!eq) {
