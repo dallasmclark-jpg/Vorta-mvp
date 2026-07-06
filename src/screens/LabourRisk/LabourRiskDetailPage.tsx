@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ChevronRight,
@@ -21,6 +21,7 @@ import { Progress } from "../../components/ui/progress";
 type CellStatus = "covered" | "partial" | "gap" | "off" | "contractor";
 type FilterType = "all" | "day" | "night" | "electrical" | "mechanical" | "plc" | "contractors";
 type DrawerMode = "risk-summary" | "shift-cell";
+type ShiftPatternType = "day" | "night" | "off";
 
 interface ScEngineer {
   initials: string;
@@ -101,91 +102,75 @@ const SC_ENGINEERS: Record<string, ScEngineer> = {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-const ROTA_TEAMS: Array<{
+const CONTINENTAL_CYCLE: ShiftPatternType[] = ["day", "day", "night", "night", "off", "off", "off", "off"];
+const SHIFT_REF_DATE = new Date("2024-01-01T00:00:00Z");
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function getWeekMonday(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() + (dow === 0 ? -6 : 1 - dow));
+  return d;
+}
+
+function getShiftType(date: Date, offset: number): ShiftPatternType {
+  const daysSinceRef = Math.floor((date.getTime() - SHIFT_REF_DATE.getTime()) / MS_PER_DAY);
+  const cycleIndex = ((daysSinceRef + offset) % 8 + 8) % 8;
+  return CONTINENTAL_CYCLE[cycleIndex];
+}
+
+interface TeamConfig {
   id: string;
   label: string;
   shiftClass: string;
-  day: (RotaCell | null)[];
-  night: (RotaCell | null)[];
-}> = [
+  type: "continental" | "days";
+  offset: number;
+  dayEngineers: string[];
+  nightEngineers: string[];
+}
+
+const TEAM_CONFIGS: TeamConfig[] = [
   {
-    id: "team-a", label: "Yellow Shift", shiftClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-    day: [
-      { status: "covered", engineers: ["JH", "SM"] },
-      { status: "covered", engineers: ["JH", "SM"] },
-      null, null, null, null, null,
-    ],
-    night: [
-      null, null,
-      { status: "covered", engineers: ["PK", "LD"] },
-      { status: "partial", engineers: ["PK", "LD"], dotColor: "amber" },
-      null, null, null,
-    ],
+    id: "team-a", label: "Yellow Shift",
+    shiftClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    type: "continental", offset: 0,
+    dayEngineers: ["JH", "SM"], nightEngineers: ["PK", "LD"],
   },
   {
-    id: "team-b", label: "Red Shift", shiftClass: "bg-red-500/20 text-red-300 border-red-500/30",
-    day: [
-      null, null,
-      { status: "covered", engineers: ["DF", "BT"] },
-      { status: "covered", engineers: ["DF", "BT"] },
-      null, null, null,
-    ],
-    night: [
-      null,
-      { status: "partial", engineers: ["SM", "JH", "TO"], dotColor: "amber", detailKey: "team-b-Tue-night" },
-      null, null,
-      { status: "gap", engineers: [], dotColor: "red", detailKey: "team-b-Fri-night" },
-      { status: "gap", engineers: [], dotColor: "red" },
-      null,
-    ],
+    id: "team-b", label: "Red Shift",
+    shiftClass: "bg-red-500/20 text-red-300 border-red-500/30",
+    type: "continental", offset: 2,
+    dayEngineers: ["DF", "BT"], nightEngineers: ["SM", "JH", "TO"],
   },
   {
-    id: "team-c", label: "Green Shift", shiftClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-    day: [
-      null, null, null,
-      { status: "covered", engineers: ["PK", "AM"] },
-      { status: "covered", engineers: ["PK", "AM"] },
-      null, null,
-    ],
-    night: [
-      { status: "covered", engineers: ["SM", "LD"], dotColor: "purple" },
-      null, null, null, null,
-      { status: "partial", engineers: ["SM"], dotColor: "amber" },
-      null,
-    ],
+    id: "team-c", label: "Green Shift",
+    shiftClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    type: "continental", offset: 4,
+    dayEngineers: ["PK", "AM"], nightEngineers: ["SM", "LD"],
   },
   {
-    id: "team-d", label: "Blue Shift", shiftClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-    day: [
-      { status: "covered", engineers: ["EP", "AM"] },
-      null, null, null, null, null,
-      { status: "covered", engineers: ["EP", "AM"] },
-    ],
-    night: [
-      null,
-      { status: "covered", engineers: ["EP", "AM"] },
-      { status: "covered", engineers: ["EP", "AM"] },
-      null,
-      { status: "contractor", engineers: ["CONT"], dotColor: "blue" },
-      null, null,
-    ],
+    id: "team-d", label: "Blue Shift",
+    shiftClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    type: "continental", offset: 6,
+    dayEngineers: ["EP", "AM"], nightEngineers: ["EP", "AM"],
   },
   {
-    id: "team-e", label: "Days", shiftClass: "bg-slate-500/20 text-slate-300 border-slate-500/30",
-    day: [
-      null, null,
-      { status: "covered", engineers: ["CW", "LD"] },
-      { status: "covered", engineers: ["CW", "LD"] },
-      null, null, null,
-    ],
-    night: [
-      null, null, null, null,
-      { status: "partial", engineers: ["CW", "LD"], dotColor: "blue", detailKey: "team-e-Fri-night" },
-      { status: "covered", engineers: ["CW", "LD"] },
-      null,
-    ],
+    id: "team-e", label: "Days",
+    shiftClass: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+    type: "days", offset: 0,
+    dayEngineers: ["CW", "LD"], nightEngineers: [],
   },
 ];
+
+const ROTA_OVERLAYS: Record<string, { status?: CellStatus; dotColor?: RotaCell["dotColor"]; engineers?: string[]; detailKey?: string }> = {
+  "Red Shift-Tue-night":   { status: "partial",    dotColor: "amber",  detailKey: "team-b-Tue-night" },
+  "Red Shift-Fri-night":   { status: "gap",         dotColor: "red",    engineers: [], detailKey: "team-b-Fri-night" },
+  "Red Shift-Sat-night":   { status: "gap",         dotColor: "red",    engineers: [] },
+  "Green Shift-Mon-night": { dotColor: "purple" },
+  "Green Shift-Sat-night": { status: "partial",    dotColor: "amber",  engineers: ["SM"] },
+  "Blue Shift-Fri-night":  { status: "contractor", dotColor: "blue",   engineers: ["CONT"] },
+};
 
 const CELL_DETAILS: Record<string, ShiftCellDetail> = {
   "team-b-Tue-night": {
@@ -635,6 +620,45 @@ const ShiftCoverRiskPage = (): JSX.Element => {
   const prevWeek = () => setSelectedDate((d) => new Date(d.getTime() - 7 * 24 * 60 * 60 * 1000));
   const nextWeek = () => setSelectedDate((d) => new Date(d.getTime() + 7 * 24 * 60 * 60 * 1000));
 
+  const rotaTeams = useMemo(() => {
+    const monday = getWeekMonday(selectedDate);
+    return TEAM_CONFIGS.map((team) => {
+      const day: (RotaCell | null)[] = [];
+      const night: (RotaCell | null)[] = [];
+      for (let di = 0; di < 7; di++) {
+        const date = new Date(monday.getTime() + di * MS_PER_DAY);
+        const dayLabel = DAYS[di];
+        const shiftType: ShiftPatternType =
+          team.type === "days"
+            ? di < 5 ? "day" : "off"
+            : getShiftType(date, team.offset);
+        if (shiftType === "day") {
+          const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-day`];
+          day.push({
+            status: ov?.status ?? "covered",
+            engineers: ov?.engineers ?? team.dayEngineers,
+            dotColor: ov?.dotColor,
+            detailKey: ov?.detailKey,
+          });
+        } else {
+          day.push(null);
+        }
+        if (shiftType === "night") {
+          const ov = ROTA_OVERLAYS[`${team.label}-${dayLabel}-night`];
+          night.push({
+            status: ov?.status ?? "covered",
+            engineers: ov?.engineers ?? team.nightEngineers,
+            dotColor: ov?.dotColor,
+            detailKey: ov?.detailKey,
+          });
+        } else {
+          night.push(null);
+        }
+      }
+      return { id: team.id, label: team.label, shiftClass: team.shiftClass, day, night };
+    });
+  }, [selectedDate]);
+
   const openRiskSummary = useCallback(() => {
     setTooltipEng(null);
     setDrawerMode("risk-summary");
@@ -647,7 +671,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
       if (args.detailKey && CELL_DETAILS[args.detailKey]) {
         setCellDetail(CELL_DETAILS[args.detailKey]);
       } else {
-        const team = ROTA_TEAMS.find((t) => t.id === args.teamId);
+        const team = rotaTeams.find((t) => t.id === args.teamId);
         if (!team) return;
         const cell = args.shiftType === "Day" ? team.day[args.dayIndex] : team.night[args.dayIndex];
         if (!cell) return;
@@ -682,7 +706,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
       }
       setDrawerMode("shift-cell");
     },
-    [],
+    [rotaTeams],
   );
 
   const handleEngineerClick = useCallback((eng: ScEngineer, e: React.MouseEvent) => {
@@ -984,7 +1008,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
 
                 {/* Team rows */}
                 <div className="flex flex-col gap-0.5">
-                  {ROTA_TEAMS.map((team, teamIdx) => (
+                  {rotaTeams.map((team, teamIdx) => (
                     <div key={team.id}>
                       {showDay && (
                         <div
@@ -1031,7 +1055,7 @@ const ShiftCoverRiskPage = (): JSX.Element => {
                           ))}
                         </div>
                       )}
-                      {teamIdx < ROTA_TEAMS.length - 1 && (
+                      {teamIdx < rotaTeams.length - 1 && (
                         <div className="my-2 border-b border-gray-800/60" />
                       )}
                     </div>
