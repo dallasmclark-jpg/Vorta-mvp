@@ -32,15 +32,6 @@ const TABS = [
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const TREND_BARS = [
-  { month: "Jan", pct: 30 },
-  { month: "Feb", pct: 35 },
-  { month: "Mar", pct: 45 },
-  { month: "Apr", pct: 48 },
-  { month: "May", pct: 72 },
-  { month: "Jun", pct: 88 },
-];
-
 const TIMELINE_ROWS = [
   { label: "Failures",        color: "#ef4444", dots: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1] },
   { label: "Warnings",        color: "#eab308", dots: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1] },
