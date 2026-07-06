@@ -49,12 +49,6 @@ interface DocRow {
   status: DocStatus; iconBg: string; iconColor: string;
 }
 
-const EXPIRING = [
-  { name: "Safety Certificate ISO-14001", sub: "Expires in 14 days",  subClass: "text-orange-400" },
-  { name: "Risk Assessment v2.1",         sub: "Review overdue",       subClass: "text-red-400"    },
-  { name: "Calibration Certificate",      sub: "Expired",              subClass: "text-red-400"    },
-  { name: "Compliance Audit Report",      sub: "Expires in 26 days",   subClass: "text-yellow-400" },
-];
 
 const PINNED = [
   { name: "Operation Manual v4.2",      meta: "PDF • 4.2 MB",  iconBg: "bg-red-500/20",   iconColor: "text-red-400"   },
