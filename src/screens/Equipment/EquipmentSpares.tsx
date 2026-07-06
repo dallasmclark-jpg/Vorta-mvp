@@ -112,7 +112,6 @@ export const EquipmentSpares = (): JSX.Element => {
   const loadEquipmentSpares = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
-    setHasLoadedComponents((alreadyLoaded) => alreadyLoaded);
     try {
       const [identity, componentResult] = await Promise.all([
         getEquipmentIdentityById(resolvedId),
