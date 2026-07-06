@@ -589,24 +589,22 @@ export const EquipmentAiInsights = (): JSX.Element => {
                 <h3 className="text-sm font-semibold text-slate-200">AI Opportunity Analysis</h3>
               </div>
               <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {OPPORTUNITIES.map((opp) => (
-                  <div key={opp.label} className="flex items-start gap-3 py-3">
-                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                      style={{ backgroundColor: `${opp.color}20` }}>
-                      <span className="text-[10px] font-bold" style={{ color: opp.color }}>£</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-200">{opp.label}</span>
-                        <Badge className="h-auto rounded px-1.5 py-0 text-[9px] font-bold shadow-none"
-                          style={{ backgroundColor: `${opp.color}20`, color: opp.color }}>
-                          {opp.saving}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-slate-500">{opp.desc}</p>
-                    </div>
+                <div className="flex items-start gap-3 py-3">
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-500/20">
+                    <Lightbulb className="h-3.5 w-3.5 text-blue-400" />
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-200">Opportunity analysis unavailable</span>
+                      <Badge className="h-auto rounded px-1.5 py-0 text-[9px] font-bold shadow-none bg-blue-500/20 text-blue-400">
+                        Pending data
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      Savings opportunities will appear once enough verified maintenance, spares, energy and fleet data exists for this equipment.
+                    </p>
+                  </div>
+                </div>
               </div>
               <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 View All Opportunities →
