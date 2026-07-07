@@ -379,6 +379,47 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
   };
 }
 
+export interface EquipmentRiskExplanation {
+  equipmentId: string;
+  driver: string;
+  driverScore: number;
+  driverPct: number;
+  evidence: string | null;
+  recommendedAction: string | null;
+  estimatedReduction: number;
+}
+
+export async function getEquipmentRiskExplanations(equipmentId: string): Promise<EquipmentRiskExplanation[]> {
+  const { data, error } = await supabase
+    .from("equipment_risk_explanations")
+    .select(`
+      equipment_id,
+      driver,
+      driver_score,
+      driver_pct,
+      evidence,
+      recommended_action,
+      estimated_reduction
+    `)
+    .eq("equipment_id", equipmentId)
+    .order("driver_pct", { ascending: false });
+
+  if (error || !data) {
+    if (error) console.warn("equipment_risk_explanations fetch failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    equipmentId: row.equipment_id,
+    driver: row.driver,
+    driverScore: row.driver_score ?? 0,
+    driverPct: row.driver_pct ?? 0,
+    evidence: row.evidence ?? null,
+    recommendedAction: row.recommended_action ?? null,
+    estimatedReduction: row.estimated_reduction ?? 0,
+  }));
+}
+
 export interface AreaRiskProfile {
   area: string;
   riskScore: number;

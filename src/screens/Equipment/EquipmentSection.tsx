@@ -13,8 +13,8 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-import { getEquipmentList, resolveBuilding } from "./equipmentService";
-import type { EquipmentListItem } from "./equipmentService";
+import { getEquipmentList, getEquipmentRiskExplanations, resolveBuilding } from "./equipmentService";
+import type { EquipmentListItem, EquipmentRiskExplanation } from "./equipmentService";
 
 // ─── Local display-only constants ────────────────────────────────────────────
 
@@ -127,6 +127,12 @@ function RiskSparkline() {
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
+  const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
+
+  useEffect(() => {
+    getEquipmentRiskExplanations(item.id).then(setExplanations);
+  }, [item.id]);
+
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -217,6 +223,40 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
           </div>
         </div>
 
+      </div>
+
+      {/* Why this risk? */}
+      <div className="mt-5 border-t border-gray-800 pt-4">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
+        {explanations.length === 0 ? (
+          <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {explanations.slice(0, 5).map((exp) => (
+              <div key={exp.driver} className="rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-200">
+                    {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-slate-500">
+                    Score: {exp.driverScore}
+                  </span>
+                </div>
+                {exp.evidence && (
+                  <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
+                )}
+                {exp.recommendedAction && (
+                  <p className="mt-1 text-xs text-slate-300">
+                    <span className="text-slate-500">Action: </span>{exp.recommendedAction}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-emerald-500">
+                  Estimated reduction: {exp.estimatedReduction > 0 ? `-${exp.estimatedReduction}` : exp.estimatedReduction}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
