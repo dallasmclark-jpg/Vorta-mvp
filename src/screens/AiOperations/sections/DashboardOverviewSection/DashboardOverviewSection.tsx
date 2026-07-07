@@ -6,6 +6,7 @@ import {
   Clock,
   RefreshCw,
   UserCircle,
+  ChevronDown,
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -185,6 +186,7 @@ const downtimeImpact = [
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
   const [buildingCards, setBuildingCards] = useState<BuildingGroupStats[]>(MOCK_BUILDING_STATS);
+  const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
 
   useEffect(() => {
     getBuildingGroupStats().then(setBuildingCards);
@@ -283,85 +285,116 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
             </div>
 
-            {/* Three columns */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-
-              {/* Current Risk Drivers */}
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Risk Drivers</h3>
-                <ul className="flex flex-col gap-2">
-                  {[
-                    "Building 2 PM backlog increased by 6%",
-                    "Case Packer 4 remains highest asset risk",
-                    "Utilities calibration backlog rising",
-                    "Night shift PLC cover gap identified",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" aria-hidden="true" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+            {/* Priority action summary */}
+            <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+                  Priority Action
+                </p>
+                <p className="text-sm font-semibold leading-snug text-slate-50">
+                  Reallocate John Jones to Case Packer 4 before midday
+                </p>
               </div>
 
-              {/* Risk Impact */}
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Risk Impact</h3>
-                <ul className="flex flex-col gap-2">
-                  {[
-                    "Increased chance of repeat downtime on Case Packer 4",
-                    "Reduced technical cover overnight",
-                    "Compliance exposure increasing in Utilities",
-                    "Maintenance backlog pressure rising before weekend",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
+                <Badge className="rounded bg-[#10b98120] px-2 py-1 text-xs font-medium text-emerald-500 hover:bg-[#10b98120]">
+                  94% Confidence
+                </Badge>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-auto rounded-lg border border-solid border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-xs font-semibold text-slate-50 hover:bg-[#ffffff24]"
+                >
+                  View Action Queue
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsRiskDetailOpen((open) => !open)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-50"
+                >
+                  {isRiskDetailOpen ? "Hide risk detail" : "View risk detail"}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      isRiskDetailOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
-
-              {/* Recommended Focus */}
-              <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-orange-400">Recommended Focus</h3>
-
-                {/* Priority action */}
-                <div className="flex flex-col gap-1.5 rounded-md border border-orange-500/30 bg-orange-500/10 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">Priority Action</p>
-                  <p className="text-sm font-semibold leading-snug text-slate-50">
-                    Reallocate John Jones to Case Packer 4 before midday
-                  </p>
-                </div>
-
-                {/* Secondary actions */}
-                <ul className="flex flex-col gap-2">
-                  {[
-                    "Review Utilities calibration backlog",
-                    "Arrange PLC night shift cover before 18:00",
-                  ].map((action) => (
-                    <li key={action} className="flex items-start gap-2 text-xs text-slate-400">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500" aria-hidden="true" />
-                      {action}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-auto flex items-center gap-3 pt-1">
-                  <Badge className="rounded bg-[#10b98120] px-2 py-1 text-xs font-medium text-emerald-500 hover:bg-[#10b98120]">
-                    94% Confidence
-                  </Badge>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="h-auto flex-1 rounded-lg border border-solid border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-xs font-semibold text-slate-50 hover:bg-[#ffffff24]"
-                  >
-                    View Action Queue
-                  </Button>
-                </div>
-              </div>
-
             </div>
+
+            {/* Expandable risk detail drawer */}
+            {isRiskDetailOpen && (
+              <div className="border-t border-gray-800 pt-4">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Current Risk Drivers
+                    </h3>
+                    <ul className="flex flex-col gap-2">
+                      {[
+                        "Building 2 PM backlog increased by 6%",
+                        "Case Packer 4 remains highest asset risk",
+                        "Utilities calibration backlog rising",
+                        "Night shift PLC cover gap identified",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
+                          <span
+                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500"
+                            aria-hidden="true"
+                          />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Risk Impact
+                    </h3>
+                    <ul className="flex flex-col gap-2">
+                      {[
+                        "Increased chance of repeat downtime on Case Packer 4",
+                        "Reduced technical cover overnight",
+                        "Compliance exposure increasing in Utilities",
+                        "Maintenance backlog pressure rising before weekend",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
+                          <span
+                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
+                            aria-hidden="true"
+                          />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-[#0d1117] p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Secondary Focus
+                    </h3>
+                    <ul className="flex flex-col gap-2">
+                      {[
+                        "Review Utilities calibration backlog",
+                        "Arrange PLC night shift cover before 18:00",
+                      ].map((action) => (
+                        <li key={action} className="flex items-start gap-2 text-xs text-slate-400">
+                          <span
+                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500"
+                            aria-hidden="true"
+                          />
+                          {action}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -451,7 +484,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <h2 className="text-base font-semibold text-slate-50">Labour Risk</h2>
           <button
             type="button"
-            onClick={() => navigate("/maintenance/labour-risk")}
+            onClick={() => navigate("/maintenance/labour-risk/shift-cover")}
             className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
           >
             View all labour risks →
