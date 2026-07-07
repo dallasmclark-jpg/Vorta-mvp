@@ -170,6 +170,25 @@ const MOCK_AI_INSIGHTS: AiInsight[] = [
 
 // ─── equipment_assets row shape (matches DB columns) ─────────────────────────
 
+interface EquipmentRiskProfileRow {
+  risk_score: number | null;
+  risk_level: Equipment["riskLevel"] | null;
+  breakdowns_pct: number | null;
+  pm_backlog_pct: number | null;
+  asset_criticality_pct: number | null;
+  calibration_pct: number | null;
+  skills_pct: number | null;
+  spares_pct: number | null;
+  calibration_overdue_count: number | null;
+  overdue_pm_count: number | null;
+  open_work_order_count: number | null;
+  repeat_breakdown_count: number | null;
+  single_point_skill_gap: boolean | null;
+  critical_spares_missing: number | null;
+  risk_summary: string | null;
+  priority_action: string | null;
+}
+
 interface EquipmentAssetRow {
   id: string;
   equipment_code: string | null;
@@ -181,6 +200,25 @@ interface EquipmentAssetRow {
   criticality: string | null;
   status: string | null;
   image_url: string | null;
+  equipment_risk_profiles?: EquipmentRiskProfileRow[] | EquipmentRiskProfileRow | null;
+}
+
+function getRiskProfile(row: EquipmentAssetRow): EquipmentRiskProfileRow | null {
+  const profile = row.equipment_risk_profiles;
+  if (Array.isArray(profile)) return profile[0] ?? null;
+  return profile ?? null;
+}
+
+function riskBreakdownFromProfile(profile: EquipmentRiskProfileRow): Equipment["riskBreakdown"] {
+  const items: Equipment["riskBreakdown"] = [
+    { label: "Breakdowns",       pct: profile.breakdowns_pct         ?? 0, color: "#ef4444", dotClass: "bg-red-500"    },
+    { label: "PM Backlog",       pct: profile.pm_backlog_pct          ?? 0, color: "#f97316", dotClass: "bg-orange-500" },
+    { label: "Asset Criticality",pct: profile.asset_criticality_pct   ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
+    { label: "Calibration",      pct: profile.calibration_pct         ?? 0, color: "#06b6d4", dotClass: "bg-cyan-400"   },
+    { label: "Skills",           pct: profile.skills_pct              ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",           pct: profile.spares_pct              ?? 0, color: "#6366f1", dotClass: "bg-indigo-500" },
+  ];
+  return items.filter((item) => item.pct > 0);
 }
 
 // Maps a DB criticality value to a risk level + derived score.
@@ -316,7 +354,10 @@ const MOCK_LIST: EquipmentListItem[] = [
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
-  const { riskLevel, riskScore } = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
+  const fallback = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
+  const profile  = getRiskProfile(row);
+  const riskLevel = profile?.risk_level ?? fallback.riskLevel;
+  const riskScore = profile?.risk_score ?? fallback.riskScore;
   return {
     id:          row.id,
     name:        row.name,
@@ -325,12 +366,9 @@ function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
     area:        row.area ?? "—",
     riskScore,
     riskLevel,
-    breakdown:   riskBreakdownFor(
-      riskLevel,
-      row.name,
-      row.equipment_type,
-      row.equipment_code,
-    ),
+    breakdown: profile
+      ? riskBreakdownFromProfile(profile)
+      : riskBreakdownFor(riskLevel, row.name, row.equipment_type, row.equipment_code),
   };
 }
 
@@ -353,7 +391,10 @@ function resolveEquipmentDisplayImage(row: EquipmentAssetRow): string {
 }
 
 function rowToEquipment(row: EquipmentAssetRow): Equipment {
-  const { riskLevel, riskScore } = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
+  const fallback  = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
+  const profile   = getRiskProfile(row);
+  const riskLevel = profile?.risk_level ?? fallback.riskLevel;
+  const riskScore = profile?.risk_score ?? fallback.riskScore;
   return {
     id:           row.id,
     name:         row.name,
@@ -367,16 +408,13 @@ function rowToEquipment(row: EquipmentAssetRow): Equipment {
     warranty:     "—",
     criticality:  row.criticality ?? "—",
     status:       (row.status as Equipment["status"]) ?? "Running",
-    statusNote:   "",
+    statusNote:   profile?.risk_summary ?? "",
     image:        resolveEquipmentDisplayImage(row),
     riskScore,
     riskLevel,
-    riskBreakdown: riskBreakdownFor(
-      riskLevel,
-      row.name,
-      row.equipment_type,
-      row.equipment_code,
-    ),
+    riskBreakdown: profile
+      ? riskBreakdownFromProfile(profile)
+      : riskBreakdownFor(riskLevel, row.name, row.equipment_type, row.equipment_code),
   };
 }
 
@@ -393,7 +431,36 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
   try {
     const { data, error } = await supabase
       .from("equipment_assets")
-      .select("id, equipment_code, name, equipment_type, area, oem, model, criticality, status, image_url")
+      .select(`
+        id,
+        equipment_code,
+        name,
+        equipment_type,
+        area,
+        oem,
+        model,
+        criticality,
+        status,
+        image_url,
+        equipment_risk_profiles (
+          risk_score,
+          risk_level,
+          breakdowns_pct,
+          pm_backlog_pct,
+          asset_criticality_pct,
+          calibration_pct,
+          skills_pct,
+          spares_pct,
+          calibration_overdue_count,
+          overdue_pm_count,
+          open_work_order_count,
+          repeat_breakdown_count,
+          single_point_skill_gap,
+          critical_spares_missing,
+          risk_summary,
+          priority_action
+        )
+      `)
       .eq("id", id)
       .maybeSingle();
 
@@ -414,7 +481,36 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
 export async function getEquipmentList(): Promise<EquipmentListItem[]> {
   const { data, error } = await supabase
     .from("equipment_assets")
-    .select("id, equipment_code, name, equipment_type, area, oem, model, criticality, status, image_url")
+    .select(`
+      id,
+      equipment_code,
+      name,
+      equipment_type,
+      area,
+      oem,
+      model,
+      criticality,
+      status,
+      image_url,
+      equipment_risk_profiles (
+        risk_score,
+        risk_level,
+        breakdowns_pct,
+        pm_backlog_pct,
+        asset_criticality_pct,
+        calibration_pct,
+        skills_pct,
+        spares_pct,
+        calibration_overdue_count,
+        overdue_pm_count,
+        open_work_order_count,
+        repeat_breakdown_count,
+        single_point_skill_gap,
+        critical_spares_missing,
+        risk_summary,
+        priority_action
+      )
+    `)
     .order("name");
 
   if (error || !data || data.length === 0) {
