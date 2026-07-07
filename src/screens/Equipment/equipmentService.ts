@@ -228,20 +228,20 @@ function riskBreakdownFor(riskLevel: Equipment["riskLevel"]): Equipment["riskBre
   ];
   if (riskLevel === "High") return [
     { label: "PM Backlog",  pct: 42, color: "#f97316", dotClass: "bg-orange-400" },
-    { label: "Criticality", pct: 28, color: "#ef4444", dotClass: "bg-red-500" },
+    { label: "Asset Criticality", pct: 28, color: "#ef4444", dotClass: "bg-red-500" },
     { label: "Skills",      pct: 18, color: "#eab308", dotClass: "bg-yellow-400" },
     { label: "Spares",      pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
   if (riskLevel === "Low") return [
     { label: "PM Backlog",  pct: 35, color: "#84cc16",  dotClass: "bg-lime-500" },
-    { label: "Criticality", pct: 25, color: "#22c55e",  dotClass: "bg-emerald-500" },
+    { label: "Asset Criticality", pct: 25, color: "#22c55e",  dotClass: "bg-emerald-500" },
     { label: "Skills",      pct: 25, color: "#eab308",  dotClass: "bg-yellow-400" },
     { label: "Spares",      pct: 15, color: "#6366f1",  dotClass: "bg-indigo-500" },
   ];
   // Medium (default) and Minimal
   return [
     { label: "PM Backlog",  pct: 40, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Criticality", pct: 25, color: "#f97316", dotClass: "bg-orange-400" },
+    { label: "Asset Criticality", pct: 25, color: "#f97316", dotClass: "bg-orange-400" },
     { label: "Skills",      pct: 20, color: "#84cc16", dotClass: "bg-lime-500" },
     { label: "Spares",      pct: 15, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
