@@ -12,9 +12,8 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import {
-  getBuildingGroupStats,
-  type BuildingGroupStats,
-  MOCK_BUILDING_STATS,
+  getAreaRiskProfiles,
+  type AreaRiskProfile,
 } from "../../../Equipment/equipmentService";
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
@@ -40,14 +39,6 @@ const RiskMeter = ({
 );
 
 // ─── Building static display config ──────────────────────────────────────────
-
-const BUILDING_STATIC: Record<string, { driver: string; trend: string }> = {
-  B1: { driver: "Skills Gap",        trend: "Stable" },
-  B2: { driver: "PM Backlog",        trend: "New highest risk" },
-  BU: { driver: "Calibration Due",   trend: "Stable" },
-  BW: { driver: "Equipment Failure", trend: "Risk reduced" },
-  BP: { driver: "Compliance Risk",   trend: "Stable" },
-};
 
 const labourRiskItems = [
   {
@@ -185,11 +176,11 @@ const downtimeImpact = [
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
-  const [buildingCards, setBuildingCards] = useState<BuildingGroupStats[]>(MOCK_BUILDING_STATS);
+  const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
 
   useEffect(() => {
-    getBuildingGroupStats().then(setBuildingCards);
+    getAreaRiskProfiles().then(setAreaRiskCards);
   }, []);
 
   const handleAssetClick = (id: string) => {
@@ -412,69 +403,96 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {[...buildingCards].sort((a, b) => b.highestRiskScore - a.highestRiskScore).slice(0, 4).map((stats) => {
-            const staticInfo = BUILDING_STATIC[stats.code] ?? { driver: "—", trend: "—" };
-            const isB2 = stats.code === "B2";
-            const riskLabel =
-              stats.highestRiskScore >= 81 ? "Critical" :
-              stats.highestRiskScore >= 61 ? "High" :
-              stats.highestRiskScore >= 41 ? "Medium" :
-              stats.highestRiskScore >= 21 ? "Low" :
-              "Minimal";
+          {areaRiskCards.slice(0, 4).map((area) => {
+            const riskLabel = area.riskLevel;
+            const isHighestRisk = areaRiskCards[0]?.area === area.area;
+
             const badgeClass =
-              stats.highestRiskScore >= 81 ? "bg-red-500/20 text-red-400" :
-              stats.highestRiskScore >= 61 ? "bg-orange-500/20 text-orange-400" :
-              stats.highestRiskScore >= 41 ? "bg-yellow-500/20 text-yellow-400" :
-              stats.highestRiskScore >= 21 ? "bg-green-500/20 text-green-400" :
+              area.riskScore >= 85 ? "bg-red-500/20 text-red-400" :
+              area.riskScore >= 65 ? "bg-orange-500/20 text-orange-400" :
+              area.riskScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+              area.riskScore >= 20 ? "bg-green-500/20 text-green-400" :
               "bg-cyan-500/20 text-cyan-400";
+
             const progressClass =
-              stats.highestRiskScore >= 81 ? "bg-red-500" :
-              stats.highestRiskScore >= 61 ? "bg-orange-500" :
-              stats.highestRiskScore >= 41 ? "bg-yellow-400" :
-              stats.highestRiskScore >= 21 ? "bg-emerald-500" :
+              area.riskScore >= 85 ? "bg-red-500" :
+              area.riskScore >= 65 ? "bg-orange-500" :
+              area.riskScore >= 40 ? "bg-yellow-400" :
+              area.riskScore >= 20 ? "bg-emerald-500" :
               "bg-cyan-400";
+
+            const driver =
+              area.calibrationOverdueCount > 0 ? "Calibration backlog" :
+              area.overduePmCount > 0 ? "PM backlog" :
+              area.criticalSparesMissing > 0 ? "Critical spares" :
+              area.singlePointSkillGapCount > 0 ? "Skills coverage" :
+              "Stable leading indicators";
+
+            const trend =
+              isHighestRisk ? "Highest site area risk" :
+              area.riskScore >= 65 ? "Elevated risk" :
+              area.riskScore >= 40 ? "Monitor closely" :
+              "Stable";
+
             return (
               <Card
-                key={stats.code}
-                onClick={() => navigate(`/equipment?building=${stats.code}`)}
-                className={`rounded-xl border bg-[#141820] shadow-none transition-colors cursor-pointer hover:bg-[#181e2a] ${
-                  isB2
+                key={area.area}
+                onClick={() => navigate(`/equipment?area=${encodeURIComponent(area.area)}`)}
+                className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] ${
+                  isHighestRisk
                     ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
                     : "border-gray-800 hover:border-gray-700"
                 }`}
               >
                 <CardContent className="flex h-full flex-col items-start gap-3 p-4">
                   <div className="flex w-full items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-slate-50">{stats.label}</h3>
+                    <h3 className="text-sm font-semibold text-slate-50">{area.area}</h3>
                     <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${badgeClass}`}>
                       {riskLabel}
                     </span>
                   </div>
+
                   <p className="min-h-9 self-stretch text-xs text-slate-400">
-                    {staticInfo.driver}
+                    {driver}
                   </p>
+
                   <div className="flex w-full flex-col gap-1">
-                    <p className="text-xs text-slate-400">Overall risk score</p>
-                    <p className="text-xl font-semibold text-slate-50">{stats.highestRiskScore || "—"}</p>
+                    <p className="text-xs text-slate-400">Area risk score</p>
+                    <p className="text-xl font-semibold text-slate-50">{area.riskScore || "—"}</p>
                   </div>
+
                   <dl className="flex w-full flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="text-sm text-slate-400">Overdue PMs</dt>
-                      <dd className="text-sm font-semibold text-slate-50">{stats.overduePms}</dd>
+                      <dt className="text-sm text-slate-400">Highest asset</dt>
+                      <dd className="text-right text-sm font-semibold text-slate-50">
+                        {area.highestAssetName ?? "—"}
+                      </dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="text-sm text-slate-400">Critical assets</dt>
-                      <dd className="text-sm font-semibold text-slate-50">{stats.criticalCount}</dd>
+                      <dt className="text-sm text-slate-400">Overdue PMs</dt>
+                      <dd className="text-sm font-semibold text-slate-50">{area.overduePmCount}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-sm text-slate-400">Calibration backlog</dt>
+                      <dd className="text-sm font-semibold text-slate-50">{area.calibrationOverdueCount}</dd>
                     </div>
                   </dl>
-                  <div className="flex w-full flex-col gap-1.5">
-                    <RiskMeter value={stats.highestRiskScore} fillClassName={progressClass} />
-                    <p className="text-xs text-slate-400">{staticInfo.trend}</p>
+
+                  <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
+                    <RiskMeter value={area.riskScore} fillClassName={progressClass} />
+                    <p className="text-xs text-slate-400">{trend}</p>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
+          {areaRiskCards.length === 0 && (
+            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-4 text-sm text-slate-400">
+                Area risk data is not available yet.
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 

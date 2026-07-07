@@ -314,6 +314,67 @@ function riskBreakdownFor(
 
 // ─── EquipmentListItem — UI shape for the equipment list page ────────────────
 
+export interface AreaRiskProfile {
+  area: string;
+  riskScore: number;
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  assetCount: number;
+  criticalAssetCount: number;
+  highAssetCount: number;
+  highestAssetName: string | null;
+  highestAssetScore: number | null;
+  overduePmCount: number;
+  calibrationOverdueCount: number;
+  criticalSparesMissing: number;
+  singlePointSkillGapCount: number;
+  riskSummary: string | null;
+  priorityAction: string | null;
+}
+
+export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
+  const { data, error } = await supabase
+    .from("area_risk_profiles")
+    .select(`
+      area,
+      risk_score,
+      risk_level,
+      asset_count,
+      critical_asset_count,
+      high_asset_count,
+      highest_asset_name,
+      highest_asset_score,
+      overdue_pm_count,
+      calibration_overdue_count,
+      critical_spares_missing,
+      single_point_skill_gap_count,
+      risk_summary,
+      priority_action
+    `)
+    .order("risk_score", { ascending: false });
+
+  if (error || !data) {
+    if (error) console.warn("area_risk_profiles fetch failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    area: row.area,
+    riskScore: row.risk_score ?? 0,
+    riskLevel: row.risk_level ?? "Minimal",
+    assetCount: row.asset_count ?? 0,
+    criticalAssetCount: row.critical_asset_count ?? 0,
+    highAssetCount: row.high_asset_count ?? 0,
+    highestAssetName: row.highest_asset_name ?? null,
+    highestAssetScore: row.highest_asset_score ?? null,
+    overduePmCount: row.overdue_pm_count ?? 0,
+    calibrationOverdueCount: row.calibration_overdue_count ?? 0,
+    criticalSparesMissing: row.critical_spares_missing ?? 0,
+    singlePointSkillGapCount: row.single_point_skill_gap_count ?? 0,
+    riskSummary: row.risk_summary ?? null,
+    priorityAction: row.priority_action ?? null,
+  }));
+}
+
 export interface EquipmentListItem {
   id: string;
   name: string;
