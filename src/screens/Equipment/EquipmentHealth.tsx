@@ -567,7 +567,7 @@ export const EquipmentHealth = (): JSX.Element => {
               </Badge>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-slate-500">Risk Breakdown</span>
+              <span className="text-xs font-medium text-slate-500">Risk Drivers</span>
               <div className="flex h-2 overflow-hidden rounded-full">
                 {eq.riskBreakdown.map((b) => (
                   <div key={b.label} style={{ width: `${(b.pct / riskTotal) * 100}%`, backgroundColor: b.color }} />

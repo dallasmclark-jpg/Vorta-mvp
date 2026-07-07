@@ -428,7 +428,7 @@ export const EquipmentSection = (): JSX.Element => {
           <div />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Equipment</span>
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Breakdown</span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Drivers</span>
             <Info className="h-3.5 w-3.5 text-slate-600" aria-hidden="true" />
           </div>
           <span className="text-right text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Score</span>

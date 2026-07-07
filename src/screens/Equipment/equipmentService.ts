@@ -39,12 +39,7 @@ const MOCK_EQUIPMENT: Equipment[] = [
     image: EQUIPMENT_IMAGES.palletiser,
     riskScore: 71,
     riskLevel: "High",
-    riskBreakdown: [
-      { label: "High",     pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
-      { label: "Critical", pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "Skills",   pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",   pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
-    ],
+    riskBreakdown: riskBreakdownFor("High", "Palletiser 2", "PALLETISER", "PL-02"),
   },
   {
     id: "fl-03",
@@ -63,12 +58,7 @@ const MOCK_EQUIPMENT: Equipment[] = [
     image: EQUIPMENT_IMAGES.vialFiller,
     riskScore: 92,
     riskLevel: "Critical",
-    riskBreakdown: [
-      { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
-      { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
-      { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
-      { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
-    ],
+    riskBreakdown: riskBreakdownFor("Critical", "Filling Line 3", "FILLING LINE", "FL-03"),
   },
 ];
 
@@ -173,7 +163,6 @@ const MOCK_AI_INSIGHTS: AiInsight[] = [
 interface EquipmentRiskProfileRow {
   risk_score: number | null;
   risk_level: Equipment["riskLevel"] | null;
-  breakdowns_pct: number | null;
   pm_backlog_pct: number | null;
   asset_criticality_pct: number | null;
   calibration_pct: number | null;
@@ -209,14 +198,14 @@ function getRiskProfile(row: EquipmentAssetRow): EquipmentRiskProfileRow | null 
   return profile ?? null;
 }
 
+// Risk Drivers show the leading factors increasing the likelihood of future equipment risk.
 function riskBreakdownFromProfile(profile: EquipmentRiskProfileRow): Equipment["riskBreakdown"] {
   const items: Equipment["riskBreakdown"] = [
-    { label: "Breakdowns",       pct: profile.breakdowns_pct         ?? 0, color: "#ef4444", dotClass: "bg-red-500"    },
-    { label: "PM Backlog",       pct: profile.pm_backlog_pct          ?? 0, color: "#f97316", dotClass: "bg-orange-500" },
-    { label: "Asset Criticality",pct: profile.asset_criticality_pct   ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
-    { label: "Calibration",      pct: profile.calibration_pct         ?? 0, color: "#06b6d4", dotClass: "bg-cyan-400"   },
-    { label: "Skills",           pct: profile.skills_pct              ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",           pct: profile.spares_pct              ?? 0, color: "#6366f1", dotClass: "bg-indigo-500" },
+    { label: "PM Backlog",        pct: profile.pm_backlog_pct         ?? 0, color: "#f97316", dotClass: "bg-orange-500" },
+    { label: "Asset Criticality", pct: profile.asset_criticality_pct  ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
+    { label: "Calibration",       pct: profile.calibration_pct        ?? 0, color: "#06b6d4", dotClass: "bg-cyan-400"   },
+    { label: "Skills",            pct: profile.skills_pct             ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",            pct: profile.spares_pct             ?? 0, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
   return items.filter((item) => item.pct > 0);
 }
@@ -255,8 +244,8 @@ function mapCriticality(
   return { riskLevel, riskScore: Math.max(5, Math.min(96, baseScore + adjustment)) };
 }
 
-// Produces an asset-specific risk breakdown. Percentages always total 100%.
-// Assets with calibration = 0 have that driver omitted via .filter().
+// Produces asset-specific Risk Drivers (leading indicators only). Percentages always total 100%.
+// Calibration = 0 drivers are omitted via .filter().
 function riskBreakdownFor(
   riskLevel: Equipment["riskLevel"],
   name?: string | null,
@@ -266,7 +255,6 @@ function riskBreakdownFor(
   const h = `${name ?? ""} ${type ?? ""} ${code ?? ""}`.toLowerCase();
 
   const colours = {
-    breakdowns:  { color: "#ef4444", dotClass: "bg-red-500" },
     pm:          { color: "#f97316", dotClass: "bg-orange-500" },
     criticality: { color: "#dc2626", dotClass: "bg-red-600" },
     calibration: { color: "#06b6d4", dotClass: "bg-cyan-400" },
@@ -275,55 +263,53 @@ function riskBreakdownFor(
   };
 
   const createBreakdown = (
-    breakdowns: number,
     pmBacklog: number,
     assetCriticality: number,
     calibration: number,
     skills: number,
     spares: number,
   ): Equipment["riskBreakdown"] => [
-    { label: "Breakdowns",      pct: breakdowns,      ...colours.breakdowns },
-    { label: "PM Backlog",      pct: pmBacklog,        ...colours.pm },
+    { label: "PM Backlog",        pct: pmBacklog,        ...colours.pm },
     { label: "Asset Criticality", pct: assetCriticality, ...colours.criticality },
-    { label: "Calibration",     pct: calibration,     ...colours.calibration },
-    { label: "Skills",          pct: skills,          ...colours.skills },
-    { label: "Spares",          pct: spares,          ...colours.spares },
+    { label: "Calibration",       pct: calibration,      ...colours.calibration },
+    { label: "Skills",            pct: skills,           ...colours.skills },
+    { label: "Spares",            pct: spares,           ...colours.spares },
   ].filter((item) => item.pct > 0);
 
   if (h.includes("vial") || h.includes("filler") || h.includes("filling") || h.includes("vf-") || h.includes("fl-"))
-    return createBreakdown(20, 15, 25, 25, 10, 5);
+    return createBreakdown(20, 35, 25, 15, 5);
 
   if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom"))
-    return createBreakdown(15, 20, 25, 25, 10, 5);
+    return createBreakdown(25, 35, 25, 10, 5);
 
   if (h.includes("boiler") || h.includes("steam") || h.includes("bl-"))
-    return createBreakdown(20, 25, 30, 5, 10, 10);
+    return createBreakdown(35, 35, 5, 10, 15);
 
   if (h.includes("palletis") || h.includes("palletiz") || h.includes("pl-") || h.includes("case pack") || h.includes("case-pack") || h.includes("cp-"))
-    return createBreakdown(30, 25, 20, 5, 10, 10);
+    return createBreakdown(40, 25, 5, 10, 20);
 
   if (h.includes("plc") || h.includes("automation"))
-    return createBreakdown(20, 20, 20, 0, 30, 10);
+    return createBreakdown(25, 20, 0, 40, 15);
 
   if (h.includes("conveyor") || h.includes("cv-"))
-    return createBreakdown(35, 30, 15, 0, 10, 10);
+    return createBreakdown(45, 20, 0, 10, 25);
 
   if (h.includes("motor") || h.includes("drive") || h.includes("press line") || h.includes("pm-"))
-    return createBreakdown(35, 25, 15, 0, 10, 15);
+    return createBreakdown(35, 20, 0, 10, 35);
 
   if (h.includes("compressor") || h.includes("air comp") || h.includes("ac-"))
-    return createBreakdown(25, 30, 20, 0, 10, 15);
+    return createBreakdown(40, 25, 0, 10, 25);
 
   if (h.includes("forklift") || h.includes("warehouse") || h.includes("wf-"))
-    return createBreakdown(35, 25, 15, 0, 15, 10);
+    return createBreakdown(40, 20, 0, 20, 20);
 
   if (h.includes("lighting") || h.includes("light") || h.includes("lt-"))
-    return createBreakdown(20, 25, 10, 0, 10, 35);
+    return createBreakdown(35, 15, 0, 15, 35);
 
-  if (riskLevel === "Critical") return createBreakdown(30, 25, 20, 10, 10, 5);
-  if (riskLevel === "High")     return createBreakdown(25, 25, 20, 10, 10, 10);
-  if (riskLevel === "Low")      return createBreakdown(25, 25, 15,  0, 15, 20);
-  return                               createBreakdown(25, 25, 20,  5, 10, 15);
+  if (riskLevel === "Critical") return createBreakdown(30, 35, 20, 10,  5);
+  if (riskLevel === "High")     return createBreakdown(35, 30, 15, 10, 10);
+  if (riskLevel === "Low")      return createBreakdown(35, 20,  0, 20, 25);
+  return                               createBreakdown(35, 25, 10, 15, 15);
 }
 
 // ─── EquipmentListItem — UI shape for the equipment list page ────────────────
@@ -445,7 +431,6 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
         equipment_risk_profiles (
           risk_score,
           risk_level,
-          breakdowns_pct,
           pm_backlog_pct,
           asset_criticality_pct,
           calibration_pct,
@@ -495,7 +480,6 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
       equipment_risk_profiles (
         risk_score,
         risk_level,
-        breakdowns_pct,
         pm_backlog_pct,
         asset_criticality_pct,
         calibration_pct,
