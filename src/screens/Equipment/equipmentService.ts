@@ -184,14 +184,37 @@ interface EquipmentAssetRow {
 }
 
 // Maps a DB criticality value to a risk level + derived score.
-function mapCriticality(criticality: string | null): { riskLevel: Equipment["riskLevel"]; riskScore: number } {
-  switch (criticality?.toLowerCase()) {
-    case "critical": return { riskLevel: "Critical", riskScore: 88 };
-    case "high":     return { riskLevel: "High",     riskScore: 71 };
-    case "medium":   return { riskLevel: "Medium",   riskScore: 45 };
-    case "low":      return { riskLevel: "Low",       riskScore: 22 };
-    default:         return { riskLevel: "Medium",   riskScore: 45 };
+function mapCriticality(
+  criticality: string | null,
+  name?: string | null,
+  type?: string | null,
+  code?: string | null,
+): { riskLevel: Equipment["riskLevel"]; riskScore: number } {
+  const c = criticality?.toLowerCase();
+  const h = `${name ?? ""} ${type ?? ""} ${code ?? ""}`.toLowerCase();
+
+  let riskLevel: Equipment["riskLevel"];
+  let baseScore: number;
+
+  switch (c) {
+    case "critical": riskLevel = "Critical"; baseScore = 88; break;
+    case "high":     riskLevel = "High";     baseScore = 71; break;
+    case "medium":   riskLevel = "Medium";   baseScore = 45; break;
+    case "low":      riskLevel = "Low";      baseScore = 22; break;
+    default:         riskLevel = "Medium";   baseScore = 45;
   }
+
+  let adjustment = 0;
+  if (h.includes("vial") || h.includes("filler") || h.includes("filling") || h.includes("vf-")) adjustment += 4;
+  if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom")) adjustment += 6;
+  if (h.includes("boiler") || h.includes("steam")) adjustment += 3;
+  if (h.includes("case pack") || h.includes("case-pack")) adjustment += 5;
+  if (h.includes("plc") || h.includes("automation")) adjustment += 2;
+  if (h.includes("compressor")) adjustment -= 4;
+  if (h.includes("forklift") || h.includes("warehouse")) adjustment -= 6;
+  if (h.includes("lighting")) adjustment -= 10;
+
+  return { riskLevel, riskScore: Math.max(5, Math.min(96, baseScore + adjustment)) };
 }
 
 // Produces a risk breakdown matching the criticality level.
@@ -248,7 +271,7 @@ const MOCK_LIST: EquipmentListItem[] = [
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
-  const { riskLevel, riskScore } = mapCriticality(row.criticality);
+  const { riskLevel, riskScore } = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
   return {
     id:          row.id,
     name:        row.name,
@@ -261,8 +284,26 @@ function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
   };
 }
 
+function isStaleDemoImage(imageUrl: string | null | undefined): boolean {
+  if (!imageUrl) return true;
+  const v = imageUrl.toLowerCase();
+  return (
+    v.includes("pexels.com") ||
+    v.includes("palletiser%20cell") ||
+    v.includes("palletiser cell") ||
+    v.includes("kuka%20kr%20210") ||
+    v.includes("kuka kr 210") ||
+    (v.includes("data:image/svg+xml") && v.includes("palletiser"))
+  );
+}
+
+function resolveEquipmentDisplayImage(row: EquipmentAssetRow): string {
+  const placeholder = resolveEquipmentImage(row.name, row.equipment_type, row.equipment_code);
+  return isStaleDemoImage(row.image_url) ? placeholder : row.image_url!;
+}
+
 function rowToEquipment(row: EquipmentAssetRow): Equipment {
-  const { riskLevel, riskScore } = mapCriticality(row.criticality);
+  const { riskLevel, riskScore } = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
   return {
     id:           row.id,
     name:         row.name,
@@ -277,7 +318,7 @@ function rowToEquipment(row: EquipmentAssetRow): Equipment {
     criticality:  row.criticality ?? "—",
     status:       (row.status as Equipment["status"]) ?? "Running",
     statusNote:   "",
-    image:        row.image_url || resolveEquipmentImage(row.name, row.equipment_type, row.equipment_code),
+    image:        resolveEquipmentDisplayImage(row),
     riskScore,
     riskLevel,
     riskBreakdown: riskBreakdownFor(riskLevel),
