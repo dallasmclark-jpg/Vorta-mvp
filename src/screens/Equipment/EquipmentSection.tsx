@@ -232,29 +232,72 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
           <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {explanations.slice(0, 5).map((exp) => (
-              <div key={exp.driver} className="rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-200">
-                    {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-slate-500">
-                    Score: {exp.driverScore}
-                  </span>
+            {explanations.slice(0, 5).map((exp) => {
+              const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
+              return (
+                <div key={exp.driver} className="rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-200">
+                      {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      Score: {exp.driverScore}
+                    </span>
+                  </div>
+                  {exp.evidence && (
+                    <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
+                  )}
+                  {exp.recommendedAction && (
+                    <p className="mt-1 text-xs text-slate-300">
+                      <span className="text-slate-500">Action: </span>{exp.recommendedAction}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-slate-500">Current</span>
+                    <span className="font-semibold text-slate-200">{item.riskScore}</span>
+                    <span className="text-slate-600">→</span>
+                    <span className="text-slate-500">After action</span>
+                    <span className="font-semibold text-emerald-400">{afterScore}</span>
+                    <span className="ml-1 font-semibold text-emerald-500">▼ -{exp.estimatedReduction}</span>
+                  </div>
                 </div>
-                {exp.evidence && (
-                  <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
-                )}
-                {exp.recommendedAction && (
-                  <p className="mt-1 text-xs text-slate-300">
-                    <span className="text-slate-500">Action: </span>{exp.recommendedAction}
+              );
+            })}
+
+            {/* Summary card */}
+            {(() => {
+              const totalReduction = explanations.slice(0, 5).reduce((sum, e) => sum + e.estimatedReduction, 0);
+              const predictedScore = Math.max(0, item.riskScore - totalReduction);
+              const predictedLevel =
+                predictedScore >= 85 ? "Critical" :
+                predictedScore >= 65 ? "High" :
+                predictedScore >= 40 ? "Medium" :
+                predictedScore >= 20 ? "Low" : "Minimal";
+              const currentLevel = item.riskLevel;
+              return (
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    If all recommended actions are completed
                   </p>
-                )}
-                <p className="mt-1 text-xs text-emerald-500">
-                  Estimated reduction: {exp.estimatedReduction > 0 ? `-${exp.estimatedReduction}` : exp.estimatedReduction}
-                </p>
-              </div>
-            ))}
+                  <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Current Risk</span>
+                      <span className="font-semibold text-slate-200">{item.riskScore}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Predicted Risk</span>
+                      <span className="font-semibold text-emerald-400">{predictedScore}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Risk Level</span>
+                      <span className="font-semibold text-slate-200">
+                        {currentLevel} <span className="text-slate-500">→</span> <span className="text-emerald-400">{predictedLevel}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
