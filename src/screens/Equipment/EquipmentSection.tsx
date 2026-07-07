@@ -236,15 +236,21 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
           <p className="text-sm leading-relaxed text-slate-300">
-            Open this equipment to view AI recommendations, work orders, PMs, and full asset details.
+            Open the full asset intelligence page for deep-dive analysis.
+          </p>
+          <p className="text-[10px] leading-relaxed text-slate-500">
+            Includes PMs, work orders, history, spares, documents and AI insights.
+          </p>
+          <p className="text-[10px] text-slate-600">
+            Click asset name or View full asset intelligence to open the full equipment page.
           </p>
           <div className="mt-auto flex flex-col gap-2">
             <Button
               type="button"
               onClick={() => onNavigate(item.id)}
-              className="h-auto w-full justify-start gap-2 bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+              className="h-auto w-full justify-center gap-2 border border-blue-400/40 bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-[0_0_8px_rgba(59,130,246,0.35)] hover:bg-blue-500 hover:shadow-[0_0_12px_rgba(59,130,246,0.5)]"
             >
-              Open Equipment →
+              View full asset intelligence →
             </Button>
             <button
               type="button"
@@ -614,8 +620,20 @@ export const EquipmentSection = (): JSX.Element => {
                   </div>
 
                   <div className="flex min-w-0 flex-col gap-1">
-                    <span className="truncate text-sm font-semibold text-slate-50">{item.name}</span>
-                    <span className="text-xs text-slate-500">{item.assetNumber}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); navigateToEquipment(item.id); }}
+                      className="truncate text-left text-sm font-semibold text-slate-50 underline-offset-2 hover:text-blue-400 hover:underline focus-visible:outline-none"
+                    >
+                      {item.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); navigateToEquipment(item.id); }}
+                      className="w-fit text-left text-xs text-slate-500 underline-offset-2 hover:text-blue-400 hover:underline focus-visible:outline-none"
+                    >
+                      {item.assetNumber}
+                    </button>
                     <span className="mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">
                       {item.type}
                     </span>
