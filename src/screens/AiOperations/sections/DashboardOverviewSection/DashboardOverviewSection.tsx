@@ -13,7 +13,9 @@ import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import {
   getAreaRiskProfiles,
+  getSiteRiskProfile,
   type AreaRiskProfile,
+  type SiteRiskProfile,
 } from "../../../Equipment/equipmentService";
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
@@ -177,10 +179,12 @@ const downtimeImpact = [
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
+  const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
 
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
+    getSiteRiskProfile().then(setSiteRisk);
   }, []);
 
   const handleAssetClick = (id: string) => {
@@ -251,27 +255,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Site Risk</p>
-                <p className="text-xl font-semibold text-slate-50">78</p>
-                <p className="text-xs text-orange-400">Moderate · rising</p>
+                <p className="text-xl font-semibold text-slate-50">{siteRisk?.riskScore ?? "—"}</p>
+                <p className="text-xs text-orange-400">{siteRisk ? `${siteRisk.riskLevel} · live` : "No live data"}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Highest Area</p>
-                <p className="text-base font-semibold text-slate-50">Building 2</p>
-                <p className="text-xs text-red-400">Critical risk</p>
+                <p className="text-base font-semibold text-slate-50">{siteRisk?.highestArea ?? "—"}</p>
+                <p className="text-xs text-red-400">{siteRisk?.highestAreaLevel ? `${siteRisk.highestAreaLevel} risk` : "No live data"}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">PM Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">8</p>
+                <p className="text-xl font-semibold text-slate-50">{siteRisk?.overduePmCount ?? "—"}</p>
                 <p className="text-xs text-orange-400">Overdue PMs</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Calibration Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">5</p>
+                <p className="text-xl font-semibold text-slate-50">{siteRisk?.calibrationBacklogCount ?? "—"}</p>
                 <p className="text-xs text-yellow-400">Due / overdue</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Cover Gaps</p>
-                <p className="text-xl font-semibold text-slate-50">2</p>
+                <p className="text-xl font-semibold text-slate-50">{siteRisk?.coverGapCount ?? "—"}</p>
                 <p className="text-xs text-yellow-400">Labour risk</p>
               </div>
             </div>
@@ -283,7 +287,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   Priority Action
                 </p>
                 <p className="text-sm font-semibold leading-snug text-slate-50">
-                  Reallocate John Jones to Case Packer 4 before midday
+                  {siteRisk?.priorityAction ?? "Review highest-risk area and clear the largest leading risk driver."}
                 </p>
               </div>
 

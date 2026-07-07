@@ -314,6 +314,71 @@ function riskBreakdownFor(
 
 // ─── EquipmentListItem — UI shape for the equipment list page ────────────────
 
+export interface SiteRiskProfile {
+  riskScore: number;
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  highestArea: string | null;
+  highestAreaScore: number | null;
+  highestAreaLevel: string | null;
+  totalAssets: number;
+  atRiskAssets: number;
+  criticalAssets: number;
+  highAssets: number;
+  overduePmCount: number;
+  calibrationBacklogCount: number;
+  coverGapCount: number;
+  criticalSparesMissing: number;
+  priorityAction: string | null;
+  riskSummary: string | null;
+}
+
+export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
+  const { data, error } = await supabase
+    .from("site_risk_profile")
+    .select(`
+      risk_score,
+      risk_level,
+      highest_area,
+      highest_area_score,
+      highest_area_level,
+      total_assets,
+      at_risk_assets,
+      critical_assets,
+      high_assets,
+      overdue_pm_count,
+      calibration_backlog_count,
+      cover_gap_count,
+      critical_spares_missing,
+      priority_action,
+      risk_summary
+    `)
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.warn("site_risk_profile fetch failed:", error.message);
+    return null;
+  }
+
+  return {
+    riskScore: data.risk_score ?? 0,
+    riskLevel: data.risk_level ?? "Minimal",
+    highestArea: data.highest_area ?? null,
+    highestAreaScore: data.highest_area_score ?? null,
+    highestAreaLevel: data.highest_area_level ?? null,
+    totalAssets: data.total_assets ?? 0,
+    atRiskAssets: data.at_risk_assets ?? 0,
+    criticalAssets: data.critical_assets ?? 0,
+    highAssets: data.high_assets ?? 0,
+    overduePmCount: data.overdue_pm_count ?? 0,
+    calibrationBacklogCount: data.calibration_backlog_count ?? 0,
+    coverGapCount: data.cover_gap_count ?? 0,
+    criticalSparesMissing: data.critical_spares_missing ?? 0,
+    priorityAction: data.priority_action ?? null,
+    riskSummary: data.risk_summary ?? null,
+  };
+}
+
 export interface AreaRiskProfile {
   area: string;
   riskScore: number;
