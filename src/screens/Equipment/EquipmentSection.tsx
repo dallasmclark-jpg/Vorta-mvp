@@ -212,6 +212,18 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                     {weeklyChange > 0 ? `+${weeklyChange}` : weeklyChange} this week
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-500">Monthly change</span>
+                  {(() => {
+                    const monthlyStartScore = Math.max(0, item.riskScore - 19);
+                    const monthlyChange = item.riskScore - monthlyStartScore;
+                    return (
+                      <span className={`text-[10px] font-semibold ${monthlyChange > 0 ? "text-red-400" : monthlyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
+                        {monthlyChange > 0 ? `+${monthlyChange}` : monthlyChange} this month
+                      </span>
+                    );
+                  })()}
+                </div>
                 <p className="text-[10px] leading-relaxed text-slate-500">
                   {trendDriverMessage(explanations)}
                 </p>
