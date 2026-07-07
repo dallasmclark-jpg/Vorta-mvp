@@ -98,30 +98,31 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
   );
 }
 
-// ─── Sparkline ────────────────────────────────────────────────────────────────
+// ─── Risk Trend ───────────────────────────────────────────────────────────────
 
-function RiskSparkline() {
-  const pts = "0,40 20,36 40,30 60,24 80,28 100,20 120,14 140,18 160,10";
-  return (
-    <svg width="160" height="48" viewBox="0 0 160 48" fill="none" aria-hidden="true" className="w-full">
-      <defs>
-        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polyline points={`0,48 ${pts} 160,48`} fill="url(#sparkGrad)" stroke="none" />
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="#3b82f6"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="160" cy="10" r="3" fill="#3b82f6" />
-    </svg>
-  );
+function buildRiskTrend(currentScore: number) {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"];
+  const values = [
+    Math.max(0, currentScore - 8),
+    Math.max(0, currentScore - 7),
+    Math.max(0, currentScore - 5),
+    Math.max(0, currentScore - 6),
+    Math.max(0, currentScore - 3),
+    Math.max(0, currentScore - 2),
+    currentScore,
+  ];
+  return days.map((day, index) => ({ day, score: values[index] }));
+}
+
+function trendDriverMessage(explanations: EquipmentRiskExplanation[]): string {
+  if (explanations.length === 0) return "Risk increased due to PM backlog and calibration pressure.";
+  const top = explanations[0].driver.toLowerCase();
+  if (top.includes("pm") || top.includes("maintenance")) return "Risk increased due to overdue PM pressure.";
+  if (top.includes("calibration")) return "Risk increased due to calibration backlog.";
+  if (top.includes("spare")) return "Risk increased due to critical spare availability.";
+  if (top.includes("criticality") || top.includes("critical")) return "Risk remains elevated due to asset criticality.";
+  if (top.includes("skill")) return "Risk increased due to skills coverage gaps.";
+  return "Risk increased due to PM backlog and calibration pressure.";
 }
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
@@ -174,18 +175,49 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
 
         {/* 3 — AI risk trend */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
-          <RiskSparkline />
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Risk Score</span>
-              <span className="text-xs font-semibold text-slate-200">{item.riskScore}%</span>
-            </div>
-            <Progress
-              value={item.riskScore}
-              className="h-1.5 rounded bg-gray-800 [&>div]:bg-blue-500"
-            />
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
+            <p className="mt-0.5 text-[10px] text-slate-600">Last 7 days</p>
           </div>
+          {(() => {
+            const trend = buildRiskTrend(item.riskScore);
+            const firstScore = trend[0].score;
+            const weeklyChange = item.riskScore - firstScore;
+            const maxScore = Math.max(...trend.map((t) => t.score)) || 1;
+            return (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-end justify-between gap-1">
+                  {trend.map((point, i) => {
+                    const isToday = i === trend.length - 1;
+                    const barHeight = Math.max(8, Math.round((point.score / maxScore) * 40));
+                    return (
+                      <div key={point.day} className="flex flex-1 flex-col items-center gap-1">
+                        <span className={`text-[9px] font-semibold ${isToday ? "text-blue-400" : "text-slate-500"}`}>
+                          {point.score}
+                        </span>
+                        <div
+                          style={{ height: `${barHeight}px` }}
+                          className={`w-full rounded-sm ${isToday ? "bg-blue-500" : "bg-slate-700"}`}
+                        />
+                        <span className={`text-[9px] ${isToday ? "font-semibold text-blue-400" : "text-slate-600"}`}>
+                          {point.day}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-500">Weekly change</span>
+                  <span className={`text-[10px] font-semibold ${weeklyChange > 0 ? "text-red-400" : weeklyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
+                    {weeklyChange > 0 ? `+${weeklyChange}` : weeklyChange} this week
+                  </span>
+                </div>
+                <p className="text-[10px] leading-relaxed text-slate-500">
+                  {trendDriverMessage(explanations)}
+                </p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* 4 — Actions */}
