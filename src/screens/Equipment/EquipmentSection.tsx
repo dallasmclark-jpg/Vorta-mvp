@@ -259,15 +259,18 @@ export const EquipmentSection = (): JSX.Element => {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [searchParams] = useSearchParams();
 
+  const areaParam     = searchParams.get("area");
   const buildingParam = searchParams.get("building");
+  const initialArea   = areaParam ?? buildingParam;
+
   const [search, setSearch] = useState("");
-  const [activeArea, setActiveArea] = useState<string | null>(buildingParam);
-  const [activeChip, setActiveChip] = useState<string | null>(buildingParam ? "Area" : null);
+  const [activeArea, setActiveArea] = useState<string | null>(initialArea);
+  const [activeChip, setActiveChip] = useState<string | null>(initialArea ? "Area" : null);
   const [expandedId, setExpandedId] = useState<string>("");
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Derive building label for chip display (e.g. "B2" → "Building 2")
+  // For the chip label: building codes resolve to a human label; plain area names display as-is
   const areaChipLabel = activeArea ? (resolveBuilding(activeArea)?.label ?? activeArea) : "";
 
   useEffect(() => {
@@ -284,8 +287,11 @@ export const EquipmentSection = (): JSX.Element => {
     return items.filter((e) => {
       if (activeArea) {
         const resolved = resolveBuilding(activeArea);
-        const areas = resolved ? resolved.areas : [activeArea];
-        if (!areas.includes(e.area)) return false;
+        if (resolved) {
+          if (!resolved.areas.includes(e.area)) return false;
+        } else {
+          if (e.area !== activeArea) return false;
+        }
       }
       if (search) {
         const q = search.toLowerCase();
@@ -315,7 +321,7 @@ export const EquipmentSection = (): JSX.Element => {
         setActiveArea(null);
       } else {
         setActiveChip("Area");
-        setActiveArea(buildingParam);
+        setActiveArea(initialArea);
       }
     } else {
       setActiveChip(activeChip === chip ? null : chip);
@@ -419,6 +425,21 @@ export const EquipmentSection = (): JSX.Element => {
           </button>
         )}
       </div>
+
+      {/* ── Active area filter label ─────────────────────────────────── */}
+      {activeArea && (
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <span>Showing area:</span>
+          <span className="font-semibold text-slate-200">{areaChipLabel}</span>
+          <button
+            type="button"
+            onClick={() => { setActiveArea(null); setActiveChip(null); navigate("/equipment"); }}
+            className="ml-1 rounded border border-gray-700 px-2 py-0.5 text-xs text-slate-500 transition-colors hover:border-gray-600 hover:text-slate-300"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* ── Equipment Table ─────────────────────────────────────────────── */}
       <div className="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
