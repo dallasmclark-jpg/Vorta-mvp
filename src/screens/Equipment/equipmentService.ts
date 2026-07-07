@@ -217,34 +217,75 @@ function mapCriticality(
   return { riskLevel, riskScore: Math.max(5, Math.min(96, baseScore + adjustment)) };
 }
 
-// Produces a risk breakdown matching the criticality level.
-// All percentages within each breakdown add up to 100%.
-function riskBreakdownFor(riskLevel: Equipment["riskLevel"]): Equipment["riskBreakdown"] {
-  if (riskLevel === "Critical") return [
-    { label: "Breakdowns", pct: 38, color: "#ef4444", dotClass: "bg-red-500" },
-    { label: "PM Backlog",  pct: 27, color: "#f97316", dotClass: "bg-orange-500" },
-    { label: "Skills",      pct: 20, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",      pct: 15, color: "#6366f1", dotClass: "bg-indigo-500" },
-  ];
-  if (riskLevel === "High") return [
-    { label: "PM Backlog",  pct: 42, color: "#f97316", dotClass: "bg-orange-400" },
-    { label: "Asset Criticality", pct: 28, color: "#ef4444", dotClass: "bg-red-500" },
-    { label: "Skills",      pct: 18, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",      pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" },
-  ];
-  if (riskLevel === "Low") return [
-    { label: "PM Backlog",  pct: 35, color: "#84cc16",  dotClass: "bg-lime-500" },
-    { label: "Asset Criticality", pct: 25, color: "#22c55e",  dotClass: "bg-emerald-500" },
-    { label: "Skills",      pct: 25, color: "#eab308",  dotClass: "bg-yellow-400" },
-    { label: "Spares",      pct: 15, color: "#6366f1",  dotClass: "bg-indigo-500" },
-  ];
-  // Medium (default) and Minimal
-  return [
-    { label: "PM Backlog",  pct: 40, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Asset Criticality", pct: 25, color: "#f97316", dotClass: "bg-orange-400" },
-    { label: "Skills",      pct: 20, color: "#84cc16", dotClass: "bg-lime-500" },
-    { label: "Spares",      pct: 15, color: "#6366f1", dotClass: "bg-indigo-500" },
-  ];
+// Produces an asset-specific risk breakdown. Percentages always total 100%.
+// Assets with calibration = 0 have that driver omitted via .filter().
+function riskBreakdownFor(
+  riskLevel: Equipment["riskLevel"],
+  name?: string | null,
+  type?: string | null,
+  code?: string | null,
+): Equipment["riskBreakdown"] {
+  const h = `${name ?? ""} ${type ?? ""} ${code ?? ""}`.toLowerCase();
+
+  const colours = {
+    breakdowns:  { color: "#ef4444", dotClass: "bg-red-500" },
+    pm:          { color: "#f97316", dotClass: "bg-orange-500" },
+    criticality: { color: "#dc2626", dotClass: "bg-red-600" },
+    calibration: { color: "#06b6d4", dotClass: "bg-cyan-400" },
+    skills:      { color: "#eab308", dotClass: "bg-yellow-400" },
+    spares:      { color: "#6366f1", dotClass: "bg-indigo-500" },
+  };
+
+  const createBreakdown = (
+    breakdowns: number,
+    pmBacklog: number,
+    assetCriticality: number,
+    calibration: number,
+    skills: number,
+    spares: number,
+  ): Equipment["riskBreakdown"] => [
+    { label: "Breakdowns",      pct: breakdowns,      ...colours.breakdowns },
+    { label: "PM Backlog",      pct: pmBacklog,        ...colours.pm },
+    { label: "Asset Criticality", pct: assetCriticality, ...colours.criticality },
+    { label: "Calibration",     pct: calibration,     ...colours.calibration },
+    { label: "Skills",          pct: skills,          ...colours.skills },
+    { label: "Spares",          pct: spares,          ...colours.spares },
+  ].filter((item) => item.pct > 0);
+
+  if (h.includes("vial") || h.includes("filler") || h.includes("filling") || h.includes("vf-") || h.includes("fl-"))
+    return createBreakdown(20, 15, 25, 25, 10, 5);
+
+  if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom"))
+    return createBreakdown(15, 20, 25, 25, 10, 5);
+
+  if (h.includes("boiler") || h.includes("steam") || h.includes("bl-"))
+    return createBreakdown(20, 25, 30, 5, 10, 10);
+
+  if (h.includes("palletis") || h.includes("palletiz") || h.includes("pl-") || h.includes("case pack") || h.includes("case-pack") || h.includes("cp-"))
+    return createBreakdown(30, 25, 20, 5, 10, 10);
+
+  if (h.includes("plc") || h.includes("automation"))
+    return createBreakdown(20, 20, 20, 0, 30, 10);
+
+  if (h.includes("conveyor") || h.includes("cv-"))
+    return createBreakdown(35, 30, 15, 0, 10, 10);
+
+  if (h.includes("motor") || h.includes("drive") || h.includes("press line") || h.includes("pm-"))
+    return createBreakdown(35, 25, 15, 0, 10, 15);
+
+  if (h.includes("compressor") || h.includes("air comp") || h.includes("ac-"))
+    return createBreakdown(25, 30, 20, 0, 10, 15);
+
+  if (h.includes("forklift") || h.includes("warehouse") || h.includes("wf-"))
+    return createBreakdown(35, 25, 15, 0, 15, 10);
+
+  if (h.includes("lighting") || h.includes("light") || h.includes("lt-"))
+    return createBreakdown(20, 25, 10, 0, 10, 35);
+
+  if (riskLevel === "Critical") return createBreakdown(30, 25, 20, 10, 10, 5);
+  if (riskLevel === "High")     return createBreakdown(25, 25, 20, 10, 10, 10);
+  if (riskLevel === "Low")      return createBreakdown(25, 25, 15,  0, 15, 20);
+  return                               createBreakdown(25, 25, 20,  5, 10, 15);
 }
 
 // ─── EquipmentListItem — UI shape for the equipment list page ────────────────
@@ -262,16 +303,16 @@ export interface EquipmentListItem {
 
 // Fallback list used when Supabase is unavailable.
 const MOCK_LIST: EquipmentListItem[] = [
-  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical") },
-  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical") },
-  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
-  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
-  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
-  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium") },
-  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium") },
-  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low") },
-  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low") },
-  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal") },
+  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Filling Line 3",      "FILLING LINE", "FL-03") },
+  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Case Packer 4",        "PACKING",      "CP-04") },
+  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Boiler 1",             "UTILITIES",    "BL-01") },
+  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Palletiser 2",         "PALLETISER",   "PL-02") },
+  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Line 2 PLC",           "AUTOMATION",   "L2-PLC") },
+  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Conveyor 4",           "CONVEYOR",     "CV-04") },
+  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Press Line Motor",     "PROCESSING",   "PM-01") },
+  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Air Compressor 1",     "COMPRESSOR",   "AC-01") },
+  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Warehouse Forklift 3", "WAREHOUSE",    "WF-03") },
+  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal",  "Lighting System",      "FACILITIES",   "LT-01") },
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
@@ -284,7 +325,12 @@ function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
     area:        row.area ?? "—",
     riskScore,
     riskLevel,
-    breakdown:   riskBreakdownFor(riskLevel),
+    breakdown:   riskBreakdownFor(
+      riskLevel,
+      row.name,
+      row.equipment_type,
+      row.equipment_code,
+    ),
   };
 }
 
@@ -325,7 +371,12 @@ function rowToEquipment(row: EquipmentAssetRow): Equipment {
     image:        resolveEquipmentDisplayImage(row),
     riskScore,
     riskLevel,
-    riskBreakdown: riskBreakdownFor(riskLevel),
+    riskBreakdown: riskBreakdownFor(
+      riskLevel,
+      row.name,
+      row.equipment_type,
+      row.equipment_code,
+    ),
   };
 }
 
