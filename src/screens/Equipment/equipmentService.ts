@@ -218,28 +218,32 @@ function mapCriticality(
 }
 
 // Produces a risk breakdown matching the criticality level.
+// All percentages within each breakdown add up to 100%.
 function riskBreakdownFor(riskLevel: Equipment["riskLevel"]): Equipment["riskBreakdown"] {
   if (riskLevel === "Critical") return [
-    { label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" },
-    { label: "PMs",        pct: 25, color: "#f97316", dotClass: "bg-orange-500" },
-    { label: "Skills",     pct: 15, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",     pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+    { label: "Breakdowns", pct: 38, color: "#ef4444", dotClass: "bg-red-500" },
+    { label: "PM Backlog",  pct: 27, color: "#f97316", dotClass: "bg-orange-500" },
+    { label: "Skills",      pct: 20, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",      pct: 15, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
   if (riskLevel === "High") return [
-    { label: "High",     pct: 71, color: "#f97316", dotClass: "bg-orange-400" },
-    { label: "Critical", pct: 24, color: "#ef4444", dotClass: "bg-red-500" },
-    { label: "Skills",   pct: 16, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",   pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+    { label: "PM Backlog",  pct: 42, color: "#f97316", dotClass: "bg-orange-400" },
+    { label: "Criticality", pct: 28, color: "#ef4444", dotClass: "bg-red-500" },
+    { label: "Skills",      pct: 18, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Spares",      pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
   if (riskLevel === "Low") return [
-    { label: "Low",    pct: 30, color: "#84cc16", dotClass: "bg-lime-500" },
-    { label: "Skills", pct: 10, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares", pct: 8,  color: "#6366f1", dotClass: "bg-indigo-500" },
+    { label: "PM Backlog",  pct: 35, color: "#84cc16",  dotClass: "bg-lime-500" },
+    { label: "Criticality", pct: 25, color: "#22c55e",  dotClass: "bg-emerald-500" },
+    { label: "Skills",      pct: 25, color: "#eab308",  dotClass: "bg-yellow-400" },
+    { label: "Spares",      pct: 15, color: "#6366f1",  dotClass: "bg-indigo-500" },
   ];
+  // Medium (default) and Minimal
   return [
-    { label: "Medium",  pct: 45, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Skills",  pct: 15, color: "#84cc16", dotClass: "bg-lime-500" },
-    { label: "Spares",  pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" },
+    { label: "PM Backlog",  pct: 40, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Criticality", pct: 25, color: "#f97316", dotClass: "bg-orange-400" },
+    { label: "Skills",      pct: 20, color: "#84cc16", dotClass: "bg-lime-500" },
+    { label: "Spares",      pct: 15, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
 }
 
@@ -258,16 +262,16 @@ export interface EquipmentListItem {
 
 // Fallback list used when Supabase is unavailable.
 const MOCK_LIST: EquipmentListItem[] = [
-  { id: "fl-03",  name: "Filling Line 3",       assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: [{ label: "Breakdowns", pct: 40, color: "#ef4444", dotClass: "bg-red-500" }, { label: "PMs", pct: 25, color: "#f97316", dotClass: "bg-orange-500" }, { label: "Skills", pct: 15, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "cp-04",  name: "Case Packer 4",         assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: [{ label: "Breakdowns", pct: 45, color: "#ef4444", dotClass: "bg-red-500" }, { label: "PMs", pct: 22, color: "#f97316", dotClass: "bg-orange-500" }, { label: "Skills", pct: 18, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 9, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "bl-01",  name: "Boiler 1",              assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: [{ label: "High", pct: 38, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 20, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 16, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 12, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "pl-02",  name: "Palletiser 2",          assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: [{ label: "High", pct: 71, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 24, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 16, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "l2-plc", name: "Line 2 PLC",            assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: [{ label: "High", pct: 35, color: "#f97316", dotClass: "bg-orange-400" }, { label: "Critical", pct: 18, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 15, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 10, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "cv-04",  name: "Conveyor 4",            assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: [{ label: "Medium", pct: 58, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Critical", pct: 21, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 10, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "pm-01",  name: "Press Line Motor",      assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: [{ label: "Medium", pct: 30, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Critical", pct: 14, color: "#ef4444", dotClass: "bg-red-500" }, { label: "Skills", pct: 12, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "ac-01",  name: "Air Compressor 1",      assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: [{ label: "Low", pct: 33, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Skills", pct: 10, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 8, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "wf-03",  name: "Warehouse Forklift 3",  assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: [{ label: "Low", pct: 28, color: "#84cc16", dotClass: "bg-lime-500" }, { label: "Skills", pct: 6, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 5, color: "#6366f1", dotClass: "bg-indigo-500" }] },
-  { id: "lt-01",  name: "Lighting System",       assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: [{ label: "Minimal", pct: 12, color: "#10b981", dotClass: "bg-emerald-500" }, { label: "Skills", pct: 4, color: "#eab308", dotClass: "bg-yellow-400" }, { label: "Spares", pct: 3, color: "#6366f1", dotClass: "bg-indigo-500" }] },
+  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical") },
+  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical") },
+  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
+  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
+  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High") },
+  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium") },
+  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium") },
+  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low") },
+  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low") },
+  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal") },
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
