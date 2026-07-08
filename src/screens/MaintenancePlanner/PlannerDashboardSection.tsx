@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Package, Wrench, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Package, Search, Wrench, XCircle } from "lucide-react";
 import {
   getAreaInterventionPlans,
   type AreaInterventionPlan,
@@ -8,6 +8,7 @@ import {
 import {
   getPlannerReadinessScores,
   type PlannerReadinessScore,
+  type ResourceStrategyRow,
 } from "./plannerService";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -183,6 +184,156 @@ function BestWindowsTable({
   );
 }
 
+// ─── Resource strategy card ────────────────────────────────────────────────────
+
+function resourceSkillBadge(status: string) {
+  if (status === "Covered")
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (status === "Contractor Required" || status === "Partial")
+    return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  return "border-red-500/30 bg-red-500/10 text-red-300";
+}
+
+function ResourceStrategyCard({
+  readiness,
+  onFindContractors,
+}: {
+  readiness: PlannerReadinessScore;
+  onFindContractors: () => void;
+}) {
+  const { resourceStrategy, contractorRequired, contractorRecommendation } = readiness;
+
+  if (resourceStrategy.length === 0 && !contractorRequired) return null;
+
+  const externalRows = resourceStrategy.filter(
+    (r) => r.internalAvailable < r.required,
+  );
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-[#0d1117] p-5">
+      <h2 className="mb-4 text-sm font-semibold text-slate-200">Resource Strategy</h2>
+
+      {/* Per-skill rows */}
+      {resourceStrategy.length > 0 && (
+        <div className="mb-4 flex flex-col gap-0 rounded-lg border border-gray-800">
+          {resourceStrategy.map((row: ResourceStrategyRow, i: number) => (
+            <div
+              key={row.skill}
+              className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                i < resourceStrategy.length - 1 ? "border-b border-gray-800" : ""
+              }`}
+            >
+              <span className="text-xs font-semibold text-slate-300 w-28 shrink-0">{row.skill}</span>
+              <div className="flex flex-1 items-center gap-4 text-xs text-slate-500">
+                <span>
+                  Required: <span className="font-semibold text-slate-300">{row.required}</span>
+                </span>
+                <span>
+                  Internal: <span className="font-semibold text-slate-300">{row.internalAvailable}</span>
+                </span>
+              </div>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${resourceSkillBadge(row.status)}`}
+              >
+                {row.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Contractor recommendation banner */}
+      {contractorRequired && (
+        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="text-xs font-semibold text-amber-300">External Support Recommended</span>
+          </div>
+          {externalRows.map((r) => (
+            <div key={r.skill} className="ml-6 text-xs text-amber-400/80">
+              <span className="font-semibold">{r.skill}</span> — internal coverage unavailable for the selected planning window.
+            </div>
+          ))}
+          {contractorRecommendation && (
+            <p className="ml-6 mt-0.5 text-xs text-amber-300/70">{contractorRecommendation}</p>
+          )}
+        </div>
+      )}
+
+      {/* External labour estimate */}
+      {externalRows.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+            Estimated External Labour Required
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {externalRows.map((r) => {
+              const gap = r.required - r.internalAvailable;
+              const hrs = readiness.labourRequiredHours > 0
+                ? Math.round((gap / readiness.skillsRequired || 1) * readiness.labourRequiredHours)
+                : null;
+              return (
+                <div
+                  key={r.skill}
+                  className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0b0e14] px-4 py-2.5 text-xs"
+                >
+                  <span className="font-semibold text-slate-200">{r.skill}</span>
+                  <div className="flex items-center gap-4 text-slate-400">
+                    <span>{gap} engineer{gap !== 1 ? "s" : ""}</span>
+                    {hrs !== null && <span>{hrs} hrs</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Find Contractors CTA */}
+      <button
+        onClick={onFindContractors}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition-colors hover:border-blue-500/50 hover:bg-blue-600/15"
+      >
+        <Search className="h-4 w-4" />
+        Find Contractors
+      </button>
+    </div>
+  );
+}
+
+// ─── Contractor drawer placeholder ────────────────────────────────────────────
+
+function ContractorDrawer({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-gray-800 bg-[#090b10] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-5">
+          <div>
+            <h2 className="text-base font-semibold text-slate-50">Find Contractors</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Match contractor availability to your planning window.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <Search className="h-10 w-10 text-slate-700" />
+          <p className="text-sm font-semibold text-slate-400">Contractor search coming soon</p>
+          <p className="text-xs text-slate-600">
+            This will show contractors matched to the required skills and available for the proposed date and shift.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Work pack summary ─────────────────────────────────────────────────────────
 
 function WorkPackSummary({ plan }: { plan: AreaInterventionPlan }) {
@@ -232,9 +383,10 @@ export function PlannerDashboardSection() {
   const [readinessScores, setReadinessScores] = useState<PlannerReadinessScore[]>([]);
   const [loading,         setLoading]         = useState(true);
 
-  const [selectedArea,  setSelectedArea]  = useState<string | null>(null);
-  const [proposedDate,  setProposedDate]  = useState<string>("");
-  const [proposedShift, setProposedShift] = useState<string>("Day Shift");
+  const [selectedArea,         setSelectedArea]         = useState<string | null>(null);
+  const [proposedDate,         setProposedDate]         = useState<string>("");
+  const [proposedShift,        setProposedShift]        = useState<string>("Day Shift");
+  const [contractorDrawerOpen, setContractorDrawerOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([getAreaInterventionPlans(), getPlannerReadinessScores()]).then(
@@ -518,6 +670,14 @@ export function PlannerDashboardSection() {
             )}
           </div>
 
+          {/* Resource Strategy */}
+          {activeReadiness && (
+            <ResourceStrategyCard
+              readiness={activeReadiness}
+              onFindContractors={() => setContractorDrawerOpen(true)}
+            />
+          )}
+
           {/* Best Available Windows */}
           {selectedArea && areaReadiness.length > 0 && (
             <div className="rounded-xl border border-gray-800 bg-[#0d1117] p-5">
@@ -533,6 +693,11 @@ export function PlannerDashboardSection() {
           )}
         </div>
       </div>
+
+      {/* Contractor drawer */}
+      {contractorDrawerOpen && (
+        <ContractorDrawer onClose={() => setContractorDrawerOpen(false)} />
+      )}
     </div>
   );
 }

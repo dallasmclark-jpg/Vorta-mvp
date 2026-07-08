@@ -1,5 +1,12 @@
 import { supabase } from "../../lib/supabaseClient";
 
+export interface ResourceStrategyRow {
+  skill: string;
+  required: number;
+  internalAvailable: number;
+  status: string;
+}
+
 export interface PlannerReadinessScore {
   area: string;
   proposedDate: string;
@@ -18,6 +25,9 @@ export interface PlannerReadinessScore {
   workloadClashHours: number;
   warnings: string[];
   recommendation: string | null;
+  resourceStrategy: ResourceStrategyRow[];
+  contractorRequired: boolean;
+  contractorRecommendation: string | null;
 }
 
 export async function getPlannerReadinessScores(area?: string): Promise<PlannerReadinessScore[]> {
@@ -40,7 +50,10 @@ export async function getPlannerReadinessScores(area?: string): Promise<PlannerR
       spares_status,
       workload_clash_hours,
       warnings,
-      recommendation
+      recommendation,
+      resource_strategy,
+      contractor_required,
+      contractor_recommendation
     `)
     .order("proposed_date", { ascending: true });
 
@@ -71,5 +84,8 @@ export async function getPlannerReadinessScores(area?: string): Promise<PlannerR
     workloadClashHours: Number(row.workload_clash_hours ?? 0),
     warnings: Array.isArray(row.warnings) ? row.warnings : [],
     recommendation: row.recommendation ?? null,
+    resourceStrategy: Array.isArray(row.resource_strategy) ? row.resource_strategy : [],
+    contractorRequired: row.contractor_required ?? false,
+    contractorRecommendation: row.contractor_recommendation ?? null,
   }));
 }
