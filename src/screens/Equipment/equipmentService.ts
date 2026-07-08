@@ -1345,6 +1345,7 @@ export interface AreaInterventionPlan {
     criticalSpares?: number;
     skillGaps?: number;
   };
+  recommendedActions: Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
   resourceRequirements: AreaResourceRequirement[];
   dateNote: string;
 }
@@ -1391,6 +1392,13 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       row.target_work_package && typeof row.target_work_package === "object"
         ? row.target_work_package
         : {},
+    recommendedActions: (() => {
+      const pkg = row.target_work_package;
+      if (pkg && typeof pkg === "object" && Array.isArray((pkg as Record<string, unknown>).workItems)) {
+        return (pkg as Record<string, unknown>).workItems as Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
+      }
+      return [];
+    })(),
     resourceRequirements: Array.isArray(row.resource_requirements)
       ? row.resource_requirements
       : [],
