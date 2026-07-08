@@ -1139,6 +1139,56 @@ export async function getEquipmentRiskHistory(
   }));
 }
 
+export interface EquipmentRiskPrediction {
+  currentScore: number;
+  projected7: number;
+  projected30: number;
+  projected90: number;
+  projectedLevel: string;
+  trendDirection: string;
+  primaryDriver: string | null;
+  reason: string | null;
+  recommendedAction: string | null;
+  estimatedScoreAfterAction: number;
+}
+
+export async function getEquipmentRiskPrediction(equipmentId: string): Promise<EquipmentRiskPrediction | null> {
+  const { data, error } = await supabase
+    .from("equipment_risk_predictions")
+    .select(`
+      current_score,
+      projected_7_day_score,
+      projected_30_day_score,
+      projected_90_day_score,
+      projected_level,
+      trend_direction,
+      primary_driver,
+      reason,
+      recommended_action,
+      estimated_score_after_action
+    `)
+    .eq("equipment_id", equipmentId)
+    .order("prediction_date", { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) {
+    console.warn(error);
+    return null;
+  }
+  return {
+    currentScore:              data.current_score,
+    projected7:                data.projected_7_day_score,
+    projected30:               data.projected_30_day_score,
+    projected90:               data.projected_90_day_score,
+    projectedLevel:            data.projected_level,
+    trendDirection:            data.trend_direction,
+    primaryDriver:             data.primary_driver,
+    reason:                    data.reason,
+    recommendedAction:         data.recommended_action,
+    estimatedScoreAfterAction: data.estimated_score_after_action,
+  };
+}
+
 // ─── Shared equipment summary ─────────────────────────────────────────────────
 
 export interface EquipmentSummary {

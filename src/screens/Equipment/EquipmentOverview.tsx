@@ -17,7 +17,8 @@ import {
   Zap,
 } from "lucide-react";
 import { DEFAULT_EQUIPMENT_ID, getEquipmentById, EquipmentBase } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity } from "./equipmentService";
+import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentRiskPrediction } from "./equipmentService";
+import type { EquipmentRiskPrediction } from "./equipmentService";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -294,9 +295,11 @@ export const EquipmentOverview = (): JSX.Element => {
   const [equipmentBase, setEquipmentBase] = useState<EquipmentBase | null>(() =>
     getCachedEquipmentIdentity(resolvedId) ?? getCachedEquipmentIdentity(DEFAULT_EQUIPMENT_ID)
   );
+  const [prediction, setPrediction] = useState<EquipmentRiskPrediction | null>(null);
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEquipmentBase);
+    getEquipmentRiskPrediction(resolvedId).then(setPrediction);
   }, [resolvedId]);
 
   const handleTabClick = (tabId: string) => {
@@ -738,7 +741,137 @@ export const EquipmentOverview = (): JSX.Element => {
             </Card>
           </div>
 
-          {/* Row 3: Latest Activity (2/3) + Documents + AI Recommendation (1/3) */}
+          {/* Row 3: Projected Risk */}
+          {(() => {
+            const trendChips = [
+              { label: "Stable",     match: "Stable",     cls: "bg-[#10b98120] text-emerald-400" },
+              { label: "Increasing", match: "Increasing", cls: "bg-[#f9731620] text-orange-400" },
+              { label: "Escalating", match: "Escalating", cls: "bg-[#ef444420] text-red-400" },
+            ];
+            const projectedLevelClass = (level: string) =>
+              level === "Critical" ? "text-red-400" :
+              level === "High"     ? "text-orange-400" :
+              level === "Medium"   ? "text-yellow-400" :
+              level === "Low"      ? "text-lime-400" : "text-emerald-400";
+
+            return (
+              <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                <CardContent className="p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <CardNum n={7} />
+                    <div className="flex flex-1 items-center justify-between gap-2">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-200">Projected Risk</h2>
+                        <p className="text-[10px] text-slate-500">If no action is taken</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {trendChips.map((chip) => (
+                          <span
+                            key={chip.label}
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              prediction?.trendDirection === chip.match
+                                ? chip.cls
+                                : "bg-gray-800 text-slate-500"
+                            }`}
+                          >
+                            {chip.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {!prediction ? (
+                    <p className="text-sm text-slate-500">No prediction data available for this asset.</p>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+
+                      {/* Score timeline */}
+                      <div className="flex items-start gap-2">
+                        {[
+                          { label: "Current",  value: prediction.currentScore,  highlight: false },
+                          { label: "7 Days",   value: prediction.projected7,    highlight: false },
+                          { label: "30 Days",  value: prediction.projected30,   highlight: false },
+                          { label: "90 Days",  value: prediction.projected90,   highlight: true  },
+                        ].map((pt, i, arr) => (
+                          <div key={pt.label} className="flex items-center gap-2">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-slate-500">{pt.label}</span>
+                              <span className={`text-2xl font-bold ${pt.highlight ? "text-red-400" : "text-slate-50"}`}>
+                                {pt.value}
+                              </span>
+                            </div>
+                            {i < arr.length - 1 && (
+                              <span className="mb-0 mt-5 text-slate-600">→</span>
+                            )}
+                          </div>
+                        ))}
+
+                        <div className="ml-6 flex flex-col gap-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-slate-500">Projected Level</span>
+                            <span className={`text-sm font-bold ${projectedLevelClass(prediction.projectedLevel)}`}>
+                              {prediction.projectedLevel}
+                            </span>
+                          </div>
+                          {prediction.primaryDriver && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] text-slate-500">Primary Driver</span>
+                              <span className="text-sm font-semibold text-slate-200">{prediction.primaryDriver}</span>
+                            </div>
+                          )}
+                          {prediction.reason && (
+                            <p className="max-w-sm text-xs leading-relaxed text-slate-400">{prediction.reason}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Recommended Action */}
+                      {prediction.recommendedAction && (
+                        <div className="border-t border-gray-800 pt-4">
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Recommended Action</span>
+                              <p className="text-sm leading-relaxed text-slate-200">{prediction.recommendedAction}</p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Expected Outcome</span>
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[10px] text-slate-500">Current</span>
+                                  <span className="text-xl font-bold text-slate-50">{prediction.currentScore}</span>
+                                </div>
+                                <span className="text-slate-600">→</span>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[10px] text-slate-500">After Action</span>
+                                  <span className="text-xl font-bold text-emerald-400">{prediction.estimatedScoreAfterAction}</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[10px] text-slate-500">Reduction</span>
+                                  <span className="text-sm font-bold text-emerald-400">
+                                    ▼{prediction.currentScore - prediction.estimatedScoreAfterAction}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+                                <p className="text-xs leading-relaxed text-emerald-300">
+                                  If the recommended action is completed, predicted risk falls from{" "}
+                                  <span className="font-bold">{prediction.currentScore}</span> to{" "}
+                                  <span className="font-bold">{prediction.estimatedScoreAfterAction}</span>.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Row 4: Latest Activity (2/3) + Documents + AI Recommendation (1/3) */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 
             {/* 7 — Latest Activity */}
@@ -746,7 +879,7 @@ export const EquipmentOverview = (): JSX.Element => {
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <CardNum n={7} />
+                    <CardNum n={8} />
                     <h2 className="text-sm font-semibold text-slate-200">Latest Activity</h2>
                   </div>
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View History →</button>
@@ -800,7 +933,7 @@ export const EquipmentOverview = (): JSX.Element => {
                 <CardContent className="p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <CardNum n={8} />
+                      <CardNum n={9} />
                       <h2 className="text-sm font-semibold text-slate-200">Documents Summary</h2>
                     </div>
                     <span className="text-sm font-semibold text-slate-300">{ovw.inventoryValue}</span>
@@ -851,7 +984,7 @@ export const EquipmentOverview = (): JSX.Element => {
                 <CardContent className="p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <CardNum n={9} />
+                      <CardNum n={10} />
                       <h2 className="text-sm font-semibold text-slate-200">AI Recommendation</h2>
                     </div>
                     <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View AI Insights →</button>
@@ -891,7 +1024,7 @@ export const EquipmentOverview = (): JSX.Element => {
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <CardNum n={10} />
+                    <CardNum n={11} />
                     <h2 className="text-sm font-semibold text-slate-200">Equipment Health Trend (30 Days)</h2>
                   </div>
                   <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View full report →</button>
@@ -916,7 +1049,7 @@ export const EquipmentOverview = (): JSX.Element => {
             <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <CardNum n={11} />
+                  <CardNum n={12} />
                   <h2 className="text-sm font-semibold text-slate-200">Quick Actions</h2>
                 </div>
                 <div className="flex flex-col gap-2">
