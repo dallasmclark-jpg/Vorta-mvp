@@ -1234,6 +1234,81 @@ export async function getEquipmentSummary(equipmentId: string): Promise<Equipmen
   };
 }
 
+export interface AreaShutdownPlan {
+  area: string;
+  currentRiskScore: number;
+  currentRiskLevel: string;
+  recommendedWindowHours: number;
+  targetAssetCount: number;
+  targetPmCount: number;
+  targetCalibrationCount: number;
+  targetSparesCount: number;
+  predictedRiskScore: number;
+  predictedRiskLevel: string;
+  estimatedReduction: number;
+  confidence: string;
+  justification: string | null;
+  recommendedActions: Array<{
+    asset?: string;
+    riskScore?: number;
+    action?: string;
+    estimatedReduction?: number;
+  }>;
+  requiredSkills: string[];
+  requiredSpares: Array<{
+    asset?: string;
+    sparesMissing?: number;
+  }>;
+}
+
+export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
+  const { data, error } = await supabase
+    .from("area_shutdown_plans")
+    .select(`
+      area,
+      current_risk_score,
+      current_risk_level,
+      recommended_window_hours,
+      target_asset_count,
+      target_pm_count,
+      target_calibration_count,
+      target_spares_count,
+      predicted_risk_score,
+      predicted_risk_level,
+      estimated_reduction,
+      confidence,
+      justification,
+      recommended_actions,
+      required_skills,
+      required_spares
+    `)
+    .order("current_risk_score", { ascending: false });
+
+  if (error || !data) {
+    if (error) console.warn("area_shutdown_plans fetch failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    area:                   row.area,
+    currentRiskScore:       row.current_risk_score ?? 0,
+    currentRiskLevel:       row.current_risk_level ?? "Unknown",
+    recommendedWindowHours: row.recommended_window_hours ?? 0,
+    targetAssetCount:       row.target_asset_count ?? 0,
+    targetPmCount:          row.target_pm_count ?? 0,
+    targetCalibrationCount: row.target_calibration_count ?? 0,
+    targetSparesCount:      row.target_spares_count ?? 0,
+    predictedRiskScore:     row.predicted_risk_score ?? 0,
+    predictedRiskLevel:     row.predicted_risk_level ?? "Unknown",
+    estimatedReduction:     row.estimated_reduction ?? 0,
+    confidence:             row.confidence ?? "Medium",
+    justification:          row.justification ?? null,
+    recommendedActions:     Array.isArray(row.recommended_actions) ? row.recommended_actions : [],
+    requiredSkills:         Array.isArray(row.required_skills) ? row.required_skills : [],
+    requiredSpares:         Array.isArray(row.required_spares) ? row.required_spares : [],
+  }));
+}
+
 // ─── Building group definitions ───────────────────────────────────────────────
 
 export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
