@@ -1347,6 +1347,7 @@ export interface AreaInterventionPlan {
   };
   recommendedActions: Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
   resourceRequirements: AreaResourceRequirement[];
+  targetWorkList: string;
   dateNote: string;
 }
 
@@ -1367,7 +1368,8 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       options,
       target_work_package,
       resource_requirements,
-      date_note
+      date_note,
+      target_work_list
     `)
     .order("current_risk_score", { ascending: false });
 
@@ -1402,6 +1404,7 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
     resourceRequirements: Array.isArray(row.resource_requirements)
       ? row.resource_requirements
       : [],
+    targetWorkList: row.target_work_list ?? "",
     dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
   }));
 }

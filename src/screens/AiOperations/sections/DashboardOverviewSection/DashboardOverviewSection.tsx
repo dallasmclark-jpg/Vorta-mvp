@@ -662,25 +662,31 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work List</h3>
                       <p className="mt-0.5 text-[11px] text-slate-600">Priority work included in the recommended intervention.</p>
                     </div>
-                    {selectedInterventionPlan.recommendedActions.length > 0 ? (
+                    {selectedInterventionPlan.targetWorkList ? (
                       <div className="flex flex-col gap-2">
-                        {selectedInterventionPlan.recommendedActions.slice(0, 5).map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
-                              {i + 1}
-                            </span>
-                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              {item.asset && <span className="text-xs font-semibold text-slate-200">{item.asset}</span>}
-                              {item.action && <span className="text-xs text-slate-400">{item.action}</span>}
-                            </div>
-                            {item.estimatedReduction !== undefined && (
-                              <div className="shrink-0 flex flex-col items-end gap-0">
-                                <span className="text-[10px] text-slate-500">Risk reduction</span>
-                                <span className="text-sm font-bold text-emerald-400">▼{item.estimatedReduction}</span>
+                        {selectedInterventionPlan.targetWorkList
+                          .split(";")
+                          .map((raw) => raw.trim())
+                          .filter(Boolean)
+                          .slice(0, 5)
+                          .map((item, i) => {
+                            const reductionMatch = item.match(/\b(\d+)\s*(?:risk\s+)?(?:reduction|pts?|points?)\b/i);
+                            const reductionValue = reductionMatch ? reductionMatch[1] : null;
+                            return (
+                              <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
+                                  {i + 1}
+                                </span>
+                                <span className="min-w-0 flex-1 text-xs text-slate-300 leading-snug">{item}</span>
+                                {reductionValue && (
+                                  <div className="shrink-0 flex flex-col items-end gap-0">
+                                    <span className="text-[10px] text-slate-500">Risk reduction</span>
+                                    <span className="text-sm font-bold text-emerald-400">▼{reductionValue}</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                            );
+                          })}
                       </div>
                     ) : (
                       <p className="rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-xs text-slate-500">
