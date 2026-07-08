@@ -1309,6 +1309,95 @@ export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
   }));
 }
 
+export interface AreaInterventionOption {
+  option: string;
+  durationHours: number;
+  predictedRiskScore: number;
+  predictedRiskLevel: string;
+  reduction: number;
+  efficiency: number;
+  productionImpact: string;
+  recommended: boolean;
+}
+
+export interface AreaResourceRequirement {
+  role: string;
+  engineers: number;
+  estimatedHours: number;
+}
+
+export interface AreaInterventionPlan {
+  area: string;
+  currentRiskScore: number;
+  currentRiskLevel: string;
+  recommendedOption: string;
+  recommendedDurationHours: number;
+  recommendedPredictedRiskScore: number;
+  recommendedPredictedRiskLevel: string;
+  recommendedReduction: number;
+  recommendedEfficiency: number;
+  justification: string | null;
+  options: AreaInterventionOption[];
+  targetWorkPackage: {
+    targetAssets?: number;
+    overduePMs?: number;
+    calibrationBacklog?: number;
+    criticalSpares?: number;
+    skillGaps?: number;
+  };
+  resourceRequirements: AreaResourceRequirement[];
+  dateNote: string;
+}
+
+export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
+  const { data, error } = await supabase
+    .from("area_intervention_plans")
+    .select(`
+      area,
+      current_risk_score,
+      current_risk_level,
+      recommended_option,
+      recommended_duration_hours,
+      recommended_predicted_risk_score,
+      recommended_predicted_risk_level,
+      recommended_reduction,
+      recommended_efficiency,
+      justification,
+      options,
+      target_work_package,
+      resource_requirements,
+      date_note
+    `)
+    .order("current_risk_score", { ascending: false });
+
+  if (error || !data) {
+    if (error) console.warn("area_intervention_plans fetch failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    area:                          row.area,
+    currentRiskScore:              row.current_risk_score ?? 0,
+    currentRiskLevel:              row.current_risk_level ?? "Unknown",
+    recommendedOption:             row.recommended_option ?? "Review intervention",
+    recommendedDurationHours:      Number(row.recommended_duration_hours ?? 0),
+    recommendedPredictedRiskScore: row.recommended_predicted_risk_score ?? 0,
+    recommendedPredictedRiskLevel: row.recommended_predicted_risk_level ?? "Unknown",
+    recommendedReduction:          row.recommended_reduction ?? 0,
+    recommendedEfficiency:         Number(row.recommended_efficiency ?? 0),
+    justification:                 row.justification ?? null,
+    options:                       Array.isArray(row.options) ? row.options : [],
+    targetWorkPackage:
+      row.target_work_package && typeof row.target_work_package === "object"
+        ? row.target_work_package
+        : {},
+    resourceRequirements: Array.isArray(row.resource_requirements)
+      ? row.resource_requirements
+      : [],
+    dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
+  }));
+}
+
 // ─── Building group definitions ───────────────────────────────────────────────
 
 export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {

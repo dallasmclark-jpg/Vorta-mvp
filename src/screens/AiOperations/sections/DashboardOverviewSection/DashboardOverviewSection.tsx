@@ -15,10 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../../components
 import {
   getAreaRiskProfiles,
   getSiteRiskProfile,
-  getAreaShutdownPlans,
+  getAreaInterventionPlans,
   type AreaRiskProfile,
   type SiteRiskProfile,
-  type AreaShutdownPlan,
+  type AreaInterventionPlan,
 } from "../../../Equipment/equipmentService";
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
@@ -184,13 +184,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
-  const [shutdownPlans, setShutdownPlans] = useState<AreaShutdownPlan[]>([]);
-  const [selectedShutdownPlan, setSelectedShutdownPlan] = useState<AreaShutdownPlan | null>(null);
+  const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
+  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
 
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
     getSiteRiskProfile().then(setSiteRisk);
-    getAreaShutdownPlans().then(setShutdownPlans);
+    getAreaInterventionPlans().then(setInterventionPlans);
   }, []);
 
   const handleAssetClick = (id: string) => {
@@ -416,7 +416,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           {areaRiskCards.slice(0, 4).map((area) => {
             const riskLabel = area.riskLevel;
             const isHighestRisk = areaRiskCards[0]?.area === area.area;
-            const shutdownPlan = shutdownPlans.find((plan) => plan.area === area.area);
+            const interventionPlan = interventionPlans.find((plan) => plan.area === area.area);
 
             const badgeClass =
               area.riskScore >= 85 ? "bg-red-500/20 text-red-400" :
@@ -492,13 +492,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
                     <RiskMeter value={area.riskScore} fillClassName={progressClass} />
                     <p className="text-xs text-slate-400">{trend}</p>
-                    {shutdownPlan && (
+                    {interventionPlan && (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setSelectedShutdownPlan(shutdownPlan); }}
+                        onClick={(e) => { e.stopPropagation(); setSelectedInterventionPlan(interventionPlan); }}
                         className="mt-1 w-fit rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15 hover:text-blue-300"
                       >
-                        View shutdown plan →
+                        View intervention plan →
                       </button>
                     )}
                   </div>
@@ -515,25 +515,25 @@ export const DashboardOverviewSection = (): JSX.Element => {
           )}
         </div>
 
-        {/* Shutdown Plan Modal */}
-        {selectedShutdownPlan && (
+        {/* Intervention Plan Modal */}
+        {selectedInterventionPlan && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-            onClick={() => setSelectedShutdownPlan(null)}
+            onClick={() => setSelectedInterventionPlan(null)}
           >
             <div
-              className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-700 bg-[#141820] shadow-2xl"
+              className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-700 bg-[#141820] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal header */}
               <div className="flex items-start justify-between gap-4 border-b border-gray-800 px-6 py-5">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Shutdown Justification</p>
-                  <h2 className="mt-0.5 text-base font-semibold text-slate-50">{selectedShutdownPlan.area}</h2>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recommended Maintenance Intervention</p>
+                  <h2 className="mt-0.5 text-base font-semibold text-slate-50">{selectedInterventionPlan.area}</h2>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedShutdownPlan(null)}
+                  onClick={() => setSelectedInterventionPlan(null)}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
                   aria-label="Close"
                 >
@@ -543,117 +543,137 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
               {/* Modal body */}
               <div className="flex-1 overflow-y-auto px-6 py-5">
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-6">
 
-                  {/* Risk comparison */}
-                  <div className="flex flex-wrap items-center gap-5 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-4">
+                  {/* Hero comparison */}
+                  <div className="flex flex-wrap items-center gap-6 rounded-lg border border-gray-800 bg-[#0d1117] px-5 py-4">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[10px] text-slate-500">Current Risk</span>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold text-slate-50">{selectedShutdownPlan.currentRiskScore}</span>
-                        <span className="text-sm font-semibold text-orange-400">{selectedShutdownPlan.currentRiskLevel}</span>
+                        <span className="text-3xl font-bold text-slate-50">{selectedInterventionPlan.currentRiskScore}</span>
+                        <span className="text-sm font-semibold text-orange-400">{selectedInterventionPlan.currentRiskLevel}</span>
                       </div>
                     </div>
-                    <span className="text-slate-600 text-lg">→</span>
+
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-slate-600">→</span>
+                      <span className="rounded bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                        {selectedInterventionPlan.recommendedOption}
+                      </span>
+                      <span className="text-slate-600">→</span>
+                    </div>
+
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Predicted After Window</span>
+                      <span className="text-[10px] text-slate-500">Predicted Risk</span>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold text-emerald-400">{selectedShutdownPlan.predictedRiskScore}</span>
-                        <span className="text-sm font-semibold text-emerald-400">{selectedShutdownPlan.predictedRiskLevel}</span>
+                        <span className="text-3xl font-bold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskScore}</span>
+                        <span className="text-sm font-semibold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskLevel}</span>
                       </div>
                     </div>
+
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[10px] text-slate-500">Reduction</span>
-                      <span className="text-2xl font-bold text-emerald-400">▼{selectedShutdownPlan.estimatedReduction}</span>
+                      <span className="text-3xl font-bold text-emerald-400">▼{selectedInterventionPlan.recommendedReduction}</span>
                     </div>
-                  </div>
 
-                  {/* Meta row */}
-                  <div className="flex flex-wrap gap-4">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Recommended Window</span>
-                      <span className="text-sm font-semibold text-slate-200">{selectedShutdownPlan.recommendedWindowHours} hours</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Confidence</span>
-                      <span className="text-sm font-semibold text-slate-200">{selectedShutdownPlan.confidence}</span>
+                      <span className="text-[10px] text-slate-500">Efficiency</span>
+                      <span className="text-lg font-semibold text-slate-200">{selectedInterventionPlan.recommendedEfficiency} risk pts/hr</span>
                     </div>
                   </div>
 
-                  {/* Target package */}
-                  <div>
-                    <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Package</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {[
-                        { label: "Target assets",      value: selectedShutdownPlan.targetAssetCount },
-                        { label: "Overdue PMs",         value: selectedShutdownPlan.targetPmCount },
-                        { label: "Calibration backlog", value: selectedShutdownPlan.targetCalibrationCount },
-                        { label: "Critical spares",     value: selectedShutdownPlan.targetSparesCount },
-                      ].map((item) => (
-                        <div key={item.label} className="flex flex-col items-center rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-2.5">
-                          <span className="text-xl font-bold text-slate-50">{item.value}</span>
-                          <span className="text-[10px] text-slate-500">{item.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  {selectedInterventionPlan.justification && (
+                    <p className="text-xs text-slate-400">{selectedInterventionPlan.justification}</p>
+                  )}
 
-                  {/* Justification */}
-                  {selectedShutdownPlan.justification && (
+                  {/* Options table */}
+                  {selectedInterventionPlan.options.length > 0 && (
                     <div>
-                      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Justification</h3>
-                      <p className="text-sm leading-relaxed text-slate-300">{selectedShutdownPlan.justification}</p>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Intervention Options</h3>
+                      <div className="overflow-x-auto rounded-lg border border-gray-800">
+                        <table className="w-full min-w-[560px] border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-800 bg-[#0d1117]">
+                              {["Option", "Duration", "Predicted Risk", "Reduction", "Efficiency", "Impact"].map((col) => (
+                                <th key={col} className="px-3 py-2.5 text-left font-semibold text-slate-500">{col}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedInterventionPlan.options.map((opt, i) => (
+                              <tr
+                                key={i}
+                                className={`border-b border-gray-800 last:border-0 ${
+                                  opt.recommended ? "bg-blue-500/5" : "bg-transparent"
+                                }`}
+                              >
+                                <td className="px-3 py-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={opt.recommended ? "font-semibold text-slate-50" : "text-slate-300"}>{opt.option}</span>
+                                    {opt.recommended && (
+                                      <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-400">Recommended</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2.5 text-slate-400">{opt.durationHours} hrs</td>
+                                <td className="px-3 py-2.5">
+                                  <span className={opt.recommended ? "font-semibold text-emerald-400" : "text-slate-300"}>
+                                    {opt.predictedRiskScore} <span className="text-slate-500">{opt.predictedRiskLevel}</span>
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2.5 font-semibold text-emerald-400">▼{opt.reduction}</td>
+                                <td className="px-3 py-2.5 text-slate-400">{opt.efficiency} pts/hr</td>
+                                <td className="px-3 py-2.5 text-slate-400">{opt.productionImpact}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
-                  {/* Recommended actions */}
-                  {selectedShutdownPlan.recommendedActions.length > 0 && (
+                  {/* Target work package */}
+                  {Object.keys(selectedInterventionPlan.targetWorkPackage).length > 0 && (
                     <div>
-                      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recommended Actions</h3>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work Package</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {[
+                          { key: "targetAssets",       label: "Target assets" },
+                          { key: "overduePMs",          label: "Overdue PMs" },
+                          { key: "calibrationBacklog",  label: "Calibration backlog" },
+                          { key: "criticalSpares",      label: "Critical spares" },
+                          { key: "skillGaps",           label: "Skill gaps" },
+                        ].filter(({ key }) => (selectedInterventionPlan.targetWorkPackage as Record<string, number>)[key] !== undefined)
+                         .map(({ key, label }) => (
+                          <div key={key} className="flex flex-col items-center rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-2.5">
+                            <span className="text-xl font-bold text-slate-50">
+                              {(selectedInterventionPlan.targetWorkPackage as Record<string, number>)[key]}
+                            </span>
+                            <span className="text-[10px] text-slate-500">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Required resources */}
+                  {selectedInterventionPlan.resourceRequirements.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Required Resources</h3>
                       <div className="flex flex-col gap-2">
-                        {selectedShutdownPlan.recommendedActions.map((ra, i) => (
-                          <div key={i} className="flex items-start justify-between gap-4 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
-                            <div className="flex flex-col gap-0.5">
-                              {ra.asset && <span className="text-xs font-semibold text-slate-200">{ra.asset}</span>}
-                              {ra.action && <span className="text-xs text-slate-400">{ra.action}</span>}
+                        {selectedInterventionPlan.resourceRequirements.map((req, i) => (
+                          <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
+                            <span className="text-sm font-semibold text-slate-200">{req.role}</span>
+                            <div className="flex items-center gap-6 text-xs text-slate-400">
+                              <span>Engineers required: <span className="font-semibold text-slate-200">{req.engineers}</span></span>
+                              <span>Estimated labour: <span className="font-semibold text-slate-200">{req.estimatedHours} hrs</span></span>
                             </div>
-                            {ra.estimatedReduction !== undefined && (
-                              <span className="shrink-0 text-xs font-semibold text-emerald-400">▼{ra.estimatedReduction}</span>
-                            )}
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Required skills */}
-                  {selectedShutdownPlan.requiredSkills.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Required Skills</h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedShutdownPlan.requiredSkills.map((skill) => (
-                          <span key={skill} className="rounded bg-gray-800 px-2 py-1 text-xs font-medium text-slate-300">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Required spares */}
-                  {selectedShutdownPlan.requiredSpares.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Required Spares</h3>
-                      <div className="flex flex-col gap-2">
-                        {selectedShutdownPlan.requiredSpares.map((spare, i) => (
-                          <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2">
-                            {spare.asset && <span className="text-xs text-slate-300">{spare.asset}</span>}
-                            {spare.sparesMissing !== undefined && (
-                              <span className="text-xs font-semibold text-red-400">{spare.sparesMissing} missing</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      {selectedInterventionPlan.dateNote && (
+                        <p className="mt-2.5 text-[11px] text-slate-500">{selectedInterventionPlan.dateNote}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -663,7 +683,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               <div className="flex items-center justify-between gap-3 border-t border-gray-800 px-6 py-4">
                 <button
                   type="button"
-                  onClick={() => setSelectedShutdownPlan(null)}
+                  onClick={() => setSelectedInterventionPlan(null)}
                   className="text-sm text-slate-400 transition-colors hover:text-slate-200"
                 >
                   Close
@@ -671,8 +691,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <Button
                   type="button"
                   onClick={() => {
-                    navigate(`/equipment?area=${encodeURIComponent(selectedShutdownPlan.area)}`);
-                    setSelectedShutdownPlan(null);
+                    navigate(`/equipment?area=${encodeURIComponent(selectedInterventionPlan.area)}`);
+                    setSelectedInterventionPlan(null);
                   }}
                   className="h-auto bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
                 >
