@@ -13,8 +13,8 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-import { getEquipmentList, getEquipmentRiskExplanations, resolveBuilding } from "./equipmentService";
-import type { EquipmentListItem, EquipmentRiskExplanation } from "./equipmentService";
+import { getEquipmentList, getEquipmentRiskExplanations, getEquipmentRiskHistory, resolveBuilding } from "./equipmentService";
+import type { EquipmentListItem, EquipmentRiskExplanation, EquipmentRiskHistory } from "./equipmentService";
 
 // ─── Local display-only constants ────────────────────────────────────────────
 
@@ -98,40 +98,22 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
   );
 }
 
-// ─── Risk Trend ───────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildRiskTrend(currentScore: number) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"];
-  const values = [
-    Math.max(0, currentScore - 8),
-    Math.max(0, currentScore - 7),
-    Math.max(0, currentScore - 5),
-    Math.max(0, currentScore - 6),
-    Math.max(0, currentScore - 3),
-    Math.max(0, currentScore - 2),
-    currentScore,
-  ];
-  return days.map((day, index) => ({ day, score: values[index] }));
-}
-
-function trendDriverMessage(explanations: EquipmentRiskExplanation[]): string {
-  if (explanations.length === 0) return "Risk increased due to PM backlog and calibration pressure.";
-  const top = explanations[0].driver.toLowerCase();
-  if (top.includes("pm") || top.includes("maintenance")) return "Risk increased due to overdue PM pressure.";
-  if (top.includes("calibration")) return "Risk increased due to calibration backlog.";
-  if (top.includes("spare")) return "Risk increased due to critical spare availability.";
-  if (top.includes("criticality") || top.includes("critical")) return "Risk remains elevated due to asset criticality.";
-  if (top.includes("skill")) return "Risk increased due to skills coverage gaps.";
-  return "Risk increased due to PM backlog and calibration pressure.";
+function formatSnapshotDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
+  const [history, setHistory] = useState<EquipmentRiskHistory[]>([]);
 
   useEffect(() => {
     getEquipmentRiskExplanations(item.id).then(setExplanations);
+    getEquipmentRiskHistory(item.id).then(setHistory);
   }, [item.id]);
 
   return (
@@ -177,56 +159,72 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
         <div className="flex flex-col gap-3">
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
-            <p className="mt-0.5 text-[10px] text-slate-600">Last 7 days</p>
+            <p className="mt-0.5 text-[10px] text-slate-600">30 day history</p>
           </div>
-          {(() => {
-            const trend = buildRiskTrend(item.riskScore);
-            const firstScore = trend[0].score;
-            const weeklyChange = item.riskScore - firstScore;
-            const maxScore = Math.max(...trend.map((t) => t.score)) || 1;
+          {history.length === 0 ? (
+            <p className="text-[11px] text-slate-500">No historical snapshots available.</p>
+          ) : (() => {
+            const trend = history.map((h) => ({
+              label: h.snapshotLabel ?? formatSnapshotDate(h.snapshotDate),
+              value: h.riskScore,
+            }));
+            const todayScore = trend[trend.length - 1].value;
+            const sevenDaysAgo = history.length >= 2 ? history[Math.max(0, history.length - 8)].riskScore : null;
+            const weeklyChange = sevenDaysAgo !== null ? todayScore - sevenDaysAgo : null;
+            const monthlyChange = todayScore - trend[0].value;
+            const maxScore = Math.max(...trend.map((t) => t.value)) || 1;
+            const lastEntry = history[history.length - 1];
             return (
               <div className="flex flex-col gap-2">
                 <div className="flex items-end justify-between gap-1">
                   {trend.map((point, i) => {
-                    const isToday = i === trend.length - 1;
-                    const barHeight = Math.max(8, Math.round((point.score / maxScore) * 40));
+                    const isLast = i === trend.length - 1;
+                    const barHeight = Math.max(8, Math.round((point.value / maxScore) * 40));
                     return (
-                      <div key={point.day} className="flex flex-1 flex-col items-center gap-1">
-                        <span className={`text-[9px] font-semibold ${isToday ? "text-blue-400" : "text-slate-500"}`}>
-                          {point.score}
+                      <div key={`${point.label}-${i}`} className="flex flex-1 flex-col items-center gap-1">
+                        <span className={`text-[9px] font-semibold ${isLast ? "text-blue-400" : "text-slate-500"}`}>
+                          {point.value}
                         </span>
                         <div
                           style={{ height: `${barHeight}px` }}
-                          className={`w-full rounded-sm ${isToday ? "bg-blue-500" : "bg-slate-700"}`}
+                          className={`w-full rounded-sm ${isLast ? "bg-blue-500" : "bg-slate-700"}`}
                         />
-                        <span className={`text-[9px] ${isToday ? "font-semibold text-blue-400" : "text-slate-600"}`}>
-                          {point.day}
+                        <span className={`text-[9px] ${isLast ? "font-semibold text-blue-400" : "text-slate-600"}`}>
+                          {point.label}
                         </span>
                       </div>
                     );
                   })}
                 </div>
+
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500">Weekly change</span>
-                  <span className={`text-[10px] font-semibold ${weeklyChange > 0 ? "text-red-400" : weeklyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
-                    {weeklyChange > 0 ? `+${weeklyChange}` : weeklyChange} this week
+                  <span className="text-[10px] text-slate-500">Weekly</span>
+                  {weeklyChange !== null ? (
+                    <span className={`text-[10px] font-semibold ${weeklyChange > 0 ? "text-red-400" : weeklyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
+                      {weeklyChange > 0 ? `▲ +${weeklyChange}` : weeklyChange < 0 ? `▼ ${weeklyChange}` : "— 0"}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">--</span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-500">Monthly</span>
+                  <span className={`text-[10px] font-semibold ${monthlyChange > 0 ? "text-red-400" : monthlyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
+                    {monthlyChange > 0 ? `▲ +${monthlyChange}` : monthlyChange < 0 ? `▼ ${monthlyChange}` : "— 0"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500">Monthly change</span>
-                  {(() => {
-                    const monthlyStartScore = Math.max(0, item.riskScore - 19);
-                    const monthlyChange = item.riskScore - monthlyStartScore;
-                    return (
-                      <span className={`text-[10px] font-semibold ${monthlyChange > 0 ? "text-red-400" : monthlyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
-                        {monthlyChange > 0 ? `+${monthlyChange}` : monthlyChange} this month
-                      </span>
-                    );
-                  })()}
-                </div>
-                <p className="text-[10px] leading-relaxed text-slate-500">
-                  {trendDriverMessage(explanations)}
-                </p>
+
+                {lastEntry.primaryDriver && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500">Primary driver</span>
+                    <span className="text-[10px] font-semibold text-slate-300">{lastEntry.primaryDriver}</span>
+                  </div>
+                )}
+
+                {lastEntry.changeReason && (
+                  <p className="text-[10px] leading-relaxed text-slate-500">{lastEntry.changeReason}</p>
+                )}
               </div>
             );
           })()}

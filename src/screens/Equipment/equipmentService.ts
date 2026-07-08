@@ -1094,6 +1094,51 @@ export function getEquipmentAiInsights(equipmentId: string): AiInsight[] {
   return MOCK_AI_INSIGHTS.filter((i) => i.equipmentId === equipmentId);
 }
 
+export interface EquipmentRiskHistory {
+  snapshotDate: string;
+  snapshotLabel: string | null;
+  riskScore: number;
+  riskLevel: string;
+  primaryDriver: string | null;
+  mainDriverPct: number;
+  changeReason: string | null;
+}
+
+export async function getEquipmentRiskHistory(
+  equipmentId: string,
+  days = 30,
+): Promise<EquipmentRiskHistory[]> {
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - days);
+  const { data, error } = await supabase
+    .from("equipment_risk_history")
+    .select(`
+      snapshot_date,
+      snapshot_label,
+      risk_score,
+      risk_level,
+      primary_driver,
+      main_driver_pct,
+      change_reason
+    `)
+    .eq("equipment_id", equipmentId)
+    .gte("snapshot_date", fromDate.toISOString().slice(0, 10))
+    .order("snapshot_date", { ascending: true });
+  if (error || !data) {
+    console.warn(error);
+    return [];
+  }
+  return data.map((row) => ({
+    snapshotDate:  row.snapshot_date,
+    snapshotLabel: row.snapshot_label,
+    riskScore:     row.risk_score,
+    riskLevel:     row.risk_level,
+    primaryDriver: row.primary_driver,
+    mainDriverPct: row.main_driver_pct ?? 0,
+    changeReason:  row.change_reason,
+  }));
+}
+
 // ─── Shared equipment summary ─────────────────────────────────────────────────
 
 export interface EquipmentSummary {
