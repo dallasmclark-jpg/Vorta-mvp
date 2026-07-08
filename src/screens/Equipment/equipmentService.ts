@@ -1309,6 +1309,18 @@ export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
   }));
 }
 
+export interface AreaInterventionWorkItem {
+  priority: number;
+  asset: string;
+  assetCode?: string;
+  riskScore: number;
+  riskLevel: string;
+  driver: string;
+  action: string;
+  estimatedReduction: number;
+  estimatedHours: number;
+}
+
 export interface AreaInterventionOption {
   option: string;
   durationHours: number;
@@ -1346,6 +1358,7 @@ export interface AreaInterventionPlan {
     skillGaps?: number;
   };
   recommendedActions: Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
+  workItems: AreaInterventionWorkItem[];
   resourceRequirements: AreaResourceRequirement[];
   targetWorkList: string;
   dateNote: string;
@@ -1369,7 +1382,8 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       target_work_package,
       resource_requirements,
       date_note,
-      target_work_list
+      target_work_list,
+      work_items
     `)
     .order("current_risk_score", { ascending: false });
 
@@ -1404,6 +1418,7 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
     resourceRequirements: Array.isArray(row.resource_requirements)
       ? row.resource_requirements
       : [],
+    workItems: Array.isArray(row.work_items) ? row.work_items : [],
     targetWorkList: row.target_work_list ?? "",
     dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
   }));

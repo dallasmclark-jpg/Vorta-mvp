@@ -662,7 +662,43 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work List</h3>
                       <p className="mt-0.5 text-[11px] text-slate-600">Priority work included in the recommended intervention.</p>
                     </div>
-                    {selectedInterventionPlan.targetWorkList ? (
+                    {selectedInterventionPlan.workItems.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {selectedInterventionPlan.workItems.slice(0, 5).map((item, i) => (
+                          <div key={i} className="rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
+                                    {item.priority}
+                                  </span>
+                                  <span className="text-xs font-semibold text-slate-100">{item.asset}</span>
+                                  {item.assetCode && (
+                                    <span className="text-[10px] text-slate-500">{item.assetCode}</span>
+                                  )}
+                                </div>
+                                <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5">
+                                  <span className="text-[11px] text-slate-400">
+                                    <span className="text-slate-600">Action: </span>{item.action}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">
+                                    <span className="text-slate-600">Driver: </span>{item.driver}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">
+                                    <span className="text-slate-600">Risk: </span>
+                                    {item.riskScore} <span className="text-orange-400">{item.riskLevel}</span>
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex flex-col items-end gap-0.5">
+                                <span className="text-sm font-bold text-emerald-400">▼{item.estimatedReduction}</span>
+                                <span className="text-[10px] text-slate-500">{item.estimatedHours} hrs</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : selectedInterventionPlan.targetWorkList ? (
                       <div className="flex flex-col gap-2">
                         {selectedInterventionPlan.targetWorkList
                           .split(";")
