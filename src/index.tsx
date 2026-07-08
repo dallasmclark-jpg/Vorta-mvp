@@ -15,6 +15,7 @@ const EngineerPortal       = lazy(() => import("./screens/EngineerPortal").then(
 const ContractorPortal     = lazy(() => import("./screens/ContractorPortal").then(m => ({ default: m.ContractorPortal })));
 const ProductionManagerPortal = lazy(() => import("./screens/ProductionManager").then(m => ({ default: m.ProductionManagerPortal })));
 const OperatorPortal       = lazy(() => import("./screens/OperatorPortal").then(m => ({ default: m.OperatorPortal })));
+const MaintenancePlanner   = lazy(() => import("./screens/MaintenancePlanner").then(m => ({ default: m.MaintenancePlanner })));
 
 createRoot(document.getElementById("app") as HTMLElement).render(
   <BrowserRouter>
@@ -38,6 +39,7 @@ createRoot(document.getElementById("app") as HTMLElement).render(
               <Route path="/contractor/*" element={<ContractorPortal />} />
               <Route path="/production/*" element={<ProductionManagerPortal />} />
               <Route path="/operator/*"   element={<OperatorPortal />} />
+              <Route path="/planner/*"    element={<MaintenancePlanner />} />
               <Route path="/*"            element={<AiOperations />} />
             </Routes>
           </Suspense>
