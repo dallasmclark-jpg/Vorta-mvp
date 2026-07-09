@@ -15,9 +15,32 @@ import {
 
 type ChatRole = "user" | "assistant";
 
+type VortaAiRole =
+  | "maintenance-manager"
+  | "planner"
+  | "engineer"
+  | "operator"
+  | "production-manager"
+  | "contractor";
+
+interface RoleResponseProfile {
+  role: VortaAiRole;
+  label: string;
+  subtitle: string;
+  responseBadge: string;
+  introAnswer: string;
+  defaultAction: string;
+  promptPlaceholder: string;
+  contextLine: string;
+  confidenceLabel: string;
+  focusAreas: string[];
+  quickQuestions: string[];
+}
+
 interface GlobalAiPromptEventDetail {
   question?: string;
   submit?: boolean;
+  role?: VortaAiRole;
 }
 
 interface GlobalAiAnswer {
@@ -26,6 +49,9 @@ interface GlobalAiAnswer {
   recommendedActions: string[];
   sources: string[];
   confidence: number;
+  roleLabel: string;
+  responseBadge: string;
+  roleNote?: string;
   knowledgeChunks?: EquipmentKnowledgeChunk[];
   missingData?: string[];
 }
@@ -38,13 +64,130 @@ interface GlobalAiMessage {
   answer?: GlobalAiAnswer;
 }
 
-const GLOBAL_QUESTIONS = [
-  "What should I review first today?",
-  "What is the highest site risk?",
-  "Which area needs attention?",
-  "Which equipment is most critical?",
-  "What evidence supports this?",
-];
+// ─── Role profiles ────────────────────────────────────────────────────────────
+
+const ROLE_PROFILES: Record<VortaAiRole, RoleResponseProfile> = {
+  "maintenance-manager": {
+    role: "maintenance-manager",
+    label: "Maintenance Manager",
+    subtitle: "Site risk and action assistant",
+    responseBadge: "Strategic maintenance response",
+    introAnswer: "I can answer Maintenance Manager questions using Vorta site risk, area risk, equipment risk and source document data currently available in the MVP.",
+    defaultAction: "Ask: What should I review first today?",
+    promptPlaceholder: "Ask about site risk, areas, equipment, evidence...",
+    contextLine: "Using site risk, area risk, equipment risk and source documents.",
+    confidenceLabel: "Manager confidence",
+    focusAreas: ["site risk", "area risk", "equipment priority", "labour risk", "PM backlog", "skills coverage", "spares"],
+    quickQuestions: [
+      "What should I review first today?",
+      "What is the highest site risk?",
+      "Which area needs attention?",
+      "Which equipment is most critical?",
+      "What evidence supports this?",
+    ],
+  },
+  planner: {
+    role: "planner",
+    label: "Maintenance Planner",
+    subtitle: "Planning, workload and readiness assistant",
+    responseBadge: "Planner response",
+    introAnswer: "I can help a Maintenance Planner prioritise workload, prepare work packs, check PM readiness and highlight labour, spares or access constraints.",
+    defaultAction: "Ask: What work should be planned first?",
+    promptPlaceholder: "Ask about workload, PMs, spares, access, readiness...",
+    contextLine: "Using equipment risk, PM backlog, area risk and source documents.",
+    confidenceLabel: "Planning confidence",
+    focusAreas: ["workload", "PM readiness", "spares", "access", "shutdown windows", "resource cover"],
+    quickQuestions: [
+      "What work should be planned first?",
+      "Which PMs need spares before release?",
+      "What is blocking readiness?",
+      "Which asset should be scheduled first?",
+      "What evidence supports this plan?",
+    ],
+  },
+  engineer: {
+    role: "engineer",
+    label: "Engineer",
+    subtitle: "Fault, evidence and safe action assistant",
+    responseBadge: "Engineer response",
+    introAnswer: "I can help an Engineer understand the likely fault, evidence, source sections, spares and safe next checks for assigned equipment.",
+    defaultAction: "Ask: What should I check first?",
+    promptPlaceholder: "Ask about faults, manuals, spares, PMs or safe checks...",
+    contextLine: "Using equipment risk, work orders, manuals, SOPs, spares and source documents.",
+    confidenceLabel: "Diagnostic confidence",
+    focusAreas: ["fault checks", "safe isolation", "manuals", "SOPs", "spares", "work order history"],
+    quickQuestions: [
+      "What should I check first?",
+      "What does the SOP say?",
+      "What spares may be needed?",
+      "Has this fault happened before?",
+      "Who else has worked on this asset?",
+    ],
+  },
+  operator: {
+    role: "operator",
+    label: "Operator",
+    subtitle: "Safe task and escalation assistant",
+    responseBadge: "Operator response",
+    introAnswer: "I can help an Operator understand safe checks, escalation triggers, SOP references and what information to give maintenance.",
+    defaultAction: "Ask: Is this safe to continue running?",
+    promptPlaceholder: "Ask about safe checks, escalation, SOPs or task guidance...",
+    contextLine: "Using SOPs, safe operating notes, equipment status and source documents.",
+    confidenceLabel: "Operational confidence",
+    focusAreas: ["safe running", "operator checks", "handover notes", "SOPs", "escalation"],
+    quickQuestions: [
+      "Is this safe to continue running?",
+      "What should I tell maintenance?",
+      "What operator checks are allowed?",
+      "When should I escalate?",
+      "What SOP applies?",
+    ],
+  },
+  "production-manager": {
+    role: "production-manager",
+    label: "Production Manager",
+    subtitle: "Production risk and impact assistant",
+    responseBadge: "Production response",
+    introAnswer: "I can help a Production Manager understand production impact, line risk, downtime exposure and what maintenance action affects output.",
+    defaultAction: "Ask: What is the production impact today?",
+    promptPlaceholder: "Ask about production impact, downtime, lines, risk or priorities...",
+    contextLine: "Using site risk, equipment criticality, downtime and source documents.",
+    confidenceLabel: "Production confidence",
+    focusAreas: ["production impact", "line risk", "downtime", "critical assets", "handover actions"],
+    quickQuestions: [
+      "What is the production impact today?",
+      "Which line is most at risk?",
+      "What could stop production?",
+      "What should I raise in the meeting?",
+      "What is the evidence?",
+    ],
+  },
+  contractor: {
+    role: "contractor",
+    label: "Contractor",
+    subtitle: "Assignment and compliance assistant",
+    responseBadge: "Contractor response",
+    introAnswer: "I can help a Contractor understand assignment scope, required skills, compliance checks, source documents and handover expectations.",
+    defaultAction: "Ask: What do I need before attending site?",
+    promptPlaceholder: "Ask about assignment scope, compliance, skills or documents...",
+    contextLine: "Using assignment context, equipment risk, compliance and source documents.",
+    confidenceLabel: "Assignment confidence",
+    focusAreas: ["assignment scope", "site compliance", "required skills", "documents", "handover"],
+    quickQuestions: [
+      "What do I need before attending site?",
+      "What documents should I review?",
+      "What skills are required?",
+      "What risks should I know?",
+      "What should my job report include?",
+    ],
+  },
+};
+
+function getRoleProfile(role: VortaAiRole): RoleResponseProfile {
+  return ROLE_PROFILES[role] ?? ROLE_PROFILES["maintenance-manager"];
+}
+
+// ─── Utility helpers ──────────────────────────────────────────────────────────
 
 function shorten(text: string, max = 240): string {
   if (text.length <= max) return text;
@@ -70,12 +213,96 @@ function sourceLabel(chunk: EquipmentKnowledgeChunk): string {
   return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${section}`;
 }
 
+// ─── Role-aware helpers ───────────────────────────────────────────────────────
+
+function roleAwareDirectAnswer(
+  baseAnswer: string,
+  roleProfile: RoleResponseProfile,
+  topEquipment?: EquipmentListItem,
+): string {
+  const equipmentName = topEquipment?.name ?? "the highest-risk asset";
+
+  switch (roleProfile.role) {
+    case "planner":
+      return `${baseAnswer} Planning lens: confirm the work can be scheduled by checking labour availability, required spares, access constraints, PM status and any source document requirements before releasing work.`;
+    case "engineer":
+      return `${baseAnswer} Engineering lens: start with safe isolation requirements, source-backed checks, previous work order evidence and likely spares before touching the asset.`;
+    case "operator":
+      return `${baseAnswer} Operator lens: do not perform maintenance activity. Capture the alarm/state, follow the approved SOP, complete only permitted operator checks and escalate ${equipmentName} to maintenance if risk remains.`;
+    case "production-manager":
+      return `${baseAnswer} Production lens: focus on production impact, line availability, likely downtime exposure and what decision is needed before the next shift or production meeting.`;
+    case "contractor":
+      return `${baseAnswer} Contractor lens: confirm assignment scope, site access, compliance documents, required skills, isolation handover and job report expectations before attending.`;
+    case "maintenance-manager":
+    default:
+      return `${baseAnswer} Maintenance Manager lens: prioritise risk reduction, labour coverage, PM backlog, skills gaps, spares and the action owner.`;
+  }
+}
+
+function roleAwareActions(
+  baseActions: string[],
+  roleProfile: RoleResponseProfile,
+  topEquipment?: EquipmentListItem,
+): string[] {
+  const equipmentName = topEquipment?.name ?? "the highest-risk asset";
+
+  const roleActions: Record<VortaAiRole, string[]> = {
+    "maintenance-manager": [
+      `Assign an owner to review ${equipmentName} risk drivers and confirm the next action.`,
+      "Check labour cover, skills coverage, overdue PMs and critical spares before the next handover.",
+    ],
+    planner: [
+      `Create or review the work pack for ${equipmentName}.`,
+      "Check spares, permits, access, estimated duration and engineer availability before scheduling.",
+    ],
+    engineer: [
+      `Open the equipment detail for ${equipmentName} and review source-backed checks before attending.`,
+      "Confirm isolation/SOP requirements and record evidence before resetting or replacing parts.",
+    ],
+    operator: [
+      "Follow the approved SOP and complete only permitted operator checks.",
+      `Escalate ${equipmentName} to maintenance with alarm text, time, product/state and any safe observations.`,
+    ],
+    "production-manager": [
+      `Review the production impact of ${equipmentName} and agree risk tolerance before the next shift.`,
+      "Raise the risk in the production/maintenance meeting with the evidence summary.",
+    ],
+    contractor: [
+      `Confirm scope, compliance, RAMS/permit requirements and site access before attending ${equipmentName}.`,
+      "Review the linked source documents and prepare a clear job report with findings and actions.",
+    ],
+  };
+
+  return unique([...roleActions[roleProfile.role], ...baseActions]).slice(0, 5);
+}
+
+function roleAwareNote(roleProfile: RoleResponseProfile): string {
+  switch (roleProfile.role) {
+    case "operator":
+      return "Operator safety note: this does not authorise maintenance work. Follow site SOPs and escalate outside permitted checks.";
+    case "contractor":
+      return "Contractor note: confirm assignment, permit, RAMS and site access requirements before attending.";
+    case "engineer":
+      return "Engineer safety note: confirm isolation and approved procedure before physical intervention.";
+    case "planner":
+      return "Planner note: this supports planning priority, not final release without labour, spares, access and permit checks.";
+    case "production-manager":
+      return "Production note: this supports production risk decisions, not maintenance override decisions.";
+    case "maintenance-manager":
+    default:
+      return "Manager note: this supports prioritisation and action ownership using available Vorta evidence.";
+  }
+}
+
+// ─── Answer engine ────────────────────────────────────────────────────────────
+
 function buildGlobalAnswer(
   question: string,
   siteRisk: SiteRiskProfile | null,
   areaRisks: AreaRiskProfile[],
   equipment: EquipmentListItem[],
   knowledgeChunks: EquipmentKnowledgeChunk[],
+  roleProfile: RoleResponseProfile,
 ): GlobalAiAnswer {
   const q = question.toLowerCase();
 
@@ -170,20 +397,37 @@ function buildGlobalAnswer(
       : "I can use site, area and equipment risk data, but I did not find matching manual/SOP/training/SAP source sections for this question.";
   }
 
+  const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, topEquipment);
+  const roleActions = roleAwareActions(recommendedActions, roleProfile, topEquipment);
+
   return {
-    directAnswer,
+    directAnswer: roleAwareAnswer,
     evidence: unique(evidence),
-    recommendedActions: unique(recommendedActions),
+    recommendedActions: roleActions,
     sources: unique(sources),
     confidence: Math.min(92, Math.max(55, 55 + [siteRisk, topArea, topEquipment, knowledgeChunks.length > 0].filter(Boolean).length * 8)),
+    roleLabel: roleProfile.label,
+    responseBadge: roleProfile.responseBadge,
+    roleNote: roleAwareNote(roleProfile),
     knowledgeChunks,
     missingData: unique(missingData),
   };
 }
 
+// ─── AnswerBlock ──────────────────────────────────────────────────────────────
+
 function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[9px] font-bold text-blue-300 shadow-none">
+          {answer.responseBadge}
+        </Badge>
+        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[9px] font-medium text-slate-400 shadow-none">
+          {answer.roleLabel}
+        </Badge>
+      </div>
+
       <p className="text-[11px] leading-relaxed text-slate-200">{answer.directAnswer}</p>
 
       <div>
@@ -223,6 +467,12 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
         </div>
       )}
 
+      {answer.roleNote && (
+        <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1.5">
+          <p className="text-[10px] leading-relaxed text-blue-100/80">{answer.roleNote}</p>
+        </div>
+      )}
+
       {answer.missingData && answer.missingData.length > 0 && (
         <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-2 py-1.5">
           {answer.missingData.map((item) => (
@@ -236,7 +486,7 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
       <div className="flex items-center justify-between border-t border-gray-800 pt-2 text-[10px] text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3 w-3 text-emerald-400" />
-          Site-level source-backed response
+          Role-aware source-backed response
         </span>
         <span className="font-semibold text-blue-400">{answer.confidence}% confidence</span>
       </div>
@@ -244,7 +494,17 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
   );
 }
 
-export function GlobalMaintenanceAiAssistant(): JSX.Element {
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface GlobalMaintenanceAiAssistantProps {
+  role?: VortaAiRole;
+}
+
+export function GlobalMaintenanceAiAssistant({
+  role = "maintenance-manager",
+}: GlobalMaintenanceAiAssistantProps): JSX.Element {
+  const roleProfile = getRoleProfile(role);
+
   const [open, setOpen] = useState(false);
   const [minimised, setMinimised] = useState(false);
   const [input, setInput] = useState("");
@@ -259,12 +519,14 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
       id: "global-mm-intro",
       role: "assistant",
       answer: {
-        directAnswer:
-          "I can answer site-level Maintenance Manager questions using Vorta risk, area, equipment and source document data currently available in the MVP.",
+        directAnswer: roleProfile.introAnswer,
         evidence: [],
-        recommendedActions: ["Ask: What should I review first today?"],
+        recommendedActions: [roleProfile.defaultAction],
         sources: [],
         confidence: 70,
+        roleLabel: roleProfile.label,
+        responseBadge: roleProfile.responseBadge,
+        roleNote: roleAwareNote(roleProfile),
       },
     },
   ]);
@@ -321,7 +583,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
       new Promise((resolve) => window.setTimeout(resolve, 700)),
     ]);
 
-    const answer = buildGlobalAnswer(trimmed, siteRisk, areaRisks, equipment, knowledgeChunks);
+    const answer = buildGlobalAnswer(trimmed, siteRisk, areaRisks, equipment, knowledgeChunks, roleProfile);
 
     setMessages((prev) =>
       prev.map((message) =>
@@ -337,6 +599,11 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
 
       setOpen(true);
       setMinimised(false);
+
+      // Role override is accepted in the event detail for future portal-specific assistants.
+      if (detail?.role && detail.role !== roleProfile.role) {
+        console.warn("GlobalMaintenanceAiAssistant received a prompt for a different role. Current role:", roleProfile.role, "Requested role:", detail.role);
+      }
 
       if (!question) return;
 
@@ -389,7 +656,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-100">Vorta AI</h3>
-            <p className="text-[10px] text-slate-500">Maintenance Manager assistant</p>
+            <p className="text-[10px] text-slate-500">{roleProfile.subtitle}</p>
           </div>
         </div>
 
@@ -417,7 +684,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
         <>
           <div className="border-b border-gray-800 px-4 py-3">
             <div className="mb-2 flex flex-wrap gap-1.5">
-              {GLOBAL_QUESTIONS.map((question) => (
+              {roleProfile.quickQuestions.map((question) => (
                 <button
                   key={question}
                   type="button"
@@ -438,7 +705,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
               ) : (
                 <>
                   <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                  Using site risk, area risk, equipment risk and source documents.
+                  {roleProfile.contextLine}
                 </>
               )}
             </div>
@@ -471,7 +738,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
           <div className="flex gap-2 border-t border-gray-800 px-4 py-3">
             <input
               type="text"
-              placeholder="Ask about site risk, areas, equipment, evidence..."
+              placeholder={roleProfile.promptPlaceholder}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && submitQuestion(input)}

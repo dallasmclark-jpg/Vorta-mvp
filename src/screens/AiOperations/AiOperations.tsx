@@ -84,6 +84,6 @@ export const AiOperations = (): JSX.Element => (
       <Route path="maintenance/labour-risk/:riskType" element={<LabourRiskDetailPage />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
-    <GlobalMaintenanceAiAssistant />
+    <GlobalMaintenanceAiAssistant role="maintenance-manager" />
   </PortalShell>
 );
