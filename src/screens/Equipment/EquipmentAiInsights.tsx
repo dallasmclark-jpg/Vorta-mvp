@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell, ChevronRight, Edit, RefreshCw, UserCircle,
-  Zap, AlertTriangle, TrendingUp, Activity, Send,
-  BarChart2, Brain, Lightbulb, Play, Settings2, Download, FileText,
+  Zap, AlertTriangle, TrendingUp, Activity,
+  BarChart2, Lightbulb, Play, Settings2, Download, FileText,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -15,6 +15,7 @@ import {
   getCachedEquipmentIdentity,
   type EquipmentSummary,
 } from "./equipmentService";
+import { EquipmentKnowledgeAssistant } from "./EquipmentKnowledgeAssistant";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -38,11 +39,6 @@ const QUICK_ACTIONS = [
   { Icon: FileText, label: "Generate AI Report"    },
   { Icon: Settings2,label: "Configure AI Settings" },
   { Icon: Download, label: "Export Insights"       },
-];
-
-const CHAT_MESSAGES = [
-  { from: "user", text: "What is the biggest risk for this machine?" },
-  { from: "ai",   text: "The drive-end bearing shows an 86% probability of failure within 5–8 days based on vibration analysis and historical patterns." },
 ];
 
 // ─── Mini chart components ────────────────────────────────────────────────────
@@ -93,8 +89,6 @@ export const EquipmentAiInsights = (): JSX.Element => {
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [summary, setSummary] = useState<EquipmentSummary | null>(null);
-  const [chatInput, setChatInput] = useState("");
-  const [messages, setMessages] = useState(CHAT_MESSAGES);
 
   useEffect(() => {
     getEquipmentSummary(resolvedId).then((nextSummary) => {
@@ -197,17 +191,6 @@ export const EquipmentAiInsights = (): JSX.Element => {
     if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
     if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
     if (tabId === "docs")     navigate(`/equipment/${id}/documents`);
-  };
-
-  const handleSend = () => {
-    const txt = chatInput.trim();
-    if (!txt) return;
-    setMessages((prev) => [
-      ...prev,
-      { from: "user", text: txt },
-      { from: "ai", text: "Analysing equipment data... I'll provide an AI-driven response based on sensor readings, maintenance history, and failure patterns for this asset." },
-    ]);
-    setChatInput("");
   };
 
   return (
@@ -582,46 +565,7 @@ export const EquipmentAiInsights = (): JSX.Element => {
           </Card>
 
           {/* AI Chat Assistant */}
-          <Card className="rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-1 flex items-center gap-2">
-                <Brain className="h-4 w-4 text-blue-400" />
-                <h3 className="text-sm font-semibold text-slate-200">AI Chat Assistant</h3>
-              </div>
-              <p className="mb-3 text-[11px] text-slate-500">
-                Ask questions about this equipment's health, history, and maintenance.
-              </p>
-
-              <div className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg bg-[#0f1218] p-3">
-                {messages.map((m, i) => (
-                  <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] rounded-lg px-3 py-2 text-[11px] leading-relaxed ${
-                      m.from === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-800 text-slate-200"
-                    }`}>
-                      {m.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask about this equipment..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  className="flex-1 rounded-lg border border-gray-700 bg-[#0f1218] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
-                />
-                <button type="button" onClick={handleSend}
-                  className="flex h-8 w-16 shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition-colors">
-                  <Send className="h-3 w-3" /> Send
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+          <EquipmentKnowledgeAssistant equipmentId={resolvedId} summary={summary} />
         </div>
 
         {/* ── Quick Actions ─────────────────────────────────────────────────── */}
