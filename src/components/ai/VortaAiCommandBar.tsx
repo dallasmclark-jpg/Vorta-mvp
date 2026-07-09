@@ -173,6 +173,37 @@ const SUPPORTED_IMPORT_FILE_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
+const HANDOVER_SHIFT_TYPES = [
+  "Current shift",
+  "Day shift",
+  "Night shift",
+  "Weekend shift",
+  "Contractor handover",
+  "Production handover",
+  "Maintenance handover",
+];
+
+const HANDOVER_RELATION_TYPES = [
+  "Site-wide",
+  "Equipment / asset",
+  "Shift cover",
+  "PM / work orders",
+  "Spares / parts",
+  "Skills / training",
+  "Production issue",
+  "Safety / compliance",
+];
+
+const HANDOVER_ANALYSIS_TARGETS = [
+  "Identify risks",
+  "Extract actions and owners",
+  "Check equipment impact",
+  "Check shift cover impact",
+  "Check PM / work order impact",
+  "Check spares impact",
+  "Prepare next-shift briefing",
+];
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -234,11 +265,23 @@ export function VortaAiCommandBar({
   const [importContextNote, setImportContextNote] = useState("");
   const [importMessage, setImportMessage] = useState("");
 
+  const [isHandoverIntakeOpen, setIsHandoverIntakeOpen] = useState(false);
+  const [handoverShiftType, setHandoverShiftType] = useState(HANDOVER_SHIFT_TYPES[0]);
+  const [handoverRelationType, setHandoverRelationType] = useState(HANDOVER_RELATION_TYPES[0]);
+  const [handoverAnalysisTarget, setHandoverAnalysisTarget] = useState(HANDOVER_ANALYSIS_TARGETS[0]);
+  const [handoverLinkedEquipmentId, setHandoverLinkedEquipmentId] = useState("");
+  const [handoverLinkedEquipmentName, setHandoverLinkedEquipmentName] = useState("");
+  const [handoverEquipmentSearchOpen, setHandoverEquipmentSearchOpen] = useState(false);
+  const [handoverEquipmentSearchQuery, setHandoverEquipmentSearchQuery] = useState("");
+  const [handoverNote, setHandoverNote] = useState("");
+  const [handoverOwnerNote, setHandoverOwnerNote] = useState("");
+  const [handoverMessage, setHandoverMessage] = useState("");
+
   useEffect(() => {
-    if (enablePhotoUpload || enableDocumentUpload) {
+    if (enablePhotoUpload || enableDocumentUpload || enableHandoverNote) {
       getEquipmentList().then(setEquipmentList);
     }
-  }, [enablePhotoUpload, enableDocumentUpload]);
+  }, [enablePhotoUpload, enableDocumentUpload, enableHandoverNote]);
 
   // ── Derived lists ──────────────────────────────────────────────────────────
 
@@ -303,6 +346,24 @@ export function VortaAiCommandBar({
     })
     .slice(0, 8);
 
+  const searchedHandoverEquipment = equipmentList
+    .filter((item) => {
+      const q = handoverEquipmentSearchQuery.trim().toLowerCase();
+      if (!q) return false;
+      return (
+        item.name.toLowerCase().includes(q) ||
+        item.area?.toLowerCase().includes(q) ||
+        item.assetNumber?.toLowerCase?.().includes(q) ||
+        item.oem?.toLowerCase?.().includes(q) ||
+        item.riskLevel?.toLowerCase?.().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const diff = b.riskScore - a.riskScore;
+      return diff !== 0 ? diff : a.name.localeCompare(b.name);
+    })
+    .slice(0, 8);
+
   // ── Attachment actions config ──────────────────────────────────────────────
 
   const attachmentActions = [
@@ -322,7 +383,7 @@ export function VortaAiCommandBar({
       label: "Paste handover note",
       description: "Shift handover, fault note or meeting action",
       icon: ClipboardPaste,
-      prompt: "I want to paste a shift handover note and identify risks, actions and owners.",
+      prompt: "handover-intake-panel",
     },
     enableSapExport && {
       label: "Import data file",
@@ -345,6 +406,9 @@ export function VortaAiCommandBar({
     setIsImportIntakeOpen(false);
     setImportEquipmentSearchOpen(false);
     setImportEquipmentSearchQuery("");
+    setIsHandoverIntakeOpen(false);
+    setHandoverEquipmentSearchOpen(false);
+    setHandoverEquipmentSearchQuery("");
   };
 
   const openPhotoEquipmentPicker = () => {
@@ -491,9 +555,87 @@ export function VortaAiCommandBar({
       return;
     }
 
+    if (prompt === "handover-intake-panel") {
+      openHandoverIntakePanel();
+      return;
+    }
+
     setAiInput(prompt);
     closeAllPanels();
     fireGlobalAiPrompt(prompt, false);
+  };
+
+  const resetHandoverIntake = () => {
+    setHandoverShiftType(HANDOVER_SHIFT_TYPES[0]);
+    setHandoverRelationType(HANDOVER_RELATION_TYPES[0]);
+    setHandoverAnalysisTarget(HANDOVER_ANALYSIS_TARGETS[0]);
+    setHandoverLinkedEquipmentId("");
+    setHandoverLinkedEquipmentName("");
+    setHandoverEquipmentSearchOpen(false);
+    setHandoverEquipmentSearchQuery("");
+    setHandoverNote("");
+    setHandoverOwnerNote("");
+    setHandoverMessage("");
+  };
+
+  const openHandoverIntakePanel = () => {
+    setIsAttachmentMenuOpen(false);
+    setIsPhotoEquipmentPickerOpen(false);
+    setIsEquipmentSearchOpen(false);
+    setEquipmentSearchQuery("");
+    setIsDocumentIntakeOpen(false);
+    setDocumentEquipmentSearchOpen(false);
+    setDocumentEquipmentSearchQuery("");
+    setIsImportIntakeOpen(false);
+    setImportEquipmentSearchOpen(false);
+    setImportEquipmentSearchQuery("");
+    setIsHandoverIntakeOpen(true);
+    setHandoverMessage("");
+  };
+
+  const selectHandoverEquipment = (item: EquipmentListItem) => {
+    setHandoverLinkedEquipmentId(item.id);
+    setHandoverLinkedEquipmentName(item.name);
+    setHandoverEquipmentSearchOpen(false);
+    setHandoverEquipmentSearchQuery("");
+  };
+
+  const sendHandoverContextToVorta = () => {
+    const trimmedNote = handoverNote.trim();
+
+    if (!trimmedNote) {
+      setHandoverMessage("Paste a handover note first.");
+      return;
+    }
+
+    if (handoverRelationType === "Equipment / asset" && !handoverLinkedEquipmentId) {
+      setHandoverMessage("Choose the equipment this handover note relates to.");
+      return;
+    }
+
+    const contextText = [
+      "I want to analyse a shift handover note.",
+      `Shift type: ${handoverShiftType}.`,
+      `Handover relates to: ${handoverRelationType}.`,
+      `Analysis target: ${handoverAnalysisTarget}.`,
+      handoverLinkedEquipmentName
+        ? `Linked equipment: ${handoverLinkedEquipmentName}.`
+        : "Linked equipment: not selected.",
+      handoverOwnerNote.trim()
+        ? `Owner/team note: ${handoverOwnerNote.trim()}`
+        : "Owner/team note: not provided.",
+      `Handover note: ${trimmedNote}`,
+      "Identify risks, actions, owners, missing information and anything that should be escalated before the next shift.",
+    ].join(" ");
+
+    setAiInput(contextText);
+    closeAllPanels();
+
+    window.dispatchEvent(
+      new CustomEvent("vorta-global-ai-prompt", {
+        detail: { question: contextText, submit: false, role },
+      }),
+    );
   };
 
   const resetImportIntake = () => {
@@ -1372,6 +1514,270 @@ export function VortaAiCommandBar({
                 >
                   <Send className="h-3.5 w-3.5" />
                   Send import context
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Handover intake panel */}
+          {isHandoverIntakeOpen && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-blue-100">
+                    Paste handover note
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-blue-100/60">
+                    Paste a shift handover, fault note or meeting action and tell Vorta what to check.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHandoverIntakeOpen(false);
+                    resetHandoverIntake();
+                  }}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-100/60 transition-colors hover:bg-white/10 hover:text-blue-100"
+                  aria-label="Close handover intake"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+                {/* Note + owner */}
+                <div className="rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Handover note
+                  </label>
+
+                  <textarea
+                    value={handoverNote}
+                    onChange={(event) => setHandoverNote(event.target.value)}
+                    placeholder="Paste the handover note here. Example: Line 2 tripped twice on nights, reset and running. Infeed sensor cleaned but alarm returned once. Sarah aware. Check spare sensor stock before next shift."
+                    rows={7}
+                    className="w-full resize-none rounded-lg border border-gray-700 bg-[#141820] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                  />
+
+                  <div className="mt-3">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Owner / team note
+                    </label>
+                    <input
+                      type="text"
+                      value={handoverOwnerNote}
+                      onChange={(event) => setHandoverOwnerNote(event.target.value)}
+                      placeholder="Optional: Team A nights, Sarah Jones, contractor due tomorrow..."
+                      className="w-full rounded-lg border border-gray-700 bg-[#141820] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Selectors */}
+                <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                  <div className="rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                    <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Shift type
+                    </label>
+                    <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
+                      {HANDOVER_SHIFT_TYPES.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setHandoverShiftType(type)}
+                          className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition-colors ${
+                            handoverShiftType === type
+                              ? "border-blue-500/50 bg-blue-500/15 text-blue-100"
+                              : "border-gray-800 bg-[#141820] text-slate-500 hover:border-blue-500/25 hover:text-slate-300"
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                    <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Relates to
+                    </label>
+                    <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
+                      {HANDOVER_RELATION_TYPES.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setHandoverRelationType(type);
+                            if (type !== "Equipment / asset") {
+                              setHandoverLinkedEquipmentId("");
+                              setHandoverLinkedEquipmentName("");
+                              setHandoverEquipmentSearchOpen(false);
+                              setHandoverEquipmentSearchQuery("");
+                            }
+                          }}
+                          className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition-colors ${
+                            handoverRelationType === type
+                              ? "border-blue-500/50 bg-blue-500/15 text-blue-100"
+                              : "border-gray-800 bg-[#141820] text-slate-500 hover:border-blue-500/25 hover:text-slate-300"
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                    <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      What should Vorta do?
+                    </label>
+                    <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
+                      {HANDOVER_ANALYSIS_TARGETS.map((target) => (
+                        <button
+                          key={target}
+                          type="button"
+                          onClick={() => setHandoverAnalysisTarget(target)}
+                          className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition-colors ${
+                            handoverAnalysisTarget === target
+                              ? "border-blue-500/50 bg-blue-500/15 text-blue-100"
+                              : "border-gray-800 bg-[#141820] text-slate-500 hover:border-blue-500/25 hover:text-slate-300"
+                          }`}
+                        >
+                          {target}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Equipment linker — only when "Equipment / asset" is selected */}
+              {handoverRelationType === "Equipment / asset" && (
+                <div className="mt-3 rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-blue-100">
+                        Link handover to equipment
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-blue-100/60">
+                        Select from top-risk equipment or search the full asset list.
+                      </p>
+                    </div>
+
+                    {handoverLinkedEquipmentName && (
+                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+                        {handoverLinkedEquipmentName}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {topPhotoDiagnosticEquipment.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => selectHandoverEquipment(item)}
+                        className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                          handoverLinkedEquipmentId === item.id
+                            ? "border-emerald-400/60 bg-emerald-500/10"
+                            : "border-blue-500/20 bg-[#141820] hover:border-blue-400/50 hover:bg-blue-500/10"
+                        }`}
+                      >
+                        <span className="block truncate text-[11px] font-semibold text-slate-100">
+                          {item.name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                          {item.area || "Area not set"} · {item.riskScore}% {item.riskLevel}
+                        </span>
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHandoverEquipmentSearchOpen(true);
+                        setHandoverEquipmentSearchQuery("");
+                      }}
+                      className="rounded-lg border border-dashed border-blue-500/30 bg-[#141820] px-3 py-2 text-left transition-colors hover:border-blue-400/60 hover:bg-blue-500/10"
+                    >
+                      <span className="block truncate text-[11px] font-semibold text-blue-100">
+                        Search all equipment
+                      </span>
+                      <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                        Find by asset name, SAP number, area or OEM
+                      </span>
+                    </button>
+                  </div>
+
+                  {handoverEquipmentSearchOpen && (
+                    <div className="mt-3 rounded-lg border border-blue-500/20 bg-[#141820] p-3">
+                      <input
+                        type="text"
+                        value={handoverEquipmentSearchQuery}
+                        onChange={(event) => setHandoverEquipmentSearchQuery(event.target.value)}
+                        placeholder="Search equipment, SAP number, area or OEM..."
+                        className="mb-3 w-full rounded-lg border border-gray-700 bg-[#0f1218] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                        autoFocus
+                      />
+
+                      {handoverEquipmentSearchQuery.trim() ? (
+                        searchedHandoverEquipment.length > 0 ? (
+                          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                            {searchedHandoverEquipment.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => selectHandoverEquipment(item)}
+                                className="rounded-lg border border-gray-800 bg-[#0f1218] px-3 py-2 text-left transition-colors hover:border-blue-400/50 hover:bg-blue-500/10"
+                              >
+                                <span className="block truncate text-[11px] font-semibold text-slate-100">
+                                  {item.name}
+                                </span>
+                                <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                                  {item.area || "Area not set"} · {item.riskScore}% {item.riskLevel}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
+                            <p className="text-[10px] leading-relaxed text-yellow-100/80">
+                              No matching equipment found. Try asset name, SAP number, OEM or area.
+                            </p>
+                          </div>
+                        )
+                      ) : (
+                        <p className="text-[10px] text-slate-500">
+                          Start typing to search the full equipment list.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {handoverMessage && (
+                <div className="mt-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
+                  <p className="text-[10px] leading-relaxed text-yellow-100/80">
+                    {handoverMessage}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-col gap-2 border-t border-blue-500/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[9px] leading-relaxed text-blue-100/50">
+                  MVP placeholder only: the handover note is not stored yet. This captures context for the AI workflow.
+                </p>
+
+                <Button
+                  type="button"
+                  onClick={sendHandoverContextToVorta}
+                  disabled={!handoverNote.trim()}
+                  className="h-auto gap-2 bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Send to Vorta
                 </Button>
               </div>
             </div>
