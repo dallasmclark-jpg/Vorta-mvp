@@ -1,12 +1,16 @@
-import { useState } from "react";
-import { Brain, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Brain, Camera, FileText, Loader2, Send, ShieldCheck, Wrench } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import {
+  getVisualDiagnosticCases,
+  matchVisualDiagnostic,
   searchEquipmentKnowledge,
   type EquipmentKnowledgeChunk,
   type EquipmentSummary,
+  type VisualDiagnosticCase,
+  type VisualFaultMatch,
 } from "./equipmentService";
 
 type ChatRole = "user" | "assistant";
@@ -28,6 +32,12 @@ interface ChatMessage {
   text?: string;
   answer?: AssistantAnswer;
   loading?: boolean;
+}
+
+interface VisualDiagnosticResult {
+  extractedText: string;
+  faultMatches: VisualFaultMatch[];
+  knowledgeChunks: EquipmentKnowledgeChunk[];
 }
 
 interface EquipmentKnowledgeAssistantProps {
@@ -183,7 +193,6 @@ function generateEquipmentAnswer(
   const sources: string[] = [];
   const missingData: string[] = [];
 
-  // ── Knowledge chunks go first ─────────────────────────────────────────────
   const knowledgeDirectAnswer = buildKnowledgeDirectAnswer(question, equipment.name, knowledgeChunks);
 
   if (knowledgeChunks.length > 0) {
@@ -200,7 +209,6 @@ function generateEquipmentAnswer(
     missingData.push("No matching EasyDoc demo manual, SOP, work instruction, iLearn training record or SAP PM history chunk was found for this exact question.");
   }
 
-  // ── Structured data evidence ──────────────────────────────────────────────
   evidence.push(`${equipment.name} is currently scored at ${equipment.riskScore}% ${equipment.riskLevel} risk.`);
   sources.push("Equipment profile");
   sources.push("Equipment risk breakdown");
@@ -295,8 +303,6 @@ function generateEquipmentAnswer(
   if (recommendedActions.length === 0) {
     recommendedActions.push("Continue monitoring risk drivers and refresh the equipment data after the next SAP/CMMS import.");
   }
-
-  // ── Per-intent branches ───────────────────────────────────────────────────
 
   if (q.includes("document") || q.includes("manual") || q.includes("sop") || q.includes("instruction")) {
     const directAnswer =
@@ -525,13 +531,78 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
       answer: {
         directAnswer: "Ask me about this asset's risk, PMs, work order history, skills coverage, spares or available documents. I will answer only from the Vorta data currently available for this equipment.",
         evidence: [],
-        recommendedActions: ["Ask a question such as: Why is this asset high risk?"],
+        recommendedActions: ["Ask a question such as: What should we check first for an infeed sensor fault?"],
         sources: summary ? ["Equipment summary"] : [],
         missingData: summary ? [] : ["Equipment data is still loading."],
         confidence: summary ? 70 : 25,
       },
     },
   ]);
+
+  const [visualCases, setVisualCases] = useState<VisualDiagnosticCase[]>([]);
+  const [selectedCaseId, setSelectedCaseId] = useState("");
+  const [visualText, setVisualText] = useState("");
+  const [visualResult, setVisualResult] = useState<VisualDiagnosticResult | null>(null);
+  const [visualLoading, setVisualLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getVisualDiagnosticCases(equipmentId).then((cases) => {
+      if (!mounted) return;
+      setVisualCases(cases);
+      if (cases.length > 0 && !selectedCaseId) {
+        setSelectedCaseId(cases[0].id);
+        setVisualText(cases[0].extractedText);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [equipmentId]);
+
+  const handleSelectVisualCase = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    const selected = visualCases.find((item) => item.id === caseId);
+    if (selected) {
+      setVisualText(selected.extractedText);
+      setVisualResult(null);
+    }
+  };
+
+  const runVisualDiagnostic = async () => {
+    const text = visualText.trim();
+    if (!text) return;
+
+    setVisualLoading(true);
+    setVisualResult(null);
+
+    const [faultMatches] = await Promise.all([
+      matchVisualDiagnostic(equipmentId, text, 5),
+      new Promise((resolve) => window.setTimeout(resolve, 900)),
+    ]);
+
+    const topFault = (faultMatches as VisualFaultMatch[])[0];
+    const knowledgeQuery = topFault
+      ? [
+          topFault.faultCode,
+          topFault.faultName,
+          ...topFault.relatedKnowledgeKeywords,
+          ...topFault.relatedSpareKeywords,
+        ].join(" ")
+      : text;
+
+    const knowledgeChunks = await searchEquipmentKnowledge(equipmentId, knowledgeQuery, 6);
+
+    setVisualResult({
+      extractedText: text,
+      faultMatches: faultMatches as VisualFaultMatch[],
+      knowledgeChunks,
+    });
+
+    setVisualLoading(false);
+  };
 
   const submitQuestion = async (question: string) => {
     const trimmed = question.trim();
@@ -562,6 +633,8 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
     );
   };
 
+  const topVisualFault = visualResult?.faultMatches[0];
+
   return (
     <Card className="rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
       <CardContent className="p-4">
@@ -585,6 +658,181 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
               {question}
             </button>
           ))}
+        </div>
+
+        {/* Visual Diagnostic Assistant */}
+        <div className="mb-3 rounded-lg border border-gray-800 bg-[#0f1218] p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Camera className="h-3.5 w-3.5 text-blue-400" />
+            <h4 className="text-xs font-semibold text-slate-200">Visual Diagnostic Assistant</h4>
+            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-blue-300">
+              Demo ready
+            </span>
+          </div>
+
+          <p className="mb-3 text-[10px] leading-relaxed text-slate-500">
+            Analyse a demo HMI screenshot or part-photo text, match the fault code or component, then link it to spares, manuals, SOPs, SAP PM history and recommended action.
+          </p>
+
+          {visualCases.length > 0 && (
+            <div className="mb-2">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                Demo image case
+              </label>
+              <select
+                value={selectedCaseId}
+                onChange={(event) => handleSelectVisualCase(event.target.value)}
+                className="w-full rounded-md border border-gray-700 bg-[#141820] px-2 py-1.5 text-[11px] text-slate-200 focus:border-blue-500/50 focus:outline-none"
+              >
+                {visualCases.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="mb-2">
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Extracted image text
+            </label>
+            <textarea
+              value={visualText}
+              onChange={(event) => setVisualText(event.target.value)}
+              rows={4}
+              placeholder="Paste HMI alarm text, part number, nameplate text or OCR result..."
+              className="w-full resize-none rounded-md border border-gray-700 bg-[#141820] px-2 py-2 text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={runVisualDiagnostic}
+            disabled={!visualText.trim() || visualLoading}
+            className="h-8 w-full gap-2 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {visualLoading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Matching fault code, spares and source documents...
+              </>
+            ) : (
+              <>
+                <Camera className="h-3.5 w-3.5" />
+                Analyse visual diagnostic
+              </>
+            )}
+          </Button>
+
+          {visualResult && (
+            <div className="mt-3 flex flex-col gap-3 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3">
+              {topVisualFault ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-300">
+                      {topVisualFault.severity}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-100">
+                      {topVisualFault.faultCode} · {topVisualFault.faultName}
+                    </span>
+                    <span className="ml-auto text-[10px] font-semibold text-blue-300">
+                      {topVisualFault.confidence}% confidence
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Detected image text
+                    </h5>
+                    <p className="rounded border border-gray-800 bg-[#0f1218] px-2 py-1.5 text-[10px] leading-relaxed text-slate-400">
+                      {shortenText(visualResult.extractedText, 360)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Likely causes
+                    </h5>
+                    <ul className="flex flex-col gap-1">
+                      {topVisualFault.likelyCauses.slice(0, 5).map((item) => (
+                        <li key={item} className="flex gap-2 text-[10px] leading-relaxed text-slate-300">
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-yellow-400" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Recommended action
+                    </h5>
+                    <ol className="flex list-decimal flex-col gap-1 pl-4">
+                      {topVisualFault.recommendedActions.slice(0, 6).map((item) => (
+                        <li key={item} className="text-[10px] leading-relaxed text-slate-300">
+                          {item}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  {topVisualFault.relatedSpareKeywords.length > 0 && (
+                    <div>
+                      <h5 className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <Wrench className="h-3 w-3 text-blue-400" />
+                        Related spare keywords
+                      </h5>
+                      <div className="flex flex-wrap gap-1.5">
+                        {topVisualFault.relatedSpareKeywords.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded border border-gray-700 bg-[#0f1218] px-2 py-0.5 text-[9px] font-medium text-slate-300"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {visualResult.knowledgeChunks.length > 0 && (
+                    <div>
+                      <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Source sections
+                      </h5>
+                      <div className="flex flex-col gap-2">
+                        {visualResult.knowledgeChunks.slice(0, 4).map((chunk) => (
+                          <div key={chunk.chunkId} className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2">
+                            <p className="text-[10px] font-semibold text-blue-200">
+                              {chunk.sourceSystem}: {chunk.title}
+                              {chunk.revision ? ` Rev ${chunk.revision}` : ""} · {chunk.chunkRef}
+                              {chunk.sectionTitle ? ` · ${chunk.sectionTitle}` : ""}
+                            </p>
+                            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                              {shortenText(chunk.chunkText, 260)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-2">
+                    <p className="text-[10px] leading-relaxed text-yellow-100/80">
+                      Safety note: confirm the asset, alarm state and isolation requirements before acting. This recommendation supports site procedure, it does not replace approved SOPs or engineering judgement.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-2">
+                  <p className="text-[10px] leading-relaxed text-yellow-100/80">
+                    No matching demo fault code was found for this extracted text. Try including the HMI alarm code, fault name, station number, part number or manufacturer text.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto rounded-lg bg-[#0f1218] p-3">
@@ -611,7 +859,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
             <FileText className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
             <input
               type="text"
-              placeholder="Ask about risk, PMs, history, skills, spares or documents..."
+              placeholder="Ask about risk, PMs, history, skills, spares, documents or visual faults..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submitQuestion(input)}

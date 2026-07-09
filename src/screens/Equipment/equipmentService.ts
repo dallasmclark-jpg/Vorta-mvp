@@ -1253,6 +1253,38 @@ export interface EquipmentKnowledgeChunk {
   rank: number;
 }
 
+export interface VisualDiagnosticCase {
+  id: string;
+  equipmentId: string;
+  title: string;
+  imageType: string;
+  demoImageDescription: string;
+  extractedText: string;
+  detectedFaultCode: string | null;
+  detectedPartNumber: string | null;
+  detectedMaker: string | null;
+  expectedFaultCode: string | null;
+  expectedComponentKeywords: string[];
+}
+
+export interface VisualFaultMatch {
+  faultCodeId: string;
+  equipmentId: string;
+  faultCode: string;
+  faultName: string;
+  faultCategory: string;
+  severity: string;
+  likelyCauses: string[];
+  recommendedActions: string[];
+  relatedSpareKeywords: string[];
+  relatedKnowledgeKeywords: string[];
+  escalationRequired: boolean;
+  sourceSystem: string;
+  sourceReference: string | null;
+  confidence: number;
+  matchedTerms: string[];
+}
+
 function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
@@ -1343,6 +1375,106 @@ export async function searchEquipmentKnowledge(
     }));
   } catch (error) {
     console.warn("searchEquipmentKnowledge threw:", error);
+    return [];
+  }
+}
+
+export async function getVisualDiagnosticCases(
+  equipmentId: string,
+): Promise<VisualDiagnosticCase[]> {
+  try {
+    const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
+
+    if (!resolvedEquipmentId) {
+      console.warn("getVisualDiagnosticCases skipped: no equipment UUID resolved for", equipmentId);
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("visual_diagnostic_cases")
+      .select(`
+        id,
+        equipment_id,
+        title,
+        image_type,
+        demo_image_description,
+        extracted_text,
+        detected_fault_code,
+        detected_part_number,
+        detected_maker,
+        expected_fault_code,
+        expected_component_keywords
+      `)
+      .eq("equipment_id", resolvedEquipmentId)
+      .order("title");
+
+    if (error) {
+      console.warn("getVisualDiagnosticCases failed:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      equipmentId: row.equipment_id,
+      title: row.title,
+      imageType: row.image_type,
+      demoImageDescription: row.demo_image_description,
+      extractedText: row.extracted_text,
+      detectedFaultCode: row.detected_fault_code,
+      detectedPartNumber: row.detected_part_number,
+      detectedMaker: row.detected_maker,
+      expectedFaultCode: row.expected_fault_code,
+      expectedComponentKeywords: row.expected_component_keywords ?? [],
+    }));
+  } catch (error) {
+    console.warn("getVisualDiagnosticCases threw:", error);
+    return [];
+  }
+}
+
+export async function matchVisualDiagnostic(
+  equipmentId: string,
+  extractedText: string,
+  limit = 5,
+): Promise<VisualFaultMatch[]> {
+  try {
+    const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
+
+    if (!resolvedEquipmentId) {
+      console.warn("matchVisualDiagnostic skipped: no equipment UUID resolved for", equipmentId);
+      return [];
+    }
+
+    const { data, error } = await supabase.rpc("vorta_match_visual_diagnostic", {
+      p_equipment_id: resolvedEquipmentId,
+      p_extracted_text: extractedText,
+      p_limit: limit,
+    });
+
+    if (error) {
+      console.warn("matchVisualDiagnostic failed:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      faultCodeId: row.fault_code_id,
+      equipmentId: row.equipment_id,
+      faultCode: row.fault_code,
+      faultName: row.fault_name,
+      faultCategory: row.fault_category,
+      severity: row.severity,
+      likelyCauses: row.likely_causes ?? [],
+      recommendedActions: row.recommended_actions ?? [],
+      relatedSpareKeywords: row.related_spare_keywords ?? [],
+      relatedKnowledgeKeywords: row.related_knowledge_keywords ?? [],
+      escalationRequired: row.escalation_required ?? false,
+      sourceSystem: row.source_system,
+      sourceReference: row.source_reference,
+      confidence: row.confidence ?? 0,
+      matchedTerms: row.matched_terms ?? [],
+    }));
+  } catch (error) {
+    console.warn("matchVisualDiagnostic threw:", error);
     return [];
   }
 }
