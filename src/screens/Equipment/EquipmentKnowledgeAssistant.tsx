@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { AlertTriangle, Brain, Camera, Copy, ExternalLink, FileText, Image as ImageIcon, Loader2, Send, ShieldCheck, Upload, Wrench, X } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -703,6 +704,10 @@ function AnswerBlock({ answer }: { answer: AssistantAnswer }) {
 }
 
 export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentKnowledgeAssistantProps): JSX.Element {
+  const location = useLocation();
+  const visualDiagnosticRef = useRef<HTMLDivElement>(null);
+  const shouldPromptVisualUpload = new URLSearchParams(location.search).get("visualDiagnostic") === "upload";
+
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -755,6 +760,19 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
       }
     };
   }, [uploadedImageUrl]);
+
+  useEffect(() => {
+    if (!shouldPromptVisualUpload) return;
+
+    window.setTimeout(() => {
+      visualDiagnosticRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 250);
+
+    setImageExtractionNote("Upload your HMI screenshot, part photo, nameplate or spare label here. Vorta will extract demo text first, then run the visual diagnostic match.");
+  }, [shouldPromptVisualUpload]);
 
   const handleVisualImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -916,7 +934,14 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
         </div>
 
         {/* Visual Diagnostic Assistant */}
-        <div className="mb-3 rounded-lg border border-gray-800 bg-[#0f1218] p-3">
+        <div
+          ref={visualDiagnosticRef}
+          className={`mb-3 rounded-lg border bg-[#0f1218] p-3 ${
+            shouldPromptVisualUpload
+              ? "border-blue-400/60 shadow-lg shadow-blue-950/30"
+              : "border-gray-800"
+          }`}
+        >
           <div className="mb-2 flex items-center gap-2">
             <Camera className="h-3.5 w-3.5 text-blue-400" />
             <h4 className="text-xs font-semibold text-slate-200">Visual Diagnostic Assistant</h4>
@@ -924,6 +949,17 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
               Demo ready
             </span>
           </div>
+
+          {shouldPromptVisualUpload && (
+            <div className="mb-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
+              <p className="text-[11px] font-semibold text-blue-100">
+                Photo diagnostic upload ready
+              </p>
+              <p className="mt-0.5 text-[10px] leading-relaxed text-blue-100/70">
+                Upload your HMI screenshot, damaged part photo, nameplate or spare label below. This MVP uses demo text extraction before running the visual diagnostic match.
+              </p>
+            </div>
+          )}
 
           <p className="mb-3 text-[10px] leading-relaxed text-slate-500">
             Upload an HMI screenshot, part photo or nameplate image. This MVP shell previews the image, simulates text extraction using demo cases, then matches the detected fault or component to spares, manuals, SOPs, SAP PM history and recommended action.
