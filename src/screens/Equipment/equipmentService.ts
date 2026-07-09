@@ -1253,14 +1253,69 @@ export interface EquipmentKnowledgeChunk {
   rank: number;
 }
 
+function looksLikeUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+const LEGACY_EQUIPMENT_KNOWLEDGE_MAP: Record<string, string[]> = {
+  "fl-03": ["DEMO-VF-001", "FL-03", "VF-01", "Bosch Vial Filler VF-01"],
+  "pl-02": ["DEMO-PAL-001", "PL-02", "PAL-01", "End of Line Palletiser PAL-01"],
+  "bl-01": ["DEMO-PSG-001", "PSG-01", "Pure Steam Generator PSG-01"],
+  "hvac-01": ["DEMO-HVAC-001", "AHU-01", "Grade B Cleanroom HVAC AHU-01"],
+  "fd-01": ["DEMO-FD-001", "FD-01", "GEA Freeze Dryer FD-01"],
+};
+
+export async function resolveEquipmentKnowledgeId(equipmentId: string): Promise<string | null> {
+  if (!equipmentId) return null;
+
+  if (looksLikeUuid(equipmentId)) {
+    return equipmentId;
+  }
+
+  const candidates = [
+    equipmentId,
+    equipmentId.toUpperCase(),
+    ...(LEGACY_EQUIPMENT_KNOWLEDGE_MAP[equipmentId] ?? []),
+  ];
+
+  try {
+    const { data, error } = await supabase
+      .from("equipment_assets")
+      .select("id, equipment_code, name")
+      .or(
+        candidates
+          .map((candidate) => `equipment_code.eq.${candidate},name.eq.${candidate}`)
+          .join(",")
+      )
+      .limit(1);
+
+    if (error) {
+      console.warn("resolveEquipmentKnowledgeId failed:", error.message);
+      return null;
+    }
+
+    return data?.[0]?.id ?? null;
+  } catch (error) {
+    console.warn("resolveEquipmentKnowledgeId threw:", error);
+    return null;
+  }
+}
+
 export async function searchEquipmentKnowledge(
   equipmentId: string,
   query: string,
   limit = 8,
 ): Promise<EquipmentKnowledgeChunk[]> {
   try {
+    const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
+
+    if (!resolvedEquipmentId) {
+      console.warn("searchEquipmentKnowledge skipped: no Supabase equipment UUID resolved for", equipmentId);
+      return [];
+    }
+
     const { data, error } = await supabase.rpc("vorta_search_equipment_knowledge", {
-      p_equipment_id: equipmentId,
+      p_equipment_id: resolvedEquipmentId,
       p_query: query,
       p_limit: limit,
     });

@@ -36,11 +36,11 @@ interface EquipmentKnowledgeAssistantProps {
 }
 
 const SUGGESTED_QUESTIONS = [
-  "Why is this asset high risk?",
-  "What should we check first?",
-  "What PMs are overdue?",
+  "What should we check first for an infeed sensor fault?",
+  "What does the SOP say before restart?",
+  "What happened last time this fault occurred?",
   "Who is trained on this equipment?",
-  "What documents are available?",
+  "What manual sections are relevant?",
 ];
 
 function sameEquipmentId(value: string | null | undefined, equipmentId: string, resolvedId: string): boolean {
@@ -89,11 +89,12 @@ function buildKnowledgeDirectAnswer(
     q.includes("infeed") ||
     q.includes("breakdown")
   ) {
-    return `For ${equipmentName}, the best first checks from the approved knowledge sources are: ${topThree
-      .map((chunk) => shortenText(chunk.chunkText, 190))
-      .join(" ")} These checks are supported by ${topThree
-      .map((chunk) => `${chunk.title} ${chunk.chunkRef}`)
-      .join(", ")}.`;
+    const checks = topThree.map((chunk) => {
+      const section = chunk.sectionTitle ? `${chunk.chunkRef} ${chunk.sectionTitle}` : chunk.chunkRef;
+      return `${chunk.title} ${section}: ${shortenText(chunk.chunkText, 170)}`;
+    });
+
+    return `For ${equipmentName}, the first checks should be based on the highest matching approved source sections. ${checks.join(" ")} These checks are source-backed, not generic AI advice.`;
   }
 
   if (
@@ -196,7 +197,7 @@ function generateEquipmentAnswer(
     });
     sources.push(...knowledgeChunks.slice(0, 6).map(formatKnowledgeSource));
   } else {
-    missingData.push("No matching manual, SOP, work instruction, training or SAP history chunks were found for this question.");
+    missingData.push("No matching EasyDoc demo manual, SOP, work instruction, iLearn training record or SAP PM history chunk was found for this exact question.");
   }
 
   // ── Structured data evidence ──────────────────────────────────────────────
