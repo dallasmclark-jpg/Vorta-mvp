@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   AlertTriangle,
+  Bot,
   Clock,
   RefreshCw,
+  Send,
+  Sparkles,
   UserCircle,
   ChevronDown,
   X,
@@ -186,6 +189,29 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
+  const [dashboardAiInput, setDashboardAiInput] = useState("");
+
+  const dashboardAiPrompts = [
+    "What should I review first today?",
+    "Why is Building 2 high risk?",
+    "Which asset needs action before the next shift?",
+  ];
+
+  const openGlobalAiFromDashboard = (question: string, submit = true) => {
+    const trimmed = question.trim();
+    if (!trimmed) return;
+
+    window.dispatchEvent(
+      new CustomEvent("vorta-global-ai-prompt", {
+        detail: {
+          question: trimmed,
+          submit,
+        },
+      }),
+    );
+
+    setDashboardAiInput("");
+  };
 
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
@@ -235,6 +261,66 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {/* ── Dashboard AI Command Bar ─────────────────────────────────── */}
+      <Card className="w-full rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15">
+                <Sparkles className="h-4 w-4 text-blue-300" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-slate-100">Ask Vorta anything</h2>
+                <p className="text-[11px] text-slate-500">
+                  Ask about today&apos;s site risk, labour cover, equipment, PMs, skills, spares or recommended actions.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 md:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <Bot className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                <input
+                  type="text"
+                  value={dashboardAiInput}
+                  onChange={(event) => setDashboardAiInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      openGlobalAiFromDashboard(dashboardAiInput, true);
+                    }
+                  }}
+                  placeholder="Ask Vorta what needs attention today..."
+                  className="w-full rounded-lg border border-gray-700 bg-[#0f1218] py-2.5 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                />
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => openGlobalAiFromDashboard(dashboardAiInput, true)}
+                disabled={!dashboardAiInput.trim()}
+                className="h-auto gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-4 w-4" />
+                Ask
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {dashboardAiPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => openGlobalAiFromDashboard(prompt, true)}
+                  className="rounded-full border border-gray-700 bg-[#0f1218] px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">

@@ -15,6 +15,11 @@ import {
 
 type ChatRole = "user" | "assistant";
 
+interface GlobalAiPromptEventDetail {
+  question?: string;
+  submit?: boolean;
+}
+
 interface GlobalAiAnswer {
   directAnswer: string;
   evidence: string[];
@@ -247,6 +252,8 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
   const [areaRisks, setAreaRisks] = useState<AreaRiskProfile[]>([]);
   const [equipment, setEquipment] = useState<EquipmentListItem[]>([]);
   const [loadingContext, setLoadingContext] = useState(false);
+  const [contextReady, setContextReady] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState("");
   const [messages, setMessages] = useState<GlobalAiMessage[]>([
     {
       id: "global-mm-intro",
@@ -267,6 +274,7 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
 
     let mounted = true;
     setLoadingContext(true);
+    setContextReady(false);
 
     Promise.all([getSiteRiskProfile(), getAreaRiskProfiles(), getEquipmentList()])
       .then(([nextSiteRisk, nextAreaRisks, nextEquipment]) => {
@@ -275,10 +283,14 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
         setAreaRisks(nextAreaRisks);
         setEquipment(nextEquipment);
         setLoadingContext(false);
+        setContextReady(true);
       })
       .catch((error) => {
         console.warn("GlobalMaintenanceAiAssistant context load failed:", error);
-        if (mounted) setLoadingContext(false);
+        if (mounted) {
+          setLoadingContext(false);
+          setContextReady(true);
+        }
       });
 
     return () => {
@@ -317,6 +329,40 @@ export function GlobalMaintenanceAiAssistant(): JSX.Element {
       ),
     );
   };
+
+  useEffect(() => {
+    const handlePromptEvent = (event: Event) => {
+      const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
+      const question = detail?.question?.trim() ?? "";
+
+      setOpen(true);
+      setMinimised(false);
+
+      if (!question) return;
+
+      if (detail?.submit) {
+        setPendingPrompt(question);
+        setInput("");
+      } else {
+        setInput(question);
+      }
+    };
+
+    window.addEventListener("vorta-global-ai-prompt", handlePromptEvent);
+
+    return () => {
+      window.removeEventListener("vorta-global-ai-prompt", handlePromptEvent);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open || !contextReady || !pendingPrompt) return;
+
+    const question = pendingPrompt;
+    setPendingPrompt("");
+
+    void submitQuestion(question);
+  }, [open, contextReady, pendingPrompt]);
 
   if (!open) {
     return (
