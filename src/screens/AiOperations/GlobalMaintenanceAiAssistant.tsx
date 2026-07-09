@@ -23,6 +23,18 @@ type VortaAiRole =
   | "production-manager"
   | "contractor";
 
+type GlobalAiIntent =
+  | "daily-priority"
+  | "site-risk"
+  | "area-risk"
+  | "equipment-risk"
+  | "evidence"
+  | "labour-risk"
+  | "pm-risk"
+  | "spares-risk"
+  | "skills-risk"
+  | "general";
+
 interface RoleResponseProfile {
   role: VortaAiRole;
   label: string;
@@ -51,6 +63,7 @@ interface GlobalAiAnswer {
   confidence: number;
   roleLabel: string;
   responseBadge: string;
+  intentLabel: string;
   roleNote?: string;
   knowledgeChunks?: EquipmentKnowledgeChunk[];
   missingData?: string[];
@@ -213,6 +226,139 @@ function sourceLabel(chunk: EquipmentKnowledgeChunk): string {
   return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${section}`;
 }
 
+// ─── Intent classification ────────────────────────────────────────────────────
+
+function classifyGlobalQuestion(question: string): GlobalAiIntent {
+  const q = question.toLowerCase();
+
+  if (
+    q.includes("first") ||
+    q.includes("today") ||
+    q.includes("review") ||
+    q.includes("priority") ||
+    q.includes("worry")
+  ) {
+    return "daily-priority";
+  }
+
+  if (
+    q.includes("site risk") ||
+    q.includes("highest site") ||
+    q.includes("overall risk") ||
+    q.includes("site")
+  ) {
+    return "site-risk";
+  }
+
+  if (
+    q.includes("building") ||
+    q.includes("area") ||
+    q.includes("line") ||
+    q.includes("department")
+  ) {
+    return "area-risk";
+  }
+
+  if (
+    q.includes("equipment") ||
+    q.includes("asset") ||
+    q.includes("machine") ||
+    q.includes("critical") ||
+    q.includes("next shift")
+  ) {
+    return "equipment-risk";
+  }
+
+  if (
+    q.includes("evidence") ||
+    q.includes("source") ||
+    q.includes("why") ||
+    q.includes("document") ||
+    q.includes("manual") ||
+    q.includes("sop")
+  ) {
+    return "evidence";
+  }
+
+  if (
+    q.includes("labour") ||
+    q.includes("labor") ||
+    q.includes("cover") ||
+    q.includes("shift") ||
+    q.includes("engineer")
+  ) {
+    return "labour-risk";
+  }
+
+  if (
+    q.includes("pm") ||
+    q.includes("planned maintenance") ||
+    q.includes("overdue") ||
+    q.includes("backlog")
+  ) {
+    return "pm-risk";
+  }
+
+  if (
+    q.includes("spare") ||
+    q.includes("part") ||
+    q.includes("stock") ||
+    q.includes("bom")
+  ) {
+    return "spares-risk";
+  }
+
+  if (
+    q.includes("skill") ||
+    q.includes("training") ||
+    q.includes("competency") ||
+    q.includes("competence")
+  ) {
+    return "skills-risk";
+  }
+
+  return "general";
+}
+
+function findMentionedArea(question: string, areaRisks: AreaRiskProfile[]): AreaRiskProfile | undefined {
+  const q = question.toLowerCase();
+
+  return areaRisks.find((area) => {
+    const areaName = area.area.toLowerCase();
+    return q.includes(areaName) || areaName.split(/[\s/-]+/).some((part) => part.length > 2 && q.includes(part));
+  });
+}
+
+function findMentionedEquipment(question: string, equipment: EquipmentListItem[]): EquipmentListItem | undefined {
+  const q = question.toLowerCase();
+
+  return equipment.find((item) => {
+    const name = item.name.toLowerCase();
+    const assetNumber = item.assetNumber?.toLowerCase?.() ?? "";
+
+    return (
+      q.includes(name) ||
+      Boolean(assetNumber && q.includes(assetNumber)) ||
+      name.split(/[\s/-]+/).some((part) => part.length > 3 && q.includes(part))
+    );
+  });
+}
+
+function getIntentTitle(intent: GlobalAiIntent): string {
+  switch (intent) {
+    case "daily-priority":   return "Daily priority";
+    case "site-risk":        return "Site risk";
+    case "area-risk":        return "Area risk";
+    case "equipment-risk":   return "Equipment risk";
+    case "evidence":         return "Evidence summary";
+    case "labour-risk":      return "Labour risk";
+    case "pm-risk":          return "PM risk";
+    case "spares-risk":      return "Spares risk";
+    case "skills-risk":      return "Skills risk";
+    default:                 return "General risk question";
+  }
+}
+
 // ─── Role-aware helpers ───────────────────────────────────────────────────────
 
 function roleAwareDirectAnswer(
@@ -304,7 +450,9 @@ function buildGlobalAnswer(
   knowledgeChunks: EquipmentKnowledgeChunk[],
   roleProfile: RoleResponseProfile,
 ): GlobalAiAnswer {
-  const q = question.toLowerCase();
+  const intent = classifyGlobalQuestion(question);
+  const mentionedArea = findMentionedArea(question, areaRisks);
+  const mentionedEquipment = findMentionedEquipment(question, equipment);
 
   const sortedEquipment = [...equipment].sort((a, b) => {
     const scoreDiff = b.riskScore - a.riskScore;
@@ -317,97 +465,173 @@ function buildGlobalAnswer(
   const topEquipment = sortedEquipment[0];
   const topArea = sortedAreas[0];
 
+  const selectedArea = mentionedArea ?? topArea;
+  const selectedEquipment = mentionedEquipment ?? topEquipment;
+
   const evidence: string[] = [];
   const recommendedActions: string[] = [];
   const sources: string[] = [];
   const missingData: string[] = [];
+  let directAnswer = "";
 
-  if (siteRisk) {
-    evidence.push(`Current site risk score is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
-    if (siteRisk.highestArea) {
-      evidence.push(`Highest area is ${siteRisk.highestArea} at ${siteRisk.highestAreaScore ?? "unknown"}%.`);
+  switch (intent) {
+    case "daily-priority": {
+      if (selectedEquipment) {
+        directAnswer = `Review ${selectedEquipment.name} first. It is the highest-priority asset based on the current equipment risk list at ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`;
+        evidence.push(`${selectedEquipment.name} is ranked highest in the equipment risk list.`);
+        evidence.push(`Risk score: ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel}.`);
+        if (selectedEquipment.area) evidence.push(`Area: ${selectedEquipment.area}.`);
+        recommendedActions.push(`Open ${selectedEquipment.name} and check risk drivers, PMs, work orders, skills and spares.`);
+        recommendedActions.push("Confirm action owner before the next shift handover.");
+        sources.push("Equipment risk list");
+      }
+      if (siteRisk) {
+        evidence.push(`Site risk is currently ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+        sources.push("Site risk profile");
+      }
+      if (!selectedEquipment && !siteRisk) {
+        directAnswer = "I cannot identify today's priority because no equipment or site risk data is currently available.";
+        missingData.push("Equipment risk list and site risk profile are unavailable.");
+      }
+      break;
     }
-    if (siteRisk.riskSummary) evidence.push(siteRisk.riskSummary);
-    if (siteRisk.priorityAction) recommendedActions.push(siteRisk.priorityAction);
-    sources.push("Site risk profile");
-  } else {
-    missingData.push("Site risk profile is not available.");
+
+    case "site-risk": {
+      if (siteRisk) {
+        directAnswer = `The current site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}. ${siteRisk.highestArea ? `${siteRisk.highestArea} is currently the highest-risk area.` : ""}`;
+        evidence.push(`Site risk score: ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+        if (siteRisk.highestArea) evidence.push(`Highest area: ${siteRisk.highestArea} at ${siteRisk.highestAreaScore ?? "unknown"}%.`);
+        if (siteRisk.riskSummary) evidence.push(siteRisk.riskSummary);
+        if (siteRisk.priorityAction) recommendedActions.push(siteRisk.priorityAction);
+        sources.push("Site risk profile");
+      } else {
+        directAnswer = "I cannot confirm the current site risk because the site risk profile is unavailable.";
+        missingData.push("Site risk profile is unavailable.");
+      }
+      break;
+    }
+
+    case "area-risk": {
+      if (selectedArea) {
+        directAnswer = `${selectedArea.area} is the area to review. It is currently ${selectedArea.riskScore}% ${selectedArea.riskLevel} risk.`;
+        evidence.push(`${selectedArea.area} risk score: ${selectedArea.riskScore}% ${selectedArea.riskLevel}.`);
+        evidence.push(`${selectedArea.criticalAssetCount} critical asset${selectedArea.criticalAssetCount === 1 ? "" : "s"} and ${selectedArea.highAssetCount} high-risk asset${selectedArea.highAssetCount === 1 ? "" : "s"} are linked to this area.`);
+        if (selectedArea.riskSummary) evidence.push(selectedArea.riskSummary);
+        if (selectedArea.priorityAction) recommendedActions.push(selectedArea.priorityAction);
+        sources.push("Area risk profiles");
+      } else {
+        directAnswer = "I cannot identify the area risk because no area profile matched the question.";
+        missingData.push("No matching area risk profile was found.");
+      }
+      break;
+    }
+
+    case "equipment-risk": {
+      if (selectedEquipment) {
+        directAnswer = `${selectedEquipment.name} needs the most attention from the current equipment risk list. It is ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`;
+        evidence.push(`${selectedEquipment.name} risk score: ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel}.`);
+        if (selectedEquipment.area) evidence.push(`Area: ${selectedEquipment.area}.`);
+        if (selectedEquipment.status) evidence.push(`Status: ${selectedEquipment.status}.`);
+        recommendedActions.push(`Open ${selectedEquipment.name} and review risk drivers, overdue PMs, work orders, skills coverage and spares.`);
+        recommendedActions.push("Confirm whether action is required before the next shift handover.");
+        sources.push("Equipment risk list");
+      } else {
+        directAnswer = "I cannot identify the highest-risk equipment because the equipment risk list is unavailable.";
+        missingData.push("Equipment risk list is unavailable.");
+      }
+      break;
+    }
+
+    case "evidence": {
+      if (knowledgeChunks.length > 0) {
+        directAnswer = `I found ${knowledgeChunks.length} matched source section${knowledgeChunks.length === 1 ? "" : "s"}. The strongest source match is ${sourceLabel(knowledgeChunks[0])}.`;
+        knowledgeChunks.slice(0, 4).forEach((chunk) => {
+          evidence.push(
+            `${chunk.documentType}: ${chunk.title}${chunk.revision ? ` Rev ${chunk.revision}` : ""}, ${chunk.chunkRef}${chunk.sectionTitle ? ` - ${chunk.sectionTitle}` : ""}: ${shorten(chunk.chunkText, 180)}`,
+          );
+        });
+        sources.push(...knowledgeChunks.slice(0, 4).map(sourceLabel));
+        recommendedActions.push("Open the linked equipment page and review the source sections before making the decision.");
+      } else {
+        directAnswer = "I can use current risk data, but I did not find matching manual, SOP, training or SAP source sections for this question.";
+        missingData.push("No matching knowledge document chunks were returned.");
+        if (siteRisk) evidence.push(`Site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+        if (selectedEquipment) evidence.push(`${selectedEquipment.name} is ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`);
+        sources.push("Site/equipment risk data");
+      }
+      break;
+    }
+
+    case "labour-risk": {
+      directAnswer = "Labour risk should be reviewed against shift cover, single-point skill exposure and engineer availability before the next handover.";
+      if (siteRisk) evidence.push(`Site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+      if (selectedArea) evidence.push(`${selectedArea.area} is ${selectedArea.riskScore}% ${selectedArea.riskLevel} risk.`);
+      if (selectedEquipment) evidence.push(`${selectedEquipment.name} should be checked for skills coverage and single-point dependency.`);
+      recommendedActions.push("Check shift coverage and critical skill availability for the highest-risk area.");
+      recommendedActions.push("Confirm whether contractor fallback or reallocation is needed.");
+      sources.push("Site risk profile", "Area risk profiles", "Equipment risk list");
+      break;
+    }
+
+    case "pm-risk": {
+      directAnswer = "PM risk should be reviewed by checking overdue PMs, readiness, labour availability and whether the work can be completed before risk increases.";
+      if (selectedEquipment) evidence.push(`${selectedEquipment.name} is the priority asset for PM/readiness review at ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`);
+      if (siteRisk) evidence.push(`Site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+      recommendedActions.push("Open the equipment PM tab and check overdue PMs, next due date and readiness.");
+      recommendedActions.push("Confirm spares, labour, access and permit requirements before scheduling.");
+      sources.push("Equipment risk list", "Site risk profile");
+      break;
+    }
+
+    case "spares-risk": {
+      directAnswer = "Spares risk should be reviewed against the highest-risk equipment and any critical component availability gaps.";
+      if (selectedEquipment) evidence.push(`${selectedEquipment.name} is the priority asset to check for spare availability.`);
+      recommendedActions.push("Open the equipment spares tab and check critical parts, stock status and lead time.");
+      recommendedActions.push("Escalate any zero-stock critical spare linked to a high-risk asset.");
+      sources.push("Equipment risk list", "Equipment spares data");
+      break;
+    }
+
+    case "skills-risk": {
+      directAnswer = "Skills risk should be reviewed by checking whether the highest-risk equipment has enough competent engineers and no single-point dependency.";
+      if (selectedEquipment) evidence.push(`${selectedEquipment.name} should be checked for validated skill coverage.`);
+      if (selectedArea) evidence.push(`${selectedArea.area} is ${selectedArea.riskScore}% ${selectedArea.riskLevel} risk.`);
+      recommendedActions.push("Open the equipment skills tab and check validated engineer coverage.");
+      recommendedActions.push("Create training or contractor fallback actions for any single-point skill gaps.");
+      sources.push("Equipment risk list", "Skills coverage data");
+      break;
+    }
+
+    default: {
+      directAnswer = "I can answer that using the current site, area, equipment and source document data, but the question does not match a specific risk category yet.";
+      if (siteRisk) evidence.push(`Site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
+      if (selectedArea) evidence.push(`${selectedArea.area} is ${selectedArea.riskScore}% ${selectedArea.riskLevel} risk.`);
+      if (selectedEquipment) evidence.push(`${selectedEquipment.name} is ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`);
+      recommendedActions.push("Ask about site risk, area risk, equipment risk, PMs, spares, skills or evidence for a more specific answer.");
+      sources.push("Site risk profile", "Area risk profiles", "Equipment risk list");
+      break;
+    }
   }
 
-  if (topArea) {
-    evidence.push(`${topArea.area} is the highest-ranked area at ${topArea.riskScore}% ${topArea.riskLevel} risk.`);
-    if (topArea.riskSummary) evidence.push(topArea.riskSummary);
-    if (topArea.priorityAction) recommendedActions.push(topArea.priorityAction);
-    sources.push("Area risk profiles");
-  } else {
-    missingData.push("Area risk profiles are not available.");
+  if (!directAnswer) {
+    directAnswer = "I could not build a specific answer from the current Vorta data.";
+    missingData.push("No matching risk context was available for this question.");
   }
 
-  if (topEquipment) {
-    evidence.push(`${topEquipment.name} is the highest-ranked equipment item at ${topEquipment.riskScore}% ${topEquipment.riskLevel} risk.`);
-    recommendedActions.push(`Open ${topEquipment.name} and review its risk drivers, overdue PMs, work orders, skills coverage and spares.`);
-    sources.push("Equipment risk list");
-  } else {
-    missingData.push("Equipment risk list is not available.");
-  }
+  const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, selectedEquipment);
+  const roleActions = roleAwareActions(recommendedActions, roleProfile, selectedEquipment);
 
-  if (knowledgeChunks.length > 0) {
-    evidence.push(`Knowledge search found ${knowledgeChunks.length} matching source section${knowledgeChunks.length === 1 ? "" : "s"}.`);
-    knowledgeChunks.slice(0, 3).forEach((chunk) => {
-      evidence.push(
-        `${chunk.documentType}: ${chunk.title}${chunk.revision ? ` Rev ${chunk.revision}` : ""}, ${chunk.chunkRef}${chunk.sectionTitle ? ` - ${chunk.sectionTitle}` : ""}: ${shorten(chunk.chunkText, 180)}`,
-      );
-    });
-    sources.push(...knowledgeChunks.slice(0, 4).map(sourceLabel));
-  }
-
-  if (recommendedActions.length === 0) {
-    recommendedActions.push("Review the dashboard risk summary, then open the highest-risk equipment item for source-backed detail.");
-  }
-
-  let directAnswer = "The highest-priority maintenance management action is to review the live site risk profile, then drill into the highest-risk area and asset.";
-
-  if (q.includes("first") || q.includes("today") || q.includes("priority")) {
-    directAnswer = topEquipment
-      ? `Review ${topEquipment.name} first. It is currently the highest-ranked equipment risk at ${topEquipment.riskScore}% ${topEquipment.riskLevel}. Start with its risk drivers, overdue PMs, work orders, skills coverage and spares.`
-      : "Start with the site risk profile and highest-risk area. I cannot name a specific asset because the equipment risk list is unavailable.";
-  }
-
-  if (q.includes("site risk") || q.includes("highest site")) {
-    directAnswer = siteRisk
-      ? `The current site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}. ${siteRisk.highestArea ? `${siteRisk.highestArea} is the highest-risk area at ${siteRisk.highestAreaScore ?? "unknown"}%.` : "No highest area is currently available."}`
-      : "I cannot confirm the current site risk because the site risk profile is unavailable.";
-  }
-
-  if (q.includes("area")) {
-    directAnswer = topArea
-      ? `${topArea.area} needs the most attention. It is currently ${topArea.riskScore}% ${topArea.riskLevel} risk, with ${topArea.criticalAssetCount} critical asset${topArea.criticalAssetCount === 1 ? "" : "s"} and ${topArea.highAssetCount} high-risk asset${topArea.highAssetCount === 1 ? "" : "s"}.`
-      : "I cannot identify the highest-risk area because area risk data is unavailable.";
-  }
-
-  if (q.includes("equipment") || q.includes("asset") || q.includes("critical")) {
-    directAnswer = topEquipment
-      ? `${topEquipment.name} is currently the highest-ranked equipment item at ${topEquipment.riskScore}% ${topEquipment.riskLevel} risk in ${topEquipment.area}.`
-      : "I cannot identify the highest-risk equipment because the equipment risk list is unavailable.";
-  }
-
-  if (q.includes("evidence") || q.includes("source") || q.includes("document") || q.includes("manual") || q.includes("sop")) {
-    directAnswer = knowledgeChunks.length > 0
-      ? `I found source-backed evidence from ${knowledgeChunks.length} matched knowledge section${knowledgeChunks.length === 1 ? "" : "s"}. The strongest match is ${sourceLabel(knowledgeChunks[0])}.`
-      : "I can use site, area and equipment risk data, but I did not find matching manual/SOP/training/SAP source sections for this question.";
-  }
-
-  const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, topEquipment);
-  const roleActions = roleAwareActions(recommendedActions, roleProfile, topEquipment);
+  const dataPoints = [siteRisk, selectedArea, selectedEquipment, knowledgeChunks.length > 0].filter(Boolean).length;
 
   return {
     directAnswer: roleAwareAnswer,
     evidence: unique(evidence),
     recommendedActions: roleActions,
     sources: unique(sources),
-    confidence: Math.min(92, Math.max(55, 55 + [siteRisk, topArea, topEquipment, knowledgeChunks.length > 0].filter(Boolean).length * 8)),
+    confidence: Math.min(92, Math.max(55, 55 + dataPoints * 8)),
     roleLabel: roleProfile.label,
     responseBadge: roleProfile.responseBadge,
+    intentLabel: getIntentTitle(intent),
     roleNote: roleAwareNote(roleProfile),
     knowledgeChunks,
     missingData: unique(missingData),
@@ -425,6 +649,9 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
         </Badge>
         <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[9px] font-medium text-slate-400 shadow-none">
           {answer.roleLabel}
+        </Badge>
+        <Badge className="h-auto rounded bg-gray-800/80 px-1.5 py-0 text-[9px] font-medium text-slate-500 shadow-none">
+          {answer.intentLabel}
         </Badge>
       </div>
 
@@ -526,6 +753,7 @@ export function GlobalMaintenanceAiAssistant({
         confidence: 70,
         roleLabel: roleProfile.label,
         responseBadge: roleProfile.responseBadge,
+        intentLabel: "Introduction",
         roleNote: roleAwareNote(roleProfile),
       },
     },
@@ -575,8 +803,14 @@ export function GlobalMaintenanceAiAssistant({
 
     setInput("");
 
-    const topAsset = [...equipment].sort((a, b) => b.riskScore - a.riskScore)[0];
-    const knowledgeQuery = `${trimmed} ${topAsset?.name ?? ""} ${topAsset?.assetNumber ?? ""}`.trim();
+    const intent = classifyGlobalQuestion(trimmed);
+    const mentionedAsset = findMentionedEquipment(trimmed, equipment);
+    const topAsset = mentionedAsset ?? [...equipment].sort((a, b) => b.riskScore - a.riskScore)[0];
+
+    const knowledgeQuery =
+      intent === "evidence" || intent === "equipment-risk" || intent === "pm-risk" || intent === "spares-risk" || intent === "skills-risk"
+        ? `${trimmed} ${topAsset?.name ?? ""} ${topAsset?.assetNumber ?? ""}`.trim()
+        : trimmed;
 
     const [knowledgeChunks] = await Promise.all([
       searchEquipmentKnowledge(topAsset?.id ?? "fl-03", knowledgeQuery, 5),
