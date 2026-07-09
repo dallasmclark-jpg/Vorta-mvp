@@ -5,10 +5,12 @@ import { Button } from "../../components/ui/button";
 import { supabase } from "../../lib/supabaseClient";
 import {
   getAreaRiskProfiles,
+  getEquipmentComponents,
   getEquipmentList,
   getSiteRiskProfile,
   searchEquipmentKnowledge,
   type AreaRiskProfile,
+  type EquipmentComponent,
   type EquipmentKnowledgeChunk,
   type EquipmentListItem,
   type SiteRiskProfile,
@@ -154,6 +156,36 @@ interface ShiftSkillsContext {
   gaps: ShiftSkillGap[];
   confidenceNote: string;
   sourceStatus: "live-shift" | "shift-pattern" | "fallback";
+}
+
+interface GlobalSpareIssue {
+  assetId: string;
+  assetName: string;
+  assetNumber?: string;
+  area?: string;
+  riskScore: number;
+  riskLevel: string;
+  componentName: string;
+  partNumber: string;
+  stock: number;
+  target: number;
+  minimumQuantity?: number;
+  status: string;
+  criticality: string;
+  leadDays: number;
+  location: string;
+  supplier: string;
+  manufacturer: string;
+}
+
+interface GlobalSparesContext {
+  checkedAssetCount: number;
+  issueCount: number;
+  outOfStockCount: number;
+  lowStockCount: number;
+  assetsWithIssues: number;
+  issues: GlobalSpareIssue[];
+  sourceNote: string;
 }
 
 // ─── Role profiles ────────────────────────────────────────────────────────────
@@ -524,6 +556,87 @@ function formatEngineerList(names: string[], fallback: string): string {
   return `${names.slice(0, 3).join(", ")} +${names.length - 3} more`;
 }
 
+// ─── Spares context helpers ───────────────────────────────────────────────────
+
+function spareStatusRank(status: string): number {
+  const value = status.toLowerCase();
+  if (value.includes("out of stock")) return 0;
+  if (value.includes("low stock")) return 1;
+  return 2;
+}
+
+function criticalityRank(value: string): number {
+  const level = value.toLowerCase();
+  if (level.includes("critical")) return 0;
+  if (level.includes("high")) return 1;
+  if (level.includes("medium")) return 2;
+  return 3;
+}
+
+function sortSpareIssues(a: GlobalSpareIssue, b: GlobalSpareIssue): number {
+  return (
+    spareStatusRank(a.status) - spareStatusRank(b.status) ||
+    criticalityRank(a.criticality) - criticalityRank(b.criticality) ||
+    b.riskScore - a.riskScore ||
+    b.leadDays - a.leadDays ||
+    a.assetName.localeCompare(b.assetName)
+  );
+}
+
+function formatSpareEvidence(issue: GlobalSpareIssue): string {
+  const stockLabel = `${issue.stock}/${issue.target}`;
+  const minLabel = issue.minimumQuantity != null && issue.minimumQuantity > 0
+    ? `, min ${issue.minimumQuantity}`
+    : "";
+  const leadLabel = issue.leadDays > 0 ? `, ${issue.leadDays} day lead` : "";
+  const locationLabel = issue.location ? `, ${issue.location}` : "";
+  return `${issue.assetName}${issue.assetNumber ? ` (${issue.assetNumber})` : ""}: ${issue.componentName} (${issue.partNumber}) is ${issue.status}, stock ${stockLabel}${minLabel}, ${issue.criticality || "unknown"} criticality${leadLabel}${locationLabel}.`;
+}
+
+async function fetchGlobalSparesContext(assets: EquipmentListItem[]): Promise<GlobalSparesContext> {
+  const scopedAssets = assets.slice(0, 8);
+
+  const results = await Promise.all(
+    scopedAssets.map(async (asset) => {
+      const components = await getEquipmentComponents(asset.id);
+      return components.criticalComponents.map((component: EquipmentComponent): GlobalSpareIssue => ({
+        assetId: asset.id,
+        assetName: asset.name,
+        assetNumber: asset.assetNumber,
+        area: asset.area,
+        riskScore: asset.riskScore,
+        riskLevel: asset.riskLevel,
+        componentName: component.name,
+        partNumber: component.partNumber,
+        stock: component.stock,
+        target: component.max,
+        minimumQuantity: component.minimumQuantity,
+        status: component.status,
+        criticality: component.criticality,
+        leadDays: component.leadDays,
+        location: component.location,
+        supplier: component.supplier,
+        manufacturer: component.manufacturer,
+      }));
+    }),
+  );
+
+  const issues = results.flat().sort(sortSpareIssues);
+  const outOfStockCount = issues.filter((i) => i.status.toLowerCase().includes("out of stock")).length;
+  const lowStockCount   = issues.filter((i) => i.status.toLowerCase().includes("low stock")).length;
+  const assetsWithIssues = new Set(issues.map((i) => i.assetId)).size;
+
+  return {
+    checkedAssetCount: scopedAssets.length,
+    issueCount: issues.length,
+    outOfStockCount,
+    lowStockCount,
+    assetsWithIssues,
+    issues,
+    sourceNote: `Checked equipment_components for ${scopedAssets.length} asset${scopedAssets.length === 1 ? "" : "s"}.`,
+  };
+}
+
 // ─── Intent classification ────────────────────────────────────────────────────
 
 function classifyGlobalQuestion(question: string): GlobalAiIntent {
@@ -535,6 +648,28 @@ function classifyGlobalQuestion(question: string): GlobalAiIntent {
     (q.includes("shift") || q.includes("today") || q.includes("on site") || q.includes("onsite") || q.includes("on shift") || q.includes("cover"))
   ) {
     return "shift-skills-gap";
+  }
+
+  if (
+    q.includes("spare") ||
+    q.includes("spares") ||
+    q.includes("part") ||
+    q.includes("parts") ||
+    q.includes("stock") ||
+    q.includes("stores") ||
+    q.includes("bom") ||
+    q.includes("inventory")
+  ) {
+    return "spares-risk";
+  }
+
+  if (
+    q.includes("pm") ||
+    q.includes("planned maintenance") ||
+    q.includes("overdue") ||
+    q.includes("backlog")
+  ) {
+    return "pm-risk";
   }
 
   if (
@@ -669,8 +804,13 @@ function roleAwareDirectAnswer(
   baseAnswer: string,
   roleProfile: RoleResponseProfile,
   topEquipment?: EquipmentListItem,
+  intent?: GlobalAiIntent,
 ): string {
   const equipmentName = topEquipment?.name ?? "the highest-risk asset";
+
+  if (intent === "spares-risk") {
+    return baseAnswer;
+  }
 
   switch (roleProfile.role) {
     case "planner":
@@ -693,6 +833,7 @@ function roleAwareActions(
   baseActions: string[],
   roleProfile: RoleResponseProfile,
   topEquipment?: EquipmentListItem,
+  intent?: GlobalAiIntent,
 ): string[] {
   const equipmentName = topEquipment?.name ?? "the highest-risk asset";
 
@@ -722,6 +863,10 @@ function roleAwareActions(
       "Review the linked source documents and prepare a clear job report with findings and actions.",
     ],
   };
+
+  if (intent === "spares-risk") {
+    return unique([...baseActions, ...roleActions[roleProfile.role]]).slice(0, 5);
+  }
 
   return unique([...roleActions[roleProfile.role], ...baseActions]).slice(0, 5);
 }
@@ -754,6 +899,7 @@ function buildGlobalAnswer(
   knowledgeChunks: EquipmentKnowledgeChunk[],
   roleProfile: RoleResponseProfile,
   shiftSkillsContext: ShiftSkillsContext | null,
+  sparesContext: GlobalSparesContext | null,
 ): GlobalAiAnswer {
   const intent = classifyGlobalQuestion(question);
   const mentionedArea = findMentionedArea(question, areaRisks);
@@ -935,11 +1081,53 @@ function buildGlobalAnswer(
     }
 
     case "spares-risk": {
-      directAnswer = "Spares risk should be reviewed against the highest-risk equipment and any critical component availability gaps.";
-      if (selectedEquipment) evidence.push(`${selectedEquipment.name} is the priority asset to check for spare availability.`);
-      recommendedActions.push("Open the equipment spares tab and check critical parts, stock status and lead time.");
-      recommendedActions.push("Escalate any zero-stock critical spare linked to a high-risk asset.");
-      sources.push("Equipment risk list", "Equipment spares data");
+      if (!sparesContext) {
+        directAnswer = "I cannot check spares issues because equipment component context was not loaded.";
+        missingData.push("equipment_components was not checked for this question.");
+        sources.push("Equipment risk list");
+        break;
+      }
+
+      if (sparesContext.issueCount === 0) {
+        directAnswer = `No out-of-stock or low-stock critical spares were found across the ${sparesContext.checkedAssetCount} asset${sparesContext.checkedAssetCount === 1 ? "" : "s"} checked.`;
+        evidence.push(sparesContext.sourceNote);
+        if (selectedEquipment) {
+          evidence.push(`${selectedEquipment.name} remains the selected asset by risk score, but no critical spare shortage was returned for the checked scope.`);
+        }
+        recommendedActions.push("Keep monitoring critical spares and refresh after the next stores/SAP import.");
+        sources.push("equipment_components", "Equipment risk list");
+        break;
+      }
+
+      const topIssue = sparesContext.issues[0];
+      const topThree = sparesContext.issues.slice(0, 3);
+
+      directAnswer =
+        `Yes. There ${sparesContext.issueCount === 1 ? "is" : "are"} ${sparesContext.issueCount} spares issue${sparesContext.issueCount === 1 ? "" : "s"} across ${sparesContext.assetsWithIssues} asset${sparesContext.assetsWithIssues === 1 ? "" : "s"} checked: ` +
+        `${sparesContext.outOfStockCount} out of stock and ${sparesContext.lowStockCount} low stock. ` +
+        `Highest priority: ${topIssue.assetName} — ${topIssue.componentName} (${topIssue.partNumber}) is ${topIssue.status}, stock ${topIssue.stock}/${topIssue.target}, ${topIssue.criticality || "unknown"} criticality` +
+        `${topIssue.leadDays > 0 ? `, ${topIssue.leadDays} day lead` : ""}` +
+        `${topIssue.location ? `, ${topIssue.location}` : ""}.`;
+
+      evidence.push(sparesContext.sourceNote);
+      topThree.forEach((issue) => evidence.push(formatSpareEvidence(issue)));
+
+      const outOfStockCritical = sparesContext.issues.find(
+        (issue) =>
+          issue.status.toLowerCase().includes("out of stock") &&
+          issue.criticality.toLowerCase().includes("critical"),
+      );
+
+      if (outOfStockCritical) {
+        recommendedActions.push(
+          `Expedite ${outOfStockCritical.componentName} (${outOfStockCritical.partNumber}) for ${outOfStockCritical.assetName}; it is out of stock with ${outOfStockCritical.leadDays || "unknown"} day lead time.`,
+        );
+      }
+
+      recommendedActions.push(`Review the top ${Math.min(3, sparesContext.issueCount)} spare issue${sparesContext.issueCount === 1 ? "" : "s"} before the next shift handover.`);
+      recommendedActions.push("Check whether the affected assets have open work orders, overdue PMs or fault trends that depend on these parts.");
+
+      sources.push("equipment_components", "Equipment risk list");
       break;
     }
 
@@ -980,8 +1168,8 @@ function buildGlobalAnswer(
     missingData.push("No matching risk context was available for this question.");
   }
 
-  const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, selectedEquipment);
-  const roleActions = roleAwareActions(recommendedActions, roleProfile, selectedEquipment);
+  const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, selectedEquipment, intent);
+  const roleActions = roleAwareActions(recommendedActions, roleProfile, selectedEquipment, intent);
 
   const dataPoints = [siteRisk, selectedArea, selectedEquipment, knowledgeChunks.length > 0].filter(Boolean).length;
 
@@ -1239,17 +1427,35 @@ export function GlobalMaintenanceAiAssistant({
     const mentionedAsset = findMentionedEquipment(trimmed, equipment);
     const topAsset = mentionedAsset ?? [...equipment].sort((a, b) => b.riskScore - a.riskScore)[0];
 
+    const sortedEquipmentByRisk = [...equipment].sort((a, b) => b.riskScore - a.riskScore);
+    const sparesAssets =
+      intent === "spares-risk"
+        ? mentionedAsset
+          ? [mentionedAsset]
+          : sortedEquipmentByRisk.slice(0, 8)
+        : [];
+
     const knowledgeQuery =
       intent === "evidence" || intent === "equipment-risk" || intent === "pm-risk" || intent === "spares-risk"
         ? `${trimmed} ${topAsset?.name ?? ""} ${topAsset?.assetNumber ?? ""}`.trim()
         : trimmed;
 
-    const [knowledgeChunks] = await Promise.all([
+    const [knowledgeChunks, sparesContext] = await Promise.all([
       searchEquipmentKnowledge(topAsset?.id ?? "fl-03", knowledgeQuery, 5),
+      intent === "spares-risk" ? fetchGlobalSparesContext(sparesAssets) : Promise.resolve(null),
       new Promise((resolve) => window.setTimeout(resolve, 700)),
     ]);
 
-    const answer = buildGlobalAnswer(trimmed, siteRisk, areaRisks, equipment, knowledgeChunks, roleProfile, shiftSkillsContext);
+    const answer = buildGlobalAnswer(
+      trimmed,
+      siteRisk,
+      areaRisks,
+      equipment,
+      knowledgeChunks,
+      roleProfile,
+      shiftSkillsContext,
+      sparesContext,
+    );
 
     setMessages((prev) =>
       prev.map((message) =>

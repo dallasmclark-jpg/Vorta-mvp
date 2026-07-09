@@ -968,6 +968,7 @@ export interface EquipmentComponent {
   partNumber: string;
   stock: number;
   max: number;
+  minimumQuantity?: number;
   status: string;
   supplier: string;
   manufacturer: string;
@@ -997,7 +998,7 @@ export async function getEquipmentComponents(equipmentId: string): Promise<Equip
   try {
     const { data, error } = await supabase
       .from("equipment_components")
-      .select("component_name, component_code, quantity_available, quantity_target, availability_status, vendor_name, maker_name, storage_location, criticality, unit_cost, lead_days")
+      .select("component_name, component_code, quantity_available, quantity_target, minimum_quantity, availability_status, vendor_name, maker_name, storage_location, criticality, unit_cost, lead_days")
       .eq("equipment_id", equipmentId)
       .order("component_name");
 
@@ -1007,25 +1008,27 @@ export async function getEquipmentComponents(equipmentId: string): Promise<Equip
     }
 
     const inventory: EquipmentComponent[] = (data ?? []).map((r) => ({
-      name:         r.component_name ?? "",
-      partNumber:   r.component_code ?? "",
-      stock:        r.quantity_available ?? 0,
-      max:          r.quantity_target ?? 0,
-      status:       r.availability_status ?? "",
-      supplier:     r.vendor_name ?? "",
-      manufacturer: r.maker_name ?? "",
-      location:     r.storage_location ?? "",
-      criticality:  r.criticality ?? "",
-      unitCost:     r.unit_cost ?? 0,
-      leadDays:     r.lead_days ?? 0,
+      name:            r.component_name ?? "",
+      partNumber:      r.component_code ?? "",
+      stock:           r.quantity_available ?? 0,
+      max:             r.quantity_target ?? 0,
+      minimumQuantity: r.minimum_quantity ?? 0,
+      status:          r.availability_status ?? "",
+      supplier:        r.vendor_name ?? "",
+      manufacturer:    r.maker_name ?? "",
+      location:        r.storage_location ?? "",
+      criticality:     r.criticality ?? "",
+      unitCost:        r.unit_cost ?? 0,
+      leadDays:        r.lead_days ?? 0,
     }));
 
-    const criticalComponents = inventory.filter(
-      (c) => c.status === "Out of Stock" || c.status === "Low Stock"
-    );
+    const criticalComponents = inventory.filter((c) => {
+      const status = c.status.toLowerCase();
+      return status.includes("out of stock") || status.includes("low stock");
+    });
 
-    const outOfStock = inventory.filter((c) => c.status === "Out of Stock").length;
-    const lowStock   = inventory.filter((c) => c.status === "Low Stock").length;
+    const outOfStock = inventory.filter((c) => c.status.toLowerCase().includes("out of stock")).length;
+    const lowStock   = inventory.filter((c) => c.status.toLowerCase().includes("low stock")).length;
 
     return {
       inventory,
