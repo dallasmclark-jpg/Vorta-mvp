@@ -3,7 +3,11 @@ import { Brain, FileText, Loader2, Send, ShieldCheck } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import type { EquipmentSummary } from "./equipmentService";
+import {
+  searchEquipmentKnowledge,
+  type EquipmentKnowledgeChunk,
+  type EquipmentSummary,
+} from "./equipmentService";
 
 type ChatRole = "user" | "assistant";
 
@@ -15,6 +19,7 @@ interface AssistantAnswer {
   missingData: string[];
   confidence: number;
   demoNote?: string;
+  knowledgeChunks?: EquipmentKnowledgeChunk[];
 }
 
 interface ChatMessage {
@@ -52,7 +57,72 @@ function listJoin(items: string[], fallback: string): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-function generateEquipmentAnswer(question: string, equipmentId: string, summary: EquipmentSummary | null): AssistantAnswer {
+function shortenText(text: string, maxLength = 280): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}...`;
+}
+
+function formatKnowledgeSource(chunk: EquipmentKnowledgeChunk): string {
+  const revision = chunk.revision ? ` Rev ${chunk.revision}` : "";
+  const section = chunk.sectionTitle
+    ? `${chunk.chunkRef} ${chunk.sectionTitle}`
+    : chunk.chunkRef;
+  return `${chunk.sourceSystem}: ${chunk.title}${revision}, section ${section}`;
+}
+
+function buildKnowledgeDirectAnswer(
+  question: string,
+  equipmentName: string,
+  knowledgeChunks: EquipmentKnowledgeChunk[],
+): string | null {
+  if (knowledgeChunks.length === 0) return null;
+
+  const q = question.toLowerCase();
+  const top = knowledgeChunks[0];
+  const topThree = knowledgeChunks.slice(0, 3);
+
+  if (
+    q.includes("check first") ||
+    q.includes("what should") ||
+    q.includes("fault") ||
+    q.includes("sensor") ||
+    q.includes("infeed") ||
+    q.includes("breakdown")
+  ) {
+    return `For ${equipmentName}, the best first checks from the approved knowledge sources are: ${topThree
+      .map((chunk) => shortenText(chunk.chunkText, 190))
+      .join(" ")} These checks are supported by ${topThree
+      .map((chunk) => `${chunk.title} ${chunk.chunkRef}`)
+      .join(", ")}.`;
+  }
+
+  if (
+    q.includes("manual") ||
+    q.includes("sop") ||
+    q.includes("instruction") ||
+    q.includes("document")
+  ) {
+    return `I found ${knowledgeChunks.length} relevant approved source section${knowledgeChunks.length === 1 ? "" : "s"} for ${equipmentName}. The strongest match is ${top.title}${top.revision ? ` Rev ${top.revision}` : ""}, section ${top.chunkRef}${top.sectionTitle ? ` - ${top.sectionTitle}` : ""}. It states: ${shortenText(top.chunkText, 320)}`;
+  }
+
+  if (
+    q.includes("training") ||
+    q.includes("trained") ||
+    q.includes("competency") ||
+    q.includes("competent")
+  ) {
+    return `The most relevant training/competency evidence for ${equipmentName} is from ${top.title}. ${shortenText(top.chunkText, 320)}`;
+  }
+
+  return `The most relevant approved knowledge source for ${equipmentName} is ${top.title}${top.revision ? ` Rev ${top.revision}` : ""}, section ${top.chunkRef}${top.sectionTitle ? ` - ${top.sectionTitle}` : ""}. It states: ${shortenText(top.chunkText, 320)}`;
+}
+
+function generateEquipmentAnswer(
+  question: string,
+  equipmentId: string,
+  summary: EquipmentSummary | null,
+  knowledgeChunks: EquipmentKnowledgeChunk[] = [],
+): AssistantAnswer {
   if (!summary) {
     return {
       directAnswer: "I cannot complete the analysis yet because the equipment data has not finished loading. The assistant needs the equipment summary before it can give a source-backed answer.",
@@ -61,6 +131,7 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
       sources: [],
       missingData: ["Equipment summary is not loaded."],
       confidence: 20,
+      knowledgeChunks,
     };
   }
 
@@ -111,6 +182,24 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
   const sources: string[] = [];
   const missingData: string[] = [];
 
+  // ── Knowledge chunks go first ─────────────────────────────────────────────
+  const knowledgeDirectAnswer = buildKnowledgeDirectAnswer(question, equipment.name, knowledgeChunks);
+
+  if (knowledgeChunks.length > 0) {
+    evidence.push(
+      `Knowledge search found ${knowledgeChunks.length} approved source section${knowledgeChunks.length === 1 ? "" : "s"} from manuals, SOPs, work instructions, training records or SAP history.`,
+    );
+    knowledgeChunks.slice(0, 4).forEach((chunk) => {
+      evidence.push(
+        `${chunk.documentType}: ${chunk.title}${chunk.revision ? ` Rev ${chunk.revision}` : ""}, section ${chunk.chunkRef}${chunk.sectionTitle ? ` - ${chunk.sectionTitle}` : ""}: ${shortenText(chunk.chunkText, 220)}`,
+      );
+    });
+    sources.push(...knowledgeChunks.slice(0, 6).map(formatKnowledgeSource));
+  } else {
+    missingData.push("No matching manual, SOP, work instruction, training or SAP history chunks were found for this question.");
+  }
+
+  // ── Structured data evidence ──────────────────────────────────────────────
   evidence.push(`${equipment.name} is currently scored at ${equipment.riskScore}% ${equipment.riskLevel} risk.`);
   sources.push("Equipment profile");
   sources.push("Equipment risk breakdown");
@@ -168,11 +257,10 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
   if (documents.length > 0) {
     evidence.push(`Document register contains ${documents.length} document${documents.length === 1 ? "" : "s"}: ${documents.slice(0, 4).map((doc) => `${doc.name} (${doc.category})`).join(", ")}.`);
     sources.push("Equipment document register");
-
     if (manualLikeDocuments.length === 0) {
       missingData.push("No manual, SOP or work instruction is currently tagged for this asset.");
     } else {
-      missingData.push("Manual/SOP full-text search is not connected in Phase 1. I can identify document records, but I am not yet quoting sections from inside the documents.");
+      missingData.push("Manual/SOP full-text search uses the knowledge chunk index. Individual document record listing is from the equipment document register.");
     }
   } else {
     missingData.push("No manuals, SOPs, work instructions or equipment documents are currently uploaded for this asset.");
@@ -207,28 +295,35 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
     recommendedActions.push("Continue monitoring risk drivers and refresh the equipment data after the next SAP/CMMS import.");
   }
 
+  // ── Per-intent branches ───────────────────────────────────────────────────
+
   if (q.includes("document") || q.includes("manual") || q.includes("sop") || q.includes("instruction")) {
     const directAnswer =
-      documents.length === 0
+      knowledgeDirectAnswer ??
+      (documents.length === 0
         ? `No manuals, SOPs, work instructions or equipment documents are currently uploaded for ${equipment.name}. I can still answer from the equipment profile, PMs, work orders, skills and spares data that is available.`
-        : `The document register for ${equipment.name} contains ${documents.length} document${documents.length === 1 ? "" : "s"}: ${documents.map((doc) => doc.name).join(", ")}. Phase 1 can identify these document records, but full manual/SOP section search comes in the document ingestion phase.`;
+        : `The document register for ${equipment.name} contains ${documents.length} document${documents.length === 1 ? "" : "s"}: ${documents.map((doc) => doc.name).join(", ")}. No matching full-text demo knowledge chunk was found for this specific question.`);
 
     return {
       directAnswer,
       evidence,
-      recommendedActions: documents.length === 0 ? ["Upload the OEM manual, SOPs and work instructions, then link them to this asset."] : recommendedActions,
+      recommendedActions: documents.length === 0 && knowledgeChunks.length === 0
+        ? ["Upload the OEM manual, SOPs and work instructions, then link them to this asset."]
+        : recommendedActions,
       sources: unique(sources),
       missingData: unique(missingData),
-      confidence: documents.length > 0 ? 74 : 58,
+      confidence: knowledgeChunks.length > 0 ? 88 : documents.length > 0 ? 74 : 58,
       demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+      knowledgeChunks,
     };
   }
 
-  if (q.includes("trained") || q.includes("skill") || q.includes("engineer") || q.includes("who")) {
+  if (q.includes("trained") || q.includes("skill") || q.includes("engineer") || q.includes("who") || q.includes("training") || q.includes("competency") || q.includes("competent")) {
     const directAnswer =
-      topEngineers.length > 0
+      knowledgeDirectAnswer ??
+      (topEngineers.length > 0
         ? `The best available engineer matches for ${equipment.name} are ${listJoin(topEngineers, "not currently available")}. Skills risk should still be checked against the required skill coverage before assigning work.`
-        : `No validated engineer coverage was found for ${equipment.name}. That means Vorta cannot safely recommend a named engineer from the current data.`;
+        : `No validated engineer coverage was found for ${equipment.name}. That means Vorta cannot safely recommend a named engineer from the current data.`);
 
     return {
       directAnswer,
@@ -236,8 +331,9 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
       recommendedActions,
       sources: unique(sources),
       missingData: unique(missingData),
-      confidence: topEngineers.length > 0 ? 78 : 52,
+      confidence: knowledgeChunks.length > 0 ? 85 : topEngineers.length > 0 ? 78 : 52,
       demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+      knowledgeChunks,
     };
   }
 
@@ -253,8 +349,9 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
       recommendedActions,
       sources: unique(sources),
       missingData: unique(missingData),
-      confidence: pms.length > 0 ? 82 : 48,
+      confidence: knowledgeChunks.length > 0 ? 88 : pms.length > 0 ? 82 : 48,
       demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+      knowledgeChunks,
     };
   }
 
@@ -270,16 +367,18 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
       recommendedActions,
       sources: unique(sources),
       missingData: unique(missingData),
-      confidence: summary.components.inventory.length > 0 ? 80 : 45,
+      confidence: knowledgeChunks.length > 0 ? 85 : summary.components.inventory.length > 0 ? 80 : 45,
       demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+      knowledgeChunks,
     };
   }
 
-  if (q.includes("history") || q.includes("last time") || q.includes("fault") || q.includes("breakdown")) {
+  if (q.includes("history") || q.includes("last time") || q.includes("fault") || q.includes("breakdown") || q.includes("sensor") || q.includes("infeed") || q.includes("check first") || q.includes("what should")) {
     const directAnswer =
-      activity.length > 0
+      knowledgeDirectAnswer ??
+      (activity.length > 0
         ? `The available history for ${equipment.name} shows ${activity.length} recent activity record${activity.length === 1 ? "" : "s"}. The latest recorded item is ${activity[0].woNumber}: ${activity[0].description}.`
-        : `No breakdown or work order history was found for ${equipment.name}, so I cannot identify a repeat fault pattern from current records.`;
+        : `No breakdown or work order history was found for ${equipment.name}, so I cannot identify a repeat fault pattern from current records.`);
 
     return {
       directAnswer,
@@ -287,15 +386,17 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
       recommendedActions,
       sources: unique(sources),
       missingData: unique(missingData),
-      confidence: activity.length > 0 ? 80 : 46,
+      confidence: knowledgeChunks.length > 0 ? 88 : activity.length > 0 ? 80 : 46,
       demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+      knowledgeChunks,
     };
   }
 
   const directAnswer =
-    `${equipment.name} is currently ${equipment.riskLevel.toLowerCase()} risk at ${equipment.riskScore}%. ` +
+    knowledgeDirectAnswer ??
+    (`${equipment.name} is currently ${equipment.riskLevel.toLowerCase()} risk at ${equipment.riskScore}%. ` +
     `The strongest evidence points to ${topRiskFactors.length > 0 ? listJoin(topRiskFactors.map((factor) => factor.label), "the current risk profile") : "the current risk profile"}, supported by the available PM, work order, skills and spares data. ` +
-    `The next action should be: ${recommendedActions[0]}`;
+    `The next action should be: ${recommendedActions[0]}`);
 
   const evidenceScore = [
     topRiskFactors.length > 0,
@@ -306,6 +407,7 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
     documents.length > 0,
     activity.length > 0,
     aiInsights.length > 0,
+    knowledgeChunks.length > 0,
   ].filter(Boolean).length;
 
   return {
@@ -314,8 +416,9 @@ function generateEquipmentAnswer(question: string, equipmentId: string, summary:
     recommendedActions,
     sources: unique(sources),
     missingData: unique(missingData),
-    confidence: Math.min(92, Math.max(55, 45 + evidenceScore * 7)),
+    confidence: Math.min(92, Math.max(55, 45 + evidenceScore * 6)),
     demoNote: equipment.id === "pl-02" ? "Some source data may be demo data for the MVP." : undefined,
+    knowledgeChunks,
   };
 }
 
@@ -366,6 +469,28 @@ function AnswerBlock({ answer }: { answer: AssistantAnswer }) {
         ))}
       </div>
 
+      {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
+        <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+          <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+            Source sections
+          </h4>
+          <div className="flex flex-col gap-2">
+            {answer.knowledgeChunks.slice(0, 4).map((chunk) => (
+              <div key={chunk.chunkId} className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2">
+                <p className="text-[10px] font-semibold text-blue-200">
+                  {chunk.sourceSystem}: {chunk.title}
+                  {chunk.revision ? ` Rev ${chunk.revision}` : ""} · {chunk.chunkRef}
+                  {chunk.sectionTitle ? ` · ${chunk.sectionTitle}` : ""}
+                </p>
+                <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                  {shortenText(chunk.chunkText, 260)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {answer.missingData.length > 0 && (
         <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
           <h4 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-yellow-400">Missing data / limits</h4>
@@ -407,7 +532,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
     },
   ]);
 
-  const submitQuestion = (question: string) => {
+  const submitQuestion = async (question: string) => {
     const trimmed = question.trim();
     if (!trimmed) return;
 
@@ -422,14 +547,18 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
 
     setInput("");
 
-    window.setTimeout(() => {
-      const answer = generateEquipmentAnswer(trimmed, equipmentId, summary);
-      setMessages((prev) =>
-        prev.map((message) =>
-          message.id === assistantId ? { ...message, loading: false, answer } : message,
-        ),
-      );
-    }, 900);
+    const [knowledgeChunks] = await Promise.all([
+      searchEquipmentKnowledge(equipmentId, trimmed, 8),
+      new Promise((resolve) => window.setTimeout(resolve, 900)),
+    ]);
+
+    const answer = generateEquipmentAnswer(trimmed, equipmentId, summary, knowledgeChunks as EquipmentKnowledgeChunk[]);
+
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === assistantId ? { ...message, loading: false, answer } : message,
+      ),
+    );
   };
 
   return (
@@ -441,7 +570,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
         </div>
 
         <p className="mb-3 text-[11px] text-slate-500">
-          Answers from equipment data, PMs, work orders, skills, spares and document records. Manual/SOP full-text search is Phase 2.
+          Answers from equipment data, PMs, work orders, skills, spares, EasyDoc demo manuals, SOPs, work instructions, iLearn demo training records and SAP PM demo history.
         </p>
 
         <div className="mb-3 flex flex-wrap gap-1.5">
@@ -464,7 +593,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
                 {message.loading ? (
                   <div className="flex items-center gap-2 text-[11px] text-slate-300">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-                    Analysing equipment data, work history and available documents...
+                    Searching equipment data, EasyDoc demo documents, SAP PM history and iLearn training records...
                   </div>
                 ) : message.answer ? (
                   <AnswerBlock answer={message.answer} />

@@ -1234,6 +1234,64 @@ export async function getEquipmentSummary(equipmentId: string): Promise<Equipmen
   };
 }
 
+// ─── Knowledge search ─────────────────────────────────────────────────────────
+
+export interface EquipmentKnowledgeChunk {
+  chunkId: string;
+  documentId: string;
+  title: string;
+  documentType: string;
+  revision: string | null;
+  sourceSystem: string;
+  sourcePath: string | null;
+  sourceUrl: string | null;
+  approvalStatus: string;
+  chunkRef: string;
+  sectionTitle: string | null;
+  chunkText: string;
+  pageNumber: number | null;
+  rank: number;
+}
+
+export async function searchEquipmentKnowledge(
+  equipmentId: string,
+  query: string,
+  limit = 8,
+): Promise<EquipmentKnowledgeChunk[]> {
+  try {
+    const { data, error } = await supabase.rpc("vorta_search_equipment_knowledge", {
+      p_equipment_id: equipmentId,
+      p_query: query,
+      p_limit: limit,
+    });
+
+    if (error) {
+      console.warn("searchEquipmentKnowledge failed:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      chunkId: row.chunk_id,
+      documentId: row.document_id,
+      title: row.title,
+      documentType: row.document_type,
+      revision: row.revision,
+      sourceSystem: row.source_system,
+      sourcePath: row.source_path,
+      sourceUrl: row.source_url,
+      approvalStatus: row.approval_status,
+      chunkRef: row.chunk_ref,
+      sectionTitle: row.section_title,
+      chunkText: row.chunk_text,
+      pageNumber: row.page_number,
+      rank: row.rank ?? 0,
+    }));
+  } catch (error) {
+    console.warn("searchEquipmentKnowledge threw:", error);
+    return [];
+  }
+}
+
 export interface AreaShutdownPlan {
   area: string;
   currentRiskScore: number;
