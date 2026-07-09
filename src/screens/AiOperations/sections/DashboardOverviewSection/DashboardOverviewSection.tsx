@@ -5,9 +5,14 @@ import {
   AlertTriangle,
   Bot,
   Clock,
+  ClipboardPaste,
+  FileText,
+  Image as ImageIcon,
+  Plus,
   RefreshCw,
   Send,
   Sparkles,
+  Table2,
   UserCircle,
   ChevronDown,
   X,
@@ -190,11 +195,39 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
   const [dashboardAiInput, setDashboardAiInput] = useState("");
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
 
   const dashboardAiPrompts = [
     "What should I review first today?",
     "Why is Building 2 high risk?",
     "Which asset needs action before the next shift?",
+  ];
+
+  const dashboardAttachmentActions = [
+    {
+      label: "Upload photo",
+      description: "HMI alarm, damaged part, nameplate or spare label",
+      icon: ImageIcon,
+      prompt: "I want to analyse a photo of an HMI alarm, part label or equipment issue.",
+    },
+    {
+      label: "Upload document",
+      description: "SOP, work instruction, report or PDF",
+      icon: FileText,
+      prompt: "I want to analyse a document and link it to site risk, equipment or actions.",
+    },
+    {
+      label: "Paste handover note",
+      description: "Shift handover, fault note or meeting action",
+      icon: ClipboardPaste,
+      prompt: "I want to paste a shift handover note and identify risks, actions and owners.",
+    },
+    {
+      label: "Add SAP/export file",
+      description: "SAP, skills, PM, spares or work order export",
+      icon: Table2,
+      prompt: "I want to add an SAP/export file and use it to update Vorta risk intelligence.",
+    },
   ];
 
   const openGlobalAiFromDashboard = (question: string, submit = true) => {
@@ -210,7 +243,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
       }),
     );
 
+    setIsAttachmentMenuOpen(false);
     setDashboardAiInput("");
+  };
+
+  const handleAttachmentAction = (prompt: string) => {
+    setDashboardAiInput(prompt);
+    setIsAttachmentMenuOpen(false);
+
+    window.dispatchEvent(
+      new CustomEvent("vorta-global-ai-prompt", {
+        detail: {
+          question: prompt,
+          submit: false,
+        },
+      }),
+    );
   };
 
   useEffect(() => {
@@ -279,20 +327,78 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </div>
 
             <div className="flex flex-col gap-2 md:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <Bot className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
-                <input
-                  type="text"
-                  value={dashboardAiInput}
-                  onChange={(event) => setDashboardAiInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      openGlobalAiFromDashboard(dashboardAiInput, true);
-                    }
-                  }}
-                  placeholder="Ask Vorta what needs attention today..."
-                  className="w-full rounded-lg border border-gray-700 bg-[#0f1218] py-2.5 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
-                />
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-700 bg-[#0f1218] px-2 py-1.5 focus-within:border-blue-500/50">
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsAttachmentMenuOpen((value) => !value)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/5 hover:text-blue-300"
+                    aria-label="Add attachment or context"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+
+                  {isAttachmentMenuOpen && (
+                    <div className="absolute left-0 top-10 z-30 w-72 overflow-hidden rounded-xl border border-gray-800 bg-[#10141d] shadow-2xl shadow-black/50">
+                      <div className="border-b border-gray-800 px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Add context
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col p-1.5">
+                        {dashboardAttachmentActions.map((action) => {
+                          const Icon = action.icon;
+                          return (
+                            <button
+                              key={action.label}
+                              type="button"
+                              onClick={() => handleAttachmentAction(action.prompt)}
+                              className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-blue-500/10"
+                            >
+                              <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-300">
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-[11px] font-semibold text-slate-200">
+                                  {action.label}
+                                </span>
+                                <span className="block text-[10px] leading-relaxed text-slate-500">
+                                  {action.description}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="border-t border-gray-800 px-3 py-2">
+                        <p className="text-[9px] leading-relaxed text-slate-600">
+                          Upload processing will be connected in the next phase. This prepares the workflow.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative min-w-0 flex-1">
+                  <Bot className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                  <input
+                    type="text"
+                    value={dashboardAiInput}
+                    onChange={(event) => setDashboardAiInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        openGlobalAiFromDashboard(dashboardAiInput, true);
+                      }
+                      if (event.key === "Escape") {
+                        setIsAttachmentMenuOpen(false);
+                      }
+                    }}
+                    placeholder="Ask Vorta what needs attention today..."
+                    className="w-full border-0 bg-transparent py-1.5 pl-7 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <Button
