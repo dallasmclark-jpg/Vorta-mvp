@@ -200,6 +200,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [isPhotoEquipmentPickerOpen, setIsPhotoEquipmentPickerOpen] = useState(false);
+  const [isEquipmentSearchOpen, setIsEquipmentSearchOpen] = useState(false);
+  const [equipmentSearchQuery, setEquipmentSearchQuery] = useState("");
 
   const dashboardAiPrompts = [
     "What should I review first today?",
@@ -242,13 +244,36 @@ export const DashboardOverviewSection = (): JSX.Element => {
     })
     .slice(0, 5);
 
+  const searchedPhotoDiagnosticEquipment = equipmentList
+    .filter((item) => {
+      const query = equipmentSearchQuery.trim().toLowerCase();
+      if (!query) return false;
+      return (
+        item.name.toLowerCase().includes(query) ||
+        item.area?.toLowerCase().includes(query) ||
+        item.assetNumber?.toLowerCase?.().includes(query) ||
+        item.oem?.toLowerCase?.().includes(query) ||
+        item.riskLevel?.toLowerCase?.().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      const scoreDiff = b.riskScore - a.riskScore;
+      if (scoreDiff !== 0) return scoreDiff;
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, 8);
+
   const openPhotoEquipmentPicker = () => {
     setIsAttachmentMenuOpen(false);
     setIsPhotoEquipmentPickerOpen(true);
+    setIsEquipmentSearchOpen(false);
+    setEquipmentSearchQuery("");
   };
 
   const openVisualDiagnosticForEquipment = (equipmentId: string) => {
     setIsPhotoEquipmentPickerOpen(false);
+    setIsEquipmentSearchOpen(false);
+    setEquipmentSearchQuery("");
     setDashboardAiInput("");
     navigate(`/equipment/${equipmentId}/ai-insights?visualDiagnostic=upload`);
   };
@@ -268,6 +293,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
     setIsAttachmentMenuOpen(false);
     setIsPhotoEquipmentPickerOpen(false);
+    setIsEquipmentSearchOpen(false);
+    setEquipmentSearchQuery("");
     setDashboardAiInput("");
   };
 
@@ -280,6 +307,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
     setDashboardAiInput(prompt);
     setIsAttachmentMenuOpen(false);
     setIsPhotoEquipmentPickerOpen(false);
+    setIsEquipmentSearchOpen(false);
+    setEquipmentSearchQuery("");
 
     window.dispatchEvent(
       new CustomEvent("vorta-global-ai-prompt", {
@@ -424,6 +453,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       }
                       if (event.key === "Escape") {
                         setIsAttachmentMenuOpen(false);
+                        setIsPhotoEquipmentPickerOpen(false);
+                        setIsEquipmentSearchOpen(false);
+                        setEquipmentSearchQuery("");
                       }
                     }}
                     placeholder="Ask Vorta what needs attention today..."
@@ -457,7 +489,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                   <button
                     type="button"
-                    onClick={() => setIsPhotoEquipmentPickerOpen(false)}
+                    onClick={() => {
+                      setIsPhotoEquipmentPickerOpen(false);
+                      setIsEquipmentSearchOpen(false);
+                      setEquipmentSearchQuery("");
+                    }}
                     className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-100/60 transition-colors hover:bg-white/10 hover:text-blue-100"
                     aria-label="Close photo equipment picker"
                   >
@@ -482,12 +518,96 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </button>
                     ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEquipmentSearchOpen(true);
+                        setEquipmentSearchQuery("");
+                      }}
+                      className="rounded-lg border border-dashed border-blue-500/30 bg-[#0f1218] px-3 py-2 text-left transition-colors hover:border-blue-400/60 hover:bg-blue-500/10"
+                    >
+                      <span className="block truncate text-[11px] font-semibold text-blue-100">
+                        Search all equipment
+                      </span>
+                      <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                        Find by asset name, SAP number, area or OEM
+                      </span>
+                    </button>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
                     <p className="text-[10px] leading-relaxed text-yellow-100/80">
                       Equipment list is not available yet. Open the Equipment page and choose the asset manually.
                     </p>
+                  </div>
+                )}
+
+                {isEquipmentSearchOpen && (
+                  <div className="mt-3 rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold text-blue-100">
+                          Search all equipment
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-blue-100/60">
+                          Search by asset name, SAP number, area, OEM or risk level.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEquipmentSearchOpen(false);
+                          setEquipmentSearchQuery("");
+                        }}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-100/60 transition-colors hover:bg-white/10 hover:text-blue-100"
+                        aria-label="Close equipment search"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={equipmentSearchQuery}
+                      onChange={(event) => setEquipmentSearchQuery(event.target.value)}
+                      placeholder="Search equipment, SAP number, area or OEM..."
+                      className="mb-3 w-full rounded-lg border border-gray-700 bg-[#141820] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                      autoFocus
+                    />
+
+                    {equipmentSearchQuery.trim() ? (
+                      searchedPhotoDiagnosticEquipment.length > 0 ? (
+                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                          {searchedPhotoDiagnosticEquipment.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => openVisualDiagnosticForEquipment(item.id)}
+                              className="rounded-lg border border-gray-800 bg-[#141820] px-3 py-2 text-left transition-colors hover:border-blue-400/50 hover:bg-blue-500/10"
+                            >
+                              <span className="block truncate text-[11px] font-semibold text-slate-100">
+                                {item.name}
+                              </span>
+                              <span className="mt-0.5 block truncate text-[10px] text-slate-500">
+                                {item.area || "Area not set"} · {item.riskScore}% {item.riskLevel}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
+                          <p className="text-[10px] leading-relaxed text-yellow-100/80">
+                            No matching equipment found. Try asset name, SAP number, OEM or area.
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <p className="text-[10px] text-slate-500">
+                        Start typing to search the full equipment list.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
