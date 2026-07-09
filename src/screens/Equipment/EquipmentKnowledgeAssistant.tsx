@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from "react";
-import { AlertTriangle, Brain, Camera, FileText, Image as ImageIcon, Loader2, Send, ShieldCheck, Upload, Wrench, X } from "lucide-react";
+import { AlertTriangle, Brain, Camera, Copy, ExternalLink, FileText, Image as ImageIcon, Loader2, Send, ShieldCheck, Upload, Wrench, X } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -78,6 +78,36 @@ function formatKnowledgeSource(chunk: EquipmentKnowledgeChunk): string {
     ? `${chunk.chunkRef} ${chunk.sectionTitle}`
     : chunk.chunkRef;
   return `${chunk.sourceSystem}: ${chunk.title}${revision}, section ${section}`;
+}
+
+function getSourceSectionLabel(chunk: EquipmentKnowledgeChunk): string {
+  const section = chunk.sectionTitle
+    ? `${chunk.chunkRef} · ${chunk.sectionTitle}`
+    : chunk.chunkRef;
+  return chunk.pageNumber != null ? `${section} · Page ${chunk.pageNumber}` : section;
+}
+
+function getSourceReference(chunk: EquipmentKnowledgeChunk): string {
+  const revision = chunk.revision ? ` Rev ${chunk.revision}` : "";
+  const section = getSourceSectionLabel(chunk);
+  const sourceLocation = chunk.sourceUrl || chunk.sourcePath || "No source location available";
+  return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${chunk.documentType}, ${section}. Source: ${sourceLocation}`;
+}
+
+function getOpenableSourceUrl(chunk: EquipmentKnowledgeChunk): string | null {
+  if (!chunk.sourceUrl) return null;
+  return /^https?:\/\//i.test(chunk.sourceUrl) ? chunk.sourceUrl : null;
+}
+
+function copySourceReference(chunk: EquipmentKnowledgeChunk): void {
+  const reference = getSourceReference(chunk);
+  if (navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(reference).catch((error) => {
+      console.warn("Failed to copy source reference:", error);
+    });
+  } else {
+    console.warn("Clipboard API is not available. Source reference:", reference);
+  }
 }
 
 function simulateUploadedImageTextExtraction(
@@ -494,6 +524,109 @@ function generateEquipmentAnswer(
   };
 }
 
+function SourceSectionCards({
+  chunks,
+  limit = 4,
+}: {
+  chunks?: EquipmentKnowledgeChunk[];
+  limit?: number;
+}) {
+  if (!chunks || chunks.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+      <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+        Source sections
+      </h4>
+
+      <div className="flex flex-col gap-2">
+        {chunks.slice(0, limit).map((chunk) => {
+          const openableSourceUrl = getOpenableSourceUrl(chunk);
+          const sourceLocation = chunk.sourcePath || chunk.sourceUrl || "Demo/internal source reference";
+
+          return (
+            <div
+              key={chunk.chunkId}
+              className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2"
+            >
+              <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                    <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[9px] font-bold text-blue-300 shadow-none">
+                      {chunk.sourceSystem}
+                    </Badge>
+                    <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[9px] font-medium text-slate-400 shadow-none">
+                      {chunk.documentType}
+                    </Badge>
+                    {chunk.approvalStatus && (
+                      <Badge className="h-auto rounded bg-emerald-500/10 px-1.5 py-0 text-[9px] font-medium text-emerald-300 shadow-none">
+                        {chunk.approvalStatus}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] font-semibold text-blue-200">
+                    {chunk.title}
+                    {chunk.revision ? ` Rev ${chunk.revision}` : ""}
+                  </p>
+
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {getSourceSectionLabel(chunk)}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap gap-1">
+                  {openableSourceUrl ? (
+                    <a
+                      href={openableSourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[9px] font-semibold text-blue-200 transition-colors hover:border-blue-400/60 hover:text-blue-100"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Open source
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded border border-gray-700 bg-gray-800/70 px-2 py-1 text-[9px] font-semibold text-slate-500">
+                      <ExternalLink className="h-3 w-3" />
+                      Demo source
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => copySourceReference(chunk)}
+                    className="inline-flex items-center gap-1 rounded border border-gray-700 bg-gray-800/70 px-2 py-1 text-[9px] font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-200"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copy ref
+                  </button>
+                </div>
+              </div>
+
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                {shortenText(chunk.chunkText, 260)}
+              </p>
+
+              <div className="mt-2 rounded border border-gray-800 bg-[#141820] px-2 py-1">
+                <p className="truncate text-[9px] text-slate-600" title={sourceLocation}>
+                  Source location: {sourceLocation}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {chunks.length > limit && (
+        <p className="mt-2 text-[10px] text-slate-500">
+          Showing {limit} of {chunks.length} matched source sections.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AnswerBlock({ answer }: { answer: AssistantAnswer }) {
   return (
     <div className="flex flex-col gap-3">
@@ -542,25 +675,7 @@ function AnswerBlock({ answer }: { answer: AssistantAnswer }) {
       </div>
 
       {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
-        <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2">
-          <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-            Source sections
-          </h4>
-          <div className="flex flex-col gap-2">
-            {answer.knowledgeChunks.slice(0, 4).map((chunk) => (
-              <div key={chunk.chunkId} className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2">
-                <p className="text-[10px] font-semibold text-blue-200">
-                  {chunk.sourceSystem}: {chunk.title}
-                  {chunk.revision ? ` Rev ${chunk.revision}` : ""} · {chunk.chunkRef}
-                  {chunk.sectionTitle ? ` · ${chunk.sectionTitle}` : ""}
-                </p>
-                <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-                  {shortenText(chunk.chunkText, 260)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SourceSectionCards chunks={answer.knowledgeChunks} />
       )}
 
       {answer.missingData.length > 0 && (
@@ -1027,25 +1142,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
                   )}
 
                   {visualResult.knowledgeChunks.length > 0 && (
-                    <div>
-                      <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Source sections
-                      </h5>
-                      <div className="flex flex-col gap-2">
-                        {visualResult.knowledgeChunks.slice(0, 4).map((chunk) => (
-                          <div key={chunk.chunkId} className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2">
-                            <p className="text-[10px] font-semibold text-blue-200">
-                              {chunk.sourceSystem}: {chunk.title}
-                              {chunk.revision ? ` Rev ${chunk.revision}` : ""} · {chunk.chunkRef}
-                              {chunk.sectionTitle ? ` · ${chunk.sectionTitle}` : ""}
-                            </p>
-                            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-                              {shortenText(chunk.chunkText, 260)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <SourceSectionCards chunks={visualResult.knowledgeChunks} />
                   )}
 
                   <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-2">
