@@ -27,6 +27,7 @@ import { ContractorInvoicesSection } from "./ContractorInvoicesSection";
 import { ContractorComplianceSection } from "./ContractorComplianceSection";
 import { ContractorAiRecommendationsSection } from "./ContractorAiRecommendationsSection";
 import { ContractorSettingsSection } from "./ContractorSettingsSection";
+import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
   {
@@ -83,5 +84,6 @@ export const ContractorPortal = (): JSX.Element => (
       <Route path="settings"           element={<ContractorSettingsSection />} />
       <Route path="*"                  element={<Navigate to="dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant role="contractor" />
   </PortalShell>
 );

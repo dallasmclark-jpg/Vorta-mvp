@@ -22,6 +22,7 @@ import { AiRecommendationsSection } from "./AiRecommendationsSection";
 import { MySkillsSection } from "./MySkillsSection";
 import { CareerPathSection } from "./CareerPathSection";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
+import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavItem[] = [
   { label: "Dashboard",          icon: LayoutDashboard,  to: "/engineer/dashboard"          },
@@ -64,5 +65,6 @@ export const EngineerPortal = (): JSX.Element => (
       <Route path="settings"           element={<ProfileSettingsSection />} />
       <Route path="*"                  element={<Navigate to="dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant role="engineer" />
   </PortalShell>
 );

@@ -21,6 +21,7 @@ import { ProductionComplianceSection } from "./ProductionComplianceSection";
 import { ProductionRiskSection } from "./ProductionRiskSection";
 import { ProductionAiImprovementsSection } from "./ProductionAiImprovementsSection";
 import { ProductionSettingsSection } from "./ProductionSettingsSection";
+import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
   {
@@ -71,5 +72,6 @@ export const ProductionManagerPortal = (): JSX.Element => (
       <Route path="settings"           element={<ProductionSettingsSection />} />
       <Route path="*"                  element={<Navigate to="dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant role="production-manager" />
   </PortalShell>
 );

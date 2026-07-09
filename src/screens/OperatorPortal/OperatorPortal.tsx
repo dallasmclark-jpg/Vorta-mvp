@@ -21,6 +21,7 @@ import { OperatorTasksSection } from "./OperatorTasksSection";
 import { OperatorAiGuidanceSection } from "./OperatorAiGuidanceSection";
 import { OperatorKnowledgeBaseSection } from "./OperatorKnowledgeBaseSection";
 import { OperatorProfileSettingsSection } from "./OperatorProfileSettingsSection";
+import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavItem[] = [
   { label: "Dashboard",      icon: LayoutDashboard, to: "/operator/dashboard"  },
@@ -51,5 +52,6 @@ export const OperatorPortal = (): JSX.Element => (
       <Route path="settings"   element={<OperatorProfileSettingsSection />} />
       <Route path="*"          element={<Navigate to="dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant role="operator" />
   </PortalShell>
 );

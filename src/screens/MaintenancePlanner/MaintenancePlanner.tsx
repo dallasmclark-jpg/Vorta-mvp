@@ -3,6 +3,7 @@ import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup } from "../../components/PortalShell";
 import { Cog, Headphones, LayoutDashboard } from "lucide-react";
 import { PlannerDashboardSection } from "./PlannerDashboardSection";
+import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 import { SupportSection } from "../Support";
 import { SettingsSection } from "../Settings";
 
@@ -29,5 +30,6 @@ export const MaintenancePlanner = (): JSX.Element => (
       <Route path="settings"          element={<SettingsSection />} />
       <Route path="*"                 element={<Navigate to="planner-dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant role="planner" />
   </PortalShell>
 );
