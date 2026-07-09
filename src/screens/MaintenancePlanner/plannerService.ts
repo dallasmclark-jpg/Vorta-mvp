@@ -1,10 +1,11 @@
 import { supabase } from "../../lib/supabaseClient";
 
 export interface ResourceStrategyRow {
-  skill: string;
-  required: number;
-  internalAvailable: number;
-  status: string;
+  role: string;
+  engineersRequired: number;
+  estimatedHours: number;
+  internalCovered: number;
+  contractorRequired: boolean;
 }
 
 export interface PlannerReadinessScore {
@@ -28,6 +29,22 @@ export interface PlannerReadinessScore {
   resourceStrategy: ResourceStrategyRow[];
   contractorRequired: boolean;
   contractorRecommendation: string | null;
+}
+
+export interface PlannerDailyResourceLoad {
+  area: string;
+  loadDate: string;
+  shift: string;
+  resourceName: string;
+  resourceType: "Internal" | "Contractor";
+  primarySkill: string;
+  plannedHours: number;
+  capacityHours: number;
+  availableHours: number;
+  trainedForSelectedWork: boolean;
+  status: string;
+  assignedWorkRefs: string[];
+  notes: string | null;
 }
 
 export async function getPlannerReadinessScores(area?: string): Promise<PlannerReadinessScore[]> {
@@ -87,5 +104,55 @@ export async function getPlannerReadinessScores(area?: string): Promise<PlannerR
     resourceStrategy: Array.isArray(row.resource_strategy) ? row.resource_strategy : [],
     contractorRequired: row.contractor_required ?? false,
     contractorRecommendation: row.contractor_recommendation ?? null,
+  }));
+}
+
+export async function getPlannerDailyResourceLoad(
+  area: string,
+  loadDate: string,
+  shift: string,
+): Promise<PlannerDailyResourceLoad[]> {
+  const { data, error } = await supabase
+    .from("planner_daily_resource_load")
+    .select(`
+      area,
+      load_date,
+      shift,
+      resource_name,
+      resource_type,
+      primary_skill,
+      planned_hours,
+      capacity_hours,
+      available_hours,
+      trained_for_selected_work,
+      status,
+      assigned_work_refs,
+      notes
+    `)
+    .eq("area", area)
+    .eq("load_date", loadDate)
+    .eq("shift", shift)
+    .order("resource_type", { ascending: true })
+    .order("resource_name", { ascending: true });
+
+  if (error || !data) {
+    if (error) console.warn("planner_daily_resource_load fetch failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    area: row.area,
+    loadDate: row.load_date,
+    shift: row.shift,
+    resourceName: row.resource_name,
+    resourceType: row.resource_type as "Internal" | "Contractor",
+    primarySkill: row.primary_skill,
+    plannedHours: Number(row.planned_hours ?? 0),
+    capacityHours: Number(row.capacity_hours ?? 0),
+    availableHours: Number(row.available_hours ?? 0),
+    trainedForSelectedWork: Boolean(row.trained_for_selected_work),
+    status: row.status ?? "Unknown",
+    assignedWorkRefs: Array.isArray(row.assigned_work_refs) ? row.assigned_work_refs : [],
+    notes: row.notes ?? null,
   }));
 }
