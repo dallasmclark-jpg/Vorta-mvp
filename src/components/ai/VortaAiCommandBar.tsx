@@ -9,6 +9,8 @@ import {
   Send,
   Sparkles,
   Table2,
+  Mic,
+  MicOff,
   Trash2,
   Upload,
   X,
@@ -30,6 +32,41 @@ export type VortaAiRole =
   | "production-manager"
   | "contractor";
 
+type SpeechRecognitionResultLike = {
+  readonly isFinal: boolean;
+  readonly 0: { readonly transcript: string };
+};
+
+type SpeechRecognitionEventLike = {
+  readonly results: {
+    readonly length: number;
+    readonly [index: number]: SpeechRecognitionResultLike;
+  };
+};
+
+type SpeechRecognitionErrorEventLike = {
+  readonly error?: string;
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type SpeechWindow = Window &
+  typeof globalThis & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+
 export interface VortaAiCommandBarProps {
   role: VortaAiRole;
   title?: string;
@@ -40,6 +77,7 @@ export interface VortaAiCommandBarProps {
   enableDocumentUpload?: boolean;
   enableHandoverNote?: boolean;
   enableSapExport?: boolean;
+  enableVoiceInput?: boolean;
 }
 
 // ─── Role-specific defaults ───────────────────────────────────────────────────
@@ -222,6 +260,7 @@ export function VortaAiCommandBar({
   enableDocumentUpload = true,
   enableHandoverNote = true,
   enableSapExport = true,
+  enableVoiceInput = true,
 }: VortaAiCommandBarProps): JSX.Element {
   const navigate = useNavigate();
 
@@ -231,6 +270,9 @@ export function VortaAiCommandBar({
   const resolvedPrompts = prompts ?? roleCopy.prompts;
 
   const [aiInput, setAiInput] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceMessage, setVoiceMessage] = useState("");
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [isPhotoEquipmentPickerOpen, setIsPhotoEquipmentPickerOpen] = useState(false);
@@ -282,6 +324,13 @@ export function VortaAiCommandBar({
       getEquipmentList().then(setEquipmentList);
     }
   }, [enablePhotoUpload, enableDocumentUpload, enableHandoverNote]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   // ── Derived lists ──────────────────────────────────────────────────────────
 
@@ -534,9 +583,92 @@ export function VortaAiCommandBar({
   const openGlobalAi = (question: string, submit = true) => {
     const trimmed = question.trim();
     if (!trimmed) return;
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsListening(false);
     fireGlobalAiPrompt(trimmed, submit);
     closeAllPanels();
     setAiInput("");
+  };
+
+  const toggleVoiceInput = () => {
+    if (!enableVoiceInput) return;
+
+    setVoiceMessage("");
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const speechWindow = window as SpeechWindow;
+    const Recognition =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      setVoiceMessage("Voice input is not supported in this browser. Type the question instead.");
+      return;
+    }
+
+    try {
+      const recognition = new Recognition();
+      recognitionRef.current = recognition;
+
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-GB";
+
+      let finalTranscript = "";
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+
+        for (let index = 0; index < event.results.length; index += 1) {
+          const result = event.results[index];
+          const transcript = result[0]?.transcript ?? "";
+
+          if (result.isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        const spokenText = `${finalTranscript} ${interimTranscript}`.trim();
+
+        if (spokenText) {
+          setAiInput((current) => {
+            const base = current.trim();
+            return base ? `${base} ${spokenText}` : spokenText;
+          });
+        }
+      };
+
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        recognitionRef.current = null;
+        setVoiceMessage(
+          event.error === "not-allowed"
+            ? "Microphone permission was blocked. Enable microphone access to use voice input."
+            : "Voice input stopped. Type the question or try the microphone again.",
+        );
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.start();
+      setIsListening(true);
+      setVoiceMessage("Listening... Speak clearly, then review the text before asking Vorta.");
+    } catch (error) {
+      console.warn("Voice input failed:", error);
+      setIsListening(false);
+      recognitionRef.current = null;
+      setVoiceMessage("Voice input could not start in this browser.");
+    }
   };
 
   const handleAttachmentAction = (prompt: string) => {
@@ -821,6 +953,9 @@ export function VortaAiCommandBar({
                       openGlobalAi(aiInput, true);
                     }
                     if (event.key === "Escape") {
+                      recognitionRef.current?.stop();
+                      recognitionRef.current = null;
+                      setIsListening(false);
                       closeAllPanels();
                     }
                   }}
@@ -828,6 +963,22 @@ export function VortaAiCommandBar({
                   className="w-full border-0 bg-transparent py-1.5 pl-7 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
                 />
               </div>
+
+              {enableVoiceInput && (
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+                    isListening
+                      ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                      : "text-slate-500 hover:bg-white/5 hover:text-blue-300"
+                  }`}
+                  aria-label={isListening ? "Stop voice input" : "Start voice input"}
+                  title={isListening ? "Stop voice input" : "Start voice input"}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
             </div>
 
             <Button
@@ -841,7 +992,23 @@ export function VortaAiCommandBar({
             </Button>
           </div>
 
-          {/* Photo equipment picker panel */}
+          {voiceMessage && (
+            <div
+              className={`rounded-lg border px-3 py-2 ${
+                isListening
+                  ? "border-blue-500/20 bg-blue-500/10"
+                  : "border-yellow-500/20 bg-yellow-500/10"
+              }`}
+            >
+              <p
+                className={`text-[10px] leading-relaxed ${
+                  isListening ? "text-blue-100/80" : "text-yellow-100/80"
+                }`}
+              >
+                {voiceMessage}
+              </p>
+            </div>
+          )}
           {isPhotoEquipmentPickerOpen && (
             <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
               <div className="mb-3 flex items-start justify-between gap-3">
