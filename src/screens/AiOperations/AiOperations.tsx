@@ -25,6 +25,7 @@ import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrde
 import { SupportSection } from "../Support";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
+import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
   {
@@ -83,5 +84,6 @@ export const AiOperations = (): JSX.Element => (
       <Route path="maintenance/labour-risk/:riskType" element={<LabourRiskDetailPage />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    <GlobalMaintenanceAiAssistant />
   </PortalShell>
 );
