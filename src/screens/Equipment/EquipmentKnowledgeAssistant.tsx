@@ -82,17 +82,30 @@ function formatKnowledgeSource(chunk: EquipmentKnowledgeChunk): string {
 }
 
 function getSourceSectionLabel(chunk: EquipmentKnowledgeChunk): string {
-  const section = chunk.sectionTitle
-    ? `${chunk.chunkRef} · ${chunk.sectionTitle}`
-    : chunk.chunkRef;
-  return chunk.pageNumber != null ? `${section} · Page ${chunk.pageNumber}` : section;
+  const parts: string[] = [];
+
+  if (chunk.sectionTitle) parts.push(chunk.sectionTitle);
+  else if (chunk.chunkRef) parts.push(chunk.chunkRef);
+
+  if (chunk.drawingNumber) parts.push(`Drawing ${chunk.drawingNumber}`);
+  if (chunk.sheetNumber)   parts.push(`Sheet ${chunk.sheetNumber}`);
+
+  if (chunk.pageNumber != null) {
+    parts.push(`Page ${chunk.pageNumber}`);
+  } else {
+    parts.push("Page not indexed yet");
+  }
+
+  return parts.join(" · ");
 }
 
 function getSourceReference(chunk: EquipmentKnowledgeChunk): string {
-  const revision = chunk.revision ? ` Rev ${chunk.revision}` : "";
-  const section = getSourceSectionLabel(chunk);
-  const sourceLocation = chunk.sourceUrl || chunk.sourcePath || "No source location available";
-  return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${chunk.documentType}, ${section}. Source: ${sourceLocation}`;
+  const revision = chunk.revision ? ` ${chunk.revision}` : "";
+  const section  = getSourceSectionLabel(chunk);
+  const drawing  = chunk.drawingNumber ? `, Drawing ${chunk.drawingNumber}` : "";
+  const sheet    = chunk.sheetNumber   ? `, Sheet ${chunk.sheetNumber}`     : "";
+  const url      = chunk.sourceUrl || chunk.sourcePath || "No source location available";
+  return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${chunk.documentType}${drawing}${sheet}, ${section}. Source: ${url}`;
 }
 
 function getOpenableSourceUrl(chunk: EquipmentKnowledgeChunk): string | null {
@@ -404,8 +417,8 @@ function generateEquipmentAnswer(
     const directAnswer =
       knowledgeDirectAnswer ??
       (documents.length === 0
-        ? `No manuals, SOPs, work instructions or equipment documents are currently uploaded for ${equipment.name}. I can still answer from the equipment profile, PMs, work orders, skills and spares data that is available.`
-        : `The document register for ${equipment.name} contains ${documents.length} document${documents.length === 1 ? "" : "s"}: ${documents.map((doc) => doc.name).join(", ")}. No matching full-text demo knowledge chunk was found for this specific question.`);
+        ? `I could not find a linked manual, drawing, or source document for this equipment/fault. This answer is based only on available Vorta equipment/work order data.`
+        : `I could not find a linked manual, drawing, or source document for this equipment/fault. This answer is based only on available Vorta equipment/work order data. The document register contains ${documents.length} reference${documents.length === 1 ? "" : "s"} but no matching indexed chunk was found for this specific question.`);
 
     return {
       directAnswer,
@@ -537,7 +550,7 @@ function SourceSectionCards({
   return (
     <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2">
       <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-        Source sections
+        Source sections used
       </h4>
 
       <div className="flex flex-col gap-2">
@@ -568,12 +581,20 @@ function SourceSectionCards({
 
                   <p className="text-[10px] font-semibold text-blue-200">
                     {chunk.title}
-                    {chunk.revision ? ` Rev ${chunk.revision}` : ""}
+                    {chunk.revision ? ` ${chunk.revision}` : ""}
                   </p>
 
                   <p className="mt-0.5 text-[10px] text-slate-500">
                     {getSourceSectionLabel(chunk)}
                   </p>
+
+                  {(chunk.drawingNumber || chunk.sheetNumber) && (
+                    <p className="mt-0.5 text-[10px] text-slate-500">
+                      {chunk.drawingNumber && <span>Drawing: <span className="text-slate-300">{chunk.drawingNumber}</span></span>}
+                      {chunk.drawingNumber && chunk.sheetNumber && <span className="mx-1">·</span>}
+                      {chunk.sheetNumber && <span>Sheet: <span className="text-slate-300">{chunk.sheetNumber}</span></span>}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex shrink-0 flex-wrap gap-1">
@@ -695,7 +716,7 @@ function AnswerBlock({ answer }: { answer: AssistantAnswer }) {
       <div className="flex items-center justify-between border-t border-gray-800 pt-2 text-[10px] text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3 w-3 text-emerald-400" />
-          Source-backed response
+          Source-backed response · no invented document references
         </span>
         <span className="font-semibold text-blue-400">{answer.confidence}% confidence</span>
       </div>

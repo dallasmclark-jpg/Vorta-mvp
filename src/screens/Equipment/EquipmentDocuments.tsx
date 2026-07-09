@@ -3,21 +3,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
   ChevronRight,
-  Download,
   Edit,
-  RefreshCw,
-  UserCircle,
-  Upload,
-  Search,
+  ExternalLink,
   FileText,
-  FileCode,
-  FileCog,
-  FileBarChart,
-  Shield,
   Filter,
-  Lock,
-  Pin,
-  Clock,
+  Info,
+  RefreshCw,
+  Search,
+  UserCircle,
+  X,
+  Zap,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -25,6 +20,7 @@ import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentDocuments } from "./equipmentService";
+import type { EquipmentDocument, DocumentStatus } from "./equipmentTypes";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -40,35 +36,43 @@ const TABS = [
   { label: "AI Insights",        id: "ai" },
 ];
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type DocStatus = "Current" | "Expiring" | "Review Due" | "Expired";
-
-interface DocRow {
-  name: string; category: string; date: string; size: string;
-  status: DocStatus; iconBg: string; iconColor: string;
+function resolveStatus(s: DocumentStatus): "Current" | "Expiring" | "Review Due" | "Expired" {
+  if (s === "active" || s === "Current") return "Current";
+  if (s === "review_due" || s === "Review Due") return "Review Due";
+  if (s === "Expiring") return "Expiring";
+  return "Expired";
 }
 
-const PERMISSIONS = [
-  { role: "Maintenance Engineers", level: "Full Access",  cls: "bg-emerald-500/20 text-emerald-400" },
-  { role: "Operators",             level: "Read Only",    cls: "bg-blue-500/20 text-blue-400"       },
-  { role: "Contractors",           level: "Restricted",   cls: "bg-red-500/20 text-red-400"         },
-  { role: "Management",            level: "Full Access",  cls: "bg-emerald-500/20 text-emerald-400" },
-];
-
-const QUICK_ACTIONS = [
-  { Icon: Upload,      label: "Upload Document"     },
-  { Icon: Search,      label: "Search Documents"    },
-  { Icon: FileText,    label: "Request Document"    },
-  { Icon: FileBarChart,label: "Compliance Report"   },
-  { Icon: FileText,    label: "Print Document List" },
-];
-
-function statusBadgeClass(s: DocStatus) {
-  if (s === "Current")    return "bg-[#10b98120] text-emerald-400";
-  if (s === "Expiring")   return "bg-[#eab30820] text-yellow-400";
-  if (s === "Review Due") return "bg-[#f9731620] text-orange-400";
+function statusBadgeClass(s: DocumentStatus) {
+  const r = resolveStatus(s);
+  if (r === "Current")    return "bg-[#10b98120] text-emerald-400";
+  if (r === "Expiring")   return "bg-[#eab30820] text-yellow-400";
+  if (r === "Review Due") return "bg-[#f9731620] text-orange-400";
   return "bg-[#ef444420] text-red-400";
+}
+
+function sourceSystemBadgeClass(system: string | undefined) {
+  if (!system) return "bg-gray-700 text-slate-400";
+  const s = system.toLowerCase();
+  if (s.includes("sharepoint")) return "bg-blue-500/15 text-blue-300";
+  if (s.includes("easidoc") || s.includes("easydoc")) return "bg-purple-500/15 text-purple-300";
+  if (s.includes("sap")) return "bg-orange-500/15 text-orange-300";
+  if (s.includes("manual")) return "bg-emerald-500/15 text-emerald-300";
+  return "bg-gray-700/60 text-slate-400";
+}
+
+function docTypeBadgeClass(type: string | undefined) {
+  if (!type) return "bg-gray-700 text-slate-400";
+  const t = type.toLowerCase();
+  if (t.includes("manual"))     return "bg-blue-500/15 text-blue-300";
+  if (t.includes("drawing"))    return "bg-orange-500/15 text-orange-300";
+  if (t.includes("pm") || t.includes("instruction")) return "bg-teal-500/15 text-teal-300";
+  if (t.includes("procedure"))  return "bg-yellow-500/15 text-yellow-300";
+  if (t.includes("schematic"))  return "bg-indigo-500/15 text-indigo-300";
+  if (t.includes("certificate") || t.includes("compliance")) return "bg-red-500/15 text-red-300";
+  return "bg-gray-700/60 text-slate-400";
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -77,30 +81,24 @@ export const EquipmentDocuments = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+  const [documents, setDocuments] = useState<EquipmentDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter state
   const [search, setSearch] = useState("");
-  const [documents, setDocuments] = useState<DocRow[]>([]);
+  const [filterType, setFilterType] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterRevision, setFilterRevision] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEq);
-
-    const serviceDocuments = getEquipmentDocuments(resolvedId).map((document) => ({
-      ...document,
-      iconBg:
-        document.category === "Schematic" ? "bg-blue-500/20" :
-        document.category === "Drawing" ? "bg-orange-500/20" :
-        document.category === "Other" ? "bg-emerald-500/20" :
-        document.status === "Review Due" ? "bg-yellow-500/20" :
-        "bg-red-500/20",
-      iconColor:
-        document.category === "Schematic" ? "text-blue-400" :
-        document.category === "Drawing" ? "text-orange-400" :
-        document.category === "Other" ? "text-emerald-400" :
-        document.status === "Review Due" ? "text-yellow-400" :
-        "text-red-400",
-    }));
-
-    setDocuments(serviceDocuments);
+    setLoading(true);
+    getEquipmentDocuments(resolvedId)
+      .then((docs) => { setDocuments(docs); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [resolvedId]);
 
   if (!eq) {
@@ -136,77 +134,45 @@ export const EquipmentDocuments = (): JSX.Element => {
     if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
   };
 
-  const filtered = documents.filter(
-    (d) => d.name.toLowerCase().includes(search.toLowerCase()) ||
-           d.category.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Derived filter options
+  const allTypes    = useMemo(() => [...new Set(documents.map((d) => d.category).filter(Boolean))].sort(), [documents]);
+  const allSources  = useMemo(() => [...new Set(documents.map((d) => d.sourceSystem).filter(Boolean))].sort(), [documents]);
+  const allRevisions = useMemo(() => [...new Set(documents.map((d) => d.revision).filter(Boolean))].sort(), [documents]);
 
-  const categoryCounts = useMemo(() => {
-    const counts = documents.reduce<Record<string, number>>((acc, document) => {
-      acc[document.category] = (acc[document.category] ?? 0) + 1;
-      return acc;
-    }, {});
-    return [
-      { label: "All Docs", count: documents.length, color: "#3b82f6" },
-      { label: "Manuals", count: counts.Manual ?? 0, color: "#10b981" },
-      { label: "Drawings", count: counts.Drawing ?? 0, color: "#6366f1" },
-      { label: "Schematics", count: counts.Schematic ?? 0, color: "#f97316" },
-      { label: "Procedures", count: counts.Procedure ?? 0, color: "#eab308" },
-      { label: "Certificates", count: counts.Certificate ?? 0, color: "#ef4444" },
-      { label: "Compliance", count: counts.Compliance ?? 0, color: "#8b5cf6" },
-      { label: "Other", count: counts.Other ?? 0, color: "#64748b" },
-    ];
-  }, [documents]);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return documents.filter((d) => {
+      if (filterType   && d.category   !== filterType)   return false;
+      if (filterSource && d.sourceSystem !== filterSource) return false;
+      if (filterRevision && d.revision !== filterRevision) return false;
+      if (filterStatus && resolveStatus(d.status) !== filterStatus) return false;
+      if (!q) return true;
+      return (
+        (d.name ?? "").toLowerCase().includes(q) ||
+        (d.title ?? "").toLowerCase().includes(q) ||
+        (d.drawingNumber ?? "").toLowerCase().includes(q) ||
+        (d.manualSection ?? "").toLowerCase().includes(q) ||
+        (d.sourceSystem ?? "").toLowerCase().includes(q) ||
+        (d.revision ?? "").toLowerCase().includes(q) ||
+        (d.oem ?? "").toLowerCase().includes(q) ||
+        (d.description ?? "").toLowerCase().includes(q) ||
+        (d.faultCodes ?? []).some((fc) => fc.toLowerCase().includes(q)) ||
+        (d.componentTags ?? []).some((ct) => ct.toLowerCase().includes(q))
+      );
+    });
+  }, [documents, search, filterType, filterSource, filterRevision, filterStatus]);
 
-  const criticalDocumentCount = documents.filter((document) =>
-    ["Review Due", "Expiring", "Expired"].includes(document.status),
-  ).length;
+  const criticalCount = documents.filter((d) => ["Review Due", "Expiring", "Expired", "review_due"].includes(d.status)).length;
+  const aiIndexedCount = documents.filter((d) => d.aiIndexed).length;
+  const hasActiveFilters = !!(search || filterType || filterSource || filterRevision || filterStatus);
 
-  const expiringDocumentCount = documents.filter((document) =>
-    document.status === "Expiring",
-  ).length;
-
-  const latestDocumentDate = documents.length > 0 ? documents[0].date : "No documents";
-
-  const totalDocumentSizeMb = documents.reduce((total, document) => {
-    const numericSize = Number.parseFloat(document.size);
-    return Number.isFinite(numericSize) ? total + numericSize : total;
-  }, 0);
-  const totalDocumentSizeLabel =
-    totalDocumentSizeMb >= 1024
-      ? `${(totalDocumentSizeMb / 1024).toFixed(2)} GB`
-      : `${totalDocumentSizeMb.toFixed(1)} MB`;
-
-  const expiringReviewDocuments = documents
-    .filter((document) => ["Expiring", "Review Due", "Expired"].includes(document.status))
-    .map((document) => ({
-      name: document.name,
-      sub:
-        document.status === "Expired"
-          ? "Expired"
-          : document.status === "Review Due"
-            ? "Review overdue"
-            : "Expires soon",
-      subClass:
-        document.status === "Expired"
-          ? "text-red-400"
-          : document.status === "Review Due"
-            ? "text-orange-400"
-            : "text-yellow-400",
-    }));
-
-  const pinnedDocuments = documents.slice(0, 3).map((document) => ({
-    name: document.name,
-    meta: `${document.category} • ${document.size}`,
-    iconBg: document.iconBg,
-    iconColor: document.iconColor,
-  }));
-
-  const recentDocuments = documents.slice(0, 3).map((document, index) => ({
-    name: document.name,
-    meta: `${document.date} • ${document.category}`,
-    dotColor: index === 0 ? "bg-blue-400" : index === 1 ? "bg-emerald-400" : "bg-slate-400",
-  }));
+  const clearFilters = () => {
+    setSearch("");
+    setFilterType("");
+    setFilterSource("");
+    setFilterRevision("");
+    setFilterStatus("");
+  };
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
@@ -258,9 +224,6 @@ export const EquipmentDocuments = (): JSX.Element => {
               <span>📍 {eq.area}</span>
               <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
               <span>Model: <span className="text-slate-300">{eq.model}</span></span>
-              <span>Serial Number: <span className="text-slate-300">{eq.serialNumber}</span></span>
-              <span>Install Date: <span className="text-slate-300">{eq.installDate}</span></span>
-              <span>Warranty: <span className="text-orange-400">{eq.warranty}</span></span>
               <span>Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
             </div>
           </div>
@@ -313,287 +276,285 @@ export const EquipmentDocuments = (): JSX.Element => {
       {/* ── Page Content ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
 
-        {/* Page title + actions */}
+        {/* Page title */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-50">Documents</h2>
-            <p className="text-xs text-slate-500">Document control, certifications and compliance records for this equipment.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline"
-              className="h-auto gap-1.5 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100 shadow-none">
-              <Upload className="h-3.5 w-3.5" /> Upload Document
-            </Button>
-            <Button type="button" variant="outline"
-              className="h-auto gap-1.5 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100 shadow-none">
-              <Download className="h-3.5 w-3.5" /> Export
-            </Button>
+            <p className="text-xs text-slate-500">
+              Linked source documents, drawings, manuals and PM instructions for this equipment.
+            </p>
           </div>
         </div>
 
-        {/* ── KPI Row ───────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        {/* ── Data custody callout ─────────────────────────────────────────── */}
+        <div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+          <p className="text-xs leading-relaxed text-blue-100/80">
+            Vorta stores document references, metadata and searchable index data only. Source documents remain in
+            SharePoint, EasiDoc, EasyDoc, SAP DMS or other customer-controlled systems.
+          </p>
+        </div>
+
+        {/* ── KPI Row ──────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total Documents</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total References</p>
               <p className="text-2xl font-bold text-slate-50">{documents.length}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">All categories</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">Indexed document links</p>
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Critical Documents</p>
-              <p className="text-2xl font-bold text-orange-400">{criticalDocumentCount}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">Require review</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Need Attention</p>
+              <p className="text-2xl font-bold text-orange-400">{criticalCount}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">Review due or expired</p>
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Expiring Soon</p>
-              <p className="text-2xl font-bold text-red-400">{expiringDocumentCount}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">Within 30 days</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">AI Indexed</p>
+              <p className="text-2xl font-bold text-blue-400">{aiIndexedCount}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">Chunks available to Ask AI</p>
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last Updated</p>
-              <p className="text-2xl font-bold text-emerald-400">
-                {documents.length > 0 ? "Latest" : "None"}
-              </p>
-              <p className="mt-0.5 text-[11px] text-slate-500">{latestDocumentDate}</p>
-            </CardContent>
-          </Card>
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total File Size</p>
-              <p className="text-2xl font-bold text-slate-50">{totalDocumentSizeLabel}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">Across all documents</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Showing</p>
+              <p className="text-2xl font-bold text-slate-50">{filtered.length}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">of {documents.length} after filters</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* ── Document Categories ───────────────────────────────────────────── */}
+        {/* ── Search + Filters ─────────────────────────────────────────────── */}
         <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-200">Document Categories</h3>
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-              {categoryCounts.map((cat) => (
-                <button key={cat.label} type="button"
-                  className="flex flex-col items-center overflow-hidden rounded-lg border border-gray-800 bg-[#0f1218] transition-colors hover:bg-[#1a2030]">
-                  <div className="h-1 w-full" style={{ backgroundColor: cat.color }} />
-                  <div className="flex flex-col items-center px-2 py-2">
-                    <span className="text-lg font-bold text-slate-50">{cat.count}</span>
-                    <span className="text-center text-[10px] leading-tight text-slate-500">{cat.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Documents Summary Table ───────────────────────────────────────── */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-200">Documents Summary</h3>
-
-            {/* Toolbar */}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Free-text search */}
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Search documents, tags, description..."
+                  placeholder="Search title, drawing no., fault code, component tag, section, source..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-full rounded-lg border border-gray-700 bg-[#0f1218] pl-8 pr-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
+                  className="h-9 w-full rounded-lg border border-gray-700 bg-[#0f1218] pl-8 pr-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
                 />
               </div>
-              {["Category", "Type", "Status"].map((f) => (
-                <button key={f} type="button"
-                  className="flex h-8 items-center gap-1 rounded-lg border border-gray-700 bg-[#0f1218] px-3 text-xs text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                  {f} <ChevronRight className="h-3 w-3 rotate-90" />
+
+              {/* Document type */}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="h-9 rounded-lg border border-gray-700 bg-[#0f1218] px-2 text-xs text-slate-300 focus:border-blue-500/50 focus:outline-none"
+              >
+                <option value="">All types</option>
+                {allTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+
+              {/* Source system */}
+              <select
+                value={filterSource}
+                onChange={(e) => setFilterSource(e.target.value)}
+                className="h-9 rounded-lg border border-gray-700 bg-[#0f1218] px-2 text-xs text-slate-300 focus:border-blue-500/50 focus:outline-none"
+              >
+                <option value="">All sources</option>
+                {allSources.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+
+              {/* Revision */}
+              <select
+                value={filterRevision}
+                onChange={(e) => setFilterRevision(e.target.value)}
+                className="h-9 rounded-lg border border-gray-700 bg-[#0f1218] px-2 text-xs text-slate-300 focus:border-blue-500/50 focus:outline-none"
+              >
+                <option value="">All revisions</option>
+                {allRevisions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+
+              {/* Status */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-9 rounded-lg border border-gray-700 bg-[#0f1218] px-2 text-xs text-slate-300 focus:border-blue-500/50 focus:outline-none"
+              >
+                <option value="">All statuses</option>
+                <option value="Current">Current</option>
+                <option value="Review Due">Review Due</option>
+                <option value="Expiring">Expiring</option>
+                <option value="Expired">Expired</option>
+              </select>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-700 bg-[#0f1218] px-3 text-xs text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+                >
+                  <X className="h-3 w-3" /> Clear
                 </button>
-              ))}
-              <button type="button"
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-gray-700 bg-[#0f1218] px-3 text-xs text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                <Filter className="h-3 w-3" /> More Filters
-              </button>
-              <button type="button"
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 transition-colors">
-                <Upload className="h-3 w-3" /> Upload
-              </button>
-            </div>
-
-            {/* Column headers */}
-            <div className="border-b border-gray-800 pb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Document</span>
-            </div>
-
-            {/* Rows */}
-            <div className="divide-y divide-gray-800">
-              {filtered.map((doc) => (
-                <div key={doc.name} className="flex items-center gap-3 py-3">
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${doc.iconBg}`}>
-                    <FileText className={`h-3.5 w-3.5 ${doc.iconColor}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-xs font-semibold text-slate-200">{doc.name}</p>
-                  </div>
-                  <span className="hidden w-24 shrink-0 text-right text-[11px] text-slate-500 sm:block">{doc.category}</span>
-                  <span className="hidden w-28 shrink-0 text-right text-[11px] text-slate-500 md:block">{doc.date}</span>
-                  <span className="hidden w-14 shrink-0 text-right text-[11px] text-slate-500 lg:block">{doc.size}</span>
-                  <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(doc.status)}`}>
-                    {doc.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-              <span>Showing {filtered.length} of 86 documents.</span>
-              <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors">
-                View All Documents →
-              </button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* ── Lower Row: Expiring | Pinned | Recent ─────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* ── Document Reference Cards ──────────────────────────────────────── */}
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-xl border border-gray-800 bg-[#141820] px-6 py-10 text-center">
+            <FileText className="mx-auto mb-3 h-8 w-8 text-slate-600" />
+            <p className="text-sm font-semibold text-slate-400">No documents found</p>
+            <p className="mt-1 text-xs text-slate-600">
+              {hasActiveFilters
+                ? "Try clearing filters or broadening the search."
+                : "No document references are indexed for this equipment yet."}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map((doc) => {
+              const displayStatus = resolveStatus(doc.status);
+              const hasSourceUrl = Boolean(doc.sourceUrl);
 
-          {/* Expiring / Review Due */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Expiring / Review Due</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {expiringReviewDocuments.length > 0 ? (
-                  expiringReviewDocuments.map((item) => (
-                    <div key={item.name} className="flex items-start gap-2.5 py-3">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                        <FileText className="h-3.5 w-3.5 text-slate-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-200">{item.name}</p>
-                        <p className={`text-[10px] font-medium ${item.subClass}`}>{item.sub}</p>
-                      </div>
+              return (
+                <div
+                  key={doc.id}
+                  className="rounded-xl border border-gray-800 bg-[#141820] p-4 transition-colors hover:border-gray-700"
+                >
+                  {/* Row 1: title + badges + open button */}
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-slate-500" />
+                      <span className="text-sm font-semibold text-slate-100">{doc.name}</span>
+
+                      {doc.documentType && (
+                        <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${docTypeBadgeClass(doc.documentType)}`}>
+                          {doc.documentType}
+                        </Badge>
+                      )}
+
+                      {doc.sourceSystem && (
+                        <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${sourceSystemBadgeClass(doc.sourceSystem)}`}>
+                          {doc.sourceSystem}
+                        </Badge>
+                      )}
+
+                      <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(doc.status)}`}>
+                        {displayStatus}
+                      </Badge>
+
+                      {doc.aiIndexed && (
+                        <Badge className="h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-bold shadow-none bg-blue-500/15 text-blue-300">
+                          <Zap className="mr-1 inline h-2.5 w-2.5" />AI indexed
+                        </Badge>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-xs text-slate-500">No expiring or overdue documents.</p>
-                )}
-              </div>
-              <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View All Expiring →
-              </button>
-            </CardContent>
-          </Card>
 
-          {/* Pinned Documents */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Pinned Documents</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {pinnedDocuments.length > 0 ? (
-                  pinnedDocuments.map((item) => (
-                    <div key={item.name} className="flex items-center gap-3 py-3">
-                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${item.iconBg}`}>
-                        <FileText className={`h-3.5 w-3.5 ${item.iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
-                        <p className="text-[10px] text-slate-500">{item.meta}</p>
-                      </div>
-                      <button type="button" className="shrink-0 text-slate-600 hover:text-slate-400 transition-colors">
-                        <Download className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-xs text-slate-500">No pinned documents yet.</p>
-                )}
-              </div>
-              <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                Manage Pinned →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* Recent Uploads */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Recent Uploads</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {recentDocuments.length > 0 ? (
-                  recentDocuments.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2.5 py-3">
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-200">{item.name}</p>
-                        <p className="text-[10px] text-slate-500">{item.meta}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-xs text-slate-500">No recent document activity.</p>
-                )}
-              </div>
-              <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Upload History →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Bottom Row: Quick Actions | Permissions ───────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-          {/* Quick Actions */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Quick Actions</h3>
-              <div className="flex flex-col gap-2">
-                {QUICK_ACTIONS.map(({ Icon, label }) => (
-                  <button key={label} type="button"
-                    className="flex w-full items-center gap-3 rounded-lg border border-gray-800 bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-[#1a2030]">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                      <Icon className="h-3.5 w-3.5 text-slate-400" />
-                    </div>
-                    <span className="flex-1 text-xs font-medium text-slate-300">{label}</span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Document Access & Permissions */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Document Access & Permissions</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {PERMISSIONS.map((p) => (
-                  <div key={p.role} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-3.5 w-3.5 text-slate-500" />
-                      <span className="text-xs font-medium text-slate-200">{p.role}</span>
-                    </div>
-                    <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${p.cls}`}>
-                      {p.level}
-                    </Badge>
+                    {hasSourceUrl ? (
+                      <a
+                        href={doc.sourceUrl!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 text-xs font-semibold text-blue-300 transition-colors hover:border-blue-400/60 hover:bg-blue-500/20"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open source
+                      </a>
+                    ) : (
+                      <span className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-gray-700 bg-transparent px-3 text-xs text-slate-600">
+                        Source link pending
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                Manage Permissions →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
+
+                  {/* Row 2: metadata grid */}
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-slate-500">
+                    {doc.revision && (
+                      <span>
+                        Revision: <span className="font-semibold text-slate-300">{doc.revision}</span>
+                      </span>
+                    )}
+                    {doc.drawingNumber && (
+                      <span>
+                        Drawing: <span className="font-semibold text-slate-300">{doc.drawingNumber}</span>
+                      </span>
+                    )}
+                    {doc.sheetNumber && (
+                      <span>
+                        Sheet: <span className="font-semibold text-slate-300">{doc.sheetNumber}</span>
+                      </span>
+                    )}
+                    {doc.pageNumber != null && (
+                      <span>
+                        Page: <span className="font-semibold text-slate-300">{doc.pageNumber}</span>
+                      </span>
+                    )}
+                    {doc.manualSection && (
+                      <span>
+                        Section: <span className="font-semibold text-slate-300">{doc.manualSection}</span>
+                      </span>
+                    )}
+                    {doc.oem && (
+                      <span>
+                        OEM: <span className="font-semibold text-slate-300">{doc.oem}</span>
+                      </span>
+                    )}
+                    {doc.externalReference && (
+                      <span>
+                        Ref: <span className="font-semibold text-slate-300">{doc.externalReference}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 3: fault codes + component tags */}
+                  {((doc.faultCodes?.length ?? 0) > 0 || (doc.componentTags?.length ?? 0) > 0) && (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {doc.faultCodes?.map((fc) => (
+                        <span key={fc} className="rounded border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
+                          {fc}
+                        </span>
+                      ))}
+                      {doc.componentTags?.map((ct) => (
+                        <span key={ct} className="rounded border border-slate-600/40 bg-slate-700/30 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                          {ct}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Row 4: description */}
+                  {doc.description && (
+                    <p className="mt-2.5 text-[11px] leading-relaxed text-slate-500">{doc.description}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: {latestDocumentDate}</span>
-          <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
+          <span>
+            {filtered.length} of {documents.length} document references
+            {hasActiveFilters ? " (filtered)" : ""} · Vorta stores references and index data only
+          </span>
+          <button
+            type="button"
+            aria-label="Refresh"
+            onClick={() => {
+              setLoading(true);
+              getEquipmentDocuments(resolvedId)
+                .then((docs) => { setDocuments(docs); setLoading(false); })
+                .catch(() => setLoading(false));
+            }}
+            className="text-slate-600 hover:text-slate-400 transition-colors"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>

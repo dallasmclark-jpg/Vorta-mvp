@@ -115,16 +115,46 @@ export interface SparePart {
 
 // ─── Documents ────────────────────────────────────────────────────────────────
 
-export type DocumentStatus = "Current" | "Expiring" | "Review Due" | "Expired";
+export type DocumentStatus =
+  | "Current"
+  | "Expiring"
+  | "Review Due"
+  | "Expired"
+  | "active"
+  | "draft"
+  | "archived"
+  | "superseded"
+  | "review_due";
 
 export interface EquipmentDocument {
   id: string;
   equipmentId: string;
+  siteId?: string | null;
+
   name: string;
   category: string;
   date: string;
   size: string;
   status: DocumentStatus;
+
+  title?: string;
+  documentType?: string;
+  sourceSystem?: string;
+  sourceUrl?: string | null;
+  fileId?: string | null;
+  externalReference?: string | null;
+  drawingNumber?: string | null;
+  sheetNumber?: string | null;
+  manualSection?: string | null;
+  pageNumber?: number | null;
+  revision?: string | null;
+  faultCodes?: string[];
+  componentTags?: string[];
+  oem?: string | null;
+  description?: string | null;
+  extractedSummary?: string | null;
+  lastIndexedAt?: string | null;
+  aiIndexed?: boolean;
 }
 
 // ─── Activity / History ───────────────────────────────────────────────────────

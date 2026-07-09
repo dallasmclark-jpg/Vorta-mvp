@@ -1047,8 +1047,107 @@ export function getEquipmentSpares(equipmentId: string): SparePart[] {
   return MOCK_SPARES.filter((s) => s.equipmentId === equipmentId);
 }
 
-export function getEquipmentDocuments(equipmentId: string): EquipmentDocument[] {
-  return MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+export async function getEquipmentDocuments(equipmentId: string): Promise<EquipmentDocument[]> {
+  try {
+    const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
+
+    if (!resolvedEquipmentId) {
+      const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+      return mockDocuments.length > 0
+        ? mockDocuments
+        : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
+    }
+
+    const { data, error } = await supabase
+      .from("knowledge_documents")
+      .select(`
+        id,
+        site_id,
+        equipment_id,
+        source_system,
+        source_document_id,
+        source_path,
+        source_url,
+        title,
+        document_type,
+        revision,
+        approval_status,
+        is_current,
+        summary,
+        file_id,
+        external_reference,
+        drawing_number,
+        sheet_number,
+        manual_section,
+        page_number,
+        fault_codes,
+        component_tags,
+        oem,
+        status,
+        extracted_summary,
+        last_indexed_at,
+        created_at,
+        updated_at
+      `)
+      .eq("equipment_id", resolvedEquipmentId)
+      .eq("is_current", true)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.warn("getEquipmentDocuments Supabase error, using mock:", error.message);
+      const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+      return mockDocuments.length > 0
+        ? mockDocuments
+        : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
+    }
+
+    if (data && data.length > 0) {
+      return data.map((row: any) => {
+        const status: EquipmentDocument["status"] =
+          row.status === "review_due"
+            ? "Review Due"
+            : row.status === "active" || row.is_current
+              ? "Current"
+              : "Expired";
+
+        return {
+          id: row.id,
+          equipmentId: row.equipment_id ?? "",
+          siteId: row.site_id ?? null,
+          name: row.title ?? "Untitled document",
+          category: row.document_type ?? "Document",
+          date: row.updated_at ?? row.created_at ?? "",
+          size: row.source_system === "Manual Upload" ? "Linked file" : "External link",
+          status,
+          title: row.title,
+          documentType: row.document_type,
+          sourceSystem: row.source_system,
+          sourceUrl: row.source_url ?? null,
+          fileId: row.file_id ?? null,
+          externalReference: row.external_reference ?? row.source_document_id ?? null,
+          drawingNumber: row.drawing_number ?? null,
+          sheetNumber: row.sheet_number ?? null,
+          manualSection: row.manual_section ?? null,
+          pageNumber: row.page_number ?? null,
+          revision: row.revision ?? null,
+          faultCodes: row.fault_codes ?? [],
+          componentTags: row.component_tags ?? [],
+          oem: row.oem ?? null,
+          description: row.summary ?? null,
+          extractedSummary: row.extracted_summary ?? row.summary ?? null,
+          lastIndexedAt: row.last_indexed_at ?? null,
+          aiIndexed: Boolean(row.last_indexed_at || row.extracted_summary),
+        } as EquipmentDocument;
+      });
+    }
+  } catch (error) {
+    console.warn("getEquipmentDocuments threw, using mock:", error);
+  }
+
+  const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+  return mockDocuments.length > 0
+    ? mockDocuments
+    : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
 }
 
 function formatDowntime(minutes: number | null): string {
@@ -1218,7 +1317,7 @@ export async function getEquipmentSummary(equipmentId: string): Promise<Equipmen
     getEquipmentPMs(equipmentId),
     getEquipmentSkills(equipmentId),
     getEquipmentComponents(equipmentId),
-    Promise.resolve(getEquipmentDocuments(equipmentId)),
+    getEquipmentDocuments(equipmentId),
     getEquipmentActivity(equipmentId),
     Promise.resolve(getEquipmentAiInsights(equipmentId)),
   ]);
@@ -1250,6 +1349,11 @@ export interface EquipmentKnowledgeChunk {
   sectionTitle: string | null;
   chunkText: string;
   pageNumber: number | null;
+  drawingNumber?: string | null;
+  sheetNumber?: string | null;
+  externalReference?: string | null;
+  faultCodes?: string[];
+  componentTags?: string[];
   rank: number;
 }
 
@@ -1371,6 +1475,11 @@ export async function searchEquipmentKnowledge(
       sectionTitle: row.section_title,
       chunkText: row.chunk_text,
       pageNumber: row.page_number,
+      drawingNumber: row.drawing_number ?? null,
+      sheetNumber: row.sheet_number ?? null,
+      externalReference: row.external_reference ?? null,
+      faultCodes: row.fault_codes ?? [],
+      componentTags: row.component_tags ?? [],
       rank: row.rank ?? 0,
     }));
   } catch (error) {

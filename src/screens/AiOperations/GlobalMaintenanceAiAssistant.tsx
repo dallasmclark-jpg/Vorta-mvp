@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, ChevronDown, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Bot, ChevronDown, ExternalLink, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { supabase } from "../../lib/supabaseClient";
@@ -300,9 +300,12 @@ function riskRank(level: string): number {
 }
 
 function sourceLabel(chunk: EquipmentKnowledgeChunk): string {
-  const revision = chunk.revision ? ` Rev ${chunk.revision}` : "";
-  const section = chunk.sectionTitle ? `${chunk.chunkRef} ${chunk.sectionTitle}` : chunk.chunkRef;
-  return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${section}`;
+  const revision  = chunk.revision      ? ` ${chunk.revision}`               : "";
+  const drawing   = chunk.drawingNumber ? `, Drawing ${chunk.drawingNumber}` : "";
+  const sheet     = chunk.sheetNumber   ? `, Sheet ${chunk.sheetNumber}`     : "";
+  const page      = chunk.pageNumber != null ? `, Page ${chunk.pageNumber}`  : "";
+  const section   = chunk.sectionTitle  ? `, ${chunk.sectionTitle}`          : (chunk.chunkRef ? `, ${chunk.chunkRef}` : "");
+  return `${chunk.sourceSystem}: ${chunk.title}${revision}${drawing}${sheet}${page}${section}`;
 }
 
 // ─── Shift skills helpers ─────────────────────────────────────────────────────
@@ -901,7 +904,7 @@ function buildGlobalAnswer(
         sources.push(...knowledgeChunks.slice(0, 4).map(sourceLabel));
         recommendedActions.push("Open the linked equipment page and review the source sections before making the decision.");
       } else {
-        directAnswer = "I can use current risk data, but I did not find matching manual, SOP, training or SAP source sections for this question.";
+        directAnswer = "I could not find a linked manual, drawing, or source document for this equipment/fault. This answer is based only on available Vorta equipment/work order data.";
         missingData.push("No matching knowledge document chunks were returned.");
         if (siteRisk) evidence.push(`Site risk is ${siteRisk.riskScore}% ${siteRisk.riskLevel}.`);
         if (selectedEquipment) evidence.push(`${selectedEquipment.name} is ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`);
@@ -997,6 +1000,70 @@ function buildGlobalAnswer(
   };
 }
 
+// ─── GlobalSourceCards ────────────────────────────────────────────────────────
+
+function GlobalSourceCards({ chunks }: { chunks: EquipmentKnowledgeChunk[] }) {
+  if (chunks.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+      <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+        Sources used
+      </h4>
+      <div className="flex flex-col gap-2">
+        {chunks.slice(0, 4).map((chunk) => (
+          <div key={chunk.chunkId} className="rounded border border-blue-500/10 bg-[#0f1218] px-2.5 py-2">
+            <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[9px] font-bold text-blue-300 shadow-none">
+                    {chunk.sourceSystem}
+                  </Badge>
+                  <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[9px] font-medium text-slate-400 shadow-none">
+                    {chunk.documentType}
+                  </Badge>
+                </div>
+                <p className="text-[10px] font-semibold text-blue-200">
+                  {chunk.title}
+                  {chunk.revision ? ` ${chunk.revision}` : ""}
+                </p>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500">
+                  {chunk.drawingNumber && (
+                    <span>Drawing: <span className="text-slate-300">{chunk.drawingNumber}</span></span>
+                  )}
+                  {chunk.sheetNumber && (
+                    <span>Sheet: <span className="text-slate-300">{chunk.sheetNumber}</span></span>
+                  )}
+                  {chunk.pageNumber != null && (
+                    <span>Page: <span className="text-slate-300">{chunk.pageNumber}</span></span>
+                  )}
+                  {chunk.sectionTitle && (
+                    <span>Section: <span className="text-slate-300">{chunk.sectionTitle}</span></span>
+                  )}
+                </div>
+              </div>
+              {chunk.sourceUrl && (
+                <a
+                  href={chunk.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex shrink-0 items-center gap-1 rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[9px] font-semibold text-blue-200 transition-colors hover:border-blue-400/60"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open source
+                </a>
+              )}
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+              {chunk.chunkText.slice(0, 240)}{chunk.chunkText.length > 240 ? "…" : ""}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── AnswerBlock ──────────────────────────────────────────────────────────────
 
 function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
@@ -1039,6 +1106,10 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
           ))}
         </ul>
       </div>
+
+      {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
+        <GlobalSourceCards chunks={answer.knowledgeChunks} />
+      )}
 
       {answer.sources.length > 0 && (
         <div className="flex flex-wrap gap-1">
