@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, Brain, Camera, FileText, Loader2, Send, ShieldCheck, Wrench } from "lucide-react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { AlertTriangle, Brain, Camera, FileText, Image as ImageIcon, Loader2, Send, ShieldCheck, Upload, Wrench, X } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -78,6 +78,71 @@ function formatKnowledgeSource(chunk: EquipmentKnowledgeChunk): string {
     ? `${chunk.chunkRef} ${chunk.sectionTitle}`
     : chunk.chunkRef;
   return `${chunk.sourceSystem}: ${chunk.title}${revision}, section ${section}`;
+}
+
+function simulateUploadedImageTextExtraction(
+  fileName: string,
+  visualCases: VisualDiagnosticCase[],
+  selectedCaseId: string,
+): { text: string; note: string } {
+  const name = fileName.toLowerCase();
+
+  const findCase = (predicate: (item: VisualDiagnosticCase) => boolean) =>
+    visualCases.find(predicate);
+
+  const byAlarm3412 = findCase((item) =>
+    item.expectedFaultCode === "ALM-3412" ||
+    item.detectedFaultCode === "ALM-3412" ||
+    item.title.toLowerCase().includes("infeed sensor")
+  );
+
+  const byAlarm2207 = findCase((item) =>
+    item.expectedFaultCode === "ALM-2207" ||
+    item.detectedFaultCode === "ALM-2207" ||
+    item.title.toLowerCase().includes("servo drive")
+  );
+
+  const byPartPhoto = findCase((item) =>
+    item.imageType.toLowerCase().includes("part") ||
+    item.title.toLowerCase().includes("part photo") ||
+    item.detectedMaker?.toLowerCase() === "sick"
+  );
+
+  const selectedCase = visualCases.find((item) => item.id === selectedCaseId);
+  const fallbackCase = selectedCase ?? visualCases[0];
+
+  if ((name.includes("3412") || name.includes("infeed") || name.includes("sensor")) && byAlarm3412) {
+    return {
+      text: byAlarm3412.extractedText,
+      note: "Demo OCR shell matched the uploaded file name to the seeded ALM-3412 infeed sensor HMI case.",
+    };
+  }
+
+  if ((name.includes("2207") || name.includes("servo") || name.includes("drive") || name.includes("encoder")) && byAlarm2207) {
+    return {
+      text: byAlarm2207.extractedText,
+      note: "Demo OCR shell matched the uploaded file name to the seeded ALM-2207 servo drive HMI case.",
+    };
+  }
+
+  if ((name.includes("sick") || name.includes("part") || name.includes("photoelectric") || name.includes("nameplate") || name.includes("m12")) && byPartPhoto) {
+    return {
+      text: byPartPhoto.extractedText,
+      note: "Demo OCR shell matched the uploaded file name to the seeded part-photo/nameplate case.",
+    };
+  }
+
+  if (fallbackCase) {
+    return {
+      text: fallbackCase.extractedText,
+      note: "Demo OCR shell used the selected demo image case. Real OCR/vision will replace this extraction step later.",
+    };
+  }
+
+  return {
+    text: "",
+    note: "No demo extraction text is available. Paste visible HMI text, fault code, part number or nameplate text manually.",
+  };
 }
 
 function buildKnowledgeDirectAnswer(
@@ -545,6 +610,12 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
   const [visualResult, setVisualResult] = useState<VisualDiagnosticResult | null>(null);
   const [visualLoading, setVisualLoading] = useState(false);
 
+  const [uploadedImageName, setUploadedImageName] = useState("");
+  const [uploadedImageUrl, setUploadedImageUrl] = useState("");
+  const [uploadedImageSizeKb, setUploadedImageSizeKb] = useState<number | null>(null);
+  const [imageExtractionLoading, setImageExtractionLoading] = useState(false);
+  const [imageExtractionNote, setImageExtractionNote] = useState("");
+
   useEffect(() => {
     let mounted = true;
 
@@ -562,12 +633,81 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
     };
   }, [equipmentId]);
 
+  useEffect(() => {
+    return () => {
+      if (uploadedImageUrl) {
+        URL.revokeObjectURL(uploadedImageUrl);
+      }
+    };
+  }, [uploadedImageUrl]);
+
+  const handleVisualImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setImageExtractionNote("Only image files are supported for visual diagnostics.");
+      return;
+    }
+
+    const sizeKb = Math.round(file.size / 1024);
+
+    if (sizeKb > 10240) {
+      setImageExtractionNote("Image is too large for this MVP upload flow. Use an image under 10 MB.");
+      return;
+    }
+
+    setUploadedImageUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return URL.createObjectURL(file);
+    });
+
+    setUploadedImageName(file.name);
+    setUploadedImageSizeKb(sizeKb);
+    setVisualResult(null);
+    setImageExtractionNote("Image uploaded. Run text extraction to populate the diagnostic text box.");
+  };
+
+  const clearUploadedImage = () => {
+    if (uploadedImageUrl) {
+      URL.revokeObjectURL(uploadedImageUrl);
+    }
+
+    setUploadedImageName("");
+    setUploadedImageUrl("");
+    setUploadedImageSizeKb(null);
+    setImageExtractionNote("");
+  };
+
+  const runImageTextExtraction = async () => {
+    if (!uploadedImageName) {
+      setImageExtractionNote("Upload an HMI screenshot, part photo or nameplate image first.");
+      return;
+    }
+
+    setImageExtractionLoading(true);
+    setImageExtractionNote("");
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+
+    const result = simulateUploadedImageTextExtraction(uploadedImageName, visualCases, selectedCaseId);
+
+    if (result.text) {
+      setVisualText(result.text);
+      setVisualResult(null);
+    }
+
+    setImageExtractionNote(result.note);
+    setImageExtractionLoading(false);
+  };
+
   const handleSelectVisualCase = (caseId: string) => {
     setSelectedCaseId(caseId);
     const selected = visualCases.find((item) => item.id === caseId);
     if (selected) {
       setVisualText(selected.extractedText);
       setVisualResult(null);
+      setImageExtractionNote("Demo case selected. Upload an image to test the photo input flow, or analyse the seeded extracted text directly.");
     }
   };
 
@@ -671,13 +811,103 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
           </div>
 
           <p className="mb-3 text-[10px] leading-relaxed text-slate-500">
-            Analyse a demo HMI screenshot or part-photo text, match the fault code or component, then link it to spares, manuals, SOPs, SAP PM history and recommended action.
+            Upload an HMI screenshot, part photo or nameplate image. This MVP shell previews the image, simulates text extraction using demo cases, then matches the detected fault or component to spares, manuals, SOPs, SAP PM history and recommended action.
           </p>
+
+          <div className="mb-3 rounded-lg border border-dashed border-gray-700 bg-[#141820] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Upload className="h-3.5 w-3.5 text-blue-400" />
+                <h5 className="text-[11px] font-semibold text-slate-200">Upload HMI screenshot or part photo</h5>
+              </div>
+
+              {uploadedImageUrl && (
+                <button
+                  type="button"
+                  onClick={clearUploadedImage}
+                  className="inline-flex items-center gap-1 rounded border border-gray-700 px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-red-500/40 hover:text-red-300"
+                >
+                  <X className="h-3 w-3" />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {!uploadedImageUrl ? (
+              <label
+                htmlFor="visual-image-upload"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-gray-800 bg-[#0f1218] px-4 py-6 text-center transition-colors hover:border-blue-500/40 hover:bg-blue-500/5"
+              >
+                <ImageIcon className="mb-2 h-6 w-6 text-slate-500" />
+                <span className="text-xs font-semibold text-slate-300">Choose image</span>
+                <span className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                  Upload a JPG, PNG or WebP of an HMI alarm, part label or nameplate.
+                </span>
+                <span className="mt-1 text-[9px] text-slate-600">
+                  Demo extraction uses file-name hints until real OCR/vision is connected.
+                </span>
+              </label>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[150px_1fr]">
+                <div className="overflow-hidden rounded-lg border border-gray-800 bg-[#0f1218]">
+                  <img
+                    src={uploadedImageUrl}
+                    alt={uploadedImageName || "Uploaded visual diagnostic image"}
+                    className="h-32 w-full object-cover"
+                  />
+                </div>
+
+                <div className="flex flex-col justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-200">{uploadedImageName}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">
+                      {uploadedImageSizeKb ? `${uploadedImageSizeKb} KB` : "Image uploaded"} · Ready for extraction
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={runImageTextExtraction}
+                    disabled={imageExtractionLoading}
+                    className="h-8 w-full gap-2 bg-slate-700 px-3 text-xs font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {imageExtractionLoading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Extracting visible text...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-3.5 w-3.5" />
+                        Extract visible text
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <input
+              id="visual-image-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleVisualImageUpload}
+              className="hidden"
+            />
+
+            {imageExtractionNote && (
+              <div className="mt-2 rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-2">
+                <p className="text-[10px] leading-relaxed text-blue-100/80">
+                  {imageExtractionNote}
+                </p>
+              </div>
+            )}
+          </div>
 
           {visualCases.length > 0 && (
             <div className="mb-2">
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                Demo image case
+                Demo fallback case
               </label>
               <select
                 value={selectedCaseId}
@@ -695,7 +925,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
 
           <div className="mb-2">
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Extracted image text
+              Detected / extracted image text
             </label>
             <textarea
               value={visualText}
@@ -743,7 +973,7 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
 
                   <div>
                     <h5 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Detected image text
+                      Detected / extracted image text
                     </h5>
                     <p className="rounded border border-gray-800 bg-[#0f1218] px-2 py-1.5 text-[10px] leading-relaxed text-slate-400">
                       {shortenText(visualResult.extractedText, 360)}
