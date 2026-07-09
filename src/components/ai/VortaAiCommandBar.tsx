@@ -142,20 +142,20 @@ const SUPPORTED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
-const SAP_EXPORT_TYPES = [
-  "IH08 Equipment Register",
-  "IH01 Functional Location / Structure",
-  "IP24 PM Schedule",
-  "IW39 Work Order History",
-  "IB05 Equipment BOM",
-  "MB52 Stores Inventory",
-  "Skills Matrix Export",
-  "Training Records Export",
-  "Contractor Register",
-  "Other Export",
+const IMPORT_SOURCE_TYPES = [
+  "SAP IH08 Equipment Register",
+  "SAP IH01 Functional Location / Structure",
+  "SAP IP24 PM Schedule",
+  "SAP IW39 Work Order History",
+  "SAP IB05 Equipment BOM",
+  "SAP MB52 Stores Inventory",
+  "Skills Matrix Import",
+  "Training Records Import",
+  "Contractor Register Import",
+  "Other Import File",
 ];
 
-const SAP_EXPORT_TARGETS = [
+const IMPORT_UPDATE_TARGETS = [
   "Update equipment register",
   "Update PM backlog",
   "Update work order history",
@@ -166,7 +166,7 @@ const SAP_EXPORT_TARGETS = [
   "Create import mapping notes",
 ];
 
-const SUPPORTED_EXPORT_TYPES = [
+const SUPPORTED_IMPORT_FILE_TYPES = [
   "text/csv",
   "text/plain",
   "application/vnd.ms-excel",
@@ -220,19 +220,19 @@ export function VortaAiCommandBar({
   const [documentContextNote, setDocumentContextNote] = useState("");
   const [documentIntakeMessage, setDocumentIntakeMessage] = useState("");
 
-  const sapExportInputRef = useRef<HTMLInputElement>(null);
-  const [isSapExportIntakeOpen, setIsSapExportIntakeOpen] = useState(false);
-  const [sapExportFileName, setSapExportFileName] = useState("");
-  const [sapExportFileSize, setSapExportFileSize] = useState("");
-  const [sapExportFileType, setSapExportFileType] = useState("");
-  const [sapExportType, setSapExportType] = useState(SAP_EXPORT_TYPES[0]);
-  const [sapExportTarget, setSapExportTarget] = useState(SAP_EXPORT_TARGETS[0]);
-  const [sapLinkedEquipmentId, setSapLinkedEquipmentId] = useState("");
-  const [sapLinkedEquipmentName, setSapLinkedEquipmentName] = useState("");
-  const [sapEquipmentSearchOpen, setSapEquipmentSearchOpen] = useState(false);
-  const [sapEquipmentSearchQuery, setSapEquipmentSearchQuery] = useState("");
-  const [sapExportContextNote, setSapExportContextNote] = useState("");
-  const [sapExportMessage, setSapExportMessage] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [isImportIntakeOpen, setIsImportIntakeOpen] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
+  const [importFileSize, setImportFileSize] = useState("");
+  const [importFileType, setImportFileType] = useState("");
+  const [importSourceType, setImportSourceType] = useState(IMPORT_SOURCE_TYPES[0]);
+  const [importUpdateTarget, setImportUpdateTarget] = useState(IMPORT_UPDATE_TARGETS[0]);
+  const [importLinkedEquipmentId, setImportLinkedEquipmentId] = useState("");
+  const [importLinkedEquipmentName, setImportLinkedEquipmentName] = useState("");
+  const [importEquipmentSearchOpen, setImportEquipmentSearchOpen] = useState(false);
+  const [importEquipmentSearchQuery, setImportEquipmentSearchQuery] = useState("");
+  const [importContextNote, setImportContextNote] = useState("");
+  const [importMessage, setImportMessage] = useState("");
 
   useEffect(() => {
     if (enablePhotoUpload || enableDocumentUpload) {
@@ -285,9 +285,9 @@ export function VortaAiCommandBar({
     })
     .slice(0, 8);
 
-  const searchedSapEquipment = equipmentList
+  const searchedImportEquipment = equipmentList
     .filter((item) => {
-      const q = sapEquipmentSearchQuery.trim().toLowerCase();
+      const q = importEquipmentSearchQuery.trim().toLowerCase();
       if (!q) return false;
       return (
         item.name.toLowerCase().includes(q) ||
@@ -325,10 +325,10 @@ export function VortaAiCommandBar({
       prompt: "I want to paste a shift handover note and identify risks, actions and owners.",
     },
     enableSapExport && {
-      label: "Add SAP/export file",
-      description: "SAP, skills, PM, spares or work order export",
+      label: "Import data file",
+      description: "SAP, skills, PM, spares or work order import",
       icon: Table2,
-      prompt: "sap-export-intake-panel",
+      prompt: "import-intake-panel",
     },
   ].filter(Boolean) as { label: string; description: string; icon: React.ElementType; prompt: string }[];
 
@@ -342,9 +342,9 @@ export function VortaAiCommandBar({
     setIsDocumentIntakeOpen(false);
     setDocumentEquipmentSearchOpen(false);
     setDocumentEquipmentSearchQuery("");
-    setIsSapExportIntakeOpen(false);
-    setSapEquipmentSearchOpen(false);
-    setSapEquipmentSearchQuery("");
+    setIsImportIntakeOpen(false);
+    setImportEquipmentSearchOpen(false);
+    setImportEquipmentSearchQuery("");
   };
 
   const openPhotoEquipmentPicker = () => {
@@ -486,8 +486,8 @@ export function VortaAiCommandBar({
       return;
     }
 
-    if (prompt === "sap-export-intake-panel") {
-      openSapExportIntakePanel();
+    if (prompt === "import-intake-panel") {
+      openImportIntakePanel();
       return;
     }
 
@@ -496,24 +496,24 @@ export function VortaAiCommandBar({
     fireGlobalAiPrompt(prompt, false);
   };
 
-  const resetSapExportIntake = () => {
-    setSapExportFileName("");
-    setSapExportFileSize("");
-    setSapExportFileType("");
-    setSapExportType(SAP_EXPORT_TYPES[0]);
-    setSapExportTarget(SAP_EXPORT_TARGETS[0]);
-    setSapLinkedEquipmentId("");
-    setSapLinkedEquipmentName("");
-    setSapEquipmentSearchOpen(false);
-    setSapEquipmentSearchQuery("");
-    setSapExportContextNote("");
-    setSapExportMessage("");
-    if (sapExportInputRef.current) {
-      sapExportInputRef.current.value = "";
+  const resetImportIntake = () => {
+    setImportFileName("");
+    setImportFileSize("");
+    setImportFileType("");
+    setImportSourceType(IMPORT_SOURCE_TYPES[0]);
+    setImportUpdateTarget(IMPORT_UPDATE_TARGETS[0]);
+    setImportLinkedEquipmentId("");
+    setImportLinkedEquipmentName("");
+    setImportEquipmentSearchOpen(false);
+    setImportEquipmentSearchQuery("");
+    setImportContextNote("");
+    setImportMessage("");
+    if (importInputRef.current) {
+      importInputRef.current.value = "";
     }
   };
 
-  const openSapExportIntakePanel = () => {
+  const openImportIntakePanel = () => {
     setIsAttachmentMenuOpen(false);
     setIsPhotoEquipmentPickerOpen(false);
     setIsEquipmentSearchOpen(false);
@@ -521,11 +521,11 @@ export function VortaAiCommandBar({
     setIsDocumentIntakeOpen(false);
     setDocumentEquipmentSearchOpen(false);
     setDocumentEquipmentSearchQuery("");
-    setIsSapExportIntakeOpen(true);
-    setSapExportMessage("");
+    setIsImportIntakeOpen(true);
+    setImportMessage("");
   };
 
-  const handleSapExportFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImportFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -533,52 +533,52 @@ export function VortaAiCommandBar({
     const allowedExtensions = ["csv", "txt", "xls", "xlsx"];
 
     const isSupportedType =
-      SUPPORTED_EXPORT_TYPES.includes(file.type) ||
+      SUPPORTED_IMPORT_FILE_TYPES.includes(file.type) ||
       allowedExtensions.includes(fileExtension);
 
     if (!isSupportedType) {
-      resetSapExportIntake();
-      setSapExportMessage("Unsupported export type for this MVP placeholder. Use CSV, Excel or text export.");
+      resetImportIntake();
+      setImportMessage("Unsupported import file type for this MVP placeholder. Use CSV, Excel or text.");
       return;
     }
 
     if (file.size > 20 * 1024 * 1024) {
-      resetSapExportIntake();
-      setSapExportMessage("File is too large for this MVP placeholder. Use an export under 20 MB.");
+      resetImportIntake();
+      setImportMessage("File is too large for this MVP placeholder. Use an import file under 20 MB.");
       return;
     }
 
-    setSapExportFileName(file.name);
-    setSapExportFileSize(formatFileSize(file.size));
-    setSapExportFileType(file.type || fileExtension.toUpperCase());
-    setSapExportMessage("Export selected. Vorta will not import or parse the file yet, but this prepares the mapping workflow.");
+    setImportFileName(file.name);
+    setImportFileSize(formatFileSize(file.size));
+    setImportFileType(file.type || fileExtension.toUpperCase());
+    setImportMessage("Import file selected. Vorta will not import or parse the file yet, but this prepares the mapping workflow.");
   };
 
-  const selectSapEquipment = (item: EquipmentListItem) => {
-    setSapLinkedEquipmentId(item.id);
-    setSapLinkedEquipmentName(item.name);
-    setSapEquipmentSearchOpen(false);
-    setSapEquipmentSearchQuery("");
+  const selectImportEquipment = (item: EquipmentListItem) => {
+    setImportLinkedEquipmentId(item.id);
+    setImportLinkedEquipmentName(item.name);
+    setImportEquipmentSearchOpen(false);
+    setImportEquipmentSearchQuery("");
   };
 
-  const sendSapExportContextToVorta = () => {
-    if (!sapExportFileName) {
-      setSapExportMessage("Choose an SAP/export file first.");
+  const sendImportContextToVorta = () => {
+    if (!importFileName) {
+      setImportMessage("Choose an import file first.");
       return;
     }
 
     const contextText = [
-      `I want to analyse an export file for Vorta import planning.`,
-      `Export type: ${sapExportType}.`,
-      `File selected: ${sapExportFileName} (${sapExportFileSize}, ${sapExportFileType || "unknown type"}).`,
-      `Intended update: ${sapExportTarget}.`,
-      sapLinkedEquipmentName
-        ? `Linked equipment: ${sapLinkedEquipmentName}.`
+      "I want to plan a data import into Vorta.",
+      `Source file type: ${importSourceType}.`,
+      `File selected: ${importFileName} (${importFileSize}, ${importFileType || "unknown type"}).`,
+      `Intended update: ${importUpdateTarget}.`,
+      importLinkedEquipmentName
+        ? `Linked equipment: ${importLinkedEquipmentName}.`
         : "Linked equipment: not selected.",
-      sapExportContextNote.trim()
-        ? `Context note: ${sapExportContextNote.trim()}`
+      importContextNote.trim()
+        ? `Context note: ${importContextNote.trim()}`
         : "Context note: not provided.",
-      "This MVP has not imported or parsed the export yet. Ask me what fields should be mapped, validated or checked before updating Vorta risk intelligence.",
+      "This MVP has not imported or parsed the file yet. Ask me what fields should be mapped, validated or checked before updating Vorta risk intelligence.",
     ].join(" ");
 
     setAiInput(contextText);
@@ -1113,37 +1113,37 @@ export function VortaAiCommandBar({
             </div>
           )}
 
-          {/* SAP/export intake panel */}
-          {isSapExportIntakeOpen && (
+          {/* Import data intake panel */}
+          {isImportIntakeOpen && (
             <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold text-blue-100">
-                    Add SAP/export context
+                    Import data into Vorta
                   </p>
                   <p className="mt-0.5 text-[10px] leading-relaxed text-blue-100/60">
-                    Select an export type and tell Vorta what it should update. Import parsing will be connected later.
+                    Select the source file and tell Vorta what it should update. Import parsing will be connected later.
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setIsSapExportIntakeOpen(false);
-                    resetSapExportIntake();
+                    setIsImportIntakeOpen(false);
+                    resetImportIntake();
                   }}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-100/60 transition-colors hover:bg-white/10 hover:text-blue-100"
-                  aria-label="Close SAP export intake"
+                  aria-label="Close import intake"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               <input
-                ref={sapExportInputRef}
+                ref={importInputRef}
                 type="file"
                 accept=".csv,.txt,.xls,.xlsx"
-                onChange={handleSapExportFileChange}
+                onChange={handleImportFileChange}
                 className="hidden"
               />
 
@@ -1153,12 +1153,12 @@ export function VortaAiCommandBar({
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold text-slate-200">
-                        {sapExportFileName || "No export selected"}
+                        {importFileName || "No import file selected"}
                       </p>
                       <p className="mt-0.5 text-[10px] text-slate-500">
-                        {sapExportFileName
-                          ? `${sapExportFileSize} · ${sapExportFileType || "Unknown type"}`
-                          : "CSV, Excel or text export"}
+                        {importFileName
+                          ? `${importFileSize} · ${importFileType || "Unknown type"}`
+                          : "CSV, Excel or text file"}
                       </p>
                     </div>
 
@@ -1166,19 +1166,19 @@ export function VortaAiCommandBar({
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => sapExportInputRef.current?.click()}
+                        onClick={() => importInputRef.current?.click()}
                         className="h-auto gap-2 border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[10px] font-semibold text-blue-100 hover:bg-blue-500/20"
                       >
                         <Upload className="h-3.5 w-3.5" />
-                        Choose export
+                        Choose file
                       </Button>
 
-                      {sapExportFileName && (
+                      {importFileName && (
                         <button
                           type="button"
-                          onClick={resetSapExportIntake}
+                          onClick={resetImportIntake}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-700 text-slate-500 transition-colors hover:border-red-500/40 hover:text-red-300"
-                          aria-label="Remove selected export"
+                          aria-label="Remove selected import file"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1191,8 +1191,8 @@ export function VortaAiCommandBar({
                       Context note
                     </label>
                     <textarea
-                      value={sapExportContextNote}
-                      onChange={(event) => setSapExportContextNote(event.target.value)}
+                      value={importContextNote}
+                      onChange={(event) => setImportContextNote(event.target.value)}
                       placeholder="Example: This is an IW39 export for Building 2 covering the last 90 days. Check repeat faults and overdue actions."
                       rows={3}
                       className="w-full resize-none rounded-lg border border-gray-700 bg-[#141820] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
@@ -1200,20 +1200,20 @@ export function VortaAiCommandBar({
                   </div>
                 </div>
 
-                {/* Export type + intended update selectors */}
+                {/* Source file type + intended update selectors */}
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                   <div className="rounded-lg border border-blue-500/20 bg-[#0f1218] p-3">
                     <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                      Export type
+                      Source file type
                     </label>
                     <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
-                      {SAP_EXPORT_TYPES.map((type) => (
+                      {IMPORT_SOURCE_TYPES.map((type) => (
                         <button
                           key={type}
                           type="button"
-                          onClick={() => setSapExportType(type)}
+                          onClick={() => setImportSourceType(type)}
                           className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition-colors ${
-                            sapExportType === type
+                            importSourceType === type
                               ? "border-blue-500/50 bg-blue-500/15 text-blue-100"
                               : "border-gray-800 bg-[#141820] text-slate-500 hover:border-blue-500/25 hover:text-slate-300"
                           }`}
@@ -1229,13 +1229,13 @@ export function VortaAiCommandBar({
                       Intended update
                     </label>
                     <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
-                      {SAP_EXPORT_TARGETS.map((target) => (
+                      {IMPORT_UPDATE_TARGETS.map((target) => (
                         <button
                           key={target}
                           type="button"
-                          onClick={() => setSapExportTarget(target)}
+                          onClick={() => setImportUpdateTarget(target)}
                           className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition-colors ${
-                            sapExportTarget === target
+                            importUpdateTarget === target
                               ? "border-blue-500/50 bg-blue-500/15 text-blue-100"
                               : "border-gray-800 bg-[#141820] text-slate-500 hover:border-blue-500/25 hover:text-slate-300"
                           }`}
@@ -1256,13 +1256,13 @@ export function VortaAiCommandBar({
                       Optional equipment link
                     </p>
                     <p className="mt-0.5 text-[10px] text-blue-100/60">
-                      Link this export to an asset when it is equipment-specific. Site-wide exports can leave this blank.
+                      Link this import to an asset when it is equipment-specific. Site-wide imports can leave this blank.
                     </p>
                   </div>
 
-                  {sapLinkedEquipmentName && (
+                  {importLinkedEquipmentName && (
                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                      {sapLinkedEquipmentName}
+                      {importLinkedEquipmentName}
                     </span>
                   )}
                 </div>
@@ -1272,9 +1272,9 @@ export function VortaAiCommandBar({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => selectSapEquipment(item)}
+                      onClick={() => selectImportEquipment(item)}
                       className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                        sapLinkedEquipmentId === item.id
+                        importLinkedEquipmentId === item.id
                           ? "border-emerald-400/60 bg-emerald-500/10"
                           : "border-blue-500/20 bg-[#141820] hover:border-blue-400/50 hover:bg-blue-500/10"
                       }`}
@@ -1291,8 +1291,8 @@ export function VortaAiCommandBar({
                   <button
                     type="button"
                     onClick={() => {
-                      setSapEquipmentSearchOpen(true);
-                      setSapEquipmentSearchQuery("");
+                      setImportEquipmentSearchOpen(true);
+                      setImportEquipmentSearchQuery("");
                     }}
                     className="rounded-lg border border-dashed border-blue-500/30 bg-[#141820] px-3 py-2 text-left transition-colors hover:border-blue-400/60 hover:bg-blue-500/10"
                   >
@@ -1305,25 +1305,25 @@ export function VortaAiCommandBar({
                   </button>
                 </div>
 
-                {sapEquipmentSearchOpen && (
+                {importEquipmentSearchOpen && (
                   <div className="mt-3 rounded-lg border border-blue-500/20 bg-[#141820] p-3">
                     <input
                       type="text"
-                      value={sapEquipmentSearchQuery}
-                      onChange={(event) => setSapEquipmentSearchQuery(event.target.value)}
+                      value={importEquipmentSearchQuery}
+                      onChange={(event) => setImportEquipmentSearchQuery(event.target.value)}
                       placeholder="Search equipment, SAP number, area or OEM..."
                       className="mb-3 w-full rounded-lg border border-gray-700 bg-[#0f1218] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
                       autoFocus
                     />
 
-                    {sapEquipmentSearchQuery.trim() ? (
-                      searchedSapEquipment.length > 0 ? (
+                    {importEquipmentSearchQuery.trim() ? (
+                      searchedImportEquipment.length > 0 ? (
                         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                          {searchedSapEquipment.map((item) => (
+                          {searchedImportEquipment.map((item) => (
                             <button
                               key={item.id}
                               type="button"
-                              onClick={() => selectSapEquipment(item)}
+                              onClick={() => selectImportEquipment(item)}
                               className="rounded-lg border border-gray-800 bg-[#0f1218] px-3 py-2 text-left transition-colors hover:border-blue-400/50 hover:bg-blue-500/10"
                             >
                               <span className="block truncate text-[11px] font-semibold text-slate-100">
@@ -1351,27 +1351,27 @@ export function VortaAiCommandBar({
                 )}
               </div>
 
-              {sapExportMessage && (
+              {importMessage && (
                 <div className="mt-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
                   <p className="text-[10px] leading-relaxed text-yellow-100/80">
-                    {sapExportMessage}
+                    {importMessage}
                   </p>
                 </div>
               )}
 
               <div className="mt-3 flex flex-col gap-2 border-t border-blue-500/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[9px] leading-relaxed text-blue-100/50">
-                  MVP placeholder only: the export is not uploaded, stored, parsed or imported yet. This captures mapping context for the AI workflow.
+                  MVP placeholder only: the file is not uploaded, stored, parsed or imported yet. This captures mapping context for the AI workflow.
                 </p>
 
                 <Button
                   type="button"
-                  onClick={sendSapExportContextToVorta}
-                  disabled={!sapExportFileName}
+                  onClick={sendImportContextToVorta}
+                  disabled={!importFileName}
                   className="h-auto gap-2 bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  Send to Vorta
+                  Send import context
                 </Button>
               </div>
             </div>
