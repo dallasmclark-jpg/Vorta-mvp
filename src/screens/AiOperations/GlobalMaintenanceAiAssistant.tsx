@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bot, ChevronDown, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { supabase } from "../../lib/supabaseClient";
 import {
   getAreaRiskProfiles,
   getEquipmentList,
@@ -24,6 +25,7 @@ type VortaAiRole =
   | "contractor";
 
 type GlobalAiIntent =
+  | "shift-skills-gap"
   | "daily-priority"
   | "site-risk"
   | "area-risk"
@@ -75,6 +77,83 @@ interface GlobalAiMessage {
   text?: string;
   loading?: boolean;
   answer?: GlobalAiAnswer;
+}
+
+// ─── Shift skills types ───────────────────────────────────────────────────────
+
+interface SkillsMatrixEngineer {
+  id: string;
+  full_name: string;
+  discipline: string;
+  shift_pattern: string;
+  department_name?: string | null;
+  skills_score?: number;
+  risk_level?: string;
+  training_count?: number;
+  critical_knowledge_holder?: boolean;
+}
+
+interface SkillsMatrixSkill {
+  id: string;
+  name: string;
+  category: string;
+  is_critical: boolean;
+}
+
+interface SkillsMatrixAssignment {
+  engineer_id: string;
+  skill_id: string;
+  validated_rating: number | null;
+  manager_rating: number | null;
+  self_rating: number | null;
+  training_required: boolean;
+  verification_status?: string;
+}
+
+interface SkillsMatrixGap {
+  id: string;
+  skill_name: string;
+  skill_category: string;
+  department_name: string | null;
+  target_rating: number;
+  current_average_rating: number;
+  engineers_at_or_above_target: number;
+  engineers_below_target: number;
+  single_point_of_failure: boolean;
+  risk_level: string;
+  recommendation: string;
+  snapshot_date: string;
+}
+
+interface EngineerAvailabilityRow {
+  id: string;
+  full_name: string;
+  discipline: string | null;
+  shift_pattern: string | null;
+  availability_status: string | null;
+}
+
+interface ShiftSkillGap {
+  skillName: string;
+  category: string;
+  riskLevel: "critical" | "high" | "medium";
+  targetRating: number;
+  competentCount: number;
+  onShiftCount: number;
+  competentEngineers: string[];
+  belowTargetEngineers: string[];
+  trainingRequiredEngineers: string[];
+  singlePointOfFailure: boolean;
+  recommendation: string;
+}
+
+interface ShiftSkillsContext {
+  shiftLabel: string;
+  shiftWindow: string;
+  onShiftEngineers: SkillsMatrixEngineer[];
+  gaps: ShiftSkillGap[];
+  confidenceNote: string;
+  sourceStatus: "live-shift" | "shift-pattern" | "fallback";
 }
 
 // ─── Role profiles ────────────────────────────────────────────────────────────
@@ -226,10 +305,234 @@ function sourceLabel(chunk: EquipmentKnowledgeChunk): string {
   return `${chunk.sourceSystem}: ${chunk.title}${revision}, ${section}`;
 }
 
+// ─── Shift skills helpers ─────────────────────────────────────────────────────
+
+function getCurrentShiftInfo(now = new Date()): { shiftLabel: string; shiftWindow: string; isDayShift: boolean } {
+  const hour = now.getHours();
+  const isDayShift = hour >= 6 && hour < 18;
+  return {
+    shiftLabel: isDayShift ? "Day shift" : "Night shift",
+    shiftWindow: isDayShift ? "06:00-18:00" : "18:00-06:00",
+    isDayShift,
+  };
+}
+
+function getBestRating(assignment: SkillsMatrixAssignment | undefined): number | null {
+  if (!assignment) return null;
+  return assignment.validated_rating ?? assignment.manager_rating ?? assignment.self_rating ?? null;
+}
+
+function isUnavailable(status: string | null | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return (
+    value.includes("unavailable") ||
+    value.includes("off") ||
+    value.includes("leave") ||
+    value.includes("sick") ||
+    value.includes("away")
+  );
+}
+
+function isExplicitlyOnShift(status: string | null | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return (
+    value.includes("on shift") ||
+    value.includes("on-site") ||
+    value.includes("onsite") ||
+    value.includes("available") ||
+    value.includes("active")
+  );
+}
+
+function matchesCurrentShiftPattern(shiftPattern: string | null | undefined, isDayShift: boolean): boolean {
+  const value = (shiftPattern ?? "").toLowerCase();
+  if (!value) return false;
+  if (isDayShift && (value.includes("day") || value.includes("days"))) return true;
+  if (!isDayShift && (value.includes("night") || value.includes("nights"))) return true;
+  if (
+    value.includes("team a") ||
+    value.includes("team b") ||
+    value.includes("team c") ||
+    value.includes("team d") ||
+    value.includes("continental")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function fetchShiftSkillsContext(): Promise<ShiftSkillsContext> {
+  const { shiftLabel, shiftWindow, isDayShift } = getCurrentShiftInfo();
+
+  const { data, error } = await supabase.functions.invoke("skills-matrix-data");
+
+  if (error || !data) {
+    return {
+      shiftLabel,
+      shiftWindow,
+      onShiftEngineers: [],
+      gaps: [],
+      confidenceNote: "Skills matrix data could not be loaded.",
+      sourceStatus: "fallback",
+    };
+  }
+
+  const engineers = (data.engineers ?? []) as SkillsMatrixEngineer[];
+  const skills = (data.heatmapSkills ?? []) as SkillsMatrixSkill[];
+  const assignments = (data.heatmapAssignments ?? []) as SkillsMatrixAssignment[];
+  const skillGaps = (data.skillGaps ?? []) as SkillsMatrixGap[];
+
+  const { data: availabilityRows } = await supabase
+    .from("engineers")
+    .select("id, full_name, discipline, shift_pattern, availability_status");
+
+  const availabilityById = new Map(
+    ((availabilityRows ?? []) as EngineerAvailabilityRow[]).map((row) => [row.id, row]),
+  );
+
+  const explicitOnShift = engineers.filter((engineer) => {
+    const availability = availabilityById.get(engineer.id);
+    return isExplicitlyOnShift(availability?.availability_status) && !isUnavailable(availability?.availability_status);
+  });
+
+  const patternMatched = engineers.filter((engineer) => {
+    const availability = availabilityById.get(engineer.id);
+    const shiftPattern = availability?.shift_pattern ?? engineer.shift_pattern;
+    return !isUnavailable(availability?.availability_status) && matchesCurrentShiftPattern(shiftPattern, isDayShift);
+  });
+
+  const onShiftEngineers =
+    explicitOnShift.length > 0
+      ? explicitOnShift
+      : patternMatched.length > 0
+        ? patternMatched
+        : engineers.filter((engineer) => {
+            const availability = availabilityById.get(engineer.id);
+            return !isUnavailable(availability?.availability_status);
+          });
+
+  const sourceStatus: ShiftSkillsContext["sourceStatus"] =
+    explicitOnShift.length > 0 ? "live-shift" : patternMatched.length > 0 ? "shift-pattern" : "fallback";
+
+  const confidenceNote =
+    sourceStatus === "live-shift"
+      ? "Using engineer availability status for today's shift."
+      : sourceStatus === "shift-pattern"
+        ? "Using shift_pattern because live attendance/rota status is not fully available."
+        : "No clear live shift roster was found, so this uses available engineers as a fallback.";
+
+  const onShiftIds = new Set(onShiftEngineers.map((engineer) => engineer.id));
+  const onShiftNameById = new Map(onShiftEngineers.map((engineer) => [engineer.id, engineer.full_name]));
+
+  const assignmentsBySkill = new Map<string, SkillsMatrixAssignment[]>();
+  assignments.forEach((assignment) => {
+    if (!onShiftIds.has(assignment.engineer_id)) return;
+    const existing = assignmentsBySkill.get(assignment.skill_id) ?? [];
+    existing.push(assignment);
+    assignmentsBySkill.set(assignment.skill_id, existing);
+  });
+
+  const criticalSkills = skills.filter((skill) => {
+    if (skill.is_critical) return true;
+    return skillGaps.some((gap) => gap.skill_name === skill.name && ["critical", "high"].includes(gap.risk_level?.toLowerCase?.() ?? ""));
+  });
+
+  const gaps = criticalSkills
+    .map((skill) => {
+      const gapRow = skillGaps.find((gap) => gap.skill_name === skill.name);
+      const targetRating = gapRow?.target_rating ?? 4;
+      const skillAssignments = assignmentsBySkill.get(skill.id) ?? [];
+
+      const competentEngineers = skillAssignments
+        .filter((assignment) => {
+          const rating = getBestRating(assignment);
+          return rating != null && rating >= targetRating;
+        })
+        .map((assignment) => onShiftNameById.get(assignment.engineer_id))
+        .filter(Boolean) as string[];
+
+      const belowTargetEngineers = skillAssignments
+        .filter((assignment) => {
+          const rating = getBestRating(assignment);
+          return rating == null || rating < targetRating;
+        })
+        .map((assignment) => onShiftNameById.get(assignment.engineer_id))
+        .filter(Boolean) as string[];
+
+      const trainingRequiredEngineers = skillAssignments
+        .filter((assignment) => assignment.training_required)
+        .map((assignment) => onShiftNameById.get(assignment.engineer_id))
+        .filter(Boolean) as string[];
+
+      const singlePointOfFailure = competentEngineers.length === 1 || Boolean(gapRow?.single_point_of_failure);
+      const riskLevel: ShiftSkillGap["riskLevel"] =
+        competentEngineers.length === 0
+          ? "critical"
+          : singlePointOfFailure
+            ? "high"
+            : "medium";
+
+      return {
+        skillName: skill.name,
+        category: skill.category,
+        riskLevel,
+        targetRating,
+        competentCount: competentEngineers.length,
+        onShiftCount: onShiftEngineers.length,
+        competentEngineers,
+        belowTargetEngineers,
+        trainingRequiredEngineers,
+        singlePointOfFailure,
+        recommendation:
+          gapRow?.recommendation ??
+          (competentEngineers.length === 0
+            ? `No on-shift engineer is validated to target for ${skill.name}. Arrange cover or escalation.`
+            : singlePointOfFailure
+              ? `Only one on-shift engineer is validated to target for ${skill.name}. Confirm backup or contractor fallback.`
+              : `Review training and validation coverage for ${skill.name}.`),
+      };
+    })
+    .filter(
+      (gap) =>
+        gap.competentCount === 0 ||
+        gap.singlePointOfFailure ||
+        gap.trainingRequiredEngineers.length > 0 ||
+        gap.belowTargetEngineers.length > 0,
+    )
+    .sort((a, b) => {
+      const riskOrder = { critical: 0, high: 1, medium: 2 };
+      return riskOrder[a.riskLevel] - riskOrder[b.riskLevel] || a.skillName.localeCompare(b.skillName);
+    })
+    .slice(0, 6);
+
+  return {
+    shiftLabel,
+    shiftWindow,
+    onShiftEngineers,
+    gaps,
+    confidenceNote,
+    sourceStatus,
+  };
+}
+
+function formatEngineerList(names: string[], fallback: string): string {
+  if (names.length === 0) return fallback;
+  if (names.length <= 3) return names.join(", ");
+  return `${names.slice(0, 3).join(", ")} +${names.length - 3} more`;
+}
+
 // ─── Intent classification ────────────────────────────────────────────────────
 
 function classifyGlobalQuestion(question: string): GlobalAiIntent {
   const q = question.toLowerCase();
+
+  // Must be checked before daily-priority because "today" would match there first
+  if (
+    (q.includes("skill") || q.includes("skills") || q.includes("competency") || q.includes("competence") || q.includes("gap") || q.includes("gaps")) &&
+    (q.includes("shift") || q.includes("today") || q.includes("on site") || q.includes("onsite") || q.includes("on shift") || q.includes("cover"))
+  ) {
+    return "shift-skills-gap";
+  }
 
   if (
     q.includes("first") ||
@@ -322,7 +625,6 @@ function classifyGlobalQuestion(question: string): GlobalAiIntent {
 
 function findMentionedArea(question: string, areaRisks: AreaRiskProfile[]): AreaRiskProfile | undefined {
   const q = question.toLowerCase();
-
   return areaRisks.find((area) => {
     const areaName = area.area.toLowerCase();
     return q.includes(areaName) || areaName.split(/[\s/-]+/).some((part) => part.length > 2 && q.includes(part));
@@ -331,11 +633,9 @@ function findMentionedArea(question: string, areaRisks: AreaRiskProfile[]): Area
 
 function findMentionedEquipment(question: string, equipment: EquipmentListItem[]): EquipmentListItem | undefined {
   const q = question.toLowerCase();
-
   return equipment.find((item) => {
     const name = item.name.toLowerCase();
     const assetNumber = item.assetNumber?.toLowerCase?.() ?? "";
-
     return (
       q.includes(name) ||
       Boolean(assetNumber && q.includes(assetNumber)) ||
@@ -346,6 +646,7 @@ function findMentionedEquipment(question: string, equipment: EquipmentListItem[]
 
 function getIntentTitle(intent: GlobalAiIntent): string {
   switch (intent) {
+    case "shift-skills-gap": return "Shift skills gap";
     case "daily-priority":   return "Daily priority";
     case "site-risk":        return "Site risk";
     case "area-risk":        return "Area risk";
@@ -449,6 +750,7 @@ function buildGlobalAnswer(
   equipment: EquipmentListItem[],
   knowledgeChunks: EquipmentKnowledgeChunk[],
   roleProfile: RoleResponseProfile,
+  shiftSkillsContext: ShiftSkillsContext | null,
 ): GlobalAiAnswer {
   const intent = classifyGlobalQuestion(question);
   const mentionedArea = findMentionedArea(question, areaRisks);
@@ -475,6 +777,52 @@ function buildGlobalAnswer(
   let directAnswer = "";
 
   switch (intent) {
+    case "shift-skills-gap": {
+      if (!shiftSkillsContext) {
+        directAnswer = "I cannot check shift skills gaps because shift skills context is not available.";
+        missingData.push("Shift skills context was not loaded.");
+        sources.push("Skills matrix data");
+        break;
+      }
+
+      const gaps = shiftSkillsContext.gaps;
+      const onShiftCount = shiftSkillsContext.onShiftEngineers.length;
+
+      if (gaps.length === 0) {
+        directAnswer = `${shiftSkillsContext.shiftLabel} (${shiftSkillsContext.shiftWindow}) has no critical skills gaps visible from the current skills matrix data.`;
+        evidence.push(`${onShiftCount} engineer${onShiftCount === 1 ? "" : "s"} included in the shift skills check.`);
+        evidence.push(shiftSkillsContext.confidenceNote);
+        recommendedActions.push("Keep the shift skills view monitored and confirm live attendance before handover.");
+        sources.push("Skills matrix data", "Engineer availability / shift pattern");
+        break;
+      }
+
+      const criticalCount = gaps.filter((gap) => gap.riskLevel === "critical").length;
+      const highCount = gaps.filter((gap) => gap.riskLevel === "high").length;
+      const topGap = gaps[0];
+
+      directAnswer = `${shiftSkillsContext.shiftLabel} (${shiftSkillsContext.shiftWindow}) has ${gaps.length} skills coverage gap${gaps.length === 1 ? "" : "s"} from the current skills matrix. ${criticalCount} critical and ${highCount} high. Top gap: ${topGap.skillName}.`;
+
+      evidence.push(`${onShiftCount} engineer${onShiftCount === 1 ? "" : "s"} included in today's shift skills check.`);
+      evidence.push(shiftSkillsContext.confidenceNote);
+
+      gaps.slice(0, 4).forEach((gap) => {
+        const competent = formatEngineerList(gap.competentEngineers, "no validated on-shift engineer");
+        const belowTarget = formatEngineerList(gap.belowTargetEngineers, "none listed below target");
+        const trainingRequired = formatEngineerList(gap.trainingRequiredEngineers, "none marked training required");
+        evidence.push(
+          `${gap.skillName}: ${gap.competentCount}/${gap.onShiftCount} on-shift engineers at target ${gap.targetRating}. Competent: ${competent}. Below target: ${belowTarget}. Training required: ${trainingRequired}.`,
+        );
+      });
+
+      recommendedActions.push(`Cover ${topGap.skillName} first: ${topGap.recommendation}`);
+      recommendedActions.push("Check the Skills Matrix for the on-shift engineers and confirm any single-point failure before handover.");
+      recommendedActions.push("Arrange contractor fallback or engineer reallocation for any zero-cover critical skill.");
+
+      sources.push("Skills matrix data", "Engineer skills", "Engineer availability / shift pattern");
+      break;
+    }
+
     case "daily-priority": {
       if (selectedEquipment) {
         directAnswer = `Review ${selectedEquipment.name} first. It is the highest-priority asset based on the current equipment risk list at ${selectedEquipment.riskScore}% ${selectedEquipment.riskLevel} risk.`;
@@ -593,12 +941,23 @@ function buildGlobalAnswer(
     }
 
     case "skills-risk": {
-      directAnswer = "Skills risk should be reviewed by checking whether the highest-risk equipment has enough competent engineers and no single-point dependency.";
-      if (selectedEquipment) evidence.push(`${selectedEquipment.name} should be checked for validated skill coverage.`);
-      if (selectedArea) evidence.push(`${selectedArea.area} is ${selectedArea.riskScore}% ${selectedArea.riskLevel} risk.`);
-      recommendedActions.push("Open the equipment skills tab and check validated engineer coverage.");
-      recommendedActions.push("Create training or contractor fallback actions for any single-point skill gaps.");
-      sources.push("Equipment risk list", "Skills coverage data");
+      directAnswer = "Skills risk should be reviewed from the skills matrix, not just the equipment risk list.";
+      if (shiftSkillsContext) {
+        const gaps = shiftSkillsContext.gaps;
+        evidence.push(`${shiftSkillsContext.onShiftEngineers.length} engineer${shiftSkillsContext.onShiftEngineers.length === 1 ? "" : "s"} included in the current shift skills context.`);
+        evidence.push(shiftSkillsContext.confidenceNote);
+        if (gaps.length > 0) {
+          evidence.push(`${gaps.length} shift skills gap${gaps.length === 1 ? "" : "s"} found. Top gap: ${gaps[0].skillName}.`);
+          recommendedActions.push(`Review ${gaps[0].skillName} first and confirm competent cover.`);
+        } else {
+          evidence.push("No current shift skills gaps were returned by the skills matrix check.");
+          recommendedActions.push("Confirm live attendance and keep monitoring critical skills coverage.");
+        }
+      } else {
+        missingData.push("Shift skills context is not available.");
+      }
+      recommendedActions.push("Open Skills Matrix and filter by critical skills, training required and single point of failure.");
+      sources.push("Skills matrix data", "Engineer skills", "Skill gap snapshots");
       break;
     }
 
@@ -738,6 +1097,7 @@ export function GlobalMaintenanceAiAssistant({
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [areaRisks, setAreaRisks] = useState<AreaRiskProfile[]>([]);
   const [equipment, setEquipment] = useState<EquipmentListItem[]>([]);
+  const [shiftSkillsContext, setShiftSkillsContext] = useState<ShiftSkillsContext | null>(null);
   const [loadingContext, setLoadingContext] = useState(false);
   const [contextReady, setContextReady] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState("");
@@ -766,12 +1126,13 @@ export function GlobalMaintenanceAiAssistant({
     setLoadingContext(true);
     setContextReady(false);
 
-    Promise.all([getSiteRiskProfile(), getAreaRiskProfiles(), getEquipmentList()])
-      .then(([nextSiteRisk, nextAreaRisks, nextEquipment]) => {
+    Promise.all([getSiteRiskProfile(), getAreaRiskProfiles(), getEquipmentList(), fetchShiftSkillsContext()])
+      .then(([nextSiteRisk, nextAreaRisks, nextEquipment, nextShiftSkillsContext]) => {
         if (!mounted) return;
         setSiteRisk(nextSiteRisk);
         setAreaRisks(nextAreaRisks);
         setEquipment(nextEquipment);
+        setShiftSkillsContext(nextShiftSkillsContext);
         setLoadingContext(false);
         setContextReady(true);
       })
@@ -808,7 +1169,7 @@ export function GlobalMaintenanceAiAssistant({
     const topAsset = mentionedAsset ?? [...equipment].sort((a, b) => b.riskScore - a.riskScore)[0];
 
     const knowledgeQuery =
-      intent === "evidence" || intent === "equipment-risk" || intent === "pm-risk" || intent === "spares-risk" || intent === "skills-risk"
+      intent === "evidence" || intent === "equipment-risk" || intent === "pm-risk" || intent === "spares-risk"
         ? `${trimmed} ${topAsset?.name ?? ""} ${topAsset?.assetNumber ?? ""}`.trim()
         : trimmed;
 
@@ -817,7 +1178,7 @@ export function GlobalMaintenanceAiAssistant({
       new Promise((resolve) => window.setTimeout(resolve, 700)),
     ]);
 
-    const answer = buildGlobalAnswer(trimmed, siteRisk, areaRisks, equipment, knowledgeChunks, roleProfile);
+    const answer = buildGlobalAnswer(trimmed, siteRisk, areaRisks, equipment, knowledgeChunks, roleProfile, shiftSkillsContext);
 
     setMessages((prev) =>
       prev.map((message) =>
@@ -939,7 +1300,9 @@ export function GlobalMaintenanceAiAssistant({
               ) : (
                 <>
                   <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                  {roleProfile.contextLine}
+                  {shiftSkillsContext
+                    ? `${roleProfile.contextLine} Shift skills context loaded: ${shiftSkillsContext.shiftLabel}.`
+                    : roleProfile.contextLine}
                 </>
               )}
             </div>
