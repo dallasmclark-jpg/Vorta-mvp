@@ -735,77 +735,83 @@ export function PlannerDashboardSection() {
         <KpiCard label="Total Labour Req." value={loading ? "—" : `${totalLabour}h`} icon={Package}      accent="bg-amber-500/15 text-amber-400"    />
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_440px]">
-
-        {/* LEFT — Planning Queue + Work Pack Summary */}
-        <div className="flex flex-col gap-6">
-
-          {/* Planning Queue */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-slate-200">Interventions Awaiting Planning</h2>
-            {loading ? (
-              <div className="flex items-center justify-center rounded-xl border border-gray-800 bg-[#0d1117] py-12">
-                <svg className="h-5 w-5 animate-spin text-slate-600" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-              </div>
-            ) : plans.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-gray-800 bg-[#0d1117] py-12 text-center">
-                <p className="text-sm font-semibold text-slate-400">No intervention plans found</p>
-                <p className="mt-1 text-xs text-slate-600">Plans are generated from area risk analysis.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {plans.map((plan) => {
-                  const labourHrs = plan.resourceRequirements.reduce((s, r) => s + (r.estimatedHours ?? 0), 0);
-                  const active = plan.area === selectedArea;
-                  return (
-                    <button
-                      key={plan.area}
-                      onClick={() => { setSelectedArea(plan.area); setProposedDate(""); }}
-                      className={`flex items-center justify-between gap-4 rounded-xl border px-5 py-4 text-left transition-colors ${
-                        active ? "border-blue-500/40 bg-blue-500/8" : "border-gray-800 bg-[#0d1117] hover:border-gray-700"
-                      }`}
-                    >
-                      <div className="w-36 shrink-0">
-                        <p className="text-sm font-semibold text-slate-100">{plan.area}</p>
-                        <p className={`text-xs font-semibold ${riskColor(plan.currentRiskLevel)}`}>
-                          Risk {plan.currentRiskScore}
-                        </p>
-                      </div>
-                      <div className="min-w-0 flex-1 hidden sm:block">
-                        <p className="truncate text-sm text-slate-300">{plan.recommendedOption}</p>
-                        <p className="text-xs text-slate-500">{plan.recommendedDurationHours} hrs</p>
-                      </div>
-                      <div className="flex items-center gap-5 shrink-0 text-center">
-                        <div>
-                          <p className="text-sm font-bold text-emerald-400">▼{plan.recommendedReduction}</p>
-                          <p className="text-[10px] text-slate-600">Reduction</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-200">{plan.workItems.length}</p>
-                          <p className="text-[10px] text-slate-600">Items</p>
-                        </div>
-                        {labourHrs > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-slate-200">{labourHrs}h</p>
-                            <p className="text-[10px] text-slate-600">Labour</p>
-                          </div>
-                        )}
-                        <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                          Awaiting planning
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+      {/* Interventions Awaiting Planning — full width */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-slate-200">Interventions Awaiting Planning</h2>
+        {loading ? (
+          <div className="flex items-center justify-center rounded-xl border border-gray-800 bg-[#0d1117] py-12">
+            <svg className="h-5 w-5 animate-spin text-slate-600" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
           </div>
+        ) : plans.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-gray-800 bg-[#0d1117] py-12 text-center">
+            <p className="text-sm font-semibold text-slate-400">No intervention plans found</p>
+            <p className="mt-1 text-xs text-slate-600">Plans are generated from area risk analysis.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {plans.map((plan) => {
+              const labourHrs = plan.resourceRequirements.reduce((s, r) => s + (r.estimatedHours ?? 0), 0);
+              const active = plan.area === selectedArea;
+              return (
+                <button
+                  key={plan.area}
+                  onClick={() => { setSelectedArea(plan.area); setProposedDate(""); }}
+                  className={`flex items-center justify-between gap-4 rounded-xl border px-5 py-4 text-left transition-colors ${
+                    active ? "border-blue-500/40 bg-blue-500/8" : "border-gray-800 bg-[#0d1117] hover:border-gray-700"
+                  }`}
+                >
+                  <div className="w-36 shrink-0">
+                    <p className="text-sm font-semibold text-slate-100">{plan.area}</p>
+                    <p className={`text-xs font-semibold ${riskColor(plan.currentRiskLevel)}`}>
+                      Risk {plan.currentRiskScore}
+                    </p>
+                  </div>
+                  <div className="min-w-0 flex-1 hidden sm:block">
+                    <p className="truncate text-sm text-slate-300">{plan.recommendedOption}</p>
+                    <p className="text-xs text-slate-500">{plan.recommendedDurationHours} hrs</p>
+                  </div>
+                  <div className="flex items-center gap-5 shrink-0 text-center">
+                    <div>
+                      <p className="text-sm font-bold text-emerald-400">▼{plan.recommendedReduction}</p>
+                      <p className="text-[10px] text-slate-600">Reduction</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">{plan.workItems.length}</p>
+                      <p className="text-[10px] text-slate-600">Items</p>
+                    </div>
+                    {labourHrs > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold text-slate-200">{labourHrs}h</p>
+                        <p className="text-[10px] text-slate-600">Labour</p>
+                      </div>
+                    )}
+                    <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                      Awaiting planning
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-          {/* Work Pack Summary */}
+      {/* Full-width execution window calendar */}
+      <PlannerWeekCalendar
+        readinessScores={areaReadiness}
+        selectedDate={proposedDate}
+        selectedShift={proposedShift}
+        onSelectShift={handleShiftSelect}
+      />
+
+      {/* Lower two-column section */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
+
+        {/* LEFT — Work Pack Summary */}
+        <div className="flex flex-col gap-6">
           {selectedPlan && (
             <div>
               <div className="mb-3 flex items-center gap-2">
@@ -817,32 +823,10 @@ export function PlannerDashboardSection() {
           )}
         </div>
 
-        {/* RIGHT — Calendar + Execution Readiness + Daily Load + Resource Strategy + Best Windows */}
+        {/* RIGHT — Execution Readiness + Daily Load + Resource Strategy + Best Windows */}
         <div className="flex flex-col gap-5">
 
-          {/* Area selector */}
-          {plans.length > 1 && (
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 shrink-0">Area</span>
-              <select
-                value={selectedArea ?? ""}
-                onChange={(e) => { setSelectedArea(e.target.value); setProposedDate(""); }}
-                className="h-8 flex-1 rounded-lg border border-gray-700 bg-[#0b0e14] px-3 text-xs text-slate-200 outline-none transition-colors focus:border-blue-500/50"
-              >
-                {plans.map((p) => <option key={p.area} value={p.area}>{p.area}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Week calendar — replaces date input + shift buttons */}
-          <PlannerWeekCalendar
-            readinessScores={areaReadiness}
-            selectedDate={proposedDate}
-            selectedShift={proposedShift}
-            onSelectShift={handleShiftSelect}
-          />
-
-          {/* Execution Readiness (renamed) */}
+          {/* Execution Readiness */}
           <div className="rounded-xl border border-gray-800 bg-[#0d1117] p-5">
             <h2 className="mb-4 text-sm font-semibold text-slate-200">Execution Readiness</h2>
 
