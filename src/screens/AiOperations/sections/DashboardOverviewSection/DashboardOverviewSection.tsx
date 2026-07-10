@@ -445,17 +445,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <div className="flex flex-col gap-5">
                     <div className="flex min-h-7 flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-3">
-                        {previousRiskPlanArea && (
-                          <button
-                            type="button"
-                            disabled={riskReductionPlanLoading}
-                            onClick={handleLoadPreviousRiskArea}
-                            className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
-                          >
-                            ← Previous area: {previousRiskPlanArea}
-                          </button>
-                        )}
-
                         {siteRisk?.highestArea &&
                           riskReductionPlan.highestArea !== siteRisk.highestArea &&
                           previousRiskPlanArea !== siteRisk.highestArea && (
@@ -762,47 +751,73 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         )}
                       </div>
 
-                      {riskReductionPlan.nextArea ? (
-                      <div className="col-span-2 flex items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-blue-400">
-                            Next recommended area
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-slate-100">
-                            {riskReductionPlan.nextArea}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Risk {riskReductionPlan.nextAreaRisk} ·{" "}
-                            {riskReductionPlan.nextAreaLevel}
-                          </p>
+                      <div
+                        className={`col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3 ${
+                          riskReductionPlan.nextArea
+                            ? "border-blue-500/20 bg-blue-500/5"
+                            : "border-gray-800 bg-[#0d1117]"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          {riskReductionPlan.nextArea ? (
+                            <>
+                              <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                                Next recommended area
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-slate-100">
+                                {riskReductionPlan.nextArea}
+                              </p>
+
+                              <p className="text-xs text-slate-500">
+                                Risk {riskReductionPlan.nextAreaRisk} ·{" "}
+                                {riskReductionPlan.nextAreaLevel}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                Area review
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-slate-300">
+                                All ranked areas reviewed
+                              </p>
+                            </>
+                          )}
                         </div>
 
-                        <button
-                          type="button"
-                          disabled={riskReductionPlanLoading}
-                          onClick={() =>
-                            void handleLoadRiskReductionPlan(
-                              riskReductionPlan.nextArea,
-                              "forward",
-                            )
-                          }
-                          className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
-                        >
-                          View plan →
-                        </button>
-                      </div>
-                      ) : (
-                      <div className="col-span-2 flex items-center rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                            Area review
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-slate-300">
-                            All ranked areas reviewed
-                          </p>
+                        <div className="flex shrink-0 items-center gap-4">
+                          {previousRiskPlanArea && (
+                            <button
+                              type="button"
+                              disabled={riskReductionPlanLoading}
+                              onClick={handleLoadPreviousRiskArea}
+                              title={`Return to ${previousRiskPlanArea}`}
+                              aria-label={`Return to previous area: ${previousRiskPlanArea}`}
+                              className="text-xs font-semibold text-slate-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              ← Previous area
+                            </button>
+                          )}
+
+                          {riskReductionPlan.nextArea && (
+                            <button
+                              type="button"
+                              disabled={riskReductionPlanLoading}
+                              onClick={() =>
+                                void handleLoadRiskReductionPlan(
+                                  riskReductionPlan.nextArea,
+                                  "forward",
+                                )
+                              }
+                              className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              Next area →
+                            </button>
+                          )}
                         </div>
                       </div>
-                      )}
                     </div>
                   </div>
                 )}
