@@ -400,6 +400,7 @@ export const EquipmentSection = (): JSX.Element => {
   const [expandedId, setExpandedId] = useState<string>("");
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Keep local filter in sync with URL whenever the area param changes (e.g. navigated from dashboard)
   useEffect(() => {
@@ -412,12 +413,35 @@ export const EquipmentSection = (): JSX.Element => {
   const areaChipLabel = activeArea ? (resolveBuilding(activeArea)?.label ?? activeArea) : "";
 
   useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setLoadError(null);
+
     getEquipmentList()
       .then((items) => {
+        if (cancelled) return;
         setEquipmentList(items);
-        if (items.length > 0) setExpandedId(items[0].id);
+        if (items.length > 0) {
+          setExpandedId((current) =>
+            current && items.some((item) => item.id === current) ? current : items[0].id,
+          );
+        } else {
+          setExpandedId("");
+        }
       })
-      .finally(() => setLoading(false));
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Equipment list load failed:", error);
+        setEquipmentList([]);
+        setExpandedId("");
+        setLoadError("Equipment data could not be loaded. Refresh the page or try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   const filtered = useMemo(() => {
@@ -598,8 +622,17 @@ export const EquipmentSection = (): JSX.Element => {
             <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
             Loading equipment...
           </div>
+        ) : loadError ? (
+          <div className="px-5 py-10 text-center">
+            <p className="text-sm font-medium text-red-400">Equipment data could not be loaded.</p>
+            <p className="mt-1 text-xs text-slate-500">Refresh the page or try again.</p>
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-slate-500">No equipment found.</div>
+          <div className="px-5 py-10 text-center">
+            <p className="text-sm text-slate-400">
+              {activeArea ? `No equipment is assigned to ${areaChipLabel}.` : "No equipment found."}
+            </p>
+          </div>
         ) : (
           filtered.map((item, index) => {
             const isExpanded = expandedId === item.id;

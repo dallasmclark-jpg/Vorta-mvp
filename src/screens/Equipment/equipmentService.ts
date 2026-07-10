@@ -631,45 +631,48 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
 }
 
 export async function getEquipmentList(): Promise<EquipmentListItem[]> {
-  const { data, error } = await supabase
-    .from("equipment_assets")
-    .select(`
-      id,
-      equipment_code,
-      name,
-      equipment_type,
-      area,
-      oem,
-      model,
-      criticality,
-      status,
-      image_url,
-      equipment_risk_profiles (
-        risk_score,
-        risk_level,
-        pm_backlog_pct,
-        asset_criticality_pct,
-        calibration_pct,
-        skills_pct,
-        spares_pct,
-        calibration_overdue_count,
-        overdue_pm_count,
-        open_work_order_count,
-        repeat_breakdown_count,
-        single_point_skill_gap,
-        critical_spares_missing,
-        risk_summary,
-        priority_action
-      )
-    `)
-    .order("name");
+  try {
+    const { data, error } = await supabase.rpc("vorta_get_demo_equipment_risk_list");
 
-  if (error || !data || data.length === 0) {
-    if (error) console.warn("equipment_assets fetch failed, using mock fallback:", error.message);
-    return MOCK_LIST;
+    if (error) {
+      console.warn("vorta_get_demo_equipment_risk_list failed:", error.message);
+      return [];
+    }
+
+    if (!data) {
+      return [];
+    }
+
+    return data.map((row: any): EquipmentListItem => {
+      const riskScore = row.risk_score ?? 0;
+      const riskLevel = (row.risk_level ?? "Minimal") as EquipmentListItem["riskLevel"];
+
+      const breakdown = [
+        { label: "PM Backlog",        pct: row.pm_backlog_pct ?? 0,        color: "#f97316", dotClass: "bg-orange-500" },
+        { label: "Asset Criticality", pct: row.asset_criticality_pct ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
+        { label: "Calibration",       pct: row.calibration_pct ?? 0,       color: "#06b6d4", dotClass: "bg-cyan-400"   },
+        { label: "Skills",            pct: row.skills_pct ?? 0,            color: "#eab308", dotClass: "bg-yellow-400" },
+        { label: "Spares",            pct: row.spares_pct ?? 0,            color: "#6366f1", dotClass: "bg-indigo-500" },
+      ].filter((item) => item.pct > 0);
+
+      return {
+        id:          row.equipment_id,
+        name:        row.equipment_name ?? "Unnamed equipment",
+        assetNumber: row.equipment_code ?? "",
+        type:        (row.equipment_type ?? "Equipment").toUpperCase(),
+        area:        row.area ?? "—",
+        riskScore,
+        riskLevel,
+        breakdown:
+          breakdown.length > 0
+            ? breakdown
+            : riskBreakdownFor(riskLevel, row.equipment_name, row.equipment_type, row.equipment_code),
+      };
+    });
+  } catch (error) {
+    console.warn("vorta_get_demo_equipment_risk_list threw:", error);
+    return [];
   }
-
-  return (data as EquipmentAssetRow[]).map(rowToListItem);
 }
 
 // ─── Service functions (mock — replace with Supabase when ready) ──────────────
