@@ -19,10 +19,12 @@ import {
   getSiteRiskProfile,
   getAreaInterventionPlans,
   getAreaHighestRiskIntervention,
+  getSiteRiskReductionPlan,
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
   type AreaHighestRiskIntervention,
+  type SiteRiskReductionPlan,
 } from "../../../Equipment/equipmentService";
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
@@ -194,10 +196,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [selectedAreaIntervention, setSelectedAreaIntervention] = useState<AreaHighestRiskIntervention | null>(null);
   const [areaInterventionLoading, setAreaInterventionLoading] = useState(false);
 
+  const [riskReductionPlan, setRiskReductionPlan] =
+    useState<SiteRiskReductionPlan | null>(null);
+  const [riskReductionPlanLoading, setRiskReductionPlanLoading] =
+    useState(true);
+
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
     getSiteRiskProfile().then(setSiteRisk);
     getAreaInterventionPlans().then(setInterventionPlans);
+
+    getSiteRiskReductionPlan()
+      .then(setRiskReductionPlan)
+      .finally(() => setRiskReductionPlanLoading(false));
   }, []);
 
   const handleAssetClick = (id: string) => {
@@ -319,10 +330,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
             <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">
-                  Priority Action
+                  Today's Risk Reduction Plan
                 </p>
                 <p className="text-sm font-semibold leading-snug text-slate-50">
-                  {siteRisk?.priorityAction ?? "Review highest-risk area and clear the largest leading risk driver."}
+                  {riskReductionPlan
+                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce area risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                    : siteRisk?.priorityAction ??
+                      "Review the highest-risk area and clear the largest leading risk driver."}
                 </p>
               </div>
 
@@ -334,9 +348,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <Button
                   type="button"
                   variant="secondary"
+                  onClick={() => setIsRiskDetailOpen(true)}
                   className="h-auto rounded-lg border border-solid border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-xs font-semibold text-slate-50 hover:bg-[#ffffff24]"
                 >
-                  View Action Queue
+                  View Work Queue
                 </Button>
 
                 <button
@@ -344,7 +359,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   onClick={() => setIsRiskDetailOpen((open) => !open)}
                   className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-50"
                 >
-                  {isRiskDetailOpen ? "Hide risk detail" : "View risk detail"}
+                  {isRiskDetailOpen ? "Hide work plan" : "View work plan"}
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${
                       isRiskDetailOpen ? "rotate-180" : ""
@@ -358,71 +373,232 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Expandable risk detail drawer */}
             {isRiskDetailOpen && (
               <div className="border-t border-gray-800 pt-4">
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-                  <div className="flex flex-col gap-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Current Risk Drivers
-                    </h3>
-                    <ul className="flex flex-col gap-2">
-                      {[
-                        "Building 2 PM backlog increased by 6%",
-                        "Case Packer 4 remains highest asset risk",
-                        "Utilities calibration backlog rising",
-                        "Night shift PLC cover gap identified",
-                      ].map((item) => (
-                        <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
-                          <span
-                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500"
-                            aria-hidden="true"
-                          />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+                {riskReductionPlanLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+                    <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
+                    Loading risk reduction plan...
                   </div>
+                ) : !riskReductionPlan ? (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-red-300">
+                      Risk reduction plan could not be loaded.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                          Highest-risk area
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.highestArea}
+                        </p>
+                      </div>
 
-                  <div className="flex flex-col gap-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Risk Impact
-                    </h3>
-                    <ul className="flex flex-col gap-2">
-                      {[
-                        "Increased chance of repeat downtime on Case Packer 4",
-                        "Reduced technical cover overnight",
-                        "Compliance exposure increasing in Utilities",
-                        "Maintenance backlog pressure rising before weekend",
-                      ].map((item) => (
-                        <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
-                          <span
-                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-                            aria-hidden="true"
-                          />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                          Area risk
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.currentAreaRisk}
+                          <span className="mx-1.5 text-slate-600">→</span>
+                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedAreaRisk}
+                          </span>
+                        </p>
+                      </div>
 
-                  <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-[#0d1117] p-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Secondary Focus
-                    </h3>
-                    <ul className="flex flex-col gap-2">
-                      {[
-                        "Review Utilities calibration backlog",
-                        "Arrange PLC night shift cover before 18:00",
-                      ].map((action) => (
-                        <li key={action} className="flex items-start gap-2 text-xs text-slate-400">
-                          <span
-                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500"
-                            aria-hidden="true"
-                          />
-                          {action}
-                        </li>
-                      ))}
-                    </ul>
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                          Site risk
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.currentSiteRisk}
+                          <span className="mx-1.5 text-slate-600">→</span>
+                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedSiteRisk}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                          Estimated duration
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.estimatedDurationMinutes >= 60
+                            ? `${Math.floor(riskReductionPlan.estimatedDurationMinutes / 60)}h ${riskReductionPlan.estimatedDurationMinutes % 60}m`
+                            : `${riskReductionPlan.estimatedDurationMinutes}m`}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-emerald-400/70">
+                          Site reduction
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-400">
+                          −{riskReductionPlan.currentSiteRisk - riskReductionPlan.projectedSiteRisk}{" "}
+                          points
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Recommended Work Queue
+                          </h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Ranked by calculated risk reduction.
+                          </p>
+                        </div>
+
+                        <span className="text-xs text-slate-500">
+                          {riskReductionPlan.equipmentName}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {riskReductionPlan.actions
+                          .slice()
+                          .sort(
+                            (a, b) =>
+                              b.calculatedReduction - a.calculatedReduction ||
+                              a.priority - b.priority,
+                          )
+                          .map((action, index) => {
+                            const workOrder = action.workOrderNumbers[0] ?? null;
+                            const reference =
+                              action.pmNumbers[0] ??
+                              action.sparePartNumbers[0] ??
+                              null;
+
+                            return (
+                              <button
+                                key={`${action.priority}-${action.action}`}
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/equipment/${riskReductionPlan.equipmentId}/work-orders`,
+                                  )
+                                }
+                                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26]"
+                              >
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
+                                  {index + 1}
+                                </span>
+
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-slate-100">
+                                      {action.action}
+                                    </p>
+
+                                    <Badge className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
+                                      {action.driver}
+                                    </Badge>
+                                  </div>
+
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {workOrder && (
+                                      <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                                        {workOrder}
+                                      </span>
+                                    )}
+
+                                    {reference && (
+                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                                        {reference}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="text-right">
+                                  <p className="text-sm font-semibold text-emerald-400">
+                                    −{action.calculatedReduction}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    asset to {action.projectedScore}
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] text-slate-500">
+                          PM backlog
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.currentPmBacklog}
+                          <span className="mx-1.5 text-slate-600">→</span>
+                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedPmBacklog}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] text-slate-500">
+                          Calibration backlog
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.currentCalibrationBacklog}
+                          <span className="mx-1.5 text-slate-600">→</span>
+                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedCalibrationBacklog}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <p className="text-[10px] text-slate-500">
+                          Out-of-stock parts
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {riskReductionPlan.currentStockouts}
+                          <span className="mx-1.5 text-slate-600">→</span>
+                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedStockouts}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="col-span-2 flex items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                            Next recommended area
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">
+                            {riskReductionPlan.nextArea}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Risk {riskReductionPlan.nextAreaRisk} ·{" "}
+                            {riskReductionPlan.nextAreaLevel}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/equipment?area=${encodeURIComponent(riskReductionPlan.nextArea)}`,
+                            )
+                          }
+                          className="text-xs font-semibold text-blue-400 hover:text-blue-300"
+                        >
+                          Open area →
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

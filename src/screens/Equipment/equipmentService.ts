@@ -2057,3 +2057,117 @@ export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
     return MOCK_BUILDING_STATS;
   }
 }
+
+// ─── Site risk reduction plan ─────────────────────────────────────────────────
+
+export interface SiteRiskReductionAction {
+  priority: number;
+  driver: string;
+  action: string;
+  detail: string;
+  status: string;
+  calculatedReduction: number;
+  projectedScore: number;
+  workOrderNumbers: string[];
+  pmNumbers: string[];
+  sparePartNumbers: string[];
+}
+
+export interface SiteRiskReductionPlan {
+  currentSiteRisk: number;
+  currentSiteLevel: string;
+  projectedSiteRisk: number;
+  projectedSiteLevel: string;
+  highestArea: string;
+  currentAreaRisk: number;
+  currentAreaLevel: string;
+  projectedAreaRisk: number;
+  projectedAreaLevel: string;
+  equipmentId: string;
+  equipmentName: string;
+  equipmentCode: string;
+  estimatedDurationMinutes: number;
+  currentPmBacklog: number;
+  projectedPmBacklog: number;
+  currentCalibrationBacklog: number;
+  projectedCalibrationBacklog: number;
+  currentStockouts: number;
+  projectedStockouts: number;
+  nextArea: string;
+  nextAreaRisk: number;
+  nextAreaLevel: string;
+  actions: SiteRiskReductionAction[];
+}
+
+export async function getSiteRiskReductionPlan(): Promise<SiteRiskReductionPlan | null> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_site_risk_reduction_plan",
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_site_risk_reduction_plan failed:",
+        error.message,
+      );
+      return null;
+    }
+
+    const row = data?.[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      currentSiteRisk: row.current_site_risk ?? 0,
+      currentSiteLevel: row.current_site_level ?? "Minimal",
+      projectedSiteRisk: row.projected_site_risk ?? 0,
+      projectedSiteLevel: row.projected_site_level ?? "Minimal",
+      highestArea: row.highest_area ?? "",
+      currentAreaRisk: row.current_area_risk ?? 0,
+      currentAreaLevel: row.current_area_level ?? "Minimal",
+      projectedAreaRisk: row.projected_area_risk ?? 0,
+      projectedAreaLevel: row.projected_area_level ?? "Minimal",
+      equipmentId: row.equipment_id,
+      equipmentName: row.equipment_name ?? "Unnamed equipment",
+      equipmentCode: row.equipment_code ?? "",
+      estimatedDurationMinutes: row.estimated_duration_minutes ?? 0,
+      currentPmBacklog: row.current_pm_backlog ?? 0,
+      projectedPmBacklog: row.projected_pm_backlog ?? 0,
+      currentCalibrationBacklog: row.current_calibration_backlog ?? 0,
+      projectedCalibrationBacklog: row.projected_calibration_backlog ?? 0,
+      currentStockouts: row.current_stockouts ?? 0,
+      projectedStockouts: row.projected_stockouts ?? 0,
+      nextArea: row.next_area ?? "",
+      nextAreaRisk: row.next_area_risk ?? 0,
+      nextAreaLevel: row.next_area_level ?? "Minimal",
+      actions: Array.isArray(row.actions)
+        ? row.actions.map((action: any) => ({
+            priority: action.priority ?? 0,
+            driver: action.driver ?? "",
+            action: action.action ?? "",
+            detail: action.detail ?? "",
+            status: action.status ?? "",
+            calculatedReduction: action.calculatedReduction ?? 0,
+            projectedScore: action.projectedScore ?? 0,
+            workOrderNumbers: Array.isArray(action.workOrderNumbers)
+              ? action.workOrderNumbers
+              : [],
+            pmNumbers: Array.isArray(action.pmNumbers)
+              ? action.pmNumbers
+              : [],
+            sparePartNumbers: Array.isArray(action.sparePartNumbers)
+              ? action.sparePartNumbers
+              : [],
+          }))
+        : [],
+    };
+  } catch (error) {
+    console.warn(
+      "vorta_get_site_risk_reduction_plan threw:",
+      error,
+    );
+    return null;
+  }
+}
