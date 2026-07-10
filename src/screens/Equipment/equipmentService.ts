@@ -2102,17 +2102,24 @@ export interface SiteRiskReductionPlan {
   actions: SiteRiskReductionAction[];
 }
 
-export async function getSiteRiskReductionPlan(): Promise<SiteRiskReductionPlan | null> {
+export async function getSiteRiskReductionPlan(
+  area?: string,
+): Promise<SiteRiskReductionPlan | null> {
   try {
-    const { data, error } = await supabase.rpc(
-      "vorta_get_site_risk_reduction_plan",
-    );
+    const rpcName = area
+      ? "vorta_get_area_risk_reduction_plan"
+      : "vorta_get_site_risk_reduction_plan";
+
+    const request = area
+      ? supabase.rpc("vorta_get_area_risk_reduction_plan", {
+          p_area: area,
+        })
+      : supabase.rpc("vorta_get_site_risk_reduction_plan");
+
+    const { data, error } = await request;
 
     if (error) {
-      console.warn(
-        "vorta_get_site_risk_reduction_plan failed:",
-        error.message,
-      );
+      console.warn(`${rpcName} failed:`, error.message);
       return null;
     }
 

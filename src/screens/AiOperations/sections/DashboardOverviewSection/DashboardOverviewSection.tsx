@@ -211,6 +211,25 @@ export const DashboardOverviewSection = (): JSX.Element => {
       .finally(() => setRiskReductionPlanLoading(false));
   }, []);
 
+  const handleLoadRiskReductionPlan = async (area?: string) => {
+    if (riskReductionPlanLoading) {
+      return;
+    }
+
+    setRiskReductionPlanLoading(true);
+    setIsRiskDetailOpen(true);
+
+    try {
+      const plan = await getSiteRiskReductionPlan(area);
+
+      if (plan) {
+        setRiskReductionPlan(plan);
+      }
+    } finally {
+      setRiskReductionPlanLoading(false);
+    }
+  };
+
   const handleAssetClick = (id: string) => {
     navigate(`/equipment/${id}/overview`);
   };
@@ -389,11 +408,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                          Highest-risk area
+                          Plan area
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.highestArea}
                         </p>
+                        {siteRisk?.highestArea &&
+                          riskReductionPlan.highestArea !== siteRisk.highestArea && (
+                            <button
+                              type="button"
+                              onClick={() => void handleLoadRiskReductionPlan()}
+                              className="mt-1 text-[10px] font-medium text-blue-400 transition-colors hover:text-blue-300"
+                            >
+                              Back to {siteRisk.highestArea}
+                            </button>
+                          )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
@@ -416,7 +445,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentSiteRisk}
                           <span className="mx-1.5 text-slate-600">→</span>
-                          <span className="text-emerald-400">
+                          <span
+                            className={
+                              riskReductionPlan.projectedSiteRisk <
+                              riskReductionPlan.currentSiteRisk
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
                             {riskReductionPlan.projectedSiteRisk}
                           </span>
                         </p>
@@ -433,13 +469,41 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </p>
                       </div>
 
-                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-emerald-400/70">
+                      <div
+                        className={`rounded-lg border p-3 ${
+                          riskReductionPlan.projectedSiteRisk <
+                          riskReductionPlan.currentSiteRisk
+                            ? "border-emerald-500/20 bg-emerald-500/5"
+                            : "border-gray-800 bg-[#0d1117]"
+                        }`}
+                      >
+                        <p
+                          className={`text-[10px] uppercase tracking-wider ${
+                            riskReductionPlan.projectedSiteRisk <
+                            riskReductionPlan.currentSiteRisk
+                              ? "text-emerald-400/70"
+                              : "text-slate-500"
+                          }`}
+                        >
                           Site reduction
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-400">
-                          −{riskReductionPlan.currentSiteRisk - riskReductionPlan.projectedSiteRisk}{" "}
-                          points
+
+                        <p
+                          className={`mt-1 text-sm font-semibold ${
+                            riskReductionPlan.projectedSiteRisk <
+                            riskReductionPlan.currentSiteRisk
+                              ? "text-emerald-400"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {riskReductionPlan.currentSiteRisk -
+                            riskReductionPlan.projectedSiteRisk >
+                          0
+                            ? `−${
+                                riskReductionPlan.currentSiteRisk -
+                                riskReductionPlan.projectedSiteRisk
+                              } points`
+                            : "0 points"}
                         </p>
                       </div>
                     </div>
@@ -628,6 +692,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         )}
                       </div>
 
+                      {riskReductionPlan.nextArea ? (
                       <div className="col-span-2 flex items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
                         <div>
                           <p className="text-[10px] uppercase tracking-wider text-blue-400">
@@ -645,15 +710,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <button
                           type="button"
                           onClick={() =>
-                            navigate(
-                              `/equipment?area=${encodeURIComponent(riskReductionPlan.nextArea)}`,
+                            void handleLoadRiskReductionPlan(
+                              riskReductionPlan.nextArea,
                             )
                           }
                           className="text-xs font-semibold text-blue-400 hover:text-blue-300"
                         >
-                          Open area →
+                          View plan →
                         </button>
                       </div>
+                      ) : (
+                      <div className="col-span-2 flex items-center rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                            Area review
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-slate-300">
+                            All ranked areas reviewed
+                          </p>
+                        </div>
+                      </div>
+                      )}
                     </div>
                   </div>
                 )}
