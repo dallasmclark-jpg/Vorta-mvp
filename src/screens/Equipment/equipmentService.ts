@@ -1834,6 +1834,107 @@ export async function getAreaEquipmentRisk(area: string): Promise<AreaEquipmentR
   }
 }
 
+// ─── Area highest-risk intervention ──────────────────────────────────────────
+
+export interface InterventionAction {
+  priority: number;
+  driver: string;
+  action: string;
+  detail: string;
+  calculatedReduction: number;
+  projectedScore: number;
+  calculationType: "calculated";
+}
+
+export interface ContextualRiskAction {
+  driver: string;
+  action: string;
+  detail: string;
+  calculatedReduction: number;
+  calculationType: "contextual";
+  reason: string;
+}
+
+export interface AreaHighestRiskIntervention {
+  area: string;
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType: string;
+  currentRiskScore: number;
+  currentRiskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  projectedRiskScore: number;
+  projectedRiskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  totalCalculatedReduction: number;
+  actions: InterventionAction[];
+  contextualRisks: ContextualRiskAction[];
+}
+
+export async function getAreaHighestRiskIntervention(
+  area: string,
+): Promise<AreaHighestRiskIntervention | null> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_area_highest_risk_intervention",
+      { p_area: area },
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_area_highest_risk_intervention failed:",
+        error.message,
+      );
+      return null;
+    }
+
+    const row = data?.[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      area: row.area ?? area,
+      equipmentId: row.equipment_id,
+      equipmentCode: row.equipment_code ?? "",
+      equipmentName: row.equipment_name ?? "Unnamed equipment",
+      equipmentType: row.equipment_type ?? "Equipment",
+      currentRiskScore: row.current_risk_score ?? 0,
+      currentRiskLevel: row.current_risk_level ?? "Minimal",
+      projectedRiskScore: row.projected_risk_score ?? 0,
+      projectedRiskLevel: row.projected_risk_level ?? "Minimal",
+      totalCalculatedReduction: row.total_calculated_reduction ?? 0,
+      actions: Array.isArray(row.actions)
+        ? row.actions.map((item: any) => ({
+            priority: item.priority ?? 0,
+            driver: item.driver ?? "",
+            action: item.action ?? "",
+            detail: item.detail ?? "",
+            calculatedReduction: item.calculatedReduction ?? 0,
+            projectedScore: item.projectedScore ?? 0,
+            calculationType: "calculated" as const,
+          }))
+        : [],
+      contextualRisks: Array.isArray(row.contextual_risks)
+        ? row.contextual_risks.map((item: any) => ({
+            driver: item.driver ?? "",
+            action: item.action ?? "",
+            detail: item.detail ?? "",
+            calculatedReduction: 0,
+            calculationType: "contextual" as const,
+            reason: item.reason ?? "",
+          }))
+        : [],
+    };
+  } catch (error) {
+    console.warn(
+      "vorta_get_area_highest_risk_intervention threw:",
+      error,
+    );
+    return null;
+  }
+}
+
 // ─── Building group definitions ───────────────────────────────────────────────
 
 export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
