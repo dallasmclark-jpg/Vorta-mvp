@@ -361,7 +361,7 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
   }
 
   return {
-    riskScore: data.risk_score ?? 0,
+    riskScore: Number(data.risk_score ?? 0),
     riskLevel: data.risk_level ?? "Minimal",
     highestArea: data.highest_area ?? null,
     highestAreaScore: data.highest_area_score ?? null,
@@ -2130,9 +2130,9 @@ export async function getSiteRiskReductionPlan(
     }
 
     return {
-      currentSiteRisk: row.current_site_risk ?? 0,
+      currentSiteRisk: Number(row.current_site_risk ?? 0),
       currentSiteLevel: row.current_site_level ?? "Minimal",
-      projectedSiteRisk: row.projected_site_risk ?? 0,
+      projectedSiteRisk: Number(row.projected_site_risk ?? 0),
       projectedSiteLevel: row.projected_site_level ?? "Minimal",
       highestArea: row.highest_area ?? "",
       currentAreaRisk: row.current_area_risk ?? 0,

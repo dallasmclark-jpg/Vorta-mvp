@@ -27,6 +27,9 @@ import {
   type SiteRiskReductionPlan,
 } from "../../../Equipment/equipmentService";
 
+const formatSiteRisk = (value: number): string =>
+  Number(value).toFixed(1);
+
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
 
 const RiskMeter = ({
@@ -208,6 +211,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
       ? riskPlanHistory[riskPlanHistory.length - 1]
       : null;
 
+  const siteRiskReduction = riskReductionPlan
+    ? Math.max(
+        0,
+        Math.round(
+          (Number(riskReductionPlan.currentSiteRisk) -
+            Number(riskReductionPlan.projectedSiteRisk)) *
+            10,
+        ) / 10,
+      )
+    : 0;
+
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
     getSiteRiskProfile().then(setSiteRisk);
@@ -358,7 +372,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Site Risk</p>
-                <p className="text-xl font-semibold text-slate-50">{siteRisk?.riskScore ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">{siteRisk
+                  ? formatSiteRisk(siteRisk.riskScore)
+                  : "—"}</p>
                 <p className="text-xs text-orange-400">{siteRisk ? `${siteRisk.riskLevel} · live` : "No live data"}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
@@ -502,7 +518,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           Site risk
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
-                          {riskReductionPlan.currentSiteRisk}
+                          {formatSiteRisk(riskReductionPlan.currentSiteRisk)}
                           <span className="mx-1.5 text-slate-600">→</span>
                           <span
                             className={
@@ -512,7 +528,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 : "text-slate-400"
                             }
                           >
-                            {riskReductionPlan.projectedSiteRisk}
+                            {formatSiteRisk(riskReductionPlan.projectedSiteRisk)}
                           </span>
                         </p>
                       </div>
@@ -530,39 +546,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                       <div
                         className={`rounded-lg border p-3 ${
-                          riskReductionPlan.projectedSiteRisk <
-                          riskReductionPlan.currentSiteRisk
+                          siteRiskReduction > 0
                             ? "border-emerald-500/20 bg-emerald-500/5"
                             : "border-gray-800 bg-[#0d1117]"
                         }`}
                       >
                         <p
                           className={`text-[10px] uppercase tracking-wider ${
-                            riskReductionPlan.projectedSiteRisk <
-                            riskReductionPlan.currentSiteRisk
+                            siteRiskReduction > 0
                               ? "text-emerald-400/70"
                               : "text-slate-500"
                           }`}
                         >
-                          Site reduction
+                          {siteRiskReduction > 0
+                            ? "Site reduction"
+                            : "Site impact"}
                         </p>
 
                         <p
                           className={`mt-1 text-sm font-semibold ${
-                            riskReductionPlan.projectedSiteRisk <
-                            riskReductionPlan.currentSiteRisk
+                            siteRiskReduction > 0
                               ? "text-emerald-400"
                               : "text-slate-400"
                           }`}
                         >
-                          {riskReductionPlan.currentSiteRisk -
-                            riskReductionPlan.projectedSiteRisk >
-                          0
-                            ? `−${
-                                riskReductionPlan.currentSiteRisk -
-                                riskReductionPlan.projectedSiteRisk
-                              } points`
-                            : "0 points"}
+                          {siteRiskReduction > 0
+                            ? `−${siteRiskReduction.toFixed(1)} points`
+                            : "No immediate change"}
                         </p>
                       </div>
                     </div>
