@@ -401,6 +401,13 @@ export const EquipmentSection = (): JSX.Element => {
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Keep local filter in sync with URL whenever the area param changes (e.g. navigated from dashboard)
+  useEffect(() => {
+    setActiveArea(initialArea);
+    setActiveChip(initialArea ? "Area" : null);
+    setExpandedId("");
+  }, [initialArea]);
+
   // For the chip label: building codes resolve to a human label; plain area names display as-is
   const areaChipLabel = activeArea ? (resolveBuilding(activeArea)?.label ?? activeArea) : "";
 
@@ -549,7 +556,7 @@ export const EquipmentSection = (): JSX.Element => {
         {(activeArea || search) && (
           <button
             type="button"
-            onClick={() => { setActiveArea(null); setActiveChip(null); setSearch(""); }}
+            onClick={() => { setActiveArea(null); setActiveChip(null); setSearch(""); navigate("/equipment", { replace: true }); }}
             className="rounded-full border border-gray-700 bg-[#141820] px-3 py-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-300"
           >
             Clear all
