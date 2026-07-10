@@ -201,6 +201,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [riskReductionPlanLoading, setRiskReductionPlanLoading] =
     useState(true);
 
+  const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
+
+  const previousRiskPlanArea =
+    riskPlanHistory.length > 0
+      ? riskPlanHistory[riskPlanHistory.length - 1]
+      : null;
+
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
     getSiteRiskProfile().then(setSiteRisk);
@@ -211,7 +218,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
       .finally(() => setRiskReductionPlanLoading(false));
   }, []);
 
-  const handleLoadRiskReductionPlan = async (area?: string) => {
+  const handleLoadRiskReductionPlan = async (
+    area?: string,
+    navigationMode: "forward" | "back" | "reset" = "forward",
+  ) => {
     if (riskReductionPlanLoading) {
       return;
     }
@@ -222,12 +232,40 @@ export const DashboardOverviewSection = (): JSX.Element => {
     try {
       const plan = await getSiteRiskReductionPlan(area);
 
-      if (plan) {
-        setRiskReductionPlan(plan);
+      if (!plan) {
+        return;
       }
+
+      const currentArea = riskReductionPlan?.highestArea;
+
+      if (
+        navigationMode === "forward" &&
+        currentArea &&
+        currentArea !== plan.highestArea
+      ) {
+        setRiskPlanHistory((history) => [...history, currentArea]);
+      }
+
+      if (navigationMode === "back") {
+        setRiskPlanHistory((history) => history.slice(0, -1));
+      }
+
+      if (navigationMode === "reset") {
+        setRiskPlanHistory([]);
+      }
+
+      setRiskReductionPlan(plan);
     } finally {
       setRiskReductionPlanLoading(false);
     }
+  };
+
+  const handleLoadPreviousRiskArea = () => {
+    if (!previousRiskPlanArea) {
+      return;
+    }
+
+    void handleLoadRiskReductionPlan(previousRiskPlanArea, "back");
   };
 
   const handleAssetClick = (id: string) => {
@@ -392,7 +430,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Expandable risk detail drawer */}
             {isRiskDetailOpen && (
               <div className="border-t border-gray-800 pt-4">
-                {riskReductionPlanLoading ? (
+                {riskReductionPlanLoading && !riskReductionPlan ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
                     <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
                     Loading risk reduction plan...
@@ -405,6 +443,48 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-5">
+                    <div className="flex min-h-7 flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {previousRiskPlanArea && (
+                          <button
+                            type="button"
+                            disabled={riskReductionPlanLoading}
+                            onClick={handleLoadPreviousRiskArea}
+                            className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                          >
+                            ← Previous area: {previousRiskPlanArea}
+                          </button>
+                        )}
+
+                        {siteRisk?.highestArea &&
+                          riskReductionPlan.highestArea !== siteRisk.highestArea &&
+                          previousRiskPlanArea !== siteRisk.highestArea && (
+                            <button
+                              type="button"
+                              disabled={riskReductionPlanLoading}
+                              onClick={() =>
+                                void handleLoadRiskReductionPlan(
+                                  undefined,
+                                  "reset",
+                                )
+                              }
+                              className="text-xs font-medium text-slate-500 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              Back to highest area: {siteRisk.highestArea}
+                            </button>
+                          )}
+                      </div>
+
+                      <div className="min-w-[110px] text-right">
+                        {riskReductionPlanLoading && (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-blue-400">
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            Updating plan…
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500">
@@ -413,16 +493,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.highestArea}
                         </p>
-                        {siteRisk?.highestArea &&
-                          riskReductionPlan.highestArea !== siteRisk.highestArea && (
-                            <button
-                              type="button"
-                              onClick={() => void handleLoadRiskReductionPlan()}
-                              className="mt-1 text-[10px] font-medium text-blue-400 transition-colors hover:text-blue-300"
-                            >
-                              Back to {siteRisk.highestArea}
-                            </button>
-                          )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
@@ -709,12 +779,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                         <button
                           type="button"
+                          disabled={riskReductionPlanLoading}
                           onClick={() =>
                             void handleLoadRiskReductionPlan(
                               riskReductionPlan.nextArea,
+                              "forward",
                             )
                           }
-                          className="text-xs font-semibold text-blue-400 hover:text-blue-300"
+                          className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
                         >
                           View plan →
                         </button>
