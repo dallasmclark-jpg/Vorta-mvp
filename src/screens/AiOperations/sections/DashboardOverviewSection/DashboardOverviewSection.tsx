@@ -17,9 +17,11 @@ import {
   getAreaRiskProfiles,
   getSiteRiskProfile,
   getAreaInterventionPlans,
+  getAreaEquipmentRisk,
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
+  type AreaEquipmentRiskItem,
 } from "../../../Equipment/equipmentService";
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
@@ -187,6 +189,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
+  const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [selectedAreaEquipment, setSelectedAreaEquipment] = useState<AreaEquipmentRiskItem[]>([]);
+  const [areaEquipmentLoading, setAreaEquipmentLoading] = useState(false);
 
   useEffect(() => {
     getAreaRiskProfiles().then(setAreaRiskCards);
@@ -196,6 +201,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
   const handleAssetClick = (id: string) => {
     navigate(`/equipment/${id}/overview`);
+  };
+
+  const handleAreaCardClick = async (area: string) => {
+    if (selectedArea === area) {
+      setSelectedArea(null);
+      setSelectedAreaEquipment([]);
+      return;
+    }
+    setSelectedArea(area);
+    setSelectedAreaEquipment([]);
+    setAreaEquipmentLoading(true);
+    try {
+      const items = await getAreaEquipmentRisk(area);
+      setSelectedAreaEquipment(items);
+    } finally {
+      setAreaEquipmentLoading(false);
+    }
   };
 
   return (
@@ -452,11 +474,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
             return (
               <Card
                 key={area.area}
-                onClick={() => navigate(`/equipment?area=${encodeURIComponent(area.area)}`)}
+                onClick={() => handleAreaCardClick(area.area)}
                 className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] ${
-                  isHighestRisk
-                    ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
-                    : "border-gray-800 hover:border-gray-700"
+                  selectedArea === area.area
+                    ? "border-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.10)]"
+                    : isHighestRisk
+                      ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
+                      : "border-gray-800 hover:border-gray-700"
                 }`}
               >
                 <CardContent className="flex h-full flex-col items-start gap-3 p-4">
@@ -518,6 +542,113 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </Card>
           )}
         </div>
+
+        {/* Inline area detail panel */}
+        {selectedArea && (
+          <div className="rounded-xl border border-blue-500/30 bg-[#0d1117] p-5">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Area Detail</p>
+                <h3 className="text-base font-semibold text-slate-50">{selectedArea}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setSelectedArea(null); setSelectedAreaEquipment([]); }}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+                aria-label="Close area detail"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {areaEquipmentLoading ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-slate-400">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Loading equipment for {selectedArea}...
+              </div>
+            ) : selectedAreaEquipment.length === 0 ? (
+              <p className="py-4 text-sm text-slate-500">No equipment risk data available for this area.</p>
+            ) : (
+              <>
+                {/* KPI row */}
+                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: "Assets", value: selectedAreaEquipment.length },
+                    { label: "Overdue PMs", value: selectedAreaEquipment.reduce((s, i) => s + i.overduePmCount, 0) },
+                    { label: "Open WOs", value: selectedAreaEquipment.reduce((s, i) => s + i.openWorkOrderCount, 0) },
+                    { label: "Critical spares missing", value: selectedAreaEquipment.reduce((s, i) => s + i.criticalSparesMissing, 0) },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#141820] px-3 py-2.5">
+                      <p className="text-xs text-slate-500">{kpi.label}</p>
+                      <p className="text-xl font-semibold text-slate-50">{kpi.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Priority action callout */}
+                {selectedAreaEquipment[0]?.priorityAction && (
+                  <div className="mb-4 rounded-lg border border-orange-500/20 bg-orange-500/5 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">Priority action</p>
+                    <p className="mt-0.5 text-sm text-slate-200">{selectedAreaEquipment[0].priorityAction}</p>
+                  </div>
+                )}
+
+                {/* Equipment table */}
+                <div className="overflow-x-auto rounded-lg border border-gray-800">
+                  <table className="w-full min-w-[640px] border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-800 bg-[#141820]">
+                        {["Asset", "Type", "Risk", "Score", "Overdue PMs", "Open WOs", "Spares"].map((col) => (
+                          <th key={col} className="px-3 py-2.5 text-left font-semibold text-slate-500">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedAreaEquipment
+                        .slice()
+                        .sort((a, b) => b.riskScore - a.riskScore)
+                        .map((item) => {
+                          const riskColor =
+                            item.riskScore >= 85 ? "text-red-400" :
+                            item.riskScore >= 65 ? "text-orange-400" :
+                            item.riskScore >= 40 ? "text-yellow-400" :
+                            "text-emerald-400";
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={() => navigate(`/equipment/${item.id}/overview`)}
+                              className="cursor-pointer border-b border-gray-800 transition-colors last:border-0 hover:bg-[#1a2030]"
+                            >
+                              <td className="px-3 py-2.5">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold text-slate-50">{item.name}</span>
+                                  <span className="text-slate-500">{item.assetNumber}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-400">{item.type}</td>
+                              <td className="px-3 py-2.5">
+                                <span className={`font-semibold ${riskColor}`}>{item.riskLevel}</span>
+                              </td>
+                              <td className="px-3 py-2.5 font-semibold text-slate-50">{item.riskScore}</td>
+                              <td className="px-3 py-2.5 text-slate-300">{item.overduePmCount}</td>
+                              <td className="px-3 py-2.5 text-slate-300">{item.openWorkOrderCount}</td>
+                              <td className="px-3 py-2.5">
+                                {item.criticalSparesMissing > 0 ? (
+                                  <span className="font-semibold text-red-400">{item.criticalSparesMissing} missing</span>
+                                ) : (
+                                  <span className="text-emerald-400">OK</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Intervention Plan Modal */}
         {selectedInterventionPlan && (

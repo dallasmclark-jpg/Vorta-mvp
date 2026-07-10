@@ -1781,6 +1781,56 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
   }));
 }
 
+// ─── Area equipment risk ──────────────────────────────────────────────────────
+
+export interface AreaEquipmentRiskItem {
+  id: string;
+  assetNumber: string;
+  name: string;
+  type: string;
+  area: string;
+  riskScore: number;
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
+  riskSummary: string | null;
+  priorityAction: string | null;
+  overduePmCount: number;
+  calibrationOverdueCount: number;
+  openWorkOrderCount: number;
+  repeatBreakdownCount: number;
+  singlePointSkillGap: boolean;
+  criticalSparesMissing: number;
+}
+
+export async function getAreaEquipmentRisk(area: string): Promise<AreaEquipmentRiskItem[]> {
+  try {
+    const { data, error } = await supabase.rpc("vorta_get_demo_area_equipment_risk", { p_area: area });
+    if (error) {
+      console.warn("getAreaEquipmentRisk failed:", error.message);
+      return [];
+    }
+    return (data ?? []).map((row: any) => ({
+      id:                     row.equipment_id,
+      assetNumber:            row.equipment_code ?? "",
+      name:                   row.equipment_name ?? "Unnamed equipment",
+      type:                   row.equipment_type ?? "Equipment",
+      area:                   row.area ?? area,
+      riskScore:              row.risk_score ?? 0,
+      riskLevel:              row.risk_level ?? "Minimal",
+      riskSummary:            row.risk_summary ?? null,
+      priorityAction:         row.priority_action ?? null,
+      overduePmCount:         row.overdue_pm_count ?? 0,
+      calibrationOverdueCount: row.calibration_overdue_count ?? 0,
+      openWorkOrderCount:     row.open_work_order_count ?? 0,
+      repeatBreakdownCount:   row.repeat_breakdown_count ?? 0,
+      singlePointSkillGap:    row.single_point_skill_gap ?? false,
+      criticalSparesMissing:  row.critical_spares_missing ?? 0,
+    }));
+  } catch (e) {
+    console.warn("getAreaEquipmentRisk threw:", e);
+    return [];
+  }
+}
+
 // ─── Building group definitions ───────────────────────────────────────────────
 
 export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
