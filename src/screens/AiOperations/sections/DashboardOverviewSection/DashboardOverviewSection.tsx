@@ -598,6 +598,38 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">
                                     {action.detail}
                                   </p>
+                                  {(
+                                    action.workOrderNumbers.length > 0 ||
+                                    action.pmNumbers.length > 0 ||
+                                    action.sparePartNumbers.length > 0
+                                  ) && (
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                      {action.workOrderNumbers.map((reference) => (
+                                        <span
+                                          key={reference}
+                                          className="inline-flex rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
+                                        >
+                                          WO: {reference}
+                                        </span>
+                                      ))}
+                                      {action.pmNumbers.map((reference) => (
+                                        <span
+                                          key={reference}
+                                          className="inline-flex rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300"
+                                        >
+                                          PM: {reference}
+                                        </span>
+                                      ))}
+                                      {action.sparePartNumbers.map((reference) => (
+                                        <span
+                                          key={reference}
+                                          className="inline-flex rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-300"
+                                        >
+                                          Part: {reference}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               <div className="shrink-0 text-right">
@@ -611,40 +643,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             </div>
                           </div>
                         ))}
-                    </div>
-                  )}
-
-                  {/* Contextual risks */}
-                  {selectedAreaIntervention.contextualRisks.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                        Important contextual risks
-                      </p>
-                      {selectedAreaIntervention.contextualRisks.map((item, i) => (
-                        <div
-                          key={`${item.driver}-${i}`}
-                          className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-xs font-semibold text-slate-200">
-                                  {item.action}
-                                </p>
-                                <Badge className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-300 shadow-none">
-                                  Contextual
-                                </Badge>
-                              </div>
-                              <p className="mt-1 text-[11px] text-slate-500">
-                                {item.detail}
-                              </p>
-                              <p className="mt-1 text-[10px] italic text-amber-400/70">
-                                {item.reason}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )}
 

@@ -1844,6 +1844,9 @@ export interface InterventionAction {
   calculatedReduction: number;
   projectedScore: number;
   calculationType: "calculated";
+  workOrderNumbers: string[];
+  pmNumbers: string[];
+  sparePartNumbers: string[];
 }
 
 export interface ContextualRiskAction {
@@ -1913,6 +1916,15 @@ export async function getAreaHighestRiskIntervention(
             calculatedReduction: item.calculatedReduction ?? 0,
             projectedScore: item.projectedScore ?? 0,
             calculationType: "calculated" as const,
+            workOrderNumbers: Array.isArray(item.workOrderNumbers)
+              ? item.workOrderNumbers
+              : [],
+            pmNumbers: Array.isArray(item.pmNumbers)
+              ? item.pmNumbers
+              : [],
+            sparePartNumbers: Array.isArray(item.sparePartNumbers)
+              ? item.sparePartNumbers
+              : [],
           }))
         : [],
       contextualRisks: Array.isArray(row.contextual_risks)
