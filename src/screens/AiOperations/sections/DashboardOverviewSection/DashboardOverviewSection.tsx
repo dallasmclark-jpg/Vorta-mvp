@@ -598,38 +598,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">
                                     {action.detail}
                                   </p>
-                                  {(
-                                    action.workOrderNumbers.length > 0 ||
-                                    action.pmNumbers.length > 0 ||
-                                    action.sparePartNumbers.length > 0
-                                  ) && (
-                                    <div className="mt-2 flex flex-wrap gap-1.5">
-                                      {action.workOrderNumbers.map((reference) => (
-                                        <span
-                                          key={reference}
-                                          className="inline-flex rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
-                                        >
-                                          WO: {reference}
-                                        </span>
-                                      ))}
-                                      {action.pmNumbers.map((reference) => (
-                                        <span
-                                          key={reference}
-                                          className="inline-flex rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300"
-                                        >
-                                          PM: {reference}
-                                        </span>
-                                      ))}
-                                      {action.sparePartNumbers.map((reference) => (
-                                        <span
-                                          key={reference}
-                                          className="inline-flex rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-300"
-                                        >
-                                          Part: {reference}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const workOrderNumber = action.workOrderNumbers[0] ?? null;
+                                    const pmNumber = action.pmNumbers[0] ?? null;
+                                    const sparePartNumber = action.sparePartNumbers[0] ?? null;
+                                    if (!workOrderNumber && !pmNumber && !sparePartNumber) {
+                                      return null;
+                                    }
+                                    return (
+                                      <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {workOrderNumber && (
+                                          <span className="inline-flex rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                                            {workOrderNumber}
+                                          </span>
+                                        )}
+                                        {pmNumber && (
+                                          <span className="inline-flex rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                                            {pmNumber}
+                                          </span>
+                                        )}
+                                        {sparePartNumber && (
+                                          <span className="inline-flex rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
+                                            {sparePartNumber}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               <div className="shrink-0 text-right">
