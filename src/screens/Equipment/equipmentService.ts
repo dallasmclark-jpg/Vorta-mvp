@@ -2071,6 +2071,9 @@ export interface SiteRiskReductionAction {
   workOrderNumbers: string[];
   pmNumbers: string[];
   sparePartNumbers: string[];
+  estimatedDurationMinutes: number;
+  procurementLeadDays: number;
+  rankingReason: string;
 }
 
 export interface SiteRiskReductionPlan {
@@ -2160,6 +2163,13 @@ export async function getSiteRiskReductionPlan(): Promise<SiteRiskReductionPlan 
             sparePartNumbers: Array.isArray(action.sparePartNumbers)
               ? action.sparePartNumbers
               : [],
+            estimatedDurationMinutes: Number(
+              action.estimatedDurationMinutes ?? 0,
+            ),
+            procurementLeadDays: Number(
+              action.procurementLeadDays ?? 0,
+            ),
+            rankingReason: action.rankingReason ?? "",
           }))
         : [],
     };

@@ -342,7 +342,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
               <div className="flex shrink-0 flex-wrap items-center gap-3">
                 <Badge className="rounded bg-[#10b98120] px-2 py-1 text-xs font-medium text-emerald-500 hover:bg-[#10b98120]">
-                  94% Confidence
+                  Live calculation
                 </Badge>
 
                 <Button
@@ -424,7 +424,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                          Estimated duration
+                          Active work duration
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.estimatedDurationMinutes >= 60
@@ -451,7 +451,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             Recommended Work Queue
                           </h3>
                           <p className="mt-1 text-xs text-slate-500">
-                            Ranked by calculated risk reduction.
+                            Ranked by asset risk reduction, then criticality, overdue age and duration. Area and site scores are recalculated after the full queue.
                           </p>
                         </div>
 
@@ -474,6 +474,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               action.pmNumbers[0] ??
                               action.sparePartNumbers[0] ??
                               null;
+                            const durationMinutes = action.estimatedDurationMinutes ?? 0;
+                            const procurementLeadDays = action.procurementLeadDays ?? 0;
 
                             return (
                               <button
@@ -513,15 +515,32 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                         {reference}
                                       </span>
                                     )}
+
+                                    {durationMinutes > 0 && (
+                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                        {durationMinutes >= 60
+                                          ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+                                          : `${durationMinutes}m`}
+                                      </span>
+                                    )}
+
+                                    {procurementLeadDays > 0 && (
+                                      <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300">
+                                        Lead time {procurementLeadDays}d
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 
                                 <div className="text-right">
+                                  <p className="text-[9px] font-medium uppercase tracking-wider text-slate-500">
+                                    Asset risk
+                                  </p>
                                   <p className="text-sm font-semibold text-emerald-400">
                                     −{action.calculatedReduction}
                                   </p>
                                   <p className="text-[10px] text-slate-500">
-                                    asset to {action.projectedScore}
+                                    to {action.projectedScore}
                                   </p>
                                 </div>
                               </button>
@@ -538,10 +557,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentPmBacklog}
                           <span className="mx-1.5 text-slate-600">→</span>
-                          <span className="text-emerald-400">
+                          <span
+                            className={
+                              riskReductionPlan.projectedPmBacklog <
+                              riskReductionPlan.currentPmBacklog
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
                             {riskReductionPlan.projectedPmBacklog}
                           </span>
                         </p>
+                        {riskReductionPlan.projectedPmBacklog ===
+                          riskReductionPlan.currentPmBacklog && (
+                          <p className="mt-0.5 text-[9px] text-slate-600">
+                            No PM action selected
+                          </p>
+                        )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
@@ -551,10 +583,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentCalibrationBacklog}
                           <span className="mx-1.5 text-slate-600">→</span>
-                          <span className="text-emerald-400">
+                          <span
+                            className={
+                              riskReductionPlan.projectedCalibrationBacklog <
+                              riskReductionPlan.currentCalibrationBacklog
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
                             {riskReductionPlan.projectedCalibrationBacklog}
                           </span>
                         </p>
+                        {riskReductionPlan.projectedCalibrationBacklog ===
+                          riskReductionPlan.currentCalibrationBacklog && (
+                          <p className="mt-0.5 text-[9px] text-slate-600">
+                            No calibration action selected
+                          </p>
+                        )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
@@ -564,10 +609,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentStockouts}
                           <span className="mx-1.5 text-slate-600">→</span>
-                          <span className="text-emerald-400">
+                          <span
+                            className={
+                              riskReductionPlan.projectedStockouts <
+                              riskReductionPlan.currentStockouts
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
                             {riskReductionPlan.projectedStockouts}
                           </span>
                         </p>
+                        {riskReductionPlan.projectedStockouts ===
+                          riskReductionPlan.currentStockouts && (
+                          <p className="mt-0.5 text-[9px] text-slate-600">
+                            No stockout action selected
+                          </p>
+                        )}
                       </div>
 
                       <div className="col-span-2 flex items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
