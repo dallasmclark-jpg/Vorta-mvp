@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Building2, ClipboardList, Eye, EyeOff, Factory, HardHat, LayoutDashboard, User } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import {
+  getRememberSession,
+  setRememberSession,
+  supabase,
+} from "../../lib/supabaseClient";
 import {
   canAccessPath,
   resolveSessionRole,
@@ -42,11 +46,17 @@ export const LoginPage = (): JSX.Element => {
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember,     setRemember]     = useState(false);
+  const [remember,     setRemember]     = useState(getRememberSession());
   const [submitting,   setSubmitting]   = useState(false);
   const [error,        setError]        = useState<string | null>(
     (location.state as { authError?: string } | null)?.authError ?? null,
   );
+  const [notice, setNotice] = useState<string | null>(null);
+  const [successMessage] = useState<string | null>(
+    (location.state as { successMessage?: string } | null)
+      ?.successMessage ?? null,
+  );
+  const [sendingReset, setSendingReset] = useState(false);
 
   const [submittingLinkedIn, setSubmittingLinkedIn] = useState(false);
 
@@ -69,6 +79,7 @@ export const LoginPage = (): JSX.Element => {
     if (!email || !password) { setError("Please enter your email and password."); return; }
     setError(null);
     setSubmitting(true);
+    setRememberSession(remember);
     const {
       data,
       error: authError,
@@ -99,7 +110,45 @@ export const LoginPage = (): JSX.Element => {
     navigate(destination, { replace: true });
   };
 
+  const handleForgotPassword = async () => {
+    setError(null);
+    setNotice(null);
+
+    if (!email.trim()) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    setSendingReset(true);
+
+    const { error: resetError } =
+      await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+    if (resetError) {
+      setError(resetError.message);
+      setSendingReset(false);
+      return;
+    }
+
+    setNotice(
+      "If an account exists for that email address, a password reset link has been sent.",
+    );
+    setSendingReset(false);
+  };
+
+  const handleSignUpRequest = () => {
+    setError(null);
+    setNotice(
+      "Vorta pilot access is currently invitation-only. Contact your Vorta administrator or pilot lead to request access.",
+    );
+  };
+
   const handleLinkedIn = async () => {
+    setError(null);
+    setNotice(null);
+    setRememberSession(remember);
     setSubmittingLinkedIn(true);
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "linkedin_oidc",
@@ -143,6 +192,7 @@ export const LoginPage = (): JSX.Element => {
             </button>
             <button
               type="button"
+              onClick={handleSignUpRequest}
               className="flex-1 rounded-md bg-[#1e2535] py-2 text-sm font-semibold text-slate-50"
             >
               Log in
@@ -205,12 +255,30 @@ export const LoginPage = (): JSX.Element => {
                   onChange={(e) => setRemember(e.target.checked)}
                   className="h-4 w-4 cursor-pointer rounded border-gray-700 bg-[#0b0e14] accent-blue-600"
                 />
-                <span className="text-sm text-slate-300">Remember for 30 days</span>
+                <span className="text-sm text-slate-300">Remember me</span>
               </label>
-              <button type="button" className="text-sm font-semibold text-slate-300 transition-colors hover:text-white">
-                Forgot password
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={sendingReset}
+                className="text-sm font-semibold text-slate-300 transition-colors hover:text-white disabled:opacity-60"
+              >
+                {sendingReset ? "Sending…" : "Forgot password"}
               </button>
             </div>
+
+            {/* Success / notice */}
+            {successMessage && (
+              <div className="rounded-lg border border-emerald-500/20 bg-[#10b98108] px-3.5 py-2.5 text-sm text-emerald-400">
+                {successMessage}
+              </div>
+            )}
+
+            {notice && (
+              <div className="rounded-lg border border-blue-500/20 bg-[#3b82f608] px-3.5 py-2.5 text-sm text-blue-300">
+                {notice}
+              </div>
+            )}
 
             {/* Error */}
             {error && (
@@ -258,7 +326,7 @@ export const LoginPage = (): JSX.Element => {
           {/* Footer */}
           <p className="mt-8 text-center text-sm text-slate-500">
             Don&apos;t have an account?{" "}
-            <button type="button" className="font-semibold text-slate-300 transition-colors hover:text-white">
+            <button type="button" onClick={handleSignUpRequest} className="font-semibold text-slate-300 transition-colors hover:text-white">
               Sign up
             </button>
           </p>

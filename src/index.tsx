@@ -13,6 +13,8 @@ import { DelayedLoader } from "./components/VortaLoadingScreen";
 
 // Eagerly loaded — tiny, needed immediately on every route
 import { LoginPage } from "./screens/Login";
+import { AuthCallbackPage } from "./screens/Login/AuthCallbackPage";
+import { ResetPasswordPage } from "./screens/Login/ResetPasswordPage";
 
 // Lazy-loaded — large bundles only needed when navigating to that portal
 const AiOperations         = lazy(() => import("./screens/AiOperations").then(m => ({ default: m.AiOperations })));
@@ -34,6 +36,9 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 
               {/* /login kept for backward compat (logout redirects here) */}
               <Route path="/login" element={<Navigate to="/" replace />} />
+
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
 
               {/* Legacy redirects — keep old URLs working */}
               <Route path="/engineer-dashboard"    element={<Navigate to="/engineer/dashboard"    replace />} />
