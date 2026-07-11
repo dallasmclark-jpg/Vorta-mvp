@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Award,
@@ -329,6 +330,7 @@ function SkeletonRow({ cols = 5 }: { cols?: number }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function EngineerDashboardSection(): JSX.Element {
+  const navigate = useNavigate();
   const { session } = useAuth();
   const [profile, setProfile]     = useState<EngineerProfile | null>(null);
   const [bookings, setBookings]   = useState<TrainingBooking[]>([]);
@@ -570,7 +572,14 @@ export function EngineerDashboardSection(): JSX.Element {
             </div>
             <AnimatedProgress value={completion} className="h-1.5 bg-gray-800 [&>div]:bg-blue-500" />
           </div>
-          <Button size="sm" variant="outline" className="shrink-0 h-7 border-[#3b82f640] bg-transparent text-blue-400 hover:bg-[#3b82f618] hover:text-blue-300 text-xs">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => navigate("/engineer/settings")}
+            aria-label="Open profile settings to complete your profile"
+            className="shrink-0 h-7 border-[#3b82f640] bg-transparent text-blue-400 hover:bg-[#3b82f618] hover:text-blue-300 text-xs"
+          >
             Complete Profile
           </Button>
         </div>
