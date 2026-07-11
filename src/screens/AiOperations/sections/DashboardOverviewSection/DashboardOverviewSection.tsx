@@ -417,7 +417,14 @@ interface RiskEquipmentPlanHistoryItem {
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
-  const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
+  const {
+    elementRef: riskKpiSectionRef,
+    hasEnteredView:
+      hasRiskKpiSectionEnteredView,
+  } = useInViewOnce<HTMLElement>(0.15);
+
+  const [areaRiskCards, setAreaRiskCards] =
+    useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
   const [
@@ -2800,6 +2807,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section
+        ref={riskKpiSectionRef}
         aria-label="Risk reduction performance"
         className="flex w-full flex-col gap-4"
       >
@@ -2881,7 +2889,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             } transition-opacity`}
           >
             {riskKpiDashboard.kpis.map(
-              (kpi) => {
+              (kpi, index) => {
                 const presentation =
                   getKpiRagPresentation(
                     kpi.ragStatus,
@@ -2979,9 +2987,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         >
                           {!kpi.noData && (
                             <div
-                              className={`w-full rounded-t-[10px] transition-[height] duration-300 ease-out ${presentation.barClassName}`}
+                              className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:duration-700 motion-safe:ease-out ${presentation.barClassName}`}
                               style={{
-                                height: `${chartValue}%`,
+                                height: `${
+                                  hasRiskKpiSectionEnteredView
+                                    ? chartValue
+                                    : 0
+                                }%`,
+                                transitionDelay:
+                                  hasRiskKpiSectionEnteredView
+                                    ? `${index * 60}ms`
+                                    : "0ms",
                               }}
                             />
                           )}
