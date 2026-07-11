@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
@@ -20,6 +24,7 @@ import {
   getAreaInterventionPlans,
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
+  refreshCurrentRisk,
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
@@ -29,6 +34,61 @@ import {
 
 const formatSiteRisk = (value: number): string =>
   Number(value).toFixed(1);
+
+const getLabourRiskPresentation = (
+  score: number,
+  noEngineerOverride: boolean,
+) => {
+  if (noEngineerOverride || score >= 85) {
+    return {
+      level: "Critical",
+      badgeClassName:
+        "bg-[#ef444420] text-red-500 hover:bg-[#ef444420]",
+      progressClassName: "bg-red-500",
+      label: noEngineerOverride
+        ? "Critical no-cover override"
+        : "Critical labour exposure",
+    };
+  }
+
+  if (score >= 65) {
+    return {
+      level: "High",
+      badgeClassName:
+        "bg-orange-500/20 text-orange-400 hover:bg-orange-500/20",
+      progressClassName: "bg-orange-500",
+      label: "High labour exposure",
+    };
+  }
+
+  if (score >= 40) {
+    return {
+      level: "Med",
+      badgeClassName:
+        "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
+      progressClassName: "bg-yellow-400",
+      label: "Reduced labour resilience",
+    };
+  }
+
+  if (score >= 20) {
+    return {
+      level: "Low",
+      badgeClassName:
+        "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20",
+      progressClassName: "bg-emerald-500",
+      label: "Low labour exposure",
+    };
+  }
+
+  return {
+    level: "Minimal",
+    badgeClassName:
+      "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20",
+    progressClassName: "bg-cyan-400",
+    label: "Labour coverage stable",
+  };
+};
 
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
 
@@ -203,6 +263,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
     useState<SiteRiskReductionPlan | null>(null);
   const [riskReductionPlanLoading, setRiskReductionPlanLoading] =
     useState(true);
+  const [dashboardRefreshing, setDashboardRefreshing] =
+    useState(false);
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
 
@@ -222,15 +284,39 @@ export const DashboardOverviewSection = (): JSX.Element => {
       )
     : 0;
 
-  useEffect(() => {
-    getAreaRiskProfiles().then(setAreaRiskCards);
-    getSiteRiskProfile().then(setSiteRisk);
-    getAreaInterventionPlans().then(setInterventionPlans);
+  const loadRiskDashboard = useCallback(async () => {
+    setDashboardRefreshing(true);
+    setRiskReductionPlanLoading(true);
 
-    getSiteRiskReductionPlan()
-      .then(setRiskReductionPlan)
-      .finally(() => setRiskReductionPlanLoading(false));
+    try {
+      await refreshCurrentRisk();
+
+      const [
+        areaProfiles,
+        siteProfile,
+        areaPlans,
+        reductionPlan,
+      ] = await Promise.all([
+        getAreaRiskProfiles(),
+        getSiteRiskProfile(),
+        getAreaInterventionPlans(),
+        getSiteRiskReductionPlan(),
+      ]);
+
+      setAreaRiskCards(areaProfiles);
+      setSiteRisk(siteProfile);
+      setInterventionPlans(areaPlans);
+      setRiskReductionPlan(reductionPlan);
+      setRiskPlanHistory([]);
+    } finally {
+      setRiskReductionPlanLoading(false);
+      setDashboardRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadRiskDashboard();
+  }, [loadRiskDashboard]);
 
   const handleLoadRiskReductionPlan = async (
     area?: string,
@@ -305,6 +391,57 @@ export const DashboardOverviewSection = (): JSX.Element => {
     }
   };
 
+  const liveLabourRiskItems = labourRiskItems.map(
+    (item) => {
+      if (
+        item.slug !== "shift-cover" ||
+        !siteRisk
+      ) {
+        return item;
+      }
+
+      const presentation =
+        getLabourRiskPresentation(
+          siteRisk.labourRiskScore,
+          siteRisk.noEngineerOverride,
+        );
+
+      const shiftLabel =
+        siteRisk.labourShiftType === "night"
+          ? "Night"
+          : "Day";
+
+      return {
+        ...item,
+        level: presentation.level,
+        score: formatSiteRisk(
+          siteRisk.labourRiskScore,
+        ),
+        description: `${shiftLabel} shift labour and equipment-skill coverage`,
+        metricLabel: "Engineers scheduled",
+        metricValue: String(
+          siteRisk.scheduledEngineerCount,
+        ),
+        extraLabel: "Equipment cover gaps",
+        extraValue: String(
+          siteRisk.coverGapCount,
+        ),
+        label: presentation.label,
+        progress: Math.max(
+          0,
+          Math.min(
+            100,
+            siteRisk.labourRiskScore,
+          ),
+        ),
+        badgeClassName:
+          presentation.badgeClassName,
+        progressClassName:
+          presentation.progressClassName,
+      };
+    },
+  );
+
   return (
     <section className="flex w-full flex-col gap-6 px-4 pb-12 pt-4 md:px-6 xl:px-8">
 
@@ -322,16 +459,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
+            onClick={() => void loadRiskDashboard()}
+            disabled={dashboardRefreshing}
             className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
             Run Risk Analysis
           </Button>
           <button
             type="button"
+            onClick={() => void loadRiskDashboard()}
+            disabled={dashboardRefreshing}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
             aria-label="Refresh"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`} />
           </button>
           <button
             type="button"
@@ -375,7 +516,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <p className="text-xl font-semibold text-slate-50">{siteRisk
                   ? formatSiteRisk(siteRisk.riskScore)
                   : "—"}</p>
-                <p className="text-xs text-orange-400">{siteRisk ? `${siteRisk.riskLevel} · live` : "No live data"}</p>
+                <p className="text-xs text-orange-400">{siteRisk ? (
+                  <>
+                    <span>
+                      {siteRisk.riskLevel} · live
+                    </span>
+                    <span className="text-slate-500">
+                      {" "}
+                      · Op{" "}
+                      {formatSiteRisk(
+                        siteRisk.operationalRiskScore,
+                      )}
+                      {" "}
+                      · Labour{" "}
+                      {formatSiteRisk(
+                        siteRisk.labourRiskScore,
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  "No live data"
+                )}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Highest Area</p>
@@ -392,10 +553,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <p className="text-xl font-semibold text-slate-50">{siteRisk?.calibrationBacklogCount ?? "—"}</p>
                 <p className="text-xs text-yellow-400">Due / overdue</p>
               </div>
-              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
+              <div className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2.5 ${
+                siteRisk?.noEngineerOverride
+                  ? "border-red-500/50"
+                  : "border-gray-800"
+              }`}>
                 <p className="text-xs text-slate-500">Cover Gaps</p>
                 <p className="text-xl font-semibold text-slate-50">{siteRisk?.coverGapCount ?? "—"}</p>
-                <p className="text-xs text-yellow-400">Labour risk</p>
+                <p className={`text-xs ${
+                  siteRisk?.noEngineerOverride
+                    ? "text-red-400"
+                    : "text-slate-400"
+                }`}>{siteRisk?.noEngineerOverride
+                  ? "0 engineers · critical override"
+                  : siteRisk
+                    ? (siteRisk.scheduledEngineerCount + " engineers · " + (siteRisk.labourShiftType === "night" ? "night" : "day") + " shift")
+                    : "No live data"}</p>
               </div>
             </div>
 
@@ -584,7 +757,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             Recommended Work Queue
                           </h3>
                           <p className="mt-1 text-xs text-slate-500">
-                            Ranked by asset risk reduction, then criticality, overdue age and duration. Area and site scores are recalculated after the full queue.
+                            Ranked by final asset risk reduction, including current-shift labour coverage, then criticality, overdue age and duration.
                           </p>
                         </div>
 
@@ -1112,11 +1285,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     "bg-cyan-400";
 
                   const driver =
-                    area.calibrationOverdueCount > 0 ? "Calibration backlog" :
-                    area.overduePmCount > 0 ? "PM backlog" :
-                    area.criticalSparesMissing > 0 ? "Critical spares" :
-                    area.singlePointSkillGapCount > 0 ? "Skills coverage" :
-                    "Stable leading indicators";
+                    area.noEngineerOverride
+                      ? "No engineers on current shift"
+                      : area.labourRiskScore >= 65
+                        ? "Labour coverage"
+                        : area.calibrationOverdueCount > 0
+                          ? "Calibration backlog"
+                          : area.overduePmCount > 0
+                            ? "PM backlog"
+                            : area.criticalSparesMissing > 0
+                              ? "Critical spares"
+                              : area.singlePointSkillGapCount > 0
+                                ? "Skills coverage"
+                                : "Stable leading indicators";
 
                   const trend =
                     isHighestRisk ? "Highest site area risk" :
@@ -1167,6 +1348,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           <div className="flex items-start justify-between gap-3">
                             <dt className="text-sm text-slate-400">Calibration backlog</dt>
                             <dd className="text-sm font-semibold text-slate-50">{area.calibrationOverdueCount}</dd>
+                          </div>
+                          <div className="flex items-start justify-between gap-3">
+                            <dt className="text-sm text-slate-400">Labour risk</dt>
+                            <dd className={`text-sm font-semibold ${
+                              area.noEngineerOverride
+                                ? "text-red-400"
+                                : area.labourRiskScore >= 65
+                                  ? "text-orange-400"
+                                  : area.labourRiskScore >= 40
+                                    ? "text-yellow-400"
+                                    : "text-slate-50"
+                            }`}>
+                              {formatSiteRisk(
+                                area.labourRiskScore,
+                              )}
+                            </dd>
                           </div>
                         </dl>
 
@@ -1511,7 +1708,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {labourRiskItems.map((item) => (
+          {liveLabourRiskItems.map((item) => (
             <Card
               key={item.title}
               onClick={() => navigate(`/maintenance/labour-risk/${item.slug}`)}

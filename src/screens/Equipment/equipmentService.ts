@@ -176,6 +176,14 @@ interface EquipmentRiskProfileRow {
   critical_spares_missing: number | null;
   risk_summary: string | null;
   priority_action: string | null;
+  operational_risk_score: number | null;
+  labour_risk_score: number | null;
+  scheduled_engineer_count: number | null;
+  qualified_engineer_count: number | null;
+  missing_skill_count: number | null;
+  labour_shift_date: string | null;
+  labour_shift_type: string | null;
+  no_engineer_override: boolean | null;
 }
 
 interface EquipmentAssetRow {
@@ -204,7 +212,7 @@ function riskBreakdownFromProfile(profile: EquipmentRiskProfileRow): Equipment["
     { label: "PM Backlog",        pct: profile.pm_backlog_pct         ?? 0, color: "#f97316", dotClass: "bg-orange-500" },
     { label: "Asset Criticality", pct: profile.asset_criticality_pct  ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
     { label: "Calibration",       pct: profile.calibration_pct        ?? 0, color: "#06b6d4", dotClass: "bg-cyan-400"   },
-    { label: "Skills",            pct: profile.skills_pct             ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
+    { label: "Labour Coverage",  pct: profile.skills_pct             ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
     { label: "Spares",            pct: profile.spares_pct             ?? 0, color: "#6366f1", dotClass: "bg-indigo-500" },
   ];
   return items.filter((item) => item.pct > 0);
@@ -330,6 +338,13 @@ export interface SiteRiskProfile {
   criticalSparesMissing: number;
   priorityAction: string | null;
   riskSummary: string | null;
+  siteId: string | null;
+  operationalRiskScore: number;
+  labourRiskScore: number;
+  scheduledEngineerCount: number;
+  labourShiftDate: string | null;
+  labourShiftType: "day" | "night" | null;
+  noEngineerOverride: boolean;
 }
 
 export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
@@ -350,7 +365,14 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
       cover_gap_count,
       critical_spares_missing,
       priority_action,
-      risk_summary
+      risk_summary,
+      site_id,
+      operational_risk_score,
+      labour_risk_score,
+      scheduled_engineer_count,
+      labour_shift_date,
+      labour_shift_type,
+      no_engineer_override
     `)
     .eq("id", 1)
     .maybeSingle();
@@ -376,6 +398,24 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
     criticalSparesMissing: data.critical_spares_missing ?? 0,
     priorityAction: data.priority_action ?? null,
     riskSummary: data.risk_summary ?? null,
+    siteId: data.site_id ?? null,
+    operationalRiskScore: Number(
+      data.operational_risk_score ?? 0,
+    ),
+    labourRiskScore: Number(
+      data.labour_risk_score ?? 0,
+    ),
+    scheduledEngineerCount:
+      data.scheduled_engineer_count ?? 0,
+    labourShiftDate:
+      data.labour_shift_date ?? null,
+    labourShiftType:
+      data.labour_shift_type === "day" ||
+      data.labour_shift_type === "night"
+        ? data.labour_shift_type
+        : null,
+    noEngineerOverride:
+      data.no_engineer_override ?? false,
   };
 }
 
@@ -435,6 +475,10 @@ export interface AreaRiskProfile {
   singlePointSkillGapCount: number;
   riskSummary: string | null;
   priorityAction: string | null;
+  operationalRiskScore: number;
+  labourRiskScore: number;
+  scheduledEngineerCount: number;
+  noEngineerOverride: boolean;
 }
 
 export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
@@ -454,7 +498,11 @@ export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
       critical_spares_missing,
       single_point_skill_gap_count,
       risk_summary,
-      priority_action
+      priority_action,
+      operational_risk_score,
+      labour_risk_score,
+      scheduled_engineer_count,
+      no_engineer_override
     `)
     .order("risk_score", { ascending: false });
 
@@ -478,6 +526,16 @@ export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
     singlePointSkillGapCount: row.single_point_skill_gap_count ?? 0,
     riskSummary: row.risk_summary ?? null,
     priorityAction: row.priority_action ?? null,
+    operationalRiskScore: Number(
+      row.operational_risk_score ?? 0,
+    ),
+    labourRiskScore: Number(
+      row.labour_risk_score ?? 0,
+    ),
+    scheduledEngineerCount:
+      row.scheduled_engineer_count ?? 0,
+    noEngineerOverride:
+      row.no_engineer_override ?? false,
   }));
 }
 
@@ -490,6 +548,14 @@ export interface EquipmentListItem {
   riskScore: number;
   riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
   breakdown: { label: string; pct: number; color: string; dotClass: string }[];
+  operationalRiskScore?: number;
+  labourRiskScore?: number;
+  scheduledEngineerCount?: number;
+  qualifiedEngineerCount?: number;
+  missingSkillCount?: number;
+  labourShiftDate?: string | null;
+  labourShiftType?: string | null;
+  noEngineerOverride?: boolean;
 }
 
 // Fallback list used when Supabase is unavailable.
@@ -610,7 +676,15 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
           single_point_skill_gap,
           critical_spares_missing,
           risk_summary,
-          priority_action
+          priority_action,
+          operational_risk_score,
+          labour_risk_score,
+          scheduled_engineer_count,
+          qualified_engineer_count,
+          missing_skill_count,
+          labour_shift_date,
+          labour_shift_type,
+          no_engineer_override
         )
       `)
       .eq("id", id)
@@ -651,7 +725,7 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
         { label: "PM Backlog",        pct: row.pm_backlog_pct ?? 0,        color: "#f97316", dotClass: "bg-orange-500" },
         { label: "Asset Criticality", pct: row.asset_criticality_pct ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
         { label: "Calibration",       pct: row.calibration_pct ?? 0,       color: "#06b6d4", dotClass: "bg-cyan-400"   },
-        { label: "Skills",            pct: row.skills_pct ?? 0,            color: "#eab308", dotClass: "bg-yellow-400" },
+        { label: "Labour Coverage",  pct: row.skills_pct ?? 0,            color: "#eab308", dotClass: "bg-yellow-400" },
         { label: "Spares",            pct: row.spares_pct ?? 0,            color: "#6366f1", dotClass: "bg-indigo-500" },
       ].filter((item) => item.pct > 0);
 
@@ -663,6 +737,24 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
         area:        row.area ?? "—",
         riskScore,
         riskLevel,
+        operationalRiskScore: Number(
+          row.operational_risk_score ?? 0,
+        ),
+        labourRiskScore: Number(
+          row.labour_risk_score ?? 0,
+        ),
+        scheduledEngineerCount:
+          row.scheduled_engineer_count ?? 0,
+        qualifiedEngineerCount:
+          row.qualified_engineer_count ?? 0,
+        missingSkillCount:
+          row.missing_skill_count ?? 0,
+        labourShiftDate:
+          row.labour_shift_date ?? null,
+        labourShiftType:
+          row.labour_shift_type ?? null,
+        noEngineerOverride:
+          row.no_engineer_override ?? false,
         breakdown:
           breakdown.length > 0
             ? breakdown
@@ -2186,5 +2278,31 @@ export async function getSiteRiskReductionPlan(
       error,
     );
     return null;
+  }
+}
+
+// ─── Current-risk refresh ─────────────────────────────────────────────────────
+
+export async function refreshCurrentRisk(): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc(
+      "vorta_refresh_current_risk",
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_refresh_current_risk failed:",
+        error.message,
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn(
+      "vorta_refresh_current_risk threw:",
+      error,
+    );
+    return false;
   }
 }
