@@ -470,6 +470,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
   ] = useState(false);
 
   const [
+    hasRevealedRiskKpiBars,
+    setHasRevealedRiskKpiBars,
+  ] = useState(false);
+
+  const [
+    hasCompletedRiskKpiIntro,
+    setHasCompletedRiskKpiIntro,
+  ] = useState(false);
+
+  const [
     riskScopes,
     setRiskScopes,
   ] = useState<
@@ -553,6 +563,65 @@ export const DashboardOverviewSection = (): JSX.Element => {
         ) / 10,
       )
     : 0;
+
+  useEffect(() => {
+    if (
+      !hasRiskKpiSectionEnteredView ||
+      !riskKpiDashboard ||
+      hasRevealedRiskKpiBars
+    ) {
+      return;
+    }
+
+    const prefersReducedMotion =
+      window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+    if (prefersReducedMotion) {
+      setHasRevealedRiskKpiBars(true);
+      setHasCompletedRiskKpiIntro(true);
+      return;
+    }
+
+    const revealTimeoutId =
+      window.setTimeout(() => {
+        setHasRevealedRiskKpiBars(true);
+      }, 150);
+
+    return () => {
+      window.clearTimeout(
+        revealTimeoutId,
+      );
+    };
+  }, [
+    hasRiskKpiSectionEnteredView,
+    riskKpiDashboard,
+    hasRevealedRiskKpiBars,
+  ]);
+
+  useEffect(() => {
+    if (
+      !hasRevealedRiskKpiBars ||
+      hasCompletedRiskKpiIntro
+    ) {
+      return;
+    }
+
+    const completionTimeoutId =
+      window.setTimeout(() => {
+        setHasCompletedRiskKpiIntro(true);
+      }, 2100);
+
+    return () => {
+      window.clearTimeout(
+        completionTimeoutId,
+      );
+    };
+  }, [
+    hasRevealedRiskKpiBars,
+    hasCompletedRiskKpiIntro,
+  ]);
 
   const loadRiskDashboard = useCallback(
     async (
@@ -2987,16 +3056,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         >
                           {!kpi.noData && (
                             <div
-                              className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:duration-700 motion-safe:ease-out ${presentation.barClassName}`}
+                              className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:ease-out ${presentation.barClassName}`}
                               style={{
                                 height: `${
-                                  hasRiskKpiSectionEnteredView
+                                  hasRevealedRiskKpiBars
                                     ? chartValue
                                     : 0
                                 }%`,
+                                transitionDuration:
+                                  hasCompletedRiskKpiIntro
+                                    ? "300ms"
+                                    : "1400ms",
                                 transitionDelay:
-                                  hasRiskKpiSectionEnteredView
-                                    ? `${index * 60}ms`
+                                  hasRevealedRiskKpiBars &&
+                                  !hasCompletedRiskKpiIntro
+                                    ? `${index * 100}ms`
                                     : "0ms",
                               }}
                             />
