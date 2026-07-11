@@ -1242,48 +1242,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Dashboard AI Command Bar ─────────────────────────────────── */}
       <VortaAiCommandBar role="maintenance-manager" />
 
-      {(
-        operationalRiskLoading ||
-        dashboardLoadError
-      ) && (
+      {dashboardLoadError && (
         <div
-          role={
-            dashboardLoadError
-              ? "alert"
-              : "status"
-          }
-          aria-live="polite"
-          className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
-            dashboardLoadError
-              ? "border-red-500/25 bg-red-500/5"
-              : "border-blue-500/25 bg-blue-500/5"
-          }`}
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/5 px-4 py-3"
         >
-          {dashboardLoadError ? (
-            <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-          ) : (
-            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-blue-400" />
-          )}
+          <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
 
-          <div>
-            <p
-              className={`text-sm font-semibold ${
-                dashboardLoadError
-                  ? "text-red-300"
-                  : "text-blue-300"
-              }`}
-            >
-              {dashboardLoadError
-                ? dashboardLoadError
-                : "Calculating current site risk"}
-            </p>
-
-            {!dashboardLoadError && (
-              <p className="mt-0.5 text-xs text-slate-400">
-                Refreshing equipment, area, labour and site exposure from current source data.
-              </p>
-            )}
-          </div>
+          <p className="text-sm font-semibold text-red-300">
+            {dashboardLoadError}
+          </p>
         </div>
       )}
 
