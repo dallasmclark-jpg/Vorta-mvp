@@ -2049,44 +2049,62 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </div>
 
-                      <div>
-                        <p
-                          className={`text-2xl font-semibold tracking-tight ${presentation.valueClassName}`}
-                        >
-                          {formatKpiPercentage(
-                            kpi.value,
-                          )}
-                        </p>
-
-                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-slate-600">
-                          {formatKpiTarget(
-                            kpi.target,
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[#080b11]">
+                      <div className="flex flex-1 items-stretch gap-3">
                         <div
-                          className={`h-full rounded-full transition-all ${presentation.barClassName}`}
-                          style={{
-                            width: `${
-                              kpi.value === null
-                                ? 0
-                                : Math.min(
-                                    100,
-                                    Math.max(
-                                      0,
-                                      kpi.value,
-                                    ),
-                                  )
-                            }%`,
-                          }}
-                        />
-                      </div>
+                          className="relative flex w-12 shrink-0 items-end overflow-hidden rounded-lg bg-[#080b11]"
+                          aria-hidden="true"
+                        >
+                          <div
+                            className={`w-full rounded-t-md transition-all duration-500 ${presentation.barClassName}`}
+                            style={{
+                              height: `${
+                                kpi.value === null
+                                  ? 0
+                                  : Math.min(
+                                      100,
+                                      Math.max(
+                                        0,
+                                        kpi.value,
+                                      ),
+                                    )
+                              }%`,
+                            }}
+                          />
 
-                      <p className="text-xs leading-relaxed text-slate-400">
-                        {kpi.detail}
-                      </p>
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-slate-200/70"
+                            style={{
+                              bottom: `${Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  kpi.target,
+                                ),
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <p
+                            className={`text-3xl font-semibold leading-none tracking-tight ${presentation.valueClassName}`}
+                          >
+                            {formatKpiPercentage(
+                              kpi.value,
+                            )}
+                          </p>
+
+                          <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                            {formatKpiTarget(
+                              kpi.target,
+                            )}
+                          </p>
+
+                          <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                            {kpi.detail}
+                          </p>
+                        </div>
+                      </div>
 
                       <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                         <span className="text-[10px] text-slate-500">
