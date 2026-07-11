@@ -481,6 +481,94 @@ export interface AreaRiskProfile {
   noEngineerOverride: boolean;
 }
 
+export type RiskDashboardScopeType =
+  | "site"
+  | "area";
+
+export type RiskDashboardChildKind =
+  | "area"
+  | "equipment";
+
+export interface RiskDashboardChildCard {
+  kind: RiskDashboardChildKind;
+  id: string;
+  label: string;
+  code: string | null;
+  equipmentType: string | null;
+  riskScore: number;
+  riskLevel:
+    | "Critical"
+    | "High"
+    | "Medium"
+    | "Low"
+    | "Minimal";
+  primaryDriver: string;
+  highestChildName: string | null;
+  highestChildScore: number | null;
+  overduePmCount: number;
+  calibrationBacklogCount: number;
+  criticalSparesMissing: number;
+  coverGapCount: number;
+  labourRiskScore: number;
+  operationalRiskScore: number;
+  scheduledEngineerCount: number;
+  qualifiedEngineerCount: number;
+  noEngineerOverride: boolean;
+}
+
+export interface RiskDashboardLabourCard {
+  title: string;
+  slug: string;
+  score: number;
+  description: string;
+  metricLabel: string;
+  metricValue: string;
+  extraLabel: string;
+  extraValue: string;
+  statusLabel: string;
+}
+
+export interface RiskDashboardScope {
+  scopeKey: string;
+  scopeType: RiskDashboardScopeType;
+  scopeLabel: string;
+  area: string | null;
+  displayOrder: number;
+  riskScore: number;
+  riskLevel:
+    | "Critical"
+    | "High"
+    | "Medium"
+    | "Low"
+    | "Minimal";
+  operationalRiskScore: number;
+  labourRiskScore: number;
+  highestChildId: string | null;
+  highestChildCode: string | null;
+  highestChildName: string | null;
+  highestChildScore: number | null;
+  highestChildLevel: string | null;
+  assetCount: number;
+  atRiskAssetCount: number;
+  criticalAssetCount: number;
+  highAssetCount: number;
+  overduePmCount: number;
+  calibrationBacklogCount: number;
+  coverGapCount: number;
+  criticalSparesMissing: number;
+  scheduledEngineerCount: number;
+  labourShiftDate: string | null;
+  labourShiftType:
+    | "day"
+    | "night"
+    | null;
+  noEngineerOverride: boolean;
+  priorityAction: string | null;
+  riskSummary: string | null;
+  childCards: RiskDashboardChildCard[];
+  labourCards: RiskDashboardLabourCard[];
+}
+
 export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
   const { data, error } = await supabase
     .from("area_risk_profiles")
@@ -537,6 +625,261 @@ export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
     noEngineerOverride:
       row.no_engineer_override ?? false,
   }));
+}
+
+export async function getRiskDashboardScopes():
+  Promise<RiskDashboardScope[]> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_risk_dashboard_scopes",
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_risk_dashboard_scopes failed:",
+        error.message,
+      );
+      return [];
+    }
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map(
+      (row: any): RiskDashboardScope => {
+        const rawChildren = Array.isArray(
+          row.child_cards,
+        )
+          ? row.child_cards
+          : [];
+
+        const rawLabourCards =
+          Array.isArray(
+            row.labour_cards,
+          )
+            ? row.labour_cards
+            : [];
+
+        return {
+          scopeKey:
+            row.scope_key ?? "",
+          scopeType:
+            row.scope_type === "area"
+              ? "area"
+              : "site",
+          scopeLabel:
+            row.scope_label ??
+            "Site Risk",
+          area:
+            row.area ?? null,
+          displayOrder: Number(
+            row.display_order ?? 0,
+          ),
+          riskScore: Number(
+            row.risk_score ?? 0,
+          ),
+          riskLevel:
+            row.risk_level ??
+            "Minimal",
+          operationalRiskScore: Number(
+            row.operational_risk_score ??
+              0,
+          ),
+          labourRiskScore: Number(
+            row.labour_risk_score ?? 0,
+          ),
+          highestChildId:
+            row.highest_child_id ??
+            null,
+          highestChildCode:
+            row.highest_child_code ??
+            null,
+          highestChildName:
+            row.highest_child_name ??
+            null,
+          highestChildScore:
+            row.highest_child_score ===
+              null ||
+            row.highest_child_score ===
+              undefined
+              ? null
+              : Number(
+                  row.highest_child_score,
+                ),
+          highestChildLevel:
+            row.highest_child_level ??
+            null,
+          assetCount: Number(
+            row.asset_count ?? 0,
+          ),
+          atRiskAssetCount: Number(
+            row.at_risk_asset_count ??
+              0,
+          ),
+          criticalAssetCount: Number(
+            row.critical_asset_count ??
+              0,
+          ),
+          highAssetCount: Number(
+            row.high_asset_count ?? 0,
+          ),
+          overduePmCount: Number(
+            row.overdue_pm_count ?? 0,
+          ),
+          calibrationBacklogCount:
+            Number(
+              row.calibration_backlog_count ??
+                0,
+            ),
+          coverGapCount: Number(
+            row.cover_gap_count ?? 0,
+          ),
+          criticalSparesMissing:
+            Number(
+              row.critical_spares_missing ??
+                0,
+            ),
+          scheduledEngineerCount:
+            Number(
+              row.scheduled_engineer_count ??
+                0,
+            ),
+          labourShiftDate:
+            row.labour_shift_date ??
+            null,
+          labourShiftType:
+            row.labour_shift_type ===
+              "day" ||
+            row.labour_shift_type ===
+              "night"
+              ? row.labour_shift_type
+              : null,
+          noEngineerOverride:
+            row.no_engineer_override ??
+            false,
+          priorityAction:
+            row.priority_action ??
+            null,
+          riskSummary:
+            row.risk_summary ?? null,
+          childCards: rawChildren.map(
+            (
+              item: any,
+            ): RiskDashboardChildCard => ({
+              kind:
+                item.kind ===
+                "equipment"
+                  ? "equipment"
+                  : "area",
+              id: item.id ?? "",
+              label:
+                item.label ??
+                "Unnamed",
+              code:
+                item.code ?? null,
+              equipmentType:
+                item.equipmentType ??
+                null,
+              riskScore: Number(
+                item.riskScore ?? 0,
+              ),
+              riskLevel:
+                item.riskLevel ??
+                "Minimal",
+              primaryDriver:
+                item.primaryDriver ??
+                "Stable leading indicators",
+              highestChildName:
+                item.highestChildName ??
+                null,
+              highestChildScore:
+                item.highestChildScore ===
+                  null ||
+                item.highestChildScore ===
+                  undefined
+                  ? null
+                  : Number(
+                      item.highestChildScore,
+                    ),
+              overduePmCount: Number(
+                item.overduePmCount ??
+                  0,
+              ),
+              calibrationBacklogCount:
+                Number(
+                  item.calibrationBacklogCount ??
+                    0,
+                ),
+              criticalSparesMissing:
+                Number(
+                  item.criticalSparesMissing ??
+                    0,
+                ),
+              coverGapCount: Number(
+                item.coverGapCount ??
+                  0,
+              ),
+              labourRiskScore: Number(
+                item.labourRiskScore ??
+                  0,
+              ),
+              operationalRiskScore:
+                Number(
+                  item.operationalRiskScore ??
+                    0,
+                ),
+              scheduledEngineerCount:
+                Number(
+                  item.scheduledEngineerCount ??
+                    0,
+                ),
+              qualifiedEngineerCount:
+                Number(
+                  item.qualifiedEngineerCount ??
+                    0,
+                ),
+              noEngineerOverride:
+                item.noEngineerOverride ??
+                false,
+            }),
+          ),
+          labourCards:
+            rawLabourCards.map(
+              (
+                item: any,
+              ): RiskDashboardLabourCard => ({
+                title:
+                  item.title ?? "",
+                slug:
+                  item.slug ?? "",
+                score: Number(
+                  item.score ?? 0,
+                ),
+                description:
+                  item.description ?? "",
+                metricLabel:
+                  item.metricLabel ?? "",
+                metricValue:
+                  item.metricValue ?? "0",
+                extraLabel:
+                  item.extraLabel ?? "",
+                extraValue:
+                  item.extraValue ?? "",
+                statusLabel:
+                  item.statusLabel ?? "",
+              }),
+            ),
+        };
+      },
+    );
+  } catch (error) {
+    console.warn(
+      "vorta_get_risk_dashboard_scopes threw:",
+      error,
+    );
+    return [];
+  }
 }
 
 export interface EquipmentListItem {
@@ -2194,6 +2537,141 @@ export interface SiteRiskReductionPlan {
   actions: SiteRiskReductionAction[];
 }
 
+function mapSiteRiskReductionPlanRow(
+  row: any,
+): SiteRiskReductionPlan {
+  return {
+    currentSiteRisk: Number(
+      row.current_site_risk ?? 0,
+    ),
+    currentSiteLevel:
+      row.current_site_level ??
+      "Minimal",
+    projectedSiteRisk: Number(
+      row.projected_site_risk ?? 0,
+    ),
+    projectedSiteLevel:
+      row.projected_site_level ??
+      "Minimal",
+    highestArea:
+      row.highest_area ?? "",
+    currentAreaRisk: Number(
+      row.current_area_risk ?? 0,
+    ),
+    currentAreaLevel:
+      row.current_area_level ??
+      "Minimal",
+    projectedAreaRisk: Number(
+      row.projected_area_risk ?? 0,
+    ),
+    projectedAreaLevel:
+      row.projected_area_level ??
+      "Minimal",
+    equipmentId:
+      row.equipment_id ?? "",
+    equipmentName:
+      row.equipment_name ??
+      "Unnamed equipment",
+    equipmentCode:
+      row.equipment_code ?? "",
+    estimatedDurationMinutes:
+      Number(
+        row.estimated_duration_minutes ??
+          0,
+      ),
+    currentPmBacklog: Number(
+      row.current_pm_backlog ?? 0,
+    ),
+    projectedPmBacklog: Number(
+      row.projected_pm_backlog ?? 0,
+    ),
+    currentCalibrationBacklog:
+      Number(
+        row.current_calibration_backlog ??
+          0,
+      ),
+    projectedCalibrationBacklog:
+      Number(
+        row.projected_calibration_backlog ??
+          0,
+      ),
+    currentStockouts: Number(
+      row.current_stockouts ?? 0,
+    ),
+    projectedStockouts: Number(
+      row.projected_stockouts ?? 0,
+    ),
+    nextArea:
+      row.next_area ?? "",
+    nextAreaRisk: Number(
+      row.next_area_risk ?? 0,
+    ),
+    nextAreaLevel:
+      row.next_area_level ??
+      "Minimal",
+    actions: Array.isArray(
+      row.actions,
+    )
+      ? row.actions.map(
+          (
+            action: any,
+          ): SiteRiskReductionAction => ({
+            priority: Number(
+              action.priority ?? 0,
+            ),
+            driver:
+              action.driver ?? "",
+            action:
+              action.action ?? "",
+            detail:
+              action.detail ?? "",
+            status:
+              action.status ?? "",
+            calculatedReduction:
+              Number(
+                action.calculatedReduction ??
+                  0,
+              ),
+            projectedScore: Number(
+              action.projectedScore ??
+                0,
+            ),
+            workOrderNumbers:
+              Array.isArray(
+                action.workOrderNumbers,
+              )
+                ? action.workOrderNumbers
+                : [],
+            pmNumbers: Array.isArray(
+              action.pmNumbers,
+            )
+              ? action.pmNumbers
+              : [],
+            sparePartNumbers:
+              Array.isArray(
+                action.sparePartNumbers,
+              )
+                ? action.sparePartNumbers
+                : [],
+            estimatedDurationMinutes:
+              Number(
+                action.estimatedDurationMinutes ??
+                  0,
+              ),
+            procurementLeadDays:
+              Number(
+                action.procurementLeadDays ??
+                  0,
+              ),
+            rankingReason:
+              action.rankingReason ??
+              "",
+          }),
+        )
+      : [],
+  };
+}
+
 export async function getSiteRiskReductionPlan(
   area?: string,
 ): Promise<SiteRiskReductionPlan | null> {
@@ -2221,63 +2699,70 @@ export async function getSiteRiskReductionPlan(
       return null;
     }
 
-    return {
-      currentSiteRisk: Number(row.current_site_risk ?? 0),
-      currentSiteLevel: row.current_site_level ?? "Minimal",
-      projectedSiteRisk: Number(row.projected_site_risk ?? 0),
-      projectedSiteLevel: row.projected_site_level ?? "Minimal",
-      highestArea: row.highest_area ?? "",
-      currentAreaRisk: row.current_area_risk ?? 0,
-      currentAreaLevel: row.current_area_level ?? "Minimal",
-      projectedAreaRisk: row.projected_area_risk ?? 0,
-      projectedAreaLevel: row.projected_area_level ?? "Minimal",
-      equipmentId: row.equipment_id,
-      equipmentName: row.equipment_name ?? "Unnamed equipment",
-      equipmentCode: row.equipment_code ?? "",
-      estimatedDurationMinutes: row.estimated_duration_minutes ?? 0,
-      currentPmBacklog: row.current_pm_backlog ?? 0,
-      projectedPmBacklog: row.projected_pm_backlog ?? 0,
-      currentCalibrationBacklog: row.current_calibration_backlog ?? 0,
-      projectedCalibrationBacklog: row.projected_calibration_backlog ?? 0,
-      currentStockouts: row.current_stockouts ?? 0,
-      projectedStockouts: row.projected_stockouts ?? 0,
-      nextArea: row.next_area ?? "",
-      nextAreaRisk: row.next_area_risk ?? 0,
-      nextAreaLevel: row.next_area_level ?? "Minimal",
-      actions: Array.isArray(row.actions)
-        ? row.actions.map((action: any) => ({
-            priority: action.priority ?? 0,
-            driver: action.driver ?? "",
-            action: action.action ?? "",
-            detail: action.detail ?? "",
-            status: action.status ?? "",
-            calculatedReduction: action.calculatedReduction ?? 0,
-            projectedScore: action.projectedScore ?? 0,
-            workOrderNumbers: Array.isArray(action.workOrderNumbers)
-              ? action.workOrderNumbers
-              : [],
-            pmNumbers: Array.isArray(action.pmNumbers)
-              ? action.pmNumbers
-              : [],
-            sparePartNumbers: Array.isArray(action.sparePartNumbers)
-              ? action.sparePartNumbers
-              : [],
-            estimatedDurationMinutes: Number(
-              action.estimatedDurationMinutes ?? 0,
-            ),
-            procurementLeadDays: Number(
-              action.procurementLeadDays ?? 0,
-            ),
-            rankingReason: action.rankingReason ?? "",
-          }))
-        : [],
-    };
+    return mapSiteRiskReductionPlanRow(
+      row,
+    );
   } catch (error) {
     console.warn(
       "vorta_get_site_risk_reduction_plan threw:",
       error,
     );
     return null;
+  }
+}
+
+export type RiskDashboardScopePlanCache =
+  Record<
+    string,
+    SiteRiskReductionPlan
+  >;
+
+export async function getRiskDashboardScopePlans():
+  Promise<RiskDashboardScopePlanCache> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_risk_dashboard_scope_plans",
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_risk_dashboard_scope_plans failed:",
+        error.message,
+      );
+      return {};
+    }
+
+    if (!Array.isArray(data)) {
+      return {};
+    }
+
+    return data.reduce<
+      RiskDashboardScopePlanCache
+    >(
+      (
+        cache,
+        row: any,
+      ) => {
+        const scopeKey =
+          row.scope_key ?? "";
+
+        if (scopeKey) {
+          cache[scopeKey] =
+            mapSiteRiskReductionPlanRow(
+              row,
+            );
+        }
+
+        return cache;
+      },
+      {},
+    );
+  } catch (error) {
+    console.warn(
+      "vorta_get_risk_dashboard_scope_plans threw:",
+      error,
+    );
+    return {};
   }
 }
 
@@ -2353,6 +2838,111 @@ export interface RiskReductionKpiDashboard {
   kpis: RiskReductionKpi[];
 }
 
+function mapRiskReductionKpiDashboardRow(
+  row: any,
+): RiskReductionKpiDashboard {
+  const rawKpis = Array.isArray(
+    row.kpis,
+  )
+    ? row.kpis
+    : [];
+
+  return {
+    periodKey:
+      row.period_key === "weekly" ||
+      row.period_key === "monthly" ||
+      row.period_key === "ytd"
+        ? row.period_key
+        : "daily",
+    periodLabel:
+      row.period_label ?? "",
+    periodStart:
+      row.period_start ?? "",
+    periodEnd:
+      row.period_end ?? "",
+    comparisonLabel:
+      row.comparison_label ?? "",
+    kpis: rawKpis.map(
+      (
+        item: any,
+      ): RiskReductionKpi => ({
+        key:
+          item.key ?? "",
+        label:
+          item.label ?? "",
+        description:
+          item.description ?? "",
+        value:
+          item.value === null ||
+          item.value === undefined
+            ? null
+            : Number(item.value),
+        target: Number(
+          item.target ?? 0,
+        ),
+        ragStatus:
+          item.ragStatus ===
+            "green" ||
+          item.ragStatus ===
+            "amber" ||
+          item.ragStatus === "red"
+            ? item.ragStatus
+            : "neutral",
+        numerator: Number(
+          item.numerator ?? 0,
+        ),
+        denominator: Number(
+          item.denominator ?? 0,
+        ),
+        detail:
+          item.detail ?? "",
+        noData:
+          item.noData ?? false,
+        criticalOverride:
+          item.criticalOverride ??
+          false,
+        previousValue:
+          item.previousValue ===
+            null ||
+          item.previousValue ===
+            undefined
+            ? null
+            : Number(
+                item.previousValue,
+              ),
+        trendDelta:
+          item.trendDelta === null ||
+          item.trendDelta ===
+            undefined
+            ? null
+            : Number(
+                item.trendDelta,
+              ),
+        trendDirection:
+          item.trendDirection ===
+            "up" ||
+          item.trendDirection ===
+            "down" ||
+          item.trendDirection === "flat"
+            ? item.trendDirection
+            : null,
+        favourableTrend:
+          typeof item.favourableTrend ===
+          "boolean"
+            ? item.favourableTrend
+            : null,
+        comparisonLabel:
+          item.comparisonLabel ??
+          row.comparison_label ??
+          "",
+        drilldownRoute:
+          item.drilldownRoute ??
+          "/dashboard",
+      }),
+    ),
+  };
+}
+
 export async function getRiskReductionKpis(
   period: RiskKpiPeriodKey,
 ): Promise<RiskReductionKpiDashboard | null> {
@@ -2379,77 +2969,88 @@ export async function getRiskReductionKpis(
       return null;
     }
 
-    const rawKpis = Array.isArray(row.kpis)
-      ? row.kpis
-      : [];
-
-    return {
-      periodKey:
-        row.period_key === "weekly" ||
-        row.period_key === "monthly" ||
-        row.period_key === "ytd"
-          ? row.period_key
-          : "daily",
-      periodLabel: row.period_label ?? "",
-      periodStart: row.period_start ?? "",
-      periodEnd: row.period_end ?? "",
-      comparisonLabel: row.comparison_label ?? "",
-      kpis: rawKpis.map(
-        (item: any): RiskReductionKpi => ({
-          key: item.key ?? "",
-          label: item.label ?? "",
-          description: item.description ?? "",
-          value:
-            item.value === null ||
-            item.value === undefined
-              ? null
-              : Number(item.value),
-          target: Number(item.target ?? 0),
-          ragStatus:
-            item.ragStatus === "green" ||
-            item.ragStatus === "amber" ||
-            item.ragStatus === "red"
-              ? item.ragStatus
-              : "neutral",
-          numerator: Number(item.numerator ?? 0),
-          denominator: Number(item.denominator ?? 0),
-          detail: item.detail ?? "",
-          noData: item.noData ?? false,
-          criticalOverride: item.criticalOverride ?? false,
-          previousValue:
-            item.previousValue === null ||
-            item.previousValue === undefined
-              ? null
-              : Number(item.previousValue),
-          trendDelta:
-            item.trendDelta === null ||
-            item.trendDelta === undefined
-              ? null
-              : Number(item.trendDelta),
-          trendDirection:
-            item.trendDirection === "up" ||
-            item.trendDirection === "down" ||
-            item.trendDirection === "flat"
-              ? item.trendDirection
-              : null,
-          favourableTrend:
-            typeof item.favourableTrend === "boolean"
-              ? item.favourableTrend
-              : null,
-          comparisonLabel:
-            item.comparisonLabel ??
-            row.comparison_label ??
-            "",
-          drilldownRoute: item.drilldownRoute ?? "/dashboard",
-        }),
-      ),
-    };
+    return mapRiskReductionKpiDashboardRow(
+      row,
+    );
   } catch (error) {
     console.warn(
       "vorta_get_risk_reduction_kpis threw:",
       error,
     );
     return null;
+  }
+}
+
+export type RiskDashboardScopeKpiCache =
+  Record<
+    string,
+    Partial<
+      Record<
+        RiskKpiPeriodKey,
+        RiskReductionKpiDashboard
+      >
+    >
+  >;
+
+export async function getRiskDashboardScopeKpis():
+  Promise<RiskDashboardScopeKpiCache> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_risk_dashboard_scope_kpis",
+      {
+        p_anchor_date: null,
+      },
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_risk_dashboard_scope_kpis failed:",
+        error.message,
+      );
+      return {};
+    }
+
+    if (!Array.isArray(data)) {
+      return {};
+    }
+
+    return data.reduce<
+      RiskDashboardScopeKpiCache
+    >(
+      (
+        cache,
+        row: any,
+      ) => {
+        const scopeKey =
+          row.scope_key ?? "";
+
+        if (!scopeKey) {
+          return cache;
+        }
+
+        const dashboard =
+          mapRiskReductionKpiDashboardRow(
+            row,
+          );
+
+        if (!cache[scopeKey]) {
+          cache[scopeKey] = {};
+        }
+
+        cache[scopeKey][
+          dashboard.periodKey
+        ] = dashboard;
+
+        return cache;
+      },
+      {},
+    );
+  } catch (error) {
+    console.warn(
+      "vorta_get_risk_dashboard_scope_kpis threw:",
+      error,
+    );
+    return {};
   }
 }
 

@@ -22,7 +22,9 @@ import {
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   refreshCurrentRisk,
-  getRiskReductionKpis,
+  getRiskDashboardScopes,
+  getRiskDashboardScopePlans,
+  getRiskDashboardScopeKpis,
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
@@ -31,6 +33,10 @@ import {
   type RiskReductionKpi,
   type RiskReductionKpiDashboard,
   type RiskKpiPeriodKey,
+  type RiskDashboardScope,
+  type RiskDashboardLabourCard,
+  type RiskDashboardScopePlanCache,
+  type RiskDashboardScopeKpiCache,
 } from "../../../Equipment/equipmentService";
 
 const formatSiteRisk = (value: number): string =>
@@ -143,69 +149,6 @@ const RiskMeter = ({
 
 // ─── Building static display config ──────────────────────────────────────────
 
-const labourRiskItems = [
-  {
-    title: "Shift Cover",
-    slug: "shift-cover",
-    level: "Critical",
-    score: "85",
-    description: "Night Shift Coverage Gap",
-    metricLabel: "Shifts uncovered",
-    metricValue: "3",
-    extraLabel: "Cover required",
-    extraValue: "12h",
-    label: "Critical shortage",
-    progress: 85,
-    badgeClassName: "bg-[#ef444420] text-red-500 hover:bg-[#ef444420]",
-    progressClassName: "bg-red-500",
-  },
-  {
-    title: "Single Point Risk",
-    slug: "single-point-failure",
-    level: "High",
-    score: "72",
-    description: "No PLC backup trained",
-    metricLabel: "Key person risk",
-    metricValue: "1",
-    extraLabel: "Backup trained",
-    extraValue: "0",
-    label: "No backup available",
-    progress: 72,
-    badgeClassName: "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
-    progressClassName: "bg-orange-500",
-  },
-  {
-    title: "Annual Leave",
-    slug: "annual-leave",
-    level: "Med",
-    score: "68",
-    description: "Peak leave overlap",
-    metricLabel: "Engineers off",
-    metricValue: "3",
-    extraLabel: "Critical cover",
-    extraValue: "Low",
-    label: "Peak overlap risk",
-    progress: 68,
-    badgeClassName: "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
-    progressClassName: "bg-yellow-400",
-  },
-  {
-    title: "Training Risk",
-    slug: "training-expiring",
-    level: "Med",
-    score: "54",
-    description: "Safety certs expiring",
-    metricLabel: "Certs expiring",
-    metricValue: "2",
-    extraLabel: "Next expiry",
-    extraValue: "3 days",
-    label: "Expiry imminent",
-    progress: 54,
-    badgeClassName: "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
-    progressClassName: "bg-yellow-400",
-  },
-];
-
 const RISK_KPI_PERIODS: Array<{
   key: RiskKpiPeriodKey;
   label: string;
@@ -227,13 +170,6 @@ const RISK_KPI_PERIODS: Array<{
     label: "YTD",
   },
 ];
-
-type RiskKpiDashboardCache = Partial<
-  Record<
-    RiskKpiPeriodKey,
-    RiskReductionKpiDashboard
-  >
->;
 
 const formatKpiPeriodRange = (
   start: string,
@@ -369,16 +305,35 @@ export const DashboardOverviewSection = (): JSX.Element => {
   );
 
   const [
-    riskKpiCache,
-    setRiskKpiCache,
-  ] = useState<RiskKpiDashboardCache>(
-    {},
-  );
-
-  const [
     riskKpiLoading,
     setRiskKpiLoading,
   ] = useState(false);
+
+  const [
+    riskScopes,
+    setRiskScopes,
+  ] = useState<
+    RiskDashboardScope[]
+  >([]);
+
+  const [
+    selectedRiskScopeKey,
+    setSelectedRiskScopeKey,
+  ] = useState("site");
+
+  const [
+    riskScopePlanCache,
+    setRiskScopePlanCache,
+  ] = useState<
+    RiskDashboardScopePlanCache
+  >({});
+
+  const [
+    riskScopeKpiCache,
+    setRiskScopeKpiCache,
+  ] = useState<
+    RiskDashboardScopeKpiCache
+  >({});
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
 
@@ -386,6 +341,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
     riskPlanHistory.length > 0
       ? riskPlanHistory[riskPlanHistory.length - 1]
       : null;
+
+  const activeRiskScope =
+    riskScopes.find(
+      (scope) =>
+        scope.scopeKey ===
+        selectedRiskScopeKey,
+    ) ??
+    riskScopes.find(
+      (scope) =>
+        scope.scopeKey === "site",
+    ) ??
+    null;
+
+  const isSiteRiskScope =
+    activeRiskScope?.scopeType !==
+    "area";
+
+  const activeScopeArea =
+    activeRiskScope?.area ?? null;
+
+  const activeScopeLabel =
+    activeRiskScope?.scopeLabel ??
+    "Site Risk";
+
+  const activeScopeChildCards =
+    activeRiskScope?.childCards ??
+    [];
 
   const siteRiskReduction = riskReductionPlan
     ? Math.max(
@@ -399,7 +381,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
     : 0;
 
   const loadRiskDashboard = useCallback(
-    async (period: RiskKpiPeriodKey) => {
+    async (
+      period: RiskKpiPeriodKey,
+      scopeKey: string,
+    ) => {
       setDashboardRefreshing(true);
       setRiskReductionPlanLoading(true);
       setRiskKpiLoading(true);
@@ -407,70 +392,89 @@ export const DashboardOverviewSection = (): JSX.Element => {
       try {
         await refreshCurrentRisk();
 
-        const riskKpiRequest =
-          Promise.all(
-            RISK_KPI_PERIODS.map(
-              async ({ key }) => ({
-                key,
-                dashboard:
-                  await getRiskReductionKpis(
-                    key,
-                  ),
-              }),
-            ),
-          );
-
         const [
           areaProfiles,
           siteProfile,
           areaPlans,
-          reductionPlan,
-          kpiResults,
+          scopes,
+          planCache,
+          scopeKpiCache,
         ] = await Promise.all([
           getAreaRiskProfiles(),
           getSiteRiskProfile(),
           getAreaInterventionPlans(),
-          getSiteRiskReductionPlan(),
-          riskKpiRequest,
+          getRiskDashboardScopes(),
+          getRiskDashboardScopePlans(),
+          getRiskDashboardScopeKpis(),
         ]);
 
-        setAreaRiskCards(areaProfiles);
-        setSiteRisk(siteProfile);
-        setInterventionPlans(areaPlans);
-        setRiskReductionPlan(reductionPlan);
+        setAreaRiskCards(
+          areaProfiles,
+        );
+        setSiteRisk(
+          siteProfile,
+        );
+        setInterventionPlans(
+          areaPlans,
+        );
+        setRiskScopes(
+          scopes,
+        );
+        setRiskScopePlanCache(
+          planCache,
+        );
+        setRiskScopeKpiCache(
+          scopeKpiCache,
+        );
 
-        const nextRiskKpiCache =
-          kpiResults.reduce<
-            RiskKpiDashboardCache
-          >(
-            (
-              cache,
-              result,
-            ) => {
-              if (result.dashboard) {
-                cache[result.key] =
-                  result.dashboard;
-              }
+        const validScopeKey =
+          scopes.some(
+            (scope) =>
+              scope.scopeKey ===
+              scopeKey,
+          )
+            ? scopeKey
+            : "site";
 
-              return cache;
-            },
-            {},
-          );
+        setSelectedRiskScopeKey(
+          validScopeKey,
+        );
 
-        setRiskKpiCache(nextRiskKpiCache);
-
-        const requestedKpiDashboard =
-          nextRiskKpiCache[period] ??
-          nextRiskKpiCache.daily ??
+        const requestedPlan =
+          planCache[validScopeKey] ??
+          planCache.site ??
           null;
 
-        if (requestedKpiDashboard) {
-          setRiskKpiDashboard(requestedKpiDashboard);
+        setRiskReductionPlan(
+          requestedPlan,
+        );
+
+        const requestedKpis =
+          scopeKpiCache[
+            validScopeKey
+          ]?.[period] ??
+          scopeKpiCache.site?.[
+            period
+          ] ??
+          scopeKpiCache.site
+            ?.daily ??
+          null;
+
+        if (requestedKpis) {
+          setRiskKpiDashboard(
+            requestedKpis,
+          );
         }
 
         setRiskPlanHistory([]);
+        setSelectedArea(null);
+        setSelectedAreaIntervention(
+          null,
+        );
       } finally {
-        setRiskReductionPlanLoading(false);
+        setRiskReductionPlanLoading(
+          false,
+        );
         setRiskKpiLoading(false);
         setDashboardRefreshing(false);
       }
@@ -479,7 +483,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
   );
 
   useEffect(() => {
-    void loadRiskDashboard("daily");
+    void loadRiskDashboard(
+      "daily",
+      "site",
+    );
   }, [loadRiskDashboard]);
 
   const handleLoadRiskReductionPlan = async (
@@ -555,77 +562,138 @@ export const DashboardOverviewSection = (): JSX.Element => {
     }
   };
 
-  const liveLabourRiskItems = labourRiskItems.map(
-    (item) => {
-      if (
-        item.slug !== "shift-cover" ||
-        !siteRisk
-      ) {
-        return item;
-      }
+  const activeLabourRiskItems =
+    (
+      activeRiskScope?.labourCards ??
+      []
+    ).map(
+      (
+        item:
+          RiskDashboardLabourCard,
+      ) => {
+        const isShiftCover =
+          item.slug ===
+          "shift-cover";
 
-      const presentation =
-        getLabourRiskPresentation(
-          siteRisk.labourRiskScore,
-          siteRisk.noEngineerOverride,
-        );
+        const presentation =
+          getLabourRiskPresentation(
+            item.score,
+            isShiftCover &&
+              Boolean(
+                activeRiskScope
+                  ?.noEngineerOverride,
+              ),
+          );
 
-      const shiftLabel =
-        siteRisk.labourShiftType === "night"
-          ? "Night"
-          : "Day";
-
-      return {
-        ...item,
-        level: presentation.level,
-        score: formatSiteRisk(
-          siteRisk.labourRiskScore,
-        ),
-        description: `${shiftLabel} shift labour and equipment-skill coverage`,
-        metricLabel: "Engineers scheduled",
-        metricValue: String(
-          siteRisk.scheduledEngineerCount,
-        ),
-        extraLabel: "Equipment cover gaps",
-        extraValue: String(
-          siteRisk.coverGapCount,
-        ),
-        label: presentation.label,
-        progress: Math.max(
-          0,
-          Math.min(
-            100,
-            siteRisk.labourRiskScore,
+        return {
+          ...item,
+          level:
+            presentation.level,
+          score:
+            formatSiteRisk(
+              item.score,
+            ),
+          progress: Math.max(
+            0,
+            Math.min(
+              100,
+              item.score,
+            ),
           ),
-        ),
-        badgeClassName:
-          presentation.badgeClassName,
-        progressClassName:
-          presentation.progressClassName,
-      };
-    },
-  );
+          label:
+            item.statusLabel ||
+            presentation.label,
+          badgeClassName:
+            presentation.badgeClassName,
+          progressClassName:
+            presentation.progressClassName,
+        };
+      },
+    );
+
+  const handleRiskScopeChange = (
+    scopeKey: string,
+  ) => {
+    if (
+      scopeKey ===
+      selectedRiskScopeKey
+    ) {
+      return;
+    }
+
+    const nextScope =
+      riskScopes.find(
+        (scope) =>
+          scope.scopeKey ===
+          scopeKey,
+      );
+
+    if (!nextScope) {
+      return;
+    }
+
+    const nextPlan =
+      riskScopePlanCache[
+        scopeKey
+      ] ?? null;
+
+    const nextKpis =
+      riskScopeKpiCache[
+        scopeKey
+      ]?.[
+        selectedKpiPeriod
+      ] ?? null;
+
+    setSelectedRiskScopeKey(
+      scopeKey,
+    );
+    setRiskReductionPlan(
+      nextPlan,
+    );
+
+    if (nextKpis) {
+      setRiskKpiDashboard(
+        nextKpis,
+      );
+    }
+
+    setIsRiskDetailOpen(false);
+    setRiskPlanHistory([]);
+    setSelectedArea(null);
+    setSelectedAreaIntervention(
+      null,
+    );
+    setSelectedInterventionPlan(
+      null,
+    );
+  };
 
   const handleKpiPeriodChange = (
     period: RiskKpiPeriodKey,
   ) => {
     if (
-      period === selectedKpiPeriod ||
+      period ===
+        selectedKpiPeriod ||
       riskKpiLoading
     ) {
       return;
     }
 
     const cachedDashboard =
-      riskKpiCache[period];
+      riskScopeKpiCache[
+        selectedRiskScopeKey
+      ]?.[period];
 
     if (!cachedDashboard) {
       return;
     }
 
-    setSelectedKpiPeriod(period);
-
-    setRiskKpiDashboard(cachedDashboard);
+    setSelectedKpiPeriod(
+      period,
+    );
+    setRiskKpiDashboard(
+      cachedDashboard,
+    );
   };
 
   const handleRiskKpiClick = (
@@ -635,14 +703,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
       kpi.key === "risk_reduction_achieved"
     ) {
       setIsRiskDetailOpen(true);
-
-      if (!riskReductionPlan) {
-        void handleLoadRiskReductionPlan(
-          undefined,
-          "reset",
-        );
-      }
-
       return;
     }
 
@@ -652,10 +712,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
     const query = new URLSearchParams({
       focus: kpi.key,
-      period: riskKpiDashboard.periodKey,
-      start: riskKpiDashboard.periodStart,
-      end: riskKpiDashboard.periodEnd,
+      period:
+        riskKpiDashboard.periodKey,
+      start:
+        riskKpiDashboard.periodStart,
+      end:
+        riskKpiDashboard.periodEnd,
+      scope:
+        activeRiskScope?.scopeType ??
+        "site",
     });
+
+    if (activeScopeArea) {
+      query.set(
+        "area",
+        activeScopeArea,
+      );
+    }
 
     const separator = kpi.drilldownRoute.includes(
       "?",
@@ -685,7 +758,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod)}
+            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
             disabled={dashboardRefreshing}
             className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
@@ -693,7 +766,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </Button>
           <button
             type="button"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod)}
+            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
             disabled={dashboardRefreshing}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
             aria-label="Refresh"
@@ -719,6 +792,82 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <CardContent className="p-5">
           <div className="flex flex-col gap-5">
 
+            <div className="overflow-x-auto border-b border-gray-800 pb-4">
+              <div
+                role="tablist"
+                aria-label="Risk intelligence scope"
+                className="flex min-w-max items-center gap-2"
+              >
+                {riskScopes.map(
+                  (scope) => {
+                    const isSelected =
+                      scope.scopeKey ===
+                      selectedRiskScopeKey;
+
+                    const dotClassName =
+                      scope.riskScore >= 85
+                        ? "bg-red-400"
+                        : scope.riskScore >= 65
+                          ? "bg-orange-400"
+                          : scope.riskScore >= 40
+                            ? "bg-yellow-400"
+                            : scope.riskScore >= 20
+                              ? "bg-emerald-400"
+                              : "bg-cyan-400";
+
+                    return (
+                      <button
+                        type="button"
+                        role="tab"
+                        key={
+                          scope.scopeKey
+                        }
+                        aria-selected={
+                          isSelected
+                        }
+                        onClick={() =>
+                          handleRiskScopeChange(
+                            scope.scopeKey,
+                          )
+                        }
+                        className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                          isSelected
+                            ? "border-blue-500/40 bg-blue-600 text-white"
+                            : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isSelected
+                              ? "bg-white"
+                              : dotClassName
+                          }`}
+                        />
+
+                        <span>
+                          {
+                            scope.scopeLabel
+                          }
+                        </span>
+
+                        <span
+                          className={
+                            isSelected
+                              ? "text-blue-100"
+                              : "text-slate-600"
+                          }
+                        >
+                          {formatSiteRisk(
+                            scope.riskScore,
+                          )}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
             {/* Card header */}
             <header className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-1.5">
@@ -726,7 +875,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   RISK INTELLIGENCE
                 </Badge>
                 <h2 className="text-base font-semibold text-slate-50">
-                  Site Risk Briefing
+                  {isSiteRiskScope
+                    ? "Site Risk Briefing"
+                    : `${activeScopeLabel} Risk Briefing`}
                 </h2>
               </div>
               <div className="flex flex-col items-end gap-0.5 text-right">
@@ -738,25 +889,29 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* KPI strip */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
-                <p className="text-xs text-slate-500">Site Risk</p>
-                <p className="text-xl font-semibold text-slate-50">{siteRisk
-                  ? formatSiteRisk(siteRisk.riskScore)
+                <p className="text-xs text-slate-500">{isSiteRiskScope
+                  ? "Site Risk"
+                  : "Area Risk"}</p>
+                <p className="text-xl font-semibold text-slate-50">{activeRiskScope
+                  ? formatSiteRisk(
+                      activeRiskScope.riskScore,
+                    )
                   : "—"}</p>
-                <p className="text-xs text-orange-400">{siteRisk ? (
+                <p className="text-xs text-orange-400">{activeRiskScope ? (
                   <>
                     <span>
-                      {siteRisk.riskLevel} · live
+                      {activeRiskScope.riskLevel}
+                      {" · live"}
                     </span>
+
                     <span className="text-slate-500">
-                      {" "}
-                      · Op{" "}
+                      {" · Op "}
                       {formatSiteRisk(
-                        siteRisk.operationalRiskScore,
+                        activeRiskScope.operationalRiskScore,
                       )}
-                      {" "}
-                      · Labour{" "}
+                      {" · Labour "}
                       {formatSiteRisk(
-                        siteRisk.labourRiskScore,
+                        activeRiskScope.labourRiskScore,
                       )}
                     </span>
                   </>
@@ -765,35 +920,45 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 )}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
-                <p className="text-xs text-slate-500">Highest Area</p>
-                <p className="text-base font-semibold text-slate-50">{siteRisk?.highestArea ?? "—"}</p>
-                <p className="text-xs text-red-400">{siteRisk?.highestAreaLevel ? `${siteRisk.highestAreaLevel} risk` : "No live data"}</p>
+                <p className="text-xs text-slate-500">{isSiteRiskScope
+                  ? "Highest Area"
+                  : "Highest Asset"}</p>
+                <p className="text-base font-semibold text-slate-50">{activeRiskScope?.highestChildName ??
+                  "—"}</p>
+                <p className="text-xs text-red-400">{activeRiskScope?.highestChildLevel
+                  ? `${activeRiskScope.highestChildLevel} risk`
+                  : activeRiskScope?.highestChildScore !==
+                      null &&
+                    activeRiskScope?.highestChildScore !==
+                      undefined
+                    ? `Risk ${activeRiskScope.highestChildScore}`
+                    : "No live data"}</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">PM Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">{siteRisk?.overduePmCount ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.overduePmCount ?? "—"}</p>
                 <p className="text-xs text-orange-400">Overdue PMs</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Calibration Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">{siteRisk?.calibrationBacklogCount ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.calibrationBacklogCount ?? "—"}</p>
                 <p className="text-xs text-yellow-400">Due / overdue</p>
               </div>
               <div className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2.5 ${
-                siteRisk?.noEngineerOverride
+                activeRiskScope?.noEngineerOverride
                   ? "border-red-500/50"
                   : "border-gray-800"
               }`}>
                 <p className="text-xs text-slate-500">Cover Gaps</p>
-                <p className="text-xl font-semibold text-slate-50">{siteRisk?.coverGapCount ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.coverGapCount ?? "—"}</p>
                 <p className={`text-xs ${
-                  siteRisk?.noEngineerOverride
+                  activeRiskScope?.noEngineerOverride
                     ? "text-red-400"
                     : "text-slate-400"
-                }`}>{siteRisk?.noEngineerOverride
+                }`}>{activeRiskScope?.noEngineerOverride
                   ? "0 engineers · critical override"
-                  : siteRisk
-                    ? (siteRisk.scheduledEngineerCount + " engineers · " + (siteRisk.labourShiftType === "night" ? "night" : "day") + " shift")
+                  : activeRiskScope
+                    ? (activeRiskScope.scheduledEngineerCount + " engineers · " + (activeRiskScope.labourShiftType === "night" ? "night" : "day") + " shift")
                     : "No live data"}</p>
               </div>
             </div>
@@ -802,13 +967,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
             <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">
-                  Today's Risk Reduction Plan
+                  {isSiteRiskScope
+                    ? "TODAY'S SITE RISK REDUCTION PLAN"
+                    : "TODAY'S AREA RISK REDUCTION PLAN"}
                 </p>
                 <p className="text-sm font-semibold leading-snug text-slate-50">
                   {riskReductionPlan
-                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce area risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
-                    : siteRisk?.priorityAction ??
-                      "Review the highest-risk area and clear the largest leading risk driver."}
+                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
+                      isSiteRiskScope
+                        ? "area"
+                        : "area"
+                    } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                    : activeRiskScope?.priorityAction ??
+                      "Review the highest-risk asset and clear the largest leading risk driver."}
                 </p>
               </div>
 
@@ -860,7 +1031,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <div className="flex flex-col gap-5">
                     <div className="flex min-h-7 flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-3">
-                        {siteRisk?.highestArea &&
+                        {isSiteRiskScope &&
+                          siteRisk?.highestArea &&
                           riskReductionPlan.highestArea !== siteRisk.highestArea &&
                           previousRiskPlanArea !== siteRisk.highestArea && (
                             <button
@@ -1160,6 +1332,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         )}
                       </div>
 
+                      {isSiteRiskScope ? (
                       <div
                         className={`col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3 ${
                           riskReductionPlan.nextArea
@@ -1227,6 +1400,41 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           )}
                         </div>
                       </div>
+                      ) : (
+                        !isSiteRiskScope &&
+                        activeScopeArea && (
+                          <div className="col-span-2 flex items-center justify-between gap-4 rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                                Selected area
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-slate-100">
+                                {activeScopeArea}
+                              </p>
+
+                              <p className="text-xs text-slate-500">
+                                {activeRiskScope?.assetCount ?? 0}{" "}
+                                equipment assets
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  `/equipment?area=${encodeURIComponent(
+                                    activeScopeArea,
+                                  )}`,
+                                )
+                              }
+                              className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300"
+                            >
+                              View area equipment →
+                            </button>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -1239,17 +1447,30 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Plant Area Risk ──────────────────────────────────────────── */}
       <section className="flex w-full flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-50">Plant Area Risk</h2>
+          <h2 className="text-base font-semibold text-slate-50">{isSiteRiskScope
+            ? "Plant Area Risk"
+            : `${activeScopeLabel} Equipment Risk`}</h2>
           <button
             type="button"
-            onClick={() => navigate("/equipment")}
+            onClick={() =>
+              isSiteRiskScope ||
+              !activeScopeArea
+                ? navigate("/equipment")
+                : navigate(
+                    `/equipment?area=${encodeURIComponent(
+                      activeScopeArea,
+                    )}`,
+                  )
+            }
             className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
           >
-            View all plant areas →
+            {isSiteRiskScope
+              ? "View all plant areas →"
+              : `View all ${activeScopeLabel} equipment →`}
           </button>
         </div>
 
-        {(() => {
+        {isSiteRiskScope ? (() => {
           const visibleAreaRiskCards = areaRiskCards.slice(0, 4);
 
           const selectedAreaIndex = visibleAreaRiskCards.findIndex(
@@ -1655,10 +1876,177 @@ export const DashboardOverviewSection = (): JSX.Element => {
               )}
             </div>
           );
-        })()}
+        })()
+        : (
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          {activeScopeChildCards.map(
+            (equipment) => {
+              const badgeClassName =
+                equipment.riskScore >= 85
+                  ? "bg-red-500/20 text-red-400"
+                  : equipment.riskScore >= 65
+                    ? "bg-orange-500/20 text-orange-400"
+                    : equipment.riskScore >= 40
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : equipment.riskScore >= 20
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-cyan-500/20 text-cyan-400";
 
-        {/* Intervention Plan Modal */}
-        {selectedInterventionPlan && (
+              const progressClassName =
+                equipment.riskScore >= 85
+                  ? "bg-red-500"
+                  : equipment.riskScore >= 65
+                    ? "bg-orange-500"
+                    : equipment.riskScore >= 40
+                      ? "bg-yellow-400"
+                      : equipment.riskScore >= 20
+                        ? "bg-emerald-500"
+                        : "bg-cyan-400";
+
+              const trendLabel =
+                equipment.noEngineerOverride
+                  ? "Critical no-cover override"
+                  : equipment.riskScore >= 65
+                    ? "Priority equipment"
+                    : equipment.riskScore >= 40
+                      ? "Monitor closely"
+                      : "Stable";
+
+              return (
+                <Card
+                  key={equipment.id}
+                  onClick={() =>
+                    handleAssetClick(
+                      equipment.id,
+                    )
+                  }
+                  className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
+                >
+                  <CardContent className="flex h-full flex-col items-start gap-3 p-4">
+                    <div className="flex w-full items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 text-sm font-semibold text-slate-50">
+                          {equipment.label}
+                        </h3>
+
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          {equipment.code}
+                          {equipment.code &&
+                          equipment.equipmentType
+                            ? " · "
+                            : ""}
+                          {equipment.equipmentType}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`inline-flex shrink-0 rounded px-2 py-1 text-xs font-medium ${badgeClassName}`}
+                      >
+                        {equipment.riskLevel}
+                      </span>
+                    </div>
+
+                    <p className="min-h-9 self-stretch text-xs text-slate-400">
+                      {equipment.primaryDriver}
+                    </p>
+
+                    <div className="flex w-full flex-col gap-1">
+                      <p className="text-xs text-slate-400">
+                        Equipment risk score
+                      </p>
+
+                      <p className="text-xl font-semibold text-slate-50">
+                        {equipment.riskScore}
+                      </p>
+                    </div>
+
+                    <dl className="flex w-full flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-sm text-slate-400">
+                          Overdue PMs
+                        </dt>
+
+                        <dd className="text-sm font-semibold text-slate-50">
+                          {equipment.overduePmCount}
+                        </dd>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-sm text-slate-400">
+                          Calibration backlog
+                        </dt>
+
+                        <dd className="text-sm font-semibold text-slate-50">
+                          {equipment.calibrationBacklogCount}
+                        </dd>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-sm text-slate-400">
+                          Cover gaps
+                        </dt>
+
+                        <dd className="text-sm font-semibold text-slate-50">
+                          {equipment.coverGapCount}
+                        </dd>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="text-sm text-slate-400">
+                          Labour risk
+                        </dt>
+
+                        <dd
+                          className={`text-sm font-semibold ${
+                            equipment.noEngineerOverride
+                              ? "text-red-400"
+                              : equipment.labourRiskScore >=
+                                  65
+                                ? "text-orange-400"
+                                : equipment.labourRiskScore >=
+                                    40
+                                  ? "text-yellow-400"
+                                  : "text-slate-50"
+                          }`}
+                        >
+                          {formatSiteRisk(
+                            equipment.labourRiskScore,
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
+                      <RiskMeter
+                        value={equipment.riskScore}
+                        fillClassName={progressClassName}
+                      />
+
+                      <p className="text-xs text-slate-400">
+                        {trendLabel}
+                      </p>
+
+                      <span className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-blue-400 transition-colors group-hover:text-blue-300">
+                        View equipment →
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            },
+          )}
+
+          {activeScopeChildCards.length === 0 && (
+            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5 text-sm text-slate-400">
+                No equipment risk data is available for this area.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        )}
+
+        {isSiteRiskScope && selectedInterventionPlan && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setSelectedInterventionPlan(null)}
@@ -1924,20 +2312,51 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Labour Risk ─────────────────────────────────────────────── */}
       <section className="flex w-full flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-50">Labour Risk</h2>
+          <h2 className="text-base font-semibold text-slate-50">{isSiteRiskScope
+            ? "Labour Risk"
+            : `${activeScopeLabel} Labour Risk`}</h2>
           <button
             type="button"
-            onClick={() => navigate("/maintenance/labour-risk/shift-cover")}
+            onClick={() =>
+              isSiteRiskScope
+                ? navigate("/maintenance/labour-risk/shift-cover")
+                : navigate(
+                    `/maintenance/labour-risk/shift-cover?scope=area&area=${encodeURIComponent(
+                      activeScopeArea ?? "",
+                    )}`,
+                  )
+            }
             className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
           >
             View all labour risks →
           </button>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {liveLabourRiskItems.map((item) => (
+          {activeLabourRiskItems.map((item) => (
             <Card
               key={item.title}
-              onClick={() => navigate(`/maintenance/labour-risk/${item.slug}`)}
+              onClick={() => {
+                const basePath =
+                  `/maintenance/labour-risk/${item.slug}`;
+
+                if (
+                  !isSiteRiskScope &&
+                  activeScopeArea
+                ) {
+                  const query =
+                    new URLSearchParams({
+                      scope: "area",
+                      area: activeScopeArea,
+                    });
+
+                  navigate(
+                    `${basePath}?${query.toString()}`,
+                  );
+                  return;
+                }
+
+                navigate(basePath);
+              }}
               className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
             >
               <CardContent className="flex h-full flex-col gap-3 p-4">
@@ -1981,11 +2400,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="text-base font-semibold text-slate-50">
-              Risk Reduction Performance
+              {isSiteRiskScope
+                ? "Risk Reduction Performance"
+                : `${activeScopeLabel} Risk Reduction Performance`}
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Leading indicators showing whether maintenance is removing future site risk.
+              {isSiteRiskScope
+                ? "Leading indicators showing whether maintenance is removing future site risk."
+                : `Leading indicators showing whether maintenance is removing risk within ${activeScopeLabel}.`}
             </p>
           </div>
 
