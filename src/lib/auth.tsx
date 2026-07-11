@@ -142,6 +142,13 @@ export function RequireAuth({
   return children;
 }
 
+function SignOutUnsupportedRole(): JSX.Element {
+  useEffect(() => {
+    void supabase.auth.signOut();
+  }, []);
+  return <VortaLoadingScreen />;
+}
+
 export function RequireRole({
   role: requiredRole,
   children,
@@ -151,6 +158,7 @@ export function RequireRole({
 }): JSX.Element {
   const { session, role, loading } = useAuth();
   const location = useLocation();
+  const unsupportedRoleRef = useRef(false);
 
   if (loading) return <VortaLoadingScreen />;
 
@@ -158,23 +166,23 @@ export function RequireRole({
     return (
       <Navigate
         to="/"
-        state={{ from: location }}
+        state={{
+          from: location,
+          ...(unsupportedRoleRef.current
+            ? {
+                authError:
+                  "Your account does not have a supported Vorta pilot role.",
+              }
+            : {}),
+        }}
         replace
       />
     );
   }
 
   if (!role) {
-    return (
-      <Navigate
-        to="/"
-        state={{
-          authError:
-            "Your account does not have a supported Vorta pilot role.",
-        }}
-        replace
-      />
-    );
+    unsupportedRoleRef.current = true;
+    return <SignOutUnsupportedRole />;
   }
 
   if (role !== requiredRole) {
