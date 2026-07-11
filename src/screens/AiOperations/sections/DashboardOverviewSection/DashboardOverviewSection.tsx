@@ -412,6 +412,141 @@ interface RiskEquipmentPlanHistoryItem {
   equipmentName: string;
 }
 
+const RISK_REDUCTION_OUTCOME_KEY =
+  "risk_reduction_achieved";
+const getRiskKpiRagPriority = (
+  ragStatus:
+    RiskReductionKpi["ragStatus"],
+): number => {
+  switch (ragStatus) {
+    case "red":
+      return 3;
+    case "amber":
+      return 2;
+    case "green":
+      return 1;
+    default:
+      return 0;
+  }
+};
+const getRiskKpiTargetShortfall = (
+  kpi: RiskReductionKpi,
+): number => {
+  if (
+    kpi.noData ||
+    kpi.value === null
+  ) {
+    return -1;
+  }
+  return Math.max(
+    0,
+    Number(kpi.target ?? 0) -
+      Number(kpi.value),
+  );
+};
+const sortRiskKpisByOperationalPriority = (
+  kpis: RiskReductionKpi[],
+): RiskReductionKpi[] =>
+  kpis
+    .map((kpi, originalIndex) => ({
+      kpi,
+      originalIndex,
+    }))
+    .sort((a, b) => {
+      const aIsOutcome =
+        a.kpi.key ===
+        RISK_REDUCTION_OUTCOME_KEY;
+      const bIsOutcome =
+        b.kpi.key ===
+        RISK_REDUCTION_OUTCOME_KEY;
+      /*
+       * Keep the overall Risk Reduction
+       * Achieved result first.
+       */
+      if (aIsOutcome !== bIsOutcome) {
+        return aIsOutcome ? -1 : 1;
+      }
+      if (aIsOutcome && bIsOutcome) {
+        return (
+          a.originalIndex -
+          b.originalIndex
+        );
+      }
+      /*
+       * A genuine critical override must
+       * outrank the ordinary RAG order.
+       */
+      const criticalOverrideDifference =
+        Number(
+          Boolean(
+            b.kpi.criticalOverride,
+          ),
+        ) -
+        Number(
+          Boolean(
+            a.kpi.criticalOverride,
+          ),
+        );
+      if (
+        criticalOverrideDifference !== 0
+      ) {
+        return criticalOverrideDifference;
+      }
+      /*
+       * KPIs with eligible data take
+       * priority over no-data cards.
+       */
+      const aHasData =
+        !a.kpi.noData &&
+        a.kpi.value !== null;
+      const bHasData =
+        !b.kpi.noData &&
+        b.kpi.value !== null;
+      if (aHasData !== bHasData) {
+        return aHasData ? -1 : 1;
+      }
+      /*
+       * Red risks outrank amber risks,
+       * which outrank green/on-target KPIs.
+       */
+      const ragPriorityDifference =
+        getRiskKpiRagPriority(
+          b.kpi.ragStatus,
+        ) -
+        getRiskKpiRagPriority(
+          a.kpi.ragStatus,
+        );
+      if (ragPriorityDifference !== 0) {
+        return ragPriorityDifference;
+      }
+      /*
+       * Within the same RAG status,
+       * show the largest target shortfall
+       * first.
+       */
+      const targetShortfallDifference =
+        getRiskKpiTargetShortfall(
+          b.kpi,
+        ) -
+        getRiskKpiTargetShortfall(
+          a.kpi,
+        );
+      if (
+        targetShortfallDifference !== 0
+      ) {
+        return targetShortfallDifference;
+      }
+      /*
+       * Preserve the existing source order
+       * when all priority signals match.
+       */
+      return (
+        a.originalIndex -
+        b.originalIndex
+      );
+    })
+    .map(({ kpi }) => kpi);
+
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
@@ -3080,7 +3215,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 : "opacity-100"
             } transition-opacity`}
           >
-            {riskKpiDashboard.kpis.map(
+            {sortRiskKpisByOperationalPriority(
+              riskKpiDashboard.kpis,
+            ).map(
               (kpi, index) => {
                 const presentation =
                   getKpiRagPresentation(
