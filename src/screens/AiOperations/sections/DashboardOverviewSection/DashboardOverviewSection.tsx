@@ -293,6 +293,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
     hasUsedNextEquipment,
     setHasUsedNextEquipment,
   ] = useState(false);
+  const [
+    hasUsedNextArea,
+    setHasUsedNextArea,
+  ] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
@@ -1538,15 +1542,26 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             <button
                               type="button"
                               disabled={riskReductionPlanLoading}
-                              onClick={() =>
+                              onClick={() => {
+                                setHasUsedNextArea(true);
                                 void handleLoadRiskReductionPlan(
                                   riskReductionPlan.nextArea,
                                   "forward",
-                                )
-                              }
-                              className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                                );
+                              }}
+                              title={`View next recommended area: ${riskReductionPlan.nextArea}`}
+                              aria-label={`View next recommended area: ${riskReductionPlan.nextArea}`}
+                              className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 disabled:cursor-wait disabled:opacity-50 ${
+                                !hasUsedNextArea
+                                  ? "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/40 shadow-[0_0_22px_rgba(34,211,238,0.55)] hover:bg-cyan-400/30"
+                                  : "border-blue-400/20 bg-blue-500/5 text-blue-400 ring-0 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
+                              }`}
                             >
-                              Next area →
+                              Next area
+                              <ChevronDown
+                                aria-hidden="true"
+                                className="h-4 w-4 -rotate-90"
+                              />
                             </button>
                           )}
                         </div>
