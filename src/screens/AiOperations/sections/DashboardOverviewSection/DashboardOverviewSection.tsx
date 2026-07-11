@@ -1201,10 +1201,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                          Plan area
+                          {isSiteRiskScope
+                            ? "Plan area"
+                            : "Plan equipment"}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
-                          {riskReductionPlan.highestArea}
+                          {isSiteRiskScope
+                            ? riskReductionPlan.highestArea
+                            : riskReductionPlan.equipmentName}
                         </p>
                       </div>
 
