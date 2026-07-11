@@ -417,11 +417,13 @@ interface RiskEquipmentPlanHistoryItem {
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
-  const {
-    elementRef: riskKpiSectionRef,
-    hasEnteredView:
-      hasRiskKpiSectionEnteredView,
-  } = useInViewOnce<HTMLElement>(0.15);
+  const riskKpiGridRef =
+    useRef<HTMLDivElement>(null);
+
+  const [
+    hasRiskKpiGridEnteredView,
+    setHasRiskKpiGridEnteredView,
+  ] = useState(false);
 
   const [areaRiskCards, setAreaRiskCards] =
     useState<AreaRiskProfile[]>([]);
@@ -566,10 +568,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
   useEffect(() => {
     if (
-      !hasRiskKpiSectionEnteredView ||
       !riskKpiDashboard ||
-      hasRevealedRiskKpiBars
+      hasRiskKpiGridEnteredView
     ) {
+      return;
+    }
+
+    const gridElement =
+      riskKpiGridRef.current;
+
+    if (!gridElement) {
       return;
     }
 
@@ -578,24 +586,72 @@ export const DashboardOverviewSection = (): JSX.Element => {
         "(prefers-reduced-motion: reduce)",
       ).matches;
 
-    if (prefersReducedMotion) {
+    if (
+      prefersReducedMotion ||
+      !("IntersectionObserver" in window)
+    ) {
+      setHasRiskKpiGridEnteredView(true);
       setHasRevealedRiskKpiBars(true);
       setHasCompletedRiskKpiIntro(true);
       return;
     }
 
-    const revealTimeoutId =
-      window.setTimeout(() => {
-        setHasRevealedRiskKpiBars(true);
-      }, 150);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setHasRiskKpiGridEnteredView(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.2,
+        rootMargin: "0px 0px -8% 0px",
+      },
+    );
+
+    observer.observe(gridElement);
 
     return () => {
-      window.clearTimeout(
-        revealTimeoutId,
+      observer.disconnect();
+    };
+  }, [
+    riskKpiDashboard,
+    hasRiskKpiGridEnteredView,
+  ]);
+
+  useEffect(() => {
+    if (
+      !hasRiskKpiGridEnteredView ||
+      !riskKpiDashboard ||
+      hasRevealedRiskKpiBars
+    ) {
+      return;
+    }
+
+    let firstFrameId = 0;
+    let secondFrameId = 0;
+
+    firstFrameId =
+      window.requestAnimationFrame(() => {
+        secondFrameId =
+          window.requestAnimationFrame(() => {
+            setHasRevealedRiskKpiBars(true);
+          });
+      });
+
+    return () => {
+      window.cancelAnimationFrame(
+        firstFrameId,
+      );
+
+      window.cancelAnimationFrame(
+        secondFrameId,
       );
     };
   }, [
-    hasRiskKpiSectionEnteredView,
+    hasRiskKpiGridEnteredView,
     riskKpiDashboard,
     hasRevealedRiskKpiBars,
   ]);
@@ -611,7 +667,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     const completionTimeoutId =
       window.setTimeout(() => {
         setHasCompletedRiskKpiIntro(true);
-      }, 2100);
+      }, 2300);
 
     return () => {
       window.clearTimeout(
@@ -2876,7 +2932,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section
-        ref={riskKpiSectionRef}
         aria-label="Risk reduction performance"
         className="flex w-full flex-col gap-4"
       >
@@ -2951,6 +3006,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
         {riskKpiDashboard ? (
           <div
+            ref={riskKpiGridRef}
             className={`grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 ${
               riskKpiLoading
                 ? "opacity-70"
@@ -3066,11 +3122,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 transitionDuration:
                                   hasCompletedRiskKpiIntro
                                     ? "300ms"
-                                    : "1400ms",
+                                    : "1500ms",
                                 transitionDelay:
                                   hasRevealedRiskKpiBars &&
                                   !hasCompletedRiskKpiIntro
-                                    ? `${index * 100}ms`
+                                    ? `${index * 110}ms`
                                     : "0ms",
                               }}
                             />
