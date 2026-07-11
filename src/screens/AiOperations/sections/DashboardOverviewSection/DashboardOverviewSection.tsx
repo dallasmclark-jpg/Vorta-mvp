@@ -10,6 +10,9 @@ import {
   ChevronDown,
   X,
   ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -22,13 +25,15 @@ import {
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   refreshCurrentRisk,
-  getMaintenanceExecutionDashboard,
+  getRiskReductionKpis,
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
   type AreaHighestRiskIntervention,
   type SiteRiskReductionPlan,
-  type MaintenanceExecutionDashboard,
+  type RiskReductionKpi,
+  type RiskReductionKpiDashboard,
+  type RiskKpiPeriodKey,
 } from "../../../Equipment/equipmentService";
 
 const formatSiteRisk = (value: number): string =>
@@ -60,139 +65,6 @@ const formatCalendarDate = (
       month: "short",
     },
   );
-};
-
-const formatDueLabel = (
-  dueDate: string | null,
-  shiftDate: string,
-): string => {
-  if (!dueDate || !shiftDate) {
-    return "No due date";
-  }
-
-  const millisecondsPerDay =
-    24 * 60 * 60 * 1000;
-
-  const difference = Math.round(
-    (parseDateOnly(dueDate).getTime() -
-      parseDateOnly(shiftDate).getTime()) /
-      millisecondsPerDay,
-  );
-
-  if (difference < -1) {
-    return `${Math.abs(
-      difference,
-    )} days overdue`;
-  }
-
-  if (difference === -1) {
-    return "1 day overdue";
-  }
-
-  if (difference === 0) {
-    return "Due today";
-  }
-
-  if (difference === 1) {
-    return "Due tomorrow";
-  }
-
-  return `Due in ${difference} days`;
-};
-
-const formatRelativeTime = (
-  value: string,
-): string => {
-  if (!value) {
-    return "";
-  }
-
-  const differenceMinutes = Math.max(
-    0,
-    Math.floor(
-      (Date.now() -
-        new Date(value).getTime()) /
-        60000,
-    ),
-  );
-
-  if (differenceMinutes < 1) {
-    return "Just now";
-  }
-
-  if (differenceMinutes < 60) {
-    return `${differenceMinutes}m ago`;
-  }
-
-  const differenceHours = Math.floor(
-    differenceMinutes / 60,
-  );
-
-  if (differenceHours < 24) {
-    return `${differenceHours}h ago`;
-  }
-
-  return `${Math.floor(
-    differenceHours / 24,
-  )}d ago`;
-};
-
-const formatStatusLabel = (
-  value: string,
-): string =>
-  value
-    .toLowerCase()
-    .replace(
-      /(^|\s)\S/g,
-      (character) =>
-        character.toUpperCase(),
-    );
-
-const getPriorityClassName = (
-  priority: string,
-): string => {
-  switch (priority.toUpperCase()) {
-    case "CRITICAL":
-      return "border-red-500/20 bg-red-500/10 text-red-400";
-    case "HIGH":
-      return "border-orange-500/20 bg-orange-500/10 text-orange-400";
-    case "MEDIUM":
-      return "border-yellow-500/20 bg-yellow-500/10 text-yellow-400";
-    default:
-      return "border-gray-700 bg-gray-800/70 text-slate-400";
-  }
-};
-
-const getStatusClassName = (
-  status: string,
-): string => {
-  switch (status.toUpperCase()) {
-    case "IN PROGRESS":
-      return "border-blue-500/20 bg-blue-500/10 text-blue-400";
-    case "WAITING PARTS":
-      return "border-orange-500/20 bg-orange-500/10 text-orange-400";
-    case "ON HOLD":
-      return "border-yellow-500/20 bg-yellow-500/10 text-yellow-400";
-    case "COMPLETED":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
-    default:
-      return "border-gray-700 bg-gray-800/70 text-slate-400";
-  }
-};
-
-const getSeverityClassName = (
-  severity: string,
-): string => {
-  switch (severity.toLowerCase()) {
-    case "critical":
-      return "border-red-500/20 bg-red-500/10 text-red-400";
-    case "high":
-      return "border-orange-500/20 bg-orange-500/10 text-orange-400";
-    case "medium":
-      return "border-yellow-500/20 bg-yellow-500/10 text-yellow-400";
-    default:
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
-  }
 };
 
 const getLabourRiskPresentation = (
@@ -337,6 +209,129 @@ const labourRiskItems = [
   },
 ];
 
+const RISK_KPI_PERIODS: Array<{
+  key: RiskKpiPeriodKey;
+  label: string;
+}> = [
+  {
+    key: "daily",
+    label: "Daily",
+  },
+  {
+    key: "weekly",
+    label: "Weekly",
+  },
+  {
+    key: "monthly",
+    label: "Monthly",
+  },
+  {
+    key: "ytd",
+    label: "YTD",
+  },
+];
+
+const formatKpiPeriodRange = (
+  start: string,
+  end: string,
+): string => {
+  if (!start || !end) {
+    return "";
+  }
+
+  if (start === end) {
+    return parseDateOnly(
+      start,
+    ).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  const startLabel = parseDateOnly(
+    start,
+  ).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+
+  const endLabel = parseDateOnly(
+    end,
+  ).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return `${startLabel} – ${endLabel}`;
+};
+
+const getKpiRagPresentation = (
+  status: RiskReductionKpi["ragStatus"],
+) => {
+  switch (status) {
+    case "green":
+      return {
+        label: "On target",
+        borderClassName: "border-emerald-500/30",
+        backgroundClassName: "bg-emerald-500/[0.035]",
+        valueClassName: "text-emerald-400",
+        badgeClassName:
+          "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+        dotClassName: "bg-emerald-400",
+        barClassName: "bg-emerald-500",
+      };
+
+    case "amber":
+      return {
+        label: "At risk",
+        borderClassName: "border-yellow-500/30",
+        backgroundClassName: "bg-yellow-500/[0.035]",
+        valueClassName: "text-yellow-400",
+        badgeClassName:
+          "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+        dotClassName: "bg-yellow-400",
+        barClassName: "bg-yellow-500",
+      };
+
+    case "red":
+      return {
+        label: "Off target",
+        borderClassName: "border-red-500/30",
+        backgroundClassName: "bg-red-500/[0.035]",
+        valueClassName: "text-red-400",
+        badgeClassName:
+          "border-red-500/20 bg-red-500/10 text-red-400",
+        dotClassName: "bg-red-400",
+        barClassName: "bg-red-500",
+      };
+
+    default:
+      return {
+        label: "No data",
+        borderClassName: "border-gray-800",
+        backgroundClassName: "bg-[#141820]",
+        valueClassName: "text-slate-400",
+        badgeClassName:
+          "border-gray-700 bg-gray-800/70 text-slate-400",
+        dotClassName: "bg-slate-500",
+        barClassName: "bg-slate-600",
+      };
+  }
+};
+
+const formatKpiPercentage = (
+  value: number | null,
+): string =>
+  value === null
+    ? "—"
+    : `${value.toFixed(1)}%`;
+
+const formatKpiTarget = (
+  target: number,
+): string => `Target ≥ ${target.toFixed(1)}%`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DashboardOverviewSection = (): JSX.Element => {
@@ -358,11 +353,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
     useState(false);
 
   const [
-    maintenanceExecution,
-    setMaintenanceExecution,
-  ] = useState<
-    MaintenanceExecutionDashboard | null
-  >(null);
+    selectedKpiPeriod,
+    setSelectedKpiPeriod,
+  ] = useState<RiskKpiPeriodKey>("daily");
+
+  const [
+    riskKpiDashboard,
+    setRiskKpiDashboard,
+  ] = useState<RiskReductionKpiDashboard | null>(
+    null,
+  );
+
+  const [
+    riskKpiLoading,
+    setRiskKpiLoading,
+  ] = useState(false);
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
 
@@ -382,45 +387,50 @@ export const DashboardOverviewSection = (): JSX.Element => {
       )
     : 0;
 
-  const loadRiskDashboard = useCallback(async () => {
-    setDashboardRefreshing(true);
-    setRiskReductionPlanLoading(true);
+  const loadRiskDashboard = useCallback(
+    async (period: RiskKpiPeriodKey) => {
+      setDashboardRefreshing(true);
+      setRiskReductionPlanLoading(true);
+      setRiskKpiLoading(true);
 
-    try {
-      await refreshCurrentRisk();
+      try {
+        await refreshCurrentRisk();
 
-      const [
-        areaProfiles,
-        siteProfile,
-        areaPlans,
-        reductionPlan,
-        executionDashboard,
-      ] = await Promise.all([
-        getAreaRiskProfiles(),
-        getSiteRiskProfile(),
-        getAreaInterventionPlans(),
-        getSiteRiskReductionPlan(),
-        getMaintenanceExecutionDashboard(),
-      ]);
+        const [
+          areaProfiles,
+          siteProfile,
+          areaPlans,
+          reductionPlan,
+          kpiDashboard,
+        ] = await Promise.all([
+          getAreaRiskProfiles(),
+          getSiteRiskProfile(),
+          getAreaInterventionPlans(),
+          getSiteRiskReductionPlan(),
+          getRiskReductionKpis(period),
+        ]);
 
-      setAreaRiskCards(areaProfiles);
-      setSiteRisk(siteProfile);
-      setInterventionPlans(areaPlans);
-      setRiskReductionPlan(reductionPlan);
-      if (executionDashboard) {
-        setMaintenanceExecution(
-          executionDashboard,
-        );
+        setAreaRiskCards(areaProfiles);
+        setSiteRisk(siteProfile);
+        setInterventionPlans(areaPlans);
+        setRiskReductionPlan(reductionPlan);
+
+        if (kpiDashboard) {
+          setRiskKpiDashboard(kpiDashboard);
+        }
+
+        setRiskPlanHistory([]);
+      } finally {
+        setRiskReductionPlanLoading(false);
+        setRiskKpiLoading(false);
+        setDashboardRefreshing(false);
       }
-      setRiskPlanHistory([]);
-    } finally {
-      setRiskReductionPlanLoading(false);
-      setDashboardRefreshing(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
-    void loadRiskDashboard();
+    void loadRiskDashboard("daily");
   }, [loadRiskDashboard]);
 
   const handleLoadRiskReductionPlan = async (
@@ -547,110 +557,70 @@ export const DashboardOverviewSection = (): JSX.Element => {
     },
   );
 
-  const handleManagerDecisionClick = (
-    decision:
-      MaintenanceExecutionDashboard[
-        "managerDecisions"
-      ][number],
+  const handleKpiPeriodChange = async (
+    period: RiskKpiPeriodKey,
   ) => {
     if (
-      decision.decisionType ===
-        "labour_cover" ||
-      decision.decisionType ===
-        "qualified_cover"
+      period === selectedKpiPeriod ||
+      riskKpiLoading
     ) {
-      navigate(
-        "/maintenance/labour-risk/shift-cover",
-      );
       return;
     }
 
-    if (decision.equipmentId) {
-      handleAssetClick(
-        decision.equipmentId,
-      );
+    setSelectedKpiPeriod(period);
+    setRiskKpiLoading(true);
+
+    try {
+      const dashboard =
+        await getRiskReductionKpis(period);
+
+      if (dashboard) {
+        setRiskKpiDashboard(dashboard);
+      }
+    } finally {
+      setRiskKpiLoading(false);
     }
   };
 
-  const executionKpiItems =
-    maintenanceExecution
-      ? [
-          {
-            label:
-              "Schedule adherence",
-            value: `${maintenanceExecution.scheduleAdherencePct.toFixed(
-              1,
-            )}%`,
-            detail:
-              "Completed on or before due date · 30d",
-            alert:
-              maintenanceExecution.scheduleAdherencePct <
-              90,
-          },
-          {
-            label:
-              "Today's work",
-            value: `${maintenanceExecution.completedToday}/${maintenanceExecution.plannedToday}`,
-            detail:
-              "Completed / due today",
-            alert:
-              maintenanceExecution.plannedToday >
-                0 &&
-              maintenanceExecution.completedToday <
-                maintenanceExecution.plannedToday,
-          },
-          {
-            label:
-              "Critical outstanding",
-            value: String(
-              maintenanceExecution.criticalOutstanding,
-            ),
-            detail:
-              "Open critical work orders",
-            alert:
-              maintenanceExecution.criticalOutstanding >
-              0,
-          },
-          {
-            label:
-              "Awaiting parts",
-            value: String(
-              maintenanceExecution.waitingParts,
-            ),
-            detail:
-              "Blocked work orders",
-            alert:
-              maintenanceExecution.waitingParts >
-              0,
-          },
-          {
-            label:
-              "Unassigned due soon",
-            value: String(
-              maintenanceExecution.unassignedDueSoon,
-            ),
-            detail:
-              "Due within three days",
-            alert:
-              maintenanceExecution.unassignedDueSoon >
-              0,
-          },
-          {
-            label:
-              "Contractor cover",
-            value: String(
-              maintenanceExecution.contractorOnShift,
-            ),
-            detail: `${
-              maintenanceExecution.shiftType ===
-              "night"
-                ? "Night"
-                : "Day"
-            } shift`,
-            alert: false,
-          },
-        ]
-      : [];
+  const handleRiskKpiClick = (
+    kpi: RiskReductionKpi,
+  ) => {
+    if (
+      kpi.key === "risk_reduction_achieved"
+    ) {
+      setIsRiskDetailOpen(true);
+
+      if (!riskReductionPlan) {
+        void handleLoadRiskReductionPlan(
+          undefined,
+          "reset",
+        );
+      }
+
+      return;
+    }
+
+    if (!riskKpiDashboard) {
+      return;
+    }
+
+    const query = new URLSearchParams({
+      focus: kpi.key,
+      period: riskKpiDashboard.periodKey,
+      start: riskKpiDashboard.periodStart,
+      end: riskKpiDashboard.periodEnd,
+    });
+
+    const separator = kpi.drilldownRoute.includes(
+      "?",
+    )
+      ? "&"
+      : "?";
+
+    navigate(
+      `${kpi.drilldownRoute}${separator}${query.toString()}`,
+    );
+  };
 
   return (
     <section className="flex w-full flex-col gap-6 px-4 pb-12 pt-4 md:px-6 xl:px-8">
@@ -669,7 +639,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void loadRiskDashboard()}
+            onClick={() => void loadRiskDashboard(selectedKpiPeriod)}
             disabled={dashboardRefreshing}
             className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
@@ -677,7 +647,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </Button>
           <button
             type="button"
-            onClick={() => void loadRiskDashboard()}
+            onClick={() => void loadRiskDashboard(selectedKpiPeriod)}
             disabled={dashboardRefreshing}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
             aria-label="Refresh"
@@ -1957,554 +1927,206 @@ export const DashboardOverviewSection = (): JSX.Element => {
         </div>
       </section>
 
-      {/* ── Maintenance Execution KPIs ──────────────────────────────── */}
+      {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section
-        aria-label="Maintenance execution"
+        aria-label="Risk reduction performance"
         className="flex w-full flex-col gap-4"
       >
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="text-base font-semibold text-slate-50">
-              Maintenance Execution
+              Risk Reduction Performance
             </h2>
+
             <p className="mt-1 text-xs text-slate-500">
-              Current work status, blockers and decisions requiring attention.
+              Leading indicators showing whether maintenance is removing future site risk.
             </p>
           </div>
 
-          {maintenanceExecution && (
-            <p className="text-xs text-slate-500">
-              {formatCalendarDate(
-                maintenanceExecution.shiftDate,
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+            {riskKpiDashboard && (
+              <span className="text-xs text-slate-500">
+                {riskKpiDashboard.periodLabel}
+                {" · "}
+                {formatKpiPeriodRange(
+                  riskKpiDashboard.periodStart,
+                  riskKpiDashboard.periodEnd,
+                )}
+              </span>
+            )}
+
+            <div
+              role="tablist"
+              aria-label="KPI period"
+              className="inline-flex rounded-lg border border-gray-800 bg-[#0d1117] p-1"
+            >
+              {RISK_KPI_PERIODS.map(
+                (period) => {
+                  const isSelected =
+                    selectedKpiPeriod ===
+                    period.key;
+
+                  return (
+                    <button
+                      type="button"
+                      role="tab"
+                      key={period.key}
+                      aria-selected={
+                        isSelected
+                      }
+                      disabled={
+                        riskKpiLoading
+                      }
+                      onClick={() =>
+                        void handleKpiPeriodChange(
+                          period.key,
+                        )
+                      }
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        isSelected
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-slate-400 hover:bg-gray-800 hover:text-slate-200"
+                      } disabled:cursor-wait`}
+                    >
+                      {period.label}
+                    </button>
+                  );
+                },
               )}
-              {" · "}
-              {maintenanceExecution.shiftType ===
-              "night"
-                ? "Night"
-                : "Day"}{" "}
-              shift
-            </p>
-          )}
+            </div>
+          </div>
         </div>
 
-        {maintenanceExecution ? (
-          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            {executionKpiItems.map(
-              (item) => (
-                <Card
-                  key={item.label}
-                  className={`rounded-xl border bg-[#141820] shadow-none ${
-                    item.alert
-                      ? "border-orange-500/25"
-                      : "border-gray-800"
-                  }`}
-                >
-                  <CardContent className="flex h-full flex-col gap-1 p-3">
-                    <h3 className="text-xs text-slate-400">
-                      {item.label}
-                    </h3>
+        {riskKpiDashboard ? (
+          <div
+            className={`grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 ${
+              riskKpiLoading
+                ? "opacity-70"
+                : "opacity-100"
+            } transition-opacity`}
+          >
+            {riskKpiDashboard.kpis.map(
+              (kpi) => {
+                const presentation =
+                  getKpiRagPresentation(
+                    kpi.ragStatus,
+                  );
 
-                    <p
-                      className={`text-xl font-semibold ${
-                        item.alert
-                          ? "text-orange-400"
-                          : "text-slate-50"
-                      }`}
-                    >
-                      {item.value}
-                    </p>
+                const trendClassName =
+                  kpi.trendDelta === null
+                    ? "text-slate-600"
+                    : kpi.trendDirection ===
+                        "flat"
+                      ? "text-slate-500"
+                      : kpi.favourableTrend
+                        ? "text-emerald-400"
+                        : "text-red-400";
 
-                    <p className="mt-auto text-[10px] leading-snug text-slate-500">
-                      {item.detail}
-                    </p>
-                  </CardContent>
-                </Card>
-              ),
+                return (
+                  <Card
+                    key={kpi.key}
+                    onClick={() =>
+                      handleRiskKpiClick(
+                        kpi,
+                      )
+                    }
+                    className={`group cursor-pointer rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                  >
+                    <CardContent className="flex h-full min-h-[205px] flex-col gap-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-sm font-semibold leading-snug text-slate-100">
+                          {kpi.label}
+                        </h3>
+
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold ${presentation.badgeClassName}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${presentation.dotClassName}`}
+                          />
+
+                          {presentation.label}
+                        </span>
+                      </div>
+
+                      <div>
+                        <p
+                          className={`text-2xl font-semibold tracking-tight ${presentation.valueClassName}`}
+                        >
+                          {formatKpiPercentage(
+                            kpi.value,
+                          )}
+                        </p>
+
+                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                          {formatKpiTarget(
+                            kpi.target,
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#080b11]">
+                        <div
+                          className={`h-full rounded-full transition-all ${presentation.barClassName}`}
+                          style={{
+                            width: `${
+                              kpi.value === null
+                                ? 0
+                                : Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      kpi.value,
+                                    ),
+                                  )
+                            }%`,
+                          }}
+                        />
+                      </div>
+
+                      <p className="text-xs leading-relaxed text-slate-400">
+                        {kpi.detail}
+                      </p>
+
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                        <span className="text-[10px] text-slate-500">
+                          {kpi.comparisonLabel}
+                        </span>
+
+                        {kpi.trendDelta !== null && (
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-semibold ${trendClassName}`}
+                          >
+                            {kpi.trendDirection ===
+                            "up" ? (
+                              <ArrowUpRight className="h-3 w-3" />
+                            ) : kpi.trendDirection ===
+                              "down" ? (
+                              <ArrowDownRight className="h-3 w-3" />
+                            ) : (
+                              <Minus className="h-3 w-3" />
+                            )}
+
+                            {Math.abs(
+                              kpi.trendDelta,
+                            ).toFixed(1)}
+                            %
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              },
             )}
           </div>
         ) : (
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-5 text-sm text-slate-400">
-              Maintenance execution data is not available.
+              Risk reduction KPIs are not available.
             </CardContent>
           </Card>
         )}
-      </section>
-
-      {/* ── Today's Maintenance Execution + Manager Decisions Required ── */}
-      <section className="flex w-full flex-col gap-6 lg:flex-row">
-        <Card className="flex-1 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold text-slate-50">
-                Today's Maintenance Execution
-              </CardTitle>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Due today and overdue carryover, ranked by urgency.
-              </p>
-            </div>
-
-            {maintenanceExecution && (
-              <span className="shrink-0 text-xs text-slate-500">
-                {
-                  maintenanceExecution
-                    .executionItems.length
-                }{" "}
-                shown
-              </span>
-            )}
-          </CardHeader>
-
-          <CardContent className="p-5 pt-1">
-            {maintenanceExecution &&
-            maintenanceExecution.executionItems
-              .length > 0 ? (
-              <div className="flex flex-col">
-                {maintenanceExecution.executionItems.map(
-                  (item, index) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() =>
-                        handleAssetClick(
-                          item.equipmentId,
-                        )
-                      }
-                      className={`grid w-full grid-cols-1 gap-3 py-3 text-left transition-colors hover:bg-[#1a2030] sm:grid-cols-[minmax(0,1fr)_140px_120px] sm:items-center ${
-                        index !==
-                        maintenanceExecution
-                          .executionItems.length -
-                          1
-                          ? "border-b border-gray-800"
-                          : ""
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-semibold text-blue-400">
-                            {
-                              item.workOrderNumber
-                            }
-                          </span>
-
-                          <span
-                            className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${getPriorityClassName(
-                              item.priority,
-                            )}`}
-                          >
-                            {formatStatusLabel(
-                              item.priority,
-                            )}
-                          </span>
-                        </div>
-
-                        <p className="mt-1 truncate text-sm font-semibold text-slate-50">
-                          {item.equipmentName}
-                        </p>
-
-                        <p className="truncate text-xs text-slate-500">
-                          {item.area ?? "No area"}
-                          {" · "}
-                          {item.description}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-slate-600">
-                          Assigned
-                        </p>
-
-                        <p
-                          className={`mt-0.5 text-xs font-medium ${
-                            item.assignedEngineer
-                              ? "text-slate-300"
-                              : "text-orange-400"
-                          }`}
-                        >
-                          {item.assignedEngineer ??
-                            "Unassigned"}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col items-start gap-1 sm:items-end">
-                        <span
-                          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${getStatusClassName(
-                            item.status,
-                          )}`}
-                        >
-                          {formatStatusLabel(
-                            item.status,
-                          )}
-                        </span>
-
-                        <p
-                          className={`text-[10px] font-medium ${
-                            item.isOverdue
-                              ? "text-red-400"
-                              : "text-slate-500"
-                          }`}
-                        >
-                          {formatDueLabel(
-                            item.dueDate,
-                            maintenanceExecution.shiftDate,
-                          )}
-                        </p>
-
-                        {item.blocker && (
-                          <p className="text-[10px] text-orange-400">
-                            {item.blocker}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="py-10 text-center text-sm text-slate-500">
-                No maintenance work requires attention today.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none lg:w-[380px] lg:min-w-[380px]">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold text-slate-50">
-                Manager Decisions Required
-              </CardTitle>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Items that require assignment, approval or escalation.
-              </p>
-            </div>
-
-            {maintenanceExecution && (
-              <span className="rounded bg-orange-500/10 px-2 py-1 text-xs font-semibold text-orange-400">
-                {
-                  maintenanceExecution
-                    .managerDecisions.length
-                }
-              </span>
-            )}
-          </CardHeader>
-
-          <CardContent className="p-5 pt-1">
-            {maintenanceExecution &&
-            maintenanceExecution.managerDecisions
-              .length > 0 ? (
-              <div className="flex flex-col">
-                {maintenanceExecution.managerDecisions.map(
-                  (decision, index) => (
-                    <article
-                      key={`${decision.decisionType}-${decision.reference ?? index}`}
-                      className={`flex flex-col gap-2 py-3 ${
-                        index !==
-                        maintenanceExecution
-                          .managerDecisions.length -
-                          1
-                          ? "border-b border-gray-800"
-                          : ""
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold leading-snug text-slate-50">
-                          {decision.title}
-                        </h3>
-
-                        <span
-                          className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${getSeverityClassName(
-                            decision.severity,
-                          )}`}
-                        >
-                          {decision.severity}
-                        </span>
-                      </div>
-
-                      <p className="text-xs leading-relaxed text-slate-400">
-                        {decision.detail}
-                      </p>
-
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-[10px] text-slate-500">
-                          {decision.reference && (
-                            <span className="mr-2 font-medium text-slate-400">
-                              {decision.reference}
-                            </span>
-                          )}
-
-                          {decision.dueDate &&
-                            formatDueLabel(
-                              decision.dueDate,
-                              maintenanceExecution.shiftDate,
-                            )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleManagerDecisionClick(
-                              decision,
-                            )
-                          }
-                          className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300"
-                        >
-                          {decision.actionLabel} →
-                        </button>
-                      </div>
-                    </article>
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="py-10 text-center text-sm text-slate-500">
-                No manager decisions are currently required.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── Upcoming Deadlines / Recent Changes / Execution Blockers ──── */}
-      <section className="grid w-full grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardHeader className="p-5 pb-0">
-            <CardTitle className="text-base font-semibold text-slate-50">
-              Upcoming Deadlines
-            </CardTitle>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Work orders, PMs and calibrations due within seven days.
-            </p>
-          </CardHeader>
-
-          <CardContent className="flex flex-1 flex-col p-5 pt-4">
-            {maintenanceExecution &&
-            maintenanceExecution.upcomingDeadlines
-              .length > 0 ? (
-              maintenanceExecution.upcomingDeadlines.map(
-                (deadline, index) => (
-                  <button
-                    type="button"
-                    key={`${deadline.deadlineType}-${deadline.reference}`}
-                    onClick={() =>
-                      handleAssetClick(
-                        deadline.equipmentId,
-                      )
-                    }
-                    className={`flex w-full items-start justify-between gap-4 py-2.5 text-left transition-colors hover:bg-[#1a2030] ${
-                      index !==
-                      maintenanceExecution
-                        .upcomingDeadlines.length -
-                        1
-                        ? "border-b border-gray-800"
-                        : ""
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
-                          {
-                            deadline.deadlineType
-                          }
-                        </span>
-
-                        <span className="text-[10px] font-medium text-blue-400">
-                          {deadline.reference}
-                        </span>
-                      </div>
-
-                      <p className="mt-1 truncate text-xs font-semibold text-slate-200">
-                        {deadline.title}
-                      </p>
-
-                      <p className="truncate text-[10px] text-slate-500">
-                        {deadline.equipmentName}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <p
-                        className={`text-xs font-semibold ${
-                          deadline.dueDate ===
-                          maintenanceExecution.shiftDate
-                            ? "text-orange-400"
-                            : "text-slate-300"
-                        }`}
-                      >
-                        {formatDueLabel(
-                          deadline.dueDate,
-                          maintenanceExecution.shiftDate,
-                        )}
-                      </p>
-
-                      <p className="mt-0.5 text-[10px] text-slate-600">
-                        {deadline.severity}
-                      </p>
-                    </div>
-                  </button>
-                ),
-              )
-            ) : (
-              <p className="py-8 text-center text-sm text-slate-500">
-                No deadlines are due within seven days.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardHeader className="p-5 pb-0">
-            <CardTitle className="text-base font-semibold text-slate-50">
-              Recent Changes
-            </CardTitle>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Meaningful work, labour and risk changes from the last 48 hours.
-            </p>
-          </CardHeader>
-
-          <CardContent className="flex flex-1 flex-col p-5 pt-4">
-            {maintenanceExecution &&
-            maintenanceExecution.recentChanges
-              .length > 0 ? (
-              maintenanceExecution.recentChanges.map(
-                (change, index) => (
-                  <button
-                    type="button"
-                    key={`${change.changeType}-${change.reference ?? change.occurredAt}`}
-                    disabled={
-                      !change.equipmentId
-                    }
-                    onClick={() => {
-                      if (
-                        change.equipmentId
-                      ) {
-                        handleAssetClick(
-                          change.equipmentId,
-                        );
-                      }
-                    }}
-                    className={`flex w-full items-start gap-3 py-2.5 text-left transition-colors enabled:hover:bg-[#1a2030] disabled:cursor-default ${
-                      index !==
-                      maintenanceExecution
-                        .recentChanges.length -
-                        1
-                        ? "border-b border-gray-800"
-                        : ""
-                    }`}
-                  >
-                    <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                        change.tone ===
-                        "positive"
-                          ? "bg-emerald-500"
-                          : change.tone ===
-                              "warning"
-                            ? "bg-orange-400"
-                            : "bg-blue-400"
-                      }`}
-                    />
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-slate-200">
-                        {change.summary}
-                      </p>
-
-                      {change.equipmentName && (
-                        <p className="mt-0.5 truncate text-[10px] text-slate-500">
-                          {
-                            change.equipmentName
-                          }
-                        </p>
-                      )}
-                    </div>
-
-                    <span className="shrink-0 text-[10px] text-slate-600">
-                      {formatRelativeTime(
-                        change.occurredAt,
-                      )}
-                    </span>
-                  </button>
-                ),
-              )
-            ) : (
-              <p className="py-8 text-center text-sm text-slate-500">
-                No meaningful changes were recorded in the last 48 hours.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardHeader className="p-5 pb-0">
-            <CardTitle className="text-base font-semibold text-slate-50">
-              Execution Blockers
-            </CardTitle>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Constraints preventing planned maintenance from progressing.
-            </p>
-          </CardHeader>
-
-          <CardContent className="flex flex-1 flex-col p-5 pt-4">
-            {maintenanceExecution &&
-            maintenanceExecution.executionBlockers
-              .length > 0 ? (
-              maintenanceExecution.executionBlockers.map(
-                (blocker, index) => (
-                  <div
-                    key={blocker.label}
-                    className={`flex items-start justify-between gap-4 py-2.5 ${
-                      index !==
-                      maintenanceExecution
-                        .executionBlockers.length -
-                        1
-                        ? "border-b border-gray-800"
-                        : ""
-                    }`}
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-200">
-                        {blocker.label}
-                      </p>
-
-                      <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">
-                        {blocker.detail}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <p
-                        className={`text-xl font-semibold ${
-                          blocker.severity ===
-                          "High"
-                            ? "text-orange-400"
-                            : blocker.severity ===
-                                "Medium"
-                              ? "text-yellow-400"
-                              : "text-emerald-400"
-                        }`}
-                      >
-                        {blocker.value}
-                      </p>
-
-                      <p className="text-[10px] text-slate-600">
-                        {blocker.severity}
-                      </p>
-                    </div>
-                  </div>
-                ),
-              )
-            ) : (
-              <p className="py-8 text-center text-sm text-slate-500">
-                No execution blockers are currently recorded.
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </section>
 
     </section>

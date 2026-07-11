@@ -347,77 +347,6 @@ export interface SiteRiskProfile {
   noEngineerOverride: boolean;
 }
 
-export interface MaintenanceExecutionItem {
-  id: string;
-  workOrderNumber: string;
-  equipmentId: string;
-  equipmentName: string;
-  area: string | null;
-  description: string;
-  priority: string;
-  status: string;
-  assignedEngineer: string | null;
-  dueDate: string | null;
-  isOverdue: boolean;
-  blocker: string | null;
-}
-
-export interface MaintenanceManagerDecision {
-  decisionType: string;
-  title: string;
-  detail: string;
-  equipmentId: string | null;
-  equipmentName: string | null;
-  reference: string | null;
-  severity: string;
-  dueDate: string | null;
-  actionLabel: string;
-}
-
-export interface MaintenanceDeadline {
-  deadlineType: string;
-  reference: string;
-  title: string;
-  equipmentId: string;
-  equipmentName: string;
-  dueDate: string;
-  severity: string;
-}
-
-export interface MaintenanceRecentChange {
-  occurredAt: string;
-  changeType: string;
-  reference: string | null;
-  equipmentId: string | null;
-  equipmentName: string | null;
-  summary: string;
-  tone: "positive" | "warning" | "neutral";
-}
-
-export interface MaintenanceExecutionBlocker {
-  label: string;
-  value: number;
-  detail: string;
-  severity: string;
-}
-
-export interface MaintenanceExecutionDashboard {
-  shiftDate: string;
-  shiftType: "day" | "night";
-  scheduleAdherencePct: number;
-  plannedToday: number;
-  completedToday: number;
-  criticalOutstanding: number;
-  waitingParts: number;
-  unassignedDueSoon: number;
-  contractorOnShift: number;
-  executionItems: MaintenanceExecutionItem[];
-  managerDecisions: MaintenanceManagerDecision[];
-  upcomingDeadlines: MaintenanceDeadline[];
-  recentChanges: MaintenanceRecentChange[];
-  executionBlockers: MaintenanceExecutionBlocker[];
-}
-
 export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
   const { data, error } = await supabase
     .from("site_risk_profile")
@@ -2378,18 +2307,67 @@ export async function refreshCurrentRisk(): Promise<boolean> {
   }
 }
 
-// ─── Maintenance execution dashboard ──────────────────────────────────────────
+export type RiskKpiPeriodKey =
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "ytd";
 
-export async function getMaintenanceExecutionDashboard():
-  Promise<MaintenanceExecutionDashboard | null> {
+export type RiskKpiRagStatus =
+  | "green"
+  | "amber"
+  | "red"
+  | "neutral";
+
+export type RiskKpiTrendDirection =
+  | "up"
+  | "down"
+  | "flat";
+
+export interface RiskReductionKpi {
+  key: string;
+  label: string;
+  description: string;
+  value: number | null;
+  target: number;
+  ragStatus: RiskKpiRagStatus;
+  numerator: number;
+  denominator: number;
+  detail: string;
+  noData: boolean;
+  criticalOverride: boolean;
+  previousValue: number | null;
+  trendDelta: number | null;
+  trendDirection: RiskKpiTrendDirection | null;
+  favourableTrend: boolean | null;
+  comparisonLabel: string;
+  drilldownRoute: string;
+}
+
+export interface RiskReductionKpiDashboard {
+  periodKey: RiskKpiPeriodKey;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  comparisonLabel: string;
+  kpis: RiskReductionKpi[];
+}
+
+export async function getRiskReductionKpis(
+  period: RiskKpiPeriodKey,
+): Promise<RiskReductionKpiDashboard | null> {
   try {
     const { data, error } = await supabase.rpc(
-      "vorta_get_maintenance_execution_dashboard",
+      "vorta_get_risk_reduction_kpis",
+      {
+        p_period: period,
+        p_anchor_date: null,
+      },
     );
 
     if (error) {
       console.warn(
-        "vorta_get_maintenance_execution_dashboard failed:",
+        "vorta_get_risk_reduction_kpis failed:",
         error.message,
       );
       return null;
@@ -2401,172 +2379,78 @@ export async function getMaintenanceExecutionDashboard():
       return null;
     }
 
-    const executionItems = Array.isArray(
-      row.execution_items,
-    )
-      ? row.execution_items
-      : [];
-
-    const managerDecisions = Array.isArray(
-      row.manager_decisions,
-    )
-      ? row.manager_decisions
-      : [];
-
-    const upcomingDeadlines = Array.isArray(
-      row.upcoming_deadlines,
-    )
-      ? row.upcoming_deadlines
-      : [];
-
-    const recentChanges = Array.isArray(
-      row.recent_changes,
-    )
-      ? row.recent_changes
-      : [];
-
-    const executionBlockers = Array.isArray(
-      row.execution_blockers,
-    )
-      ? row.execution_blockers
+    const rawKpis = Array.isArray(row.kpis)
+      ? row.kpis
       : [];
 
     return {
-      shiftDate: row.shift_date ?? "",
-      shiftType:
-        row.shift_type === "night"
-          ? "night"
-          : "day",
-      scheduleAdherencePct: Number(
-        row.schedule_adherence_pct ?? 0,
-      ),
-      plannedToday: Number(
-        row.planned_today ?? 0,
-      ),
-      completedToday: Number(
-        row.completed_today ?? 0,
-      ),
-      criticalOutstanding: Number(
-        row.critical_outstanding ?? 0,
-      ),
-      waitingParts: Number(
-        row.waiting_parts ?? 0,
-      ),
-      unassignedDueSoon: Number(
-        row.unassigned_due_soon ?? 0,
-      ),
-      contractorOnShift: Number(
-        row.contractor_on_shift ?? 0,
-      ),
-      executionItems: executionItems.map(
-        (item: any) => ({
-          id: item.id ?? "",
-          workOrderNumber:
-            item.workOrderNumber ?? "",
-          equipmentId:
-            item.equipmentId ?? "",
-          equipmentName:
-            item.equipmentName ??
-            "Unnamed equipment",
-          area: item.area ?? null,
-          description:
-            item.description ?? "",
-          priority:
-            item.priority ?? "MEDIUM",
-          status:
-            item.status ?? "OPEN",
-          assignedEngineer:
-            item.assignedEngineer ?? null,
-          dueDate:
-            item.dueDate ?? null,
-          isOverdue:
-            item.isOverdue ?? false,
-          blocker:
-            item.blocker ?? null,
-        }),
-      ),
-      managerDecisions: managerDecisions.map(
-        (item: any) => ({
-          decisionType:
-            item.decisionType ?? "",
-          title:
-            item.title ?? "",
-          detail:
-            item.detail ?? "",
-          equipmentId:
-            item.equipmentId ?? null,
-          equipmentName:
-            item.equipmentName ?? null,
-          reference:
-            item.reference ?? null,
-          severity:
-            item.severity ?? "Medium",
-          dueDate:
-            item.dueDate ?? null,
-          actionLabel:
-            item.actionLabel ??
-            "Review",
-        }),
-      ),
-      upcomingDeadlines: upcomingDeadlines.map(
-        (item: any) => ({
-          deadlineType:
-            item.deadlineType ?? "",
-          reference:
-            item.reference ?? "",
-          title:
-            item.title ?? "",
-          equipmentId:
-            item.equipmentId ?? "",
-          equipmentName:
-            item.equipmentName ??
-            "Unnamed equipment",
-          dueDate:
-            item.dueDate ?? "",
-          severity:
-            item.severity ?? "Medium",
-        }),
-      ),
-      recentChanges: recentChanges.map(
-        (item: any) => ({
-          occurredAt:
-            item.occurredAt ?? "",
-          changeType:
-            item.changeType ?? "",
-          reference:
-            item.reference ?? null,
-          equipmentId:
-            item.equipmentId ?? null,
-          equipmentName:
-            item.equipmentName ?? null,
-          summary:
-            item.summary ?? "",
-          tone:
-            item.tone === "positive" ||
-            item.tone === "warning"
-              ? item.tone
+      periodKey:
+        row.period_key === "weekly" ||
+        row.period_key === "monthly" ||
+        row.period_key === "ytd"
+          ? row.period_key
+          : "daily",
+      periodLabel: row.period_label ?? "",
+      periodStart: row.period_start ?? "",
+      periodEnd: row.period_end ?? "",
+      comparisonLabel: row.comparison_label ?? "",
+      kpis: rawKpis.map(
+        (item: any): RiskReductionKpi => ({
+          key: item.key ?? "",
+          label: item.label ?? "",
+          description: item.description ?? "",
+          value:
+            item.value === null ||
+            item.value === undefined
+              ? null
+              : Number(item.value),
+          target: Number(item.target ?? 0),
+          ragStatus:
+            item.ragStatus === "green" ||
+            item.ragStatus === "amber" ||
+            item.ragStatus === "red"
+              ? item.ragStatus
               : "neutral",
-        }),
-      ),
-      executionBlockers: executionBlockers.map(
-        (item: any) => ({
-          label:
-            item.label ?? "",
-          value: Number(
-            item.value ?? 0,
-          ),
-          detail:
-            item.detail ?? "",
-          severity:
-            item.severity ?? "Low",
+          numerator: Number(item.numerator ?? 0),
+          denominator: Number(item.denominator ?? 0),
+          detail: item.detail ?? "",
+          noData: item.noData ?? false,
+          criticalOverride: item.criticalOverride ?? false,
+          previousValue:
+            item.previousValue === null ||
+            item.previousValue === undefined
+              ? null
+              : Number(item.previousValue),
+          trendDelta:
+            item.trendDelta === null ||
+            item.trendDelta === undefined
+              ? null
+              : Number(item.trendDelta),
+          trendDirection:
+            item.trendDirection === "up" ||
+            item.trendDirection === "down" ||
+            item.trendDirection === "flat"
+              ? item.trendDirection
+              : null,
+          favourableTrend:
+            typeof item.favourableTrend === "boolean"
+              ? item.favourableTrend
+              : null,
+          comparisonLabel:
+            item.comparisonLabel ??
+            row.comparison_label ??
+            "",
+          drilldownRoute: item.drilldownRoute ?? "/dashboard",
         }),
       ),
     };
   } catch (error) {
     console.warn(
-      "vorta_get_maintenance_execution_dashboard threw:",
+      "vorta_get_risk_reduction_kpis threw:",
       error,
     );
     return null;
   }
 }
+
+
