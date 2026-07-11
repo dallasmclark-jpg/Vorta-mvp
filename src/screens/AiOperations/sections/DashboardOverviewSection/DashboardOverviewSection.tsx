@@ -21,6 +21,7 @@ import {
   getAreaInterventionPlans,
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
+  getAreaEquipmentRiskReductionPlan,
   refreshCurrentRisk,
   getRiskDashboardScopes,
   getRiskDashboardScopePlans,
@@ -274,6 +275,11 @@ const formatKpiTarget = (
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface RiskEquipmentPlanHistoryItem {
+  equipmentId: string;
+  equipmentName: string;
+}
+
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
@@ -336,6 +342,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
   >({});
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
+
+  const [
+    riskEquipmentPlanHistory,
+    setRiskEquipmentPlanHistory,
+  ] = useState<
+    RiskEquipmentPlanHistoryItem[]
+  >([]);
+  const previousRiskPlanEquipment =
+    riskEquipmentPlanHistory.length > 0
+      ? riskEquipmentPlanHistory[
+          riskEquipmentPlanHistory.length -
+            1
+        ]
+      : null;
 
   const previousRiskPlanArea =
     riskPlanHistory.length > 0
@@ -467,6 +487,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
         }
 
         setRiskPlanHistory([]);
+        setRiskEquipmentPlanHistory([]);
         setSelectedArea(null);
         setSelectedAreaIntervention(
           null,
@@ -538,6 +559,94 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
     void handleLoadRiskReductionPlan(previousRiskPlanArea, "back");
   };
+
+  const handleLoadAreaEquipmentPlan =
+    async (
+      equipmentId?: string,
+      navigationMode:
+        | "forward"
+        | "back"
+        | "reset" = "forward",
+    ) => {
+      if (
+        riskReductionPlanLoading ||
+        isSiteRiskScope ||
+        !activeScopeArea
+      ) {
+        return;
+      }
+      setRiskReductionPlanLoading(
+        true,
+      );
+      setIsRiskDetailOpen(true);
+      try {
+        const plan =
+          await getAreaEquipmentRiskReductionPlan(
+            activeScopeArea,
+            equipmentId,
+          );
+        if (!plan) {
+          return;
+        }
+        const currentEquipmentId =
+          riskReductionPlan?.equipmentId;
+        const currentEquipmentName =
+          riskReductionPlan
+            ?.equipmentName;
+        if (
+          navigationMode ===
+            "forward" &&
+          currentEquipmentId &&
+          currentEquipmentName &&
+          currentEquipmentId !==
+            plan.equipmentId
+        ) {
+          setRiskEquipmentPlanHistory(
+            (history) => [
+              ...history,
+              {
+                equipmentId:
+                  currentEquipmentId,
+                equipmentName:
+                  currentEquipmentName,
+              },
+            ],
+          );
+        }
+        if (
+          navigationMode === "back"
+        ) {
+          setRiskEquipmentPlanHistory(
+            (history) =>
+              history.slice(0, -1),
+          );
+        }
+        if (
+          navigationMode === "reset"
+        ) {
+          setRiskEquipmentPlanHistory(
+            [],
+          );
+        }
+        setRiskReductionPlan(plan);
+      } finally {
+        setRiskReductionPlanLoading(
+          false,
+        );
+      }
+    };
+  const handleLoadPreviousRiskEquipment =
+    () => {
+      if (
+        !previousRiskPlanEquipment
+      ) {
+        return;
+      }
+      void handleLoadAreaEquipmentPlan(
+        previousRiskPlanEquipment.equipmentId,
+        "back",
+      );
+    };
 
   const handleAssetClick = (id: string) => {
     navigate(`/equipment/${id}/overview`);
@@ -659,6 +768,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
     setIsRiskDetailOpen(false);
     setRiskPlanHistory([]);
+    setRiskEquipmentPlanHistory([]);
     setSelectedArea(null);
     setSelectedAreaIntervention(
       null,
@@ -1049,6 +1159,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               Back to highest area: {siteRisk.highestArea}
                             </button>
                           )}
+                        {!isSiteRiskScope &&
+                          activeRiskScope?.highestChildId &&
+                          activeRiskScope.highestChildName &&
+                          riskReductionPlan.equipmentId !==
+                            activeRiskScope.highestChildId &&
+                          previousRiskPlanEquipment
+                            ?.equipmentId !==
+                            activeRiskScope.highestChildId && (
+                            <button
+                              type="button"
+                              disabled={
+                                riskReductionPlanLoading
+                              }
+                              onClick={() =>
+                                void handleLoadAreaEquipmentPlan(
+                                  undefined,
+                                  "reset",
+                                )
+                              }
+                              className="text-xs font-medium text-slate-500 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              Back to highest equipment: {" "}
+                              {
+                                activeRiskScope.highestChildName
+                              }
+                            </button>
+                          )}
                       </div>
 
                       <div className="min-w-[110px] text-right">
@@ -1401,37 +1538,104 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
                       </div>
                       ) : (
-                        !isSiteRiskScope &&
-                        activeScopeArea && (
-                          <div className="col-span-2 flex items-center justify-between gap-4 rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
-                            <div>
-                              <p className="text-[10px] uppercase tracking-wider text-blue-400">
-                                Selected area
-                              </p>
-
-                              <p className="mt-1 text-sm font-semibold text-slate-100">
-                                {activeScopeArea}
-                              </p>
-
-                              <p className="text-xs text-slate-500">
-                                {activeRiskScope?.assetCount ?? 0}{" "}
-                                equipment assets
-                              </p>
+                        !isSiteRiskScope && (
+                          <div
+                            className={`col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3 ${
+                              riskReductionPlan.nextEquipmentId
+                                ? "border-blue-500/20 bg-blue-500/5"
+                                : "border-gray-800 bg-[#0d1117]"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              {riskReductionPlan.nextEquipmentId &&
+                              riskReductionPlan.nextEquipmentName ? (
+                                <>
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                                    Next recommended equipment
+                                  </p>
+                                  <p className="mt-1 truncate text-sm font-semibold text-slate-100">
+                                    {
+                                      riskReductionPlan.nextEquipmentName
+                                    }
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {riskReductionPlan.equipmentRank !==
+                                      null &&
+                                    riskReductionPlan.equipmentCount !==
+                                      null
+                                      ? `Equipment ${
+                                          riskReductionPlan.equipmentRank +
+                                          1
+                                        } of ${
+                                          riskReductionPlan.equipmentCount
+                                        } · `
+                                      : ""}
+                                    {riskReductionPlan.nextEquipmentCode
+                                      ? `${riskReductionPlan.nextEquipmentCode} · `
+                                      : ""}
+                                    Risk {" "}
+                                    {
+                                      riskReductionPlan.nextEquipmentRisk
+                                    }
+                                    {" · "}
+                                    {
+                                      riskReductionPlan.nextEquipmentLevel
+                                    }
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                    Equipment review
+                                  </p>
+                                  <p className="mt-1 text-sm font-semibold text-slate-300">
+                                    All ranked equipment reviewed
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {riskReductionPlan.equipmentCount !==
+                                    null
+                                      ? `${riskReductionPlan.equipmentCount} equipment assets reviewed`
+                                      : `All ${activeScopeLabel} equipment reviewed`}
+                                  </p>
+                                </>
+                              )}
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                navigate(
-                                  `/equipment?area=${encodeURIComponent(
-                                    activeScopeArea,
-                                  )}`,
-                                )
-                              }
-                              className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300"
-                            >
-                              View area equipment →
-                            </button>
+                            <div className="flex shrink-0 items-center gap-4">
+                              {previousRiskPlanEquipment && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    riskReductionPlanLoading
+                                  }
+                                  onClick={
+                                    handleLoadPreviousRiskEquipment
+                                  }
+                                  title={`Return to ${previousRiskPlanEquipment.equipmentName}`}
+                                  aria-label={`Return to previous equipment: ${previousRiskPlanEquipment.equipmentName}`}
+                                  className="text-xs font-semibold text-slate-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                                >
+                                  ← Previous equipment
+                                </button>
+                              )}
+                              {riskReductionPlan.nextEquipmentId && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    riskReductionPlanLoading
+                                  }
+                                  onClick={() =>
+                                    void handleLoadAreaEquipmentPlan(
+                                      riskReductionPlan.nextEquipmentId ??
+                                        undefined,
+                                      "forward",
+                                    )
+                                  }
+                                  className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                                >
+                                  Next equipment →
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )
                       )}

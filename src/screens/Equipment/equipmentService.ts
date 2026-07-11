@@ -2534,6 +2534,13 @@ export interface SiteRiskReductionPlan {
   nextArea: string;
   nextAreaRisk: number;
   nextAreaLevel: string;
+  equipmentRank: number | null;
+  equipmentCount: number | null;
+  nextEquipmentId: string | null;
+  nextEquipmentCode: string | null;
+  nextEquipmentName: string | null;
+  nextEquipmentRisk: number | null;
+  nextEquipmentLevel: string | null;
   actions: SiteRiskReductionAction[];
 }
 
@@ -2609,6 +2616,39 @@ function mapSiteRiskReductionPlanRow(
     nextAreaLevel:
       row.next_area_level ??
       "Minimal",
+    equipmentRank:
+      row.equipment_rank === null ||
+      row.equipment_rank === undefined
+        ? null
+        : Number(
+            row.equipment_rank,
+          ),
+    equipmentCount:
+      row.equipment_count === null ||
+      row.equipment_count === undefined
+        ? null
+        : Number(
+            row.equipment_count,
+          ),
+    nextEquipmentId:
+      row.next_equipment_id ??
+      null,
+    nextEquipmentCode:
+      row.next_equipment_code ??
+      null,
+    nextEquipmentName:
+      row.next_equipment_name ??
+      null,
+    nextEquipmentRisk:
+      row.next_equipment_risk === null ||
+      row.next_equipment_risk === undefined
+        ? null
+        : Number(
+            row.next_equipment_risk,
+          ),
+    nextEquipmentLevel:
+      row.next_equipment_level ??
+      null,
     actions: Array.isArray(
       row.actions,
     )
@@ -2705,6 +2745,43 @@ export async function getSiteRiskReductionPlan(
   } catch (error) {
     console.warn(
       "vorta_get_site_risk_reduction_plan threw:",
+      error,
+    );
+    return null;
+  }
+}
+
+export async function getAreaEquipmentRiskReductionPlan(
+  area: string,
+  equipmentId?: string,
+): Promise<SiteRiskReductionPlan | null> {
+  try {
+    const { data, error } =
+      await supabase.rpc(
+        "vorta_get_area_equipment_risk_reduction_plan",
+        {
+          p_area: area,
+          p_equipment_id:
+            equipmentId ?? null,
+        },
+      );
+    if (error) {
+      console.warn(
+        "vorta_get_area_equipment_risk_reduction_plan failed:",
+        error.message,
+      );
+      return null;
+    }
+    const row = data?.[0];
+    if (!row) {
+      return null;
+    }
+    return mapSiteRiskReductionPlanRow(
+      row,
+    );
+  } catch (error) {
+    console.warn(
+      "vorta_get_area_equipment_risk_reduction_plan threw:",
       error,
     );
     return null;
