@@ -822,7 +822,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
     (
       activeRiskScope?.labourCards ??
       []
-    ).map(
+    )
+      .slice()
+      .sort(
+        (a, b) =>
+          b.score - a.score,
+      )
+      .map(
       (
         item:
           RiskDashboardLabourCard,
@@ -2725,7 +2731,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {activeLabourRiskItems.map((item) => (
+          {activeLabourRiskItems.map(
+  (item, index) => (
             <Card
               key={item.title}
               onClick={() => {
@@ -2779,19 +2786,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <RiskMeter
   value={item.progress}
   fillClassName={item.progressClassName}
-  animate={
-    item.slug === "shift-cover" &&
-    Boolean(
-      activeRiskScope?.noEngineerOverride,
-    )
-  }
+  animate={index === 0}
   ariaLabel={`${item.title} risk score ${item.score}`}
 />
                   <p className="text-xs text-slate-400">{item.label}</p>
                 </div>
               </CardContent>
             </Card>
-          ))}
+          ),
+)}
         </div>
       </section>
 
