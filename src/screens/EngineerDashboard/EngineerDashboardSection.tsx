@@ -163,27 +163,35 @@ const MOCK_OPPORTUNITIES: MatchOpportunity[] = [
 const AI_ACTIONS: AiAction[] = [
   {
     label: "Renew Manual Handling Certificate",
-    description: "Your Manual Handling cert expired Nov 2024. Required for site compliance — book renewal within 30 days.",
+    description:
+      "Your Manual Handling cert expired Nov 2024. Required for site compliance — book renewal within 30 days.",
     priority: "critical",
     icon: Award,
+    href: "/engineer/certifications",
   },
   {
     label: "Complete ATEX Zone Certification",
-    description: "Missing ATEX qualification limits your eligibility for Zone 1 work orders. Closing this gap adds +9pts to your match score.",
+    description:
+      "Missing ATEX qualification limits your eligibility for Zone 1 work orders. Closing this gap adds +9pts to your match score.",
     priority: "high",
     icon: Zap,
+    href: "/engineer/training",
   },
   {
     label: "Validate Vibration Analysis Skills",
-    description: "Your Vibration Analysis rating has not been validated in 8 months. Request a manager assessment to lock in your current level.",
+    description:
+      "Your Vibration Analysis rating has not been validated in 8 months. Request a manager assessment to lock in your current level.",
     priority: "medium",
     icon: Network,
+    href: "/engineer/skills",
   },
   {
     label: "Apply for Senior Mechanical Role",
-    description: "You score 87% match on the Senior Mechanical Engineer opening. Strong match — review requirements and apply.",
+    description:
+      "You score 87% match on the Senior Mechanical Engineer opening. Strong match — review requirements and apply.",
     priority: "low",
     icon: Briefcase,
+    href: "/engineer/opportunities",
   },
 ];
 
