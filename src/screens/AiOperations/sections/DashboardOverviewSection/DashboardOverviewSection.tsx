@@ -186,43 +186,90 @@ const useInViewOnce = <T extends HTMLElement,>(
 const RiskMeter = ({
   value,
   fillClassName,
+  animate = false,
+  ariaLabel = "Risk score",
 }: {
   value: number;
   fillClassName: string;
+  animate?: boolean;
+  ariaLabel?: string;
 }) => {
   const {
     elementRef,
     hasEnteredView,
   } = useInViewOnce<HTMLDivElement>();
 
+  const [
+    isEmphasising,
+    setIsEmphasising,
+  ] = useState(false);
+
   const clampedValue = Math.max(
     0,
     Math.min(100, value),
   );
 
-  const displayedValue = hasEnteredView
-    ? clampedValue
-    : 0;
+  const displayedValue =
+    animate && !hasEnteredView
+      ? 0
+      : clampedValue;
+
+  useEffect(() => {
+    if (
+      !animate ||
+      !hasEnteredView ||
+      window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches
+    ) {
+      return;
+    }
+
+    setIsEmphasising(true);
+
+    const timeoutId = window.setTimeout(
+      () => {
+        setIsEmphasising(false);
+      },
+      850,
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [animate, hasEnteredView]);
 
   return (
     <div
       ref={elementRef}
       role="progressbar"
-      aria-label="Risk score"
+      aria-label={ariaLabel}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={clampedValue}
-      className="relative h-3 w-full overflow-visible rounded-full bg-[#050914]"
+      className={`relative h-3 w-full overflow-visible rounded-full bg-[#050914] transition-shadow duration-300 ${
+        isEmphasising
+          ? "shadow-[0_0_16px_rgba(255,255,255,0.18)]"
+          : ""
+      }`}
     >
       <div
-        className={`h-full rounded-l-full rounded-r-none motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out ${fillClassName}`}
+        className={`h-full rounded-l-full rounded-r-none ${
+          animate
+            ? "motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
+            : ""
+        } ${fillClassName}`}
         style={{
           width: `${displayedValue}%`,
         }}
       />
 
       <span
-        className="absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(255,255,255,0.35)] motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
+        className={`absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(255,255,255,0.35)] ${
+          animate
+            ? "motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
+            : ""
+        }`}
         style={{
           left:
             displayedValue <= 0
@@ -369,12 +416,6 @@ interface RiskEquipmentPlanHistoryItem {
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
-
-  const {
-    elementRef: riskKpiSectionRef,
-    hasEnteredView:
-      hasRiskKpiSectionEnteredView,
-  } = useInViewOnce<HTMLElement>(0.15);
 
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
@@ -2152,7 +2193,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </dl>
 
                         <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
-                          <RiskMeter value={area.riskScore} fillClassName={progressClass} />
+                          <RiskMeter
+  value={area.riskScore}
+  fillClassName={progressClass}
+  animate={isHighestRisk}
+  ariaLabel={`${area.area} area risk score ${area.riskScore}`}
+/>
                           <p className="text-xs text-slate-400">{trend}</p>
                           <button
                             type="button"
@@ -2355,9 +2401,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
                       <RiskMeter
-                        value={equipment.riskScore}
-                        fillClassName={progressClassName}
-                      />
+  value={equipment.riskScore}
+  fillClassName={progressClassName}
+  animate={
+    equipment.id ===
+      activeRiskScope?.highestChildId ||
+    (
+      !activeRiskScope?.highestChildId &&
+      activeScopeChildCards[0]?.id ===
+        equipment.id
+    )
+  }
+  ariaLabel={`${equipment.label} equipment risk score ${equipment.riskScore}`}
+/>
 
                       <p className="text-xs text-slate-400">
                         {trendLabel}
@@ -2720,7 +2776,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <span className="text-xs font-semibold text-slate-50">{item.extraValue}</span>
                 </div>
                 <div className="mt-auto flex flex-col gap-1.5 pt-1">
-                  <RiskMeter value={item.progress} fillClassName={item.progressClassName} />
+                  <RiskMeter
+  value={item.progress}
+  fillClassName={item.progressClassName}
+  animate={
+    item.slug === "shift-cover" &&
+    Boolean(
+      activeRiskScope?.noEngineerOverride,
+    )
+  }
+  ariaLabel={`${item.title} risk score ${item.score}`}
+/>
                   <p className="text-xs text-slate-400">{item.label}</p>
                 </div>
               </CardContent>
@@ -2731,7 +2797,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section
-        ref={riskKpiSectionRef}
         aria-label="Risk reduction performance"
         className="flex w-full flex-col gap-4"
       >
@@ -2813,7 +2878,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             } transition-opacity`}
           >
             {riskKpiDashboard.kpis.map(
-              (kpi, index) => {
+              (kpi) => {
                 const presentation =
                   getKpiRagPresentation(
                     kpi.ragStatus,
@@ -2911,17 +2976,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         >
                           {!kpi.noData && (
                             <div
-                              className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:duration-700 motion-safe:ease-out ${presentation.barClassName}`}
+                              className={`w-full rounded-t-[10px] transition-[height] duration-300 ease-out ${presentation.barClassName}`}
                               style={{
-                                height: `${
-                                  hasRiskKpiSectionEnteredView
-                                    ? chartValue
-                                    : 0
-                                }%`,
-                                transitionDelay:
-                                  hasRiskKpiSectionEnteredView
-                                    ? `${index * 70}ms`
-                                    : "0ms",
+                                height: `${chartValue}%`,
                               }}
                             />
                           )}
