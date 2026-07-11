@@ -228,6 +228,13 @@ const RISK_KPI_PERIODS: Array<{
   },
 ];
 
+type RiskKpiDashboardCache = Partial<
+  Record<
+    RiskKpiPeriodKey,
+    RiskReductionKpiDashboard
+  >
+>;
+
 const formatKpiPeriodRange = (
   start: string,
   end: string,
@@ -362,6 +369,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
   );
 
   const [
+    riskKpiCache,
+    setRiskKpiCache,
+  ] = useState<RiskKpiDashboardCache>(
+    {},
+  );
+
+  const [
     riskKpiLoading,
     setRiskKpiLoading,
   ] = useState(false);
@@ -393,18 +407,31 @@ export const DashboardOverviewSection = (): JSX.Element => {
       try {
         await refreshCurrentRisk();
 
+        const riskKpiRequest =
+          Promise.all(
+            RISK_KPI_PERIODS.map(
+              async ({ key }) => ({
+                key,
+                dashboard:
+                  await getRiskReductionKpis(
+                    key,
+                  ),
+              }),
+            ),
+          );
+
         const [
           areaProfiles,
           siteProfile,
           areaPlans,
           reductionPlan,
-          kpiDashboard,
+          kpiResults,
         ] = await Promise.all([
           getAreaRiskProfiles(),
           getSiteRiskProfile(),
           getAreaInterventionPlans(),
           getSiteRiskReductionPlan(),
-          getRiskReductionKpis(period),
+          riskKpiRequest,
         ]);
 
         setAreaRiskCards(areaProfiles);
@@ -412,8 +439,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
         setInterventionPlans(areaPlans);
         setRiskReductionPlan(reductionPlan);
 
-        if (kpiDashboard) {
-          setRiskKpiDashboard(kpiDashboard);
+        const nextRiskKpiCache =
+          kpiResults.reduce<
+            RiskKpiDashboardCache
+          >(
+            (
+              cache,
+              result,
+            ) => {
+              if (result.dashboard) {
+                cache[result.key] =
+                  result.dashboard;
+              }
+
+              return cache;
+            },
+            {},
+          );
+
+        setRiskKpiCache(nextRiskKpiCache);
+
+        const requestedKpiDashboard =
+          nextRiskKpiCache[period] ??
+          nextRiskKpiCache.daily ??
+          null;
+
+        if (requestedKpiDashboard) {
+          setRiskKpiDashboard(requestedKpiDashboard);
         }
 
         setRiskPlanHistory([]);
@@ -554,7 +606,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     },
   );
 
-  const handleKpiPeriodChange = async (
+  const handleKpiPeriodChange = (
     period: RiskKpiPeriodKey,
   ) => {
     if (
@@ -564,19 +616,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
       return;
     }
 
-    setSelectedKpiPeriod(period);
-    setRiskKpiLoading(true);
+    const cachedDashboard =
+      riskKpiCache[period];
 
-    try {
-      const dashboard =
-        await getRiskReductionKpis(period);
-
-      if (dashboard) {
-        setRiskKpiDashboard(dashboard);
-      }
-    } finally {
-      setRiskKpiLoading(false);
+    if (!cachedDashboard) {
+      return;
     }
+
+    setSelectedKpiPeriod(period);
+
+    setRiskKpiDashboard(cachedDashboard);
   };
 
   const handleRiskKpiClick = (
@@ -2075,9 +2124,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         kpi,
                       )
                     }
-                    className={`group cursor-pointer rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                    className={`group h-[276px] cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
                   >
-                    <CardContent className="flex h-full min-h-[205px] flex-col gap-3 p-4">
+                    <CardContent className="grid h-full grid-rows-[44px_minmax(0,1fr)_28px] gap-3 overflow-hidden p-4">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-sm font-semibold leading-snug text-slate-100">
                           {kpi.label}
@@ -2094,27 +2143,31 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </div>
 
-                      <div className="flex flex-1 items-stretch gap-3">
+                      <div className="flex min-h-0 items-center gap-4 overflow-hidden">
                         <div
-                          className="relative flex w-12 shrink-0 items-end overflow-hidden rounded-lg bg-[#080b11]"
+                          className="relative flex h-[150px] w-16 shrink-0 items-end overflow-hidden rounded-xl border border-gray-700/80 bg-[#080b11] shadow-inner"
                           aria-hidden="true"
                         >
-                          <div
-                            className={`w-full rounded-t-md transition-all duration-500 ${presentation.barClassName}`}
-                            style={{
-                              height: `${chartValue}%`,
-                            }}
-                          />
+                          {!kpi.noData && (
+                            <div
+                              className={`w-full rounded-t-[10px] transition-[height] duration-300 ease-out ${presentation.barClassName}`}
+                              style={{
+                                height: `${chartValue}%`,
+                              }}
+                            />
+                          )}
 
-                          <div
-                            className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-slate-200/70"
-                            style={{
-                              bottom: `${chartTarget}%`,
-                            }}
-                          />
+                          {!kpi.noData && (
+                            <div
+                              className="pointer-events-none absolute inset-x-0 z-20 border-t border-dashed border-slate-200/70"
+                              style={{
+                                bottom: `${chartTarget}%`,
+                              }}
+                            />
+                          )}
                         </div>
 
-                        <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                           <p
                             className={`text-3xl font-semibold leading-none tracking-tight ${presentation.valueClassName}`}
                           >
@@ -2130,24 +2183,29 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           </p>
 
                           <p
-                            className={`mt-2 text-xs font-semibold ${targetGapClassName}`}
+                            className={`mt-2 min-h-[32px] text-xs font-semibold leading-4 ${targetGapClassName}`}
                           >
                             {targetGapLabel}
                           </p>
 
-                          <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                          <p
+                            title={kpi.detail}
+                            className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-400"
+                          >
                             {kpi.detail}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="text-[10px] text-slate-500">
-                          {kpi.numerator} / {kpi.denominator}
+                      <div className="flex h-7 items-center justify-between gap-3 border-t border-gray-800 pt-2">
+                        <span className="truncate text-[10px] text-slate-500">
+                          {kpi.noData
+                            ? "No eligible records"
+                            : `${kpi.numerator} of ${kpi.denominator}`}
                         </span>
 
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 opacity-0 transition-opacity group-hover:opacity-100">
-                          View
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-blue-400 transition-colors group-hover:text-blue-300">
+                          View detail
                           <ArrowRight className="h-3 w-3" />
                         </span>
                       </div>
