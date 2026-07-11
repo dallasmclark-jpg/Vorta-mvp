@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Building2, ClipboardList, Eye, EyeOff, Factory, HardHat, LayoutDashboard, User } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from "../../lib/auth";
+import {
+  canAccessPath,
+  resolveSessionRole,
+  roleHomePath,
+  useAuth,
+} from "../../lib/auth";
 import { VortaLogo, VortaIcon } from "../../components/VortaLogo";
 // ─── LinkedIn logo SVG (official mark, white) ─────────────────────────────────
 
@@ -39,27 +44,59 @@ export const LoginPage = (): JSX.Element => {
   const [showPassword, setShowPassword] = useState(false);
   const [remember,     setRemember]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
+  const [error,        setError]        = useState<string | null>(
+    (location.state as { authError?: string } | null)?.authError ?? null,
+  );
 
   const [submittingLinkedIn, setSubmittingLinkedIn] = useState(false);
 
   // Redirect only when arriving via RequireAuth (i.e. a protected route sent the user here)
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
-  if (!loading && session && from) return <Navigate to={from} replace />;
+
+  const currentRole = resolveSessionRole(session);
+
+  if (!loading && session && currentRole) {
+    const destination =
+      from && canAccessPath(currentRole, from)
+        ? from
+        : roleHomePath(currentRole);
+
+    return <Navigate to={destination} replace />;
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError("Please enter your email and password."); return; }
     setError(null);
     setSubmitting(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const {
+      data,
+      error: authError,
+    } = await supabase.auth.signInWithPassword({ email, password });
+
     if (authError) {
       setError(authError.message);
       setSubmitting(false);
       return;
     }
-    // TODO: Implement role-based routing once user profiles (e.g. profiles.role) are available.
-    navigate(from ?? "/dashboard", { replace: true });
+
+    const signedInRole = resolveSessionRole(data.session);
+
+    if (!signedInRole) {
+      await supabase.auth.signOut();
+      setError(
+        "Your account does not have a supported Vorta pilot role. Contact your Vorta administrator.",
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    const destination =
+      from && canAccessPath(signedInRole, from)
+        ? from
+        : roleHomePath(signedInRole);
+
+    navigate(destination, { replace: true });
   };
 
   const handleLinkedIn = async () => {

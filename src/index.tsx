@@ -2,7 +2,12 @@ import { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "../tailwind.css";
-import { AuthGate, AuthProvider } from "./lib/auth";
+import {
+  AuthGate,
+  AuthProvider,
+  RequireAuth,
+  RequireRole,
+} from "./lib/auth";
 import { ToastProvider } from "./components/Toast";
 import { DelayedLoader } from "./components/VortaLoadingScreen";
 
@@ -35,12 +40,54 @@ createRoot(document.getElementById("app") as HTMLElement).render(
               <Route path="/contractor-dashboard"  element={<Navigate to="/contractor/dashboard"  replace />} />
 
               {/* Portal routes — lazy loaded */}
-              <Route path="/engineer/*"   element={<EngineerPortal />} />
-              <Route path="/contractor/*" element={<ContractorPortal />} />
-              <Route path="/production/*" element={<ProductionManagerPortal />} />
-              <Route path="/operator/*"   element={<OperatorPortal />} />
-              <Route path="/planner/*"    element={<MaintenancePlanner />} />
-              <Route path="/*"            element={<AiOperations />} />
+              <Route
+                path="/engineer/*"
+                element={
+                  <RequireRole role="engineer">
+                    <EngineerPortal />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/contractor/*"
+                element={
+                  <RequireAuth>
+                    <ContractorPortal />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/production/*"
+                element={
+                  <RequireAuth>
+                    <ProductionManagerPortal />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/operator/*"
+                element={
+                  <RequireAuth>
+                    <OperatorPortal />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/planner/*"
+                element={
+                  <RequireAuth>
+                    <MaintenancePlanner />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/*"
+                element={
+                  <RequireRole role="maintenance_manager">
+                    <AiOperations />
+                  </RequireRole>
+                }
+              />
             </Routes>
           </Suspense>
         </ToastProvider>

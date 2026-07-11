@@ -4,96 +4,222 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import { VortaLoadingScreen } from "../components/VortaLoadingScreen";
 
-// ─── Context ──────────────────────────────────────────────────────────────────
+export type PilotRole = "maintenance_manager" | "engineer";
 
 interface AuthContextValue {
   session: Session | null;
+  role: PilotRole | null;
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue>({ session: null, loading: true });
+const AuthContext = createContext<AuthContextValue>({
+  session: null,
+  role: null,
+  loading: true,
+});
+
+export function normalisePilotRole(value: unknown): PilotRole | null {
+  if (typeof value !== "string") return null;
+
+  const normalised = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (
+    normalised === "maintenance_manager" ||
+    normalised === "maintenancemanager"
+  ) {
+    return "maintenance_manager";
+  }
+
+  if (
+    normalised === "engineer" ||
+    normalised === "maintenance_engineer"
+  ) {
+    return "engineer";
+  }
+
+  return null;
+}
+
+export function resolveSessionRole(session: Session | null): PilotRole | null {
+  if (!session) return null;
+
+  const metadata = session.user.app_metadata ?? {};
+
+  return normalisePilotRole(
+    metadata.portal_role ?? metadata.role,
+  );
+}
+
+export function roleHomePath(role: PilotRole): string {
+  return role === "engineer" ? "/engineer/dashboard" : "/dashboard";
+}
+
+export function canAccessPath(
+  role: PilotRole,
+  pathname: string,
+): boolean {
+  if (role === "engineer") {
+    return pathname === "/engineer" || pathname.startsWith("/engineer/");
+  }
+
+  return !(
+    pathname === "/engineer" ||
+    pathname.startsWith("/engineer/") ||
+    pathname === "/contractor" ||
+    pathname.startsWith("/contractor/") ||
+    pathname === "/production" ||
+    pathname.startsWith("/production/") ||
+    pathname === "/operator" ||
+    pathname.startsWith("/operator/") ||
+    pathname === "/planner" ||
+    pathname.startsWith("/planner/")
+  );
+}
 
 export function useAuth(): AuthContextValue {
   return useContext(AuthContext);
 }
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Restore persisted session from localStorage (supabase-js does this automatically)
+    let mounted = true;
+
     supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
       setSession(data.session);
       setLoading(false);
     });
 
-    // Keep session state current across sign-in, sign-out, and token refresh events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, loading }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        role: resolveSessionRole(session),
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ─── Route guard ─────────────────────────────────────────────────────────────
-
-export function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
+export function RequireAuth({
+  children,
+}: {
+  children: JSX.Element;
+}): JSX.Element {
   const { session, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <VortaLoadingScreen />;
-  if (!session) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  if (!session) {
+    return (
+      <Navigate
+        to="/"
+        state={{ from: location }}
+        replace
+      />
+    );
+  }
+
   return children;
 }
 
-// ─── Boot loader with delay threshold + fade-out ─────────────────────────────
+export function RequireRole({
+  role: requiredRole,
+  children,
+}: {
+  role: PilotRole;
+  children: JSX.Element;
+}): JSX.Element {
+  const { session, role, loading } = useAuth();
+  const location = useLocation();
 
-// Wraps the entire app during initial auth resolution.
-// Only shows the loader if auth takes longer than 250ms (avoids flash for
-// cached sessions). Fades the loader out over 250ms once loading completes.
+  if (loading) return <VortaLoadingScreen />;
+
+  if (!session) {
+    return (
+      <Navigate
+        to="/"
+        state={{ from: location }}
+        replace
+      />
+    );
+  }
+
+  if (!role) {
+    return (
+      <Navigate
+        to="/"
+        state={{
+          authError:
+            "Your account does not have a supported Vorta pilot role.",
+        }}
+        replace
+      />
+    );
+  }
+
+  if (role !== requiredRole) {
+    return <Navigate to={roleHomePath(role)} replace />;
+  }
+
+  return children;
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
-  // Tracks whether auth resolved — readable inside timer callbacks without stale closure
-  const resolvedRef    = useRef(false);
-  // Tracks whether the threshold timer committed to showing the loader
+  const resolvedRef = useRef(false);
   const loaderShownRef = useRef(false);
   const [showLoader, setShowLoader] = useState(false);
-  const [fadeOut,    setFadeOut]    = useState(false);
-  const [ready,      setReady]      = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Threshold: only show loader if auth is still pending after 250ms
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (resolvedRef.current) return; // auth already resolved — don't show loader
+    const timer = window.setTimeout(() => {
+      if (resolvedRef.current) return;
       loaderShownRef.current = true;
       setShowLoader(true);
     }, 250);
-    return () => clearTimeout(t);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
-  // When auth resolves, either reveal children immediately or fade out the loader
   useEffect(() => {
     if (loading) return;
+
     resolvedRef.current = true;
+
     if (!loaderShownRef.current) {
-      // Resolved before threshold — skip loader entirely
       setReady(true);
       return;
     }
-    // Loader is visible — fade it out then reveal children
+
     setFadeOut(true);
-    const t = setTimeout(() => { setShowLoader(false); setReady(true); }, 260);
-    return () => clearTimeout(t);
+
+    const timer = window.setTimeout(() => {
+      setShowLoader(false);
+      setReady(true);
+    }, 260);
+
+    return () => window.clearTimeout(timer);
   }, [loading]);
 
   return (
