@@ -347,6 +347,77 @@ export interface SiteRiskProfile {
   noEngineerOverride: boolean;
 }
 
+export interface MaintenanceExecutionItem {
+  id: string;
+  workOrderNumber: string;
+  equipmentId: string;
+  equipmentName: string;
+  area: string | null;
+  description: string;
+  priority: string;
+  status: string;
+  assignedEngineer: string | null;
+  dueDate: string | null;
+  isOverdue: boolean;
+  blocker: string | null;
+}
+
+export interface MaintenanceManagerDecision {
+  decisionType: string;
+  title: string;
+  detail: string;
+  equipmentId: string | null;
+  equipmentName: string | null;
+  reference: string | null;
+  severity: string;
+  dueDate: string | null;
+  actionLabel: string;
+}
+
+export interface MaintenanceDeadline {
+  deadlineType: string;
+  reference: string;
+  title: string;
+  equipmentId: string;
+  equipmentName: string;
+  dueDate: string;
+  severity: string;
+}
+
+export interface MaintenanceRecentChange {
+  occurredAt: string;
+  changeType: string;
+  reference: string | null;
+  equipmentId: string | null;
+  equipmentName: string | null;
+  summary: string;
+  tone: "positive" | "warning" | "neutral";
+}
+
+export interface MaintenanceExecutionBlocker {
+  label: string;
+  value: number;
+  detail: string;
+  severity: string;
+}
+
+export interface MaintenanceExecutionDashboard {
+  shiftDate: string;
+  shiftType: "day" | "night";
+  scheduleAdherencePct: number;
+  plannedToday: number;
+  completedToday: number;
+  criticalOutstanding: number;
+  waitingParts: number;
+  unassignedDueSoon: number;
+  contractorOnShift: number;
+  executionItems: MaintenanceExecutionItem[];
+  managerDecisions: MaintenanceManagerDecision[];
+  upcomingDeadlines: MaintenanceDeadline[];
+  recentChanges: MaintenanceRecentChange[];
+  executionBlockers: MaintenanceExecutionBlocker[];
+}
+
 export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
   const { data, error } = await supabase
     .from("site_risk_profile")
@@ -2304,5 +2375,198 @@ export async function refreshCurrentRisk(): Promise<boolean> {
       error,
     );
     return false;
+  }
+}
+
+// ─── Maintenance execution dashboard ──────────────────────────────────────────
+
+export async function getMaintenanceExecutionDashboard():
+  Promise<MaintenanceExecutionDashboard | null> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "vorta_get_maintenance_execution_dashboard",
+    );
+
+    if (error) {
+      console.warn(
+        "vorta_get_maintenance_execution_dashboard failed:",
+        error.message,
+      );
+      return null;
+    }
+
+    const row = data?.[0];
+
+    if (!row) {
+      return null;
+    }
+
+    const executionItems = Array.isArray(
+      row.execution_items,
+    )
+      ? row.execution_items
+      : [];
+
+    const managerDecisions = Array.isArray(
+      row.manager_decisions,
+    )
+      ? row.manager_decisions
+      : [];
+
+    const upcomingDeadlines = Array.isArray(
+      row.upcoming_deadlines,
+    )
+      ? row.upcoming_deadlines
+      : [];
+
+    const recentChanges = Array.isArray(
+      row.recent_changes,
+    )
+      ? row.recent_changes
+      : [];
+
+    const executionBlockers = Array.isArray(
+      row.execution_blockers,
+    )
+      ? row.execution_blockers
+      : [];
+
+    return {
+      shiftDate: row.shift_date ?? "",
+      shiftType:
+        row.shift_type === "night"
+          ? "night"
+          : "day",
+      scheduleAdherencePct: Number(
+        row.schedule_adherence_pct ?? 0,
+      ),
+      plannedToday: Number(
+        row.planned_today ?? 0,
+      ),
+      completedToday: Number(
+        row.completed_today ?? 0,
+      ),
+      criticalOutstanding: Number(
+        row.critical_outstanding ?? 0,
+      ),
+      waitingParts: Number(
+        row.waiting_parts ?? 0,
+      ),
+      unassignedDueSoon: Number(
+        row.unassigned_due_soon ?? 0,
+      ),
+      contractorOnShift: Number(
+        row.contractor_on_shift ?? 0,
+      ),
+      executionItems: executionItems.map(
+        (item: any) => ({
+          id: item.id ?? "",
+          workOrderNumber:
+            item.workOrderNumber ?? "",
+          equipmentId:
+            item.equipmentId ?? "",
+          equipmentName:
+            item.equipmentName ??
+            "Unnamed equipment",
+          area: item.area ?? null,
+          description:
+            item.description ?? "",
+          priority:
+            item.priority ?? "MEDIUM",
+          status:
+            item.status ?? "OPEN",
+          assignedEngineer:
+            item.assignedEngineer ?? null,
+          dueDate:
+            item.dueDate ?? null,
+          isOverdue:
+            item.isOverdue ?? false,
+          blocker:
+            item.blocker ?? null,
+        }),
+      ),
+      managerDecisions: managerDecisions.map(
+        (item: any) => ({
+          decisionType:
+            item.decisionType ?? "",
+          title:
+            item.title ?? "",
+          detail:
+            item.detail ?? "",
+          equipmentId:
+            item.equipmentId ?? null,
+          equipmentName:
+            item.equipmentName ?? null,
+          reference:
+            item.reference ?? null,
+          severity:
+            item.severity ?? "Medium",
+          dueDate:
+            item.dueDate ?? null,
+          actionLabel:
+            item.actionLabel ??
+            "Review",
+        }),
+      ),
+      upcomingDeadlines: upcomingDeadlines.map(
+        (item: any) => ({
+          deadlineType:
+            item.deadlineType ?? "",
+          reference:
+            item.reference ?? "",
+          title:
+            item.title ?? "",
+          equipmentId:
+            item.equipmentId ?? "",
+          equipmentName:
+            item.equipmentName ??
+            "Unnamed equipment",
+          dueDate:
+            item.dueDate ?? "",
+          severity:
+            item.severity ?? "Medium",
+        }),
+      ),
+      recentChanges: recentChanges.map(
+        (item: any) => ({
+          occurredAt:
+            item.occurredAt ?? "",
+          changeType:
+            item.changeType ?? "",
+          reference:
+            item.reference ?? null,
+          equipmentId:
+            item.equipmentId ?? null,
+          equipmentName:
+            item.equipmentName ?? null,
+          summary:
+            item.summary ?? "",
+          tone:
+            item.tone === "positive" ||
+            item.tone === "warning"
+              ? item.tone
+              : "neutral",
+        }),
+      ),
+      executionBlockers: executionBlockers.map(
+        (item: any) => ({
+          label:
+            item.label ?? "",
+          value: Number(
+            item.value ?? 0,
+          ),
+          detail:
+            item.detail ?? "",
+          severity:
+            item.severity ?? "Low",
+        }),
+      ),
+    };
+  } catch (error) {
+    console.warn(
+      "vorta_get_maintenance_execution_dashboard threw:",
+      error,
+    );
+    return null;
   }
 }
