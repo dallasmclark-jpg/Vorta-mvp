@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   Award,
   BookOpen,
   Briefcase,
@@ -334,6 +335,10 @@ export function EngineerDashboardSection(): JSX.Element {
   const [gaps, setGaps]           = useState<SkillGap[]>([]);
   const [opportunities, setOpps]  = useState<MatchOpportunity[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [
+    isUsingFallbackProfile,
+    setIsUsingFallbackProfile,
+  ] = useState(false);
   const [tick, setTick]           = useState(0);
   const [oppPage, setOppPage]     = useState(0);
   const OPP_PAGE = 3;
@@ -344,10 +349,12 @@ export function EngineerDashboardSection(): JSX.Element {
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setIsUsingFallbackProfile(false);
       try {
         const { data } = await supabase.functions.invoke("engineers-data");
         if (cancelled) return;
         if (data?.engineers?.length) {
+          setIsUsingFallbackProfile(false);
           const eng = data.engineers[0] as EngineerProfile;
           setProfile(eng);
           const myBookings: TrainingBooking[] = (data.trainingBookings ?? [])
@@ -357,6 +364,7 @@ export function EngineerDashboardSection(): JSX.Element {
           const myGaps: SkillGap[] = (data.skillGaps ?? []).slice(0, 5).map((g: SkillGap) => g);
           setGaps(myGaps.length ? myGaps : MOCK_GAPS);
         } else {
+          setIsUsingFallbackProfile(true);
           setProfile(buildMockProfile(email));
           setBookings(MOCK_BOOKINGS);
           setGaps(MOCK_GAPS);
@@ -364,6 +372,7 @@ export function EngineerDashboardSection(): JSX.Element {
         setOpps(MOCK_OPPORTUNITIES);
       } catch {
         if (!cancelled) {
+          setIsUsingFallbackProfile(true);
           setProfile(buildMockProfile(email));
           setBookings(MOCK_BOOKINGS);
           setGaps(MOCK_GAPS);
@@ -480,6 +489,75 @@ export function EngineerDashboardSection(): JSX.Element {
           </button>
         </div>
       </div>
+
+      {/* ── Data-source warning ─────────────────────────────────────────────── */}
+      {!loading && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+            isUsingFallbackProfile
+              ? "border-orange-500/35 bg-orange-500/[0.08]"
+              : "border-yellow-500/25 bg-yellow-500/[0.05]"
+          }`}
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className={`mt-0.5 h-4 w-4 shrink-0 ${
+              isUsingFallbackProfile
+                ? "text-orange-400"
+                : "text-yellow-400"
+            }`}
+          />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p
+                className={`text-xs font-semibold ${
+                  isUsingFallbackProfile
+                    ? "text-orange-300"
+                    : "text-yellow-300"
+                }`}
+              >
+                {isUsingFallbackProfile
+                  ? "Demo fallback data displayed"
+                  : "Pilot dashboard contains sample data"
+                }
+              </p>
+
+              <span
+                className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
+                  isUsingFallbackProfile
+                    ? "bg-orange-500/15 text-orange-300"
+                    : "bg-yellow-500/15 text-yellow-300"
+                }`}
+              >
+                {isUsingFallbackProfile
+                  ? "Demo data"
+                  : "Mixed data"
+                }
+              </span>
+            </div>
+
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+              {isUsingFallbackProfile
+                ? "Live Engineer data could not be loaded. The profile, training, skills, opportunities, career progression and AI recommendations shown below are sample data and must not be used operationally."
+                : "The Engineer profile may be loaded from the live data service, but training fallbacks, opportunities, career progression and AI recommendations may still contain sample data and must not be treated as operational records."}
+            </p>
+          </div>
+
+          {isUsingFallbackProfile && (
+            <button
+              type="button"
+              onClick={() => setTick((value) => value + 1)}
+              disabled={loading}
+              className="shrink-0 rounded-md border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-[11px] font-semibold text-orange-300 transition-colors hover:bg-orange-500/15 disabled:cursor-wait disabled:opacity-50"
+            >
+              Retry live data
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Profile completion strip ─────────────────────────────────────────── */}
       {!loading && p && completion < 100 && (
