@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
-  Info,
   RefreshCw,
   Search,
   UserCircle,
@@ -17,40 +16,6 @@ import { getEquipmentList, getEquipmentRiskExplanations, getEquipmentRiskHistory
 import type { EquipmentListItem, EquipmentRiskExplanation, EquipmentRiskHistory } from "./equipmentService";
 
 // ─── Local display-only constants ────────────────────────────────────────────
-
-const RECENT_ACTIVITY = [
-  { text: "PM completed on Case Packer 3",  dotClass: "bg-emerald-500" },
-  { text: "Fault detected on Line 2 PLC",   dotClass: "bg-red-500" },
-  { text: "Work order raised for Boiler 1", dotClass: "bg-yellow-400" },
-  { text: "Downtime logged on Press Line",  dotClass: "bg-orange-400" },
-];
-
-const AI_RECOMMENDATIONS = [
-  {
-    title: "Reallocate Sarah Jones to Case Packer 4.",
-    badges: [
-      { label: "CRITICAL", cls: "bg-[#ef444420] text-red-500" },
-      { label: "HIGH",     cls: "bg-[#f9731620] text-orange-400" },
-    ],
-  },
-  {
-    title: "Arrange contractor check for Boiler 1.",
-    badges: [
-      { label: "REVIEW",   cls: "bg-[#facc1520] text-yellow-400" },
-      { label: "HIGH",     cls: "bg-[#f9731620] text-orange-400" },
-    ],
-  },
-  {
-    title: "Train Liam on Siemens S7 before Press Line.",
-    badges: [
-      { label: "OPEN",     cls: "bg-[#10b98120] text-emerald-500" },
-      { label: "MID",      cls: "bg-[#3b82f620] text-blue-400" },
-      { label: "TRAINING", cls: "bg-[#a855f720] text-purple-400" },
-    ],
-  },
-];
-
-const FILTER_CHIPS = ["Area", "Risk", "Criticality", "Asset Type", "PM Status", "Engineer", "Calibration", "Training Status"];
 
 const RISK_LEGEND = [
   { label: "0-20% Minimal",    dotClass: "bg-emerald-500" },
@@ -107,7 +72,7 @@ function formatSnapshotDate(iso: string): string {
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
-function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
+function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
   const [history, setHistory] = useState<EquipmentRiskHistory[]>([]);
 
@@ -151,6 +116,14 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-slate-500">Area</span>
               <span className="text-sm font-semibold text-slate-200">{item.area}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-slate-500">OEM</span>
+              <span className="text-sm font-semibold text-slate-200">{item.oem}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-slate-500">Criticality</span>
+              <span className="text-sm font-semibold text-slate-200">{item.criticality}</span>
             </div>
           </div>
         </div>
@@ -252,18 +225,7 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
             </Button>
             <button
               type="button"
-              className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
-            >
-              Assign Engineer
-            </button>
-            <button
-              type="button"
-              className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
-            >
-              Create Work Order
-            </button>
-            <button
-              type="button"
+              onClick={() => onNavigateToHistory(item.id)}
               className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
             >
               View History
@@ -376,7 +338,7 @@ function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
         </div>
         <p className="text-xl font-semibold text-slate-50">{value}</p>
         {showBar && (
-          <Progress value={barValue ?? 0} className="mt-1 h-1.5 rounded bg-gray-800 [&>div]:bg-emerald-500" />
+          <Progress value={barValue ?? 0} className="mt-1 h-1.5 rounded bg-gray-800 [&>div]:bg-blue-500" />
         )}
       </CardContent>
     </Card>
@@ -396,7 +358,11 @@ export const EquipmentSection = (): JSX.Element => {
 
   const [search, setSearch] = useState("");
   const [activeArea, setActiveArea] = useState<string | null>(initialArea);
-  const [activeChip, setActiveChip] = useState<string | null>(initialArea ? "Area" : null);
+  const [atRiskOnly, setAtRiskOnly] = useState(false);
+  const [overduePmOnly, setOverduePmOnly] = useState(false);
+  const [calibrationDueOnly, setCalibrationDueOnly] =
+    useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [expandedId, setExpandedId] = useState<string>("");
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -405,7 +371,6 @@ export const EquipmentSection = (): JSX.Element => {
   // Keep local filter in sync with URL whenever the area param changes (e.g. navigated from dashboard)
   useEffect(() => {
     setActiveArea(initialArea);
-    setActiveChip(initialArea ? "Area" : null);
     setExpandedId("");
   }, [initialArea]);
 
@@ -442,7 +407,7 @@ export const EquipmentSection = (): JSX.Element => {
       });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(() => {
     const items = [...equipmentList].sort((a, b) => b.riskScore - a.riskScore);
@@ -455,40 +420,92 @@ export const EquipmentSection = (): JSX.Element => {
           if (e.area !== activeArea) return false;
         }
       }
+      if (
+        atRiskOnly &&
+        e.riskLevel !== "Critical" &&
+        e.riskLevel !== "High"
+      ) {
+        return false;
+      }
+      if (overduePmOnly && e.overduePmCount === 0) {
+        return false;
+      }
+      if (
+        calibrationDueOnly &&
+        e.calibrationOverdueCount === 0
+      ) {
+        return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         if (
           !e.name.toLowerCase().includes(q) &&
           !e.assetNumber.toLowerCase().includes(q) &&
           !e.area.toLowerCase().includes(q) &&
-          !e.type.toLowerCase().includes(q)
+          !e.type.toLowerCase().includes(q) &&
+          !e.oem.toLowerCase().includes(q) &&
+          !e.criticality.toLowerCase().includes(q)
         ) return false;
       }
       return true;
     });
-  }, [equipmentList, activeArea, search]);
+  }, [
+    equipmentList,
+    activeArea,
+    search,
+    atRiskOnly,
+    overduePmOnly,
+    calibrationDueOnly,
+  ]);
 
-  const totalAssets   = equipmentList.length;
-  const criticalCount = equipmentList.filter((e) => e.riskLevel === "Critical").length;
-  const atRisk        = equipmentList.filter((e) => e.riskLevel === "Critical" || e.riskLevel === "High").length;
-  const overduePms    = 8;
-  const openWorkOrders = 12;
-  const avgHealth     = 82;
-  const calDue        = 3;
+  const totalAssets = filtered.length;
 
-  const handleChipClick = (chip: string) => {
-    if (chip === "Area") {
-      if (activeChip === "Area") {
-        setActiveChip(null);
-        setActiveArea(null);
-      } else {
-        setActiveChip("Area");
-        setActiveArea(initialArea);
-      }
-    } else {
-      setActiveChip(activeChip === chip ? null : chip);
-    }
+  const criticalCount = filtered.filter(
+    (item) => item.riskLevel === "Critical",
+  ).length;
+
+  const atRisk = filtered.filter(
+    (item) =>
+      item.riskLevel === "Critical" ||
+      item.riskLevel === "High",
+  ).length;
+
+  const overduePms = filtered.reduce(
+    (total, item) => total + item.overduePmCount,
+    0,
+  );
+
+  const openWorkOrders = filtered.reduce(
+    (total, item) => total + item.openWorkOrderCount,
+    0,
+  );
+
+  const averageRisk =
+    filtered.length > 0
+      ? Math.round(
+          filtered.reduce(
+            (total, item) => total + item.riskScore,
+            0,
+          ) / filtered.length,
+        )
+      : 0;
+
+  const calibrationDue = filtered.reduce(
+    (total, item) => total + item.calibrationOverdueCount,
+    0,
+  );
+
+  const refreshEquipment = () => {
+    setExpandedId("");
+    setReloadKey((value) => value + 1);
   };
+
+  const hasActiveFilters =
+    Boolean(activeArea) ||
+    Boolean(search) ||
+    atRiskOnly ||
+    overduePmOnly ||
+    calibrationDueOnly;
 
   const toggleRow = (id: string) => {
     setExpandedId((prev) => (prev === id ? "" : id));
@@ -513,16 +530,20 @@ export const EquipmentSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
-            className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
+            disabled={loading}
+            onClick={refreshEquipment}
+            className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50 disabled:opacity-60"
           >
-            Run Full Site Analysis
+            Refresh Risk Data
           </Button>
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+            disabled={loading}
+            onClick={refreshEquipment}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 disabled:opacity-60"
             aria-label="Refresh"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
           <button
             type="button"
@@ -537,13 +558,33 @@ export const EquipmentSection = (): JSX.Element => {
 
       {/* ── KPI Bar ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        <KpiCard label="Total Assets"         value={String(totalAssets)} />
-        <KpiCard label="Critical Assets"      value={String(criticalCount)}  badgeLabel="CRITICAL" badgeClass="bg-[#ef444420] text-red-500" />
-        <KpiCard label="Assets At Risk"       value={String(atRisk)}         badgeLabel="HIGH"     badgeClass="bg-[#f9731620] text-orange-400" />
-        <KpiCard label="Overdue PMs"          value={String(overduePms)}     badgeLabel="CRITICAL" badgeClass="bg-[#ef444420] text-red-500" />
-        <KpiCard label="Open Work Orders"     value={String(openWorkOrders)} />
-        <KpiCard label="Average Asset Health" value={`${avgHealth}%`} showBar barValue={avgHealth} />
-        <KpiCard label="Calibration Due"      value={String(calDue)} />
+        <KpiCard label="Total Assets" value={String(totalAssets)} />
+        <KpiCard
+          label="Critical Assets"
+          value={String(criticalCount)}
+          badgeLabel={criticalCount > 0 ? "CRITICAL" : undefined}
+          badgeClass="bg-[#ef444420] text-red-500"
+        />
+        <KpiCard
+          label="Assets At Risk"
+          value={String(atRisk)}
+          badgeLabel={atRisk > 0 ? "HIGH" : undefined}
+          badgeClass="bg-[#f9731620] text-orange-400"
+        />
+        <KpiCard
+          label="Overdue PMs"
+          value={String(overduePms)}
+          badgeLabel={overduePms > 0 ? "ACTION" : undefined}
+          badgeClass="bg-[#ef444420] text-red-500"
+        />
+        <KpiCard label="Open Work Orders" value={String(openWorkOrders)} />
+        <KpiCard
+          label="Average Risk"
+          value={`${averageRisk}%`}
+          showBar
+          barValue={averageRisk}
+        />
+        <KpiCard label="Calibration Due" value={String(calibrationDue)} />
       </div>
 
       {/* ── Search ──────────────────────────────────────────────────────── */}
@@ -595,7 +636,7 @@ export const EquipmentSection = (): JSX.Element => {
           <span className="font-semibold text-slate-200">{areaChipLabel}</span>
           <button
             type="button"
-            onClick={() => { setActiveArea(null); setActiveChip(null); navigate("/equipment"); }}
+            onClick={() => { setActiveArea(null); navigate("/equipment"); }}
             className="ml-1 rounded border border-gray-700 px-2 py-0.5 text-xs text-slate-500 transition-colors hover:border-gray-600 hover:text-slate-300"
           >
             Clear
@@ -688,7 +729,13 @@ export const EquipmentSection = (): JSX.Element => {
                 </div>
 
                 {isExpanded && (
-                  <ExpandedPanel item={item} onNavigate={navigateToEquipment} />
+                  <ExpandedPanel
+                    item={item}
+                    onNavigate={navigateToEquipment}
+                    onNavigateToHistory={(id) =>
+                      navigate(`/equipment/${id}/history`)
+                    }
+                  />
                 )}
               </div>
             );
@@ -707,9 +754,7 @@ export const EquipmentSection = (): JSX.Element => {
       </div>
 
       {/* ── Bottom Panels ───────────────────────────────────────────────── */}
-      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
-
-        {/* Top 10 Highest Risk */}
+      <div className="w-full">
         <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
           <CardContent className="p-5">
             <h2 className="mb-4 text-base font-semibold text-slate-50">Top 10 Highest Risk Equipment</h2>
@@ -719,10 +764,14 @@ export const EquipmentSection = (): JSX.Element => {
                 .slice(0, 10)
                 .map((item, i) => (
                   <li key={item.id} className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => navigateToEquipment(item.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                    >
                       <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
-                      <span className="truncate text-sm text-slate-200">{item.name}</span>
-                    </div>
+                      <span className="truncate text-sm text-slate-200 hover:text-blue-400">{item.name}</span>
+                    </button>
                     <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${riskBadgeClass(item.riskLevel)}`}>
                       {item.riskLevel}
                     </Badge>
@@ -732,43 +781,6 @@ export const EquipmentSection = (): JSX.Element => {
             </ol>
           </CardContent>
         </Card>
-
-        {/* Recent Equipment Activity */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-5">
-            <h2 className="mb-4 text-base font-semibold text-slate-50">Recent Equipment Activity</h2>
-            <ul className="flex flex-col gap-3">
-              {RECENT_ACTIVITY.map((item) => (
-                <li key={item.text} className="flex items-start gap-2.5">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotClass}`} aria-hidden="true" />
-                  <span className="text-sm text-slate-300">{item.text}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* AI Equipment Recommendations */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-5">
-            <h2 className="mb-4 text-base font-semibold text-slate-50">AI Equipment Recommendations</h2>
-            <div className="flex flex-col gap-4">
-              {AI_RECOMMENDATIONS.map((rec) => (
-                <div key={rec.title} className="flex flex-col gap-2">
-                  <p className="text-sm font-medium leading-snug text-slate-200">{rec.title}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {rec.badges.map((b) => (
-                      <Badge key={b.label} className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${b.cls}`}>
-                        {b.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
       </div>
     </section>
   );

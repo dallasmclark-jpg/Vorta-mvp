@@ -899,20 +899,25 @@ export interface EquipmentListItem {
   labourShiftDate?: string | null;
   labourShiftType?: string | null;
   noEngineerOverride?: boolean;
+  oem: string;
+  criticality: string;
+  overduePmCount: number;
+  openWorkOrderCount: number;
+  calibrationOverdueCount: number;
 }
 
 // Fallback list used when Supabase is unavailable.
 const MOCK_LIST: EquipmentListItem[] = [
-  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Filling Line 3",      "FILLING LINE", "FL-03") },
-  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Case Packer 4",        "PACKING",      "CP-04") },
-  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Boiler 1",             "UTILITIES",    "BL-01") },
-  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Palletiser 2",         "PALLETISER",   "PL-02") },
-  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Line 2 PLC",           "AUTOMATION",   "L2-PLC") },
-  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Conveyor 4",           "CONVEYOR",     "CV-04") },
-  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Press Line Motor",     "PROCESSING",   "PM-01") },
-  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Air Compressor 1",     "COMPRESSOR",   "AC-01") },
-  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Warehouse Forklift 3", "WAREHOUSE",    "WF-03") },
-  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal",  "Lighting System",      "FACILITIES",   "LT-01") },
+  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Filling Line 3",      "FILLING LINE", "FL-03"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Case Packer 4",        "PACKING",      "CP-04"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Boiler 1",             "UTILITIES",    "BL-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Palletiser 2",         "PALLETISER",   "PL-02"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Line 2 PLC",           "AUTOMATION",   "L2-PLC"), oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Conveyor 4",           "CONVEYOR",     "CV-04"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Press Line Motor",     "PROCESSING",   "PM-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Air Compressor 1",     "COMPRESSOR",   "AC-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Warehouse Forklift 3", "WAREHOUSE",    "WF-03"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal",  "Lighting System",      "FACILITIES",   "LT-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
@@ -1098,6 +1103,13 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
           row.labour_shift_type ?? null,
         noEngineerOverride:
           row.no_engineer_override ?? false,
+        oem:          row.oem ?? "—",
+        criticality:  row.criticality ?? "Unknown",
+        overduePmCount: Number(row.overdue_pm_count ?? 0),
+        openWorkOrderCount: Number(row.open_work_order_count ?? 0),
+        calibrationOverdueCount: Number(
+          row.calibration_overdue_count ?? 0,
+        ),
         breakdown:
           breakdown.length > 0
             ? breakdown
