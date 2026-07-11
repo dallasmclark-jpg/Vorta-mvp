@@ -285,6 +285,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
+  const [
+    hasOpenedRiskPlan,
+    setHasOpenedRiskPlan,
+  ] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
@@ -1093,29 +1097,32 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 </p>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-3">
-                <Badge className="rounded bg-[#10b98120] px-2 py-1 text-xs font-medium text-emerald-500 hover:bg-[#10b98120]">
-                  Live calculation
-                </Badge>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsRiskDetailOpen(true)}
-                  className="h-auto rounded-lg border border-solid border-[#ffffff20] bg-[#ffffff1a] px-3 py-2 text-xs font-semibold text-slate-50 hover:bg-[#ffffff24]"
-                >
-                  View Work Queue
-                </Button>
-
+              <div className="flex shrink-0 items-center">
                 <button
                   type="button"
-                  onClick={() => setIsRiskDetailOpen((open) => !open)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-50"
+                  onClick={() => {
+                    setHasOpenedRiskPlan(true);
+                    setIsRiskDetailOpen(
+                      (open) => !open,
+                    );
+                  }}
+                  aria-expanded={isRiskDetailOpen}
+                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border border-amber-300/60 bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.30)] transition-all hover:bg-amber-300 hover:shadow-[0_0_24px_rgba(251,191,36,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
+                    !hasOpenedRiskPlan &&
+                    !isRiskDetailOpen
+                      ? "animate-pulse"
+                      : ""
+                  }`}
                 >
-                  {isRiskDetailOpen ? "Hide work plan" : "View work plan"}
+                  {isRiskDetailOpen
+                    ? "Hide work plan"
+                    : "View work plan"}
+
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${
-                      isRiskDetailOpen ? "rotate-180" : ""
+                      isRiskDetailOpen
+                        ? "rotate-180"
+                        : ""
                     }`}
                     aria-hidden="true"
                   />
