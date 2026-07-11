@@ -3153,9 +3153,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         kpi,
                       )
                     }
-                    className={`group h-[276px] cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                    className={`group h-[288px] cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
                   >
-                    <CardContent className="grid h-full grid-rows-[44px_minmax(0,1fr)_28px] gap-3 overflow-hidden p-4">
+                    <CardContent className="grid h-full grid-rows-[44px_minmax(156px,1fr)_28px] gap-3 overflow-hidden p-4">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-sm font-semibold leading-snug text-slate-100">
                           {kpi.label}
@@ -3172,7 +3172,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </div>
 
-                      <div className="flex min-h-0 items-center gap-4 overflow-hidden">
+                      <div className="flex min-h-[156px] items-center gap-4">
                         <div
                           className="relative flex h-[150px] w-16 shrink-0 items-end overflow-hidden rounded-xl border border-gray-700/80 bg-[#080b11] shadow-inner"
                           aria-hidden="true"
@@ -3209,9 +3209,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           )}
                         </div>
 
-                        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                        <div className="flex min-w-0 flex-1 flex-col py-1">
                           <p
-                            className={`text-3xl font-semibold leading-none tracking-tight ${presentation.valueClassName}`}
+                            className={`text-3xl font-semibold leading-tight tracking-tight ${presentation.valueClassName}`}
                           >
                             {formatKpiPercentage(
                               kpi.value,
