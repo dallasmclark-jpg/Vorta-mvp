@@ -23,7 +23,8 @@ import {
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
-  refreshCurrentRisk,
+  refreshOperationalRisk,
+  refreshRiskWorkPlan,
   getRiskDashboardScopes,
   getRiskDashboardScopePlans,
   getRiskDashboardScopeKpis,
@@ -407,6 +408,57 @@ const formatKpiTarget = (
   target: number,
 ): string => `Target ≥ ${target.toFixed(1)}%`;
 
+const DashboardLoadingGrid = ({
+  count,
+  columnsClassName,
+  heightClassName,
+}: {
+  count: number;
+  columnsClassName: string;
+  heightClassName: string;
+}) => (
+  <div
+    aria-hidden="true"
+    className={`grid w-full gap-4 ${columnsClassName}`}
+  >
+    {Array.from(
+      {
+        length: count,
+      },
+      (_, index) => (
+        <Card
+          key={`dashboard-loading-card-${index}`}
+          className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+        >
+          <CardContent
+            className={`flex ${heightClassName} flex-col gap-4 p-4 motion-safe:animate-pulse`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="h-4 w-28 rounded bg-slate-800" />
+              <div className="h-6 w-14 rounded bg-slate-800" />
+            </div>
+
+            <div className="h-3 w-3/4 rounded bg-slate-800/80" />
+
+            <div className="space-y-2">
+              <div className="h-3 w-24 rounded bg-slate-800/80" />
+              <div className="h-7 w-16 rounded bg-slate-800" />
+            </div>
+
+            <div className="space-y-3">
+              <div className="h-3 w-full rounded bg-slate-800/70" />
+              <div className="h-3 w-5/6 rounded bg-slate-800/70" />
+              <div className="h-3 w-4/6 rounded bg-slate-800/70" />
+            </div>
+
+            <div className="mt-auto h-3 w-full rounded-full bg-slate-800" />
+          </CardContent>
+        </Card>
+      ),
+    )}
+  </div>
+);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface RiskEquipmentPlanHistoryItem {
@@ -453,6 +505,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
     useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] =
     useState(false);
+
+  const [
+    operationalRiskLoading,
+    setOperationalRiskLoading,
+  ] = useState(true);
+
+  const [
+    secondaryRiskLoading,
+    setSecondaryRiskLoading,
+  ] = useState(true);
+
+  const [
+    dashboardLoadError,
+    setDashboardLoadError,
+  ] = useState<string | null>(null);
 
   const [
     selectedKpiPeriod,
@@ -565,6 +632,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
         ) / 10,
       )
     : 0;
+
+  const showOperationalSkeletons =
+    operationalRiskLoading &&
+    riskScopes.length === 0;
+
+  const showSecondarySkeletons =
+    secondaryRiskLoading &&
+    !riskKpiDashboard;
 
   useEffect(() => {
     if (
@@ -685,45 +760,42 @@ export const DashboardOverviewSection = (): JSX.Element => {
       scopeKey: string,
     ) => {
       setDashboardRefreshing(true);
+      setOperationalRiskLoading(true);
+      setSecondaryRiskLoading(true);
       setRiskReductionPlanLoading(true);
       setRiskKpiLoading(true);
+      setDashboardLoadError(null);
 
       try {
-        await refreshCurrentRisk();
+        const operationalRefreshSucceeded =
+          await refreshOperationalRisk();
+
+        if (!operationalRefreshSucceeded) {
+          throw new Error(
+            "Current operational risk could not be recalculated.",
+          );
+        }
 
         const [
           areaProfiles,
           siteProfile,
-          areaPlans,
           scopes,
-          planCache,
-          scopeKpiCache,
         ] = await Promise.all([
           getAreaRiskProfiles(),
           getSiteRiskProfile(),
-          getAreaInterventionPlans(),
           getRiskDashboardScopes(),
-          getRiskDashboardScopePlans(),
-          getRiskDashboardScopeKpis(),
         ]);
 
         setAreaRiskCards(
           areaProfiles,
         );
+
         setSiteRisk(
           siteProfile,
         );
-        setInterventionPlans(
-          areaPlans,
-        );
+
         setRiskScopes(
           scopes,
-        );
-        setRiskScopePlanCache(
-          planCache,
-        );
-        setRiskScopeKpiCache(
-          scopeKpiCache,
         );
 
         const validScopeKey =
@@ -739,42 +811,98 @@ export const DashboardOverviewSection = (): JSX.Element => {
           validScopeKey,
         );
 
-        const requestedPlan =
-          planCache[validScopeKey] ??
-          planCache.site ??
-          null;
-
-        setRiskReductionPlan(
-          requestedPlan,
-        );
-
-        const requestedKpis =
-          scopeKpiCache[
-            validScopeKey
-          ]?.[period] ??
-          scopeKpiCache.site?.[
-            period
-          ] ??
-          scopeKpiCache.site
-            ?.daily ??
-          null;
-
-        if (requestedKpis) {
-          setRiskKpiDashboard(
-            requestedKpis,
-          );
-        }
-
         setRiskPlanHistory([]);
         setRiskEquipmentPlanHistory([]);
         setSelectedArea(null);
-        setSelectedAreaIntervention(
-          null,
+        setSelectedAreaIntervention(null);
+        setSelectedInterventionPlan(null);
+
+        setOperationalRiskLoading(false);
+
+        try {
+          const workPlanRefreshSucceeded =
+            await refreshRiskWorkPlan();
+
+          if (!workPlanRefreshSucceeded) {
+            throw new Error(
+              "The maintenance work plan could not be rebuilt.",
+            );
+          }
+
+          const [
+            areaPlans,
+            planCache,
+            scopeKpiCache,
+          ] = await Promise.all([
+            getAreaInterventionPlans(),
+            getRiskDashboardScopePlans(),
+            getRiskDashboardScopeKpis(),
+          ]);
+
+          setInterventionPlans(
+            areaPlans,
+          );
+
+          setRiskScopePlanCache(
+            planCache,
+          );
+
+          setRiskScopeKpiCache(
+            scopeKpiCache,
+          );
+
+          const requestedPlan =
+            planCache[validScopeKey] ??
+            planCache.site ??
+            null;
+
+          setRiskReductionPlan(
+            requestedPlan,
+          );
+
+          const requestedKpis =
+            scopeKpiCache[
+              validScopeKey
+            ]?.[period] ??
+            scopeKpiCache.site?.[
+              period
+            ] ??
+            scopeKpiCache.site
+              ?.daily ??
+            null;
+
+          setRiskKpiDashboard(
+            requestedKpis,
+          );
+        } catch (error) {
+          console.warn(
+            "Secondary dashboard intelligence failed:",
+            error,
+          );
+
+          setInterventionPlans([]);
+          setRiskScopePlanCache({});
+          setRiskScopeKpiCache({});
+          setRiskReductionPlan(null);
+          setRiskKpiDashboard(null);
+
+          setDashboardLoadError(
+            "Current site risk is ready, but the work plan and performance indicators could not be generated.",
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "Operational dashboard risk refresh failed:",
+          error,
+        );
+
+        setDashboardLoadError(
+          "Current site risk could not be calculated. Run the analysis again.",
         );
       } finally {
-        setRiskReductionPlanLoading(
-          false,
-        );
+        setOperationalRiskLoading(false);
+        setSecondaryRiskLoading(false);
+        setRiskReductionPlanLoading(false);
         setRiskKpiLoading(false);
         setDashboardRefreshing(false);
       }
@@ -1182,8 +1310,109 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Dashboard AI Command Bar ─────────────────────────────────── */}
       <VortaAiCommandBar role="maintenance-manager" />
 
+      {(
+        dashboardRefreshing ||
+        dashboardLoadError
+      ) && (
+        <div
+          role={
+            dashboardLoadError
+              ? "alert"
+              : "status"
+          }
+          aria-live="polite"
+          className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
+            dashboardLoadError
+              ? "border-red-500/25 bg-red-500/5"
+              : operationalRiskLoading
+                ? "border-blue-500/25 bg-blue-500/5"
+                : "border-emerald-500/20 bg-emerald-500/5"
+          }`}
+        >
+          {dashboardLoadError ? (
+            <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+          ) : (
+            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-blue-400" />
+          )}
+
+          <div>
+            <p
+              className={`text-sm font-semibold ${
+                dashboardLoadError
+                  ? "text-red-300"
+                  : operationalRiskLoading
+                    ? "text-blue-300"
+                    : "text-emerald-300"
+              }`}
+            >
+              {dashboardLoadError
+                ? dashboardLoadError
+                : operationalRiskLoading
+                  ? "Calculating current site risk"
+                  : "Current site risk ready"}
+            </p>
+
+            {!dashboardLoadError && (
+              <p className="mt-0.5 text-xs text-slate-400">
+                {operationalRiskLoading
+                  ? "Refreshing equipment, area, labour and site exposure from current source data."
+                  : "Building today’s work plan and performance indicators."}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
-      <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      {showOperationalSkeletons && (
+        <Card
+          aria-hidden="true"
+          className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+        >
+          <CardContent className="space-y-5 p-5 motion-safe:animate-pulse">
+            <div className="flex items-center gap-2 border-b border-gray-800 pb-4">
+              <div className="h-9 w-28 rounded-lg bg-slate-800" />
+              <div className="h-9 w-24 rounded-lg bg-slate-800" />
+              <div className="h-9 w-24 rounded-lg bg-slate-800" />
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-5 w-28 rounded bg-slate-800" />
+                <div className="h-5 w-40 rounded bg-slate-800" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="h-3 w-32 rounded bg-slate-800/70" />
+                <div className="h-3 w-48 rounded bg-slate-800/70" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {Array.from(
+                {
+                  length: 5,
+                },
+                (_, index) => (
+                  <div
+                    key={`briefing-loading-${index}`}
+                    className="h-[82px] rounded-lg border border-gray-800 bg-[#0d1117]"
+                  />
+                ),
+              )}
+            </div>
+
+            <div className="h-[74px] rounded-lg border border-orange-500/10 bg-orange-500/[0.03]" />
+          </CardContent>
+        </Card>
+      )}
+      <Card
+        className={`w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none ${
+          showOperationalSkeletons
+            ? "hidden"
+            : ""
+        }`}
+      >
         <CardContent className="p-5">
           <div className="flex flex-col gap-5">
 
@@ -1367,20 +1596,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     : "TODAY'S AREA RISK REDUCTION PLAN"}
                 </p>
                 <p className="text-sm font-semibold leading-snug text-slate-50">
-                  {riskReductionPlan
-                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
-                      isSiteRiskScope
-                        ? "area"
-                        : "area"
-                    } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
-                    : activeRiskScope?.priorityAction ??
-                      "Review the highest-risk asset and clear the largest leading risk driver."}
+                  {secondaryRiskLoading &&
+                  !riskReductionPlan
+                    ? "Building the current work plan from the freshly calculated risk scores."
+                    : riskReductionPlan
+                      ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
+                        isSiteRiskScope
+                          ? "area"
+                          : "area"
+                      } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                      : activeRiskScope?.priorityAction ??
+                        "Review the highest-risk asset and clear the largest leading risk driver."}
                 </p>
               </div>
 
               <div className="flex shrink-0 items-center">
                 <button
                   type="button"
+                  disabled={
+                    secondaryRiskLoading &&
+                    !riskReductionPlan
+                  }
                   onClick={() => {
                     setHasOpenedRiskPlan(true);
                     setIsRiskDetailOpen(
@@ -1388,24 +1624,37 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     );
                   }}
                   aria-expanded={isRiskDetailOpen}
-                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
-                    hasOpenedRiskPlan
-                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-none hover:border-amber-400/45 hover:bg-amber-400/15"
-                      : "animate-pulse border-amber-300/60 bg-amber-400 text-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.30)] hover:bg-amber-300 hover:shadow-[0_0_24px_rgba(251,191,36,0.45)]"
+                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] disabled:cursor-wait ${
+                    secondaryRiskLoading &&
+                    !riskReductionPlan
+                      ? "border-gray-700 bg-gray-800/60 text-slate-400 shadow-none"
+                      : hasOpenedRiskPlan
+                        ? "border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-none hover:border-amber-400/45 hover:bg-amber-400/15"
+                        : "animate-pulse border-amber-300/60 bg-amber-400 text-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.30)] hover:bg-amber-300 hover:shadow-[0_0_24px_rgba(251,191,36,0.45)]"
                   }`}
                 >
-                  {isRiskDetailOpen
-                    ? "Hide work plan"
-                    : "View work plan"}
+                  {secondaryRiskLoading &&
+                  !riskReductionPlan ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Building work plan
+                    </>
+                  ) : (
+                    <>
+                      {isRiskDetailOpen
+                        ? "Hide work plan"
+                        : "View work plan"}
 
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      isRiskDetailOpen
-                        ? "rotate-180"
-                        : ""
-                    }`}
-                    aria-hidden="true"
-                  />
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${
+                          isRiskDetailOpen
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1986,7 +2235,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
 
-        {isSiteRiskScope ? (() => {
+        {showOperationalSkeletons ? (
+          <DashboardLoadingGrid
+            count={4}
+            columnsClassName="grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4"
+            heightClassName="h-[326px]"
+          />
+        ) : isSiteRiskScope ? (() => {
           const visibleAreaRiskCards = areaRiskCards.slice(0, 4);
 
           const selectedAreaIndex = visibleAreaRiskCards.findIndex(
@@ -2862,8 +3117,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
             View all labour risks →
           </button>
         </div>
-        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {activeLabourRiskItems.map(
+        {showOperationalSkeletons ? (
+          <DashboardLoadingGrid
+            count={4}
+            columnsClassName="grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4"
+            heightClassName="h-[238px]"
+          />
+        ) : (
+          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            {activeLabourRiskItems.map(
   (item, index) => (
             <Card
               key={item.title}
@@ -2927,7 +3189,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </Card>
           ),
 )}
-        </div>
+          </div>
+        )}
       </section>
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
@@ -3190,6 +3453,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
               },
             )}
           </div>
+        ) : showSecondarySkeletons ? (
+          <DashboardLoadingGrid
+            count={6}
+            columnsClassName="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+            heightClassName="h-[276px]"
+          />
         ) : (
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-5 text-sm text-slate-400">
