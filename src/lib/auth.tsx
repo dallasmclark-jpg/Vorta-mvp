@@ -9,12 +9,14 @@ export type PilotRole = "maintenance_manager" | "engineer";
 interface AuthContextValue {
   session: Session | null;
   role: PilotRole | null;
+  isDemoAdmin: boolean;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   role: null,
+  isDemoAdmin: false,
   loading: true,
 });
 
@@ -50,6 +52,12 @@ export function resolveSessionRole(session: Session | null): PilotRole | null {
   );
 }
 
+export function resolveDemoAdmin(
+  session: Session | null,
+): boolean {
+  return session?.user.app_metadata?.demo_admin === true;
+}
+
 export function roleHomePath(role: PilotRole): string {
   return role === "engineer" ? "/engineer/dashboard" : "/dashboard";
 }
@@ -57,7 +65,32 @@ export function roleHomePath(role: PilotRole): string {
 export function canAccessPath(
   role: PilotRole,
   pathname: string,
+  isDemoAdmin = false,
 ): boolean {
+  if (isDemoAdmin) {
+    return (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/equipment") ||
+      pathname.startsWith("/skills-matrix") ||
+      pathname.startsWith("/engineers") ||
+      pathname.startsWith("/requirements") ||
+      pathname.startsWith("/training") ||
+      pathname.startsWith("/ai-matching") ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/maintenance/") ||
+      pathname === "/engineer" ||
+      pathname.startsWith("/engineer/") ||
+      pathname === "/contractor" ||
+      pathname.startsWith("/contractor/") ||
+      pathname === "/production" ||
+      pathname.startsWith("/production/") ||
+      pathname === "/operator" ||
+      pathname.startsWith("/operator/") ||
+      pathname === "/planner" ||
+      pathname.startsWith("/planner/")
+    );
+  }
+
   if (role === "engineer") {
     return pathname === "/engineer" || pathname.startsWith("/engineer/");
   }
@@ -111,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         session,
         role: resolveSessionRole(session),
+        isDemoAdmin: resolveDemoAdmin(session),
         loading,
       }}
     >
@@ -156,7 +190,12 @@ export function RequireRole({
   role: PilotRole;
   children: JSX.Element;
 }): JSX.Element {
-  const { session, role, loading } = useAuth();
+  const {
+    session,
+    role,
+    isDemoAdmin,
+    loading,
+  } = useAuth();
   const location = useLocation();
   const unsupportedRoleRef = useRef(false);
 
@@ -185,7 +224,7 @@ export function RequireRole({
     return <SignOutUnsupportedRole />;
   }
 
-  if (role !== requiredRole) {
+  if (role !== requiredRole && !isDemoAdmin) {
     return <Navigate to={roleHomePath(role)} replace />;
   }
 

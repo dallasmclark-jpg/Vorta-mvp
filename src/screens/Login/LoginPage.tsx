@@ -8,6 +8,7 @@ import {
 } from "../../lib/supabaseClient";
 import {
   canAccessPath,
+  resolveDemoAdmin,
   resolveSessionRole,
   roleHomePath,
   useAuth,
@@ -38,6 +39,14 @@ function TopNav() {
 
 // ─── Login page ───────────────────────────────────────────────────────────────
 
+type DemoPortalPath =
+  | "/dashboard"
+  | "/engineer/dashboard"
+  | "/contractor/dashboard"
+  | "/production/dashboard"
+  | "/operator/dashboard"
+  | "/planner/planner-dashboard";
+
 export const LoginPage = (): JSX.Element => {
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -48,6 +57,8 @@ export const LoginPage = (): JSX.Element => {
   const [showPassword, setShowPassword] = useState(false);
   const [remember,     setRemember]     = useState(getRememberSession());
   const [submitting,   setSubmitting]   = useState(false);
+  const [selectedPortal, setSelectedPortal] =
+    useState<DemoPortalPath | null>(null);
   const [error,        setError]        = useState<string | null>(
     (location.state as { authError?: string } | null)?.authError ?? null,
   );
@@ -64,15 +75,48 @@ export const LoginPage = (): JSX.Element => {
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
 
   const currentRole = resolveSessionRole(session);
+  const currentIsDemoAdmin = resolveDemoAdmin(session);
 
-  if (!loading && session && currentRole) {
+  if (
+    !loading &&
+    session &&
+    currentRole &&
+    !currentIsDemoAdmin
+  ) {
     const destination =
-      from && canAccessPath(currentRole, from)
+      from &&
+      canAccessPath(
+        currentRole,
+        from,
+        currentIsDemoAdmin,
+      )
         ? from
         : roleHomePath(currentRole);
 
     return <Navigate to={destination} replace />;
   }
+
+  const handlePortalSelection = (
+    portal: DemoPortalPath,
+    portalLabel: string,
+  ) => {
+    setError(null);
+    setNotice(null);
+    setSelectedPortal(portal);
+
+    if (
+      session &&
+      currentRole &&
+      currentIsDemoAdmin
+    ) {
+      navigate(portal);
+      return;
+    }
+
+    setNotice(
+      `Sign in with an authorised account to open the ${portalLabel} portal.`,
+    );
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +136,8 @@ export const LoginPage = (): JSX.Element => {
     }
 
     const signedInRole = resolveSessionRole(data.session);
+    const signedInIsDemoAdmin =
+      resolveDemoAdmin(data.session);
 
     if (!signedInRole) {
       await supabase.auth.signOut();
@@ -102,9 +148,17 @@ export const LoginPage = (): JSX.Element => {
       return;
     }
 
+    const requestedPath =
+      selectedPortal ?? from;
+
     const destination =
-      from && canAccessPath(signedInRole, from)
-        ? from
+      requestedPath &&
+      canAccessPath(
+        signedInRole,
+        requestedPath,
+        signedInIsDemoAdmin,
+      )
+        ? requestedPath
         : roleHomePath(signedInRole);
 
     navigate(destination, { replace: true });
@@ -334,62 +388,116 @@ export const LoginPage = (): JSX.Element => {
           {/* Demo access */}
           <div className="mt-8 w-full border-t border-gray-800 pt-6">
             <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-widest text-slate-600">
-              MVP Demo Access
+              Demo Portal Access
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => navigate("/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/dashboard",
+                    "Maintenance Manager",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/dashboard"
+                    ? "border-[#3b82f645] bg-[#3b82f612]"
+                    : "border-[#3b82f625] bg-[#3b82f608] hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                }`}
               >
                 <LayoutDashboard className="h-4 w-4 text-blue-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Maintenance Manager</span>
-                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+                <span className="text-[10px] text-slate-600 text-center">Select portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/engineer/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/engineer/dashboard",
+                    "Engineer",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/engineer/dashboard"
+                    ? "border-[#10b98145] bg-[#10b98112]"
+                    : "border-[#10b98125] bg-[#10b98108] hover:border-[#10b98145] hover:bg-[#10b98112]"
+                }`}
               >
                 <User className="h-4 w-4 text-emerald-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Engineer</span>
-                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+                <span className="text-[10px] text-slate-600 text-center">Select portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/contractor/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/contractor/dashboard",
+                    "Contractor",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/contractor/dashboard"
+                    ? "border-[#3b82f645] bg-[#3b82f612]"
+                    : "border-[#3b82f625] bg-[#3b82f608] hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                }`}
               >
                 <Building2 className="h-4 w-4 text-blue-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Contractor</span>
-                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+                <span className="text-[10px] text-slate-600 text-center">Select portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/production/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#f9731625] bg-[#f9731608] px-3 py-3 transition-colors hover:border-[#f9731645] hover:bg-[#f9731612]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/production/dashboard",
+                    "Production Manager",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/production/dashboard"
+                    ? "border-[#f9731645] bg-[#f9731612]"
+                    : "border-[#f9731625] bg-[#f9731608] hover:border-[#f9731645] hover:bg-[#f9731612]"
+                }`}
               >
                 <Factory className="h-4 w-4 text-orange-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Production Manager</span>
-                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+                <span className="text-[10px] text-slate-600 text-center">Select portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/operator/dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#10b98125] bg-[#10b98108] px-3 py-3 transition-colors hover:border-[#10b98145] hover:bg-[#10b98112]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/operator/dashboard",
+                    "Operator",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/operator/dashboard"
+                    ? "border-[#10b98145] bg-[#10b98112]"
+                    : "border-[#10b98125] bg-[#10b98108] hover:border-[#10b98145] hover:bg-[#10b98112]"
+                }`}
               >
                 <HardHat className="h-4 w-4 text-emerald-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Operator</span>
-                <span className="text-[10px] text-slate-500 text-center">View demo</span>
+                <span className="text-[10px] text-slate-500 text-center">Select portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/planner/planner-dashboard")}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-[#3b82f625] bg-[#3b82f608] px-3 py-3 transition-colors hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                onClick={() =>
+                  handlePortalSelection(
+                    "/planner/planner-dashboard",
+                    "Maintenance Planner",
+                  )
+                }
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-colors ${
+                  selectedPortal === "/planner/planner-dashboard"
+                    ? "border-[#3b82f645] bg-[#3b82f612]"
+                    : "border-[#3b82f625] bg-[#3b82f608] hover:border-[#3b82f645] hover:bg-[#3b82f612]"
+                }`}
               >
                 <ClipboardList className="h-4 w-4 text-blue-400" />
                 <span className="text-[11px] font-semibold text-slate-300 leading-snug text-center">Maintenance Planner</span>
-                <span className="text-[10px] text-slate-600 text-center">View demo</span>
+                <span className="text-[10px] text-slate-600 text-center">Select portal</span>
               </button>
             </div>
           </div>
