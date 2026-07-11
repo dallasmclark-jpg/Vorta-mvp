@@ -11,18 +11,35 @@ const nav: NavGroup[] = [
   {
     groupLabel: "Planning",
     items: [
-      { label: "Dashboard", icon: LayoutDashboard, to: "/planner-dashboard" },
+      {
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        to: "/planner/planner-dashboard",
+      },
     ],
   },
 ];
 
 const secondaryNav = [
-  { label: "Support",  icon: Headphones, to: "/support"  },
-  { label: "Settings", icon: Cog,        to: "/settings" },
+  {
+    label: "Support",
+    icon: Headphones,
+    to: "/planner/support",
+  },
+  {
+    label: "Settings",
+    icon: Cog,
+    to: "/planner/settings",
+  },
 ];
 
 export const MaintenancePlanner = (): JSX.Element => (
-  <PortalShell homeRoute="/planner-dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
+  <PortalShell
+    homeRoute="/planner/planner-dashboard"
+    nav={nav}
+    secondaryNav={secondaryNav}
+    accentColor="blue"
+  >
     <Routes>
       <Route index element={<Navigate to="planner-dashboard" replace />} />
       <Route path="planner-dashboard" element={<PlannerDashboardSection />} />
