@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -126,6 +127,60 @@ const getLabourRiskPresentation = (
   };
 };
 
+const useInViewOnce = <T extends HTMLElement,>(
+  threshold = 0.25,
+) => {
+  const elementRef = useRef<T>(null);
+  const [hasEnteredView, setHasEnteredView] =
+    useState(false);
+
+  useEffect(() => {
+    const element = elementRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const prefersReducedMotion =
+      window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+    if (
+      prefersReducedMotion ||
+      !("IntersectionObserver" in window)
+    ) {
+      setHasEnteredView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setHasEnteredView(true);
+        observer.disconnect();
+      },
+      {
+        threshold,
+      },
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [threshold]);
+
+  return {
+    elementRef,
+    hasEnteredView,
+  };
+};
+
 // ─── RiskMeter ────────────────────────────────────────────────────────────────
 
 const RiskMeter = ({
@@ -134,19 +189,51 @@ const RiskMeter = ({
 }: {
   value: number;
   fillClassName: string;
-}) => (
-  <div className="relative h-3 w-full overflow-visible rounded-full bg-[#050914]">
+}) => {
+  const {
+    elementRef,
+    hasEnteredView,
+  } = useInViewOnce<HTMLDivElement>();
+
+  const clampedValue = Math.max(
+    0,
+    Math.min(100, value),
+  );
+
+  const displayedValue = hasEnteredView
+    ? clampedValue
+    : 0;
+
+  return (
     <div
-      className={`h-full rounded-l-full rounded-r-none ${fillClassName}`}
-      style={{ width: `${value}%` }}
-    />
-    <span
-      className="absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(255,255,255,0.35)]"
-      style={{ left: `calc(${value}% - 2px)` }}
-      aria-hidden="true"
-    />
-  </div>
-);
+      ref={elementRef}
+      role="progressbar"
+      aria-label="Risk score"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clampedValue}
+      className="relative h-3 w-full overflow-visible rounded-full bg-[#050914]"
+    >
+      <div
+        className={`h-full rounded-l-full rounded-r-none motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out ${fillClassName}`}
+        style={{
+          width: `${displayedValue}%`,
+        }}
+      />
+
+      <span
+        className="absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(255,255,255,0.35)] motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
+        style={{
+          left:
+            displayedValue <= 0
+              ? "0"
+              : `calc(${displayedValue}% - 2px)`,
+        }}
+        aria-hidden="true"
+      />
+    </div>
+  );
+};
 
 // ─── Building static display config ──────────────────────────────────────────
 
@@ -282,6 +369,13 @@ interface RiskEquipmentPlanHistoryItem {
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
+
+  const {
+    elementRef: riskKpiSectionRef,
+    hasEnteredView:
+      hasRiskKpiSectionEnteredView,
+  } = useInViewOnce<HTMLElement>(0.15);
+
   const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
@@ -2637,6 +2731,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section
+        ref={riskKpiSectionRef}
         aria-label="Risk reduction performance"
         className="flex w-full flex-col gap-4"
       >
@@ -2718,7 +2813,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             } transition-opacity`}
           >
             {riskKpiDashboard.kpis.map(
-              (kpi) => {
+              (kpi, index) => {
                 const presentation =
                   getKpiRagPresentation(
                     kpi.ragStatus,
@@ -2816,9 +2911,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         >
                           {!kpi.noData && (
                             <div
-                              className={`w-full rounded-t-[10px] transition-[height] duration-300 ease-out ${presentation.barClassName}`}
+                              className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:duration-700 motion-safe:ease-out ${presentation.barClassName}`}
                               style={{
-                                height: `${chartValue}%`,
+                                height: `${
+                                  hasRiskKpiSectionEnteredView
+                                    ? chartValue
+                                    : 0
+                                }%`,
+                                transitionDelay:
+                                  hasRiskKpiSectionEnteredView
+                                    ? `${index * 70}ms`
+                                    : "0ms",
                               }}
                             />
                           )}
