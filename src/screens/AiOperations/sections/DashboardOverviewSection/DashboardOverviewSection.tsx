@@ -1649,13 +1649,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     riskReductionPlan.nextEquipmentName ??
                                       "next equipment"
                                   }`}
-                                  className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-all disabled:cursor-wait disabled:opacity-50 ${
+                                  className={`inline-flex min-h-9 items-center gap-1 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 disabled:cursor-wait disabled:opacity-50 ${
                                     !hasUsedNextEquipment
-                                      ? "animate-pulse border-blue-400/40 bg-blue-500/10 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.22)] hover:border-blue-400/60 hover:bg-blue-500/15 hover:text-blue-200"
-                                      : "border-transparent bg-transparent text-blue-400 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
+                                      ? "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/40 shadow-[0_0_22px_rgba(34,211,238,0.55)] hover:bg-cyan-400/30 hover:shadow-[0_0_28px_rgba(34,211,238,0.70)]"
+                                      : "border-blue-400/20 bg-blue-500/5 text-blue-400 ring-0 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
                                   }`}
                                 >
-                                  Next equipment →
+                                  Next equipment
+                                  <span aria-hidden="true">→</span>
                                 </button>
                               )}
                             </div>
