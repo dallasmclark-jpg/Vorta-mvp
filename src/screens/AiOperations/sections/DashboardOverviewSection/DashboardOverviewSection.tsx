@@ -17,15 +17,12 @@ import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
 import {
-  getAreaRiskProfiles,
-  getSiteRiskProfile,
   getAreaInterventionPlans,
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
-  refreshOperationalRisk,
+  refreshAndGetOperationalDashboard,
   refreshRiskWorkPlan,
-  getRiskDashboardScopes,
   getRiskDashboardScopePlans,
   getRiskDashboardScopeKpis,
   type AreaRiskProfile,
@@ -707,24 +704,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
       setDashboardLoadError(null);
 
       try {
-        const operationalRefreshSucceeded =
-          await refreshOperationalRisk();
+        const operationalDashboard =
+          await refreshAndGetOperationalDashboard();
 
-        if (!operationalRefreshSucceeded) {
+        if (!operationalDashboard) {
           throw new Error(
             "Current operational risk could not be recalculated.",
           );
         }
 
-        const [
+        const {
           areaProfiles,
-          siteProfile,
+          siteRisk: siteProfile,
           scopes,
-        ] = await Promise.all([
-          getAreaRiskProfiles(),
-          getSiteRiskProfile(),
-          getRiskDashboardScopes(),
-        ]);
+        } = operationalDashboard;
 
         setAreaRiskCards(areaProfiles);
         setSiteRisk(siteProfile);

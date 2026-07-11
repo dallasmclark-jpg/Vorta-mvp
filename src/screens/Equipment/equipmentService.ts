@@ -2857,6 +2857,92 @@ export async function getRiskDashboardScopePlans():
 
 // ─── Current-risk refresh ─────────────────────────────────────────────────────
 
+export interface OperationalRiskDashboardPayload {
+  areaProfiles: AreaRiskProfile[];
+  siteRisk: SiteRiskProfile | null;
+  scopes: RiskDashboardScope[];
+}
+
+export async function refreshAndGetOperationalDashboard():
+  Promise<OperationalRiskDashboardPayload | null> {
+  try {
+    const { data, error } =
+      await supabase.rpc(
+        "vorta_refresh_and_get_operational_dashboard",
+      );
+
+    if (error) {
+      console.warn(
+        "vorta_refresh_and_get_operational_dashboard failed:",
+        error.message,
+      );
+
+      return null;
+    }
+
+    if (
+      !data ||
+      typeof data !== "object" ||
+      Array.isArray(data)
+    ) {
+      console.warn(
+        "vorta_refresh_and_get_operational_dashboard returned an invalid payload.",
+      );
+
+      return null;
+    }
+
+    const payload =
+      data as Record<string, unknown>;
+
+    const areaProfiles =
+      Array.isArray(
+        payload.areaProfiles,
+      )
+        ? payload.areaProfiles as AreaRiskProfile[]
+        : [];
+
+    const scopes =
+      Array.isArray(payload.scopes)
+        ? payload.scopes as RiskDashboardScope[]
+        : [];
+
+    const siteRisk =
+      payload.siteRisk &&
+      typeof payload.siteRisk === "object" &&
+      !Array.isArray(
+        payload.siteRisk,
+      )
+        ? payload.siteRisk as SiteRiskProfile
+        : null;
+
+    if (
+      areaProfiles.length === 0 ||
+      scopes.length === 0 ||
+      !siteRisk
+    ) {
+      console.warn(
+        "vorta_refresh_and_get_operational_dashboard returned incomplete operational data.",
+      );
+
+      return null;
+    }
+
+    return {
+      areaProfiles,
+      siteRisk,
+      scopes,
+    };
+  } catch (error) {
+    console.warn(
+      "vorta_refresh_and_get_operational_dashboard threw:",
+      error,
+    );
+
+    return null;
+  }
+}
+
 export async function refreshOperationalRisk(): Promise<boolean> {
   try {
     const { data, error } =
