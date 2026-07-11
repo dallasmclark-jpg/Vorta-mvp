@@ -2857,60 +2857,6 @@ export async function getRiskDashboardScopePlans():
 
 // ─── Current-risk refresh ─────────────────────────────────────────────────────
 
-export async function refreshOperationalRisk(): Promise<boolean> {
-  try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_operational_risk",
-      );
-
-    if (error) {
-      console.warn(
-        "vorta_refresh_operational_risk failed:",
-        error.message,
-      );
-
-      return false;
-    }
-
-    return Number(data ?? 0) === 1;
-  } catch (error) {
-    console.warn(
-      "vorta_refresh_operational_risk threw:",
-      error,
-    );
-
-    return false;
-  }
-}
-
-export async function refreshRiskWorkPlan(): Promise<boolean> {
-  try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_risk_work_plan",
-      );
-
-    if (error) {
-      console.warn(
-        "vorta_refresh_risk_work_plan failed:",
-        error.message,
-      );
-
-      return false;
-    }
-
-    return Number(data ?? 0) === 1;
-  } catch (error) {
-    console.warn(
-      "vorta_refresh_risk_work_plan threw:",
-      error,
-    );
-
-    return false;
-  }
-}
-
 export async function refreshCurrentRisk(): Promise<boolean> {
   try {
     const { error } = await supabase.rpc(
