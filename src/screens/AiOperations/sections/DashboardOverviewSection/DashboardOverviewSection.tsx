@@ -289,6 +289,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
     hasOpenedRiskPlan,
     setHasOpenedRiskPlan,
   ] = useState(false);
+  const [
+    hasUsedNextEquipment,
+    setHasUsedNextEquipment,
+  ] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
@@ -1633,14 +1637,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   disabled={
                                     riskReductionPlanLoading
                                   }
-                                  onClick={() =>
+                                  onClick={() => {
+                                    setHasUsedNextEquipment(true);
                                     void handleLoadAreaEquipmentPlan(
                                       riskReductionPlan.nextEquipmentId ??
                                         undefined,
                                       "forward",
-                                    )
-                                  }
-                                  className="text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                                    );
+                                  }}
+                                  aria-label={`View next recommended equipment: ${
+                                    riskReductionPlan.nextEquipmentName ??
+                                      "next equipment"
+                                  }`}
+                                  className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-all disabled:cursor-wait disabled:opacity-50 ${
+                                    !hasUsedNextEquipment
+                                      ? "animate-pulse border-blue-400/40 bg-blue-500/10 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.22)] hover:border-blue-400/60 hover:bg-blue-500/15 hover:text-blue-200"
+                                      : "border-transparent bg-transparent text-blue-400 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
+                                  }`}
                                 >
                                   Next equipment →
                                 </button>
