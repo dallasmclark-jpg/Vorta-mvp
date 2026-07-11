@@ -10,9 +10,6 @@ import {
   ChevronDown,
   X,
   ArrowRight,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -2012,14 +2009,62 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     kpi.ragStatus,
                   );
 
-                const trendClassName =
-                  kpi.trendDelta === null
-                    ? "text-slate-600"
-                    : kpi.trendDirection ===
-                        "flat"
-                      ? "text-slate-500"
-                      : kpi.favourableTrend
-                        ? "text-emerald-400"
+                const chartValue =
+                  kpi.value === null
+                    ? 0
+                    : Math.max(
+                        0,
+                        Math.min(
+                          100,
+                          kpi.value,
+                        ),
+                      );
+
+                const chartTarget = Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    kpi.target,
+                  ),
+                );
+
+                const targetGap =
+                  kpi.value === null
+                    ? null
+                    : Number(
+                        (
+                          kpi.value -
+                          kpi.target
+                        ).toFixed(1),
+                      );
+
+                const targetGapLabel =
+                  kpi.noData ||
+                  targetGap === null
+                    ? "No eligible work in this period"
+                    : targetGap === 0
+                      ? "Target achieved"
+                      : targetGap > 0
+                        ? `${Math.abs(
+                            targetGap,
+                          ).toFixed(
+                            1,
+                          )} pts above target`
+                        : `${Math.abs(
+                            targetGap,
+                          ).toFixed(
+                            1,
+                          )} pts below target`;
+
+                const targetGapClassName =
+                  kpi.noData ||
+                  targetGap === null
+                    ? "text-slate-400"
+                    : targetGap >= 0
+                      ? "text-emerald-400"
+                      : kpi.ragStatus ===
+                          "amber"
+                        ? "text-yellow-400"
                         : "text-red-400";
 
                 return (
@@ -2057,30 +2102,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           <div
                             className={`w-full rounded-t-md transition-all duration-500 ${presentation.barClassName}`}
                             style={{
-                              height: `${
-                                kpi.value === null
-                                  ? 0
-                                  : Math.min(
-                                      100,
-                                      Math.max(
-                                        0,
-                                        kpi.value,
-                                      ),
-                                    )
-                              }%`,
+                              height: `${chartValue}%`,
                             }}
                           />
 
                           <div
                             className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-slate-200/70"
                             style={{
-                              bottom: `${Math.min(
-                                100,
-                                Math.max(
-                                  0,
-                                  kpi.target,
-                                ),
-                              )}%`,
+                              bottom: `${chartTarget}%`,
                             }}
                           />
                         </div>
@@ -2100,37 +2129,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             )}
                           </p>
 
+                          <p
+                            className={`mt-2 text-xs font-semibold ${targetGapClassName}`}
+                          >
+                            {targetGapLabel}
+                          </p>
+
                           <p className="mt-2 text-xs leading-relaxed text-slate-400">
                             {kpi.detail}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center justify-between gap-2 pt-1">
                         <span className="text-[10px] text-slate-500">
-                          {kpi.comparisonLabel}
+                          {kpi.numerator} / {kpi.denominator}
                         </span>
 
-                        {kpi.trendDelta !== null && (
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-semibold ${trendClassName}`}
-                          >
-                            {kpi.trendDirection ===
-                            "up" ? (
-                              <ArrowUpRight className="h-3 w-3" />
-                            ) : kpi.trendDirection ===
-                              "down" ? (
-                              <ArrowDownRight className="h-3 w-3" />
-                            ) : (
-                              <Minus className="h-3 w-3" />
-                            )}
-
-                            {Math.abs(
-                              kpi.trendDelta,
-                            ).toFixed(1)}
-                            %
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 opacity-0 transition-opacity group-hover:opacity-100">
+                          View
+                          <ArrowRight className="h-3 w-3" />
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
