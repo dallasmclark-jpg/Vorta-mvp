@@ -1244,7 +1244,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {(
         operationalRiskLoading ||
-        secondaryRiskLoading ||
         dashboardLoadError
       ) && (
         <div
@@ -1257,9 +1256,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
             dashboardLoadError
               ? "border-red-500/25 bg-red-500/5"
-              : operationalRiskLoading
-                ? "border-blue-500/25 bg-blue-500/5"
-                : "border-emerald-500/20 bg-emerald-500/5"
+              : "border-blue-500/25 bg-blue-500/5"
           }`}
         >
           {dashboardLoadError ? (
@@ -1273,23 +1270,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
               className={`text-sm font-semibold ${
                 dashboardLoadError
                   ? "text-red-300"
-                  : operationalRiskLoading
-                    ? "text-blue-300"
-                    : "text-emerald-300"
+                  : "text-blue-300"
               }`}
             >
               {dashboardLoadError
                 ? dashboardLoadError
-                : operationalRiskLoading
-                  ? "Calculating current site risk"
-                  : "Current site risk ready"}
+                : "Calculating current site risk"}
             </p>
 
             {!dashboardLoadError && (
               <p className="mt-0.5 text-xs text-slate-400">
-                {operationalRiskLoading
-                  ? "Refreshing equipment, area, labour and site exposure from current source data."
-                  : "Building today’s work plan and performance indicators."}
+                Refreshing equipment, area, labour and site exposure from current source data.
               </p>
             )}
           </div>
