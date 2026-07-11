@@ -23,7 +23,8 @@ import {
   getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
-  refreshCurrentRisk,
+  refreshOperationalRisk,
+  refreshRiskWorkPlan,
   getRiskDashboardScopes,
   getRiskDashboardScopePlans,
   getRiskDashboardScopeKpis,
@@ -453,6 +454,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
     useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] =
     useState(false);
+  const [
+    operationalRiskLoading,
+    setOperationalRiskLoading,
+  ] = useState(true);
+
+  const [
+    secondaryRiskLoading,
+    setSecondaryRiskLoading,
+  ] = useState(true);
+
+  const [
+    dashboardLoadError,
+    setDashboardLoadError,
+  ] = useState<string | null>(null);
 
   const [
     selectedKpiPeriod,
@@ -685,52 +700,40 @@ export const DashboardOverviewSection = (): JSX.Element => {
       scopeKey: string,
     ) => {
       setDashboardRefreshing(true);
+      setOperationalRiskLoading(true);
+      setSecondaryRiskLoading(true);
       setRiskReductionPlanLoading(true);
       setRiskKpiLoading(true);
+      setDashboardLoadError(null);
 
       try {
-        await refreshCurrentRisk();
+        const operationalRefreshSucceeded =
+          await refreshOperationalRisk();
+
+        if (!operationalRefreshSucceeded) {
+          throw new Error(
+            "Current operational risk could not be recalculated.",
+          );
+        }
 
         const [
           areaProfiles,
           siteProfile,
-          areaPlans,
           scopes,
-          planCache,
-          scopeKpiCache,
         ] = await Promise.all([
           getAreaRiskProfiles(),
           getSiteRiskProfile(),
-          getAreaInterventionPlans(),
           getRiskDashboardScopes(),
-          getRiskDashboardScopePlans(),
-          getRiskDashboardScopeKpis(),
         ]);
 
-        setAreaRiskCards(
-          areaProfiles,
-        );
-        setSiteRisk(
-          siteProfile,
-        );
-        setInterventionPlans(
-          areaPlans,
-        );
-        setRiskScopes(
-          scopes,
-        );
-        setRiskScopePlanCache(
-          planCache,
-        );
-        setRiskScopeKpiCache(
-          scopeKpiCache,
-        );
+        setAreaRiskCards(areaProfiles);
+        setSiteRisk(siteProfile);
+        setRiskScopes(scopes);
 
         const validScopeKey =
           scopes.some(
             (scope) =>
-              scope.scopeKey ===
-              scopeKey,
+              scope.scopeKey === scopeKey,
           )
             ? scopeKey
             : "site";
@@ -739,42 +742,99 @@ export const DashboardOverviewSection = (): JSX.Element => {
           validScopeKey,
         );
 
-        const requestedPlan =
-          planCache[validScopeKey] ??
-          planCache.site ??
-          null;
-
-        setRiskReductionPlan(
-          requestedPlan,
-        );
-
-        const requestedKpis =
-          scopeKpiCache[
-            validScopeKey
-          ]?.[period] ??
-          scopeKpiCache.site?.[
-            period
-          ] ??
-          scopeKpiCache.site
-            ?.daily ??
-          null;
-
-        if (requestedKpis) {
-          setRiskKpiDashboard(
-            requestedKpis,
-          );
-        }
-
         setRiskPlanHistory([]);
         setRiskEquipmentPlanHistory([]);
         setSelectedArea(null);
-        setSelectedAreaIntervention(
-          null,
+        setSelectedAreaIntervention(null);
+        setSelectedInterventionPlan(null);
+
+        /*
+         * This state update must happen before the
+         * work-plan refresh begins.
+         *
+         * React can now render the freshly recalculated
+         * site, area, equipment and labour risk data.
+         */
+        setOperationalRiskLoading(false);
+
+        try {
+          const workPlanRefreshSucceeded =
+            await refreshRiskWorkPlan();
+
+          if (!workPlanRefreshSucceeded) {
+            throw new Error(
+              "The maintenance work plan could not be rebuilt.",
+            );
+          }
+
+          const [
+            areaPlans,
+            planCache,
+            scopeKpiCache,
+          ] = await Promise.all([
+            getAreaInterventionPlans(),
+            getRiskDashboardScopePlans(),
+            getRiskDashboardScopeKpis(),
+          ]);
+
+          setInterventionPlans(areaPlans);
+          setRiskScopePlanCache(planCache);
+          setRiskScopeKpiCache(
+            scopeKpiCache,
+          );
+
+          const requestedPlan =
+            planCache[validScopeKey] ??
+            planCache.site ??
+            null;
+
+          setRiskReductionPlan(
+            requestedPlan,
+          );
+
+          const requestedKpis =
+            scopeKpiCache[
+              validScopeKey
+            ]?.[period] ??
+            scopeKpiCache.site?.[
+              period
+            ] ??
+            scopeKpiCache.site
+              ?.daily ??
+            null;
+
+          setRiskKpiDashboard(
+            requestedKpis,
+          );
+        } catch (error) {
+          console.warn(
+            "Secondary dashboard intelligence failed:",
+            error,
+          );
+
+          setInterventionPlans([]);
+          setRiskScopePlanCache({});
+          setRiskScopeKpiCache({});
+          setRiskReductionPlan(null);
+          setRiskKpiDashboard(null);
+
+          setDashboardLoadError(
+            "Current site risk is ready, but the work plan and performance indicators could not be generated.",
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "Operational dashboard risk refresh failed:",
+          error,
+        );
+
+        setDashboardLoadError(
+          "Current site risk could not be calculated. Run the analysis again.",
         );
       } finally {
-        setRiskReductionPlanLoading(
-          false,
-        );
+        setOperationalRiskLoading(false);
+        setSecondaryRiskLoading(false);
+        setRiskReductionPlanLoading(false);
         setRiskKpiLoading(false);
         setDashboardRefreshing(false);
       }
@@ -1181,6 +1241,60 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Dashboard AI Command Bar ─────────────────────────────────── */}
       <VortaAiCommandBar role="maintenance-manager" />
+
+      {(
+        operationalRiskLoading ||
+        secondaryRiskLoading ||
+        dashboardLoadError
+      ) && (
+        <div
+          role={
+            dashboardLoadError
+              ? "alert"
+              : "status"
+          }
+          aria-live="polite"
+          className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
+            dashboardLoadError
+              ? "border-red-500/25 bg-red-500/5"
+              : operationalRiskLoading
+                ? "border-blue-500/25 bg-blue-500/5"
+                : "border-emerald-500/20 bg-emerald-500/5"
+          }`}
+        >
+          {dashboardLoadError ? (
+            <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+          ) : (
+            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-blue-400" />
+          )}
+
+          <div>
+            <p
+              className={`text-sm font-semibold ${
+                dashboardLoadError
+                  ? "text-red-300"
+                  : operationalRiskLoading
+                    ? "text-blue-300"
+                    : "text-emerald-300"
+              }`}
+            >
+              {dashboardLoadError
+                ? dashboardLoadError
+                : operationalRiskLoading
+                  ? "Calculating current site risk"
+                  : "Current site risk ready"}
+            </p>
+
+            {!dashboardLoadError && (
+              <p className="mt-0.5 text-xs text-slate-400">
+                {operationalRiskLoading
+                  ? "Refreshing equipment, area, labour and site exposure from current source data."
+                  : "Building today’s work plan and performance indicators."}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
