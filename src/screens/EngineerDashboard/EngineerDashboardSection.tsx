@@ -1021,8 +1021,11 @@ export function EngineerDashboardSection(): JSX.Element {
                   ))}
                 </div>
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
+                  onClick={() => navigate("/engineer/opportunities")}
+                  aria-label={`View opportunity: ${opp.title}`}
                   className="mt-auto h-7 w-full border-gray-700 bg-transparent text-xs text-slate-400 hover:border-blue-500/40 hover:text-blue-400"
                 >
                   View Role
