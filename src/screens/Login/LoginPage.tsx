@@ -186,13 +186,13 @@ export const LoginPage = (): JSX.Element => {
           <div className="mb-6 flex w-full rounded-lg bg-[#141820] p-1 border border-gray-800">
             <button
               type="button"
+              onClick={handleSignUpRequest}
               className="flex-1 rounded-md py-2 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
             >
               Sign up
             </button>
             <button
               type="button"
-              onClick={handleSignUpRequest}
               className="flex-1 rounded-md bg-[#1e2535] py-2 text-sm font-semibold text-slate-50"
             >
               Log in
