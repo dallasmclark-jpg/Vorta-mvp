@@ -460,6 +460,211 @@ export async function getEquipmentRiskExplanations(equipmentId: string): Promise
   }));
 }
 
+export interface EquipmentRecommendedWorkAction {
+  priority: number;
+  driver: string;
+  action: string;
+  detail: string | null;
+  status: string | null;
+  actionType: string | null;
+
+  calculatedReduction: number;
+  projectedScore: number;
+
+  workOrderNumber: string | null;
+  workOrderDescription: string | null;
+  workOrderStatus: string | null;
+  workOrderPriority: string | null;
+  workOrderDueDate: string | null;
+  orderTypeCode: string | null;
+  orderTypeDescription: string | null;
+
+  pmNumber: string | null;
+  pmTitle: string | null;
+  pmStatus: string | null;
+  pmDueDate: string | null;
+  pmCriticality: string | null;
+  procedureRef: string | null;
+  checklistRef: string | null;
+  durationMinutes: number;
+
+  sparePartNumber: string | null;
+  partName: string | null;
+  stockOnHand: number | null;
+  minimumStock: number | null;
+  targetStock: number | null;
+  leadTimeDays: number;
+  partAvailabilityStatus: string | null;
+  partCriticality: string | null;
+  storageLocation: string | null;
+  supplierName: string | null;
+}
+
+export interface EquipmentRecommendedWorkQueue {
+  equipmentId: string;
+  equipmentName: string;
+  equipmentCode: string;
+  currentRiskScore: number;
+  currentRiskLevel: string;
+  projectedRiskScore: number;
+  projectedRiskLevel: string;
+  totalCalculatedReduction: number;
+  actions: EquipmentRecommendedWorkAction[];
+}
+
+export async function getEquipmentRecommendedWorkQueue(
+  equipmentId: string,
+): Promise<EquipmentRecommendedWorkQueue | null> {
+  const { data, error } = await supabase.rpc(
+    "vorta_get_equipment_recommended_work_queue",
+    {
+      p_equipment_id: equipmentId,
+    },
+  );
+
+  if (error) {
+    console.warn(
+      "vorta_get_equipment_recommended_work_queue failed:",
+      error.message,
+    );
+    return null;
+  }
+
+  const row =
+    Array.isArray(data) && data.length > 0
+      ? data[0]
+      : null;
+
+  if (!row) {
+    return null;
+  }
+
+  const nullableNumber = (
+    value: unknown,
+  ): number | null => {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return null;
+    }
+
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed)
+      ? parsed
+      : null;
+  };
+
+  const rawActions = Array.isArray(row.actions)
+    ? row.actions
+    : [];
+
+  const actions: EquipmentRecommendedWorkAction[] =
+    rawActions
+      .map((action: any) => ({
+        priority: Number(action.priority ?? 0),
+        driver: String(action.driver ?? ""),
+        action: String(action.action ?? ""),
+        detail: action.detail ?? null,
+        status: action.status ?? null,
+        actionType: action.actionType ?? null,
+
+        calculatedReduction: Number(
+          action.calculatedReduction ?? 0,
+        ),
+        projectedScore: Number(
+          action.projectedScore ?? 0,
+        ),
+
+        workOrderNumber:
+          action.workOrderNumber ?? null,
+        workOrderDescription:
+          action.workOrderDescription ?? null,
+        workOrderStatus:
+          action.workOrderStatus ?? null,
+        workOrderPriority:
+          action.workOrderPriority ?? null,
+        workOrderDueDate:
+          action.workOrderDueDate ?? null,
+        orderTypeCode:
+          action.orderTypeCode ?? null,
+        orderTypeDescription:
+          action.orderTypeDescription ?? null,
+
+        pmNumber: action.pmNumber ?? null,
+        pmTitle: action.pmTitle ?? null,
+        pmStatus: action.pmStatus ?? null,
+        pmDueDate: action.pmDueDate ?? null,
+        pmCriticality:
+          action.pmCriticality ?? null,
+        procedureRef:
+          action.procedureRef ?? null,
+        checklistRef:
+          action.checklistRef ?? null,
+        durationMinutes: Number(
+          action.durationMinutes ??
+            action.estimatedDurationMinutes ??
+            0,
+        ),
+
+        sparePartNumber:
+          action.sparePartNumber ?? null,
+        partName: action.partName ?? null,
+        stockOnHand: nullableNumber(
+          action.stockOnHand,
+        ),
+        minimumStock: nullableNumber(
+          action.minimumStock,
+        ),
+        targetStock: nullableNumber(
+          action.targetStock,
+        ),
+        leadTimeDays: Number(
+          action.leadTimeDays ??
+            action.procurementLeadDays ??
+            0,
+        ),
+        partAvailabilityStatus:
+          action.partAvailabilityStatus ?? null,
+        partCriticality:
+          action.partCriticality ?? null,
+        storageLocation:
+          action.storageLocation ?? null,
+        supplierName:
+          action.supplierName ?? null,
+      }))
+      .sort(
+        (left, right) =>
+          left.priority - right.priority,
+      )
+      .slice(0, 3);
+
+  return {
+    equipmentId: row.equipment_id,
+    equipmentName:
+      row.equipment_name ??
+      "Unnamed equipment",
+    equipmentCode:
+      row.equipment_code ?? "",
+    currentRiskScore: Number(
+      row.current_risk_score ?? 0,
+    ),
+    currentRiskLevel:
+      row.current_risk_level ?? "Minimal",
+    projectedRiskScore: Number(
+      row.projected_risk_score ?? 0,
+    ),
+    projectedRiskLevel:
+      row.projected_risk_level ?? "Minimal",
+    totalCalculatedReduction: Number(
+      row.total_calculated_reduction ?? 0,
+    ),
+    actions,
+  };
+}
+
 export interface AreaRiskProfile {
   area: string;
   riskScore: number;

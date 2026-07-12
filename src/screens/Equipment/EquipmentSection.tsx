@@ -15,14 +15,14 @@ import { Progress } from "../../components/ui/progress";
 
 import {
   getEquipmentList,
-  getEquipmentRiskExplanations,
+  getEquipmentRecommendedWorkQueue,
   getEquipmentRiskTrendSeries,
   resolveBuilding,
 } from "./equipmentService";
 
 import type {
   EquipmentListItem,
-  EquipmentRiskExplanation,
+  EquipmentRecommendedWorkQueue as EquipmentRecommendedWorkQueueType,
   EquipmentRiskTrendRange,
   EquipmentRiskTrendSeries,
 } from "./equipmentService";
@@ -136,6 +136,47 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
+function formatWorkDuration(minutes: number): string {
+  if (minutes <= 0) {
+    return "";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) {
+    return `${remainingMinutes}m`;
+  }
+
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${remainingMinutes}m`;
+}
+
+function formatQueueDate(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+    },
+  ).format(date);
+}
+
+// ─── Trend Ranges ────────────────────────────────────────────────────────────
+
 const RISK_TREND_RANGES: readonly {
   key: EquipmentRiskTrendRange;
   label: string;
@@ -164,7 +205,18 @@ const RISK_TREND_RANGES: readonly {
 ];
 
 function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
-  const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
+  const [
+    recommendedWorkQueue,
+    setRecommendedWorkQueue,
+  ] =
+    useState<EquipmentRecommendedWorkQueueType | null>(
+      null,
+    );
+
+  const [
+    workQueueLoading,
+    setWorkQueueLoading,
+  ] = useState(true);
   const [
     trendSeries,
     setTrendSeries,
@@ -194,9 +246,28 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
   ] = useState(false);
 
   useEffect(() => {
-    void getEquipmentRiskExplanations(
+    let cancelled = false;
+
+    setRecommendedWorkQueue(null);
+    setWorkQueueLoading(true);
+
+    void getEquipmentRecommendedWorkQueue(
       item.id,
-    ).then(setExplanations);
+    )
+      .then((queue) => {
+        if (!cancelled) {
+          setRecommendedWorkQueue(queue);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setWorkQueueLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [item.id]);
 
   useEffect(() => {
@@ -282,65 +353,26 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
           point.changeReason,
       ) ?? lastTrendPoint;
 
-  const recommendedWorkQueue = explanations
-    .slice()
-    .sort(
-      (left, right) =>
-        right.estimatedReduction -
-          left.estimatedReduction ||
-        right.driverPct - left.driverPct,
-    )
-    .slice(0, 3);
-
-  let runningRiskScore = item.riskScore;
-
-  const recommendedWorkQueueRows =
-    recommendedWorkQueue.map((action) => {
-      const currentScore = runningRiskScore;
-
-      const projectedScore = Math.max(
-        0,
-        currentScore -
-          action.estimatedReduction,
-      );
-
-      runningRiskScore = projectedScore;
-
-      return {
-        action,
-        currentScore,
-        projectedScore,
-      };
-    });
-
-  const totalRecommendedReduction =
-    recommendedWorkQueue.reduce(
-      (total, action) =>
-        total + action.estimatedReduction,
-      0,
-    );
-
-  const predictedScore = Math.max(
-    0,
-    item.riskScore - totalRecommendedReduction,
-  );
-
-  const predictedLevel: EquipmentListItem["riskLevel"] =
-    predictedScore >= 85
-      ? "Critical"
-      : predictedScore >= 65
-        ? "High"
-        : predictedScore >= 40
-          ? "Medium"
-          : predictedScore >= 20
-            ? "Low"
-            : "Minimal";
+  const workQueueActions =
+    recommendedWorkQueue?.actions ?? [];
 
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-3">
       <div className="border-t border-gray-800 pt-3">
-        {explanations.length === 0 ? (
-          <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
+        {workQueueLoading ? (
+          <div className="rounded-lg border border-gray-800 bg-[#10151d] px-4 py-6 text-center">
+            <div className="inline-flex items-center gap-2 text-sm text-slate-500">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-400" />
+              Loading recommended work...
+            </div>
+          </div>
+        ) : !recommendedWorkQueue ||
+          workQueueActions.length === 0 ? (
+          <div className="rounded-lg border border-gray-800 bg-[#10151d] px-4 py-6 text-center">
+            <p className="text-sm text-slate-500">
+              No recommended work is available for this asset yet.
+            </p>
+          </div>
         ) : (
           <>
             {/* Equipment recommended work queue */}
@@ -357,69 +389,147 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                 </div>
 
                 <span className="text-xs text-slate-500">
-                  {item.name}
+                  {recommendedWorkQueue.equipmentName}
                 </span>
               </div>
 
               <div className="flex flex-col gap-2">
-                {recommendedWorkQueueRows.map(
-                  (
-                    {
-                      action,
-                      currentScore,
-                      projectedScore,
-                    },
-                    index,
-                  ) => (
-                    <div
-                      key={`${action.driver}-${index}`}
-                      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
-                    >
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
-                        {index + 1}
-                      </span>
+                {workQueueActions.map(
+                  (action, index) => {
+                    const currentScore =
+                      index === 0
+                        ? recommendedWorkQueue.currentRiskScore
+                        : workQueueActions[index - 1]
+                            .projectedScore;
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-100">
-                            {action.recommendedAction ??
-                              action.evidence ??
-                              `Reduce ${action.driver} risk`}
-                          </p>
+                    const dueDate = formatQueueDate(
+                      action.workOrderDueDate ??
+                        action.pmDueDate,
+                    );
 
-                          <Badge className="h-auto rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
-                            {action.driver}
-                          </Badge>
+                    const durationLabel =
+                      formatWorkDuration(
+                        action.durationMinutes,
+                      );
+
+                    const stockLabel =
+                      action.stockOnHand !== null &&
+                      action.minimumStock !== null
+                        ? `Stock ${action.stockOnHand} / Min ${action.minimumStock}`
+                        : null;
+
+                    const spareContext = [
+                      action.supplierName,
+                      action.storageLocation,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+
+                    return (
+                      <div
+                        key={`${action.priority}-${action.driver}-${action.workOrderNumber ?? action.pmNumber ?? action.sparePartNumber ?? index}`}
+                        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
+                      >
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
+                          {index + 1}
+                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-100">
+                              {action.action}
+                            </p>
+
+                            <Badge className="h-auto rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
+                              {action.driver}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {action.workOrderNumber && (
+                              <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                                {action.workOrderNumber}
+                              </span>
+                            )}
+
+                            {action.pmNumber && (
+                              <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                                {action.pmNumber}
+                              </span>
+                            )}
+
+                            {action.sparePartNumber && (
+                              <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300">
+                                {action.sparePartNumber}
+                              </span>
+                            )}
+
+                            {action.workOrderStatus && (
+                              <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium uppercase text-slate-400">
+                                {action.workOrderStatus}
+                              </span>
+                            )}
+
+                            {!action.workOrderStatus &&
+                              action.pmStatus && (
+                                <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase text-orange-300">
+                                  {action.pmStatus}
+                                </span>
+                              )}
+
+                            {durationLabel && (
+                              <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                {durationLabel}
+                              </span>
+                            )}
+
+                            {dueDate && (
+                              <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                Due {dueDate}
+                              </span>
+                            )}
+
+                            {stockLabel && (
+                              <span className="rounded border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
+                                {stockLabel}
+                              </span>
+                            )}
+
+                            {action.leadTimeDays > 0 && (
+                              <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300">
+                                Lead time {action.leadTimeDays}d
+                              </span>
+                            )}
+                          </div>
+
+                          {action.sparePartNumber &&
+                            spareContext && (
+                              <p className="mt-1 text-[10px] text-slate-500">
+                                {spareContext}
+                              </p>
+                            )}
                         </div>
 
-                        {action.evidence &&
-                          action.evidence !==
-                            action.recommendedAction && (
-                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                              {action.evidence}
-                            </p>
-                          )}
+                        <div className="shrink-0 text-right">
+                          <p className="text-[9px] font-medium uppercase tracking-wider text-slate-500">
+                            Asset risk
+                          </p>
+
+                          <p className="text-sm font-semibold text-emerald-400">
+                            −{action.calculatedReduction}
+                          </p>
+
+                          <p className="text-[10px] text-slate-500">
+                            {currentScore}
+                            <span className="mx-1">
+                              →
+                            </span>
+                            {action.projectedScore}
+                          </p>
+                        </div>
                       </div>
-
-                      <div className="shrink-0 text-right">
-                        <p className="text-[9px] font-medium uppercase tracking-wider text-slate-500">
-                          Asset risk
-                        </p>
-
-                        <p className="text-sm font-semibold text-emerald-400">
-                          −{action.estimatedReduction}
-                        </p>
-
-                        <p className="text-[10px] text-slate-500">
-                          {currentScore}
-                          <span className="mx-1">
-                            →
-                          </span>
-                          {projectedScore}
-                        </p>
-                      </div>
-                    </div>
-                  ),
+                    );
+                  },
                 )}
               </div>
 
@@ -430,12 +540,12 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-slate-100">
-                    {item.riskScore}
+                    {recommendedWorkQueue.currentRiskScore}
                     <span className="mx-1.5 text-slate-600">
                       →
                     </span>
                     <span className="text-emerald-400">
-                      {predictedScore}
+                      {recommendedWorkQueue.projectedRiskScore}
                     </span>
                   </p>
                 </div>
@@ -446,7 +556,7 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-emerald-400">
-                    −{totalRecommendedReduction} points
+                    −{recommendedWorkQueue.totalCalculatedReduction} points
                   </p>
                 </div>
 
@@ -456,12 +566,12 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-slate-200">
-                    {item.riskLevel}
+                    {recommendedWorkQueue.currentRiskLevel}
                     <span className="mx-1.5 text-slate-600">
                       →
                     </span>
                     <span className="text-emerald-400">
-                      {predictedLevel}
+                      {recommendedWorkQueue.projectedRiskLevel}
                     </span>
                   </p>
                 </div>
