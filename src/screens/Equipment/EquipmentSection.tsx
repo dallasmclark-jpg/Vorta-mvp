@@ -125,7 +125,106 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
+      {/* Why this risk? */}
+      <div className="border-t border-gray-800 pt-4">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
+            <p className="mt-0.5 text-[10px] text-slate-600">Ranked drivers, evidence and calculated risk reduction.</p>
+          </div>
+          {explanations.length > 3 && (
+            <button
+              type="button"
+              onClick={() =>
+                setShowAllExplanations(
+                  (current) => !current,
+                )
+              }
+              aria-expanded={showAllExplanations}
+              className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
+            >
+              {showAllExplanations
+                ? "Show top 3"
+                : `View all ${availableExplanationCount} drivers`}
+            </button>
+          )}
+        </div>
+        {explanations.length === 0 ? (
+          <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+            {visibleExplanations.map((exp) => {
+              const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
+              return (
+                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-200">
+                      {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      Score: {exp.driverScore}
+                    </span>
+                  </div>
+                  {exp.evidence && (
+                    <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
+                  )}
+                  {exp.recommendedAction && (
+                    <p className="mt-1 text-xs text-slate-300">
+                      <span className="text-slate-500">Action: </span>{exp.recommendedAction}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-slate-500">Current</span>
+                    <span className="font-semibold text-slate-200">{item.riskScore}</span>
+                    <span className="text-slate-600">→</span>
+                    <span className="text-slate-500">After action</span>
+                    <span className="font-semibold text-emerald-400">{afterScore}</span>
+                    <span className="ml-1 font-semibold text-emerald-500">▼ -{exp.estimatedReduction}</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Summary card */}
+            {(() => {
+              const totalReduction = explanations.slice(0, 5).reduce((sum, e) => sum + e.estimatedReduction, 0);
+              const predictedScore = Math.max(0, item.riskScore - totalReduction);
+              const predictedLevel =
+                predictedScore >= 85 ? "Critical" :
+                predictedScore >= 65 ? "High" :
+                predictedScore >= 40 ? "Medium" :
+                predictedScore >= 20 ? "Low" : "Minimal";
+              const currentLevel = item.riskLevel;
+              return (
+                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    If all recommended actions are completed
+                  </p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Current Risk</span>
+                      <span className="font-semibold text-slate-200">{item.riskScore}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Predicted Risk</span>
+                      <span className="font-semibold text-emerald-400">{predictedScore}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-500">Risk Level</span>
+                      <span className="font-semibold text-slate-200">
+                        {currentLevel} <span className="text-slate-500">→</span> <span className="text-emerald-400">{predictedLevel}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+
+      {/* AI Risk Trend + Actions */}
+      <div className="mt-5 grid grid-cols-1 gap-6 border-t border-gray-800 pt-4 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
 
         {/* 1 — AI Risk Trend */}
         <div className="flex flex-col gap-3">
@@ -234,104 +333,6 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           </div>
         </div>
 
-      </div>
-
-      {/* Why this risk? */}
-      <div className="mt-5 border-t border-gray-800 pt-4">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
-            <p className="mt-0.5 text-[10px] text-slate-600">Ranked drivers, evidence and calculated risk reduction.</p>
-          </div>
-          {explanations.length > 3 && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowAllExplanations(
-                  (current) => !current,
-                )
-              }
-              aria-expanded={showAllExplanations}
-              className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
-            >
-              {showAllExplanations
-                ? "Show top 3"
-                : `View all ${availableExplanationCount} drivers`}
-            </button>
-          )}
-        </div>
-        {explanations.length === 0 ? (
-          <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-            {visibleExplanations.map((exp) => {
-              const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
-              return (
-                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-200">
-                      {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
-                    </span>
-                    <span className="shrink-0 text-xs text-slate-500">
-                      Score: {exp.driverScore}
-                    </span>
-                  </div>
-                  {exp.evidence && (
-                    <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
-                  )}
-                  {exp.recommendedAction && (
-                    <p className="mt-1 text-xs text-slate-300">
-                      <span className="text-slate-500">Action: </span>{exp.recommendedAction}
-                    </p>
-                  )}
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    <span className="text-slate-500">Current</span>
-                    <span className="font-semibold text-slate-200">{item.riskScore}</span>
-                    <span className="text-slate-600">→</span>
-                    <span className="text-slate-500">After action</span>
-                    <span className="font-semibold text-emerald-400">{afterScore}</span>
-                    <span className="ml-1 font-semibold text-emerald-500">▼ -{exp.estimatedReduction}</span>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Summary card */}
-            {(() => {
-              const totalReduction = explanations.slice(0, 5).reduce((sum, e) => sum + e.estimatedReduction, 0);
-              const predictedScore = Math.max(0, item.riskScore - totalReduction);
-              const predictedLevel =
-                predictedScore >= 85 ? "Critical" :
-                predictedScore >= 65 ? "High" :
-                predictedScore >= 40 ? "Medium" :
-                predictedScore >= 20 ? "Low" : "Minimal";
-              const currentLevel = item.riskLevel;
-              return (
-                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                    If all recommended actions are completed
-                  </p>
-                  <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Current Risk</span>
-                      <span className="font-semibold text-slate-200">{item.riskScore}</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Predicted Risk</span>
-                      <span className="font-semibold text-emerald-400">{predictedScore}</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Risk Level</span>
-                      <span className="font-semibold text-slate-200">
-                        {currentLevel} <span className="text-slate-500">→</span> <span className="text-emerald-400">{predictedLevel}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
       </div>
     </div>
   );
