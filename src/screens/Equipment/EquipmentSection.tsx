@@ -1246,36 +1246,6 @@ export const EquipmentSection = (): JSX.Element => {
           ))}
         </div>
       </div>
-
-      {/* ── Bottom Panels ───────────────────────────────────────────────── */}
-      <div className="w-full">
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-5">
-            <h2 className="mb-4 text-base font-semibold text-slate-50">Top 10 Highest Risk Equipment</h2>
-            <ol className="flex flex-col gap-3">
-              {[...equipmentList]
-                .sort((a, b) => b.riskScore - a.riskScore)
-                .slice(0, 10)
-                .map((item, i) => (
-                  <li key={item.id} className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => navigateToEquipment(item.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-                    >
-                      <span className="w-4 shrink-0 text-xs text-slate-500">{i + 1}.</span>
-                      <span className="truncate text-sm text-slate-200 hover:text-blue-400">{item.name}</span>
-                    </button>
-                    <Badge className={`h-auto shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase shadow-none ${riskBadgeClass(item.riskLevel)}`}>
-                      {item.riskLevel}
-                    </Badge>
-                  </li>
-                ))
-              }
-            </ol>
-          </CardContent>
-        </Card>
-      </div>
     </section>
   );
 };
