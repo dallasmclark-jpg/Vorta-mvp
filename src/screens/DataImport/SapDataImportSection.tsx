@@ -512,6 +512,11 @@ export const SapDataImportSection =
     ] = useState(false);
 
     const [
+      replaceStockSnapshot,
+      setReplaceStockSnapshot,
+    ] = useState(false);
+
+    const [
       history,
       setHistory,
     ] = useState<
@@ -606,6 +611,30 @@ export const SapDataImportSection =
       preview?.rowCount ??
       0;
 
+    const isMb52Preview =
+      preview?.transactionCode ===
+      "MB52";
+
+    const isMb52Result =
+      result?.transactionCode ===
+      "MB52";
+
+    const stockScopes =
+      preview?.snapshotScopes ??
+      [];
+
+    const matchedBomMaterialCount =
+      preview?.matchedBomMaterialCount ??
+      0;
+
+    const unmatchedMaterialCount =
+      preview?.unmatchedMaterialCount ??
+      0;
+
+    const unmatchedMaterialNumbers =
+      preview?.unmatchedMaterialNumbers ??
+      [];
+
     const validationPassed =
       Boolean(preview) &&
       preview!.missingRequiredFields
@@ -636,6 +665,10 @@ export const SapDataImportSection =
         setImportError(null);
 
         setDuplicateConfirmed(
+          false,
+        );
+
+        setReplaceStockSnapshot(
           false,
         );
 
@@ -834,6 +867,8 @@ export const SapDataImportSection =
               transactionCode,
               file: selectedFile,
               allowDuplicate: false,
+              replaceSnapshot:
+                replaceStockSnapshot,
             });
 
           setPreview(response);
@@ -891,6 +926,12 @@ export const SapDataImportSection =
 
               allowDuplicate:
                 duplicateConfirmed,
+
+              replaceSnapshot:
+                preview.transactionCode ===
+                "MB52"
+                  ? replaceStockSnapshot
+                  : false,
             });
 
           setPreview(
@@ -1191,6 +1232,16 @@ export const SapDataImportSection =
               ) : null}
 
               {transactionCode ===
+              "MB52" ? (
+                <InlineAlert
+                  tone="info"
+                  title="MB52 imports warehouse stock"
+                >
+                  MB52 stores material stock by plant and storage location. Only unrestricted-use stock is treated as immediately available. Quality-inspection, blocked, returns and transfer stock remain visible but are not counted as usable spares.
+                </InlineAlert>
+              ) : null}
+
+              {transactionCode ===
               "TYPE_MAPPING" ? (
                 <div className="flex flex-col justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 sm:flex-row sm:items-center">
                   <div>
@@ -1393,7 +1444,10 @@ export const SapDataImportSection =
                       preview.transactionCode ===
                       "IH01"
                         ? "BOM component rows"
-                        : "Data rows"
+                        : preview.transactionCode ===
+                          "MB52"
+                          ? "Stock rows"
+                          : "Data rows"
                     }
                     value={preview.rowCount.toLocaleString(
                       "en-GB",
@@ -1424,6 +1478,70 @@ export const SapDataImportSection =
                     }
                   />
                 </div>
+
+                {isMb52Preview ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <MetricCard
+                      label="BOM materials matched"
+                      value={matchedBomMaterialCount.toLocaleString(
+                        "en-GB",
+                      )}
+                    />
+
+                    <MetricCard
+                      label="Materials not in IH01"
+                      value={unmatchedMaterialCount.toLocaleString(
+                        "en-GB",
+                      )}
+                    />
+
+                    <MetricCard
+                      label="Plant / storage scopes"
+                      value={stockScopes.length.toLocaleString(
+                        "en-GB",
+                      )}
+                    />
+                  </div>
+                ) : null}
+
+                {isMb52Preview &&
+                stockScopes.length > 0 ? (
+                  <InlineAlert
+                    tone="info"
+                    title="MB52 stock scopes detected"
+                  >
+                    {stockScopes
+                      .map(
+                        (scope) =>
+                          `${scope.plantCode}/${scope.storageLocation}`,
+                      )
+                      .join(" · ")}
+                  </InlineAlert>
+                ) : null}
+
+                {isMb52Preview &&
+                unmatchedMaterialCount > 0 ? (
+                  <InlineAlert
+                    tone="warning"
+                    title="Some stock materials are not assigned by IH01"
+                  >
+                    <p>
+                      {unmatchedMaterialCount.toLocaleString(
+                        "en-GB",
+                      )}{" "}
+                      imported material numbers do not currently match an equipment BOM. Their stock will be retained, but no equipment spare will be updated until the material is assigned through IH01.
+                    </p>
+
+                    {unmatchedMaterialNumbers.length >
+                    0 ? (
+                      <p className="mt-2 font-mono">
+                        {unmatchedMaterialNumbers
+                          .slice(0, 20)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                  </InlineAlert>
+                ) : null}
 
                 {preview.transactionCode ===
                   "IH01" &&
@@ -1476,7 +1594,15 @@ export const SapDataImportSection =
                 0 ? (
                   <InlineAlert
                     tone="error"
-                    title="IH01 equipment references are invalid"
+                    title={
+                      preview.transactionCode ===
+                      "IH01"
+                        ? "IH01 equipment references are invalid"
+                        : preview.transactionCode ===
+                          "MB52"
+                          ? "MB52 stock rows are invalid"
+                          : "CSV rows are invalid"
+                    }
                   >
                     {rowValidationErrors
                       .slice(0, 20)
@@ -1513,6 +1639,30 @@ export const SapDataImportSection =
                     {preview.unmappedHeaders.join(
                       ", ",
                     )}
+                  </InlineAlert>
+                ) : null}
+
+                {isMb52Preview &&
+                unmatchedMaterialCount > 0 ? (
+                  <InlineAlert
+                    tone="warning"
+                    title="Some stock materials are not assigned by IH01"
+                  >
+                    <p>
+                      {unmatchedMaterialCount.toLocaleString(
+                        "en-GB",
+                      )}{" "}
+                      imported material numbers do not currently match an equipment BOM. Their stock will be retained, but no equipment spare will be updated until the material is assigned through IH01.
+                    </p>
+
+                    {unmatchedMaterialNumbers.length >
+                    0 ? (
+                      <p className="mt-2 font-mono">
+                        {unmatchedMaterialNumbers
+                          .slice(0, 20)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
                   </InlineAlert>
                 ) : null}
 
@@ -1562,7 +1712,10 @@ export const SapDataImportSection =
                     {preview.transactionCode ===
                     "IH01"
                       ? "The required columns, BOM component rows and site equipment references are valid."
-                      : "The required columns, row structure and site-specific SAP type mappings are valid."}
+                      : preview.transactionCode ===
+                        "MB52"
+                        ? "The required stock columns, material identifiers and SAP quantities are valid."
+                        : "The required columns, row structure and site-specific SAP type mappings are valid."}
                   </InlineAlert>
                 ) : null}
 
@@ -1700,12 +1853,49 @@ export const SapDataImportSection =
                   </div>
                 ) : null}
 
+                {isMb52Preview ? (
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={
+                          replaceStockSnapshot
+                        }
+                        onChange={
+                          (
+                            event,
+                          ) =>
+                            setReplaceStockSnapshot(
+                              event.target.checked,
+                            )
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 text-amber-500"
+                      />
+
+                      <span>
+                        <span className="block text-sm font-semibold text-amber-100">
+                          Replace the current stock snapshot for the scopes in this file
+                        </span>
+
+                        <span className="mt-1 block text-xs leading-5 text-amber-100/75">
+                          When enabled, previously imported stock rows in the detected plant and storage-location scopes that are absent from this file will be removed. BOM parts with no remaining MB52 stock will become 0 / Out of Stock. Leave this unchecked for an incremental or filtered upload.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                ) : null}
+
                 <div className="flex flex-col justify-between gap-3 border-t border-gray-800 pt-5 sm:flex-row sm:items-center">
                   <p className="text-xs text-slate-500">
                     {preview.transactionCode ===
                     "IH01"
                       ? "Importing will update matching equipment-to-material BOM assignments while preserving existing warehouse stock values."
-                      : "Importing will update matching SAP records rather than create duplicates."}
+                      : preview.transactionCode ===
+                        "MB52"
+                        ? replaceStockSnapshot
+                          ? "Importing will replace the confirmed plant and storage-location stock scopes, then recalculate linked equipment spare availability."
+                          : "Importing will merge these stock rows into the material ledger and recalculate matching equipment spare availability."
+                        : "Importing will update matching SAP records rather than create duplicates."}
                   </p>
 
                   <Button

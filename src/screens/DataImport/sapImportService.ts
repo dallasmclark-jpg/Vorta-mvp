@@ -4,6 +4,7 @@ export type SapTransactionCode =
   | "AUTO"
   | "TYPE_MAPPING"
   | "IH01"
+  | "MB52"
   | "IW28"
   | "IW29"
   | "IW39"
@@ -46,6 +47,11 @@ export interface SapStructuralError {
 export interface SapRowValidationError {
   rowNumber: number;
   message: string;
+}
+
+export interface SapStockScope {
+  plantCode: string;
+  storageLocation: string;
 }
 
 export interface SapUnmappedCode {
@@ -96,6 +102,12 @@ export interface SapCsvPreview {
   structuralErrors: SapStructuralError[];
 
   rowValidationErrors?: SapRowValidationError[];
+
+  snapshotScopes?: SapStockScope[];
+
+  matchedBomMaterialCount?: number;
+  unmatchedMaterialCount?: number;
+  unmatchedMaterialNumbers?: string[];
 
   sampleRows: Array<Record<string, unknown>>;
   unmappedCodes: SapUnmappedCode[];
@@ -162,6 +174,13 @@ export interface SapImportExecutionResult {
 
   ignoredHierarchyRowCount?: number;
 
+  deletedStockRows?: number;
+  synchronisedComponentCount?: number;
+  matchedBomMaterialCount?: number;
+  unmatchedMaterialCount?: number;
+  bomMaterialsWithoutStockCount?: number;
+  snapshotReplaced?: boolean;
+
   riskRefreshed: boolean;
   riskRefreshError: string | null;
 
@@ -216,7 +235,7 @@ const getEndpoint = (): string => {
     );
   }
 
-  return `${supabaseUrl}/functions/v1/sap-maintenance-csv-gateway`;
+  return `${supabaseUrl}/functions/v1/sap-maintenance-csv-unified`;
 };
 
 const getHeaders = async (
@@ -358,6 +377,7 @@ interface SapCsvRequest {
   transactionCode: SapTransactionCode;
   file: File;
   allowDuplicate?: boolean;
+  replaceSnapshot?: boolean;
 }
 
 const createCsvFormData = (
@@ -390,6 +410,14 @@ const createCsvFormData = (
     "allowDuplicate",
     String(
       request.allowDuplicate ??
+        false,
+    ),
+  );
+
+  formData.append(
+    "replaceSnapshot",
+    String(
+      request.replaceSnapshot ??
         false,
     ),
   );
