@@ -192,14 +192,8 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
     historyLoading,
     setHistoryLoading,
   ] = useState(false);
-  const [
-    showAllExplanations,
-    setShowAllExplanations,
-  ] = useState(false);
 
   useEffect(() => {
-    setShowAllExplanations(false);
-
     void getEquipmentRiskExplanations(
       item.id,
     ).then(setExplanations);
@@ -245,14 +239,6 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
       cancelled = true;
     };
   }, [item.id]);
-
-  const visibleExplanations =
-    showAllExplanations
-      ? explanations.slice(0, 5)
-      : explanations.slice(0, 3);
-
-  const availableExplanationCount =
-    Math.min(explanations.length, 5);
 
   const activeTrendRange =
     RISK_TREND_RANGES.find(
@@ -352,68 +338,13 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
 
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-3">
-      {/* Why this risk? */}
       <div className="border-t border-gray-800 pt-3">
-        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
-            <p className="mt-0.5 text-[10px] text-slate-600">Ranked drivers, evidence and calculated risk reduction.</p>
-          </div>
-          {explanations.length > 3 && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowAllExplanations(
-                  (current) => !current,
-                )
-              }
-              aria-expanded={showAllExplanations}
-              className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
-            >
-              {showAllExplanations
-                ? "Show top 3"
-                : `View all ${availableExplanationCount} drivers`}
-            </button>
-          )}
-        </div>
         {explanations.length === 0 ? (
           <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
-            {visibleExplanations.map((exp) => {
-              const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
-              return (
-                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-200">
-                      {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
-                    </span>
-                    <span className="shrink-0 text-xs text-slate-500">
-                      Score: {exp.driverScore}
-                    </span>
-                  </div>
-                  {exp.evidence && (
-                    <p className="mt-1 text-xs text-slate-400">{exp.evidence}</p>
-                  )}
-                  {exp.recommendedAction && (
-                    <p className="mt-1 text-xs text-slate-300">
-                      <span className="text-slate-500">Action: </span>{exp.recommendedAction}
-                    </p>
-                  )}
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    <span className="text-slate-500">Current</span>
-                    <span className="font-semibold text-slate-200">{item.riskScore}</span>
-                    <span className="text-slate-600">→</span>
-                    <span className="text-slate-500">After action</span>
-                    <span className="font-semibold text-emerald-400">{afterScore}</span>
-                    <span className="ml-1 font-semibold text-emerald-500">▼ -{exp.estimatedReduction}</span>
-                  </div>
-                </div>
-              );
-            })}
-
+          <>
             {/* Equipment recommended work queue */}
-            <div className="col-span-full rounded-lg border border-gray-800 bg-[#10151d] px-4 py-3">
+            <div className="rounded-lg border border-gray-800 bg-[#10151d] px-4 py-3">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -546,7 +477,7 @@ function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNaviga
                 </Button>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
