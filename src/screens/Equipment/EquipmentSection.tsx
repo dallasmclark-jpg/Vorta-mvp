@@ -86,47 +86,32 @@ function hexToRgba(hex: string, alpha: number): string {
 function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown"] }) {
   const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
-    <div className="flex w-full flex-col gap-2">
-      <div className="flex h-6 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-slate-600/45">
-        {segments.map((seg) => {
-          const segmentWidth =
-            (seg.pct / total) * 100;
+    <div className="flex h-6 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-slate-600/45">
+      {segments.map((seg) => {
+        const segmentWidth =
+          (seg.pct / total) * 100;
 
-          return (
-            <div
-              key={seg.label}
-              title={`${seg.label}: ${seg.pct}%`}
-              style={{
-                width: `${segmentWidth}%`,
-                backgroundColor: hexToRgba(
-                  seg.color,
-                  0.2,
-                ),
-              }}
-              className="relative flex items-center justify-center overflow-hidden border-r border-white/10 last:border-r-0"
-            >
-              {segmentWidth >= 7 && (
-                <span className="truncate px-1 text-[10px] font-semibold tabular-nums text-slate-100 [text-shadow:0_1px_2px_rgba(0,0,0,0.65)]">
-                  {seg.pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {segments.map((seg) => (
-          <span
+        return (
+          <div
             key={seg.label}
-            className="inline-flex items-center gap-1.5 text-[10px] text-slate-500"
+            title={`${seg.label}: ${seg.pct}%`}
+            style={{
+              width: `${segmentWidth}%`,
+              backgroundColor: hexToRgba(
+                seg.color,
+                0.2,
+              ),
+            }}
+            className="relative flex items-center justify-center overflow-hidden border-r border-white/10 last:border-r-0"
           >
-            <span
-              className={`h-[5px] w-[5px] shrink-0 rounded-full ${seg.dotClass}`}
-            />
-            {seg.label}
-          </span>
-        ))}
-      </div>
+            {segmentWidth >= 7 && (
+              <span className="truncate px-1 text-[10px] font-semibold tabular-nums text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.65)]">
+                {seg.pct}%
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -577,7 +562,7 @@ function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
 }) {
   return (
     <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-      <CardContent className="flex flex-col gap-1 p-3">
+      <CardContent className="flex flex-col gap-0.5 px-3 py-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="whitespace-nowrap text-xs text-slate-400">{label}</span>
           {badgeLabel && (
@@ -588,7 +573,7 @@ function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
         </div>
         <p className="text-xl font-semibold text-slate-50">{value}</p>
         {showBar && (
-          <Progress value={barValue ?? 0} className="mt-1 h-1.5 rounded bg-gray-800 [&>div]:bg-blue-500" />
+          <Progress value={barValue ?? 0} className="mt-0.5 h-1.5 rounded bg-gray-800 [&>div]:bg-blue-500" />
         )}
       </CardContent>
     </Card>
@@ -731,6 +716,43 @@ export const EquipmentSection = (): JSX.Element => {
     overduePmOnly,
     calibrationDueOnly,
   ]);
+
+  const riskDriverLegend = useMemo(() => {
+    const driverClasses = new Map<string, string>();
+
+    equipmentList.forEach((equipment) => {
+      equipment.breakdown.forEach((segment) => {
+        if (!driverClasses.has(segment.label)) {
+          driverClasses.set(
+            segment.label,
+            segment.dotClass,
+          );
+        }
+      });
+    });
+
+    const preferredOrder = [
+      "PM Backlog",
+      "Asset Criticality",
+      "Calibration",
+      "Labour Coverage",
+      "Spares",
+    ];
+
+    const orderedLabels = [
+      ...preferredOrder.filter((label) =>
+        driverClasses.has(label),
+      ),
+      ...Array.from(driverClasses.keys()).filter(
+        (label) => !preferredOrder.includes(label),
+      ),
+    ];
+
+    return orderedLabels.map((label) => ({
+      label,
+      dotClass: driverClasses.get(label) ?? "",
+    }));
+  }, [equipmentList]);
 
   const totalAssets = filtered.length;
 
@@ -954,21 +976,6 @@ export const EquipmentSection = (): JSX.Element => {
         )}
       </div>
 
-      {/* ── Active area filter label ─────────────────────────────────── */}
-      {activeArea && (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <span>Showing area:</span>
-          <span className="font-semibold text-slate-200">{areaChipLabel}</span>
-          <button
-            type="button"
-            onClick={() => { setActiveArea(null); navigate("/equipment"); }}
-            className="ml-1 rounded border border-gray-700 px-2 py-0.5 text-xs text-slate-500 transition-colors hover:border-gray-600 hover:text-slate-300"
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
       {/* ── Equipment Table ─────────────────────────────────────────────── */}
       <div className="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
 
@@ -976,9 +983,36 @@ export const EquipmentSection = (): JSX.Element => {
         <div className="grid grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 border-b border-gray-800 px-4 py-3">
           <div />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Equipment</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Drivers</span>
-            <Info className="h-3.5 w-3.5 text-slate-600" aria-hidden="true" />
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div
+              className="flex items-center gap-1.5"
+              title="Percentages show each driver's share of the asset's total calculated risk and add to 100%."
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                Risk Composition
+              </span>
+
+              <Info
+                className="h-3.5 w-3.5 text-slate-600"
+                aria-hidden="true"
+              />
+            </div>
+
+            {riskDriverLegend.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {riskDriverLegend.map((driver) => (
+                  <span
+                    key={driver.label}
+                    className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
+                  >
+                    <span
+                      className={`h-[5px] w-[5px] shrink-0 rounded-full ${driver.dotClass}`}
+                    />
+                    {driver.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <span className="text-right text-[11px] font-semibold uppercase tracking-widest text-slate-500">Risk Score</span>
         </div>
