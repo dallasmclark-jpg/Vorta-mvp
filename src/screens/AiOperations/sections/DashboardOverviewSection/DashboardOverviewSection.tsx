@@ -412,6 +412,78 @@ interface RiskEquipmentPlanHistoryItem {
   equipmentName: string;
 }
 
+type RiskPlanAction =
+  SiteRiskReductionPlan["actions"][number];
+
+const getRiskPlanActionRoute = (
+  equipmentId: string,
+  action: RiskPlanAction,
+): string => {
+  const normalizedDriver =
+    action.driver
+      .trim()
+      .toLowerCase();
+
+  /*
+   * Spare and stock availability actions
+   * belong on the equipment Spares page.
+   */
+  if (
+    action.sparePartNumbers.length > 0 ||
+    normalizedDriver.includes("spare") ||
+    normalizedDriver.includes("stock")
+  ) {
+    return `/equipment/${equipmentId}/spares`;
+  }
+
+  /*
+   * Skills and labour coverage actions
+   * belong on the equipment Skills page.
+   */
+  if (
+    normalizedDriver.includes("skill") ||
+    normalizedDriver.includes("labour") ||
+    normalizedDriver.includes("coverage")
+  ) {
+    return `/equipment/${equipmentId}/skills`;
+  }
+
+  /*
+   * PM backlog and calibration actions
+   * belong on the equipment PMs page.
+   *
+   * This must take priority over a linked
+   * work-order number because an overdue PM
+   * may also have a generated work order.
+   */
+  if (
+    normalizedDriver.includes(
+      "calibration",
+    ) ||
+    normalizedDriver.includes("pm") ||
+    action.pmNumbers.length > 0
+  ) {
+    return `/equipment/${equipmentId}/pms`;
+  }
+
+  /*
+   * Corrective or inspection actions that
+   * only reference a work order belong on
+   * the Work Orders page.
+   */
+  if (
+    action.workOrderNumbers.length > 0
+  ) {
+    return `/equipment/${equipmentId}/work-orders`;
+  }
+
+  /*
+   * Unknown future action types should
+   * still open the correct equipment.
+   */
+  return `/equipment/${equipmentId}/overview`;
+};
+
 const RISK_REDUCTION_OUTCOME_KEY =
   "risk_reduction_achieved";
 const getRiskKpiRagPriority = (
@@ -1817,7 +1889,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 type="button"
                                 onClick={() =>
                                   navigate(
-                                    `/equipment/${riskReductionPlan.equipmentId}/work-orders`,
+                                    getRiskPlanActionRoute(
+                                      riskReductionPlan.equipmentId,
+                                      action,
+                                    ),
                                   )
                                 }
                                 className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26]"
