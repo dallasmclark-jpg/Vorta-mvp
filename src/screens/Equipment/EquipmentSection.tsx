@@ -723,14 +723,14 @@ export const EquipmentSection = (): JSX.Element => {
   ]);
 
   const riskDriverLegend = useMemo(() => {
-    const driverClasses = new Map<string, string>();
+    const driverColours = new Map<string, string>();
 
     equipmentList.forEach((equipment) => {
       equipment.breakdown.forEach((segment) => {
-        if (!driverClasses.has(segment.label)) {
-          driverClasses.set(
+        if (!driverColours.has(segment.label)) {
+          driverColours.set(
             segment.label,
-            segment.dotClass,
+            segment.color,
           );
         }
       });
@@ -746,16 +746,16 @@ export const EquipmentSection = (): JSX.Element => {
 
     const orderedLabels = [
       ...preferredOrder.filter((label) =>
-        driverClasses.has(label),
+        driverColours.has(label),
       ),
-      ...Array.from(driverClasses.keys()).filter(
+      ...Array.from(driverColours.keys()).filter(
         (label) => !preferredOrder.includes(label),
       ),
     ];
 
     return orderedLabels.map((label) => ({
       label,
-      dotClass: driverClasses.get(label) ?? "",
+      color: driverColours.get(label) ?? "#64748b",
     }));
   }, [equipmentList]);
 
@@ -1011,7 +1011,11 @@ export const EquipmentSection = (): JSX.Element => {
                     className="inline-flex items-center gap-1.5 text-xs text-slate-400"
                   >
                     <span
-                      className={`h-[5px] w-[5px] shrink-0 rounded-full ${driver.dotClass}`}
+                      aria-hidden="true"
+                      style={{
+                        backgroundColor: driver.color,
+                      }}
+                      className="h-[6px] w-[6px] shrink-0 rounded-full opacity-80"
                     />
                     {driver.label}
                   </span>
