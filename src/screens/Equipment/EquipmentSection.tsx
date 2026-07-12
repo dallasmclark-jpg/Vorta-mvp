@@ -66,6 +66,21 @@ function riskBadgeClass(level: EquipmentListItem["riskLevel"]): string {
   }
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace("#", "");
+
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return hex;
+  }
+
+  const value = Number.parseInt(normalized, 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 // ─── Risk Breakdown Bar ───────────────────────────────────────────────────────
 
 function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown"] }) {
@@ -82,9 +97,10 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
               title={`${seg.label}: ${seg.pct}%`}
               style={{
                 width: `${segmentWidth}%`,
-                backgroundColor: seg.color,
+                backgroundColor: hexToRgba(seg.color, 0.24),
+                borderColor: seg.color,
               }}
-              className="relative flex items-center justify-center overflow-hidden"
+              className="relative flex items-center justify-center overflow-hidden border-y-2 border-r-2 first:border-l-2"
             >
               {segmentWidth >= 7 && (
                 <span className="truncate px-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
@@ -167,6 +183,30 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         history[0].riskScore
       : null;
 
+  const totalRecommendedReduction = explanations
+    .slice(0, 5)
+    .reduce(
+      (sum, explanation) =>
+        sum + explanation.estimatedReduction,
+      0,
+    );
+
+  const predictedScore = Math.max(
+    0,
+    item.riskScore - totalRecommendedReduction,
+  );
+
+  const predictedLevel: EquipmentListItem["riskLevel"] =
+    predictedScore >= 85
+      ? "Critical"
+      : predictedScore >= 65
+        ? "High"
+        : predictedScore >= 40
+          ? "Medium"
+          : predictedScore >= 20
+            ? "Low"
+            : "Minimal";
+
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-3">
       {/* Why this risk? */}
@@ -229,196 +269,289 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
               );
             })}
 
-            {/* Summary card */}
-            {(() => {
-              const totalReduction = explanations.slice(0, 5).reduce((sum, e) => sum + e.estimatedReduction, 0);
-              const predictedScore = Math.max(0, item.riskScore - totalReduction);
-              const predictedLevel =
-                predictedScore >= 85 ? "Critical" :
-                predictedScore >= 65 ? "High" :
-                predictedScore >= 40 ? "Medium" :
-                predictedScore >= 20 ? "Low" : "Minimal";
-              const currentLevel = item.riskLevel;
-              return (
-                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5">
+            {/* Recommended action outcome and asset actions */}
+            <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div>
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
                     If all recommended actions are completed
                   </p>
-                  <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Current Risk</span>
-                      <span className="font-semibold text-slate-200">{item.riskScore}</span>
+                      <span className="text-[10px] text-slate-500">
+                        Current Risk
+                      </span>
+                      <span className="text-sm font-semibold text-slate-200">
+                        {item.riskScore}
+                      </span>
                     </div>
+
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Predicted Risk</span>
-                      <span className="font-semibold text-emerald-400">{predictedScore}</span>
+                      <span className="text-[10px] text-slate-500">
+                        Predicted Risk
+                      </span>
+                      <span className="text-sm font-semibold text-emerald-400">
+                        {predictedScore}
+                      </span>
                     </div>
+
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-500">Risk Level</span>
-                      <span className="font-semibold text-slate-200">
-                        {currentLevel} <span className="text-slate-500">→</span> <span className="text-emerald-400">{predictedLevel}</span>
+                      <span className="text-[10px] text-slate-500">
+                        Risk Level
+                      </span>
+                      <span className="text-sm font-semibold text-slate-200">
+                        {item.riskLevel}
+                        <span className="mx-1.5 text-slate-500">
+                          →
+                        </span>
+                        <span className="text-emerald-400">
+                          {predictedLevel}
+                        </span>
                       </span>
                     </div>
                   </div>
                 </div>
-              );
-            })()}
+
+                <div className="flex flex-col justify-between gap-3 border-t border-emerald-500/15 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Actions
+                    </p>
+                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                      Open the complete asset record, work history and supporting intelligence.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                    <Button
+                      type="button"
+                      onClick={() => onNavigate(item.id)}
+                      className="h-auto w-full justify-center gap-2 border border-blue-400/40 bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_8px_rgba(59,130,246,0.35)] hover:bg-blue-500 hover:shadow-[0_0_12px_rgba(59,130,246,0.5)]"
+                    >
+                      View full asset intelligence →
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onNavigateToHistory(item.id)
+                      }
+                      className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
+                    >
+                      View History
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* AI Risk Trend + Actions */}
-      <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-800 pt-3 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
-
-        {/* 1 — AI Risk Trend */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                AI risk trend
-              </h4>
-              <p className="mt-0.5 text-[10px] text-slate-600">
-                30 day history
-              </p>
-            </div>
-
-            {history.length > 0 && (
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="inline-flex items-center gap-1.5 text-[10px]">
-                  <span className="text-slate-500">
-                    Weekly
-                  </span>
-                  {weeklyChange !== null ? (
-                    <span
-                      className={`font-semibold ${
-                        weeklyChange > 0
-                          ? "text-red-400"
-                          : weeklyChange < 0
-                            ? "text-emerald-400"
-                            : "text-slate-400"
-                      }`}
-                    >
-                      {weeklyChange > 0
-                        ? `▲ +${weeklyChange}`
-                        : weeklyChange < 0
-                          ? `▼ ${weeklyChange}`
-                          : "— 0"}
-                    </span>
-                  ) : (
-                    <span className="text-slate-500">
-                      —
-                    </span>
-                  )}
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 text-[10px]">
-                  <span className="text-slate-500">
-                    Monthly
-                  </span>
-                  {monthlyChange !== null ? (
-                    <span
-                      className={`font-semibold ${
-                        monthlyChange > 0
-                          ? "text-red-400"
-                          : monthlyChange < 0
-                            ? "text-emerald-400"
-                            : "text-slate-400"
-                      }`}
-                    >
-                      {monthlyChange > 0
-                        ? `▲ +${monthlyChange}`
-                        : monthlyChange < 0
-                          ? `▼ ${monthlyChange}`
-                          : "— 0"}
-                    </span>
-                  ) : (
-                    <span className="text-slate-500">
-                      —
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+      {/* Full-width AI Risk Trend */}
+      <div className="mt-3 border-t border-gray-800 pt-3">
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              AI risk trend
+            </h4>
+            <p className="mt-0.5 text-[10px] text-slate-600">
+              30 day history
+            </p>
           </div>
-          {history.length === 0 ? (
-            <p className="text-[11px] text-slate-500">No historical snapshots available.</p>
-          ) : (() => {
-            const trend = history.map((h) => ({
-              label: h.snapshotLabel ?? formatSnapshotDate(h.snapshotDate),
-              value: h.riskScore,
+
+          {history.length > 0 && (
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="inline-flex items-center gap-1.5 text-[10px]">
+                <span className="text-slate-500">
+                  Weekly
+                </span>
+
+                {weeklyChange !== null ? (
+                  <span
+                    className={`font-semibold ${
+                      weeklyChange > 0
+                        ? "text-red-400"
+                        : weeklyChange < 0
+                          ? "text-emerald-400"
+                          : "text-slate-400"
+                    }`}
+                  >
+                    {weeklyChange > 0
+                      ? `▲ +${weeklyChange}`
+                      : weeklyChange < 0
+                        ? `▼ ${weeklyChange}`
+                        : "— 0"}
+                  </span>
+                ) : (
+                  <span className="text-slate-500">
+                    —
+                  </span>
+                )}
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 text-[10px]">
+                <span className="text-slate-500">
+                  Monthly
+                </span>
+
+                {monthlyChange !== null ? (
+                  <span
+                    className={`font-semibold ${
+                      monthlyChange > 0
+                        ? "text-red-400"
+                        : monthlyChange < 0
+                          ? "text-emerald-400"
+                          : "text-slate-400"
+                    }`}
+                  >
+                    {monthlyChange > 0
+                      ? `▲ +${monthlyChange}`
+                      : monthlyChange < 0
+                        ? `▼ ${monthlyChange}`
+                        : "— 0"}
+                  </span>
+                ) : (
+                  <span className="text-slate-500">
+                    —
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {history.length === 0 ? (
+          <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5">
+            <p className="text-[11px] text-slate-500">
+              No historical snapshots available.
+            </p>
+          </div>
+        ) : (
+          (() => {
+            const trend = history.map((historyItem) => ({
+              label:
+                historyItem.snapshotLabel ??
+                formatSnapshotDate(
+                  historyItem.snapshotDate,
+                ),
+              value: historyItem.riskScore,
             }));
-            const maxScore = Math.max(...trend.map((t) => t.value)) || 1;
-            const lastEntry = history[history.length - 1];
+
+            const lastEntry =
+              history[history.length - 1];
+
+            const labelInterval = Math.max(
+              1,
+              Math.ceil(trend.length / 6),
+            );
+
             return (
-              <div className="flex flex-col gap-2">
-                <div className="flex min-h-[88px] items-end justify-between gap-1">
-                  {trend.map((point, i) => {
-                    const isLast = i === trend.length - 1;
-                    const barHeight = Math.max(
-                      10,
-                      Math.round(
-                        (point.value / maxScore) * 58,
-                      ),
-                    );
-                    return (
-                      <div key={`${point.label}-${i}`} className="flex flex-1 flex-col items-center gap-1">
-                        <span className={`text-[9px] font-semibold ${isLast ? "text-blue-400" : "text-slate-500"}`}>
-                          {point.value}
-                        </span>
+              <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-3">
+                <div className="relative">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-slate-700/40"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-700/40"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-slate-700/40"
+                  />
+
+                  <div className="relative z-10 flex min-h-[132px] items-end justify-between gap-1.5">
+                    {trend.map((point, index) => {
+                      const isLast =
+                        index === trend.length - 1;
+
+                      const boundedValue = Math.min(
+                        100,
+                        Math.max(0, point.value),
+                      );
+
+                      const barHeight = Math.max(
+                        10,
+                        Math.round(
+                          (boundedValue / 100) * 96,
+                        ),
+                      );
+
+                      const showLabel =
+                        isLast ||
+                        index === 0 ||
+                        index % labelInterval === 0;
+
+                      return (
                         <div
-                          style={{ height: `${barHeight}px` }}
-                          className={`w-full rounded-sm ${isLast ? "bg-blue-500" : "bg-slate-700"}`}
-                        />
-                        <span className={`text-[9px] ${isLast ? "font-semibold text-blue-400" : "text-slate-600"}`}>
-                          {point.label}
+                          key={`${point.label}-${index}`}
+                          className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        >
+                          <span
+                            className={`text-[9px] font-semibold ${
+                              isLast
+                                ? "text-blue-400"
+                                : "text-slate-500"
+                            }`}
+                          >
+                            {point.value}
+                          </span>
+
+                          <div
+                            title={`${point.label}: ${point.value}% risk`}
+                            style={{
+                              height: `${barHeight}px`,
+                            }}
+                            className={`w-full min-w-[8px] rounded-t-sm border ${
+                              isLast
+                                ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                : "border-slate-500/70 bg-slate-700/40"
+                            }`}
+                          />
+
+                          <span
+                            className={`h-3 truncate text-[9px] ${
+                              isLast
+                                ? "font-semibold text-blue-400"
+                                : "text-slate-600"
+                            }`}
+                          >
+                            {showLabel ? point.label : ""}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {(lastEntry.primaryDriver ||
+                  lastEntry.changeReason) && (
+                  <div className="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-2">
+                    {lastEntry.primaryDriver && (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[10px] text-slate-500">
+                          Primary driver
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-300">
+                          {lastEntry.primaryDriver}
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
 
-                {lastEntry.primaryDriver && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500">Primary driver</span>
-                    <span className="text-[10px] font-semibold text-slate-300">{lastEntry.primaryDriver}</span>
+                    {lastEntry.changeReason && (
+                      <p className="text-[10px] leading-relaxed text-slate-500">
+                        {lastEntry.changeReason}
+                      </p>
+                    )}
                   </div>
-                )}
-
-                {lastEntry.changeReason && (
-                  <p className="text-[10px] leading-relaxed text-slate-500">{lastEntry.changeReason}</p>
                 )}
               </div>
             );
-          })()}
-        </div>
-
-        {/* 2 — Actions */}
-        <div className="flex flex-col gap-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
-          <p className="text-sm leading-relaxed text-slate-300">
-            Open the complete asset record.
-          </p>
-          <p className="text-[10px] leading-relaxed text-slate-500">
-            PMs, work orders, history, skills, spares, documents and AI insights.
-          </p>
-          <div className="mt-auto flex flex-col gap-2">
-            <Button
-              type="button"
-              onClick={() => onNavigate(item.id)}
-              className="h-auto w-full justify-center gap-2 border border-blue-400/40 bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-[0_0_8px_rgba(59,130,246,0.35)] hover:bg-blue-500 hover:shadow-[0_0_12px_rgba(59,130,246,0.5)]"
-            >
-              View full asset intelligence →
-            </Button>
-            <button
-              type="button"
-              onClick={() => onNavigateToHistory(item.id)}
-              className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
-            >
-              View History
-            </button>
-          </div>
-        </div>
-
+          })()
+        )}
       </div>
     </div>
   );
