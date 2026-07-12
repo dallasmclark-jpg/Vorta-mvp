@@ -1191,6 +1191,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
     navigate(`/equipment/${id}/overview`);
   };
 
+  const navigateToAreaEquipment = (area: string) => {
+    const trimmedArea = area.trim();
+
+    if (!trimmedArea) {
+      navigate("/equipment");
+      return;
+    }
+
+    navigate(
+      `/equipment?area=${encodeURIComponent(trimmedArea)}`,
+    );
+  };
+
   const handleAreaCardClick = async (area: string) => {
     if (selectedArea === area) {
       setSelectedArea(null);
@@ -2249,11 +2262,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               isSiteRiskScope ||
               !activeScopeArea
                 ? navigate("/equipment")
-                : navigate(
-                    `/equipment?area=${encodeURIComponent(
-                      activeScopeArea,
-                    )}`,
-                  )
+                : navigateToAreaEquipment(activeScopeArea)
             }
             className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
           >
@@ -2478,7 +2487,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        navigate(`/equipment?area=${encodeURIComponent(areaProfile.area)}`);
+                        navigateToAreaEquipment(areaProfile.area);
                       }}
                       className="inline-flex items-center justify-center rounded-md border border-gray-700 bg-transparent px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-gray-600 hover:bg-gray-800 hover:text-white"
                     >
@@ -2617,7 +2626,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           <p className="text-xs text-slate-400">{trend}</p>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/equipment?area=${encodeURIComponent(area.area)}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigateToAreaEquipment(area.area); }}
                             className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300"
                             aria-label={`View equipment in ${area.area}`}
                           >
@@ -3104,7 +3113,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <Button
                   type="button"
                   onClick={() => {
-                    navigate(`/equipment?area=${encodeURIComponent(selectedInterventionPlan.area)}`);
+                    navigateToAreaEquipment(selectedInterventionPlan.area);
                     setSelectedInterventionPlan(null);
                   }}
                   className="h-auto bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"

@@ -347,6 +347,15 @@ function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const normalizeAreaKey = (value: string): string =>
+  value
+    .normalize("NFKD")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\barea\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
 export const EquipmentSection = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
@@ -414,10 +423,23 @@ export const EquipmentSection = (): JSX.Element => {
     return items.filter((e) => {
       if (activeArea) {
         const resolved = resolveBuilding(activeArea);
+
         if (resolved) {
-          if (!resolved.areas.includes(e.area)) return false;
-        } else {
-          if (e.area !== activeArea) return false;
+          const normalizedBuildingAreas =
+            resolved.areas.map(normalizeAreaKey);
+
+          if (
+            !normalizedBuildingAreas.includes(
+              normalizeAreaKey(e.area),
+            )
+          ) {
+            return false;
+          }
+        } else if (
+          normalizeAreaKey(e.area) !==
+          normalizeAreaKey(activeArea)
+        ) {
+          return false;
         }
       }
       if (
