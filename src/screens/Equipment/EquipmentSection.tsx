@@ -163,7 +163,7 @@ const RISK_TREND_RANGES: readonly {
   },
 ];
 
-function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
+function ExpandedPanel({ item, onNavigate }: { item: EquipmentListItem; onNavigate: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
   const [
     trendSeries,
@@ -296,11 +296,41 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           point.changeReason,
       ) ?? lastTrendPoint;
 
-  const totalRecommendedReduction = explanations
-    .slice(0, 5)
-    .reduce(
-      (sum, explanation) =>
-        sum + explanation.estimatedReduction,
+  const recommendedWorkQueue = explanations
+    .slice()
+    .sort(
+      (left, right) =>
+        right.estimatedReduction -
+          left.estimatedReduction ||
+        right.driverPct - left.driverPct,
+    )
+    .slice(0, 3);
+
+  let runningRiskScore = item.riskScore;
+
+  const recommendedWorkQueueRows =
+    recommendedWorkQueue.map((action) => {
+      const currentScore = runningRiskScore;
+
+      const projectedScore = Math.max(
+        0,
+        currentScore -
+          action.estimatedReduction,
+      );
+
+      runningRiskScore = projectedScore;
+
+      return {
+        action,
+        currentScore,
+        projectedScore,
+      };
+    });
+
+  const totalRecommendedReduction =
+    recommendedWorkQueue.reduce(
+      (total, action) =>
+        total + action.estimatedReduction,
       0,
     );
 
@@ -382,80 +412,138 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
               );
             })}
 
-            {/* Recommended action outcome and asset actions */}
-            <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            {/* Equipment recommended work queue */}
+            <div className="col-span-full rounded-lg border border-gray-800 bg-[#10151d] px-4 py-3">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                    If all recommended actions are completed
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Recommended Work Queue
+                  </h4>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Ranked by calculated equipment risk reduction.
+                  </p>
+                </div>
+
+                <span className="text-xs text-slate-500">
+                  {item.name}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {recommendedWorkQueueRows.map(
+                  (
+                    {
+                      action,
+                      currentScore,
+                      projectedScore,
+                    },
+                    index,
+                  ) => (
+                    <div
+                      key={`${action.driver}-${index}`}
+                      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
+                    >
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
+                        {index + 1}
+                      </span>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-100">
+                            {action.recommendedAction ??
+                              action.evidence ??
+                              `Reduce ${action.driver} risk`}
+                          </p>
+
+                          <Badge className="h-auto rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
+                            {action.driver}
+                          </Badge>
+                        </div>
+
+                        {action.evidence &&
+                          action.evidence !==
+                            action.recommendedAction && (
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                              {action.evidence}
+                            </p>
+                          )}
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        <p className="text-[9px] font-medium uppercase tracking-wider text-slate-500">
+                          Asset risk
+                        </p>
+
+                        <p className="text-sm font-semibold text-emerald-400">
+                          −{action.estimatedReduction}
+                        </p>
+
+                        <p className="text-[10px] text-slate-500">
+                          {currentScore}
+                          <span className="mx-1">
+                            →
+                          </span>
+                          {projectedScore}
+                        </p>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 border-t border-gray-800 pt-3 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_280px]">
+                <div className="rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">
+                    Top 3 outcome
                   </p>
 
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">
-                        Current Risk
-                      </span>
-                      <span className="text-sm font-semibold text-slate-200">
-                        {item.riskScore}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">
-                        Predicted Risk
-                      </span>
-                      <span className="text-sm font-semibold text-emerald-400">
-                        {predictedScore}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">
-                        Risk Level
-                      </span>
-                      <span className="text-sm font-semibold text-slate-200">
-                        {item.riskLevel}
-                        <span className="mx-1.5 text-slate-500">
-                          →
-                        </span>
-                        <span className="text-emerald-400">
-                          {predictedLevel}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
+                  <p className="mt-1 text-sm font-semibold text-slate-100">
+                    {item.riskScore}
+                    <span className="mx-1.5 text-slate-600">
+                      →
+                    </span>
+                    <span className="text-emerald-400">
+                      {predictedScore}
+                    </span>
+                  </p>
                 </div>
 
-                <div className="flex flex-col justify-between gap-3 border-t border-emerald-500/15 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                      Actions
-                    </p>
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
-                      Open the complete asset record, work history and supporting intelligence.
-                    </p>
-                  </div>
+                <div className="rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">
+                    Risk reduction
+                  </p>
 
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                    <Button
-                      type="button"
-                      onClick={() => onNavigate(item.id)}
-                      className="h-auto w-full justify-center gap-2 border border-blue-400/40 bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-[0_0_8px_rgba(59,130,246,0.35)] hover:bg-blue-500 hover:shadow-[0_0_12px_rgba(59,130,246,0.5)]"
-                    >
-                      View full asset intelligence →
-                    </Button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onNavigateToHistory(item.id)
-                      }
-                      className="w-full rounded-md border border-gray-700 bg-transparent px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-gray-800 hover:text-slate-100"
-                    >
-                      View History
-                    </button>
-                  </div>
+                  <p className="mt-1 text-sm font-semibold text-emerald-400">
+                    −{totalRecommendedReduction} points
+                  </p>
                 </div>
+
+                <div className="rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">
+                    Risk level
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-200">
+                    {item.riskLevel}
+                    <span className="mx-1.5 text-slate-600">
+                      →
+                    </span>
+                    <span className="text-emerald-400">
+                      {predictedLevel}
+                    </span>
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() =>
+                    onNavigate(item.id)
+                  }
+                  className="h-full min-h-[52px] w-full justify-center gap-2 border border-blue-400/40 bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-[0_0_8px_rgba(59,130,246,0.35)] hover:bg-blue-500 hover:shadow-[0_0_12px_rgba(59,130,246,0.5)]"
+                >
+                  View full asset intelligence →
+                </Button>
               </div>
             </div>
           </div>
@@ -1217,9 +1305,6 @@ export const EquipmentSection = (): JSX.Element => {
                   <ExpandedPanel
                     item={item}
                     onNavigate={navigateToEquipment}
-                    onNavigateToHistory={(id) =>
-                      navigate(`/equipment/${id}/history`)
-                    }
                   />
                 )}
               </div>
