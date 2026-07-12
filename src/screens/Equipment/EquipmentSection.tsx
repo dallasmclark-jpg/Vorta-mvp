@@ -18,6 +18,19 @@ import type { EquipmentListItem, EquipmentRiskExplanation, EquipmentRiskHistory 
 
 // ─── Local display-only constants ────────────────────────────────────────────
 
+type EquipmentFilterChip =
+  | "Area"
+  | "At Risk"
+  | "Overdue PMs"
+  | "Calibration Due";
+
+const FILTER_CHIPS: readonly EquipmentFilterChip[] = [
+  "Area",
+  "At Risk",
+  "Overdue PMs",
+  "Calibration Due",
+];
+
 const RISK_LEGEND = [
   { label: "0-20% Minimal",    dotClass: "bg-emerald-500" },
   { label: "21-40% Low",       dotClass: "bg-lime-500" },
@@ -532,6 +545,33 @@ export const EquipmentSection = (): JSX.Element => {
     overduePmOnly ||
     calibrationDueOnly;
 
+  const handleChipClick = (
+    chip: EquipmentFilterChip,
+  ) => {
+    switch (chip) {
+      case "Area":
+        if (activeArea) {
+          setActiveArea(null);
+          navigate("/equipment");
+        }
+        break;
+
+      case "At Risk":
+        setAtRiskOnly((current) => !current);
+        break;
+
+      case "Overdue PMs":
+        setOverduePmOnly((current) => !current);
+        break;
+
+      case "Calibration Due":
+        setCalibrationDueOnly(
+          (current) => !current,
+        );
+        break;
+    }
+  };
+
   const toggleRow = (id: string) => {
     setExpandedId((prev) => (prev === id ? "" : id));
   };
@@ -627,26 +667,50 @@ export const EquipmentSection = (): JSX.Element => {
       {/* ── Filter Chips ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
         {FILTER_CHIPS.map((chip) => {
-          const isActive = activeChip === chip || (chip === "Area" && activeArea !== null);
+          const isActive =
+            chip === "Area"
+              ? activeArea !== null
+              : chip === "At Risk"
+                ? atRiskOnly
+                : chip === "Overdue PMs"
+                  ? overduePmOnly
+                  : calibrationDueOnly;
+
           return (
             <button
               key={chip}
               type="button"
-              onClick={() => handleChipClick(chip)}
+              onClick={() =>
+                handleChipClick(chip)
+              }
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 isActive
                   ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
                   : "border-gray-700 bg-[#141820] text-slate-400 hover:border-gray-600 hover:text-slate-200"
               }`}
             >
-              {chip}{chip === "Area" && activeArea ? `: ${areaChipLabel}` : ""}
+              {chip}
+              {chip === "Area" && activeArea
+                ? `: ${areaChipLabel}`
+                : ""}
             </button>
           );
         })}
-        {(activeArea || search) && (
+
+        {hasActiveFilters && (
           <button
             type="button"
-            onClick={() => { setActiveArea(null); setActiveChip(null); setSearch(""); navigate("/equipment", { replace: true }); }}
+            onClick={() => {
+              setActiveArea(null);
+              setSearch("");
+              setAtRiskOnly(false);
+              setOverduePmOnly(false);
+              setCalibrationDueOnly(false);
+              navigate(
+                "/equipment",
+                { replace: true },
+              );
+            }}
             className="rounded-full border border-gray-700 bg-[#141820] px-3 py-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-300"
           >
             Clear all
