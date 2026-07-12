@@ -58,11 +58,16 @@ const RISK_LEGEND = [
 
 function riskBadgeClass(level: EquipmentListItem["riskLevel"]): string {
   switch (level) {
-    case "Critical": return "bg-[#ef444420] text-red-500";
-    case "High":     return "bg-[#f9731620] text-orange-400";
-    case "Medium":   return "bg-[#eab30820] text-yellow-400";
-    case "Low":      return "bg-[#84cc1620] text-lime-500";
-    default:         return "bg-[#10b98120] text-emerald-500";
+    case "Critical":
+      return "bg-[#ef444420] text-red-400";
+    case "High":
+      return "bg-[#f9731620] text-orange-300";
+    case "Medium":
+      return "bg-[#eab30820] text-yellow-300";
+    case "Low":
+      return "bg-[#84cc1620] text-lime-400";
+    default:
+      return "bg-[#10b98120] text-emerald-400";
   }
 }
 
@@ -999,7 +1004,7 @@ export const EquipmentSection = (): JSX.Element => {
             </div>
 
             {riskDriverLegend.length > 0 && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="flex translate-y-0.5 flex-wrap items-center gap-x-3 gap-y-1">
                 {riskDriverLegend.map((driver) => (
                   <span
                     key={driver.label}
@@ -1048,7 +1053,7 @@ export const EquipmentSection = (): JSX.Element => {
                   aria-expanded={isExpanded}
                   onClick={() => toggleRow(item.id)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(item.id); } }}
-                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 px-4 py-3 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
+                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 px-4 py-3 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141e2c]" : ""}`}
                 >
                   <div className="flex items-center justify-center">
                     {isExpanded
