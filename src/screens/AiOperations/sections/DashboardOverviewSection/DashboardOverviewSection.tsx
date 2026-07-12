@@ -100,7 +100,7 @@ const getLabourRiskPresentation = (
 
   if (score >= 40) {
     return {
-      level: "Med",
+      level: "Medium",
       badgeClassName:
         "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
       progressClassName: "bg-yellow-400",
@@ -247,14 +247,14 @@ const RiskMeter = ({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={clampedValue}
-      className={`relative h-3 w-full overflow-visible rounded-full bg-[#050914] transition-shadow duration-300 ${
+      className={`relative h-3 w-full overflow-visible rounded-lg bg-[#050914] ring-1 ring-inset ring-slate-600/45 transition-shadow duration-300 ${
         isEmphasising
-          ? "shadow-[0_0_16px_rgba(255,255,255,0.18)]"
+          ? "shadow-[0_0_10px_rgba(255,255,255,0.10)]"
           : ""
       }`}
     >
       <div
-        className={`h-full rounded-l-full rounded-r-none ${
+        className={`h-full rounded-lg opacity-80 ${
           animate
             ? "motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
             : ""
@@ -265,7 +265,7 @@ const RiskMeter = ({
       />
 
       <span
-        className={`absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-slate-100 shadow-[0_0_6px_rgba(255,255,255,0.35)] ${
+        className={`absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-white/75 shadow-[0_0_4px_rgba(255,255,255,0.22)] ${
           animate
             ? "motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
             : ""
@@ -274,7 +274,7 @@ const RiskMeter = ({
           left:
             displayedValue <= 0
               ? "0"
-              : `calc(${displayedValue}% - 2px)`,
+              : `calc(${displayedValue}% - 1px)`,
         }}
         aria-hidden="true"
       />
@@ -2477,7 +2477,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     area.riskScore >= 85 ? "bg-red-500/20 text-red-400" :
                     area.riskScore >= 65 ? "bg-orange-500/20 text-orange-400" :
                     area.riskScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                    area.riskScore >= 20 ? "bg-green-500/20 text-green-400" :
+                    area.riskScore >= 20 ? "bg-emerald-500/20 text-emerald-400" :
                     "bg-cyan-500/20 text-cyan-400";
 
                   const progressClass =
