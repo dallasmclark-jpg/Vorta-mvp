@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Network,
   Sparkles,
+  UploadCloud,
   Users,
   Wrench,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
 import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentAiInsights } from "../Equipment";
 import { SupportSection } from "../Support";
+import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
@@ -54,8 +56,21 @@ const nav: NavGroup[] = [
 ];
 
 const secondaryNav = [
-  { label: "Support",  icon: Headphones, to: "/support"  },
-  { label: "Settings", icon: Cog,        to: "/settings" },
+  {
+    label: "Support",
+    icon: Headphones,
+    to: "/support",
+  },
+  {
+    label: "Data Import",
+    icon: UploadCloud,
+    to: "/settings/data-import",
+  },
+  {
+    label: "Settings",
+    icon: Cog,
+    to: "/settings",
+  },
 ];
 
 export const AiOperations = (): JSX.Element => (
@@ -68,6 +83,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="training"           element={<TrainingSection />} />
       <Route path="training-providers" element={<TrainingProvidersSection />} />
       <Route path="ai-matching"        element={<AiMatchingSection />} />
+      <Route path="settings/data-import" element={<SapDataImportSection />} />
       <Route path="settings"           element={<SettingsSection />} />
       <Route path="equipment"          element={<EquipmentSection />} />
       <Route path="equipment/:equipmentId/overview"     element={<EquipmentOverview />} />
