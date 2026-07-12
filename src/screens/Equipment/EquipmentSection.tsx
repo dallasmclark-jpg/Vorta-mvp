@@ -72,19 +72,34 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
   const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex h-2 w-full overflow-hidden rounded-full">
-        {segments.map((seg) => (
-          <div
-            key={seg.label}
-            style={{ width: `${(seg.pct / total) * 100}%`, backgroundColor: seg.color }}
-          />
-        ))}
+      <div className="flex h-5 w-full overflow-hidden rounded-md">
+        {segments.map((seg) => {
+          const segmentWidth =
+            (seg.pct / total) * 100;
+          return (
+            <div
+              key={seg.label}
+              title={`${seg.label}: ${seg.pct}%`}
+              style={{
+                width: `${segmentWidth}%`,
+                backgroundColor: seg.color,
+              }}
+              className="relative flex items-center justify-center overflow-hidden"
+            >
+              {segmentWidth >= 7 && (
+                <span className="truncate px-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
+                  {seg.pct}%
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {segments.map((seg) => (
           <span key={seg.label} className="inline-flex items-center gap-1 text-[11px] text-slate-400">
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${seg.dotClass}`} />
-            {seg.label} {seg.pct}%
+            {seg.label}
           </span>
         ))}
       </div>
@@ -123,11 +138,40 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
   const availableExplanationCount =
     Math.min(explanations.length, 5);
 
+  const latestHistoryScore =
+    history.length > 0
+      ? history[history.length - 1].riskScore
+      : null;
+
+  const weeklyBaselineScore =
+    history.length >= 2
+      ? history[
+          Math.max(
+            0,
+            history.length - 8,
+          )
+        ].riskScore
+      : null;
+
+  const weeklyChange =
+    latestHistoryScore !== null &&
+    weeklyBaselineScore !== null
+      ? latestHistoryScore -
+        weeklyBaselineScore
+      : null;
+
+  const monthlyChange =
+    latestHistoryScore !== null &&
+    history.length > 0
+      ? latestHistoryScore -
+        history[0].riskScore
+      : null;
+
   return (
-    <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
+    <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-3">
       {/* Why this risk? */}
-      <div className="border-t border-gray-800 pt-4">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="border-t border-gray-800 pt-3">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
             <p className="mt-0.5 text-[10px] text-slate-600">Ranked drivers, evidence and calculated risk reduction.</p>
@@ -152,11 +196,11 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         {explanations.length === 0 ? (
           <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
             {visibleExplanations.map((exp) => {
               const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
               return (
-                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
+                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-2.5">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold text-slate-200">
                       {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
@@ -196,7 +240,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                 predictedScore >= 20 ? "Low" : "Minimal";
               const currentLevel = item.riskLevel;
               return (
-                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5">
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
                     If all recommended actions are completed
                   </p>
@@ -224,13 +268,77 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
       </div>
 
       {/* AI Risk Trend + Actions */}
-      <div className="mt-5 grid grid-cols-1 gap-6 border-t border-gray-800 pt-4 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
+      <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-800 pt-3 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
 
         {/* 1 — AI Risk Trend */}
-        <div className="flex flex-col gap-3">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
-            <p className="mt-0.5 text-[10px] text-slate-600">30 day history</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                AI risk trend
+              </h4>
+              <p className="mt-0.5 text-[10px] text-slate-600">
+                30 day history
+              </p>
+            </div>
+
+            {history.length > 0 && (
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="inline-flex items-center gap-1.5 text-[10px]">
+                  <span className="text-slate-500">
+                    Weekly
+                  </span>
+                  {weeklyChange !== null ? (
+                    <span
+                      className={`font-semibold ${
+                        weeklyChange > 0
+                          ? "text-red-400"
+                          : weeklyChange < 0
+                            ? "text-emerald-400"
+                            : "text-slate-400"
+                      }`}
+                    >
+                      {weeklyChange > 0
+                        ? `▲ +${weeklyChange}`
+                        : weeklyChange < 0
+                          ? `▼ ${weeklyChange}`
+                          : "— 0"}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">
+                      —
+                    </span>
+                  )}
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 text-[10px]">
+                  <span className="text-slate-500">
+                    Monthly
+                  </span>
+                  {monthlyChange !== null ? (
+                    <span
+                      className={`font-semibold ${
+                        monthlyChange > 0
+                          ? "text-red-400"
+                          : monthlyChange < 0
+                            ? "text-emerald-400"
+                            : "text-slate-400"
+                      }`}
+                    >
+                      {monthlyChange > 0
+                        ? `▲ +${monthlyChange}`
+                        : monthlyChange < 0
+                          ? `▼ ${monthlyChange}`
+                          : "— 0"}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">
+                      —
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           {history.length === 0 ? (
             <p className="text-[11px] text-slate-500">No historical snapshots available.</p>
@@ -239,21 +347,17 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
               label: h.snapshotLabel ?? formatSnapshotDate(h.snapshotDate),
               value: h.riskScore,
             }));
-            const todayScore = trend[trend.length - 1].value;
-            const sevenDaysAgo = history.length >= 2 ? history[Math.max(0, history.length - 8)].riskScore : null;
-            const weeklyChange = sevenDaysAgo !== null ? todayScore - sevenDaysAgo : null;
-            const monthlyChange = todayScore - trend[0].value;
             const maxScore = Math.max(...trend.map((t) => t.value)) || 1;
             const lastEntry = history[history.length - 1];
             return (
               <div className="flex flex-col gap-2">
-                <div className="flex min-h-[104px] items-end justify-between gap-1">
+                <div className="flex min-h-[88px] items-end justify-between gap-1">
                   {trend.map((point, i) => {
                     const isLast = i === trend.length - 1;
                     const barHeight = Math.max(
                       10,
                       Math.round(
-                        (point.value / maxScore) * 72,
+                        (point.value / maxScore) * 58,
                       ),
                     );
                     return (
@@ -273,24 +377,6 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                   })}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500">Weekly</span>
-                  {weeklyChange !== null ? (
-                    <span className={`text-[10px] font-semibold ${weeklyChange > 0 ? "text-red-400" : weeklyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
-                      {weeklyChange > 0 ? `▲ +${weeklyChange}` : weeklyChange < 0 ? `▼ ${weeklyChange}` : "— 0"}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500">--</span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500">Monthly</span>
-                  <span className={`text-[10px] font-semibold ${monthlyChange > 0 ? "text-red-400" : monthlyChange < 0 ? "text-emerald-400" : "text-slate-400"}`}>
-                    {monthlyChange > 0 ? `▲ +${monthlyChange}` : monthlyChange < 0 ? `▼ ${monthlyChange}` : "— 0"}
-                  </span>
-                </div>
-
                 {lastEntry.primaryDriver && (
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-slate-500">Primary driver</span>
@@ -307,7 +393,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         </div>
 
         {/* 2 — Actions */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
           <p className="text-sm leading-relaxed text-slate-300">
             Open the complete asset record.
