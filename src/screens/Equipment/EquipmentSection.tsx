@@ -616,7 +616,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                             style={{
                               height: `${barHeight}px`,
                             }}
-                            className={`w-[68%] max-w-[72px] rounded-t-sm border ${
+                            className={`w-[88%] max-w-[160px] rounded-t-sm border ${
                               point.isLive
                                 ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
                                 : "border-slate-500/70 bg-slate-700/40"
