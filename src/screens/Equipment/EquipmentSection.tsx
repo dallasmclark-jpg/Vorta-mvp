@@ -97,10 +97,10 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
               title={`${seg.label}: ${seg.pct}%`}
               style={{
                 width: `${segmentWidth}%`,
-                backgroundColor: hexToRgba(seg.color, 0.24),
-                borderColor: seg.color,
+                backgroundColor: hexToRgba(seg.color, 0.22),
+                borderColor: hexToRgba(seg.color, 0.55),
               }}
-              className="relative flex items-center justify-center overflow-hidden border-y-2 border-r-2 first:border-l-2"
+              className="relative flex items-center justify-center overflow-hidden border-y border-r first:border-l"
             >
               {segmentWidth >= 7 && (
                 <span className="truncate px-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
