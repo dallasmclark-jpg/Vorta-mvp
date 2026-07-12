@@ -1662,10 +1662,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     );
                   }}
                   aria-expanded={isRiskDetailOpen}
-                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
+                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
                     hasOpenedRiskPlan
-                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-none hover:border-amber-400/45 hover:bg-amber-400/15"
-                      : "animate-pulse border-amber-300/60 bg-amber-400 text-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.30)] hover:bg-amber-300 hover:shadow-[0_0_24px_rgba(251,191,36,0.45)]"
+                      ? "border-blue-400/20 bg-blue-500/5 text-blue-400 shadow-none hover:border-blue-400/30 hover:bg-blue-500/10"
+                      : "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.30)] hover:bg-cyan-400/30 hover:shadow-[0_0_24px_rgba(34,211,238,0.45)]"
                   }`}
                 >
                   {isRiskDetailOpen
