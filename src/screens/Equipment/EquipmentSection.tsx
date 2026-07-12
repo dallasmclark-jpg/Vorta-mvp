@@ -99,7 +99,7 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
               width: `${segmentWidth}%`,
               backgroundColor: hexToRgba(
                 seg.color,
-                0.2,
+                0.24,
               ),
             }}
             className="relative flex items-center justify-center overflow-hidden border-r border-white/10 last:border-r-0"
@@ -980,7 +980,7 @@ export const EquipmentSection = (): JSX.Element => {
       <div className="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
 
         {/* Table header */}
-        <div className="grid grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 border-b border-gray-800 px-4 py-3">
+        <div className="grid grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 border-b border-gray-800 px-4 py-4">
           <div />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Equipment</span>
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -1003,7 +1003,7 @@ export const EquipmentSection = (): JSX.Element => {
                 {riskDriverLegend.map((driver) => (
                   <span
                     key={driver.label}
-                    className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-400"
                   >
                     <span
                       className={`h-[5px] w-[5px] shrink-0 rounded-full ${driver.dotClass}`}
@@ -1048,7 +1048,7 @@ export const EquipmentSection = (): JSX.Element => {
                   aria-expanded={isExpanded}
                   onClick={() => toggleRow(item.id)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(item.id); } }}
-                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 px-4 py-4 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
+                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 px-4 py-3 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
                 >
                   <div className="flex items-center justify-center">
                     {isExpanded
@@ -1101,12 +1101,21 @@ export const EquipmentSection = (): JSX.Element => {
           })
         )}
 
-        {/* Legend */}
+        {/* Overall risk scale */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-800 px-5 py-3">
-          {RISK_LEGEND.map((l) => (
-            <span key={l.label} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-              <span className={`h-2 w-2 rounded-full ${l.dotClass}`} />
-              {l.label}
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            Overall risk scale
+          </span>
+
+          {RISK_LEGEND.map((level) => (
+            <span
+              key={level.label}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${level.dotClass}`}
+              />
+              {level.label}
             </span>
           ))}
         </div>
