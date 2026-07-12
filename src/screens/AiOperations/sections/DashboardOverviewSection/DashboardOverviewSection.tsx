@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ArrowRight,
   Info,
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
@@ -1403,51 +1402,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
           preservedScrollLeft;
       }
     });
-  };
-
-  const handleRiskKpiClick = (
-    kpi: RiskReductionKpi,
-  ) => {
-    if (
-      kpi.key === "risk_reduction_achieved"
-    ) {
-      setIsRiskDetailOpen(true);
-      return;
-    }
-
-    if (!riskKpiDashboard) {
-      return;
-    }
-
-    const query = new URLSearchParams({
-      focus: kpi.key,
-      period:
-        riskKpiDashboard.periodKey,
-      start:
-        riskKpiDashboard.periodStart,
-      end:
-        riskKpiDashboard.periodEnd,
-      scope:
-        activeRiskScope?.scopeType ??
-        "site",
-    });
-
-    if (activeScopeArea) {
-      query.set(
-        "area",
-        activeScopeArea,
-      );
-    }
-
-    const separator = kpi.drilldownRoute.includes(
-      "?",
-    )
-      ? "&"
-      : "?";
-
-    navigate(
-      `${kpi.drilldownRoute}${separator}${query.toString()}`,
-    );
   };
 
   return (
@@ -3200,14 +3154,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   <Card
                     key={kpi.key}
                     data-risk-kpi-card
-                    onClick={() => {
-                      if (isInfoOpen) {
-                        return;
-                      }
-
-                      handleRiskKpiClick(kpi);
-                    }}
-                    className={`group relative h-[288px] w-[260px] min-w-[260px] snap-start cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] sm:w-[280px] sm:min-w-[280px] xl:w-[292px] xl:min-w-[292px] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                    className={`group relative h-[288px] w-[260px] min-w-[260px] snap-start overflow-hidden rounded-xl border shadow-none transition-all hover:border-blue-500/30 hover:bg-[#181e2a] sm:w-[280px] sm:min-w-[280px] xl:w-[292px] xl:min-w-[292px] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
                   >
                     <CardContent
                       aria-hidden={isInfoOpen}
@@ -3317,16 +3264,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
                       </div>
 
-                      <div className="flex h-7 items-center justify-between gap-3 border-t border-gray-800 pt-2">
+                      <div className="flex h-7 items-center gap-3 border-t border-gray-800 pt-2">
                         <span className="truncate text-[10px] text-slate-500">
                           {kpi.noData
                             ? "No eligible records"
                             : `${kpi.numerator} of ${kpi.denominator}`}
-                        </span>
-
-                        <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-blue-400 transition-colors group-hover:text-blue-300">
-                          View detail
-                          <ArrowRight className="h-3 w-3" />
                         </span>
                       </div>
                     </CardContent>
