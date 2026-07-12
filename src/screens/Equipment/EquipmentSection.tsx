@@ -89,33 +89,30 @@ function formatSnapshotDate(iso: string): string {
 function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
   const [history, setHistory] = useState<EquipmentRiskHistory[]>([]);
+  const [
+    showAllExplanations,
+    setShowAllExplanations,
+  ] = useState(false);
 
   useEffect(() => {
+    setShowAllExplanations(false);
     getEquipmentRiskExplanations(item.id).then(setExplanations);
     getEquipmentRiskHistory(item.id).then(setHistory);
   }, [item.id]);
 
+  const visibleExplanations =
+    showAllExplanations
+      ? explanations.slice(0, 5)
+      : explanations.slice(0, 3);
+
+  const availableExplanationCount =
+    Math.min(explanations.length, 5);
+
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.85fr)_minmax(320px,1.6fr)_minmax(220px,0.9fr)]">
 
-        {/* 1 — Risk summary */}
-        <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk summary</h4>
-          <div className="flex flex-col gap-3">
-            {item.breakdown.map((seg) => (
-              <div key={seg.label} className="flex items-start gap-2">
-                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${seg.dotClass}`} aria-hidden="true" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium leading-snug text-slate-200">{seg.label}</span>
-                  <span className="text-xs text-slate-500">{seg.pct}% of risk score</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 2 — Asset info */}
+        {/* 1 — Asset Info */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Asset info</h4>
           <div className="flex flex-col gap-2.5">
@@ -142,7 +139,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           </div>
         </div>
 
-        {/* 3 — AI risk trend */}
+        {/* 2 — AI Risk Trend */}
         <div className="flex flex-col gap-3">
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
@@ -163,10 +160,15 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
             const lastEntry = history[history.length - 1];
             return (
               <div className="flex flex-col gap-2">
-                <div className="flex items-end justify-between gap-1">
+                <div className="flex min-h-[104px] items-end justify-between gap-1">
                   {trend.map((point, i) => {
                     const isLast = i === trend.length - 1;
-                    const barHeight = Math.max(8, Math.round((point.value / maxScore) * 40));
+                    const barHeight = Math.max(
+                      10,
+                      Math.round(
+                        (point.value / maxScore) * 72,
+                      ),
+                    );
                     return (
                       <div key={`${point.label}-${i}`} className="flex flex-1 flex-col items-center gap-1">
                         <span className={`text-[9px] font-semibold ${isLast ? "text-blue-400" : "text-slate-500"}`}>
@@ -217,7 +219,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           })()}
         </div>
 
-        {/* 4 — Actions */}
+        {/* 3 — Actions */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
           <p className="text-sm leading-relaxed text-slate-300">
@@ -225,9 +227,6 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           </p>
           <p className="text-[10px] leading-relaxed text-slate-500">
             Includes PMs, work orders, history, spares, documents and AI insights.
-          </p>
-          <p className="text-[10px] text-slate-600">
-            Click asset name or View full asset intelligence to open the full equipment page.
           </p>
           <div className="mt-auto flex flex-col gap-2">
             <Button
@@ -251,15 +250,36 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
       {/* Why this risk? */}
       <div className="mt-5 border-t border-gray-800 pt-4">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this risk?</h4>
+            <p className="mt-0.5 text-[10px] text-slate-600">Ranked drivers, evidence and calculated risk reduction.</p>
+          </div>
+          {explanations.length > 3 && (
+            <button
+              type="button"
+              onClick={() =>
+                setShowAllExplanations(
+                  (current) => !current,
+                )
+              }
+              aria-expanded={showAllExplanations}
+              className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
+            >
+              {showAllExplanations
+                ? "Show top 3"
+                : `View all ${availableExplanationCount} drivers`}
+            </button>
+          )}
+        </div>
         {explanations.length === 0 ? (
           <p className="text-sm text-slate-500">No risk explanation available for this asset yet.</p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {explanations.slice(0, 5).map((exp) => {
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+            {visibleExplanations.map((exp) => {
               const afterScore = Math.max(0, item.riskScore - exp.estimatedReduction);
               return (
-                <div key={exp.driver} className="rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
+                <div key={exp.driver} className="h-full rounded-lg border border-gray-800 bg-[#141820] px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold text-slate-200">
                       {exp.driver} · <span className="text-blue-400">{exp.driverPct}%</span>
@@ -299,7 +319,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                 predictedScore >= 20 ? "Low" : "Minimal";
               const currentLevel = item.riskLevel;
               return (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                <div className="col-span-full rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
                     If all recommended actions are completed
                   </p>
