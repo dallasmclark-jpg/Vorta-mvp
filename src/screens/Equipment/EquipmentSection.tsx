@@ -347,8 +347,10 @@ function KpiCard({ label, value, badgeLabel, badgeClass, showBar, barValue }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const normalizeAreaKey = (value: string): string =>
-  value
+const normalizeAreaKey = (
+  value: unknown,
+): string =>
+  String(value ?? "")
     .normalize("NFKD")
     .trim()
     .toLowerCase()
