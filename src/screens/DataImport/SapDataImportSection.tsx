@@ -1519,30 +1519,6 @@ export const SapDataImportSection =
                   </InlineAlert>
                 ) : null}
 
-                {isMb52Preview &&
-                unmatchedMaterialCount > 0 ? (
-                  <InlineAlert
-                    tone="warning"
-                    title="Some stock materials are not assigned by IH01"
-                  >
-                    <p>
-                      {unmatchedMaterialCount.toLocaleString(
-                        "en-GB",
-                      )}{" "}
-                      imported material numbers do not currently match an equipment BOM. Their stock will be retained, but no equipment spare will be updated until the material is assigned through IH01.
-                    </p>
-
-                    {unmatchedMaterialNumbers.length >
-                    0 ? (
-                      <p className="mt-2 font-mono">
-                        {unmatchedMaterialNumbers
-                          .slice(0, 20)
-                          .join(" · ")}
-                      </p>
-                    ) : null}
-                  </InlineAlert>
-                ) : null}
-
                 {preview.transactionCode ===
                   "IH01" &&
                 ignoredHierarchyRowCount >
@@ -2008,6 +1984,68 @@ export const SapDataImportSection =
                     />
                   ) : null}
                 </div>
+
+                {isMb52Result ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <MetricCard
+                      label="Equipment spares updated"
+                      value={
+                        result.synchronisedComponentCount ??
+                          0
+                      }
+                    />
+
+                    <MetricCard
+                      label="BOM materials matched"
+                      value={
+                        result.matchedBomMaterialCount ??
+                          0
+                      }
+                    />
+
+                    <MetricCard
+                      label="Materials not in IH01"
+                      value={
+                        result.unmatchedMaterialCount ??
+                          0
+                      }
+                    />
+
+                    <MetricCard
+                      label="BOM parts without stock"
+                      value={
+                        result.bomMaterialsWithoutStockCount ??
+                          0
+                      }
+                    />
+
+                    <MetricCard
+                      label="Stale stock rows removed"
+                      value={
+                        result.deletedStockRows ??
+                          0
+                      }
+                    />
+                  </div>
+                ) : null}
+
+                {isMb52Result ? (
+                  result.snapshotReplaced ? (
+                    <InlineAlert
+                      tone="success"
+                      title="Stock snapshot replaced"
+                    >
+                      The confirmed plant and storage-location scopes were refreshed and stale stock rows were removed before equipment spare availability was recalculated.
+                    </InlineAlert>
+                  ) : (
+                    <InlineAlert
+                      tone="info"
+                      title="Stock rows merged"
+                    >
+                      Existing stock rows that were not included in this upload were retained. Matching equipment spare availability was recalculated from the current material ledger.
+                    </InlineAlert>
+                  )
+                ) : null}
 
                 {result.riskRefreshed ? (
                   <InlineAlert
