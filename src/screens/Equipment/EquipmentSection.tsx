@@ -87,43 +87,42 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
   const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="w-full rounded-lg border border-slate-700/60 bg-slate-900/60 p-px">
-        <div className="flex h-6 w-full overflow-hidden rounded-[7px]">
-          {segments.map((seg) => {
-            const segmentWidth =
-              (seg.pct / total) * 100;
+      <div className="flex h-6 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-slate-600/45">
+        {segments.map((seg) => {
+          const segmentWidth =
+            (seg.pct / total) * 100;
 
-            return (
-              <div
-                key={seg.label}
-                title={`${seg.label}: ${seg.pct}%`}
-                style={{
-                  width: `${segmentWidth}%`,
-                  backgroundColor: hexToRgba(
-                    seg.color,
-                    0.24,
-                  ),
-                  borderColor: hexToRgba(
-                    seg.color,
-                    0.38,
-                  ),
-                }}
-                className="relative flex items-center justify-center overflow-hidden border-r last:border-r-0"
-              >
-                {segmentWidth >= 7 && (
-                  <span className="truncate px-1 text-[10px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
-                    {seg.pct}%
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div
+              key={seg.label}
+              title={`${seg.label}: ${seg.pct}%`}
+              style={{
+                width: `${segmentWidth}%`,
+                backgroundColor: hexToRgba(
+                  seg.color,
+                  0.2,
+                ),
+              }}
+              className="relative flex items-center justify-center overflow-hidden border-r border-white/10 last:border-r-0"
+            >
+              {segmentWidth >= 7 && (
+                <span className="truncate px-1 text-[10px] font-semibold tabular-nums text-slate-100 [text-shadow:0_1px_2px_rgba(0,0,0,0.65)]">
+                  {seg.pct}%
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {segments.map((seg) => (
-          <span key={seg.label} className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${seg.dotClass}`} />
+          <span
+            key={seg.label}
+            className="inline-flex items-center gap-1.5 text-[10px] text-slate-500"
+          >
+            <span
+              className={`h-[5px] w-[5px] shrink-0 rounded-full ${seg.dotClass}`}
+            />
             {seg.label}
           </span>
         ))}
