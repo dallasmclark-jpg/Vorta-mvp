@@ -65,17 +65,67 @@ interface NavItemRowProps {
   indent?: boolean;
 }
 
-function NavItemRow({ item, accent, labelVisible, indent = false }: NavItemRowProps) {
-  const { active, hover } = accentMap[accent];
+function NavItemRow({
+  item,
+  accent,
+  labelVisible,
+  indent = false,
+}: NavItemRowProps) {
+  const {
+    active,
+    hover,
+  } = accentMap[accent];
+
   const Icon = item.icon;
+  const location = useLocation();
+
+  const normalisePath = (
+    path: string,
+  ): string => {
+    if (path === "/") {
+      return path;
+    }
+
+    return (
+      path.replace(
+        /\/+$/,
+        "",
+      ) || "/"
+    );
+  };
+
+  const currentPath =
+    normalisePath(
+      location.pathname,
+    );
+
+  const targetPath =
+    normalisePath(item.to);
+
+  const isItemActive =
+    item.end === true
+      ? currentPath ===
+        targetPath
+      : currentPath ===
+          targetPath ||
+        currentPath.startsWith(
+          `${targetPath}/`,
+        );
+
   return (
     <NavLink
       to={item.to}
       end={item.end}
       title={item.label}
-      className={({ isActive }) =>
-        `${itemBase(hover)} ${indent ? "pl-7 xl:pl-8" : ""} ${
-          isActive ? active : "text-slate-400 hover:text-slate-200"
+      className={() =>
+        `${itemBase(hover)} ${
+          indent
+            ? "pl-7 xl:pl-8"
+            : ""
+        } ${
+          isItemActive
+            ? active
+            : "text-slate-400 hover:text-slate-200"
         }`
       }
     >

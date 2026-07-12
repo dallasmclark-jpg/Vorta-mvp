@@ -35,6 +35,8 @@ import {
 
 import { Button } from "../../components/ui/button";
 
+import { Select } from "../../components/Select";
+
 import {
   getSapImportBootstrap,
   getSapImportHistory,
@@ -572,6 +574,40 @@ export const SapDataImportSection =
           bootstrap,
           selectedSiteId,
         ],
+      );
+
+    const siteOptions =
+      useMemo(
+        () =>
+          bootstrap?.sites.map(
+            (site) => ({
+              value: site.id,
+              label: site.name,
+            }),
+          ) ?? [],
+        [bootstrap],
+      );
+
+    const transactionOptions =
+      useMemo(
+        () => [
+          {
+            value: "AUTO",
+            label:
+              "Auto detect from headers",
+          },
+          ...(
+            bootstrap?.transactions.map(
+              (transaction) => ({
+                value:
+                  transaction.code,
+                label:
+                  transaction.label,
+              }),
+            ) ?? []
+          ),
+        ],
+        [bootstrap],
       );
 
     const sampleColumns =
@@ -1135,90 +1171,48 @@ export const SapDataImportSection =
 
             <CardContent className="space-y-5 p-5">
               <div className="grid gap-4 lg:grid-cols-2">
-                <label className="space-y-2">
+                <div className="space-y-2">
                   <span className="text-xs font-medium text-slate-400">
                     Site
                   </span>
 
-                  <select
-                    value={
-                      selectedSiteId
-                    }
-                    onChange={(
-                      event,
-                    ) => {
+                  <Select
+                    value={selectedSiteId}
+                    options={siteOptions}
+                    placeholder="Select site"
+                    onChange={(value) => {
                       setSelectedSiteId(
-                        event.target
-                          .value,
+                        value,
                       );
 
                       resetImportState();
                     }}
-                    className="h-10 w-full rounded-lg border border-gray-700 bg-[#0a0f17] px-3 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    {bootstrap.sites.map(
-                      (site) => (
-                        <option
-                          key={
-                            site.id
-                          }
-                          value={
-                            site.id
-                          }
-                        >
-                          {site.name}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
+                    className="w-full !h-10 border-gray-700 bg-[#0a0f17] px-3 text-slate-100"
+                  />
+                </div>
 
-                <label className="space-y-2">
+                <div className="space-y-2">
                   <span className="text-xs font-medium text-slate-400">
                     SAP transaction
                   </span>
 
-                  <select
-                    value={
-                      transactionCode
+                  <Select
+                    value={transactionCode}
+                    options={
+                      transactionOptions
                     }
-                    onChange={(
-                      event,
-                    ) => {
+                    placeholder="Select SAP transaction"
+                    onChange={(value) => {
                       setTransactionCode(
-                        event.target
-                          .value as
+                        value as
                           SapTransactionCode,
                       );
 
                       resetImportState();
                     }}
-                    className="h-10 w-full rounded-lg border border-gray-700 bg-[#0a0f17] px-3 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="AUTO">
-                      Auto detect from headers
-                    </option>
-
-                    {bootstrap.transactions.map(
-                      (
-                        transaction,
-                      ) => (
-                        <option
-                          key={
-                            transaction.code
-                          }
-                          value={
-                            transaction.code
-                          }
-                        >
-                          {
-                            transaction.label
-                          }
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
+                    className="w-full !h-10 border-gray-700 bg-[#0a0f17] px-3 text-slate-100"
+                  />
+                </div>
               </div>
 
               {transactionCode ===
