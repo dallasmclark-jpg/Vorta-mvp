@@ -9,6 +9,8 @@ import {
   RefreshCw,
   UserCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   ArrowRight,
 } from "lucide-react";
@@ -484,146 +486,87 @@ const getRiskPlanActionRoute = (
   return `/equipment/${equipmentId}/overview`;
 };
 
-const RISK_REDUCTION_OUTCOME_KEY =
-  "risk_reduction_achieved";
-const getRiskKpiRagPriority = (
-  ragStatus:
-    RiskReductionKpi["ragStatus"],
-): number => {
-  switch (ragStatus) {
-    case "red":
-      return 3;
-    case "amber":
-      return 2;
-    case "green":
-      return 1;
-    default:
-      return 0;
-  }
-};
-const getRiskKpiTargetShortfall = (
-  kpi: RiskReductionKpi,
-): number => {
-  if (
-    kpi.noData ||
-    kpi.value === null
-  ) {
-    return -1;
-  }
-  return Math.max(
-    0,
-    Number(kpi.target ?? 0) -
-      Number(kpi.value),
-  );
-};
-const sortRiskKpisByOperationalPriority = (
+const RISK_KPI_FIXED_DISPLAY_ORDER = [
+  "Risk Reduction Achieved",
+  "Critical Maintenance Compliance",
+  "Risk Schedule Compliance",
+  "Critical Skill Coverage",
+  "Risk Work Ready",
+  "Critical Spares Ready",
+] as const;
+
+const normalizeRiskKpiLabel = (
+  value: string,
+): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const orderRiskKpisForDisplay = (
   kpis: RiskReductionKpi[],
-): RiskReductionKpi[] =>
-  kpis
+): RiskReductionKpi[] => {
+  const orderByLabel = new Map(
+    RISK_KPI_FIXED_DISPLAY_ORDER.map(
+      (label, index) => [
+        normalizeRiskKpiLabel(label),
+        index,
+      ],
+    ),
+  );
+
+  return kpis
     .map((kpi, originalIndex) => ({
       kpi,
       originalIndex,
+      fixedIndex:
+        orderByLabel.get(
+          normalizeRiskKpiLabel(
+            kpi.label,
+          ),
+        ) ??
+        RISK_KPI_FIXED_DISPLAY_ORDER.length +
+          originalIndex,
     }))
-    .sort((a, b) => {
-      const aIsOutcome =
-        a.kpi.key ===
-        RISK_REDUCTION_OUTCOME_KEY;
-      const bIsOutcome =
-        b.kpi.key ===
-        RISK_REDUCTION_OUTCOME_KEY;
-      /*
-       * Keep the overall Risk Reduction
-       * Achieved result first.
-       */
-      if (aIsOutcome !== bIsOutcome) {
-        return aIsOutcome ? -1 : 1;
-      }
-      if (aIsOutcome && bIsOutcome) {
-        return (
-          a.originalIndex -
-          b.originalIndex
-        );
-      }
-      /*
-       * A genuine critical override must
-       * outrank the ordinary RAG order.
-       */
-      const criticalOverrideDifference =
-        Number(
-          Boolean(
-            b.kpi.criticalOverride,
-          ),
-        ) -
-        Number(
-          Boolean(
-            a.kpi.criticalOverride,
-          ),
-        );
-      if (
-        criticalOverrideDifference !== 0
-      ) {
-        return criticalOverrideDifference;
-      }
-      /*
-       * KPIs with eligible data take
-       * priority over no-data cards.
-       */
-      const aHasData =
-        !a.kpi.noData &&
-        a.kpi.value !== null;
-      const bHasData =
-        !b.kpi.noData &&
-        b.kpi.value !== null;
-      if (aHasData !== bHasData) {
-        return aHasData ? -1 : 1;
-      }
-      /*
-       * Red risks outrank amber risks,
-       * which outrank green/on-target KPIs.
-       */
-      const ragPriorityDifference =
-        getRiskKpiRagPriority(
-          b.kpi.ragStatus,
-        ) -
-        getRiskKpiRagPriority(
-          a.kpi.ragStatus,
-        );
-      if (ragPriorityDifference !== 0) {
-        return ragPriorityDifference;
-      }
-      /*
-       * Within the same RAG status,
-       * show the largest target shortfall
-       * first.
-       */
-      const targetShortfallDifference =
-        getRiskKpiTargetShortfall(
-          b.kpi,
-        ) -
-        getRiskKpiTargetShortfall(
-          a.kpi,
-        );
-      if (
-        targetShortfallDifference !== 0
-      ) {
-        return targetShortfallDifference;
-      }
-      /*
-       * Preserve the existing source order
-       * when all priority signals match.
-       */
-      return (
-        a.originalIndex -
-        b.originalIndex
-      );
-    })
+    .sort(
+      (a, b) =>
+        a.fixedIndex - b.fixedIndex,
+    )
     .map(({ kpi }) => kpi);
+};
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
   const riskKpiGridRef =
     useRef<HTMLDivElement>(null);
+
+  const handleRiskKpiScroll = (
+    direction: "previous" | "next",
+  ) => {
+    const container =
+      riskKpiGridRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const firstCard =
+      container.querySelector<HTMLElement>(
+        "[data-risk-kpi-card]",
+      );
+
+    const cardWidth =
+      firstCard?.offsetWidth ?? 280;
+
+    container.scrollBy({
+      left:
+        direction === "next"
+          ? cardWidth + 16
+          : -(cardWidth + 16),
+      behavior: "smooth",
+    });
+  };
 
   const [
     hasRiskKpiGridEnteredView,
@@ -1356,12 +1299,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
       return;
     }
 
+    const preservedScrollLeft =
+      riskKpiGridRef.current?.scrollLeft ??
+      0;
+
     setSelectedKpiPeriod(
       period,
     );
     setRiskKpiDashboard(
       cachedDashboard,
     );
+
+    window.requestAnimationFrame(() => {
+      if (riskKpiGridRef.current) {
+        riskKpiGridRef.current.scrollLeft =
+          preservedScrollLeft;
+      }
+    });
   };
 
   const handleRiskKpiClick = (
@@ -3291,15 +3245,51 @@ export const DashboardOverviewSection = (): JSX.Element => {
         </div>
 
         {riskKpiDashboard ? (
+          <div className="flex w-full items-center justify-end gap-2">
+            <span className="mr-1 text-xs text-slate-500">
+              Swipe or scroll to view all KPIs
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                handleRiskKpiScroll(
+                  "previous",
+                )
+              }
+              aria-label="Scroll to previous risk KPI"
+              title="Previous KPI"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                handleRiskKpiScroll(
+                  "next",
+                )
+              }
+              aria-label="Scroll to next risk KPI"
+              title="Next KPI"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+
+        {riskKpiDashboard ? (
           <div
             ref={riskKpiGridRef}
-            className={`grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 ${
+            tabIndex={0}
+            aria-label="Risk reduction KPI cards"
+            className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2 scroll-smooth touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
               riskKpiLoading
                 ? "opacity-70"
                 : "opacity-100"
             } transition-opacity`}
           >
-            {sortRiskKpisByOperationalPriority(
+            {orderRiskKpisForDisplay(
               riskKpiDashboard.kpis,
             ).map(
               (kpi, index) => {
@@ -3369,12 +3359,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 return (
                   <Card
                     key={kpi.key}
+                    data-risk-kpi-card
                     onClick={() =>
                       handleRiskKpiClick(
                         kpi,
                       )
                     }
-                    className={`group h-[288px] cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                    className={`group h-[288px] w-[260px] min-w-[260px] snap-start cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] sm:w-[280px] sm:min-w-[280px] xl:w-[292px] xl:min-w-[292px] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
                   >
                     <CardContent className="grid h-full grid-rows-[44px_minmax(156px,1fr)_28px] gap-3 overflow-hidden p-4">
                       <div className="flex items-start justify-between gap-3">
