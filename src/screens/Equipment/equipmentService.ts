@@ -1691,6 +1691,164 @@ export async function getEquipmentRiskHistory(
   }));
 }
 
+export type EquipmentRiskTrendRange =
+  | "7d"
+  | "30d"
+  | "90d"
+  | "ytd";
+
+export interface EquipmentRiskTrendPoint {
+  periodKey: EquipmentRiskTrendRange;
+  periodLabel: string;
+  bucketStart: string;
+  bucketEnd: string;
+  snapshotDate: string;
+  riskScore: number;
+  riskLevel: string;
+  primaryDriver: string | null;
+  mainDriverPct: number;
+  changeReason: string | null;
+  isLive: boolean;
+  sortOrder: number;
+}
+
+export type EquipmentRiskTrendSeries = Record<
+  EquipmentRiskTrendRange,
+  EquipmentRiskTrendPoint[]
+>;
+
+const EQUIPMENT_RISK_TREND_PERIODS:
+  readonly EquipmentRiskTrendRange[] = [
+    "7d",
+    "30d",
+    "90d",
+    "ytd",
+  ];
+
+function mapEquipmentRiskTrendPoint(
+  row: any,
+  requestedPeriod: EquipmentRiskTrendRange,
+): EquipmentRiskTrendPoint {
+  if (
+    row.risk_score === null ||
+    row.risk_score === undefined
+  ) {
+    throw new Error(
+      `Equipment risk trend returned a null risk score for ${requestedPeriod}.`,
+    );
+  }
+
+  return {
+    periodKey:
+      row.period_key === "7d" ||
+      row.period_key === "30d" ||
+      row.period_key === "90d" ||
+      row.period_key === "ytd"
+        ? row.period_key
+        : requestedPeriod,
+    periodLabel:
+      row.period_label ?? "",
+    bucketStart:
+      row.bucket_start ?? "",
+    bucketEnd:
+      row.bucket_end ?? "",
+    snapshotDate:
+      row.snapshot_date ?? "",
+    riskScore: Number(
+      row.risk_score,
+    ),
+    riskLevel:
+      row.risk_level ?? "Minimal",
+    primaryDriver:
+      row.primary_driver ?? null,
+    mainDriverPct: Number(
+      row.main_driver_pct ?? 0,
+    ),
+    changeReason:
+      row.change_reason ?? null,
+    isLive: Boolean(
+      row.is_live,
+    ),
+    sortOrder: Number(
+      row.sort_order ?? 0,
+    ),
+  };
+}
+
+export async function getEquipmentRiskTrendSeries(
+  equipmentId: string,
+): Promise<EquipmentRiskTrendSeries> {
+  const periodEntries =
+    await Promise.all(
+      EQUIPMENT_RISK_TREND_PERIODS.map(
+        async (period) => {
+          const { data, error } =
+            await supabase.rpc(
+              "vorta_get_equipment_risk_trend",
+              {
+                p_equipment_id:
+                  equipmentId,
+                p_period: period,
+                p_anchor_date: null,
+              },
+            );
+
+          if (error) {
+            throw new Error(
+              `vorta_get_equipment_risk_trend failed for ${period}: ${error.message}`,
+            );
+          }
+
+          const points = (
+            data ?? []
+          )
+            .map((row: any) =>
+              mapEquipmentRiskTrendPoint(
+                row,
+                period,
+              ),
+            )
+            .sort(
+              (left, right) =>
+                left.sortOrder -
+                right.sortOrder,
+            );
+
+          if (
+            points.length === 0
+          ) {
+            throw new Error(
+              `No equipment risk trend points were returned for ${period}.`,
+            );
+          }
+
+          const livePointCount =
+            points.filter(
+              (point) =>
+                point.isLive,
+            ).length;
+
+          if (
+            livePointCount !== 1
+          ) {
+            throw new Error(
+              `Equipment risk trend ${period} returned ${livePointCount} live points instead of one.`,
+            );
+          }
+
+          return [
+            period,
+            points,
+          ] as const;
+        },
+      ),
+    );
+
+  return Object.fromEntries(
+    periodEntries,
+  ) as EquipmentRiskTrendSeries;
+}
+
 export interface EquipmentRiskPrediction {
   currentScore: number;
   projected7: number;

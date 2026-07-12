@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
@@ -13,8 +13,19 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
-import { getEquipmentList, getEquipmentRiskExplanations, getEquipmentRiskHistory, resolveBuilding } from "./equipmentService";
-import type { EquipmentListItem, EquipmentRiskExplanation, EquipmentRiskHistory } from "./equipmentService";
+import {
+  getEquipmentList,
+  getEquipmentRiskExplanations,
+  getEquipmentRiskTrendSeries,
+  resolveBuilding,
+} from "./equipmentService";
+
+import type {
+  EquipmentListItem,
+  EquipmentRiskExplanation,
+  EquipmentRiskTrendRange,
+  EquipmentRiskTrendSeries,
+} from "./equipmentService";
 
 // ─── Local display-only constants ────────────────────────────────────────────
 
@@ -123,440 +134,59 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const DAY_MS = 86_400_000;
-
-function parseDateOnly(
-  iso: string,
-): Date {
-  const [year, month, day] = iso
-    .slice(0, 10)
-    .split("-")
-    .map(Number);
-
-  return new Date(
-    year,
-    month - 1,
-    day,
-  );
-}
-
-function startOfLocalDay(
-  date = new Date(),
-): Date {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-}
-
-function formatSnapshotDate(
-  iso: string,
-): string {
-  return parseDateOnly(
-    iso,
-  ).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-  });
-}
-
-type RiskTrendRange =
-  | "7d"
-  | "30d"
-  | "90d"
-  | "ytd";
+// ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 const RISK_TREND_RANGES: readonly {
-  key: RiskTrendRange;
+  key: EquipmentRiskTrendRange;
   label: string;
   description: string;
-  days: number | null;
-  maxPoints: number;
-  barWidth: number;
 }[] = [
   {
     key: "7d",
     label: "7D",
     description: "Last 7 days",
-    days: 7,
-    maxPoints: 7,
-    barWidth: 64,
   },
   {
     key: "30d",
     label: "30D",
     description: "Last 30 days",
-    days: 30,
-    maxPoints: 12,
-    barWidth: 40,
   },
   {
     key: "90d",
     label: "90D",
     description: "Last 90 days",
-    days: 90,
-    maxPoints: 14,
-    barWidth: 24,
   },
   {
     key: "ytd",
     label: "YTD",
     description: "Year to date",
-    days: null,
-    maxPoints: 18,
-    barWidth: 14,
   },
 ];
-
-function getRiskTrendStartDate(
-  range: RiskTrendRange,
-): Date {
-  const today =
-    startOfLocalDay();
-
-  if (range === "ytd") {
-    return new Date(
-      today.getFullYear(),
-      0,
-      1,
-    );
-  }
-
-  const config =
-    RISK_TREND_RANGES.find(
-      (item) =>
-        item.key === range,
-    ) ?? RISK_TREND_RANGES[1];
-
-  const periodDays =
-    config.days ?? 30;
-
-  const start = new Date(today);
-
-  start.setDate(
-    start.getDate() -
-      (periodDays - 1),
-  );
-
-  return start;
-}
-
-function getRiskTrendDays(
-  range: RiskTrendRange,
-): number {
-  const today =
-    startOfLocalDay();
-
-  const start =
-    getRiskTrendStartDate(
-      range,
-    );
-
-  return Math.max(
-    0,
-    Math.round(
-      (today.getTime() -
-        start.getTime()) /
-        DAY_MS,
-    ),
-  );
-}
-
-interface RiskTrendPoint {
-  key: string;
-  date: Date;
-  label: string;
-  value: number;
-  position: number;
-  isLive: boolean;
-}
-
-interface RiskTrendTick {
-  key: string;
-  label: string;
-  position: number;
-}
-
-function filterRiskHistoryForRange(
-  entries: EquipmentRiskHistory[],
-  range: RiskTrendRange,
-): EquipmentRiskHistory[] {
-  const start =
-    getRiskTrendStartDate(range);
-
-  const today =
-    startOfLocalDay();
-
-  return entries.filter((entry) => {
-    const entryDate =
-      parseDateOnly(
-        entry.snapshotDate,
-      );
-
-    return (
-      entryDate >= start &&
-      entryDate <= today
-    );
-  });
-}
-
-function sampleRiskHistory(
-  entries: EquipmentRiskHistory[],
-  maxPoints: number,
-): EquipmentRiskHistory[] {
-  if (
-    entries.length <= maxPoints ||
-    maxPoints < 2
-  ) {
-    return entries;
-  }
-
-  const selectedIndexes =
-    new Set<number>();
-
-  for (
-    let pointIndex = 0;
-    pointIndex < maxPoints;
-    pointIndex += 1
-  ) {
-    selectedIndexes.add(
-      Math.round(
-        pointIndex *
-          ((entries.length - 1) /
-            (maxPoints - 1)),
-      ),
-    );
-  }
-
-  return Array.from(
-    selectedIndexes,
-  )
-    .sort((a, b) => a - b)
-    .map((index) => entries[index]);
-}
-
-function getTrendPosition(
-  date: Date,
-  range: RiskTrendRange,
-): number {
-  const start =
-    getRiskTrendStartDate(range);
-
-  const today =
-    startOfLocalDay();
-
-  const duration = Math.max(
-    1,
-    today.getTime() -
-      start.getTime(),
-  );
-
-  return Math.max(
-    0,
-    Math.min(
-      100,
-      ((date.getTime() -
-        start.getTime()) /
-        duration) *
-        100,
-    ),
-  );
-}
-
-function buildRiskTrendPoints(
-  entries: EquipmentRiskHistory[],
-  range: RiskTrendRange,
-  liveScore: number,
-): RiskTrendPoint[] {
-  const config =
-    RISK_TREND_RANGES.find(
-      (item) =>
-        item.key === range,
-    ) ?? RISK_TREND_RANGES[1];
-
-  const today =
-    startOfLocalDay();
-
-  const sampledEntries =
-    sampleRiskHistory(
-      filterRiskHistoryForRange(
-        entries,
-        range,
-      ),
-      config.maxPoints,
-    );
-
-  const points =
-    sampledEntries.map(
-      (
-        historyItem,
-      ): RiskTrendPoint => {
-        const date =
-          parseDateOnly(
-            historyItem.snapshotDate,
-          );
-
-        return {
-          key: `history-${historyItem.snapshotDate}`,
-          date,
-          label:
-            historyItem.snapshotLabel ??
-            formatSnapshotDate(
-              historyItem.snapshotDate,
-            ),
-          value:
-            historyItem.riskScore,
-          position:
-            getTrendPosition(
-              date,
-              range,
-            ),
-          isLive: false,
-        };
-      },
-    );
-
-  const livePoint: RiskTrendPoint = {
-    key: "live",
-    date: today,
-    label: "Live",
-    value: liveScore,
-    position: 100,
-    isLive: true,
-  };
-
-  const lastPoint =
-    points[
-      points.length - 1
-    ];
-
-  if (
-    lastPoint &&
-    lastPoint.date.getTime() ===
-      today.getTime()
-  ) {
-    points[
-      points.length - 1
-    ] = livePoint;
-
-    return points;
-  }
-
-  return [
-    ...points,
-    livePoint,
-  ];
-}
-
-function buildRiskTrendTicks(
-  range: RiskTrendRange,
-): RiskTrendTick[] {
-  const start =
-    getRiskTrendStartDate(range);
-
-  const today =
-    startOfLocalDay();
-
-  const ticks: Date[] = [];
-
-  if (range === "ytd") {
-    for (
-      let month = 0;
-      month <=
-      today.getMonth();
-      month += 1
-    ) {
-      ticks.push(
-        new Date(
-          today.getFullYear(),
-          month,
-          1,
-        ),
-      );
-    }
-  } else {
-    const tickCount =
-      range === "7d"
-        ? 7
-        : 6;
-
-    const duration = Math.max(
-      1,
-      today.getTime() -
-        start.getTime(),
-    );
-
-    for (
-      let index = 0;
-      index < tickCount;
-      index += 1
-    ) {
-      ticks.push(
-        startOfLocalDay(
-          new Date(
-            start.getTime() +
-              Math.round(
-                duration *
-                  (index /
-                    (tickCount - 1)),
-              ),
-          ),
-        ),
-      );
-    }
-  }
-
-  return ticks.map(
-    (
-      date,
-      index,
-    ): RiskTrendTick => {
-      const isFinal =
-        index ===
-        ticks.length - 1;
-
-      return {
-        key: `${range}-${date.toISOString()}`,
-        label:
-          isFinal &&
-          range !== "ytd"
-            ? "Today"
-            : date.toLocaleDateString(
-                "en-GB",
-                range === "ytd"
-                  ? {
-                      month: "short",
-                    }
-                  : {
-                      day: "2-digit",
-                      month: "short",
-                    },
-              ),
-        position:
-          getTrendPosition(
-            date,
-            range,
-          ),
-      };
-    },
-  );
-}
-
-// ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
   const [
-    allHistory,
-    setAllHistory,
-  ] = useState<
-    EquipmentRiskHistory[]
-  >([]);
+    trendSeries,
+    setTrendSeries,
+  ] =
+    useState<EquipmentRiskTrendSeries | null>(
+      null,
+    );
+
+  const [
+    trendError,
+    setTrendError,
+  ] = useState<string | null>(
+    null,
+  );
+
   const [
     trendRange,
     setTrendRange,
-  ] = useState<RiskTrendRange>("30d");
+  ] =
+    useState<EquipmentRiskTrendRange>(
+      "30d",
+    );
 
   const [
     historyLoading,
@@ -578,32 +208,31 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
   useEffect(() => {
     let cancelled = false;
 
+    setTrendRange("30d");
     setHistoryLoading(true);
-    setAllHistory([]);
+    setTrendError(null);
+    setTrendSeries(null);
 
-    const historyLookbackDays =
-      Math.max(
-        getRiskTrendDays("90d"),
-        getRiskTrendDays("ytd"),
-      );
-
-    void getEquipmentRiskHistory(
+    void getEquipmentRiskTrendSeries(
       item.id,
-      historyLookbackDays,
     )
-      .then((rows) => {
+      .then((series) => {
         if (!cancelled) {
-          setAllHistory(rows);
+          setTrendSeries(series);
         }
       })
       .catch((error: unknown) => {
         console.warn(
-          "Equipment risk history could not be loaded:",
+          "Equipment risk trend could not be loaded:",
           error,
         );
 
         if (!cancelled) {
-          setAllHistory([]);
+          setTrendError(
+            error instanceof Error
+              ? error.message
+              : "Equipment risk trend could not be loaded.",
+          );
         }
       })
       .finally(() => {
@@ -616,18 +245,6 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
       cancelled = true;
     };
   }, [item.id]);
-
-  const history = useMemo(
-    () =>
-      filterRiskHistoryForRange(
-        allHistory,
-        trendRange,
-      ),
-    [
-      allHistory,
-      trendRange,
-    ],
-  );
 
   const visibleExplanations =
     showAllExplanations
@@ -643,56 +260,41 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         range.key === trendRange,
     ) ?? RISK_TREND_RANGES[1];
 
-  const trendWindowStart =
-    getRiskTrendStartDate(
-      trendRange,
-    );
+  const trend =
+    trendSeries?.[trendRange] ??
+    [];
 
-  const firstHistoryDate =
-    history.length > 0
-      ? parseDateOnly(
-          history[0]
-            .snapshotDate,
-        )
+  const firstTrendPoint =
+    trend[0] ?? null;
+
+  const lastTrendPoint =
+    trend.length > 0
+      ? trend[
+          trend.length - 1
+        ]
       : null;
-
-  const hasFullRangeCoverage =
-    firstHistoryDate !== null &&
-    firstHistoryDate.getTime() <=
-      trendWindowStart.getTime();
 
   const trendDescription =
-    firstHistoryDate !== null &&
-    !hasFullRangeCoverage
-      ? `${
-          activeTrendRange.description
-        } · history available from ${
-          formatSnapshotDate(
-            history[0]
-              .snapshotDate,
-          )
-        }`
-      : activeTrendRange.description;
+    activeTrendRange.description;
 
   const rangeChangeLabel =
-    firstHistoryDate !== null &&
-    !hasFullRangeCoverage
-      ? `Since ${formatSnapshotDate(
-          history[0]
-            .snapshotDate,
-        )}`
-      : `${activeTrendRange.label} change`;
-
-  const rangeBaselineScore =
-    history.length > 0
-      ? history[0].riskScore
-      : null;
+    `${activeTrendRange.label} change`;
 
   const rangeChange =
-    rangeBaselineScore === null
-      ? null
-      : item.riskScore -
-        rangeBaselineScore;
+    firstTrendPoint &&
+    lastTrendPoint
+      ? lastTrendPoint.riskScore -
+        firstTrendPoint.riskScore
+      : null;
+
+  const latestDetailPoint =
+    [...trend]
+      .reverse()
+      .find(
+        (point) =>
+          point.primaryDriver ||
+          point.changeReason,
+      ) ?? lastTrendPoint;
 
   const totalRecommendedReduction = explanations
     .slice(0, 5)
@@ -937,59 +539,49 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         </div>
 
         {historyLoading ? (
-          <div className="flex min-h-[120px] items-center justify-center gap-2 rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5 text-[11px] text-slate-500">
+          <div className="flex min-h-[140px] items-center justify-center gap-2 rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5 text-[11px] text-slate-500">
             <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-400" />
-            Loading equipment risk history...
+            Loading equipment risk trend...
+          </div>
+        ) : trendError ||
+          trend.length === 0 ? (
+          <div className="flex min-h-[140px] items-center justify-center rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-5 text-center text-[11px] text-red-300">
+            {trendError ??
+              "No equipment risk trend data is available."}
           </div>
         ) : (
-          (() => {
-            const trend =
-              buildRiskTrendPoints(
-                allHistory,
-                trendRange,
-                item.riskScore,
-              );
+          <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-3">
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-[25%] border-t border-dashed border-slate-700/40"
+              />
 
-            const axisTicks =
-              buildRiskTrendTicks(
-                trendRange,
-              );
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-[50%] border-t border-dashed border-slate-700/40"
+              />
 
-            const barWidth =
-              activeTrendRange.barWidth;
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-[75%] border-t border-dashed border-slate-700/40"
+              />
 
-            const lastEntry =
-              history.length > 0
-                ? history[
-                    history.length - 1
-                  ]
-                : null;
-
-            return (
-              <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-3">
-                <div className="relative h-[116px]">
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-slate-700/40"
-                  />
-
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-700/40"
-                  />
-
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-slate-700/40"
-                  />
-
-                  {trend.map((point) => {
+              <div
+                className="grid min-h-[128px] items-end gap-1.5 sm:gap-2"
+                style={{
+                  gridTemplateColumns:
+                    `repeat(${trend.length}, minmax(0, 1fr))`,
+                }}
+              >
+                {trend.map(
+                  (point) => {
                     const boundedValue =
                       Math.min(
                         100,
                         Math.max(
                           0,
-                          point.value,
+                          point.riskScore,
                         ),
                       );
 
@@ -999,113 +591,81 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                         Math.round(
                           (boundedValue /
                             100) *
-                            80,
+                            82,
                         ),
                       );
 
-                    const horizontalTransform =
-                      point.position <= 1
-                        ? "translateX(0)"
-                        : point.position >= 99
-                          ? "translateX(-100%)"
-                          : "translateX(-50%)";
-
                     return (
                       <div
-                        key={point.key}
-                        style={{
-                          left: `${point.position}%`,
-                          bottom: "18px",
-                          transform:
-                            horizontalTransform,
-                        }}
-                        className="absolute flex flex-col items-center gap-1"
+                        key={`${trendRange}-${point.sortOrder}`}
+                        className="relative flex h-full min-w-0 flex-col items-center justify-end"
                       >
                         <span
-                          className={`text-[9px] font-semibold ${
+                          className={`mb-1 text-[9px] font-semibold tabular-nums ${
                             point.isLive
                               ? "text-blue-400"
                               : "text-slate-500"
                           }`}
                         >
-                          {point.value}
+                          {point.riskScore}
                         </span>
 
-                        <div
-                          title={`${point.label}: ${point.value}% risk`}
-                          style={{
-                            height: `${barHeight}px`,
-                            width: `${barWidth}px`,
-                          }}
-                          className={`rounded-t-sm border ${
+                        <div className="flex h-[82px] w-full items-end justify-center">
+                          <div
+                            title={`${point.periodLabel}: ${point.riskScore}% risk`}
+                            style={{
+                              height: `${barHeight}px`,
+                            }}
+                            className={`w-[68%] max-w-[72px] rounded-t-sm border ${
+                              point.isLive
+                                ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                : "border-slate-500/70 bg-slate-700/40"
+                            }`}
+                          />
+                        </div>
+
+                        <span
+                          className={`mt-1 w-full truncate text-center text-[9px] ${
                             point.isLive
-                              ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                              : "border-slate-500/70 bg-slate-700/40"
+                              ? "font-medium text-blue-400"
+                              : "text-slate-600"
                           }`}
-                        />
+                        >
+                          {point.isLive
+                            ? "Live"
+                            : point.periodLabel}
+                        </span>
                       </div>
                     );
-                  })}
-
-                  <div className="absolute inset-x-0 bottom-0 h-3">
-                    {axisTicks.map(
-                      (tick) => {
-                        const horizontalTransform =
-                          tick.position <= 1
-                            ? "translateX(0)"
-                            : tick.position >= 99
-                              ? "translateX(-100%)"
-                              : "translateX(-50%)";
-
-                        return (
-                          <span
-                            key={tick.key}
-                            style={{
-                              left: `${tick.position}%`,
-                              transform:
-                                horizontalTransform,
-                            }}
-                            className="absolute whitespace-nowrap text-[9px] text-slate-600"
-                          >
-                            {tick.label}
-                          </span>
-                        );
-                      },
-                    )}
-                  </div>
-                </div>
-
-                {history.length === 0 && (
-                  <p className="mt-2 border-t border-gray-800 pt-2 text-[10px] text-slate-500">
-                    No stored snapshots are available for this range. The current live risk is shown.
-                  </p>
-                )}
-
-                {lastEntry &&
-                  (lastEntry.primaryDriver ||
-                    lastEntry.changeReason) && (
-                  <div className="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-2">
-                    {lastEntry.primaryDriver && (
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[10px] text-slate-500">
-                          Primary driver
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-300">
-                          {lastEntry.primaryDriver}
-                        </span>
-                      </div>
-                    )}
-
-                    {lastEntry.changeReason && (
-                      <p className="text-[10px] leading-relaxed text-slate-500">
-                        {lastEntry.changeReason}
-                      </p>
-                    )}
-                  </div>
+                  },
                 )}
               </div>
-            );
-          })()
+            </div>
+
+            {latestDetailPoint &&
+              (latestDetailPoint.primaryDriver ||
+                latestDetailPoint.changeReason) && (
+                <div className="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-2">
+                  {latestDetailPoint.primaryDriver && (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[10px] text-slate-500">
+                        Primary driver
+                      </span>
+
+                      <span className="text-[10px] font-semibold text-slate-300">
+                        {latestDetailPoint.primaryDriver}
+                      </span>
+                    </div>
+                  )}
+
+                  {latestDetailPoint.changeReason && (
+                    <p className="text-[10px] leading-relaxed text-slate-500">
+                      {latestDetailPoint.changeReason}
+                    </p>
+                  )}
+                </div>
+              )}
+          </div>
         )}
       </div>
     </div>
