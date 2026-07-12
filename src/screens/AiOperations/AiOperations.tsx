@@ -70,6 +70,7 @@ const secondaryNav = [
     label: "Settings",
     icon: Cog,
     to: "/settings",
+    end: true,
   },
 ];
 

@@ -24,6 +24,7 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   to: string;
+  end?: boolean;
   children?: NavItem[];
 }
 
@@ -70,6 +71,7 @@ function NavItemRow({ item, accent, labelVisible, indent = false }: NavItemRowPr
   return (
     <NavLink
       to={item.to}
+      end={item.end}
       title={item.label}
       className={({ isActive }) =>
         `${itemBase(hover)} ${indent ? "pl-7 xl:pl-8" : ""} ${
