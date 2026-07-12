@@ -87,29 +87,38 @@ function RiskBreakdownBar({ segments }: { segments: EquipmentListItem["breakdown
   const total = segments.reduce((s, seg) => s + seg.pct, 0) || 1;
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex h-5 w-full overflow-hidden rounded-md">
-        {segments.map((seg) => {
-          const segmentWidth =
-            (seg.pct / total) * 100;
-          return (
-            <div
-              key={seg.label}
-              title={`${seg.label}: ${seg.pct}%`}
-              style={{
-                width: `${segmentWidth}%`,
-                backgroundColor: hexToRgba(seg.color, 0.22),
-                borderColor: hexToRgba(seg.color, 0.55),
-              }}
-              className="relative flex items-center justify-center overflow-hidden border-y border-r first:border-l"
-            >
-              {segmentWidth >= 7 && (
-                <span className="truncate px-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
-                  {seg.pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
+      <div className="w-full rounded-lg border border-slate-700/60 bg-slate-900/60 p-px">
+        <div className="flex h-6 w-full overflow-hidden rounded-[7px]">
+          {segments.map((seg) => {
+            const segmentWidth =
+              (seg.pct / total) * 100;
+
+            return (
+              <div
+                key={seg.label}
+                title={`${seg.label}: ${seg.pct}%`}
+                style={{
+                  width: `${segmentWidth}%`,
+                  backgroundColor: hexToRgba(
+                    seg.color,
+                    0.24,
+                  ),
+                  borderColor: hexToRgba(
+                    seg.color,
+                    0.38,
+                  ),
+                }}
+                className="relative flex items-center justify-center overflow-hidden border-r last:border-r-0"
+              >
+                {segmentWidth >= 7 && (
+                  <span className="truncate px-1 text-[10px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
+                    {seg.pct}%
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {segments.map((seg) => (
@@ -965,7 +974,7 @@ export const EquipmentSection = (): JSX.Element => {
       <div className="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
 
         {/* Table header */}
-        <div className="grid grid-cols-[40px_minmax(0,1fr)_minmax(0,2fr)_120px] items-center gap-4 border-b border-gray-800 px-4 py-3">
+        <div className="grid grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 border-b border-gray-800 px-4 py-3">
           <div />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Equipment</span>
           <div className="flex items-center gap-1.5">
@@ -1006,7 +1015,7 @@ export const EquipmentSection = (): JSX.Element => {
                   aria-expanded={isExpanded}
                   onClick={() => toggleRow(item.id)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(item.id); } }}
-                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,1fr)_minmax(0,2fr)_120px] items-center gap-4 px-4 py-4 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
+                  className={`grid cursor-pointer grid-cols-[40px_minmax(0,7fr)_minmax(0,18fr)_108px] items-center gap-4 px-4 py-4 transition-colors hover:bg-[#1a2030] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 ${isExpanded ? "bg-[#141f2e]" : ""}`}
                 >
                   <div className="flex items-center justify-center">
                     {isExpanded
