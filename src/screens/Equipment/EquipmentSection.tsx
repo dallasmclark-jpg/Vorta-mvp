@@ -172,35 +172,40 @@ const RISK_TREND_RANGES: readonly {
   label: string;
   description: string;
   days: number | null;
-  slotCount: number | null;
+  maxPoints: number;
+  barWidth: number;
 }[] = [
   {
     key: "7d",
     label: "7D",
     description: "Last 7 days",
     days: 7,
-    slotCount: 7,
+    maxPoints: 7,
+    barWidth: 64,
   },
   {
     key: "30d",
     label: "30D",
     description: "Last 30 days",
     days: 30,
-    slotCount: 10,
+    maxPoints: 12,
+    barWidth: 40,
   },
   {
     key: "90d",
     label: "90D",
     description: "Last 90 days",
     days: 90,
-    slotCount: 10,
+    maxPoints: 14,
+    barWidth: 24,
   },
   {
     key: "ytd",
     label: "YTD",
     description: "Year to date",
     days: null,
-    slotCount: null,
+    maxPoints: 18,
+    barWidth: 14,
   },
 ];
 
@@ -258,59 +263,202 @@ function getRiskTrendDays(
   );
 }
 
-interface RiskTrendBucket {
+interface RiskTrendPoint {
   key: string;
-  bucketDate: Date;
-  axisLabel: string;
-  value: number | null;
-  sourceLabel: string | null;
-  sourceDate: Date | null;
+  date: Date;
+  label: string;
+  value: number;
+  position: number;
   isLive: boolean;
 }
 
-function formatTrendAxisDate(
-  date: Date,
-  range: RiskTrendRange,
-): string {
-  if (range === "ytd") {
-    return date.toLocaleDateString(
-      "en-GB",
-      {
-        month: "short",
-      },
-    );
-  }
-
-  return date.toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-    },
-  );
+interface RiskTrendTick {
+  key: string;
+  label: string;
+  position: number;
 }
 
-function buildRiskTrendBuckets(
-  entries:
-    EquipmentRiskHistory[],
+function filterRiskHistoryForRange(
+  entries: EquipmentRiskHistory[],
   range: RiskTrendRange,
-  liveScore: number,
-): RiskTrendBucket[] {
+): EquipmentRiskHistory[] {
+  const start =
+    getRiskTrendStartDate(range);
+
   const today =
     startOfLocalDay();
 
-  const start =
-    getRiskTrendStartDate(
-      range,
-    );
+  return entries.filter((entry) => {
+    const entryDate =
+      parseDateOnly(
+        entry.snapshotDate,
+      );
 
+    return (
+      entryDate >= start &&
+      entryDate <= today
+    );
+  });
+}
+
+function sampleRiskHistory(
+  entries: EquipmentRiskHistory[],
+  maxPoints: number,
+): EquipmentRiskHistory[] {
+  if (
+    entries.length <= maxPoints ||
+    maxPoints < 2
+  ) {
+    return entries;
+  }
+
+  const selectedIndexes =
+    new Set<number>();
+
+  for (
+    let pointIndex = 0;
+    pointIndex < maxPoints;
+    pointIndex += 1
+  ) {
+    selectedIndexes.add(
+      Math.round(
+        pointIndex *
+          ((entries.length - 1) /
+            (maxPoints - 1)),
+      ),
+    );
+  }
+
+  return Array.from(
+    selectedIndexes,
+  )
+    .sort((a, b) => a - b)
+    .map((index) => entries[index]);
+}
+
+function getTrendPosition(
+  date: Date,
+  range: RiskTrendRange,
+): number {
+  const start =
+    getRiskTrendStartDate(range);
+
+  const today =
+    startOfLocalDay();
+
+  const duration = Math.max(
+    1,
+    today.getTime() -
+      start.getTime(),
+  );
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      ((date.getTime() -
+        start.getTime()) /
+        duration) *
+        100,
+    ),
+  );
+}
+
+function buildRiskTrendPoints(
+  entries: EquipmentRiskHistory[],
+  range: RiskTrendRange,
+  liveScore: number,
+): RiskTrendPoint[] {
   const config =
     RISK_TREND_RANGES.find(
       (item) =>
         item.key === range,
     ) ?? RISK_TREND_RANGES[1];
 
-  const slotDates: Date[] = [];
+  const today =
+    startOfLocalDay();
+
+  const sampledEntries =
+    sampleRiskHistory(
+      filterRiskHistoryForRange(
+        entries,
+        range,
+      ),
+      config.maxPoints,
+    );
+
+  const points =
+    sampledEntries.map(
+      (
+        historyItem,
+      ): RiskTrendPoint => {
+        const date =
+          parseDateOnly(
+            historyItem.snapshotDate,
+          );
+
+        return {
+          key: `history-${historyItem.snapshotDate}`,
+          date,
+          label:
+            historyItem.snapshotLabel ??
+            formatSnapshotDate(
+              historyItem.snapshotDate,
+            ),
+          value:
+            historyItem.riskScore,
+          position:
+            getTrendPosition(
+              date,
+              range,
+            ),
+          isLive: false,
+        };
+      },
+    );
+
+  const livePoint: RiskTrendPoint = {
+    key: "live",
+    date: today,
+    label: "Live",
+    value: liveScore,
+    position: 100,
+    isLive: true,
+  };
+
+  const lastPoint =
+    points[
+      points.length - 1
+    ];
+
+  if (
+    lastPoint &&
+    lastPoint.date.getTime() ===
+      today.getTime()
+  ) {
+    points[
+      points.length - 1
+    ] = livePoint;
+
+    return points;
+  }
+
+  return [
+    ...points,
+    livePoint,
+  ];
+}
+
+function buildRiskTrendTicks(
+  range: RiskTrendRange,
+): RiskTrendTick[] {
+  const start =
+    getRiskTrendStartDate(range);
+
+  const today =
+    startOfLocalDay();
+
+  const ticks: Date[] = [];
 
   if (range === "ytd") {
     for (
@@ -319,7 +467,7 @@ function buildRiskTrendBuckets(
       today.getMonth();
       month += 1
     ) {
-      slotDates.push(
+      ticks.push(
         new Date(
           today.getFullYear(),
           month,
@@ -328,159 +476,83 @@ function buildRiskTrendBuckets(
       );
     }
   } else {
-    const slotCount =
-      config.slotCount ?? 10;
+    const tickCount =
+      range === "7d"
+        ? 7
+        : 6;
 
-    const windowDuration =
-      Math.max(
-        1,
-        today.getTime() -
-          start.getTime(),
-      );
-
-    for (
-      let index = 0;
-      index < slotCount;
-      index += 1
-    ) {
-      const slotTime =
-        start.getTime() +
-        Math.round(
-          windowDuration *
-            (index /
-              (slotCount - 1)),
-        );
-
-      slotDates.push(
-        startOfLocalDay(
-          new Date(slotTime),
-        ),
-      );
-    }
-  }
-
-  const buckets =
-    slotDates.map(
-      (
-        bucketDate,
-        index,
-      ): RiskTrendBucket => ({
-        key: `${range}-${index}`,
-        bucketDate,
-        axisLabel:
-          formatTrendAxisDate(
-            bucketDate,
-            range,
-          ),
-        value: null,
-        sourceLabel: null,
-        sourceDate: null,
-        isLive: false,
-      }),
-    );
-
-  const windowDuration =
-    Math.max(
+    const duration = Math.max(
       1,
       today.getTime() -
         start.getTime(),
     );
 
-  entries.forEach(
-    (historyItem) => {
-      const entryDate =
-        parseDateOnly(
-          historyItem.snapshotDate,
-        );
-
-      if (
-        entryDate < start ||
-        entryDate > today
-      ) {
-        return;
-      }
-
-      let bucketIndex = 0;
-
-      if (range === "ytd") {
-        bucketIndex =
-          entryDate.getMonth();
-      } else {
-        const progress =
-          (entryDate.getTime() -
-            start.getTime()) /
-          windowDuration;
-
-        bucketIndex =
-          Math.round(
-            progress *
-              (buckets.length - 1),
-          );
-      }
-
-      bucketIndex = Math.max(
-        0,
-        Math.min(
-          buckets.length - 1,
-          bucketIndex,
+    for (
+      let index = 0;
+      index < tickCount;
+      index += 1
+    ) {
+      ticks.push(
+        startOfLocalDay(
+          new Date(
+            start.getTime() +
+              Math.round(
+                duration *
+                  (index /
+                    (tickCount - 1)),
+              ),
+          ),
         ),
       );
+    }
+  }
 
-      const existingDate =
-        buckets[bucketIndex]
-          .sourceDate;
+  return ticks.map(
+    (
+      date,
+      index,
+    ): RiskTrendTick => {
+      const isFinal =
+        index ===
+        ticks.length - 1;
 
-      if (
-        existingDate &&
-        existingDate >
-          entryDate
-      ) {
-        return;
-      }
-
-      buckets[bucketIndex] = {
-        ...buckets[bucketIndex],
-        value:
-          historyItem.riskScore,
-        sourceLabel:
-          historyItem
-            .snapshotLabel ??
-          formatSnapshotDate(
-            historyItem
-              .snapshotDate,
+      return {
+        key: `${range}-${date.toISOString()}`,
+        label:
+          isFinal &&
+          range !== "ytd"
+            ? "Today"
+            : date.toLocaleDateString(
+                "en-GB",
+                range === "ytd"
+                  ? {
+                      month: "short",
+                    }
+                  : {
+                      day: "2-digit",
+                      month: "short",
+                    },
+              ),
+        position:
+          getTrendPosition(
+            date,
+            range,
           ),
-        sourceDate: entryDate,
       };
     },
   );
-
-  const finalIndex =
-    buckets.length - 1;
-
-  buckets[finalIndex] = {
-    ...buckets[finalIndex],
-    bucketDate: today,
-    axisLabel:
-      range === "ytd"
-        ? formatTrendAxisDate(
-            today,
-            range,
-          )
-        : "Today",
-    value: liveScore,
-    sourceLabel: "Live",
-    sourceDate: today,
-    isLive: true,
-  };
-
-  return buckets;
 }
 
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
-  const [history, setHistory] = useState<EquipmentRiskHistory[]>([]);
+  const [
+    allHistory,
+    setAllHistory,
+  ] = useState<
+    EquipmentRiskHistory[]
+  >([]);
   const [
     trendRange,
     setTrendRange,
@@ -507,15 +579,21 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
     let cancelled = false;
 
     setHistoryLoading(true);
-    setHistory([]);
+    setAllHistory([]);
+
+    const historyLookbackDays =
+      Math.max(
+        getRiskTrendDays("90d"),
+        getRiskTrendDays("ytd"),
+      );
 
     void getEquipmentRiskHistory(
       item.id,
-      getRiskTrendDays(trendRange),
+      historyLookbackDays,
     )
       .then((rows) => {
         if (!cancelled) {
-          setHistory(rows);
+          setAllHistory(rows);
         }
       })
       .catch((error: unknown) => {
@@ -525,7 +603,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         );
 
         if (!cancelled) {
-          setHistory([]);
+          setAllHistory([]);
         }
       })
       .finally(() => {
@@ -537,7 +615,19 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
     return () => {
       cancelled = true;
     };
-  }, [item.id, trendRange]);
+  }, [item.id]);
+
+  const history = useMemo(
+    () =>
+      filterRiskHistoryForRange(
+        allHistory,
+        trendRange,
+      ),
+    [
+      allHistory,
+      trendRange,
+    ],
+  );
 
   const visibleExplanations =
     showAllExplanations
@@ -849,150 +939,151 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
         {historyLoading ? (
           <div className="flex min-h-[120px] items-center justify-center gap-2 rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5 text-[11px] text-slate-500">
             <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-400" />
-            Loading {activeTrendRange.description.toLowerCase()}...
-          </div>
-        ) : history.length === 0 ? (
-          <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5">
-            <p className="text-[11px] text-slate-500">
-              No historical snapshots are available for this range. Current live risk: {item.riskScore}.
-            </p>
+            Loading equipment risk history...
           </div>
         ) : (
           (() => {
             const trend =
-              buildRiskTrendBuckets(
-                history,
+              buildRiskTrendPoints(
+                allHistory,
                 trendRange,
                 item.riskScore,
               );
 
+            const axisTicks =
+              buildRiskTrendTicks(
+                trendRange,
+              );
+
+            const barWidth =
+              activeTrendRange.barWidth;
+
             const lastEntry =
-              history[
-                history.length - 1
-              ];
+              history.length > 0
+                ? history[
+                    history.length - 1
+                  ]
+                : null;
 
             return (
               <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-3">
-                <div className="relative">
+                <div className="relative h-[116px]">
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-slate-700/40"
                   />
+
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-700/40"
                   />
+
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-slate-700/40"
                   />
 
-                  <div className="relative z-10 flex min-h-[116px] items-end justify-between gap-1.5">
-                    {trend.map((point, index) => {
-                      const isLive =
-                        point.isLive;
-
-                      const hasValue =
-                        point.value !== null;
-
-                      const boundedValue =
-                        hasValue
-                          ? Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                point.value ?? 0,
-                              ),
-                            )
-                          : 0;
-
-                      const barHeight =
-                        hasValue
-                          ? Math.max(
-                              10,
-                              Math.round(
-                                (boundedValue /
-                                  100) *
-                                  80,
-                              ),
-                            )
-                          : 2;
-
-                      const showAxisLabel =
-                        isLive ||
-                        trendRange === "7d" ||
-                        trendRange === "ytd" ||
-                        index === 0 ||
-                        index ===
-                          trend.length - 1 ||
-                        index % 2 === 0;
-
-                      const visibleLabel =
-                        isLive
-                          ? "Live"
-                          : point.sourceLabel ??
-                            point.axisLabel;
-
-                      return (
-                        <div
-                          key={point.key}
-                          className="flex min-w-0 flex-1 flex-col items-center gap-1"
-                        >
-                          <span
-                            className={`h-3 text-[9px] font-semibold ${
-                              isLive
-                                ? "text-blue-400"
-                                : hasValue
-                                  ? "text-slate-500"
-                                  : "text-transparent"
-                            }`}
-                          >
-                            {hasValue
-                              ? point.value
-                              : "—"}
-                          </span>
-
-                          {hasValue ? (
-                            <div
-                              title={`${
-                                point.sourceLabel ??
-                                point.axisLabel
-                              }: ${point.value}% risk`}
-                              style={{
-                                height: `${barHeight}px`,
-                              }}
-                              className={`w-full min-w-[8px] rounded-t-sm border ${
-                                isLive
-                                  ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                                  : "border-slate-500/70 bg-slate-700/40"
-                              }`}
-                            />
-                          ) : (
-                            <div
-                              title={`${point.axisLabel}: no stored snapshot`}
-                              className="h-0.5 w-full min-w-[8px] rounded-full bg-slate-800/80"
-                            />
-                          )}
-
-                          <span
-                            className={`h-3 truncate text-[9px] ${
-                              isLive
-                                ? "font-semibold text-blue-400"
-                                : "text-slate-600"
-                            }`}
-                          >
-                            {showAxisLabel
-                              ? visibleLabel
-                              : ""}
-                          </span>
-                        </div>
+                  {trend.map((point) => {
+                    const boundedValue =
+                      Math.min(
+                        100,
+                        Math.max(
+                          0,
+                          point.value,
+                        ),
                       );
-                    })}
+
+                    const barHeight =
+                      Math.max(
+                        10,
+                        Math.round(
+                          (boundedValue /
+                            100) *
+                            80,
+                        ),
+                      );
+
+                    const horizontalTransform =
+                      point.position <= 1
+                        ? "translateX(0)"
+                        : point.position >= 99
+                          ? "translateX(-100%)"
+                          : "translateX(-50%)";
+
+                    return (
+                      <div
+                        key={point.key}
+                        style={{
+                          left: `${point.position}%`,
+                          bottom: "18px",
+                          transform:
+                            horizontalTransform,
+                        }}
+                        className="absolute flex flex-col items-center gap-1"
+                      >
+                        <span
+                          className={`text-[9px] font-semibold ${
+                            point.isLive
+                              ? "text-blue-400"
+                              : "text-slate-500"
+                          }`}
+                        >
+                          {point.value}
+                        </span>
+
+                        <div
+                          title={`${point.label}: ${point.value}% risk`}
+                          style={{
+                            height: `${barHeight}px`,
+                            width: `${barWidth}px`,
+                          }}
+                          className={`rounded-t-sm border ${
+                            point.isLive
+                              ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                              : "border-slate-500/70 bg-slate-700/40"
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  <div className="absolute inset-x-0 bottom-0 h-3">
+                    {axisTicks.map(
+                      (tick) => {
+                        const horizontalTransform =
+                          tick.position <= 1
+                            ? "translateX(0)"
+                            : tick.position >= 99
+                              ? "translateX(-100%)"
+                              : "translateX(-50%)";
+
+                        return (
+                          <span
+                            key={tick.key}
+                            style={{
+                              left: `${tick.position}%`,
+                              transform:
+                                horizontalTransform,
+                            }}
+                            className="absolute whitespace-nowrap text-[9px] text-slate-600"
+                          >
+                            {tick.label}
+                          </span>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
 
-                {(lastEntry.primaryDriver ||
-                  lastEntry.changeReason) && (
+                {history.length === 0 && (
+                  <p className="mt-2 border-t border-gray-800 pt-2 text-[10px] text-slate-500">
+                    No stored snapshots are available for this range. The current live risk is shown.
+                  </p>
+                )}
+
+                {lastEntry &&
+                  (lastEntry.primaryDriver ||
+                    lastEntry.changeReason) && (
                   <div className="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-2">
                     {lastEntry.primaryDriver && (
                       <div className="flex flex-wrap items-center justify-between gap-2">
