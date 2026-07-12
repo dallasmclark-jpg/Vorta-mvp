@@ -128,11 +128,124 @@ function formatSnapshotDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
+type RiskTrendRange =
+  | "7d"
+  | "30d"
+  | "90d"
+  | "ytd";
+
+const RISK_TREND_RANGES: readonly {
+  key: RiskTrendRange;
+  label: string;
+  description: string;
+  days: number | null;
+  maxHistoricalPoints: number;
+}[] = [
+  {
+    key: "7d",
+    label: "7D",
+    description: "Last 7 days",
+    days: 7,
+    maxHistoricalPoints: 7,
+  },
+  {
+    key: "30d",
+    label: "30D",
+    description: "Last 30 days",
+    days: 30,
+    maxHistoricalPoints: 11,
+  },
+  {
+    key: "90d",
+    label: "90D",
+    description: "Last 90 days",
+    days: 90,
+    maxHistoricalPoints: 11,
+  },
+  {
+    key: "ytd",
+    label: "YTD",
+    description: "Year to date",
+    days: null,
+    maxHistoricalPoints: 11,
+  },
+];
+
+function getRiskTrendDays(
+  range: RiskTrendRange,
+): number {
+  const config =
+    RISK_TREND_RANGES.find(
+      (item) => item.key === range,
+    ) ?? RISK_TREND_RANGES[1];
+
+  if (config.days !== null) {
+    return config.days;
+  }
+
+  const now = new Date();
+  const yearStart = new Date(
+    now.getFullYear(),
+    0,
+    1,
+  );
+
+  return Math.max(
+    1,
+    Math.ceil(
+      (now.getTime() -
+        yearStart.getTime()) /
+        86_400_000,
+    ),
+  );
+}
+
+function sampleRiskHistory(
+  entries: EquipmentRiskHistory[],
+  maxPoints: number,
+): EquipmentRiskHistory[] {
+  if (
+    entries.length <= maxPoints ||
+    maxPoints < 2
+  ) {
+    return entries;
+  }
+
+  const selectedIndexes = new Set<number>();
+
+  for (
+    let pointIndex = 0;
+    pointIndex < maxPoints;
+    pointIndex += 1
+  ) {
+    selectedIndexes.add(
+      Math.round(
+        pointIndex *
+          ((entries.length - 1) /
+            (maxPoints - 1)),
+      ),
+    );
+  }
+
+  return Array.from(selectedIndexes)
+    .sort((a, b) => a - b)
+    .map((index) => entries[index]);
+}
+
 // ─── Expanded Panel ───────────────────────────────────────────────────────────
 
 function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: EquipmentListItem; onNavigate: (id: string) => void; onNavigateToHistory: (id: string) => void }) {
   const [explanations, setExplanations] = useState<EquipmentRiskExplanation[]>([]);
   const [history, setHistory] = useState<EquipmentRiskHistory[]>([]);
+  const [
+    trendRange,
+    setTrendRange,
+  ] = useState<RiskTrendRange>("30d");
+
+  const [
+    historyLoading,
+    setHistoryLoading,
+  ] = useState(false);
   const [
     showAllExplanations,
     setShowAllExplanations,
@@ -140,9 +253,47 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
   useEffect(() => {
     setShowAllExplanations(false);
-    getEquipmentRiskExplanations(item.id).then(setExplanations);
-    getEquipmentRiskHistory(item.id).then(setHistory);
+
+    void getEquipmentRiskExplanations(
+      item.id,
+    ).then(setExplanations);
   }, [item.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setHistoryLoading(true);
+    setHistory([]);
+
+    void getEquipmentRiskHistory(
+      item.id,
+      getRiskTrendDays(trendRange),
+    )
+      .then((rows) => {
+        if (!cancelled) {
+          setHistory(rows);
+        }
+      })
+      .catch((error: unknown) => {
+        console.warn(
+          "Equipment risk history could not be loaded:",
+          error,
+        );
+
+        if (!cancelled) {
+          setHistory([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id, trendRange]);
 
   const visibleExplanations =
     showAllExplanations
@@ -152,34 +303,22 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
   const availableExplanationCount =
     Math.min(explanations.length, 5);
 
-  const latestHistoryScore =
+  const activeTrendRange =
+    RISK_TREND_RANGES.find(
+      (range) =>
+        range.key === trendRange,
+    ) ?? RISK_TREND_RANGES[1];
+
+  const rangeBaselineScore =
     history.length > 0
-      ? history[history.length - 1].riskScore
+      ? history[0].riskScore
       : null;
 
-  const weeklyBaselineScore =
-    history.length >= 2
-      ? history[
-          Math.max(
-            0,
-            history.length - 8,
-          )
-        ].riskScore
-      : null;
-
-  const weeklyChange =
-    latestHistoryScore !== null &&
-    weeklyBaselineScore !== null
-      ? latestHistoryScore -
-        weeklyBaselineScore
-      : null;
-
-  const monthlyChange =
-    latestHistoryScore !== null &&
-    history.length > 0
-      ? latestHistoryScore -
-        history[0].riskScore
-      : null;
+  const rangeChange =
+    rangeBaselineScore === null
+      ? null
+      : item.riskScore -
+        rangeBaselineScore;
 
   const totalRecommendedReduction = explanations
     .slice(0, 5)
@@ -349,93 +488,145 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
       {/* Full-width AI Risk Trend */}
       <div className="mt-3 border-t border-gray-800 pt-3">
-        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               AI risk trend
             </h4>
+
             <p className="mt-0.5 text-[10px] text-slate-600">
-              30 day history
+              {activeTrendRange.description}
             </p>
           </div>
 
-          {history.length > 0 && (
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="inline-flex items-center gap-1.5 text-[10px]">
-                <span className="text-slate-500">
-                  Weekly
-                </span>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <div
+              role="tablist"
+              aria-label="AI risk trend range"
+              className="inline-flex rounded-lg border border-gray-800 bg-[#0d1117] p-1"
+            >
+              {RISK_TREND_RANGES.map(
+                (range) => {
+                  const isSelected =
+                    trendRange === range.key;
 
-                {weeklyChange !== null ? (
-                  <span
-                    className={`font-semibold ${
-                      weeklyChange > 0
-                        ? "text-red-400"
-                        : weeklyChange < 0
-                          ? "text-emerald-400"
-                          : "text-slate-400"
-                    }`}
-                  >
-                    {weeklyChange > 0
-                      ? `▲ +${weeklyChange}`
-                      : weeklyChange < 0
-                        ? `▼ ${weeklyChange}`
-                        : "— 0"}
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    —
-                  </span>
-                )}
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 text-[10px]">
-                <span className="text-slate-500">
-                  Monthly
-                </span>
-
-                {monthlyChange !== null ? (
-                  <span
-                    className={`font-semibold ${
-                      monthlyChange > 0
-                        ? "text-red-400"
-                        : monthlyChange < 0
-                          ? "text-emerald-400"
-                          : "text-slate-400"
-                    }`}
-                  >
-                    {monthlyChange > 0
-                      ? `▲ +${monthlyChange}`
-                      : monthlyChange < 0
-                        ? `▼ ${monthlyChange}`
-                        : "— 0"}
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    —
-                  </span>
-                )}
-              </div>
+                  return (
+                    <button
+                      key={range.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      disabled={historyLoading}
+                      onClick={() =>
+                        setTrendRange(
+                          range.key,
+                        )
+                      }
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        isSelected
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-slate-400 hover:bg-gray-800 hover:text-slate-200"
+                      } disabled:cursor-wait disabled:opacity-70`}
+                    >
+                      {range.label}
+                    </button>
+                  );
+                },
+              )}
             </div>
-          )}
+
+            {!historyLoading &&
+              rangeChange !== null && (
+                <div className="inline-flex items-center gap-1.5 text-[10px]">
+                  <span className="text-slate-500">
+                    {activeTrendRange.label} change
+                  </span>
+
+                  <span
+                    className={`font-semibold ${
+                      rangeChange > 0
+                        ? "text-red-400"
+                        : rangeChange < 0
+                          ? "text-emerald-400"
+                          : "text-slate-400"
+                    }`}
+                  >
+                    {rangeChange > 0
+                      ? `▲ +${rangeChange}`
+                      : rangeChange < 0
+                        ? `▼ ${rangeChange}`
+                        : "— 0"}
+                  </span>
+                </div>
+              )}
+          </div>
         </div>
 
-        {history.length === 0 ? (
+        {historyLoading ? (
+          <div className="flex min-h-[120px] items-center justify-center gap-2 rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5 text-[11px] text-slate-500">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-400" />
+            Loading {activeTrendRange.description.toLowerCase()}...
+          </div>
+        ) : history.length === 0 ? (
           <div className="rounded-lg border border-gray-800 bg-[#11151d] px-4 py-5">
             <p className="text-[11px] text-slate-500">
-              No historical snapshots available.
+              No historical snapshots are available for this range. Current live risk: {item.riskScore}.
             </p>
           </div>
         ) : (
           (() => {
-            const trend = history.map((historyItem) => ({
-              label:
-                historyItem.snapshotLabel ??
-                formatSnapshotDate(
-                  historyItem.snapshotDate,
-                ),
-              value: historyItem.riskScore,
-            }));
+            const sampledHistory =
+              sampleRiskHistory(
+                history,
+                activeTrendRange.maxHistoricalPoints,
+              );
+
+            const trend = sampledHistory.map(
+              (historyItem) => ({
+                label:
+                  historyItem.snapshotLabel ??
+                  formatSnapshotDate(
+                    historyItem.snapshotDate,
+                  ),
+                value:
+                  historyItem.riskScore,
+                isLive: false,
+              }),
+            );
+
+            const lastHistoricalPoint =
+              sampledHistory[
+                sampledHistory.length - 1
+              ];
+
+            const lastHistoricalDate =
+              lastHistoricalPoint
+                ? new Date(
+                    lastHistoricalPoint.snapshotDate,
+                  ).toDateString()
+                : null;
+
+            const todayDate =
+              new Date().toDateString();
+
+            if (
+              lastHistoricalPoint &&
+              lastHistoricalDate === todayDate &&
+              lastHistoricalPoint.riskScore ===
+                item.riskScore
+            ) {
+              trend[trend.length - 1] = {
+                label: "Live",
+                value: item.riskScore,
+                isLive: true,
+              };
+            } else {
+              trend.push({
+                label: "Live",
+                value: item.riskScore,
+                isLive: true,
+              });
+            }
 
             const lastEntry =
               history[history.length - 1];
@@ -461,10 +652,9 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                     className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-slate-700/40"
                   />
 
-                  <div className="relative z-10 flex min-h-[132px] items-end justify-between gap-1.5">
+                  <div className="relative z-10 flex min-h-[116px] items-end justify-between gap-1.5">
                     {trend.map((point, index) => {
-                      const isLast =
-                        index === trend.length - 1;
+                      const isLive = point.isLive;
 
                       const boundedValue = Math.min(
                         100,
@@ -474,12 +664,12 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                       const barHeight = Math.max(
                         10,
                         Math.round(
-                          (boundedValue / 100) * 96,
+                          (boundedValue / 100) * 80,
                         ),
                       );
 
                       const showLabel =
-                        isLast ||
+                        isLive ||
                         index === 0 ||
                         index % labelInterval === 0;
 
@@ -490,7 +680,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                         >
                           <span
                             className={`text-[9px] font-semibold ${
-                              isLast
+                              isLive
                                 ? "text-blue-400"
                                 : "text-slate-500"
                             }`}
@@ -504,7 +694,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
                               height: `${barHeight}px`,
                             }}
                             className={`w-full min-w-[8px] rounded-t-sm border ${
-                              isLast
+                              isLive
                                 ? "border-blue-400 bg-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
                                 : "border-slate-500/70 bg-slate-700/40"
                             }`}
@@ -512,7 +702,7 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
                           <span
                             className={`h-3 truncate text-[9px] ${
-                              isLast
+                              isLive
                                 ? "font-semibold text-blue-400"
                                 : "text-slate-600"
                             }`}
