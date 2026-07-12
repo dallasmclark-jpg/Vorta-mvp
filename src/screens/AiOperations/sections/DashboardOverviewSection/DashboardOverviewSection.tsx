@@ -20,7 +20,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../../components
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
 import {
   getAreaInterventionPlans,
-  getAreaHighestRiskIntervention,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
   refreshAndGetOperationalDashboard,
@@ -30,7 +29,6 @@ import {
   type AreaRiskProfile,
   type SiteRiskProfile,
   type AreaInterventionPlan,
-  type AreaHighestRiskIntervention,
   type SiteRiskReductionPlan,
   type RiskReductionKpi,
   type RiskReductionKpiDashboard,
@@ -591,9 +589,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   ] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
-  const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [selectedAreaIntervention, setSelectedAreaIntervention] = useState<AreaHighestRiskIntervention | null>(null);
-  const [areaInterventionLoading, setAreaInterventionLoading] = useState(false);
+
 
   const [riskReductionPlan, setRiskReductionPlan] =
     useState<SiteRiskReductionPlan | null>(null);
@@ -887,8 +883,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
         setRiskPlanHistory([]);
         setRiskEquipmentPlanHistory([]);
-        setSelectedArea(null);
-        setSelectedAreaIntervention(null);
         setSelectedInterventionPlan(null);
 
         /*
@@ -1147,25 +1141,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
     );
   };
 
-  const handleAreaCardClick = async (area: string) => {
-    if (selectedArea === area) {
-      setSelectedArea(null);
-      setSelectedAreaIntervention(null);
-      return;
-    }
-
-    setSelectedArea(area);
-    setSelectedAreaIntervention(null);
-    setAreaInterventionLoading(true);
-
-    try {
-      const intervention = await getAreaHighestRiskIntervention(area);
-      setSelectedAreaIntervention(intervention);
-    } finally {
-      setAreaInterventionLoading(false);
-    }
-  };
-
   const activeLabourRiskItems =
     (
       activeRiskScope?.labourCards ??
@@ -1270,10 +1245,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
     setIsRiskDetailOpen(false);
     setRiskPlanHistory([]);
     setRiskEquipmentPlanHistory([]);
-    setSelectedArea(null);
-    setSelectedAreaIntervention(
-      null,
-    );
     setSelectedInterventionPlan(
       null,
     );
@@ -2229,241 +2200,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
         {isSiteRiskScope ? (() => {
           const visibleAreaRiskCards = areaRiskCards.slice(0, 4);
 
-          const selectedAreaIndex = visibleAreaRiskCards.findIndex(
-            (area) => area.area === selectedArea,
-          );
-
-          const selectedAreaProfile =
-            selectedAreaIndex >= 0 ? visibleAreaRiskCards[selectedAreaIndex] : null;
-
-          const projectedScoreColor =
-            selectedAreaIntervention
-              ? selectedAreaIntervention.projectedRiskScore >= 85 ? "text-red-400" :
-                selectedAreaIntervention.projectedRiskScore >= 65 ? "text-orange-400" :
-                selectedAreaIntervention.projectedRiskScore >= 40 ? "text-yellow-400" :
-                selectedAreaIntervention.projectedRiskScore >= 20 ? "text-emerald-400" :
-                "text-cyan-400"
-              : "text-yellow-400";
-
-          const projectedLevelColor =
-            selectedAreaIntervention
-              ? selectedAreaIntervention.projectedRiskScore >= 85 ? "text-red-300" :
-                selectedAreaIntervention.projectedRiskScore >= 65 ? "text-orange-300" :
-                selectedAreaIntervention.projectedRiskScore >= 40 ? "text-yellow-300" :
-                selectedAreaIntervention.projectedRiskScore >= 20 ? "text-emerald-300" :
-                "text-cyan-300"
-              : "text-yellow-300";
-
-          const renderAreaIntervention = (areaProfile: AreaRiskProfile) => (
-            <div className="flex w-full flex-col gap-4">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
-                    Highest-risk intervention
-                  </p>
-                  <h3 className="mt-1 text-base font-semibold text-slate-50">
-                    {selectedAreaIntervention?.equipmentName ?? areaProfile.highestAssetName}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {selectedAreaIntervention?.equipmentCode}
-                    {selectedAreaIntervention?.equipmentCode && selectedAreaIntervention?.equipmentType ? " · " : ""}
-                    {selectedAreaIntervention?.equipmentType}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSelectedArea(null);
-                    setSelectedAreaIntervention(null);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-100"
-                  aria-label="Return to area summary"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Loading */}
-              {areaInterventionLoading && (
-                <div className="flex min-h-[220px] items-center justify-center gap-2 text-sm text-slate-500">
-                  <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
-                  Calculating intervention impact...
-                </div>
-              )}
-
-              {/* Error */}
-              {!areaInterventionLoading && selectedAreaIntervention === null && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-6 text-center">
-                  <p className="text-sm font-medium text-red-300">
-                    Intervention data could not be loaded.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleAreaCardClick(areaProfile.area);
-                    }}
-                    className="mt-2 text-xs font-semibold text-blue-400 hover:text-blue-300"
-                  >
-                    Try again
-                  </button>
-                </div>
-              )}
-
-              {/* Data loaded */}
-              {!areaInterventionLoading && selectedAreaIntervention !== null && (
-                <>
-                  {/* Risk projection */}
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                        Current risk
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold text-red-400">
-                        {selectedAreaIntervention.currentRiskScore}
-                      </p>
-                      <p className="text-xs text-red-300">
-                        {selectedAreaIntervention.currentRiskLevel}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-slate-600" />
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                        Projected risk
-                      </p>
-                      <p className={`mt-1 text-2xl font-semibold ${projectedScoreColor}`}>
-                        {selectedAreaIntervention.projectedRiskScore}
-                      </p>
-                      <p className={`text-xs ${projectedLevelColor}`}>
-                        {selectedAreaIntervention.projectedRiskLevel}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-md bg-emerald-500/5 px-3 py-2">
-                    <span className="text-xs text-slate-400">
-                      Total calculated reduction
-                    </span>
-                    <span className="text-sm font-semibold text-emerald-400">
-                      −{selectedAreaIntervention.totalCalculatedReduction} points
-                    </span>
-                  </div>
-
-                  {/* Calculated actions */}
-                  {selectedAreaIntervention.actions.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                        Actions that reduce the weighted score
-                      </p>
-                      {selectedAreaIntervention.actions
-                        .slice()
-                        .sort((a, b) => a.priority - b.priority)
-                        .map((action) => (
-                          <div
-                            key={`${action.priority}-${action.driver}`}
-                            className="rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex min-w-0 gap-2">
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-[10px] font-semibold text-blue-300">
-                                  {action.priority}
-                                </span>
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-xs font-semibold text-slate-100">
-                                      {action.action}
-                                    </p>
-                                    <Badge className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
-                                      {action.driver}
-                                    </Badge>
-                                  </div>
-                                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">
-                                    {action.detail}
-                                  </p>
-                                  {(() => {
-                                    const workOrderNumber = action.workOrderNumbers[0] ?? null;
-                                    const pmNumber = action.pmNumbers[0] ?? null;
-                                    const sparePartNumber = action.sparePartNumbers[0] ?? null;
-                                    if (!workOrderNumber && !pmNumber && !sparePartNumber) {
-                                      return null;
-                                    }
-                                    return (
-                                      <div className="mt-2 flex flex-wrap gap-1.5">
-                                        {workOrderNumber && (
-                                          <span className="inline-flex rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
-                                            {workOrderNumber}
-                                          </span>
-                                        )}
-                                        {pmNumber && (
-                                          <span className="inline-flex rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
-                                            {pmNumber}
-                                          </span>
-                                        )}
-                                        {sparePartNumber && (
-                                          <span className="inline-flex rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
-                                            {sparePartNumber}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                              <div className="shrink-0 text-right">
-                                <p className="text-sm font-semibold text-emerald-400">
-                                  −{action.calculatedReduction}
-                                </p>
-                                <p className="text-[10px] text-slate-500">
-                                  to {action.projectedScore}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  {/* Card actions */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(`/equipment/${selectedAreaIntervention.equipmentId}/overview`);
-                      }}
-                      className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-500"
-                    >
-                      Open {selectedAreaIntervention.equipmentName} →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigateToAreaEquipment(areaProfile.area);
-                      }}
-                      className="inline-flex items-center justify-center rounded-md border border-gray-700 bg-transparent px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-gray-600 hover:bg-gray-800 hover:text-white"
-                    >
-                      View all {areaProfile.area} equipment →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedArea(null);
-                        setSelectedAreaIntervention(null);
-                      }}
-                      className="ml-auto text-xs font-medium text-slate-500 transition-colors hover:text-slate-300"
-                    >
-                      Back to area summary
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-
           return (
             <div className="relative">
               <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -2471,7 +2207,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   const riskLabel = area.riskLevel;
                   const isHighestRisk = areaRiskCards[0]?.area === area.area;
                   const interventionPlan = interventionPlans.find((plan) => plan.area === area.area);
-                  const isSelected = selectedArea === area.area;
 
                   const badgeClass =
                     area.riskScore >= 85 ? "bg-red-500/20 text-red-400" :
@@ -2511,13 +2246,31 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   return (
                     <Card
                       key={area.area}
-                      onClick={() => handleAreaCardClick(area.area)}
-                      className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] ${
-                        isSelected
-                          ? "border-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.12)]"
-                          : isHighestRisk
-                            ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
-                            : "border-gray-800 hover:border-gray-700"
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`View equipment in ${area.area}`}
+                      onClick={() =>
+                        navigateToAreaEquipment(area.area)
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.target !== event.currentTarget
+                        ) {
+                          return;
+                        }
+
+                        if (
+                          event.key === "Enter" ||
+                          event.key === " "
+                        ) {
+                          event.preventDefault();
+                          navigateToAreaEquipment(area.area);
+                        }
+                      }}
+                      className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
+                        isHighestRisk
+                          ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
+                          : "border-gray-800 hover:border-gray-700"
                       }`}
                     >
                       <CardContent className="flex h-full flex-col items-start gap-3 p-4">
@@ -2578,14 +2331,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
   ariaLabel={`${area.area} area risk score ${area.riskScore}`}
 />
                           <p className="text-xs text-slate-400">{trend}</p>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); navigateToAreaEquipment(area.area); }}
-                            className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-blue-400 transition-colors hover:text-blue-300"
-                            aria-label={`View equipment in ${area.area}`}
-                          >
-                            View area equipment →
-                          </button>
                           {interventionPlan && (
                             <button
                               type="button"
@@ -2608,33 +2353,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   </Card>
                 )}
               </div>
-
-              {/* Intervention overlay */}
-              {selectedArea && selectedAreaProfile && (
-                <>
-                  {/* Desktop: absolute overlay covering two card positions */}
-                  <div
-                    className={`absolute top-0 z-40 hidden h-full w-[calc(50%_-_0.5rem)] overflow-hidden rounded-xl border border-blue-500/60 bg-[#141820] shadow-2xl 2xl:block ${
-                      selectedAreaIndex <= 1 ? "left-0" : "right-0"
-                    }`}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div className="h-full overflow-y-auto p-4">
-                      {renderAreaIntervention(selectedAreaProfile)}
-                    </div>
-                  </div>
-
-                  {/* Tablet/mobile: fixed overlay */}
-                  <div
-                    className="fixed inset-x-4 bottom-4 top-20 z-50 overflow-hidden rounded-xl border border-blue-500/60 bg-[#141820] shadow-2xl 2xl:hidden"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div className="h-full overflow-y-auto p-4">
-                      {renderAreaIntervention(selectedAreaProfile)}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           );
         })()
