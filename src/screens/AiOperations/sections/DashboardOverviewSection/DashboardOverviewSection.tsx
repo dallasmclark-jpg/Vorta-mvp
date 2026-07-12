@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   ArrowRight,
+  Info,
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -533,6 +534,83 @@ const orderRiskKpisForDisplay = (
     .map(({ kpi }) => kpi);
 };
 
+type RiskKpiExplanation = {
+  calculation: string;
+  whyItMatters: string;
+  dataSources: string;
+};
+
+const RISK_KPI_EXPLANATIONS: Record<
+  string,
+  RiskKpiExplanation
+> = {
+  risk_reduction_achieved: {
+    calculation:
+      "Sum of the actual risk reduction recorded for priority actions completed during the selected period.",
+    whyItMatters:
+      "Shows whether completed maintenance work is genuinely removing operational risk rather than simply closing work orders.",
+    dataSources:
+      "Risk work plan, completed work orders and locked pre-action and post-action risk scores.",
+  },
+
+  risk_reduction_plan_attainment: {
+    calculation:
+      "Actual risk reduction achieved divided by the risk reduction planned for the selected period.",
+    whyItMatters:
+      "Shows whether the maintenance plan delivered the operational outcome expected from it.",
+    dataSources:
+      "Risk work plan, planned risk reduction and completed action outcomes.",
+  },
+
+  high_critical_risks_eliminated: {
+    calculation:
+      "Count of high or critical equipment exposures that moved into a lower risk band after completed actions.",
+    whyItMatters:
+      "Shows whether the site is removing its most serious equipment exposures instead of merely reducing minor risks.",
+    dataSources:
+      "Locked pre-action and post-action equipment risk levels.",
+  },
+
+  priority_actions_completed_on_time: {
+    calculation:
+      "Priority actions completed on or before their planned date divided by all priority actions scheduled in the selected period.",
+    whyItMatters:
+      "Shows whether the most important risk-reduction work is being executed when the plant needs it.",
+    dataSources:
+      "Vorta priority actions, planned dates and work-order completion timestamps.",
+  },
+
+  skills_risk_change: {
+    calculation:
+      "Opening skills-risk score minus closing skills-risk score. Training, experience, validation and renewals reduce risk; expiries and lost availability increase it.",
+    whyItMatters:
+      "Shows whether workforce capability and equipment coverage are becoming stronger or weaker.",
+    dataSources:
+      "Skills matrix, training records, validated experience, certifications and engineer availability.",
+  },
+
+  critical_parts_readiness: {
+    calculation:
+      "Critical and high-importance parts ready divided by the total critical and high-importance parts required.",
+    whyItMatters:
+      "Shows whether spare-parts availability and work-order reservations can support the maintenance plan.",
+    dataSources:
+      "Equipment BOMs, physical stock levels and material reservations linked to maintenance work orders.",
+  },
+};
+
+const getRiskKpiExplanation = (
+  kpi: RiskReductionKpi,
+): RiskKpiExplanation =>
+  RISK_KPI_EXPLANATIONS[kpi.key] ?? {
+    calculation:
+      "Calculated from eligible Vorta records within the selected reporting period.",
+    whyItMatters:
+      kpi.description,
+    dataSources:
+      "Vorta maintenance, risk and operational data.",
+  };
+
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
@@ -664,6 +742,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
   ] = useState<
     RiskDashboardScopeKpiCache
   >({});
+
+  const [
+    activeRiskKpiInfoKey,
+    setActiveRiskKpiInfoKey,
+  ] = useState<string | null>(null);
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
 
@@ -836,6 +919,39 @@ export const DashboardOverviewSection = (): JSX.Element => {
     hasRevealedRiskKpiBars,
     hasCompletedRiskKpiIntro,
   ]);
+
+  useEffect(() => {
+    setActiveRiskKpiInfoKey(null);
+  }, [
+    selectedKpiPeriod,
+    selectedRiskScopeKey,
+  ]);
+
+  useEffect(() => {
+    if (!activeRiskKpiInfoKey) {
+      return;
+    }
+
+    const handleEscape = (
+      event: KeyboardEvent,
+    ) => {
+      if (event.key === "Escape") {
+        setActiveRiskKpiInfoKey(null);
+      }
+    };
+
+    window.addEventListener(
+      "keydown",
+      handleEscape,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
+    };
+  }, [activeRiskKpiInfoKey]);
 
   const loadRiskDashboard = useCallback(
     async (
@@ -3074,22 +3190,54 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         ? "text-yellow-400"
                         : "text-red-400";
 
+                const isInfoOpen =
+                  activeRiskKpiInfoKey === kpi.key;
+
+                const explanation =
+                  getRiskKpiExplanation(kpi);
+
                 return (
                   <Card
                     key={kpi.key}
                     data-risk-kpi-card
-                    onClick={() =>
-                      handleRiskKpiClick(
-                        kpi,
-                      )
-                    }
-                    className={`group h-[288px] w-[260px] min-w-[260px] snap-start cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] sm:w-[280px] sm:min-w-[280px] xl:w-[292px] xl:min-w-[292px] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
+                    onClick={() => {
+                      if (isInfoOpen) {
+                        return;
+                      }
+
+                      handleRiskKpiClick(kpi);
+                    }}
+                    className={`group relative h-[288px] w-[260px] min-w-[260px] snap-start cursor-pointer overflow-hidden rounded-xl border shadow-none transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-[#181e2a] sm:w-[280px] sm:min-w-[280px] xl:w-[292px] xl:min-w-[292px] ${presentation.borderClassName} ${presentation.backgroundClassName}`}
                   >
-                    <CardContent className="grid h-full grid-rows-[44px_minmax(156px,1fr)_28px] gap-3 overflow-hidden p-4">
+                    <CardContent
+                      aria-hidden={isInfoOpen}
+                      className="grid h-full grid-rows-[44px_minmax(156px,1fr)_28px] gap-3 overflow-hidden p-4"
+                    >
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold leading-snug text-slate-100">
-                          {kpi.label}
-                        </h3>
+                        <div className="flex min-w-0 items-start gap-1.5">
+                          <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-100">
+                            {kpi.label}
+                          </h3>
+
+                          <button
+                            type="button"
+                            aria-label={`Explain ${kpi.label}`}
+                            aria-expanded={isInfoOpen}
+                            onClick={(event) => {
+                              event.stopPropagation();
+
+                              setActiveRiskKpiInfoKey(
+                                isInfoOpen ? null : kpi.key,
+                              );
+                            }}
+                            className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-[#0d1117] text-slate-500 transition-colors hover:border-blue-500/60 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                          >
+                            <Info
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </div>
 
                         <span
                           className={`inline-flex shrink-0 items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold ${presentation.badgeClassName}`}
@@ -3182,6 +3330,103 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </div>
                     </CardContent>
+
+                    <div
+                      role="dialog"
+                      aria-modal="false"
+                      aria-hidden={!isInfoOpen}
+                      aria-labelledby={`risk-kpi-info-title-${kpi.key}`}
+                      onClick={(event) =>
+                        event.stopPropagation()
+                      }
+                      className={`absolute inset-0 z-30 flex flex-col bg-[#10151d]/[0.98] p-4 backdrop-blur-sm transition-all duration-200 motion-reduce:transition-none ${
+                        isInfoOpen
+                          ? "pointer-events-auto translate-y-0 opacity-100"
+                          : "pointer-events-none translate-y-2 opacity-0"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                            KPI explanation
+                          </p>
+
+                          <h3
+                            id={`risk-kpi-info-title-${kpi.key}`}
+                            className="mt-1 text-sm font-semibold leading-snug text-slate-50"
+                          >
+                            {kpi.label}
+                          </h3>
+                        </div>
+
+                        <button
+                          type="button"
+                          tabIndex={isInfoOpen ? 0 : -1}
+                          aria-label={`Close ${kpi.label} explanation`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setActiveRiskKpiInfoKey(null);
+                          }}
+                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                        >
+                          <X
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            What it means
+                          </p>
+
+                          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                            {kpi.description}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            How it is calculated
+                          </p>
+
+                          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                            {explanation.calculation}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            Why it matters
+                          </p>
+
+                          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                            {explanation.whyItMatters}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            Data sources
+                          </p>
+
+                          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                            {explanation.dataSources}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 border-t border-gray-800 pt-2 text-[10px] text-slate-500">
+                        {riskKpiDashboard.periodLabel}
+                        {" · "}
+                        {formatKpiPeriodRange(
+                          riskKpiDashboard.periodStart,
+                          riskKpiDashboard.periodEnd,
+                        )}
+                      </div>
+                    </div>
                   </Card>
                 );
               },
