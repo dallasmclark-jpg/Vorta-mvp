@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
+  Info,
   RefreshCw,
   Search,
   UserCircle,
