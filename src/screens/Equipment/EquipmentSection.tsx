@@ -32,11 +32,26 @@ const FILTER_CHIPS: readonly EquipmentFilterChip[] = [
 ];
 
 const RISK_LEGEND = [
-  { label: "0-20% Minimal",    dotClass: "bg-emerald-500" },
-  { label: "21-40% Low",       dotClass: "bg-lime-500" },
-  { label: "41-60% Medium",    dotClass: "bg-yellow-400" },
-  { label: "61-80% High",      dotClass: "bg-orange-400" },
-  { label: "81-100% Critical", dotClass: "bg-red-500" },
+  {
+    label: "0-19% Minimal",
+    dotClass: "bg-emerald-500",
+  },
+  {
+    label: "20-39% Low",
+    dotClass: "bg-lime-500",
+  },
+  {
+    label: "40-64% Medium",
+    dotClass: "bg-yellow-400",
+  },
+  {
+    label: "65-84% High",
+    dotClass: "bg-orange-400",
+  },
+  {
+    label: "85-100% Critical",
+    dotClass: "bg-red-500",
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,36 +125,9 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
 
   return (
     <div className="border-l-2 border-blue-500/50 bg-[#0b0f18] px-5 py-4">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.85fr)_minmax(320px,1.6fr)_minmax(220px,0.9fr)]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,2fr)_minmax(220px,0.9fr)] xl:grid-cols-[minmax(0,2.2fr)_minmax(260px,0.8fr)]">
 
-        {/* 1 — Asset Info */}
-        <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Asset info</h4>
-          <div className="flex flex-col gap-2.5">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">Asset number</span>
-              <span className="text-sm font-semibold text-slate-200">{item.assetNumber}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">Type</span>
-              <span className="text-sm font-semibold text-slate-200">{item.type}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">Area</span>
-              <span className="text-sm font-semibold text-slate-200">{item.area}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">OEM</span>
-              <span className="text-sm font-semibold text-slate-200">{item.oem}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-slate-500">Criticality</span>
-              <span className="text-sm font-semibold text-slate-200">{item.criticality}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2 — AI Risk Trend */}
+        {/* 1 — AI Risk Trend */}
         <div className="flex flex-col gap-3">
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">AI risk trend</h4>
@@ -219,14 +207,14 @@ function ExpandedPanel({ item, onNavigate, onNavigateToHistory }: { item: Equipm
           })()}
         </div>
 
-        {/* 3 — Actions */}
+        {/* 2 — Actions */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</h4>
           <p className="text-sm leading-relaxed text-slate-300">
-            Open the full asset intelligence page for deep-dive analysis.
+            Open the complete asset record.
           </p>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Includes PMs, work orders, history, spares, documents and AI insights.
+            PMs, work orders, history, skills, spares, documents and AI insights.
           </p>
           <div className="mt-auto flex flex-col gap-2">
             <Button
