@@ -2,12 +2,10 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   Bell,
@@ -16,14 +14,11 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
 import {
   DEFAULT_EQUIPMENT_ID,
-  EquipmentBase,
+  type EquipmentBase,
 } from "./equipmentData";
 import {
   getCachedEquipmentIdentity,
@@ -35,10 +30,7 @@ type NotificationWorkflowStatus =
   | "CONVERTED"
   | "CLOSED_WITHOUT_WORK";
 
-type NotificationFilter =
-  | "ALL"
-  | "AWAITING_WORK_ORDER"
-  | "CONVERTED";
+type NotificationFilter = "ALL" | NotificationWorkflowStatus;
 
 interface EquipmentNotification {
   notificationId: string;
@@ -97,14 +89,147 @@ const TABS = [
   { label: "AI Insights", id: "ai-insights" },
 ] as const;
 
+const FILTERS: Array<{
+  label: string;
+  value: NotificationFilter;
+}> = [
+  { label: "All", value: "ALL" },
+  { label: "Awaiting WO", value: "AWAITING_WORK_ORDER" },
+  { label: "Converted", value: "CONVERTED" },
+  { label: "Closed", value: "CLOSED_WITHOUT_WORK" },
+];
+
+function asRows(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (row): row is Record<string, unknown> =>
+        typeof row === "object" && row !== null,
+    );
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return [value as Record<string, unknown>];
+  }
+
+  return [];
+}
+
+function stringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : null;
+}
+
+function numberValue(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function workflowStatus(value: unknown): NotificationWorkflowStatus {
+  if (value === "CONVERTED" || value === "CLOSED_WITHOUT_WORK") {
+    return value;
+  }
+
+  return "AWAITING_WORK_ORDER";
+}
+
+function mapNotification(
+  row: Record<string, unknown>,
+): EquipmentNotification {
+  return {
+    notificationId: stringValue(row.notification_id),
+    notificationNumber: stringValue(row.notification_number),
+    notificationTypeCode: nullableString(row.notification_type_code),
+    notificationTypeDescription: nullableString(
+      row.notification_type_description,
+    ),
+    shortText: stringValue(row.short_text, "Maintenance notification"),
+    longText: nullableString(row.long_text),
+    priorityCode: nullableString(row.priority_code),
+    priorityDescription: nullableString(row.priority_description),
+    sourceStatus: stringValue(row.source_status, "OPEN"),
+    workflowStatus: workflowStatus(row.workflow_status),
+    breakdownIndicator: row.breakdown_indicator === true,
+    reportedBy: nullableString(row.reported_by),
+    requiredStartDate: nullableString(row.required_start_date),
+    requiredEndDate: nullableString(row.required_end_date),
+    reportedAt: nullableString(row.reported_at),
+    ageDays: numberValue(row.age_days),
+    riskPoints: numberValue(row.risk_points),
+    riskReason: nullableString(row.risk_reason),
+    linkedWorkOrderNumber: nullableString(
+      row.linked_work_order_number,
+    ),
+    linkedWorkOrderStatus: nullableString(row.linked_work_order_status),
+    convertedAt: nullableString(row.converted_at),
+  };
+}
+
+function mapSummary(
+  row: Record<string, unknown> | undefined,
+): NotificationSummary {
+  if (!row) return EMPTY_SUMMARY;
+
+  return {
+    totalNotifications: numberValue(row.total_notifications),
+    awaitingWorkOrder: numberValue(row.awaiting_work_order),
+    convertedNotifications: numberValue(row.converted_notifications),
+    highCriticalAwaiting: numberValue(row.high_critical_awaiting),
+    breakdownAwaiting: numberValue(row.breakdown_awaiting),
+    oldestAwaitingDays: numberValue(row.oldest_awaiting_days),
+    notificationRiskScore: numberValue(row.notification_risk_score),
+  };
+}
+
+function summaryFromNotifications(
+  notifications: EquipmentNotification[],
+): NotificationSummary {
+  const awaiting = notifications.filter(
+    (notification) =>
+      notification.workflowStatus === "AWAITING_WORK_ORDER",
+  );
+
+  return {
+    totalNotifications: notifications.length,
+    awaitingWorkOrder: awaiting.length,
+    convertedNotifications: notifications.filter(
+      (notification) => notification.workflowStatus === "CONVERTED",
+    ).length,
+    highCriticalAwaiting: awaiting.filter((notification) => {
+      const priority = (
+        notification.priorityDescription ??
+        notification.priorityCode ??
+        ""
+      ).toUpperCase();
+      return priority === "HIGH" || priority === "CRITICAL";
+    }).length,
+    breakdownAwaiting: awaiting.filter(
+      (notification) => notification.breakdownIndicator,
+    ).length,
+    oldestAwaitingDays: awaiting.reduce(
+      (oldest, notification) => Math.max(oldest, notification.ageDays),
+      0,
+    ),
+    notificationRiskScore: Math.min(
+      100,
+      awaiting.reduce(
+        (highest, notification) =>
+          Math.max(highest, notification.riskPoints),
+        0,
+      ),
+    ),
+  };
+}
+
 function formatDate(value: string | null): string {
   if (!value) return "—";
 
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
+  if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -114,222 +239,152 @@ function formatDate(value: string | null): string {
 }
 
 function priorityClass(priority: string | null): string {
-  const value = priority?.toUpperCase();
-
-  if (value === "CRITICAL") {
-    return "border-red-500/25 bg-red-500/10 text-red-300";
+  switch (priority?.toUpperCase()) {
+    case "CRITICAL":
+      return "border-red-500/25 bg-red-500/10 text-red-300";
+    case "HIGH":
+      return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+    case "MEDIUM":
+      return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
+    default:
+      return "border-slate-600 bg-slate-800/70 text-slate-300";
   }
-
-  if (value === "HIGH") {
-    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
-  }
-
-  if (value === "MEDIUM") {
-    return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
-  }
-
-  return "border-slate-600 bg-slate-800/70 text-slate-300";
 }
 
-function workflowClass(
-  status: NotificationWorkflowStatus,
-): string {
-  if (status === "AWAITING_WORK_ORDER") {
-    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+function workflowClass(status: NotificationWorkflowStatus): string {
+  switch (status) {
+    case "AWAITING_WORK_ORDER":
+      return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+    case "CONVERTED":
+      return "border-blue-500/25 bg-blue-500/10 text-blue-300";
+    default:
+      return "border-slate-600 bg-slate-800/70 text-slate-300";
   }
-
-  if (status === "CONVERTED") {
-    return "border-blue-500/25 bg-blue-500/10 text-blue-300";
-  }
-
-  return "border-slate-600 bg-slate-800/70 text-slate-300";
 }
 
-function workflowLabel(
-  status: NotificationWorkflowStatus,
-): string {
-  if (status === "AWAITING_WORK_ORDER") {
-    return "Awaiting work order";
+function workflowLabel(status: NotificationWorkflowStatus): string {
+  switch (status) {
+    case "AWAITING_WORK_ORDER":
+      return "Awaiting work order";
+    case "CONVERTED":
+      return "Converted";
+    default:
+      return "Closed without work";
   }
-
-  if (status === "CONVERTED") {
-    return "Converted";
-  }
-
-  return "Closed without work";
-}
-
-function mapNotification(row: any): EquipmentNotification {
-  const workflowStatus =
-    row.workflow_status === "CONVERTED" ||
-    row.workflow_status === "CLOSED_WITHOUT_WORK"
-      ? row.workflow_status
-      : "AWAITING_WORK_ORDER";
-
-  return {
-    notificationId: String(row.notification_id ?? ""),
-    notificationNumber: String(
-      row.notification_number ?? "",
-    ),
-    notificationTypeCode:
-      row.notification_type_code ?? null,
-    notificationTypeDescription:
-      row.notification_type_description ?? null,
-    shortText: String(row.short_text ?? ""),
-    longText: row.long_text ?? null,
-    priorityCode: row.priority_code ?? null,
-    priorityDescription:
-      row.priority_description ?? null,
-    sourceStatus: String(row.source_status ?? "OPEN"),
-    workflowStatus,
-    breakdownIndicator:
-      row.breakdown_indicator ?? false,
-    reportedBy: row.reported_by ?? null,
-    requiredStartDate:
-      row.required_start_date ?? null,
-    requiredEndDate:
-      row.required_end_date ?? null,
-    reportedAt: row.reported_at ?? null,
-    ageDays: Number(row.age_days ?? 0),
-    riskPoints: Number(row.risk_points ?? 0),
-    riskReason: row.risk_reason ?? null,
-    linkedWorkOrderNumber:
-      row.linked_work_order_number ?? null,
-    linkedWorkOrderStatus:
-      row.linked_work_order_status ?? null,
-    convertedAt: row.converted_at ?? null,
-  };
-}
-
-function mapSummary(row: any): NotificationSummary {
-  if (!row) return EMPTY_SUMMARY;
-
-  return {
-    totalNotifications: Number(
-      row.total_notifications ?? 0,
-    ),
-    awaitingWorkOrder: Number(
-      row.awaiting_work_order ?? 0,
-    ),
-    convertedNotifications: Number(
-      row.converted_notifications ?? 0,
-    ),
-    highCriticalAwaiting: Number(
-      row.high_critical_awaiting ?? 0,
-    ),
-    breakdownAwaiting: Number(
-      row.breakdown_awaiting ?? 0,
-    ),
-    oldestAwaitingDays: Number(
-      row.oldest_awaiting_days ?? 0,
-    ),
-    notificationRiskScore: Number(
-      row.notification_risk_score ?? 0,
-    ),
-  };
 }
 
 export const EquipmentNotifications = (): JSX.Element => {
   const navigate = useNavigate();
-  const { equipmentId } = useParams<{
-    equipmentId?: string;
-  }>();
+  const { equipmentId } = useParams<{ equipmentId?: string }>();
+  const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const requestIdRef = useRef(0);
 
-  const resolvedId =
-    equipmentId ?? DEFAULT_EQUIPMENT_ID;
-
-  const [equipment, setEquipment] =
-    useState<EquipmentBase | null>(() =>
-      getCachedEquipmentIdentity(resolvedId),
-    );
-
-  const [notifications, setNotifications] =
-    useState<EquipmentNotification[]>([]);
-
+  const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
+    getCachedEquipmentIdentity(resolvedId),
+  );
+  const [notifications, setNotifications] = useState<
+    EquipmentNotification[]
+  >([]);
   const [summary, setSummary] =
     useState<NotificationSummary>(EMPTY_SUMMARY);
-
   const [search, setSearch] = useState("");
-  const [filter, setFilter] =
-    useState<NotificationFilter>("ALL");
+  const [filter, setFilter] = useState<NotificationFilter>("ALL");
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [summaryWarning, setSummaryWarning] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setErrorMessage(null);
+    setSummaryWarning(null);
 
-    try {
-      const [notificationResult, summaryResult] =
-        await Promise.all([
-          supabase.rpc(
-            "vorta_get_equipment_notifications",
-            {
-              p_equipment_id: resolvedId,
-            },
-          ),
-          supabase.rpc(
-            "vorta_get_equipment_notification_summary",
-            {
-              p_equipment_id: resolvedId,
-            },
-          ),
-        ]);
+    const [notificationResult, summaryResult] = await Promise.all([
+      supabase.rpc("vorta_get_equipment_notifications", {
+        p_equipment_id: resolvedId,
+      }),
+      supabase.rpc("vorta_get_equipment_notification_summary", {
+        p_equipment_id: resolvedId,
+      }),
+    ]);
 
-      if (notificationResult.error) {
-        throw notificationResult.error;
-      }
+    if (requestId !== requestIdRef.current) return;
 
-      if (summaryResult.error) {
-        throw summaryResult.error;
-      }
-
-      const notificationRows = Array.isArray(
-        notificationResult.data,
-      )
-        ? notificationResult.data
-        : [];
-
-      const summaryRows = Array.isArray(
-        summaryResult.data,
-      )
-        ? summaryResult.data
-        : [];
-
-      setNotifications(
-        notificationRows.map(mapNotification),
-      );
-
-      setSummary(
-        mapSummary(summaryRows[0] ?? null),
-      );
-    } catch (error) {
+    if (notificationResult.error) {
       console.warn(
         "Equipment notifications failed:",
-        error,
+        notificationResult.error,
       );
-
       setNotifications([]);
       setSummary(EMPTY_SUMMARY);
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Notifications could not be loaded.",
+        notificationResult.error.message ||
+          "Notifications could not be loaded.",
       );
-    } finally {
       setLoading(false);
+      return;
     }
+
+    const mappedNotifications = asRows(notificationResult.data)
+      .map(mapNotification)
+      .sort((left, right) => {
+        const leftAwaiting =
+          left.workflowStatus === "AWAITING_WORK_ORDER" ? 1 : 0;
+        const rightAwaiting =
+          right.workflowStatus === "AWAITING_WORK_ORDER" ? 1 : 0;
+
+        return (
+          rightAwaiting - leftAwaiting ||
+          right.riskPoints - left.riskPoints ||
+          right.ageDays - left.ageDays
+        );
+      });
+
+    setNotifications(mappedNotifications);
+
+    if (summaryResult.error) {
+      console.warn(
+        "Equipment notification summary failed:",
+        summaryResult.error,
+      );
+      setSummary(summaryFromNotifications(mappedNotifications));
+      setSummaryWarning(
+        "Summary RPC unavailable. Totals were calculated from the notification list.",
+      );
+    } else {
+      const summaryRows = asRows(summaryResult.data);
+      const mappedSummary = mapSummary(summaryRows[0]);
+      setSummary(
+        mappedSummary.totalNotifications === 0 &&
+          mappedNotifications.length > 0
+          ? summaryFromNotifications(mappedNotifications)
+          : mappedSummary,
+      );
+    }
+
+    setLoading(false);
   }, [resolvedId]);
 
   useEffect(() => {
-    void getEquipmentIdentityById(
-      resolvedId,
-    ).then(setEquipment);
+    let active = true;
+
+    setEquipment(getCachedEquipmentIdentity(resolvedId));
+    void getEquipmentIdentityById(resolvedId).then((identity) => {
+      if (active) setEquipment(identity);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [resolvedId]);
 
   useEffect(() => {
     void loadNotifications();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [loadNotifications]);
 
   const filteredNotifications = useMemo(() => {
@@ -337,24 +392,22 @@ export const EquipmentNotifications = (): JSX.Element => {
 
     return notifications.filter((notification) => {
       const matchesFilter =
-        filter === "ALL" ||
-        notification.workflowStatus === filter;
+        filter === "ALL" || notification.workflowStatus === filter;
 
-      const matchesSearch =
-        query.length === 0 ||
-        notification.notificationNumber
-          .toLowerCase()
-          .includes(query) ||
-        notification.shortText
-          .toLowerCase()
-          .includes(query) ||
-        (
-          notification.linkedWorkOrderNumber ?? ""
-        )
-          .toLowerCase()
-          .includes(query);
+      if (!matchesFilter) return false;
+      if (!query) return true;
 
-      return matchesFilter && matchesSearch;
+      return [
+        notification.notificationNumber,
+        notification.notificationTypeCode,
+        notification.notificationTypeDescription,
+        notification.shortText,
+        notification.longText,
+        notification.priorityCode,
+        notification.priorityDescription,
+        notification.reportedBy,
+        notification.linkedWorkOrderNumber,
+      ].some((value) => value?.toLowerCase().includes(query));
     });
   }, [filter, notifications, search]);
 
@@ -377,26 +430,12 @@ export const EquipmentNotifications = (): JSX.Element => {
           ? "bg-yellow-500/10 text-yellow-300"
           : "bg-emerald-500/10 text-emerald-300";
 
-  const handleTabClick = (tabId: string) => {
-    navigate(
-      `/equipment/${equipment.id}/${tabId}`,
-    );
-  };
-
   const summaryCards = [
     {
       label: "Awaiting work order",
       value: summary.awaitingWorkOrder,
-      detail: `${summary.breakdownAwaiting} breakdown notification${
-        summary.breakdownAwaiting === 1 ? "" : "s"
-      }`,
+      detail: `${summary.totalNotifications} total notifications`,
       valueClass: "text-orange-300",
-    },
-    {
-      label: "Converted",
-      value: summary.convertedNotifications,
-      detail: "Linked to executable work",
-      valueClass: "text-blue-300",
     },
     {
       label: "High / critical awaiting",
@@ -404,6 +443,15 @@ export const EquipmentNotifications = (): JSX.Element => {
       detail: "Require manager triage",
       valueClass:
         summary.highCriticalAwaiting > 0
+          ? "text-red-300"
+          : "text-emerald-300",
+    },
+    {
+      label: "Breakdown awaiting",
+      value: summary.breakdownAwaiting,
+      detail: `${summary.convertedNotifications} already converted`,
+      valueClass:
+        summary.breakdownAwaiting > 0
           ? "text-red-300"
           : "text-emerald-300",
     },
@@ -433,12 +481,9 @@ export const EquipmentNotifications = (): JSX.Element => {
             >
               Equipment
             </button>
-
             <ChevronRight className="h-3.5 w-3.5" />
-
             <span className="text-slate-300">
-              {equipment.name} (
-              {equipment.assetNumber})
+              {equipment.name} ({equipment.assetNumber})
             </span>
           </nav>
 
@@ -450,9 +495,7 @@ export const EquipmentNotifications = (): JSX.Element => {
             className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100"
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 ${
-                loading ? "animate-spin" : ""
-              }`}
+              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
             />
             Refresh
           </Button>
@@ -463,43 +506,35 @@ export const EquipmentNotifications = (): JSX.Element => {
             <h1 className="text-xl font-semibold text-slate-50">
               {equipment.name}
             </h1>
-
             <p className="mt-1 text-xs text-slate-500">
-              {equipment.assetNumber} ·{" "}
-              {equipment.type} · {equipment.area}
+              {equipment.assetNumber} · {equipment.type} · {equipment.area}
             </p>
           </div>
 
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-semibold ${riskBadgeClass}`}
           >
-            {equipment.riskScore}%{" "}
-            {equipment.riskLevel} risk
+            {equipment.riskScore}% {equipment.riskLevel} risk
           </span>
         </div>
 
         <div className="flex gap-1 overflow-x-auto border-b border-gray-800">
-          {TABS.map((tab) => {
-            const active =
-              tab.id === "notifications";
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() =>
-                  handleTabClick(tab.id)
-                }
-                className={`shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors ${
-                  active
-                    ? "border-blue-500 text-blue-300"
-                    : "border-transparent text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() =>
+                navigate(`/equipment/${equipment.id}/${tab.id}`)
+              }
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                tab.id === "notifications"
+                  ? "border-blue-500 text-blue-300"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -514,13 +549,11 @@ export const EquipmentNotifications = (): JSX.Element => {
                 <p className="text-xs font-medium text-slate-500">
                   {card.label}
                 </p>
-
                 <p
                   className={`mt-2 text-2xl font-semibold ${card.valueClass}`}
                 >
                   {card.value}
                 </p>
-
                 <p className="mt-1 text-xs text-slate-500">
                   {card.detail}
                 </p>
@@ -535,58 +568,35 @@ export const EquipmentNotifications = (): JSX.Element => {
               <div>
                 <div className="flex items-center gap-2">
                   <Bell className="h-4 w-4 text-blue-400" />
-
                   <h2 className="text-sm font-semibold text-slate-100">
                     Maintenance notifications
                   </h2>
                 </div>
-
                 <p className="mt-1 text-xs text-slate-500">
-                  Notifications remain a risk driver
-                  until converted into executable work
-                  or closed without work.
+                  Notifications remain a risk driver until converted into
+                  executable work or closed without work.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col gap-2 xl:flex-row">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-
                   <input
                     value={search}
-                    onChange={(event) =>
-                      setSearch(event.target.value)
-                    }
-                    placeholder="Search notifications or WO"
-                    className="h-9 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-64"
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search notification, issue or WO"
+                    aria-label="Search maintenance notifications"
+                    className="h-9 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-72"
                   />
                 </div>
 
-                <div className="flex rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
-                  {[
-                    {
-                      label: "All",
-                      value: "ALL",
-                    },
-                    {
-                      label: "Awaiting WO",
-                      value:
-                        "AWAITING_WORK_ORDER",
-                    },
-                    {
-                      label: "Converted",
-                      value: "CONVERTED",
-                    },
-                  ].map((option) => (
+                <div className="flex overflow-x-auto rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
+                  {FILTERS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() =>
-                        setFilter(
-                          option.value as NotificationFilter,
-                        )
-                      }
-                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      onClick={() => setFilter(option.value)}
+                      className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                         filter === option.value
                           ? "bg-blue-600 text-white"
                           : "text-slate-500 hover:text-slate-300"
@@ -599,25 +609,25 @@ export const EquipmentNotifications = (): JSX.Element => {
               </div>
             </div>
 
+            {summaryWarning ? (
+              <div className="border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-xs text-amber-200/80">
+                {summaryWarning}
+              </div>
+            ) : null}
+
             {errorMessage ? (
               <div className="m-4 flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-red-200">
-                    Notifications could not be
-                    loaded
+                    Notifications could not be loaded
                   </p>
-
                   <p className="mt-1 break-words text-xs text-red-200/70">
                     {errorMessage}
                   </p>
-
                   <button
                     type="button"
-                    onClick={() =>
-                      void loadNotifications()
-                    }
+                    onClick={() => void loadNotifications()}
                     className="mt-3 text-xs font-semibold text-red-300 hover:text-red-200"
                   >
                     Retry
@@ -626,27 +636,15 @@ export const EquipmentNotifications = (): JSX.Element => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px] border-collapse text-left">
+                <table className="w-full min-w-[1080px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-gray-800 text-[11px] uppercase tracking-wide text-slate-600">
-                      <th className="px-4 py-3 font-semibold">
-                        Notification
-                      </th>
-                      <th className="px-4 py-3 font-semibold">
-                        Priority
-                      </th>
-                      <th className="px-4 py-3 font-semibold">
-                        Issue
-                      </th>
-                      <th className="px-4 py-3 font-semibold">
-                        Workflow
-                      </th>
-                      <th className="px-4 py-3 font-semibold">
-                        Age
-                      </th>
-                      <th className="px-4 py-3 font-semibold">
-                        Risk
-                      </th>
+                      <th className="px-4 py-3 font-semibold">Notification</th>
+                      <th className="px-4 py-3 font-semibold">Priority</th>
+                      <th className="px-4 py-3 font-semibold">Issue</th>
+                      <th className="px-4 py-3 font-semibold">Workflow</th>
+                      <th className="px-4 py-3 font-semibold">Dates</th>
+                      <th className="px-4 py-3 font-semibold">Risk</th>
                       <th className="px-4 py-3 font-semibold">
                         Linked work order
                       </th>
@@ -655,36 +653,34 @@ export const EquipmentNotifications = (): JSX.Element => {
 
                   <tbody>
                     {loading
-                      ? Array.from({
-                          length: 4,
-                        }).map((_, index) => (
+                      ? Array.from({ length: 4 }).map((_, index) => (
                           <tr
                             key={index}
                             className="border-b border-gray-800/70"
                           >
-                            <td
-                              colSpan={7}
-                              className="px-4 py-4"
-                            >
-                              <div className="h-10 animate-pulse rounded-lg bg-[#171c25]" />
+                            <td colSpan={7} className="px-4 py-4">
+                              <div className="h-12 animate-pulse rounded-lg bg-[#171c25]" />
                             </td>
                           </tr>
                         ))
-                      : filteredNotifications.map(
-                          (notification) => (
+                      : filteredNotifications.map((notification) => {
+                          const priority =
+                            notification.priorityDescription ??
+                            notification.priorityCode ??
+                            "Normal";
+
+                          return (
                             <tr
                               key={
-                                notification.notificationId
+                                notification.notificationId ||
+                                notification.notificationNumber
                               }
                               className="border-b border-gray-800/70 transition-colors last:border-b-0 hover:bg-white/[0.015]"
                             >
                               <td className="px-4 py-4 align-top">
                                 <p className="text-xs font-semibold text-blue-300">
-                                  {
-                                    notification.notificationNumber
-                                  }
+                                  {notification.notificationNumber || "—"}
                                 </p>
-
                                 <p className="mt-1 text-[11px] text-slate-600">
                                   {notification.notificationTypeDescription ??
                                     notification.notificationTypeCode ??
@@ -695,15 +691,11 @@ export const EquipmentNotifications = (): JSX.Element => {
                               <td className="px-4 py-4 align-top">
                                 <span
                                   className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-semibold ${priorityClass(
-                                    notification.priorityDescription ??
-                                      notification.priorityCode,
+                                    priority,
                                   )}`}
                                 >
-                                  {notification.priorityDescription ??
-                                    notification.priorityCode ??
-                                    "Normal"}
+                                  {priority}
                                 </span>
-
                                 {notification.breakdownIndicator ? (
                                   <p className="mt-2 text-[11px] font-medium text-red-400">
                                     Breakdown
@@ -711,22 +703,20 @@ export const EquipmentNotifications = (): JSX.Element => {
                                 ) : null}
                               </td>
 
-                              <td className="max-w-sm px-4 py-4 align-top">
+                              <td className="max-w-md px-4 py-4 align-top">
                                 <p className="text-xs font-medium leading-5 text-slate-200">
-                                  {
-                                    notification.shortText
-                                  }
+                                  {notification.shortText}
                                 </p>
-
-                                <p className="mt-1 text-[11px] text-slate-600">
-                                  Reported{" "}
-                                  {formatDate(
-                                    notification.reportedAt,
-                                  )}
-                                  {notification.reportedBy
-                                    ? ` by ${notification.reportedBy}`
-                                    : ""}
-                                </p>
+                                {notification.longText ? (
+                                  <p className="mt-1 max-w-md text-[11px] leading-4 text-slate-500">
+                                    {notification.longText}
+                                  </p>
+                                ) : null}
+                                {notification.reportedBy ? (
+                                  <p className="mt-1 text-[11px] text-slate-600">
+                                    Reported by {notification.reportedBy}
+                                  </p>
+                                ) : null}
                               </td>
 
                               <td className="px-4 py-4 align-top">
@@ -735,44 +725,38 @@ export const EquipmentNotifications = (): JSX.Element => {
                                     notification.workflowStatus,
                                   )}`}
                                 >
-                                  {workflowLabel(
-                                    notification.workflowStatus,
-                                  )}
+                                  {workflowLabel(notification.workflowStatus)}
                                 </span>
-
                                 <p className="mt-2 text-[11px] text-slate-600">
-                                  SAP status:{" "}
-                                  {
-                                    notification.sourceStatus
-                                  }
+                                  SAP status: {notification.sourceStatus}
                                 </p>
                               </td>
 
-                              <td className="px-4 py-4 align-top text-xs text-slate-300">
-                                {
-                                  notification.ageDays
-                                }
-                                d
+                              <td className="px-4 py-4 align-top text-[11px] leading-5 text-slate-500">
+                                <p>
+                                  Reported {formatDate(notification.reportedAt)}
+                                </p>
+                                <p>
+                                  Required {formatDate(notification.requiredStartDate)}
+                                </p>
+                                <p className="font-medium text-slate-300">
+                                  Age {notification.ageDays}d
+                                </p>
                               </td>
 
                               <td className="px-4 py-4 align-top">
                                 <p
                                   className={`text-sm font-semibold ${
-                                    notification.riskPoints >=
-                                    50
+                                    notification.riskPoints >= 50
                                       ? "text-red-300"
-                                      : notification.riskPoints >
-                                          0
+                                      : notification.riskPoints > 0
                                         ? "text-orange-300"
                                         : "text-slate-500"
                                   }`}
                                 >
-                                  {
-                                    notification.riskPoints
-                                  }
+                                  {notification.riskPoints}
                                 </p>
-
-                                <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-600">
+                                <p className="mt-1 max-w-[190px] text-[11px] leading-4 text-slate-600">
                                   {notification.riskReason ??
                                     "No active notification risk."}
                                 </p>
@@ -789,42 +773,37 @@ export const EquipmentNotifications = (): JSX.Element => {
                                     }
                                     className="text-xs font-semibold text-blue-300 hover:text-blue-200"
                                   >
-                                    {
-                                      notification.linkedWorkOrderNumber
-                                    }
+                                    {notification.linkedWorkOrderNumber}
                                   </button>
                                 ) : (
                                   <span className="text-xs font-medium text-orange-300">
                                     Awaiting conversion
                                   </span>
                                 )}
-
                                 {notification.linkedWorkOrderStatus ? (
                                   <p className="mt-1 text-[11px] text-slate-600">
-                                    {
-                                      notification.linkedWorkOrderStatus
-                                    }
+                                    {notification.linkedWorkOrderStatus}
                                   </p>
                                 ) : null}
                               </td>
                             </tr>
-                          ),
-                        )}
+                          );
+                        })}
                   </tbody>
                 </table>
 
-                {!loading &&
-                filteredNotifications.length === 0 ? (
+                {!loading && filteredNotifications.length === 0 ? (
                   <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
                     <Bell className="h-7 w-7 text-slate-700" />
-
                     <p className="mt-3 text-sm font-medium text-slate-300">
-                      No matching notifications
+                      {notifications.length === 0
+                        ? "No notifications for this equipment"
+                        : "No matching notifications"}
                     </p>
-
                     <p className="mt-1 text-xs text-slate-600">
-                      Adjust the search or workflow
-                      filter.
+                      {notifications.length === 0
+                        ? "The notification RPC returned no records."
+                        : "Adjust the search or workflow filter."}
                     </p>
                   </div>
                 ) : null}
