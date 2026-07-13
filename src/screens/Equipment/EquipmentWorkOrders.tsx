@@ -44,6 +44,7 @@ interface WorkOrder {
 const TABS = [
   { label: "Overview",          id: "overview" },
   { label: "Health",            id: "health" },
+  { label: "Notifications",     id: "notifications" },
   { label: "Work Orders",       id: "wo" },
   { label: "PMs",               id: "pm" },
   { label: "History",           id: "history" },
@@ -147,6 +148,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
+    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
     if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
     if (tabId === "history")  navigate(`/equipment/${id}/history`);
     if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
