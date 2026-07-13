@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -56,6 +57,155 @@ const labelBase = "text-sm font-medium leading-none tracking-tight";
 const itemBase  = (hover: string) =>
   `flex w-full items-center gap-3 rounded-lg py-2.5 px-2 text-sm transition-colors ${hover} justify-center xl:justify-start xl:px-3`;
 
+interface SidebarTooltipPosition {
+  top: number;
+  left: number;
+}
+
+function useCompactSidebarTooltip(
+  label: string,
+  enabled: boolean,
+) {
+  const [
+    position,
+    setPosition,
+  ] =
+    useState<SidebarTooltipPosition | null>(
+      null,
+    );
+
+  const showTimerRef =
+    useRef<number | null>(
+      null,
+    );
+
+  const clearShowTimer = () => {
+    if (
+      showTimerRef.current !== null
+    ) {
+      window.clearTimeout(
+        showTimerRef.current,
+      );
+
+      showTimerRef.current =
+        null;
+    }
+  };
+
+  const hideTooltip = () => {
+    clearShowTimer();
+    setPosition(null);
+  };
+
+  const showTooltip = (
+    element: HTMLElement,
+  ) => {
+    clearShowTimer();
+
+    if (
+      !enabled ||
+      window.matchMedia(
+        "(min-width: 1280px)",
+      ).matches
+    ) {
+      return;
+    }
+
+    const rect =
+      element.getBoundingClientRect();
+
+    showTimerRef.current =
+      window.setTimeout(() => {
+        setPosition({
+          top:
+            rect.top +
+            rect.height / 2,
+          left:
+            rect.right + 10,
+        });
+
+        showTimerRef.current =
+          null;
+      }, 120);
+  };
+
+  useEffect(() => {
+    if (!enabled) {
+      hideTooltip();
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    const dismissTooltip = () => {
+      hideTooltip();
+    };
+
+    window.addEventListener(
+      "resize",
+      dismissTooltip,
+    );
+
+    window.addEventListener(
+      "scroll",
+      dismissTooltip,
+      true,
+    );
+
+    return () => {
+      clearShowTimer();
+
+      window.removeEventListener(
+        "resize",
+        dismissTooltip,
+      );
+
+      window.removeEventListener(
+        "scroll",
+        dismissTooltip,
+        true,
+      );
+    };
+  }, []);
+
+  const tooltip =
+    enabled &&
+    position &&
+    typeof document !==
+      "undefined"
+      ? createPortal(
+          <div
+            role="tooltip"
+            style={{
+              top: position.top,
+              left: position.left,
+            }}
+            className="pointer-events-none fixed z-[200] -translate-y-1/2 animate-in whitespace-nowrap rounded-md border border-slate-700/80 bg-[#141820] px-2.5 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.45)] fade-in-0 zoom-in-95 duration-150 xl:hidden"
+          >
+            <span
+              aria-hidden="true"
+              className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-[-45deg] border-l border-t border-slate-700/80 bg-[#141820]"
+            />
+
+            <span className="relative inline-flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-blue-400"
+              />
+
+              {label}
+            </span>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return {
+    showTooltip,
+    hideTooltip,
+    tooltip,
+  };
+}
+
 // ─── Single nav item ─────────────────────────────────────────────────────────
 
 interface NavItemRowProps {
@@ -78,6 +228,12 @@ function NavItemRow({
 
   const Icon = item.icon;
   const location = useLocation();
+
+  const compactTooltip =
+    useCompactSidebarTooltip(
+      item.label,
+      !labelVisible,
+    );
 
   const normalisePath = (
     path: string,
@@ -113,27 +269,57 @@ function NavItemRow({
         );
 
   return (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      title={item.label}
-      className={() =>
-        `${itemBase(hover)} ${
-          indent
-            ? "pl-7 xl:pl-8"
-            : ""
-        } ${
-          isItemActive
-            ? active
-            : "text-slate-400 hover:text-slate-200"
-        }`
-      }
-    >
-      <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-      <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
-        {item.label}
-      </span>
-    </NavLink>
+    <>
+      <NavLink
+        to={item.to}
+        end={item.end}
+        aria-label={item.label}
+        onMouseEnter={(event) =>
+          compactTooltip.showTooltip(
+            event.currentTarget,
+          )
+        }
+        onMouseLeave={
+          compactTooltip.hideTooltip
+        }
+        onFocus={(event) =>
+          compactTooltip.showTooltip(
+            event.currentTarget,
+          )
+        }
+        onBlur={
+          compactTooltip.hideTooltip
+        }
+        onClick={
+          compactTooltip.hideTooltip
+        }
+        onKeyDown={(event) => {
+          if (
+            event.key === "Escape"
+          ) {
+            compactTooltip.hideTooltip();
+          }
+        }}
+        className={() =>
+          `${itemBase(hover)} ${
+            indent
+              ? "pl-7 xl:pl-8"
+              : ""
+          } ${
+            isItemActive
+              ? active
+              : "text-slate-400 hover:text-slate-200"
+          }`
+        }
+      >
+        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
+          {item.label}
+        </span>
+      </NavLink>
+
+      {compactTooltip.tooltip}
+    </>
   );
 }
 
@@ -196,6 +382,12 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   const navigate = useNavigate();
   const labelVisible = forceLabels;
 
+  const logoutTooltip =
+    useCompactSidebarTooltip(
+      "Log out",
+      !labelVisible,
+    );
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
@@ -250,8 +442,34 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
         <div className="border-t border-gray-800 pt-4">
           <button
             type="button"
-            title="Log out"
-            onClick={handleLogout}
+            aria-label="Log out"
+            onMouseEnter={(event) =>
+              logoutTooltip.showTooltip(
+                event.currentTarget,
+              )
+            }
+            onMouseLeave={
+              logoutTooltip.hideTooltip
+            }
+            onFocus={(event) =>
+              logoutTooltip.showTooltip(
+                event.currentTarget,
+              )
+            }
+            onBlur={
+              logoutTooltip.hideTooltip
+            }
+            onKeyDown={(event) => {
+              if (
+                event.key === "Escape"
+              ) {
+                logoutTooltip.hideTooltip();
+              }
+            }}
+            onClick={() => {
+              logoutTooltip.hideTooltip();
+              void handleLogout();
+            }}
             className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
           >
             <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -259,6 +477,8 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
               Log out
             </span>
           </button>
+
+          {logoutTooltip.tooltip}
         </div>
       </nav>
     </aside>
