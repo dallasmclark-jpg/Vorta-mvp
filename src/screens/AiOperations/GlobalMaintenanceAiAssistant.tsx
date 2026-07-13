@@ -158,6 +158,8 @@ interface GlobalAiMessage {
   text?: string;
   loading?: boolean;
   answer?: GlobalAiAnswer;
+  error?: string;
+  retryQuestion?: string;
 }
 
 // ─── Shift skills types ───────────────────────────────────────────────────────
@@ -399,6 +401,45 @@ function shorten(text: string, max = 240): string {
 
 function unique(items: string[]): string[] {
   return [...new Set(items.filter(Boolean))];
+}
+
+function withTimeout<T>(
+  request: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> {
+  return new Promise<T>(
+    (resolve, reject) => {
+      const timeoutId =
+        window.setTimeout(
+          () => {
+            reject(
+              new Error(
+                timeoutMessage,
+              ),
+            );
+          },
+          timeoutMs,
+        );
+
+      request.then(
+        (value) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          resolve(value);
+        },
+        (error: unknown) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          reject(error);
+        },
+      );
+    },
+  );
 }
 
 function riskRank(level: string): number {
@@ -1700,61 +1741,236 @@ export function GlobalMaintenanceAiAssistant({
       }
     };
 
-  const submitQuestion = async (question: string) => {
-    const trimmed = question.trim();
-    if (!trimmed) return;
+  const runQuestion = async (
+    question: string,
+    assistantId: string,
+  ): Promise<void> => {
+    try {
+      const intent =
+        classifyGlobalQuestion(
+          question,
+        );
 
-    stopSpeechRecognition(true);
+      const mentionedAsset =
+        findMentionedEquipment(
+          question,
+          equipment,
+        );
 
-    const userId = `global-user-${Date.now()}`;
-    const assistantId = `global-assistant-${Date.now()}`;
+      const topAsset =
+        mentionedAsset ??
+        [...equipment].sort(
+          (first, second) =>
+            second.riskScore -
+            first.riskScore,
+        )[0];
 
-    setMessages((prev) => [
-      ...prev,
-      { id: userId, role: "user", text: trimmed },
-      { id: assistantId, role: "assistant", loading: true },
+      const sortedEquipmentByRisk =
+        [...equipment].sort(
+          (first, second) =>
+            second.riskScore -
+            first.riskScore,
+        );
+
+      const sparesAssets =
+        intent === "spares-risk"
+          ? mentionedAsset
+            ? [mentionedAsset]
+            : sortedEquipmentByRisk.slice(
+                0,
+                8,
+              )
+          : [];
+
+      const knowledgeQuery =
+        intent === "evidence" ||
+        intent ===
+          "equipment-risk" ||
+        intent === "pm-risk" ||
+        intent === "spares-risk"
+          ? `${question} ${
+              topAsset?.name ?? ""
+            } ${
+              topAsset?.assetNumber ??
+              ""
+            }`.trim()
+          : question;
+
+      const [
+        knowledgeChunks,
+        sparesContext,
+      ] = await withTimeout(
+        Promise.all(
+          [
+            searchEquipmentKnowledge(
+              topAsset?.id ??
+                "fl-03",
+              knowledgeQuery,
+              5,
+            ),
+
+            intent ===
+            "spares-risk"
+              ? fetchGlobalSparesContext(
+                  sparesAssets,
+                )
+              : Promise.resolve(
+                  null,
+                ),
+
+            new Promise<void>(
+              (resolve) => {
+                window.setTimeout(
+                  resolve,
+                  700,
+                );
+              },
+            ),
+          ] as const,
+        ),
+        15000,
+        "Vorta AI could not complete the evidence request within 15 seconds.",
+      );
+
+      const answer =
+        buildGlobalAnswer(
+          question,
+          siteRisk,
+          areaRisks,
+          equipment,
+          knowledgeChunks,
+          roleProfile,
+          shiftSkillsContext,
+          sparesContext,
+        );
+
+      setMessages((previous) =>
+        previous.map(
+          (message) =>
+            message.id ===
+            assistantId
+              ? {
+                  ...message,
+                  loading: false,
+                  answer,
+                  error:
+                    undefined,
+                  retryQuestion:
+                    undefined,
+                }
+              : message,
+        ),
+      );
+    } catch (error) {
+      console.warn(
+        "GlobalMaintenanceAiAssistant request failed:",
+        error,
+      );
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "";
+
+      const displayError =
+        errorMessage.includes(
+          "within 15 seconds",
+        )
+          ? errorMessage
+          : "Vorta could not retrieve all required site and source data. No answer was generated from incomplete evidence.";
+
+      setMessages((previous) =>
+        previous.map(
+          (message) =>
+            message.id ===
+            assistantId
+              ? {
+                  ...message,
+                  loading: false,
+                  answer:
+                    undefined,
+                  error:
+                    displayError,
+                  retryQuestion:
+                    question,
+                }
+              : message,
+        ),
+      );
+    }
+  };
+
+  const submitQuestion = (
+    question: string,
+  ): void => {
+    const trimmed =
+      question.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    stopSpeechRecognition(
+      true,
+    );
+
+    const requestId =
+      `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
+    const userId =
+      `global-user-${requestId}`;
+
+    const assistantId =
+      `global-assistant-${requestId}`;
+
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: userId,
+        role: "user",
+        text: trimmed,
+      },
+      {
+        id: assistantId,
+        role: "assistant",
+        loading: true,
+      },
     ]);
 
     setInput("");
 
-    const intent = classifyGlobalQuestion(trimmed);
-    const mentionedAsset = findMentionedEquipment(trimmed, equipment);
-    const topAsset = mentionedAsset ?? [...equipment].sort((a, b) => b.riskScore - a.riskScore)[0];
-
-    const sortedEquipmentByRisk = [...equipment].sort((a, b) => b.riskScore - a.riskScore);
-    const sparesAssets =
-      intent === "spares-risk"
-        ? mentionedAsset
-          ? [mentionedAsset]
-          : sortedEquipmentByRisk.slice(0, 8)
-        : [];
-
-    const knowledgeQuery =
-      intent === "evidence" || intent === "equipment-risk" || intent === "pm-risk" || intent === "spares-risk"
-        ? `${trimmed} ${topAsset?.name ?? ""} ${topAsset?.assetNumber ?? ""}`.trim()
-        : trimmed;
-
-    const [knowledgeChunks, sparesContext] = await Promise.all([
-      searchEquipmentKnowledge(topAsset?.id ?? "fl-03", knowledgeQuery, 5),
-      intent === "spares-risk" ? fetchGlobalSparesContext(sparesAssets) : Promise.resolve(null),
-      new Promise((resolve) => window.setTimeout(resolve, 700)),
-    ]);
-
-    const answer = buildGlobalAnswer(
+    void runQuestion(
       trimmed,
-      siteRisk,
-      areaRisks,
-      equipment,
-      knowledgeChunks,
-      roleProfile,
-      shiftSkillsContext,
-      sparesContext,
+      assistantId,
+    );
+  };
+
+  const retryFailedQuestion = (
+    assistantId: string,
+    question: string,
+  ): void => {
+    setMessages((previous) =>
+      previous.map(
+        (message) =>
+          message.id ===
+          assistantId
+            ? {
+                ...message,
+                loading: true,
+                answer:
+                  undefined,
+                error:
+                  undefined,
+              }
+            : message,
+      ),
     );
 
-    setMessages((prev) =>
-      prev.map((message) =>
-        message.id === assistantId ? { ...message, loading: false, answer } : message,
-      ),
+    void runQuestion(
+      question,
+      assistantId,
     );
   };
 
@@ -1909,10 +2125,54 @@ export function GlobalMaintenanceAiAssistant({
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
                       Analysing site risk, area risk, equipment and source data...
                     </div>
+                  ) : message.error ? (
+                    <div
+                      className="flex flex-col gap-3"
+                      role="alert"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+
+                        <div>
+                          <p className="text-[11px] font-semibold text-amber-100">
+                            Vorta could not complete this analysis
+                          </p>
+
+                          <p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">
+                            {
+                              message.error
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {message.retryQuestion ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            retryFailedQuestion(
+                              message.id,
+                              message.retryQuestion ??
+                                "",
+                            )
+                          }
+                          className="h-7 w-fit border-amber-500/30 bg-amber-500/10 px-3 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/20 hover:text-amber-100"
+                        >
+                          Retry analysis
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : message.answer ? (
-                    <AnswerBlock answer={message.answer} />
+                    <AnswerBlock
+                      answer={
+                        message.answer
+                      }
+                    />
                   ) : (
-                    <p className="text-[11px] leading-relaxed">{message.text}</p>
+                    <p className="text-[11px] leading-relaxed">
+                      {message.text}
+                    </p>
                   )}
                 </div>
               </div>
