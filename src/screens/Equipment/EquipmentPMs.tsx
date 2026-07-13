@@ -1,211 +1,243 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Bell,
-  Bell as BellIcon,
-  Calendar,
+  AlertCircle,
   CheckCircle2,
   ChevronRight,
-  ClipboardCheck,
-  Edit,
-  Edit2,
-  Eye,
-  Plus,
+  FileCheck2,
   RefreshCw,
   Search,
-  Settings,
-  Sparkles,
-  UserCircle,
+  ShieldCheck,
+  Wrench,
 } from "lucide-react";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
+import { supabase } from "../../lib/supabaseClient";
+import {
+  DEFAULT_EQUIPMENT_ID,
+  type EquipmentBase,
+} from "./equipmentData";
+import {
+  getCachedEquipmentIdentity,
+  getEquipmentIdentityById,
+} from "./equipmentService";
 
-import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentPMs } from "./equipmentService";
+type CalibrationFilter = "ALL" | "ATTENTION" | "CONTROLLED";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-type PmStatus = "ON TRACK" | "DUE SOON" | "OVERDUE" | "COMPLETED";
-
-interface PmRow {
-  name: string;
-  code: string;
-  frequency: string;
-  type: string;
-  lastCompleted: string;
-  nextDue: string;
-  status: PmStatus;
-  compliance: number;
+interface EquipmentCalibration {
+  calibrationId: string;
+  calibrationNumber: string;
+  title: string;
+  calibrationPoint: string | null;
+  toleranceSpecification: string | null;
+  lastCompletedDate: string | null;
+  nextDueDate: string | null;
+  scheduleStatus: string;
+  criticality: string | null;
+  assignedEngineer: string | null;
+  procedureReference: string | null;
+  checklistReference: string | null;
+  lastResult: string | null;
+  resultAt: string | null;
+  certificateReference: string | null;
+  linkedWorkOrderNumber: string | null;
+  linkedWorkOrderStatus: string | null;
+  linkedWorkOrderDueDate: string | null;
+  riskState: string;
 }
-
-interface ChecklistRow {
-  name: string;
-  linkedPm: string;
-  lastUpdated: string;
-  version: string;
-}
-
-const CHECKLISTS: ChecklistRow[] = [
-  { name: "Palletiser Daily Check",       linkedPm: "PM-PL-02-DAILY",   lastUpdated: "24 Apr 2025", version: "v2.1" },
-  { name: "Bearing Inspection Checklist", linkedPm: "PM-PL-02-BEAR-01", lastUpdated: "15 Mar 2025", version: "v1.0" },
-  { name: "PLC Logic Review Checklist",   linkedPm: "PM-PL-02-LOGIC",   lastUpdated: "10 Jan 2025", version: "v3.2" },
-];
-
-const SCHEDULE_DAYS = [
-  { label: "Mon", date: "21", pills: [{ text: "Inspection", color: "#3b82f6" }, { text: "Lubrication", color: "#f97316" }] },
-  { label: "Tue", date: "22", pills: [{ text: "Service",    color: "#10b981" }] },
-  { label: "Wed", date: "23", pills: [{ text: "Testing",    color: "#8b5cf6" }] },
-  { label: "Thu", date: "24", pills: [{ text: "Inspection", color: "#3b82f6" }] },
-  { label: "Fri", date: "25", pills: [{ text: "Lubrication",color: "#f97316" }, { text: "Service",    color: "#10b981" }] },
-  { label: "Sat", date: "26", pills: [{ text: "Service",    color: "#10b981" }] },
-  { label: "Sun", date: "27", pills: [{ text: "Testing",    color: "#8b5cf6" }] },
-];
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { label: "Overview",           id: "overview" },
-  { label: "Health",             id: "health" },
-  { label: "Notifications",       id: "notifications" },
-  { label: "Work Orders",        id: "wo",      badge: 12 },
-  { label: "PMs",                id: "pm",      badge: 8 },
-  { label: "History",            id: "history" },
+  { label: "Overview", id: "overview" },
+  { label: "Health", id: "health" },
+  { label: "Notifications", id: "notifications" },
+  { label: "Work Orders", id: "work-orders" },
+  { label: "Calibrations", id: "pms" },
+  { label: "History", id: "history" },
   { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares",             id: "spares" },
-  { label: "Documents",          id: "docs" },
-  { label: "AI Insights",        id: "ai" },
-];
+  { label: "Spares", id: "spares" },
+  { label: "Documents", id: "documents" },
+  { label: "AI Insights", id: "ai-insights" },
+] as const;
 
-// ─── Style helpers ────────────────────────────────────────────────────────────
+function formatDate(value: string | null): string {
+  if (!value) return "—";
 
-function pmStatusClass(s: PmStatus) {
-  if (s === "ON TRACK")  return "bg-[#10b98120] text-emerald-400";
-  if (s === "DUE SOON")  return "bg-[#eab30820] text-yellow-400";
-  if (s === "OVERDUE")   return "bg-[#ef444420] text-red-400";
-  return "bg-[#3b82f620] text-blue-400";
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
-function complianceColor(v: number) {
-  return v >= 80 ? "#10b981" : v >= 60 ? "#f97316" : "#ef4444";
+function mapCalibration(row: any): EquipmentCalibration {
+  return {
+    calibrationId: String(row.calibration_id ?? ""),
+    calibrationNumber: String(row.calibration_number ?? ""),
+    title: String(row.title ?? ""),
+    calibrationPoint: row.calibration_point ?? null,
+    toleranceSpecification: row.tolerance_specification ?? null,
+    lastCompletedDate: row.last_completed_date ?? null,
+    nextDueDate: row.next_due_date ?? null,
+    scheduleStatus: String(row.schedule_status ?? "UNKNOWN"),
+    criticality: row.criticality ?? null,
+    assignedEngineer: row.assigned_engineer ?? null,
+    procedureReference: row.procedure_reference ?? null,
+    checklistReference: row.checklist_reference ?? null,
+    lastResult: row.last_result ?? null,
+    resultAt: row.result_at ?? null,
+    certificateReference: row.certificate_reference ?? null,
+    linkedWorkOrderNumber: row.linked_work_order_number ?? null,
+    linkedWorkOrderStatus: row.linked_work_order_status ?? null,
+    linkedWorkOrderDueDate: row.linked_work_order_due_date ?? null,
+    riskState: String(row.risk_state ?? "CONTROLLED"),
+  };
 }
 
-// ─── Donut chart ──────────────────────────────────────────────────────────────
-
-function SegmentedDonut({
-  segments,
-  size = 100,
-  strokeWidth = 14,
-  label,
-}: {
-  segments: { value: number; color: string }[];
-  size?: number;
-  strokeWidth?: number;
-  label?: string;
-}) {
-  const r = (size - strokeWidth) / 2;
-  const circ = 2 * Math.PI * r;
-  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
-  let offset = 0;
-  const arcs = segments.map((seg) => {
-    const len = (seg.value / total) * circ;
-    const arc = { offset, len, color: seg.color };
-    offset += len + 2;
-    return arc;
-  });
-  const cx = size / 2;
-  const cy = size / 2;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2433" strokeWidth={strokeWidth} />
-      {arcs.map((a, i) => (
-        <circle key={i} cx={cx} cy={cy} r={r}
-          fill="none" stroke={a.color} strokeWidth={strokeWidth}
-          strokeDasharray={`${Math.max(0, a.len - 2)} ${circ}`}
-          strokeDashoffset={-a.offset}
-          transform={`rotate(-90 ${cx} ${cy})`}
-        />
-      ))}
-      {label && (
-        <text x="50%" y="52%" dominantBaseline="middle" textAnchor="middle"
-          fill="white" fontSize={size * 0.18} fontWeight="700">
-          {label}
-        </text>
-      )}
-    </svg>
-  );
+function scheduleStatusClass(status: string): string {
+  switch (status.toUpperCase()) {
+    case "OVERDUE":
+      return "border-red-500/25 bg-red-500/10 text-red-300";
+    case "DUE SOON":
+      return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+    case "ON TRACK":
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    default:
+      return "border-slate-600 bg-slate-800/70 text-slate-300";
+  }
 }
 
-// ─── Compliance trend SVG sparkline ──────────────────────────────────────────
+function riskStateClass(state: string): string {
+  const value = state.toUpperCase();
 
-function ComplianceTrendChart() {
-  const W = 280;
-  const H = 100;
-  const PAD = { top: 10, right: 10, bottom: 22, left: 28 };
-  const cw = W - PAD.left - PAD.right;
-  const ch = H - PAD.top - PAD.bottom;
-  const data = [68, 72, 75, 78, 80, 82];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  const xStep = cw / (data.length - 1);
-  const yScale = (v: number) => ch - ((v - 60) / 40) * ch;
-  const points = data.map((v, i) => `${PAD.left + i * xStep},${PAD.top + yScale(v)}`).join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-24 w-full" preserveAspectRatio="none">
-      {[60, 70, 80, 90, 100].map((y) => (
-        <line key={y} x1={PAD.left} y1={PAD.top + yScale(y)} x2={W - PAD.right} y2={PAD.top + yScale(y)}
-          stroke="#ffffff0d" strokeWidth="1" />
-      ))}
-      {[60, 80, 100].map((y) => (
-        <text key={y} x={PAD.left - 4} y={PAD.top + yScale(y) + 4}
-          textAnchor="end" fill="#475569" fontSize="8">{y}</text>
-      ))}
-      {months.map((m, i) => (
-        <text key={m} x={PAD.left + i * xStep} y={H - 5}
-          textAnchor="middle" fill="#475569" fontSize="8">{m}</text>
-      ))}
-      <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {data.map((v, i) => (
-        <circle key={i} cx={PAD.left + i * xStep} cy={PAD.top + yScale(v)} r="2.5" fill="#10b981" />
-      ))}
-    </svg>
-  );
+  if (value === "OVERDUE" || value === "RESULT RISK") {
+    return "text-red-300";
+  }
+
+  if (value === "DUE SOON") return "text-orange-300";
+
+  return "text-emerald-300";
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function resultClass(result: string | null): string {
+  const value = result?.toUpperCase() ?? "";
+
+  if (value.includes("FAIL") || value.includes("REJECT")) {
+    return "text-red-300";
+  }
+
+  if (value.includes("ADJUSTMENT")) return "text-orange-300";
+  if (value.includes("PASS")) return "text-emerald-300";
+
+  return "text-slate-500";
+}
 
 export const EquipmentPMs = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const [search, setSearch] = useState("");
-  const [scheduleView, setScheduleView] = useState<"week" | "month">("week");
-
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
-  const [pmRows, setPmRows] = useState<PmRow[]>([]);
 
-  useEffect(() => {
-    getEquipmentIdentityById(resolvedId).then(setEq);
+  const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
+    getCachedEquipmentIdentity(resolvedId),
+  );
+  const [calibrations, setCalibrations] = useState<EquipmentCalibration[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<CalibrationFilter>("ALL");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadCalibrations = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const { data, error } = await supabase.rpc(
+        "vorta_get_equipment_calibrations",
+        { p_equipment_id: resolvedId },
+      );
+
+      if (error) throw error;
+
+      setCalibrations(
+        (Array.isArray(data) ? data : []).map(mapCalibration),
+      );
+    } catch (error) {
+      console.warn("Equipment calibrations failed:", error);
+      setCalibrations([]);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Calibrations could not be loaded.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => {
-    getEquipmentPMs(resolvedId).then((pms) => {
-      setPmRows(pms.map((p) => ({
-        name:          p.name,
-        code:          p.code,
-        frequency:     p.frequency,
-        type:          p.type,
-        lastCompleted: p.lastCompleted,
-        nextDue:       p.nextDue,
-        status:        p.status as PmStatus,
-        compliance:    p.compliance,
-      })));
+    void getEquipmentIdentityById(resolvedId).then(setEquipment);
+  }, [resolvedId]);
+
+  useEffect(() => {
+    void loadCalibrations();
+  }, [loadCalibrations]);
+
+  const summary = useMemo(() => {
+    const needsAttention = (calibration: EquipmentCalibration) =>
+      calibration.riskState !== "CONTROLLED" ||
+      calibration.scheduleStatus === "OVERDUE" ||
+      calibration.scheduleStatus === "DUE SOON";
+
+    return {
+      total: calibrations.length,
+      attention: calibrations.filter(needsAttention).length,
+      controlled: calibrations.filter(
+        (calibration) => !needsAttention(calibration),
+      ).length,
+      openWorkOrders: calibrations.filter(
+        (calibration) =>
+          calibration.linkedWorkOrderNumber &&
+          calibration.linkedWorkOrderStatus?.toUpperCase() !== "COMPLETED",
+      ).length,
+      certificates: calibrations.filter(
+        (calibration) => calibration.certificateReference,
+      ).length,
+    };
+  }, [calibrations]);
+
+  const filteredCalibrations = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return calibrations.filter((calibration) => {
+      const needsAttention =
+        calibration.riskState !== "CONTROLLED" ||
+        calibration.scheduleStatus === "OVERDUE" ||
+        calibration.scheduleStatus === "DUE SOON";
+
+      const matchesFilter =
+        filter === "ALL" ||
+        (filter === "ATTENTION" && needsAttention) ||
+        (filter === "CONTROLLED" && !needsAttention);
+
+      const matchesSearch =
+        !query ||
+        calibration.calibrationNumber.toLowerCase().includes(query) ||
+        calibration.title.toLowerCase().includes(query) ||
+        (calibration.calibrationPoint ?? "").toLowerCase().includes(query) ||
+        (calibration.linkedWorkOrderNumber ?? "")
+          .toLowerCase()
+          .includes(query);
+
+      return matchesFilter && matchesSearch;
     });
-  }, [resolvedId]);
+  }, [calibrations, filter, search]);
 
-  if (!eq) {
+  if (!equipment) {
     return (
-      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+      <section className="flex w-full flex-col overflow-x-hidden pb-10">
         <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
           <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
         </div>
@@ -214,563 +246,400 @@ export const EquipmentPMs = (): JSX.Element => {
   }
 
   const riskBadgeClass =
-    eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
-    eq.riskLevel === "High"     ? "bg-[#f9731620] text-orange-400" :
-    eq.riskLevel === "Medium"   ? "bg-[#eab30820] text-yellow-400" :
-    "bg-[#10b98120] text-emerald-400";
+    equipment.riskLevel === "Critical"
+      ? "bg-red-500/10 text-red-300"
+      : equipment.riskLevel === "High"
+        ? "bg-orange-500/10 text-orange-300"
+        : equipment.riskLevel === "Medium"
+          ? "bg-yellow-500/10 text-yellow-300"
+          : "bg-emerald-500/10 text-emerald-300";
 
-  const statusDotClass =
-    eq.status === "Running" ? "bg-emerald-500" :
-    eq.status === "At Risk" ? "bg-orange-400" :
-    eq.status === "Fault"   ? "bg-red-500" : "bg-yellow-400";
-
-  const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
-
-  const handleTabClick = (tabId: string) => {
-    const id = eq.id;
-    if (tabId === "overview")    navigate(`/equipment/${id}/overview`);
-    if (tabId === "health")      navigate(`/equipment/${id}/health`);
-    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
-    if (tabId === "wo")          navigate(`/equipment/${id}/work-orders`);
-    if (tabId === "history")     navigate(`/equipment/${id}/history`);
-    if (tabId === "skills")      navigate(`/equipment/${id}/skills`);
-    if (tabId === "spares")      navigate(`/equipment/${id}/spares`);
-    if (tabId === "docs")        navigate(`/equipment/${id}/documents`);
-    if (tabId === "ai")          navigate(`/equipment/${id}/ai-insights`);
-    // other tabs placeholder
-  };
-
-  const filtered = pmRows.filter(
-    (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.code.toLowerCase().includes(search.toLowerCase()),
-  );
+  const summaryCards = [
+    {
+      label: "Calibration points",
+      value: summary.total,
+      detail: `${summary.certificates} certificate${
+        summary.certificates === 1 ? "" : "s"
+      } recorded`,
+      valueClass: "text-slate-100",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Require attention",
+      value: summary.attention,
+      detail: "Overdue, due soon or result risk",
+      valueClass:
+        summary.attention > 0 ? "text-orange-300" : "text-emerald-300",
+      icon: AlertCircle,
+    },
+    {
+      label: "Controlled",
+      value: summary.controlled,
+      detail: "Current calibration controls",
+      valueClass: "text-emerald-300",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Open calibration work",
+      value: summary.openWorkOrders,
+      detail: "Linked executable work orders",
+      valueClass:
+        summary.openWorkOrders > 0 ? "text-blue-300" : "text-slate-100",
+      icon: Wrench,
+    },
+  ];
 
   return (
-    <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-
-      {/* ── Sticky Header ───────────────────────────────────────────────── */}
+    <section className="flex w-full flex-col overflow-x-hidden pb-10">
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-
-        {/* Top bar */}
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-slate-500">
-            <button type="button" onClick={() => navigate("/equipment")} className="transition-colors hover:text-slate-300">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1.5 text-sm text-slate-500"
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/equipment")}
+              className="transition-colors hover:text-slate-300"
+            >
               Equipment
             </button>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-slate-300">{eq.name} ({eq.assetNumber})</span>
+            <span className="text-slate-300">
+              {equipment.name} ({equipment.assetNumber})
+            </span>
           </nav>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button type="button" variant="outline"
-              className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100">
-              <Edit className="h-3.5 w-3.5" /> Edit Equipment
-            </Button>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-              <Bell className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => navigate("/settings")} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-              <UserCircle className="h-7 w-7" />
-            </button>
-          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadCalibrations()}
+            disabled={loading}
+            className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
         </div>
 
-        {/* Equipment header row */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-          <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
-            <img src={eq.image} alt={eq.name} className="h-full w-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-50">
+              {equipment.name}
+            </h1>
+            <p className="mt-1 text-xs text-slate-500">
+              {equipment.assetNumber} · {equipment.type} · {equipment.area}
+            </p>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-50">{eq.name}</h1>
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
-                {eq.riskLevel} Risk
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusDotClass}`} aria-hidden="true" />
-              <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
-              <span className="text-sm text-slate-500">{eq.statusNote}</span>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-              <span className="font-medium text-slate-300">{eq.assetNumber}</span>
-              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">{eq.type}</span>
-              <span>📍 {eq.area}</span>
-              <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
-              <span>Model: <span className="text-slate-300">{eq.model}</span></span>
-              <span>Serial Number: <span className="text-slate-300">{eq.serialNumber}</span></span>
-              <span>Install Date: <span className="text-slate-300">{eq.installDate}</span></span>
-              <span>Warranty: <span className="text-orange-400">{eq.warranty}</span></span>
-              <span>Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-col gap-2 lg:w-52">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Score</span>
-            <div className="flex items-end gap-3">
-              <span className="text-4xl font-bold text-slate-50">{eq.riskScore}%</span>
-              <Badge className={`mb-1 inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
-                {eq.riskLevel}
-              </Badge>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-slate-500">Risk Drivers</span>
-              <div className="flex h-2 overflow-hidden rounded-full">
-                {eq.riskBreakdown.map((b) => (
-                  <div key={b.label} style={{ width: `${(b.pct / riskTotal) * 100}%`, backgroundColor: b.color }} />
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                {eq.riskBreakdown.map((b) => (
-                  <span key={b.label} className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-                    <span className={`h-1.5 w-1.5 rounded-full ${b.dotClass}`} />
-                    {b.label} {b.pct}%
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${riskBadgeClass}`}
+          >
+            {equipment.riskScore}% {equipment.riskLevel} risk
+          </span>
         </div>
 
-        {/* Tab navigation */}
-        <div className="mt-4 flex gap-0 overflow-x-auto">
+        <div className="flex gap-1 overflow-x-auto border-b border-gray-800">
           {TABS.map((tab) => (
-            <button key={tab.id} type="button" onClick={() => handleTabClick(tab.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                tab.id === "pm"
-                  ? "border-blue-500 text-blue-400"
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() =>
+                navigate(`/equipment/${equipment.id}/${tab.id}`)
+              }
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                tab.id === "pms"
+                  ? "border-blue-500 text-blue-300"
                   : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}>
+              }`}
+            >
               {tab.label}
-              {tab.badge && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500/20 px-1 text-[9px] font-bold text-blue-400">
-                  {tab.badge}
-                </span>
-              )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Page Content ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
+      <div className="space-y-5 px-4 pt-5 md:px-6">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
 
-        {/* ── Row 1: 6 KPI cards ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total PMs</p>
-              <p className="text-3xl font-bold text-slate-50">8</p>
-              <p className="mt-1 text-[11px] text-slate-500">Active PMs</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">PM Compliance</p>
-              <p className="text-3xl font-bold text-emerald-400">82%</p>
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-emerald-400">↑ +4.8% vs previous 30 days</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Overdue PMs</p>
-              <p className="text-3xl font-bold text-red-400">2</p>
-              <p className="mt-1 text-[11px] text-slate-500">25% of total</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Due This Week</p>
-              <p className="text-3xl font-bold text-yellow-400">3</p>
-              <p className="mt-1 text-[11px] text-slate-500">38% of total</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Due This Month</p>
-              <p className="text-3xl font-bold text-slate-50">5</p>
-              <p className="mt-1 text-[11px] text-slate-500">63% of total</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none col-span-2 sm:col-span-1">
-            <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Next PM Due</p>
-              <p className="text-2xl font-bold text-yellow-400">Tomorrow</p>
-              <p className="mt-1 text-[11px] text-slate-400">Conveyor Lubrication</p>
-            </CardContent>
-          </Card>
+            return (
+              <Card
+                key={card.label}
+                className="border-gray-800 bg-[#11151d]"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-slate-500">
+                      {card.label}
+                    </p>
+                    <Icon className="h-4 w-4 text-slate-600" />
+                  </div>
+                  <p
+                    className={`mt-2 text-2xl font-semibold ${card.valueClass}`}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {card.detail}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* ── Main row: PM table + right column ──────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
-
-          {/* PM Table */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[160px] max-w-xs">
-                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-                  <input type="text" placeholder="Search PMs..."
-                    value={search} onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-lg border border-gray-700 bg-[#0d1118] py-1.5 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50" />
+        <Card className="border-gray-800 bg-[#11151d]">
+          <CardContent className="p-0">
+            <div className="flex flex-col gap-3 border-b border-gray-800 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-cyan-400" />
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Calibration compliance
+                  </h2>
                 </div>
-                {["Status: All", "Frequency: All", "Sort: Due Date"].map((f) => (
-                  <button key={f} type="button"
-                    className="flex items-center gap-1 rounded-lg border border-gray-700 bg-[#0d1118] px-3 py-1.5 text-xs text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                    {f} <ChevronRight className="h-3 w-3 rotate-90" />
-                  </button>
-                ))}
-                <Button type="button"
-                  className="ml-auto h-auto gap-1.5 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 shadow-none">
-                  <Plus className="h-3.5 w-3.5" /> Create PM
-                </Button>
+                <p className="mt-1 text-xs text-slate-500">
+                  Compliance status, tolerance, results, certificates and
+                  linked executable work.
+                </p>
               </div>
 
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search calibration or WO"
+                    className="h-9 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-64"
+                  />
+                </div>
+
+                <div className="flex rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
+                  {[
+                    ["All", "ALL"],
+                    ["Attention", "ATTENTION"],
+                    ["Controlled", "CONTROLLED"],
+                  ].map(([label, value]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFilter(value as CalibrationFilter)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        filter === value
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {errorMessage ? (
+              <div className="m-4 flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-red-200">
+                    Calibrations could not be loaded
+                  </p>
+                  <p className="mt-1 break-words text-xs text-red-200/70">
+                    {errorMessage}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void loadCalibrations()}
+                    className="mt-3 text-xs font-semibold text-red-300 hover:text-red-200"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] border-collapse text-xs">
+                <table className="w-full min-w-[1180px] border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-gray-800">
-                      {["PM Name", "PM Code", "Frequency", "Type", "Last Completed", "Next Due", "Status", "Compliance", "Actions"].map((h) => (
-                        <th key={h} className="py-2 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 first:pl-0">{h}</th>
-                      ))}
+                    <tr className="border-b border-gray-800 text-[11px] uppercase tracking-wide text-slate-600">
+                      <th className="px-4 py-3 font-semibold">Calibration</th>
+                      <th className="px-4 py-3 font-semibold">
+                        Point and tolerance
+                      </th>
+                      <th className="px-4 py-3 font-semibold">Schedule</th>
+                      <th className="px-4 py-3 font-semibold">Last result</th>
+                      <th className="px-4 py-3 font-semibold">Work order</th>
+                      <th className="px-4 py-3 font-semibold">References</th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {filtered.map((pm, i) => (
-                      <tr key={pm.code} className={i !== filtered.length - 1 ? "border-b border-gray-800" : ""}>
-                        <td className="py-3 pr-3 font-semibold text-slate-200">{pm.name}</td>
-                        <td className="py-3 pr-3 font-mono text-[11px] text-slate-400">{pm.code}</td>
-                        <td className="py-3 pr-3 text-slate-400">{pm.frequency}</td>
-                        <td className="py-3 pr-3 text-slate-400">{pm.type}</td>
-                        <td className="py-3 pr-3 text-slate-400 whitespace-nowrap">{pm.lastCompleted}</td>
-                        <td className={`py-3 pr-3 whitespace-nowrap font-medium ${pm.status === "OVERDUE" ? "text-red-400" : pm.status === "DUE SOON" ? "text-yellow-400" : "text-slate-400"}`}>
-                          {pm.nextDue}
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${pmStatusClass(pm.status)}`}>
-                            {pm.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 pr-3 min-w-[100px]">
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-800">
-                              <div className="h-full rounded-full" style={{ width: `${pm.compliance}%`, backgroundColor: complianceColor(pm.compliance) }} />
-                            </div>
-                            <span className="shrink-0 text-[11px] font-semibold" style={{ color: complianceColor(pm.compliance) }}>{pm.compliance}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <button type="button" className="text-slate-500 hover:text-blue-400 transition-colors" title="View"><Eye className="h-3.5 w-3.5" /></button>
-                            <button type="button" className="text-slate-500 hover:text-slate-300 transition-colors" title="Edit"><Edit2 className="h-3.5 w-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {loading
+                      ? Array.from({ length: 3 }).map((_, index) => (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-800/70"
+                          >
+                            <td colSpan={6} className="px-4 py-4">
+                              <div className="h-12 animate-pulse rounded-lg bg-[#171c25]" />
+                            </td>
+                          </tr>
+                        ))
+                      : filteredCalibrations.map((calibration) => (
+                          <tr
+                            key={calibration.calibrationId}
+                            className="border-b border-gray-800/70 transition-colors last:border-b-0 hover:bg-white/[0.015]"
+                          >
+                            <td className="px-4 py-4 align-top">
+                              <p className="text-xs font-semibold text-cyan-300">
+                                {calibration.calibrationNumber}
+                              </p>
+                              <p className="mt-1 max-w-[230px] text-xs leading-5 text-slate-300">
+                                {calibration.title}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-600">
+                                {calibration.criticality ?? "Standard"}{" "}
+                                criticality
+                              </p>
+                            </td>
+
+                            <td className="max-w-[280px] px-4 py-4 align-top">
+                              <p className="text-xs font-medium text-slate-200">
+                                {calibration.calibrationPoint ??
+                                  "Calibration point not specified"}
+                              </p>
+                              <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                                {calibration.toleranceSpecification ??
+                                  "Tolerance not recorded"}
+                              </p>
+                            </td>
+
+                            <td className="px-4 py-4 align-top">
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-semibold ${scheduleStatusClass(
+                                  calibration.scheduleStatus,
+                                )}`}
+                              >
+                                {calibration.scheduleStatus}
+                              </span>
+                              <p className="mt-2 text-[11px] text-slate-500">
+                                Next: {formatDate(calibration.nextDueDate)}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-600">
+                                Last:{" "}
+                                {formatDate(calibration.lastCompletedDate)}
+                              </p>
+                              <p
+                                className={`mt-2 text-[11px] font-semibold ${riskStateClass(
+                                  calibration.riskState,
+                                )}`}
+                              >
+                                {calibration.riskState}
+                              </p>
+                            </td>
+
+                            <td className="px-4 py-4 align-top">
+                              <p
+                                className={`text-xs font-semibold ${resultClass(
+                                  calibration.lastResult,
+                                )}`}
+                              >
+                                {calibration.lastResult ??
+                                  "No result recorded"}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-600">
+                                {formatDate(calibration.resultAt)}
+                              </p>
+                              <p className="mt-2 text-[11px] text-slate-500">
+                                {calibration.assignedEngineer ??
+                                  "Engineer not assigned"}
+                              </p>
+                            </td>
+
+                            <td className="px-4 py-4 align-top">
+                              {calibration.linkedWorkOrderNumber ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    navigate(
+                                      `/equipment/${equipment.id}/work-orders`,
+                                    )
+                                  }
+                                  className="text-xs font-semibold text-blue-300 hover:text-blue-200"
+                                >
+                                  {calibration.linkedWorkOrderNumber}
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-600">
+                                  No linked WO
+                                </span>
+                              )}
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                {calibration.linkedWorkOrderStatus ??
+                                  "Not called"}
+                              </p>
+                              {calibration.linkedWorkOrderDueDate ? (
+                                <p className="mt-1 text-[11px] text-slate-600">
+                                  Due{" "}
+                                  {formatDate(
+                                    calibration.linkedWorkOrderDueDate,
+                                  )}
+                                </p>
+                              ) : null}
+                            </td>
+
+                            <td className="px-4 py-4 align-top">
+                              {calibration.certificateReference ? (
+                                <div className="flex items-center gap-1.5 text-xs text-emerald-300">
+                                  <FileCheck2 className="h-3.5 w-3.5" />
+                                  <span>
+                                    {calibration.certificateReference}
+                                  </span>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-600">
+                                  No certificate
+                                </p>
+                              )}
+
+                              {calibration.procedureReference ? (
+                                <p className="mt-2 text-[11px] text-slate-500">
+                                  Procedure:{" "}
+                                  {calibration.procedureReference}
+                                </p>
+                              ) : null}
+
+                              {calibration.checklistReference ? (
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  Checklist:{" "}
+                                  {calibration.checklistReference}
+                                </p>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
                   </tbody>
                 </table>
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View inactive PMs →
-              </button>
-            </CardContent>
-          </Card>
 
-          {/* Right column */}
-          <div className="flex flex-col gap-4">
-
-            {/* PM Compliance donut */}
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <h2 className="mb-3 text-sm font-semibold text-slate-200">PM Compliance</h2>
-                <div className="flex justify-center mb-3">
-                  <SegmentedDonut
-                    segments={[
-                      { value: 6, color: "#10b981" },
-                      { value: 1, color: "#eab308" },
-                      { value: 1, color: "#ef4444" },
-                    ]}
-                    size={110}
-                    strokeWidth={14}
-                    label="82%"
-                  />
-                </div>
-                <div className="mb-3 flex flex-col gap-1.5">
-                  {[
-                    { label: "Compliant", count: 6, color: "#10b981" },
-                    { label: "Due Soon",  count: 1, color: "#eab308" },
-                    { label: "Overdue",   count: 1, color: "#ef4444" },
-                  ].map((l) => (
-                    <div key={l.label} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
-                        <span className="text-[11px] text-slate-400">{l.label}</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-slate-200">{l.count}</span>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                  View compliance report →
-                </button>
-              </CardContent>
-            </Card>
-
-            {/* PMs by Type donut */}
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <h2 className="mb-3 text-sm font-semibold text-slate-200">PMs by Type</h2>
-                <div className="flex justify-center mb-3">
-                  <SegmentedDonut
-                    segments={[
-                      { value: 2, color: "#3b82f6" },
-                      { value: 2, color: "#f97316" },
-                      { value: 1, color: "#8b5cf6" },
-                      { value: 3, color: "#10b981" },
-                    ]}
-                    size={110}
-                    strokeWidth={14}
-                    label="8"
-                  />
-                </div>
-                <div className="mb-3 flex flex-col gap-1.5">
-                  {[
-                    { label: "Inspection",  count: 2, color: "#3b82f6" },
-                    { label: "Lubrication", count: 2, color: "#f97316" },
-                    { label: "Test",        count: 1, color: "#8b5cf6" },
-                    { label: "Service",     count: 3, color: "#10b981" },
-                  ].map((l) => (
-                    <div key={l.label} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
-                        <span className="text-[11px] text-slate-400">{l.label}</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-slate-200">{l.count}</span>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                  View detailed report →
-                </button>
-              </CardContent>
-            </Card>
-
-            {/* PM Settings */}
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <h2 className="mb-3 text-sm font-semibold text-slate-200">PM Settings</h2>
-                <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                  {[
-                    { label: "PM Calendar",   Icon: Calendar,       action: "Manage" },
-                    { label: "Checklists",    Icon: ClipboardCheck, action: "Manage" },
-                    { label: "Procedures",    Icon: Eye,            action: "View"   },
-                    { label: "Triggers",      Icon: Settings,       action: "Manage" },
-                    { label: "Notifications", Icon: BellIcon,       action: "View"   },
-                  ].map(({ label, Icon, action }) => (
-                    <div key={label} className="flex items-center justify-between py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 text-blue-400" />
-                        <span className="text-xs text-slate-300">{label}</span>
-                      </div>
-                      <button type="button" className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors">
-                        {action} →
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* ── Schedule row ───────────────────────────────────────────────── */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-4">
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <h2 className="text-sm font-semibold text-slate-200">PM Schedule</h2>
-              <div className="flex items-center gap-1">
-                {(["week", "month"] as const).map((v) => (
-                  <button key={v} type="button" onClick={() => setScheduleView(v)}
-                    className={`rounded px-3 py-1 text-xs font-semibold capitalize transition-colors ${
-                      scheduleView === v ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-gray-800 hover:text-slate-300"
-                    }`}>
-                    {v === "week" ? "Week" : "Month"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1.5">
-              {SCHEDULE_DAYS.map((day) => (
-                <div key={day.date} className="flex flex-col gap-1">
-                  <div className="rounded-lg border border-gray-800 bg-[#0d1118] px-1 py-1.5 text-center">
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{day.label}</p>
-                    <p className="text-sm font-bold text-slate-200">{day.date}</p>
+                {!loading && filteredCalibrations.length === 0 ? (
+                  <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+                    <ShieldCheck className="h-7 w-7 text-slate-700" />
+                    <p className="mt-3 text-sm font-medium text-slate-300">
+                      No matching calibrations
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Adjust the search or compliance filter.
+                    </p>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    {day.pills.map((pill, i) => (
-                      <div key={i}
-                        className="rounded px-1.5 py-0.5 text-center text-[9px] font-semibold truncate"
-                        style={{ backgroundColor: pill.color + "28", border: `1px solid ${pill.color}50`, color: pill.color }}>
-                        {pill.text}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              View full calendar →
-            </button>
+                ) : null}
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* ── Lower row: Compliance Trend | Overdue PMs | PM History ──────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-          {/* Compliance Trend */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h2 className="mb-1 text-sm font-semibold text-slate-200">PM Compliance Trend</h2>
-              <p className="mb-3 text-[11px] text-slate-500">Last 6 months</p>
-              <ComplianceTrendChart />
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View trend report →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* Overdue PMs */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-200">Overdue PMs</h2>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {[
-                  { name: "Bearing Inspection", overdue: "9 days",  priority: "HIGH" },
-                  { name: "PLC Logic Review",   overdue: "14 days", priority: "HIGH" },
-                ].map((item) => (
-                  <div key={item.name} className="flex items-center justify-between py-3">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-semibold text-slate-200">{item.name}</span>
-                      <span className="text-[11px] text-slate-500">{item.overdue}</span>
-                    </div>
-                    <Badge className="h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none bg-[#f9731620] text-orange-400">
-                      {item.priority}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View all overdue PMs →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* PM History */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h2 className="mb-1 text-sm font-semibold text-slate-200">PM History</h2>
-              <p className="mb-3 text-[11px] text-slate-500">Last 90 Days</p>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {[
-                  { name: "Daily Visual Inspection", by: "James Wilson", date: "24 Apr 2025" },
-                  { name: "Conveyor Lubrication",    by: "Sarah Lee",    date: "20 Apr 2025" },
-                  { name: "Drive-End Alignment",     by: "James Wilson", date: "05 Apr 2025" },
-                  { name: "PLC Logic Review",        by: "System",       date: "10 Jan 2025" },
-                ].map((item) => (
-                  <div key={item.name + item.date} className="flex items-start gap-2.5 py-2.5">
-                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-semibold text-slate-200">{item.name}</span>
-                      <span className="text-[11px] text-slate-500">Completed by {item.by} • {item.date}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View all history →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Bottom row: PM Checklists + AI Recommendation ──────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-
-          {/* PM Checklists */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-200">PM Checklists</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      {["Checklist Name", "Linked PM", "Last Updated", "Version", "Actions"].map((h) => (
-                        <th key={h} className="py-2 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 first:pl-0">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {CHECKLISTS.map((cl, i) => (
-                      <tr key={cl.linkedPm} className={i !== CHECKLISTS.length - 1 ? "border-b border-gray-800" : ""}>
-                        <td className="py-3 pr-3 font-semibold text-slate-200">{cl.name}</td>
-                        <td className="py-3 pr-3 font-mono text-[11px] text-slate-400">{cl.linkedPm}</td>
-                        <td className="py-3 pr-3 text-slate-400 whitespace-nowrap">{cl.lastUpdated}</td>
-                        <td className="py-3 pr-3">
-                          <span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">{cl.version}</span>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <button type="button" className="text-slate-500 hover:text-blue-400 transition-colors" title="View"><Eye className="h-3.5 w-3.5" /></button>
-                            <button type="button" className="text-slate-500 hover:text-slate-300 transition-colors" title="Edit"><Edit2 className="h-3.5 w-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                Manage all checklists →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* AI Recommendation */}
-          <Card className="rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-blue-400" />
-                <h2 className="text-sm font-semibold text-slate-200">AI Recommendation</h2>
-              </div>
-              <p className="mb-4 text-xs leading-relaxed text-slate-300">
-                Based on current PM compliance and failure patterns, consider increasing lubrication
-                frequency on drive-end bearing from monthly to bi-weekly. PM-PL-01-LUB-01 shows
-                declining compliance.
-              </p>
-              <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-                <span className="text-[11px] text-slate-400">Confidence</span>
-                <span className="ml-auto rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-400">88%</span>
-              </div>
-              <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View AI Insights →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: 24 Apr 2025, 14:45</span>
-          <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-        </div>
       </div>
     </section>
   );

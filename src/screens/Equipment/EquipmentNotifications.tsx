@@ -89,7 +89,7 @@ const TABS = [
   { label: "Health", id: "health" },
   { label: "Notifications", id: "notifications" },
   { label: "Work Orders", id: "work-orders" },
-  { label: "PMs", id: "pms" },
+  { label: "Calibrations", id: "pms" },
   { label: "History", id: "history" },
   { label: "Skills & Engineers", id: "skills" },
   { label: "Spares", id: "spares" },
