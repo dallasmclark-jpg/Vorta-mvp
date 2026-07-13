@@ -47,6 +47,64 @@ type DemoPortalPath =
   | "/operator/dashboard"
   | "/planner/planner-dashboard";
 
+const AUTH_ACTION_TIMEOUT_MS =
+  15_000;
+
+function withLoginActionTimeout<T>(
+  request: PromiseLike<T>,
+  timeoutMessage: string,
+): Promise<T> {
+  return new Promise<T>(
+    (resolve, reject) => {
+      const timeoutId =
+        window.setTimeout(
+          () => {
+            reject(
+              new Error(
+                timeoutMessage,
+              ),
+            );
+          },
+          AUTH_ACTION_TIMEOUT_MS,
+        );
+
+      Promise.resolve(
+        request,
+      ).then(
+        (value) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          resolve(value);
+        },
+        (error: unknown) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          reject(error);
+        },
+      );
+    },
+  );
+}
+
+function authenticationActionError(
+  error: unknown,
+  timeoutMessage: string,
+): string {
+  if (
+    error instanceof Error &&
+    error.message ===
+      timeoutMessage
+  ) {
+    return timeoutMessage;
+  }
+
+  return "Vorta could not contact the secure authentication service. Check the network connection and try again.";
+}
+
 export const LoginPage = (): JSX.Element => {
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -118,79 +176,209 @@ export const LoginPage = (): JSX.Element => {
     );
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError(null);
-    setSubmitting(true);
-    setRememberSession(remember);
-    const {
-      data,
-      error: authError,
-    } = await supabase.auth.signInWithPassword({ email, password });
+  const handleSignIn = async (
+    event: React.FormEvent,
+  ): Promise<void> => {
+    event.preventDefault();
 
-    if (authError) {
-      setError(authError.message);
-      setSubmitting(false);
+    if (
+      submitting ||
+      sendingReset ||
+      submittingLinkedIn
+    ) {
       return;
     }
 
-    const signedInRole = resolveSessionRole(data.session);
-    const signedInIsDemoAdmin =
-      resolveDemoAdmin(data.session);
+    const normalisedEmail =
+      email.trim();
 
-    if (!signedInRole) {
-      await supabase.auth.signOut();
+    if (
+      !normalisedEmail ||
+      !password
+    ) {
       setError(
-        "Your account does not have a supported Vorta pilot role. Contact your Vorta administrator.",
+        "Please enter your email and password.",
       );
-      setSubmitting(false);
+
       return;
     }
 
-    const requestedPath =
-      selectedPortal ?? from;
+    const timeoutMessage =
+      "Vorta could not complete sign-in within 15 seconds.";
 
-    const destination =
-      requestedPath &&
-      canAccessPath(
-        signedInRole,
-        requestedPath,
-        signedInIsDemoAdmin,
-      )
-        ? requestedPath
-        : roleHomePath(signedInRole);
-
-    navigate(destination, { replace: true });
-  };
-
-  const handleForgotPassword = async () => {
     setError(null);
     setNotice(null);
-
-    if (!email.trim()) {
-      setError("Enter your email address first.");
-      return;
-    }
-
-    setSendingReset(true);
-
-    const { error: resetError } =
-      await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-    if (resetError) {
-      setError(resetError.message);
-      setSendingReset(false);
-      return;
-    }
-
-    setNotice(
-      "If an account exists for that email address, a password reset link has been sent.",
+    setSubmitting(true);
+    setRememberSession(
+      remember,
     );
-    setSendingReset(false);
+
+    try {
+      const {
+        data,
+        error: authError,
+      } =
+        await withLoginActionTimeout(
+          supabase.auth.signInWithPassword(
+            {
+              email:
+                normalisedEmail,
+              password,
+            },
+          ),
+          timeoutMessage,
+        );
+
+      if (authError) {
+        setError(
+          authError.message,
+        );
+
+        return;
+      }
+
+      const signedInRole =
+        resolveSessionRole(
+          data.session,
+        );
+
+      const signedInIsDemoAdmin =
+        resolveDemoAdmin(
+          data.session,
+        );
+
+      if (!signedInRole) {
+        void supabase.auth
+          .signOut()
+          .catch(
+            (
+              signOutError:
+                unknown,
+            ) => {
+              console.warn(
+                "Vorta could not clear an unsupported login session.",
+                signOutError,
+              );
+            },
+          );
+
+        setError(
+          "Your account does not have a supported Vorta pilot role. Contact your Vorta administrator.",
+        );
+
+        return;
+      }
+
+      const requestedPath =
+        selectedPortal ??
+        from;
+
+      const destination =
+        requestedPath &&
+        canAccessPath(
+          signedInRole,
+          requestedPath,
+          signedInIsDemoAdmin,
+        )
+          ? requestedPath
+          : roleHomePath(
+              signedInRole,
+            );
+
+      navigate(
+        destination,
+        {
+          replace: true,
+        },
+      );
+    } catch (error) {
+      console.warn(
+        "Vorta sign-in request failed.",
+        error,
+      );
+
+      setError(
+        authenticationActionError(
+          error,
+          timeoutMessage,
+        ),
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleForgotPassword =
+    async (): Promise<void> => {
+      if (
+        sendingReset ||
+        submitting ||
+        submittingLinkedIn
+      ) {
+        return;
+      }
+
+      const normalisedEmail =
+        email.trim();
+
+      setError(null);
+      setNotice(null);
+
+      if (!normalisedEmail) {
+        setError(
+          "Enter your email address first.",
+        );
+
+        return;
+      }
+
+      const timeoutMessage =
+        "Vorta could not request a password-reset email within 15 seconds.";
+
+      setSendingReset(true);
+
+      try {
+        const {
+          error: resetError,
+        } =
+          await withLoginActionTimeout(
+            supabase.auth.resetPasswordForEmail(
+              normalisedEmail,
+              {
+                redirectTo:
+                  `${window.location.origin}/reset-password`,
+              },
+            ),
+            timeoutMessage,
+          );
+
+        if (resetError) {
+          setError(
+            resetError.message,
+          );
+
+          return;
+        }
+
+        setNotice(
+          "If an account exists for that email address, a password reset link has been sent.",
+        );
+      } catch (error) {
+        console.warn(
+          "Vorta password-reset request failed.",
+          error,
+        );
+
+        setError(
+          authenticationActionError(
+            error,
+            timeoutMessage,
+          ),
+        );
+      } finally {
+        setSendingReset(false);
+      }
+    };
 
   const handleSignUpRequest = () => {
     setError(null);
@@ -199,21 +387,71 @@ export const LoginPage = (): JSX.Element => {
     );
   };
 
-  const handleLinkedIn = async () => {
-    setError(null);
-    setNotice(null);
-    setRememberSession(remember);
-    setSubmittingLinkedIn(true);
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: "linkedin_oidc",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (authError) {
-      setError(authError.message);
-      setSubmittingLinkedIn(false);
-    }
-    // On success the browser redirects — no further action needed
-  };
+  const handleLinkedIn =
+    async (): Promise<void> => {
+      if (
+        submittingLinkedIn ||
+        submitting ||
+        sendingReset
+      ) {
+        return;
+      }
+
+      const timeoutMessage =
+        "Vorta could not start LinkedIn authentication within 15 seconds.";
+
+      setError(null);
+      setNotice(null);
+
+      setRememberSession(
+        remember,
+      );
+
+      setSubmittingLinkedIn(
+        true,
+      );
+
+      try {
+        const {
+          error: authError,
+        } =
+          await withLoginActionTimeout(
+            supabase.auth.signInWithOAuth(
+              {
+                provider:
+                  "linkedin_oidc",
+                options: {
+                  redirectTo:
+                    `${window.location.origin}/auth/callback`,
+                },
+              },
+            ),
+            timeoutMessage,
+          );
+
+        if (authError) {
+          setError(
+            authError.message,
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "Vorta LinkedIn authentication request failed.",
+          error,
+        );
+
+        setError(
+          authenticationActionError(
+            error,
+            timeoutMessage,
+          ),
+        );
+      } finally {
+        setSubmittingLinkedIn(
+          false,
+        );
+      }
+    };
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0b0e14]">
@@ -314,7 +552,11 @@ export const LoginPage = (): JSX.Element => {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                disabled={sendingReset}
+                disabled={
+                  sendingReset ||
+                  submitting ||
+                  submittingLinkedIn
+                }
                 className="text-sm font-semibold text-slate-300 transition-colors hover:text-white disabled:opacity-60"
               >
                 {sendingReset ? "Sending…" : "Forgot password"}
@@ -344,7 +586,11 @@ export const LoginPage = (): JSX.Element => {
             {/* Sign in */}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={
+                submitting ||
+                sendingReset ||
+                submittingLinkedIn
+              }
               className="h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-70"
             >
               {submitting ? (
@@ -362,7 +608,11 @@ export const LoginPage = (): JSX.Element => {
             <button
               type="button"
               onClick={handleLinkedIn}
-              disabled={submittingLinkedIn}
+              disabled={
+                submittingLinkedIn ||
+                submitting ||
+                sendingReset
+              }
               className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-gray-700 bg-transparent text-sm font-semibold text-slate-300 transition-colors hover:bg-[#ffffff08] hover:text-slate-50 disabled:opacity-70"
             >
               {submittingLinkedIn ? (
