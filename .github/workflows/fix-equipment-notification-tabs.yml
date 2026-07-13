@@ -1,0 +1,138 @@
+name: Fix equipment notification tabs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-equipment-notification-tabs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Add Notifications to every equipment tab bar
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          targets = [
+              "src/screens/Equipment/EquipmentOverview.tsx",
+              "src/screens/Equipment/EquipmentHealth.tsx",
+              "src/screens/Equipment/EquipmentWorkOrders.tsx",
+              "src/screens/Equipment/EquipmentPMs.tsx",
+              "src/screens/Equipment/EquipmentHistory.tsx",
+              "src/screens/Equipment/EquipmentSkills.tsx",
+              "src/screens/Equipment/EquipmentSpares.tsx",
+              "src/screens/Equipment/EquipmentDocuments.tsx",
+              "src/screens/Equipment/EquipmentAiInsights.tsx",
+          ]
+
+          changed = []
+          failures = []
+
+          for relative_path in targets:
+              path = Path(relative_path)
+              if not path.exists():
+                  failures.append(f"Missing file: {relative_path}")
+                  continue
+
+              lines = path.read_text(encoding="utf-8").splitlines()
+              original = list(lines)
+
+              tabs_start = next((i for i, line in enumerate(lines) if "const TABS" in line), None)
+              if tabs_start is None:
+                  failures.append(f"No TABS array: {relative_path}")
+                  continue
+
+              tabs_end = next(
+                  (i for i in range(tabs_start + 1, len(lines)) if lines[i].strip() in ("];", "] as const;")),
+                  None,
+              )
+              if tabs_end is None:
+                  failures.append(f"No TABS array end: {relative_path}")
+                  continue
+
+              tabs_block = lines[tabs_start:tabs_end + 1]
+              if not any("Notifications" in line for line in tabs_block):
+                  health_index = next(
+                      (i for i in range(tabs_start + 1, tabs_end) if "Health" in lines[i] and "label" in lines[i]),
+                      None,
+                  )
+                  if health_index is None:
+                      failures.append(f"No Health tab insertion point: {relative_path}")
+                      continue
+
+                  indentation = lines[health_index][: len(lines[health_index]) - len(lines[health_index].lstrip())]
+                  lines.insert(
+                      health_index + 1,
+                      f'{indentation}{{ label: "Notifications", id: "notifications" }},',
+                  )
+
+              if not any("/notifications" in line for line in lines):
+                  health_route_index = next(
+                      (
+                          i
+                          for i, line in enumerate(lines)
+                          if 'tabId === "health"' in line and "/health" in line and "navigate" in line
+                      ),
+                      None,
+                  )
+                  if health_route_index is None:
+                      failures.append(f"No Health route insertion point: {relative_path}")
+                      continue
+
+                  notification_route = lines[health_route_index].replace(
+                      'tabId === "health"',
+                      'tabId === "notifications"',
+                      1,
+                  ).replace("/health", "/notifications", 1)
+                  lines.insert(health_route_index + 1, notification_route)
+
+              if lines != original:
+                  path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                  changed.append(relative_path)
+
+          if failures:
+              raise SystemExit("\n".join(failures))
+
+          if not changed:
+              raise SystemExit("No files changed; Notifications tabs may already be present.")
+
+          print("Updated equipment navigation in:")
+          print("\n".join(changed))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run contract tests
+        run: npm run test:contracts
+
+      - name: Build production app
+        run: npm run build
+
+      - name: Commit directly to main
+        shell: bash
+        run: |
+          rm .github/workflows/fix-equipment-notification-tabs.yml
+          git config user.name "Vorta GitHub Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/screens/Equipment .github/workflows/fix-equipment-notification-tabs.yml
+          git commit -m "Show Notifications tab across equipment pages"
+          git push origin main
