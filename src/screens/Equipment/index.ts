@@ -1,6 +1,7 @@
 export { EquipmentSection } from "./EquipmentSection";
 export { EquipmentOverview } from "./EquipmentOverview";
 export { EquipmentHealth } from "./EquipmentHealth";
+export { EquipmentNotifications } from "./EquipmentNotifications";
 export { EquipmentWorkOrders } from "./EquipmentWorkOrders";
 export { EquipmentPMs } from "./EquipmentPMs";
 export { EquipmentHistory } from "./EquipmentHistory";

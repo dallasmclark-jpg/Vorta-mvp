@@ -22,11 +22,10 @@ import { TrainingSection } from "../Training";
 import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
-import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentAiInsights } from "../Equipment";
+import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentNotifications, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentAiInsights } from "../Equipment";
 import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
-import { EquipmentNotifications } from "../Equipment/EquipmentNotifications";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
 
