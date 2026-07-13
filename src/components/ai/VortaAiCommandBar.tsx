@@ -78,6 +78,7 @@ export interface VortaAiCommandBarProps {
   enableHandoverNote?: boolean;
   enableSapExport?: boolean;
   enableVoiceInput?: boolean;
+  embedded?: boolean;
 }
 
 // ─── Role-specific defaults ───────────────────────────────────────────────────
@@ -261,6 +262,7 @@ export function VortaAiCommandBar({
   enableHandoverNote = true,
   enableSapExport = true,
   enableVoiceInput = true,
+  embedded = false,
 }: VortaAiCommandBarProps): JSX.Element {
   const navigate = useNavigate();
 
@@ -868,20 +870,42 @@ export function VortaAiCommandBar({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <Card className="w-full rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-3">
+    <Card
+      className={
+        embedded
+          ? "w-full overflow-visible border-0 bg-transparent shadow-none"
+          : "w-full rounded-xl border border-blue-500/20 bg-[#141820] shadow-none"
+      }
+    >
+      <CardContent
+        className={
+          embedded
+            ? "p-0"
+            : "p-4"
+        }
+      >
+        <div
+          className={`flex flex-col ${
+            embedded
+              ? "gap-2"
+              : "gap-3"
+          }`}
+        >
 
-          {/* Heading */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15">
-              <Sparkles className="h-4 w-4 text-blue-300" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-              <p className="text-[11px] text-slate-500">{resolvedDescription}</p>
-            </div>
-          </div>
+          {!embedded && (
+            <>
+              {/* Heading */}
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15">
+                  <Sparkles className="h-4 w-4 text-blue-300" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
+                  <p className="text-[11px] text-slate-500">{resolvedDescription}</p>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Input row */}
           <div className="flex flex-col gap-2 md:flex-row">
@@ -1951,7 +1975,7 @@ export function VortaAiCommandBar({
           )}
 
           {/* Prompt chips */}
-          {resolvedPrompts.length > 0 && (
+          {!embedded && resolvedPrompts.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {resolvedPrompts.map((prompt) => (
                 <button
