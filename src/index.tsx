@@ -16,6 +16,10 @@ import { ToastProvider } from "./components/Toast";
 import {
   DelayedLoader,
 } from "./components/VortaLoadingScreen";
+import {
+  VortaErrorBoundary,
+  VortaRouteErrorBoundary,
+} from "./components/VortaErrorBoundary";
 
 import { LoginPage } from "./screens/Login";
 import {
@@ -77,131 +81,149 @@ const MaintenancePlanner = lazy(() =>
 createRoot(
   document.getElementById("app") as HTMLElement,
 ).render(
-  <BrowserRouter>
-    <AuthProvider>
-      <AuthGate>
-        <ToastProvider>
-          <Suspense
-            fallback={<DelayedLoader />}
-          >
-            <Routes>
-              <Route
-                path="/"
-                element={<LoginPage />}
-              />
+  <VortaErrorBoundary scope="application">
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthGate>
+          <ToastProvider>
+            <Suspense
+              fallback={<DelayedLoader />}
+            >
+              <Routes>
+                <Route
+                  path="/"
+                  element={<LoginPage />}
+                />
 
-              <Route
-                path="/login"
-                element={
-                  <Navigate
-                    to="/"
-                    replace
-                  />
-                }
-              />
+                <Route
+                  path="/login"
+                  element={
+                    <Navigate
+                      to="/"
+                      replace
+                    />
+                  }
+                />
 
-              <Route
-                path="/auth/callback"
-                element={<AuthCallbackPage />}
-              />
+                <Route
+                  path="/auth/callback"
+                  element={
+                    <AuthCallbackPage />
+                  }
+                />
 
-              <Route
-                path="/reset-password"
-                element={<ResetPasswordPage />}
-              />
+                <Route
+                  path="/reset-password"
+                  element={
+                    <ResetPasswordPage />
+                  }
+                />
 
-              <Route
-                path="/engineer-dashboard"
-                element={
-                  <Navigate
-                    to="/engineer/dashboard"
-                    replace
-                  />
-                }
-              />
+                <Route
+                  path="/engineer-dashboard"
+                  element={
+                    <Navigate
+                      to="/engineer/dashboard"
+                      replace
+                    />
+                  }
+                />
 
-              <Route
-                path="/contractor-dashboard"
-                element={
-                  <Navigate
-                    to="/contractor/dashboard"
-                    replace
-                  />
-                }
-              />
+                <Route
+                  path="/contractor-dashboard"
+                  element={
+                    <Navigate
+                      to="/contractor/dashboard"
+                      replace
+                    />
+                  }
+                />
 
-              <Route
-                path="/engineer/*"
-                element={
-                  <RequireRole role="engineer">
-                    <EngineerPortal />
-                  </RequireRole>
-                }
-              />
+                <Route
+                  path="/engineer/*"
+                  element={
+                    <RequireRole role="engineer">
+                      <VortaRouteErrorBoundary>
+                        <EngineerPortal />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
 
-              <Route
-                path="/contractor/*"
-                element={
-                  <RequireRole
-                    role={[
-                      "contractor_admin",
-                      "contractor_engineer",
-                    ]}
-                  >
-                    <ContractorPortal />
-                  </RequireRole>
-                }
-              />
+                <Route
+                  path="/contractor/*"
+                  element={
+                    <RequireRole
+                      role={[
+                        "contractor_admin",
+                        "contractor_engineer",
+                      ]}
+                    >
+                      <VortaRouteErrorBoundary>
+                        <ContractorPortal />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
 
-              <Route
-                path="/production/*"
-                element={
-                  <RequireRole
-                    role="production_manager"
-                  >
-                    <ProductionManagerPortal />
-                  </RequireRole>
-                }
-              />
+                <Route
+                  path="/production/*"
+                  element={
+                    <RequireRole
+                      role="production_manager"
+                    >
+                      <VortaRouteErrorBoundary>
+                        <ProductionManagerPortal />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
 
-              <Route
-                path="/operator/*"
-                element={
-                  <RequireRole role="operator">
-                    <OperatorPortal />
-                  </RequireRole>
-                }
-              />
+                <Route
+                  path="/operator/*"
+                  element={
+                    <RequireRole role="operator">
+                      <VortaRouteErrorBoundary>
+                        <OperatorPortal />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
 
-              <Route
-                path="/planner/*"
-                element={
-                  <RequireRole
-                    role="maintenance_planner"
-                  >
-                    <MaintenancePlanner />
-                  </RequireRole>
-                }
-              />
+                <Route
+                  path="/planner/*"
+                  element={
+                    <RequireRole
+                      role="maintenance_planner"
+                    >
+                      <VortaRouteErrorBoundary>
+                        <MaintenancePlanner />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
 
-              <Route
-                path="/*"
-                element={
-                  <RequireRole
-                    role={[
-                      "maintenance_manager",
-                      "site_admin",
-                      "reliability_engineer",
-                    ]}
-                  >
-                    <AiOperations />
-                  </RequireRole>
-                }
-              />
-            </Routes>
-          </Suspense>
-        </ToastProvider>
-      </AuthGate>
-    </AuthProvider>
-  </BrowserRouter>,
+                <Route
+                  path="/*"
+                  element={
+                    <RequireRole
+                      role={[
+                        "maintenance_manager",
+                        "site_admin",
+                        "reliability_engineer",
+                      ]}
+                    >
+                      <VortaRouteErrorBoundary>
+                        <AiOperations />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
+                  }
+                />
+              </Routes>
+            </Suspense>
+          </ToastProvider>
+        </AuthGate>
+      </AuthProvider>
+    </BrowserRouter>
+  </VortaErrorBoundary>,
 );
