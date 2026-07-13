@@ -307,6 +307,7 @@ const statusClassName = (
 
     case "failed":
     case "fail":
+    case "rolled_back":
       return "border-red-500/30 bg-red-500/10 text-red-300";
 
     case "running":
@@ -328,7 +329,7 @@ const StatusBadge = ({
       status,
     )}`}
   >
-    {status}
+    {status.replace(/_/g, " ")}
   </span>
 );
 
@@ -633,6 +634,48 @@ export const SapDataImportSection =
       selectedReport ??
       result?.report ??
       null;
+
+    const resultBatchStatus =
+      result?.report.batch.status
+        .trim()
+        .toLowerCase() ??
+      null;
+
+    const isRolledBackResult =
+      resultBatchStatus ===
+      "rolled_back";
+
+    const resultAcceptedCount =
+      result?.report.batch
+        .accepted_count ??
+      0;
+
+    const resultRejectedCount =
+      result?.report.batch
+        .rejected_count ??
+      0;
+
+    const resultInsertedCount =
+      isRolledBackResult
+        ? 0
+        : result?.insertedCount ??
+          0;
+
+    const resultUpdatedCount =
+      isRolledBackResult
+        ? 0
+        : result?.updatedCount ??
+          0;
+
+    const activeReportStatus =
+      activeReport?.batch.status
+        .trim()
+        .toLowerCase() ??
+      null;
+
+    const activeReportRolledBack =
+      activeReportStatus ===
+      "rolled_back";
 
     const rowValidationErrors =
       preview?.rowValidationErrors ??
@@ -1905,12 +1948,20 @@ export const SapDataImportSection =
           ) : null}
 
           {result ? (
-            <Card className="border-emerald-500/20 bg-[#0f141d] shadow-none">
+            <Card
+              className={`bg-[#0f141d] shadow-none ${
+                isRolledBackResult
+                  ? "border-red-500/30"
+                  : "border-emerald-500/20"
+              }`}
+            >
               <CardHeader className="border-b border-gray-800">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <CardTitle className="text-base text-white">
-                      Import complete
+                      {isRolledBackResult
+                        ? "Import rolled back"
+                        : "Import complete"}
                     </CardTitle>
 
                     <p className="mt-1 font-mono text-[11px] text-slate-500">
@@ -1921,16 +1972,23 @@ export const SapDataImportSection =
 
                   <StatusBadge
                     status={
-                      result.rejectedCount >
-                      0
-                        ? "partial"
-                        : "completed"
+                      result.report.batch
+                        .status
                     }
                   />
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-5 p-5">
+                {isRolledBackResult ? (
+                  <InlineAlert
+                    tone="error"
+                    title="No live site data was changed"
+                  >
+                    One or more rows were rejected or the import processor failed. Vorta restored all maintenance and stock data changed by this batch to its pre-import state.
+                  </InlineAlert>
+                ) : null}
+
                 <div
                   className={`grid gap-3 sm:grid-cols-2 ${
                     result.transactionCode ===
@@ -1942,28 +2000,36 @@ export const SapDataImportSection =
                   <MetricCard
                     label="Accepted"
                     value={
-                      result.acceptedCount
+                      resultAcceptedCount
                     }
                   />
 
                   <MetricCard
                     label="Rejected"
                     value={
-                      result.rejectedCount
+                      resultRejectedCount
                     }
                   />
 
                   <MetricCard
-                    label="Inserted"
+                    label={
+                      isRolledBackResult
+                        ? "Inserted into live data"
+                        : "Inserted"
+                    }
                     value={
-                      result.insertedCount
+                      resultInsertedCount
                     }
                   />
 
                   <MetricCard
-                    label="Updated"
+                    label={
+                      isRolledBackResult
+                        ? "Updated in live data"
+                        : "Updated"
+                    }
                     value={
-                      result.updatedCount
+                      resultUpdatedCount
                     }
                   />
 
@@ -1979,13 +2045,14 @@ export const SapDataImportSection =
                   ) : null}
                 </div>
 
-                {isMb52Result ? (
+                {isMb52Result &&
+                !isRolledBackResult ? (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                     <MetricCard
                       label="Equipment spares updated"
                       value={
                         result.synchronisedComponentCount ??
-                          0
+                        0
                       }
                     />
 
@@ -1993,7 +2060,7 @@ export const SapDataImportSection =
                       label="BOM materials matched"
                       value={
                         result.matchedBomMaterialCount ??
-                          0
+                        0
                       }
                     />
 
@@ -2001,7 +2068,7 @@ export const SapDataImportSection =
                       label="Materials not in IH01"
                       value={
                         result.unmatchedMaterialCount ??
-                          0
+                        0
                       }
                     />
 
@@ -2009,7 +2076,7 @@ export const SapDataImportSection =
                       label="BOM parts without stock"
                       value={
                         result.bomMaterialsWithoutStockCount ??
-                          0
+                        0
                       }
                     />
 
@@ -2017,13 +2084,14 @@ export const SapDataImportSection =
                       label="Stale stock rows removed"
                       value={
                         result.deletedStockRows ??
-                          0
+                        0
                       }
                     />
                   </div>
                 ) : null}
 
-                {isMb52Result ? (
+                {isMb52Result &&
+                !isRolledBackResult ? (
                   result.snapshotReplaced ? (
                     <InlineAlert
                       tone="success"
@@ -2041,14 +2109,16 @@ export const SapDataImportSection =
                   )
                 ) : null}
 
-                {result.riskRefreshed ? (
+                {!isRolledBackResult &&
+                result.riskRefreshed ? (
                   <InlineAlert
                     tone="success"
                     title="Risk calculations refreshed"
                   >
                     The operational dashboard has been recalculated using the accepted SAP data.
                   </InlineAlert>
-                ) : result.riskRefreshError ? (
+                ) : !isRolledBackResult &&
+                  result.riskRefreshError ? (
                   <InlineAlert
                     tone="warning"
                     title="Import succeeded but risk refresh failed"
@@ -2349,20 +2419,29 @@ export const SapDataImportSection =
                     </p>
                   </div>
 
-                  {activeReport.rejections
-                    .length > 0 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={
-                        handleDownloadRejections
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge
+                      status={
+                        activeReport.batch
+                          .status
                       }
-                      className="border-gray-700 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download rejections CSV
-                    </Button>
-                  ) : null}
+                    />
+
+                    {activeReport.rejections
+                      .length > 0 ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={
+                          handleDownloadRejections
+                        }
+                        className="border-gray-700 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download rejections CSV
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </CardHeader>
 
@@ -2393,7 +2472,17 @@ export const SapDataImportSection =
                   />
                 </div>
 
-                {activeReport.rejections
+                {activeReportRolledBack ? (
+                  <InlineAlert
+                    tone="error"
+                    title="Batch changes were fully reversed"
+                  >
+                    This batch did not alter the live site dataset. Vorta restored all accepted rows after the rejection or processor failure was detected.
+                  </InlineAlert>
+                ) : null}
+
+                {!activeReportRolledBack &&
+                activeReport.rejections
                   .length === 0 ? (
                   <InlineAlert
                     tone="success"
@@ -2401,7 +2490,10 @@ export const SapDataImportSection =
                   >
                     Every row in this batch passed validation.
                   </InlineAlert>
-                ) : (
+                ) : null}
+
+                {activeReport.rejections
+                  .length > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-gray-800">
                     <table className="w-full min-w-[900px] border-collapse text-left text-xs">
                       <thead className="bg-[#0a0f17] text-slate-500">
@@ -2472,7 +2564,7 @@ export const SapDataImportSection =
                       </tbody>
                     </table>
                   </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
           ) : null}
