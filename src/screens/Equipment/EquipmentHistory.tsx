@@ -99,6 +99,7 @@ const MONTHS = ["May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "
 const TABS = [
   { label: "Overview",           id: "overview" },
   { label: "Health",             id: "health" },
+  { label: "Notifications",      id: "notifications" },
   { label: "Work Orders",        id: "wo",      badge: 12 },
   { label: "PMs",                id: "pm",      badge: 8 },
   { label: "History",            id: "history" },
@@ -243,6 +244,7 @@ export const EquipmentHistory = (): JSX.Element => {
     const id = eq.id;
     if (tabId === "overview") navigate(`/equipment/${id}/overview`);
     if (tabId === "health")   navigate(`/equipment/${id}/health`);
+    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
     if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
     if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
     if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
