@@ -136,3 +136,5 @@ jobs:
           git add src/screens/Equipment .github/workflows/fix-equipment-notification-tabs.yml
           git commit -m "Show Notifications tab across equipment pages"
           git push origin main
+
+# Triggered after workflow creation so GitHub evaluates the existing workflow.
