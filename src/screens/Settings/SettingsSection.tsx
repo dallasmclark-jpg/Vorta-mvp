@@ -36,6 +36,7 @@ import {
 } from "./systemHealthService";
 
 import type {
+  RecoveryManifest,
   SystemHealthIncident,
   SystemHealthStatus,
   SystemHealthSummary,
@@ -256,6 +257,15 @@ function systemCardBorderClassName(
   }
 }
 
+function recoveryStatusClassName(
+  status:
+    RecoveryManifest["status"],
+): string {
+  return status === "complete"
+    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+    : "border-amber-500/30 bg-amber-500/10 text-amber-300";
+}
+
 function incidentSeverityClassName(
   severity: string,
 ): string {
@@ -401,6 +411,14 @@ export const SettingsSection = (): JSX.Element => {
     );
 
   const [
+    recoveryManifest,
+    setRecoveryManifest,
+  ] =
+    useState<RecoveryManifest | null>(
+      null,
+    );
+
+  const [
     systemHealthIncidents,
     setSystemHealthIncidents,
   ] = useState<
@@ -499,6 +517,10 @@ export const SettingsSection = (): JSX.Element => {
         setSystemHealthIncidents(
           response.incidents,
         );
+
+        setRecoveryManifest(
+          response.recoveryManifest,
+        );
       } catch (error) {
         setSystemHealthError(
           error instanceof Error
@@ -533,6 +555,32 @@ export const SettingsSection = (): JSX.Element => {
         systemHealthSummary
           .warningCount
       : 0;
+
+  const trackedRecoveryDatasetCount =
+    recoveryManifest
+      ? Object.keys(
+          recoveryManifest.datasetCounts,
+        ).length
+      : 0;
+
+  const trackedRecoveryRowCount =
+    recoveryManifest
+      ? Object.values(
+          recoveryManifest.datasetCounts,
+        ).reduce(
+          (
+            total,
+            rowCount,
+          ) =>
+            total +
+            Number(rowCount ?? 0),
+          0,
+        )
+      : 0;
+
+  const shortRecoveryFingerprint =
+    recoveryManifest?.manifestFingerprint.slice(0, 12) ??
+    null;
 
   function roleBadge(role: string) {
     switch (role) {
@@ -682,7 +730,7 @@ export const SettingsSection = (): JSX.Element => {
 
             {systemHealthSummary ? (
               <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                   <SystemHealthMetric
                     label="Backend checks"
                     value={`${systemHealthSummary.passedCount}/${totalHealthChecks}`}
@@ -734,6 +782,25 @@ export const SettingsSection = (): JSX.Element => {
                       systemHealthSummary
                         .latestMonitorRunAt,
                     )}
+                  />
+
+                  <SystemHealthMetric
+                    label="Recovery checkpoint"
+                    value={
+                      recoveryManifest
+                        ? formatSystemStatus(
+                            recoveryManifest.status,
+                          )
+                        : "Unavailable"
+                    }
+                    detail={
+                      recoveryManifest
+                        ? `${formatRiskAge(
+                            recoveryManifest.ageHours *
+                              60,
+                          )} old · ${trackedRecoveryDatasetCount} datasets`
+                        : "No validation checkpoint loaded"
+                    }
                   />
                 </div>
 
@@ -845,62 +912,196 @@ export const SettingsSection = (): JSX.Element => {
                     )}
                   </div>
 
-                  <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
-                    <p className="text-sm font-semibold text-slate-200">
-                      Latest SAP import
-                    </p>
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
+                      <p className="text-sm font-semibold text-slate-200">
+                        Latest SAP import
+                      </p>
 
-                    {systemHealthSummary
-                      .latestImportStatus ? (
-                      <>
-                        <span
-                          className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-                            systemHealthSummary.latestImportStatus ===
-                            "completed"
-                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                              : systemHealthSummary.latestImportStatus ===
-                                  "rolled_back" ||
-                                systemHealthSummary.latestImportStatus ===
-                                  "failed"
-                                ? "border-red-500/30 bg-red-500/10 text-red-300"
-                                : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                          }`}
-                        >
-                          {formatSystemStatus(
-                            systemHealthSummary
-                              .latestImportStatus,
-                          )}
-                        </span>
+                      {systemHealthSummary
+                        .latestImportStatus ? (
+                        <>
+                          <span
+                            className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                              systemHealthSummary.latestImportStatus ===
+                              "completed"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                : systemHealthSummary.latestImportStatus ===
+                                      "rolled_back" ||
+                                    systemHealthSummary.latestImportStatus ===
+                                      "failed"
+                                  ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                  : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                            }`}
+                          >
+                            {formatSystemStatus(
+                              systemHealthSummary
+                                .latestImportStatus,
+                            )}
+                          </span>
 
-                        <p className="mt-3 break-words text-sm font-medium text-slate-300">
-                          {systemHealthSummary
-                            .latestImportFileName ??
-                            "Unnamed SAP file"}
+                          <p className="mt-3 break-words text-sm font-medium text-slate-300">
+                            {systemHealthSummary
+                              .latestImportFileName ??
+                              "Unnamed SAP file"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            {formatSystemDateTime(
+                              systemHealthSummary
+                                .latestImportAt,
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <div className="mt-3 rounded-lg border border-dashed border-gray-800 p-4">
+                          <p className="text-sm text-slate-400">
+                            No SAP import has been recorded for this site.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-4 border-t border-gray-800 pt-4">
+                        <p className="text-xs font-medium text-slate-400">
+                          Monitoring schedule
                         </p>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          {formatSystemDateTime(
-                            systemHealthSummary
-                              .latestImportAt,
-                          )}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="mt-3 rounded-lg border border-dashed border-gray-800 p-4">
-                        <p className="text-sm text-slate-400">
-                          No SAP import has been recorded for this site.
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Vorta automatically runs platform, security, integrity, performance and freshness checks every hour.
                         </p>
                       </div>
-                    )}
+                    </div>
 
-                    <div className="mt-4 border-t border-gray-800 pt-4">
-                      <p className="text-xs font-medium text-slate-400">
-                        Monitoring schedule
-                      </p>
+                    <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-2.5">
+                          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
 
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Vorta automatically runs platform, security, integrity, performance and freshness checks every hour.
-                      </p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-200">
+                              Recovery checkpoint
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              Daily schema and critical-data validation
+                            </p>
+                          </div>
+                        </div>
+
+                        {recoveryManifest ? (
+                          <span
+                            className={`inline-flex w-fit shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${recoveryStatusClassName(
+                              recoveryManifest
+                                .status,
+                            )}`}
+                          >
+                            {formatSystemStatus(
+                              recoveryManifest
+                                .status,
+                            )}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {recoveryManifest ? (
+                        <div className="mt-4 flex flex-col gap-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-lg border border-gray-800 bg-[#0b0e14] p-3">
+                              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-600">
+                                Generated
+                              </p>
+
+                              <p className="mt-1 text-xs font-medium text-slate-300">
+                                {formatSystemDateTime(
+                                  recoveryManifest
+                                    .createdAt,
+                                )}
+                              </p>
+                            </div>
+
+                            <div className="rounded-lg border border-gray-800 bg-[#0b0e14] p-3">
+                              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-600">
+                                Checkpoint age
+                              </p>
+
+                              <p className="mt-1 text-xs font-medium text-slate-300">
+                                {formatRiskAge(
+                                  recoveryManifest
+                                    .ageHours *
+                                    60,
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-gray-800 bg-[#0b0e14] p-3">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-600">
+                              Schema checkpoint
+                            </p>
+
+                            <p className="mt-1 break-words text-xs font-medium text-slate-300">
+                              {recoveryManifest
+                                .migrationName ??
+                                "Unnamed migration"}
+                            </p>
+
+                            <p className="mt-1 break-all font-mono text-[10px] text-slate-600">
+                              {
+                                recoveryManifest
+                                  .migrationVersion
+                              }
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                            <span>
+                              {
+                                recoveryManifest
+                                  .schemaMigrationCount
+                              }{" "}
+                              migrations
+                            </span>
+
+                            <span>
+                              {
+                                trackedRecoveryDatasetCount
+                              }{" "}
+                              datasets
+                            </span>
+
+                            <span>
+                              {
+                                trackedRecoveryRowCount
+                              }{" "}
+                              tracked rows
+                            </span>
+                          </div>
+
+                          {shortRecoveryFingerprint ? (
+                            <div className="flex items-center justify-between gap-3 border-t border-gray-800 pt-3">
+                              <span className="text-[10px] text-slate-600">
+                                Manifest fingerprint
+                              </span>
+
+                              <code className="rounded bg-[#0b0e14] px-2 py-1 text-[10px] text-slate-400">
+                                {
+                                  shortRecoveryFingerprint
+                                }
+                              </code>
+                            </div>
+                          ) : null}
+
+                          <p className="border-t border-gray-800 pt-3 text-[10px] leading-4 text-slate-600">
+                            This checkpoint validates the expected schema and critical dataset state after recovery. Managed backup and point-in-time recovery remain Supabase platform settings and are not confirmed by this check.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-lg border border-dashed border-gray-800 p-4">
+                          <p className="text-sm text-slate-400">
+                            No recovery checkpoint has been recorded.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

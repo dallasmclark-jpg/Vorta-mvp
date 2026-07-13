@@ -5,6 +5,32 @@ export type SystemHealthStatus =
   | "degraded"
   | "critical";
 
+export type RecoveryManifestStatus =
+  | "complete"
+  | "partial";
+
+export interface RecoveryManifest {
+  manifestId: string;
+  siteId: string;
+  status: RecoveryManifestStatus;
+  migrationVersion: string;
+  migrationName: string | null;
+  schemaMigrationCount: number;
+  latestHealthRunId: string | null;
+  riskRefreshedAt: string | null;
+  datasetCounts: Record<
+    string,
+    number
+  >;
+  datasetFingerprints: Record<
+    string,
+    string
+  >;
+  manifestFingerprint: string;
+  createdAt: string;
+  ageHours: number;
+}
+
 export interface SystemHealthSummary {
   siteId: string;
   overallStatus: SystemHealthStatus;
@@ -45,6 +71,7 @@ export interface SystemHealthIncident {
 export interface SystemHealthData {
   summary: SystemHealthSummary;
   incidents: SystemHealthIncident[];
+  recoveryManifest: RecoveryManifest;
 }
 
 interface RawSystemHealthSummary {
@@ -83,6 +110,88 @@ interface RawSystemHealthIncident {
   acknowledged_at: string | null;
   resolved_at: string | null;
 }
+
+interface RawRecoveryManifest {
+  manifest_id: string;
+  site_id: string;
+  status: RecoveryManifestStatus;
+  migration_version: string;
+  migration_name: string | null;
+  schema_migration_count:
+    | number
+    | string;
+  latest_health_run_id:
+    | string
+    | null;
+  risk_refreshed_at:
+    | string
+    | null;
+  dataset_counts:
+    | Record<
+        string,
+        unknown
+      >
+    | null;
+  dataset_fingerprints:
+    | Record<
+        string,
+        unknown
+      >
+    | null;
+  manifest_fingerprint: string;
+  created_at: string;
+  age_hours:
+    | number
+    | string;
+}
+
+const mapNumericRecord = (
+  value:
+    | Record<
+        string,
+        unknown
+      >
+    | null,
+): Record<string, number> =>
+  Object.fromEntries(
+    Object.entries(
+      value ?? {},
+    ).map(
+      ([
+        key,
+        entryValue,
+      ]) => [
+        key,
+        Number(
+          entryValue ?? 0,
+        ),
+      ],
+    ),
+  );
+
+const mapStringRecord = (
+  value:
+    | Record<
+        string,
+        unknown
+      >
+    | null,
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(
+      value ?? {},
+    ).map(
+      ([
+        key,
+        entryValue,
+      ]) => [
+        key,
+        String(
+          entryValue ?? "",
+        ),
+      ],
+    ),
+  );
 
 const mapSummary = (
   row: RawSystemHealthSummary,
@@ -155,11 +264,52 @@ const mapIncident = (
   resolvedAt: row.resolved_at,
 });
 
+const mapRecoveryManifest = (
+  row: RawRecoveryManifest,
+): RecoveryManifest => ({
+  manifestId:
+    row.manifest_id,
+  siteId:
+    row.site_id,
+  status:
+    row.status,
+  migrationVersion:
+    row.migration_version,
+  migrationName:
+    row.migration_name,
+  schemaMigrationCount:
+    Number(
+      row.schema_migration_count ??
+        0,
+    ),
+  latestHealthRunId:
+    row.latest_health_run_id,
+  riskRefreshedAt:
+    row.risk_refreshed_at,
+  datasetCounts:
+    mapNumericRecord(
+      row.dataset_counts,
+    ),
+  datasetFingerprints:
+    mapStringRecord(
+      row.dataset_fingerprints,
+    ),
+  manifestFingerprint:
+    row.manifest_fingerprint,
+  createdAt:
+    row.created_at,
+  ageHours:
+    Number(
+      row.age_hours ?? 0,
+    ),
+});
+
 export const getSystemHealth =
   async (): Promise<SystemHealthData> => {
     const [
       summaryResponse,
       incidentsResponse,
+      recoveryResponse,
     ] = await Promise.all([
       supabase.rpc(
         "vorta_get_system_health_summary",
@@ -169,6 +319,9 @@ export const getSystemHealth =
         {
           p_limit: 50,
         },
+      ),
+      supabase.rpc(
+        "vorta_get_latest_recovery_manifest",
       ),
     ]);
 
@@ -181,6 +334,12 @@ export const getSystemHealth =
     if (incidentsResponse.error) {
       throw new Error(
         incidentsResponse.error.message,
+      );
+    }
+
+    if (recoveryResponse.error) {
+      throw new Error(
+        recoveryResponse.error.message,
       );
     }
 
@@ -203,10 +362,32 @@ export const getSystemHealth =
         | RawSystemHealthIncident[]
         | null;
 
+    const recoveryRows =
+      recoveryResponse.data as
+        | RawRecoveryManifest[]
+        | null;
+
+    const recoveryRow =
+      recoveryRows?.[0];
+
+    if (!recoveryRow) {
+      throw new Error(
+        "Recovery validation is not available for this site.",
+      );
+    }
+
     return {
-      summary: mapSummary(summaryRow),
+      summary:
+        mapSummary(
+          summaryRow,
+        ),
       incidents:
-        incidentRows?.map(mapIncident) ??
-        [],
+        incidentRows?.map(
+          mapIncident,
+        ) ?? [],
+      recoveryManifest:
+        mapRecoveryManifest(
+          recoveryRow,
+        ),
     };
   };
