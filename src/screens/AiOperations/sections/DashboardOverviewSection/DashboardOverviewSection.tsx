@@ -2272,7 +2272,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
           return (
             <div className="relative">
-              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {visibleAreaRiskCards.map((area) => {
                   const riskLabel = area.riskLevel;
                   const isHighestRisk = areaRiskCards[0]?.area === area.area;
