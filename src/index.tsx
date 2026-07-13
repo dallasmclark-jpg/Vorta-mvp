@@ -20,6 +20,9 @@ import {
   VortaErrorBoundary,
   VortaRouteErrorBoundary,
 } from "./components/VortaErrorBoundary";
+import {
+  installFrontendErrorTelemetry,
+} from "./lib/frontendErrorTelemetry";
 
 import { LoginPage } from "./screens/Login";
 import {
@@ -77,6 +80,8 @@ const MaintenancePlanner = lazy(() =>
     }),
   ),
 );
+
+installFrontendErrorTelemetry();
 
 createRoot(
   document.getElementById("app") as HTMLElement,
