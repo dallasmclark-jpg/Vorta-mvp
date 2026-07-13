@@ -1,5 +1,21 @@
-import { useEffect, useState } from "react";
-import { Bot, ChevronDown, ExternalLink, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  AlertTriangle,
+  Bot,
+  ChevronDown,
+  ExternalLink,
+  Loader2,
+  Mic,
+  MicOff,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { supabase } from "../../lib/supabaseClient";
@@ -17,6 +33,69 @@ import {
 } from "../Equipment/equipmentService";
 
 type ChatRole = "user" | "assistant";
+
+interface VortaSpeechAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface VortaSpeechResult {
+  readonly length: number;
+  readonly isFinal: boolean;
+  readonly [index: number]:
+    VortaSpeechAlternative;
+}
+
+interface VortaSpeechResultList {
+  readonly length: number;
+  readonly [index: number]:
+    VortaSpeechResult;
+}
+
+interface VortaSpeechResultEvent {
+  resultIndex: number;
+  results: VortaSpeechResultList;
+}
+
+interface VortaSpeechErrorEvent {
+  error: string;
+  message?: string;
+}
+
+interface VortaSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onresult:
+    | ((
+        event:
+          VortaSpeechResultEvent,
+      ) => void)
+    | null;
+  onerror:
+    | ((
+        event:
+          VortaSpeechErrorEvent,
+      ) => void)
+    | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type VortaSpeechRecognitionConstructor =
+  new () => VortaSpeechRecognition;
+
+type VortaSpeechWindow =
+  Window & {
+    SpeechRecognition?:
+      VortaSpeechRecognitionConstructor;
+    webkitSpeechRecognition?:
+      VortaSpeechRecognitionConstructor;
+  };
 
 type VortaAiRole =
   | "maintenance-manager"
@@ -1353,6 +1432,31 @@ export function GlobalMaintenanceAiAssistant({
   const [open, setOpen] = useState(false);
   const [minimised, setMinimised] = useState(false);
   const [input, setInput] = useState("");
+
+  const speechRecognitionRef =
+    useRef<VortaSpeechRecognition | null>(
+      null,
+    );
+
+  const speechInputPrefixRef =
+    useRef("");
+
+  const [
+    speechSupported,
+    setSpeechSupported,
+  ] = useState(false);
+
+  const [
+    listening,
+    setListening,
+  ] = useState(false);
+
+  const [
+    speechError,
+    setSpeechError,
+  ] = useState<string | null>(
+    null,
+  );
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [areaRisks, setAreaRisks] = useState<AreaRiskProfile[]>([]);
   const [equipment, setEquipment] = useState<EquipmentListItem[]>([]);
@@ -1377,6 +1481,136 @@ export function GlobalMaintenanceAiAssistant({
       },
     },
   ]);
+
+  useEffect(() => {
+    const speechWindow =
+      window as VortaSpeechWindow;
+
+    const SpeechRecognitionApi =
+      speechWindow.SpeechRecognition ??
+      speechWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionApi) {
+      setSpeechSupported(false);
+      return;
+    }
+
+    const recognition =
+      new SpeechRecognitionApi();
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-GB";
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setListening(true);
+      setSpeechError(null);
+    };
+
+    recognition.onresult = (
+      event,
+    ) => {
+      let transcript = "";
+
+      for (
+        let index = 0;
+        index <
+        event.results.length;
+        index += 1
+      ) {
+        const alternative =
+          event.results[index]?.[0];
+
+        if (
+          alternative?.transcript
+        ) {
+          transcript +=
+            `${alternative.transcript} `;
+        }
+      }
+
+      const dictatedText =
+        transcript.trim();
+
+      setInput(
+        [
+          speechInputPrefixRef
+            .current,
+          dictatedText,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    };
+
+    recognition.onerror = (
+      event,
+    ) => {
+      setListening(false);
+
+      switch (event.error) {
+        case "aborted":
+          return;
+
+        case "not-allowed":
+        case "service-not-allowed":
+          setSpeechError(
+            "Microphone permission was denied. Enable microphone access in your browser settings and try again.",
+          );
+          return;
+
+        case "audio-capture":
+          setSpeechError(
+            "No working microphone could be detected.",
+          );
+          return;
+
+        case "no-speech":
+          setSpeechError(
+            "No speech was detected. Try again and speak clearly after the microphone activates.",
+          );
+          return;
+
+        case "network":
+          setSpeechError(
+            "The browser voice-recognition service is currently unavailable.",
+          );
+          return;
+
+        default:
+          setSpeechError(
+            event.message?.trim() ||
+              "Voice dictation could not be completed.",
+          );
+      }
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    speechRecognitionRef.current =
+      recognition;
+
+    setSpeechSupported(true);
+
+    return () => {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+
+      try {
+        recognition.abort();
+      } catch {
+        // Recognition may already be inactive.
+      }
+
+      speechRecognitionRef.current =
+        null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -1408,9 +1642,69 @@ export function GlobalMaintenanceAiAssistant({
     };
   }, [open]);
 
+  const stopSpeechRecognition = (
+    abort = false,
+  ): void => {
+    const recognition =
+      speechRecognitionRef.current;
+
+    if (!recognition) {
+      setListening(false);
+      return;
+    }
+
+    try {
+      if (abort) {
+        recognition.abort();
+      } else {
+        recognition.stop();
+      }
+    } catch {
+      // Recognition may already be inactive.
+    }
+
+    setListening(false);
+  };
+
+  const toggleSpeechRecognition =
+    (): void => {
+      const recognition =
+        speechRecognitionRef.current;
+
+      if (
+        !speechSupported ||
+        !recognition
+      ) {
+        setSpeechError(
+          "Voice dictation is not supported by this browser.",
+        );
+        return;
+      }
+
+      if (listening) {
+        stopSpeechRecognition();
+        return;
+      }
+
+      speechInputPrefixRef.current =
+        input.trim();
+
+      setSpeechError(null);
+
+      try {
+        recognition.start();
+      } catch {
+        setSpeechError(
+          "Voice dictation could not start. Wait a moment and try again.",
+        );
+      }
+    };
+
   const submitQuestion = async (question: string) => {
     const trimmed = question.trim();
     if (!trimmed) return;
+
+    stopSpeechRecognition(true);
 
     const userId = `global-user-${Date.now()}`;
     const assistantId = `global-assistant-${Date.now()}`;
@@ -1535,7 +1829,17 @@ export function GlobalMaintenanceAiAssistant({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setMinimised((value) => !value)}
+            onClick={() => {
+              if (!minimised) {
+                stopSpeechRecognition(
+                  true,
+                );
+              }
+
+              setMinimised(
+                (value) => !value,
+              );
+            }}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
             aria-label="Minimise global assistant"
           >
@@ -1543,7 +1847,13 @@ export function GlobalMaintenanceAiAssistant({
           </button>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              stopSpeechRecognition(
+                true,
+              );
+
+              setOpen(false);
+            }}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
             aria-label="Close global assistant"
           >
@@ -1609,25 +1919,118 @@ export function GlobalMaintenanceAiAssistant({
             ))}
           </div>
 
-          <div className="flex gap-2 border-t border-gray-800 px-4 py-3">
-            <input
-              type="text"
-              placeholder={roleProfile.promptPlaceholder}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && submitQuestion(input)}
-              className="min-w-0 flex-1 rounded-lg border border-gray-700 bg-[#0f1218] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"
-            />
+          <div className="border-t border-gray-800 px-4 py-3">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={
+                  toggleSpeechRecognition
+                }
+                disabled={
+                  !speechSupported
+                }
+                aria-pressed={
+                  listening
+                }
+                aria-label={
+                  listening
+                    ? "Stop voice dictation"
+                    : "Start voice dictation"
+                }
+                title={
+                  speechSupported
+                    ? listening
+                      ? "Stop voice dictation"
+                      : "Start voice dictation"
+                    : "Voice dictation is not supported by this browser"
+                }
+                className={`h-8 w-8 shrink-0 p-0 ${
+                  listening
+                    ? "border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                    : "border-gray-700 bg-transparent text-slate-400 hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-300"
+                } disabled:cursor-not-allowed disabled:opacity-40`}
+              >
+                {listening ? (
+                  <MicOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Mic className="h-3.5 w-3.5" />
+                )}
+              </Button>
 
-            <Button
-              type="button"
-              onClick={() => submitQuestion(input)}
-              disabled={!input.trim()}
-              className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Send className="h-3 w-3" />
-              Send
-            </Button>
+              <input
+                type="text"
+                placeholder={
+                  listening
+                    ? "Listening..."
+                    : roleProfile.promptPlaceholder
+                }
+                value={input}
+                onChange={(event) =>
+                  setInput(
+                    event.target.value,
+                  )
+                }
+                onKeyDown={
+                  (event) => {
+                    if (
+                      event.key ===
+                      "Enter"
+                    ) {
+                      void submitQuestion(
+                        input,
+                      );
+                    }
+                  }
+                }
+                className={`min-w-0 flex-1 rounded-lg border bg-[#0f1218] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none ${
+                  listening
+                    ? "border-blue-400/60 ring-1 ring-blue-500/20"
+                    : "border-gray-700 focus:border-blue-500/50"
+                }`}
+              />
+
+              <Button
+                type="button"
+                onClick={() =>
+                  void submitQuestion(
+                    input,
+                  )
+                }
+                disabled={!input.trim()}
+                className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-3 w-3" />
+                Send
+              </Button>
+            </div>
+
+            {listening ? (
+              <div
+                className="mt-2 flex items-center gap-2 text-[10px] text-blue-300"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-400" />
+                </span>
+                Listening. Speak naturally, then press the microphone again to stop.
+              </div>
+            ) : null}
+
+            {speechError ? (
+              <div
+                className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-2"
+                role="alert"
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+
+                <p className="text-[10px] leading-4 text-amber-100/80">
+                  {speechError}
+                </p>
+              </div>
+            ) : null}
           </div>
         </>
       )}
