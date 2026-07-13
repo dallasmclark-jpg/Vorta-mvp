@@ -22,7 +22,13 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentWorkOrders } from "./equipmentService";
+import {
+  getEquipmentIdentityById,
+  getCachedEquipmentIdentity,
+  getEquipmentWorkOrders,
+  getEquipmentRecommendedWorkQueue,
+  type EquipmentRecommendedWorkQueue,
+} from "./equipmentService";
 
 // ─── Work Orders types (local, mirrors equipmentTypes.ts shapes) ─────────────
 
@@ -84,8 +90,8 @@ const CALENDAR_DAYS = [
 const TABS = [
   { label: "Overview",          id: "overview" },
   { label: "Health",            id: "health" },
-  { label: "Work Orders",       id: "wo",      badge: 12 },
-  { label: "PMs",               id: "pm",      badge: 8 },
+  { label: "Work Orders",       id: "wo" },
+  { label: "PMs",               id: "pm" },
   { label: "History",           id: "history" },
   { label: "Skills & Engineers",id: "skills" },
   { label: "Spares",            id: "spares" },
@@ -169,6 +175,9 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const [openWOs, setOpenWOs] = useState<WorkOrder[]>([]);
   const [completedWOs, setCompletedWOs] = useState<CompletedWO[]>([]);
 
+  const [riskQueue, setRiskQueue] =
+    useState<EquipmentRecommendedWorkQueue | null>(null);
+
   useEffect(() => {
     getEquipmentIdentityById(resolvedId).then(setEq);
   }, [resolvedId]);
@@ -178,6 +187,20 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       setOpenWOs(open as WorkOrder[]);
       setCompletedWOs(completed as CompletedWO[]);
     });
+  }, [resolvedId]);
+
+  useEffect(() => {
+    let active = true;
+
+    getEquipmentRecommendedWorkQueue(resolvedId).then((queue) => {
+      if (active) {
+        setRiskQueue(queue);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
   }, [resolvedId]);
 
   if (!eq) {
@@ -223,6 +246,40 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       wo.description.toLowerCase().includes(search.toLowerCase()) ||
       wo.engineer.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  const priorityCounts = {
+    CRITICAL: openWOs.filter(
+      (wo) => wo.priority === "CRITICAL",
+    ).length,
+    HIGH: openWOs.filter(
+      (wo) => wo.priority === "HIGH",
+    ).length,
+    MEDIUM: openWOs.filter(
+      (wo) => wo.priority === "MEDIUM",
+    ).length,
+  };
+
+  const overdueCount = openWOs.filter(
+    (wo) => wo.overdue,
+  ).length;
+
+  const dueThisWeekCount = openWOs.filter((wo) => {
+    if (!wo.dueDate) return false;
+
+    const dueDate = new Date(`${wo.dueDate}T00:00:00`);
+
+    return (
+      !Number.isNaN(dueDate.getTime()) &&
+      dueDate >= today &&
+      dueDate <= sevenDaysFromNow
+    );
+  }).length;
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
@@ -342,16 +399,16 @@ export const EquipmentWorkOrders = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Open Work Orders</p>
-              <p className="mb-2 text-3xl font-bold text-slate-50">12</p>
+              <p className="mb-2 text-3xl font-bold text-slate-50">{openWOs.length}</p>
               <div className="flex flex-col gap-0.5">
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />Critical 2
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />Critical {priorityCounts.CRITICAL}
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />High 6
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />High {priorityCounts.HIGH}
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />Medium 4
+                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />Medium {priorityCounts.MEDIUM}
                 </span>
               </div>
             </CardContent>
@@ -361,8 +418,10 @@ export const EquipmentWorkOrders = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Overdue</p>
-              <p className="mb-2 text-3xl font-bold text-red-400">5</p>
-              <p className="text-[11px] text-slate-500">42% of open</p>
+              <p className="mb-2 text-3xl font-bold text-red-400">{overdueCount}</p>
+              <p className="text-[11px] text-slate-500">{openWOs.length > 0
+  ? `${Math.round((overdueCount / openWOs.length) * 100)}% of open`
+  : "No open work orders"}</p>
             </CardContent>
           </Card>
 
@@ -370,18 +429,26 @@ export const EquipmentWorkOrders = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Due This Week</p>
-              <p className="mb-2 text-3xl font-bold text-yellow-400">4</p>
-              <p className="text-[11px] text-slate-500">33% of open</p>
+              <p className="mb-2 text-3xl font-bold text-yellow-400">{dueThisWeekCount}</p>
+              <p className="text-[11px] text-slate-500">{openWOs.length > 0
+  ? `${Math.round((dueThisWeekCount / openWOs.length) * 100)}% of open`
+  : "No open work orders"}</p>
             </CardContent>
           </Card>
 
           {/* Completed */}
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Completed (30 Days)</p>
-              <p className="mb-2 text-3xl font-bold text-slate-50">18</p>
-              <p className="flex items-center gap-1 text-[11px] text-emerald-400">
-                ↑ +3 vs last month
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Current Equipment Risk
+              </p>
+
+              <p className="mb-2 text-3xl font-bold text-orange-400">
+                {riskQueue?.currentRiskScore ?? eq.riskScore}%
+              </p>
+
+              <p className="text-[11px] text-slate-500">
+                {riskQueue?.currentRiskLevel ?? eq.riskLevel} risk
               </p>
             </CardContent>
           </Card>
@@ -389,10 +456,21 @@ export const EquipmentWorkOrders = (): JSX.Element => {
           {/* Average MTTR */}
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none col-span-2 sm:col-span-1">
             <CardContent className="p-4">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Average MTTR</p>
-              <p className="mb-2 text-3xl font-bold text-slate-50">6.2 <span className="text-lg font-semibold text-slate-400">hrs</span></p>
-              <p className="flex items-center gap-1 text-[11px] text-emerald-400">
-                ↓ -0.8 hrs vs last month
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Available Risk Reduction
+              </p>
+
+              <p className="mb-2 text-3xl font-bold text-emerald-400">
+                {riskQueue?.totalCalculatedReduction ?? 0}
+                <span className="text-lg font-semibold text-slate-400">
+                  {" "}pts
+                </span>
+              </p>
+
+              <p className="text-[11px] text-slate-500">
+                {riskQueue
+                  ? `${riskQueue.actions.length} ranked actions · projected ${riskQueue.projectedRiskScore}% ${riskQueue.projectedRiskLevel}`
+                  : "Calculated from recommended actions"}
               </p>
             </CardContent>
           </Card>
