@@ -1398,7 +1398,7 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
       .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome, wo_number, age_label, is_overdue")
       .eq("equipment_id", equipmentId);
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       const rows = data as WorkOrderRow[];
       return {
         open:      rows.filter((r) => r.status?.toUpperCase() !== "COMPLETED").map(rowToWorkOrder),
@@ -1409,11 +1409,9 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   } catch (e) {
     console.warn("getEquipmentWorkOrders threw, using mock:", e);
   }
-  const openMock = MOCK_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId);
-  const completedMock = MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === equipmentId);
   return {
-    open:      openMock.length > 0 ? openMock : MOCK_WORK_ORDERS.filter((w) => w.equipmentId === DEFAULT_EQUIPMENT_ID),
-    completed: completedMock.length > 0 ? completedMock : MOCK_COMPLETED_WORK_ORDERS.filter((w) => w.equipmentId === DEFAULT_EQUIPMENT_ID),
+    open: [],
+    completed: [],
   };
 }
 
@@ -1424,7 +1422,7 @@ export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMa
       .select("id, equipment_id, title, pm_number, frequency, pm_type, last_completed_date, next_due_date, status, completion_percentage")
       .eq("equipment_id", equipmentId);
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       return data.map((row) => ({
         id:            row.id,
         equipmentId:   row.equipment_id ?? "",
@@ -1442,10 +1440,7 @@ export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMa
   } catch (e) {
     console.warn("getEquipmentPMs threw, using mock:", e);
   }
-  const pmMock = MOCK_PMS.filter((p) => p.equipmentId === equipmentId);
-  return pmMock.length > 0
-    ? pmMock
-    : MOCK_PMS.filter((p) => p.equipmentId === DEFAULT_EQUIPMENT_ID);
+  return [];
 }
 
 export interface SkillCoverage {
