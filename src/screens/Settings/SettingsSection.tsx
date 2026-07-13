@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   Bell,
   Building2,
@@ -30,6 +31,15 @@ import { Card, CardContent } from "../../components/ui/card";
 import { ContextHelp } from "../../components/ContextHelp";
 import { Select } from "../../components/Select";
 import { ExplainWithAi } from "../../components/ExplainWithAi";
+import {
+  getSystemHealth,
+} from "./systemHealthService";
+
+import type {
+  SystemHealthIncident,
+  SystemHealthStatus,
+  SystemHealthSummary,
+} from "./systemHealthService";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -141,6 +151,161 @@ function SectionHeading({ icon: Icon, title, subtitle }: { icon: React.ElementTy
   );
 }
 
+function formatSystemDateTime(
+  value: string | null,
+): string {
+  if (!value) {
+    return "Not available";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  ).format(date);
+}
+
+function formatRiskAge(
+  minutes: number | null,
+): string {
+  if (minutes === null) {
+    return "Unknown";
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+
+  if (minutes < 1440) {
+    const hours =
+      Math.floor(minutes / 60);
+
+    const remainingMinutes =
+      minutes % 60;
+
+    return remainingMinutes > 0
+      ? `${hours}h ${remainingMinutes}m`
+      : `${hours}h`;
+  }
+
+  const days =
+    Math.floor(minutes / 1440);
+
+  const hours =
+    Math.floor(
+      (minutes % 1440) / 60,
+    );
+
+  return hours > 0
+    ? `${days}d ${hours}h`
+    : `${days}d`;
+}
+
+function formatSystemStatus(
+  value: string,
+): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase(),
+    );
+}
+
+function systemStatusClassName(
+  status: SystemHealthStatus,
+): string {
+  switch (status) {
+    case "critical":
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+
+    case "degraded":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+
+    default:
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  }
+}
+
+function systemCardBorderClassName(
+  status: SystemHealthStatus | null,
+): string {
+  switch (status) {
+    case "critical":
+      return "border-red-500/30";
+
+    case "degraded":
+      return "border-amber-500/30";
+
+    case "healthy":
+      return "border-emerald-500/20";
+
+    default:
+      return "border-gray-800";
+  }
+}
+
+function incidentSeverityClassName(
+  severity: string,
+): string {
+  switch (
+    severity
+      .trim()
+      .toLowerCase()
+  ) {
+    case "critical":
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+
+    case "high":
+      return "border-orange-500/30 bg-orange-500/10 text-orange-300";
+
+    case "medium":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+
+    default:
+      return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+  }
+}
+
+function SystemHealthMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string | number;
+  detail?: string;
+}): JSX.Element {
+  return (
+    <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
+      <p className="text-xs font-medium text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-xl font-semibold tracking-tight text-slate-100">
+        {value}
+      </p>
+
+      {detail ? (
+        <p className="mt-1 text-[11px] leading-5 text-slate-500">
+          {detail}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // ─── Field row (label + input) ────────────────────────────────────────────────
 
 function FieldRow({ label, value, onChange, type = "text", readOnly = false }: {
@@ -227,6 +392,33 @@ export const SettingsSection = (): JSX.Element => {
   const [toast,       setToast]       = useState<string | null>(null);
   const [showInvite,  setShowInvite]  = useState(false);
 
+  const [
+    systemHealthSummary,
+    setSystemHealthSummary,
+  ] =
+    useState<SystemHealthSummary | null>(
+      null,
+    );
+
+  const [
+    systemHealthIncidents,
+    setSystemHealthIncidents,
+  ] = useState<
+    SystemHealthIncident[]
+  >([]);
+
+  const [
+    systemHealthError,
+    setSystemHealthError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    isLoadingSystemHealth,
+    setIsLoadingSystemHealth,
+  ] = useState(true);
+
   // ── Site profile ──────────────────────────────────────────────────────────
   const [siteName,   setSiteName]   = useState("Wrexham Manufacturing Site");
   const [company,    setCompany]    = useState("Vorta Demo Manufacturing Ltd");
@@ -288,6 +480,60 @@ export const SettingsSection = (): JSX.Element => {
 
   function toast_(msg: string) { setToast(msg); }
 
+  const loadSystemHealth =
+    async (): Promise<void> => {
+      setIsLoadingSystemHealth(
+        true,
+      );
+
+      setSystemHealthError(null);
+
+      try {
+        const response =
+          await getSystemHealth();
+
+        setSystemHealthSummary(
+          response.summary,
+        );
+
+        setSystemHealthIncidents(
+          response.incidents,
+        );
+      } catch (error) {
+        setSystemHealthError(
+          error instanceof Error
+            ? error.message
+            : "System health could not be loaded.",
+        );
+      } finally {
+        setIsLoadingSystemHealth(
+          false,
+        );
+      }
+    };
+
+  useEffect(() => {
+    void loadSystemHealth();
+  }, []);
+
+  const activeSystemHealthIncidents =
+    systemHealthIncidents.filter(
+      (incident) =>
+        incident.status === "open" ||
+        incident.status ===
+          "acknowledged",
+    );
+
+  const totalHealthChecks =
+    systemHealthSummary
+      ? systemHealthSummary
+          .passedCount +
+        systemHealthSummary
+          .failedCount +
+        systemHealthSummary
+          .warningCount
+      : 0;
+
   function roleBadge(role: string) {
     switch (role) {
       case "Admin":   return "bg-[#3b82f620] text-blue-400";
@@ -328,9 +574,25 @@ export const SettingsSection = (): JSX.Element => {
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
           <ExplainWithAi pageId="settings" />
-          <button type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
-            <RefreshCw className="h-5 w-5" />
+          <button
+            type="button"
+            aria-label="Refresh system health"
+            title="Refresh system health"
+            disabled={
+              isLoadingSystemHealth
+            }
+            onClick={() =>
+              void loadSystemHealth()
+            }
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`h-5 w-5 ${
+                isLoadingSystemHealth
+                  ? "animate-spin"
+                  : ""
+              }`}
+            />
           </button>
           <button type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
@@ -340,6 +602,312 @@ export const SettingsSection = (): JSX.Element => {
       </header>
 
       <div className="flex w-full flex-col gap-6">
+
+        <Card
+          className={`rounded-xl bg-[#141820] shadow-none ${systemCardBorderClassName(
+            systemHealthSummary
+              ?.overallStatus ??
+              null,
+          )}`}
+        >
+          <CardContent className="flex flex-col gap-5 p-5 md:p-6">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <SectionHeading
+                icon={Activity}
+                title="System Health"
+                subtitle="Automated platform, import and risk-engine monitoring"
+              />
+
+              {systemHealthSummary ? (
+                <span
+                  className={`inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${systemStatusClassName(
+                    systemHealthSummary
+                      .overallStatus,
+                  )}`}
+                >
+                  {formatSystemStatus(
+                    systemHealthSummary
+                      .overallStatus,
+                  )}
+                </span>
+              ) : null}
+            </div>
+
+            {isLoadingSystemHealth &&
+            !systemHealthSummary ? (
+              <div className="flex min-h-32 items-center justify-center rounded-lg border border-gray-800 bg-[#111620] text-sm text-slate-400">
+                <RefreshCw className="mr-3 h-4 w-4 animate-spin" />
+                Loading live system health
+              </div>
+            ) : null}
+
+            {systemHealthError ? (
+              <div className="flex flex-col justify-between gap-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 sm:flex-row sm:items-center">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+
+                  <div>
+                    <p className="text-sm font-semibold text-red-100">
+                      System health could not be loaded
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-red-100/75">
+                      {systemHealthError}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    isLoadingSystemHealth
+                  }
+                  onClick={() =>
+                    void loadSystemHealth()
+                  }
+                  className="shrink-0 border-red-500/30 bg-transparent text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${
+                      isLoadingSystemHealth
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+
+            {systemHealthSummary ? (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <SystemHealthMetric
+                    label="Backend checks"
+                    value={`${systemHealthSummary.passedCount}/${totalHealthChecks}`}
+                    detail={
+                      systemHealthSummary
+                        .failedCount >
+                        0 ||
+                      systemHealthSummary
+                        .warningCount >
+                        0
+                        ? `${systemHealthSummary.failedCount} failed · ${systemHealthSummary.warningCount} warnings`
+                        : "All automated checks passed"
+                    }
+                  />
+
+                  <SystemHealthMetric
+                    label="Open incidents"
+                    value={
+                      systemHealthSummary
+                        .openIncidentCount
+                    }
+                    detail={`${systemHealthSummary.criticalIncidentCount} critical · ${systemHealthSummary.highIncidentCount} high`}
+                  />
+
+                  <SystemHealthMetric
+                    label="Risk data age"
+                    value={formatRiskAge(
+                      systemHealthSummary
+                        .riskAgeMinutes,
+                    )}
+                    detail={`Last refreshed ${formatSystemDateTime(
+                      systemHealthSummary
+                        .riskLastRefreshedAt,
+                    )}`}
+                  />
+
+                  <SystemHealthMetric
+                    label="Last monitoring run"
+                    value={
+                      systemHealthSummary
+                        .latestHealthStatus
+                        ? formatSystemStatus(
+                            systemHealthSummary
+                              .latestHealthStatus,
+                          )
+                        : "Not available"
+                    }
+                    detail={formatSystemDateTime(
+                      systemHealthSummary
+                        .latestMonitorRunAt,
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)]">
+                  <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-200">
+                          Active incidents
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Backend failures, stale calculations and SAP import exceptions
+                        </p>
+                      </div>
+
+                      <Badge className="h-auto rounded border border-gray-700 bg-gray-800 px-2 py-1 text-[10px] font-semibold text-slate-300 shadow-none">
+                        {
+                          activeSystemHealthIncidents.length
+                        }
+                      </Badge>
+                    </div>
+
+                    {activeSystemHealthIncidents.length ===
+                    0 ? (
+                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] p-4">
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-100">
+                            No active system incidents
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-emerald-100/70">
+                            The latest automated monitoring run found no backend, import or data-freshness failures.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex flex-col gap-2">
+                        {activeSystemHealthIncidents
+                          .slice(0, 5)
+                          .map(
+                            (
+                              incident,
+                            ) => (
+                              <div
+                                key={
+                                  incident.id
+                                }
+                                className="rounded-lg border border-gray-800 bg-[#0b0e14] p-4"
+                              >
+                                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-200">
+                                      {
+                                        incident.title
+                                      }
+                                    </p>
+
+                                    {incident.description ? (
+                                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        {
+                                          incident.description
+                                        }
+                                      </p>
+                                    ) : null}
+                                  </div>
+
+                                  <span
+                                    className={`inline-flex w-fit shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${incidentSeverityClassName(
+                                      incident.severity,
+                                    )}`}
+                                  >
+                                    {formatSystemStatus(
+                                      incident.severity,
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                                  <span>
+                                    {incident.source ??
+                                      "Vorta System Monitor"}
+                                  </span>
+
+                                  <span>
+                                    Last observed{" "}
+                                    {formatSystemDateTime(
+                                      incident.lastObservedAt,
+                                    )}
+                                  </span>
+
+                                  <span>
+                                    {
+                                      incident.occurrenceCount
+                                    }{" "}
+                                    occurrence
+                                    {incident.occurrenceCount ===
+                                    1
+                                      ? ""
+                                      : "s"}
+                                  </span>
+                                </div>
+                              </div>
+                            ),
+                          )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-800 bg-[#111620] p-4">
+                    <p className="text-sm font-semibold text-slate-200">
+                      Latest SAP import
+                    </p>
+
+                    {systemHealthSummary
+                      .latestImportStatus ? (
+                      <>
+                        <span
+                          className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                            systemHealthSummary.latestImportStatus ===
+                            "completed"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                              : systemHealthSummary.latestImportStatus ===
+                                  "rolled_back" ||
+                                systemHealthSummary.latestImportStatus ===
+                                  "failed"
+                                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                          }`}
+                        >
+                          {formatSystemStatus(
+                            systemHealthSummary
+                              .latestImportStatus,
+                          )}
+                        </span>
+
+                        <p className="mt-3 break-words text-sm font-medium text-slate-300">
+                          {systemHealthSummary
+                            .latestImportFileName ??
+                            "Unnamed SAP file"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatSystemDateTime(
+                            systemHealthSummary
+                              .latestImportAt,
+                          )}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="mt-3 rounded-lg border border-dashed border-gray-800 p-4">
+                        <p className="text-sm text-slate-400">
+                          No SAP import has been recorded for this site.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 border-t border-gray-800 pt-4">
+                      <p className="text-xs font-medium text-slate-400">
+                        Monitoring schedule
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Vorta automatically runs platform, security, integrity, performance and freshness checks every hour.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
 
         {/* ── Row 1: Site Profile + Team Access ────────────────────────────── */}
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
