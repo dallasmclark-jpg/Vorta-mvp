@@ -191,7 +191,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
 
   useEffect(() => {
     let active = true;
-
+    setRiskQueue(null);
     getEquipmentRecommendedWorkQueue(resolvedId).then((queue) => {
       if (active) {
         setRiskQueue(queue);
@@ -440,15 +440,17 @@ export const EquipmentWorkOrders = (): JSX.Element => {
           <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-4">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Current Equipment Risk
+                Projected Equipment Risk
               </p>
-
-              <p className="mb-2 text-3xl font-bold text-orange-400">
-                {riskQueue?.currentRiskScore ?? eq.riskScore}%
+              <p className="mb-2 text-3xl font-bold text-emerald-400">
+                {riskQueue
+                  ? `${riskQueue.projectedRiskScore}%`
+                  : "—"}
               </p>
-
               <p className="text-[11px] text-slate-500">
-                {riskQueue?.currentRiskLevel ?? eq.riskLevel} risk
+                {riskQueue
+                  ? `${riskQueue.projectedRiskLevel} after ${riskQueue.actions.length} ranked actions`
+                  : "Calculating projected risk"}
               </p>
             </CardContent>
           </Card>
