@@ -26,6 +26,7 @@ import { EquipmentSection, EquipmentOverview, EquipmentHealth, EquipmentWorkOrde
 import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
+import { EquipmentNotifications } from "../Equipment/EquipmentNotifications";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
 
@@ -89,6 +90,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="equipment"          element={<EquipmentSection />} />
       <Route path="equipment/:equipmentId/overview"     element={<EquipmentOverview />} />
       <Route path="equipment/:equipmentId/health"       element={<EquipmentHealth />} />
+      <Route path="equipment/:equipmentId/notifications" element={<EquipmentNotifications />} />
       <Route path="equipment/:equipmentId/work-orders"  element={<EquipmentWorkOrders />} />
       <Route path="equipment/:equipmentId/pms"          element={<EquipmentPMs />} />
       <Route path="equipment/:equipmentId/history"      element={<EquipmentHistory />} />
