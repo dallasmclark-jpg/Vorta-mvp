@@ -7,6 +7,10 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, useLocation } from "react-router-dom";
+import {
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { VortaLoadingScreen } from "../components/VortaLoadingScreen";
 
@@ -36,6 +40,11 @@ interface AuthContextValue {
   isDemoAdmin: boolean;
   loading: boolean;
   roleResolutionFailed: boolean;
+  authInitialisationError:
+    | string
+    | null;
+  retryAuthInitialisation:
+    () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -45,7 +54,52 @@ const AuthContext = createContext<AuthContextValue>({
   isDemoAdmin: false,
   loading: true,
   roleResolutionFailed: false,
+  authInitialisationError:
+    null,
+  retryAuthInitialisation:
+    () => undefined,
 });
+
+const AUTH_INITIALISATION_TIMEOUT_MS =
+  15_000;
+
+function withAuthTimeout<T>(
+  request: Promise<T>,
+  timeoutMessage: string,
+): Promise<T> {
+  return new Promise<T>(
+    (resolve, reject) => {
+      const timeoutId =
+        window.setTimeout(
+          () => {
+            reject(
+              new Error(
+                timeoutMessage,
+              ),
+            );
+          },
+          AUTH_INITIALISATION_TIMEOUT_MS,
+        );
+
+      request.then(
+        (value) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          resolve(value);
+        },
+        (error: unknown) => {
+          window.clearTimeout(
+            timeoutId,
+          );
+
+          reject(error);
+        },
+      );
+    },
+  );
+}
 
 export function normalisePilotRole(value: unknown): PilotRole | null {
   if (typeof value !== "string") return null;
@@ -245,6 +299,63 @@ export function useAuth(): AuthContextValue {
   return useContext(AuthContext);
 }
 
+function AuthenticationInitialisationFailure({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}): JSX.Element {
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-[#0b0f14] p-5 text-slate-100 sm:p-8"
+      role="alert"
+      aria-live="assertive"
+    >
+      <section className="w-full max-w-lg overflow-hidden rounded-2xl border border-amber-500/30 bg-[#121821] shadow-2xl shadow-black/40">
+        <div className="border-b border-slate-800 bg-[#10161e] px-6 py-5 sm:px-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-400">
+            Vorta connection notice
+          </p>
+
+          <h1 className="mt-2 text-xl font-semibold text-slate-50">
+            Vorta could not verify your access
+          </h1>
+        </div>
+
+        <div className="space-y-5 px-6 py-6 sm:px-8 sm:py-8">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.08] px-4 py-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+
+            <div>
+              <p className="text-sm font-semibold text-amber-100">
+                Authentication service unavailable
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-amber-100/75">
+                {message}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm leading-6 text-slate-400">
+            Your stored session has not been removed. Check the network connection and retry the secure access verification.
+          </p>
+
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#121821]"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry secure connection
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export function AuthProvider({
   children,
 }: {
@@ -261,6 +372,36 @@ export function AuthProvider({
     roleResolutionFailed,
     setRoleResolutionFailed,
   ] = useState(false);
+
+  const [
+    authInitialisationError,
+    setAuthInitialisationError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    initialisationAttempt,
+    setInitialisationAttempt,
+  ] = useState(0);
+
+  const retryAuthInitialisation =
+    (): void => {
+      setAuthInitialisationError(
+        null,
+      );
+
+      setRoleResolutionFailed(
+        false,
+      );
+
+      setLoading(true);
+
+      setInitialisationAttempt(
+        (current) =>
+          current + 1,
+      );
+    };
 
   const activeUserIdRef = useRef<string | null>(null);
   const hydratedUserIdRef = useRef<string | null>(null);
@@ -280,6 +421,9 @@ export function AuthProvider({
       setRole(null);
       setSiteContext(null);
       setRoleResolutionFailed(false);
+      setAuthInitialisationError(
+        null,
+      );
       setLoading(false);
     };
 
@@ -333,16 +477,26 @@ export function AuthProvider({
       setLoading(true);
 
       try {
-        const [profileResult, accessResult] =
-          await Promise.all([
+        const [
+          profileResult,
+          accessResult,
+        ] = await withAuthTimeout(
+          Promise.all([
             supabase
               .from("profiles")
-              .select("role, organisation_id")
-              .eq("id", nextUserId)
+              .select(
+                "role, organisation_id",
+              )
+              .eq(
+                "id",
+                nextUserId,
+              )
               .maybeSingle(),
 
             supabase
-              .from("user_site_access")
+              .from(
+                "user_site_access",
+              )
               .select(
                 [
                   "site_id",
@@ -351,17 +505,33 @@ export function AuthProvider({
                   "is_default",
                 ].join(","),
               )
-              .eq("user_id", nextUserId)
-              .eq("active", true)
-              .order("is_default", {
-                ascending: false,
-              })
-              .order("created_at", {
-                ascending: true,
-              })
+              .eq(
+                "user_id",
+                nextUserId,
+              )
+              .eq(
+                "active",
+                true,
+              )
+              .order(
+                "is_default",
+                {
+                  ascending:
+                    false,
+                },
+              )
+              .order(
+                "created_at",
+                {
+                  ascending:
+                    true,
+                },
+              )
               .limit(1)
               .maybeSingle(),
-          ]);
+          ]),
+          "Vorta could not verify your profile and site access within 15 seconds.",
+        );
 
         if (
           !mounted ||
@@ -383,10 +553,16 @@ export function AuthProvider({
             "Vorta auth context hydration failed.",
             {
               profile:
-                profileError?.message ?? null,
+                profileError?.message ??
+                null,
               siteAccess:
-                accessError?.message ?? null,
+                accessError?.message ??
+                null,
             },
+          );
+
+          throw new Error(
+            "Vorta could not verify the complete profile and site-access context.",
           );
         }
 
@@ -422,7 +598,11 @@ export function AuthProvider({
         }
 
         setRoleResolutionFailed(
-          lookupFailed && !effectiveRole,
+          false,
+        );
+
+        setAuthInitialisationError(
+          null,
         );
 
         if (!lookupFailed) {
@@ -447,29 +627,95 @@ export function AuthProvider({
           error,
         );
 
-        setRole((currentRole) =>
-          currentRole ?? metadataRole
+        setRole(null);
+        setSiteContext(null);
+
+        setRoleResolutionFailed(
+          true,
         );
-        setRoleResolutionFailed(!metadataRole);
-        hydratingUserIdRef.current = null;
+
+        setAuthInitialisationError(
+          error instanceof Error &&
+            error.message.includes(
+              "within 15 seconds",
+            )
+            ? error.message
+            : "Vorta could not verify your session, role and active site. No portal access has been granted from partial data.",
+        );
+
+        hydratingUserIdRef.current =
+          null;
+
         setLoading(false);
       }
     };
 
-    void supabase.auth
-      .getSession()
-      .then(({ data, error }) => {
-        if (!mounted) return;
-
-        if (error) {
-          console.warn(
-            "Unable to read the current Vorta session.",
-            error.message,
+    const initialiseAuthentication =
+      async (): Promise<void> => {
+        try {
+          const {
+            data,
+            error,
+          } = await withAuthTimeout(
+            supabase.auth.getSession(),
+            "Vorta could not read the current session within 15 seconds.",
           );
-        }
 
-        void hydrateSession(data.session);
-      });
+          if (!mounted) {
+            return;
+          }
+
+          if (error) {
+            throw error;
+          }
+
+          await hydrateSession(
+            data.session,
+          );
+        } catch (error) {
+          if (!mounted) {
+            return;
+          }
+
+          console.warn(
+            "Unable to initialise the current Vorta session.",
+            error,
+          );
+
+          hydrationRequestRef.current +=
+            1;
+
+          activeUserIdRef.current =
+            null;
+
+          hydratedUserIdRef.current =
+            null;
+
+          hydratingUserIdRef.current =
+            null;
+
+          setSession(null);
+          setRole(null);
+          setSiteContext(null);
+
+          setRoleResolutionFailed(
+            true,
+          );
+
+          setAuthInitialisationError(
+            error instanceof Error &&
+              error.message.includes(
+                "within 15 seconds",
+              )
+              ? error.message
+              : "Vorta could not contact the secure authentication service.",
+          );
+
+          setLoading(false);
+        }
+      };
+
+    void initialiseAuthentication();
 
     const {
       data: { subscription },
@@ -484,7 +730,7 @@ export function AuthProvider({
       hydrationRequestRef.current += 1;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initialisationAttempt]);
 
   const isDemoAdmin =
     resolveDemoAdmin(session) ||
@@ -499,6 +745,8 @@ export function AuthProvider({
         isDemoAdmin,
         loading,
         roleResolutionFailed,
+        authInitialisationError,
+        retryAuthInitialisation,
       }}
     >
       {children}
@@ -641,7 +889,11 @@ export function AuthGate({
 }: {
   children: React.ReactNode;
 }) {
-  const { loading } = useAuth();
+  const {
+    loading,
+    authInitialisationError,
+    retryAuthInitialisation,
+  } = useAuth();
   const resolvedRef = useRef(false);
   const loaderShownRef = useRef(false);
 
@@ -684,6 +936,31 @@ export function AuthGate({
     return () =>
       window.clearTimeout(timer);
   }, [loading]);
+
+  if (
+    authInitialisationError &&
+    !loading
+  ) {
+    return (
+      <AuthenticationInitialisationFailure
+        message={
+          authInitialisationError
+        }
+        onRetry={
+          retryAuthInitialisation
+        }
+      />
+    );
+  }
+
+  if (
+    loading &&
+    ready
+  ) {
+    return (
+      <VortaLoadingScreen />
+    );
+  }
 
   return (
     <>
