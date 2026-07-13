@@ -11,6 +11,7 @@ import {
   Loader2,
   Mic,
   MicOff,
+  RefreshCw,
   Send,
   ShieldCheck,
   Sparkles,
@@ -1502,9 +1503,32 @@ export function GlobalMaintenanceAiAssistant({
   const [areaRisks, setAreaRisks] = useState<AreaRiskProfile[]>([]);
   const [equipment, setEquipment] = useState<EquipmentListItem[]>([]);
   const [shiftSkillsContext, setShiftSkillsContext] = useState<ShiftSkillsContext | null>(null);
-  const [loadingContext, setLoadingContext] = useState(false);
-  const [contextReady, setContextReady] = useState(false);
-  const [pendingPrompt, setPendingPrompt] = useState("");
+  const [
+    loadingContext,
+    setLoadingContext,
+  ] = useState(false);
+
+  const [
+    contextReady,
+    setContextReady,
+  ] = useState(false);
+
+  const [
+    contextError,
+    setContextError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    contextReloadKey,
+    setContextReloadKey,
+  ] = useState(0);
+
+  const [
+    pendingPrompt,
+    setPendingPrompt,
+  ] = useState("");
   const [messages, setMessages] = useState<GlobalAiMessage[]>([
     {
       id: "global-mm-intro",
@@ -1654,34 +1678,127 @@ export function GlobalMaintenanceAiAssistant({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     let mounted = true;
+
     setLoadingContext(true);
     setContextReady(false);
+    setContextError(null);
 
-    Promise.all([getSiteRiskProfile(), getAreaRiskProfiles(), getEquipmentList(), fetchShiftSkillsContext()])
-      .then(([nextSiteRisk, nextAreaRisks, nextEquipment, nextShiftSkillsContext]) => {
-        if (!mounted) return;
-        setSiteRisk(nextSiteRisk);
-        setAreaRisks(nextAreaRisks);
-        setEquipment(nextEquipment);
-        setShiftSkillsContext(nextShiftSkillsContext);
-        setLoadingContext(false);
-        setContextReady(true);
-      })
-      .catch((error) => {
-        console.warn("GlobalMaintenanceAiAssistant context load failed:", error);
-        if (mounted) {
-          setLoadingContext(false);
+    setSiteRisk(null);
+    setAreaRisks([]);
+    setEquipment([]);
+    setShiftSkillsContext(null);
+
+    const loadContext =
+      async (): Promise<void> => {
+        try {
+          const [
+            nextSiteRisk,
+            nextAreaRisks,
+            nextEquipment,
+            nextShiftSkillsContext,
+          ] = await withTimeout(
+            Promise.all(
+              [
+                getSiteRiskProfile(),
+                getAreaRiskProfiles(),
+                getEquipmentList(),
+                fetchShiftSkillsContext(),
+              ] as const,
+            ),
+            15000,
+            "Vorta could not load the required site context within 15 seconds.",
+          );
+
+          if (
+            !nextSiteRisk ||
+            nextAreaRisks.length ===
+              0 ||
+            nextEquipment.length ===
+              0
+          ) {
+            throw new Error(
+              "Required Vorta site context is incomplete.",
+            );
+          }
+
+          if (!mounted) {
+            return;
+          }
+
+          setSiteRisk(
+            nextSiteRisk,
+          );
+
+          setAreaRisks(
+            nextAreaRisks,
+          );
+
+          setEquipment(
+            nextEquipment,
+          );
+
+          setShiftSkillsContext(
+            nextShiftSkillsContext,
+          );
+
           setContextReady(true);
+          setContextError(null);
+        } catch (error) {
+          console.warn(
+            "GlobalMaintenanceAiAssistant context load failed:",
+            error,
+          );
+
+          if (!mounted) {
+            return;
+          }
+
+          const message =
+            error instanceof Error
+              ? error.message
+              : "";
+
+          setContextReady(false);
+
+          setContextError(
+            message.includes(
+              "within 15 seconds",
+            )
+              ? message
+              : "Vorta could not load the complete site risk and equipment context. Analysis is disabled until the data is available.",
+          );
+        } finally {
+          if (mounted) {
+            setLoadingContext(
+              false,
+            );
+          }
         }
-      });
+      };
+
+    void loadContext();
 
     return () => {
       mounted = false;
     };
-  }, [open]);
+  }, [open, contextReloadKey]);
+
+  const retryContextLoad =
+    (): void => {
+      if (loadingContext) {
+        return;
+      }
+
+      setContextReloadKey(
+        (current) =>
+          current + 1,
+      );
+    };
 
   const stopSpeechRecognition = (
     abort = false,
@@ -1746,6 +1863,17 @@ export function GlobalMaintenanceAiAssistant({
     assistantId: string,
   ): Promise<void> => {
     try {
+      if (
+        !contextReady ||
+        !siteRisk ||
+        areaRisks.length === 0 ||
+        equipment.length === 0
+      ) {
+        throw new Error(
+          "Vorta site context is not ready.",
+        );
+      }
+
       const intent =
         classifyGlobalQuestion(
           question,
@@ -1910,6 +2038,14 @@ export function GlobalMaintenanceAiAssistant({
       return;
     }
 
+    if (
+      !contextReady ||
+      loadingContext ||
+      contextError
+    ) {
+      return;
+    }
+
     stopSpeechRecognition(
       true,
     );
@@ -1951,6 +2087,14 @@ export function GlobalMaintenanceAiAssistant({
     assistantId: string,
     question: string,
   ): void => {
+    if (
+      !contextReady ||
+      loadingContext ||
+      contextError
+    ) {
+      return;
+    }
+
     setMessages((previous) =>
       previous.map(
         (message) =>
@@ -2086,27 +2230,80 @@ export function GlobalMaintenanceAiAssistant({
                 <button
                   key={question}
                   type="button"
-                  onClick={() => submitQuestion(question)}
-                  className="rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                  disabled={
+                    !contextReady ||
+                    loadingContext
+                  }
+                  title={
+                    contextReady
+                      ? question
+                      : "Site context must load before Vorta can analyse this question"
+                  }
+                  onClick={() =>
+                    submitQuestion(
+                      question,
+                    )
+                  }
+                  className="rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400"
                 >
                   {question}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <div
+              className="text-[10px]"
+              aria-live="polite"
+            >
               {loadingContext ? (
-                <>
+                <div className="flex items-center gap-2 text-slate-500">
                   <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
-                  Loading site context...
-                </>
-              ) : (
-                <>
+                  Loading verified site context...
+                </div>
+              ) : contextError ? (
+                <div className="flex flex-col gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+
+                    <div>
+                      <p className="font-semibold text-amber-100">
+                        Site context unavailable
+                      </p>
+
+                      <p className="mt-0.5 leading-4 text-amber-100/70">
+                        {contextError}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      loadingContext
+                    }
+                    onClick={
+                      retryContextLoad
+                    }
+                    className="h-7 w-fit border-amber-500/30 bg-transparent px-2.5 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/10 hover:text-amber-100"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Retry context
+                  </Button>
+                </div>
+              ) : contextReady ? (
+                <div className="flex items-center gap-2 text-slate-500">
                   <ShieldCheck className="h-3 w-3 text-emerald-400" />
+
                   {shiftSkillsContext
                     ? `${roleProfile.contextLine} Shift skills context loaded: ${shiftSkillsContext.shiftLabel}.`
                     : roleProfile.contextLine}
-                </>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-slate-500">
+                  <AlertTriangle className="h-3 w-3 text-amber-400" />
+                  Site context has not been verified.
+                </div>
               )}
             </div>
           </div>
@@ -2150,6 +2347,13 @@ export function GlobalMaintenanceAiAssistant({
                         <Button
                           type="button"
                           variant="outline"
+                          disabled={
+                            !contextReady ||
+                            loadingContext ||
+                            Boolean(
+                              contextError,
+                            )
+                          }
                           onClick={() =>
                             retryFailedQuestion(
                               message.id,
@@ -2157,7 +2361,7 @@ export function GlobalMaintenanceAiAssistant({
                                 "",
                             )
                           }
-                          className="h-7 w-fit border-amber-500/30 bg-amber-500/10 px-3 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/20 hover:text-amber-100"
+                          className="h-7 w-fit border-amber-500/30 bg-amber-500/10 px-3 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/20 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           Retry analysis
                         </Button>
@@ -2223,7 +2427,11 @@ export function GlobalMaintenanceAiAssistant({
                 placeholder={
                   listening
                     ? "Listening..."
-                    : roleProfile.promptPlaceholder
+                    : loadingContext
+                      ? "Loading site context..."
+                      : contextError
+                        ? "Retry site context before asking a question"
+                        : roleProfile.promptPlaceholder
                 }
                 value={input}
                 onChange={(event) =>
@@ -2235,7 +2443,10 @@ export function GlobalMaintenanceAiAssistant({
                   (event) => {
                     if (
                       event.key ===
-                      "Enter"
+                        "Enter" &&
+                      contextReady &&
+                      !loadingContext &&
+                      !contextError
                     ) {
                       void submitQuestion(
                         input,
@@ -2257,7 +2468,14 @@ export function GlobalMaintenanceAiAssistant({
                     input,
                   )
                 }
-                disabled={!input.trim()}
+                disabled={
+                  !input.trim() ||
+                  !contextReady ||
+                  loadingContext ||
+                  Boolean(
+                    contextError,
+                  )
+                }
                 className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-3 w-3" />
