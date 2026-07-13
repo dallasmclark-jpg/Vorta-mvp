@@ -549,13 +549,14 @@ export function RequireRole({
   const {
     session,
     role,
+    siteContext,
     isDemoAdmin,
     loading,
     roleResolutionFailed,
   } = useAuth();
 
   const location = useLocation();
-  const unsupportedRoleRef = useRef(false);
+  const authErrorRef = useRef<string | null>(null);
 
   if (loading) {
     return <VortaLoadingScreen />;
@@ -567,10 +568,10 @@ export function RequireRole({
         to="/"
         state={{
           from: location,
-          ...(unsupportedRoleRef.current
+          ...(authErrorRef.current
             ? {
                 authError:
-                  "Your account does not have a supported Vorta portal role.",
+                  authErrorRef.current,
               }
             : {}),
         }}
@@ -594,7 +595,23 @@ export function RequireRole({
       );
     }
 
-    unsupportedRoleRef.current = true;
+    authErrorRef.current =
+      "Your account does not have a supported Vorta portal role.";
+
+    return <SignOutUnsupportedRole />;
+  }
+
+  const hasGlobalAdminAccess =
+    isDemoAdmin ||
+    role === "vorta_admin";
+
+  if (
+    !hasGlobalAdminAccess &&
+    !siteContext
+  ) {
+    authErrorRef.current =
+      "Your account does not have an active Vorta site assignment.";
+
     return <SignOutUnsupportedRole />;
   }
 
@@ -604,8 +621,7 @@ export function RequireRole({
       : [requiredRole];
 
   const hasAccess =
-    isDemoAdmin ||
-    role === "vorta_admin" ||
+    hasGlobalAdminAccess ||
     allowedRoles.includes(role);
 
   if (!hasAccess) {
