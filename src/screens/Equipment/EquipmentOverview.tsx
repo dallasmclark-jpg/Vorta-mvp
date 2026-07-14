@@ -19,6 +19,7 @@ import {
 import { DEFAULT_EQUIPMENT_ID, getEquipmentById, EquipmentBase } from "./equipmentData";
 import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentRiskPrediction } from "./equipmentService";
 import type { EquipmentRiskPrediction } from "./equipmentService";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -272,18 +273,6 @@ function priorityIcon(icon: string) {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { label: "Overview",        id: "overview" },
-  { label: "Notifications",   id: "notifications" },
-  { label: "Work Orders",     id: "wo",      badge: 12 },
-  { label: "Calibrations",    id: "pm",      badge: 8 },
-  { label: "History",         id: "history" },
-  { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares",          id: "spares" },
-  { label: "Documents",       id: "docs" },
-  { label: "AI Insights",     id: "ai" },
-];
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const EquipmentOverview = (): JSX.Element => {
@@ -468,27 +457,7 @@ export const EquipmentOverview = (): JSX.Element => {
         </div>
 
         {/* Tab navigation */}
-        <div className="mt-4 flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleTabClick(tab.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                activeTab === tab.id
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {tab.label}
-              {tab.badge && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500/20 px-1 text-[9px] font-bold text-blue-400">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <EquipmentTabNavigation equipmentId={eq.id} activeTab="overview" />
       </div>
 
       {/* ── Overview Content ─────────────────────────────────────────────── */}
