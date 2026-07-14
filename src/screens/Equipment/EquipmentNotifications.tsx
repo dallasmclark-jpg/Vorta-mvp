@@ -822,7 +822,9 @@ export const EquipmentNotifications = (): JSX.Element => {
                                     type="button"
                                     onClick={() =>
                                       navigate(
-                                        `/equipment/${equipment.id}/work-orders`,
+                                        `/equipment/${equipment.id}/work-orders?workOrder=${encodeURIComponent(
+                                          notification.linkedWorkOrderNumber,
+                                        )}#open-work-orders`,
                                       )
                                     }
                                     className="text-xs font-semibold text-blue-300 hover:text-blue-200"
