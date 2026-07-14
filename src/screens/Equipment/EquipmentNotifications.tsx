@@ -9,7 +9,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   Bell,
+  Check,
   ChevronRight,
+  Copy,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -53,6 +55,9 @@ interface EquipmentNotification {
   riskReason: string | null;
   linkedWorkOrderNumber: string | null;
   linkedWorkOrderStatus: string | null;
+  linkedWorkOrderPriority: string | null;
+  linkedWorkOrderDueDate: string | null;
+  linkedWorkOrderOverdue: boolean;
   convertedAt: string | null;
 }
 
@@ -165,6 +170,9 @@ function mapNotification(
       row.linked_work_order_number,
     ),
     linkedWorkOrderStatus: nullableString(row.linked_work_order_status),
+    linkedWorkOrderPriority: nullableString(row.linked_work_order_priority),
+    linkedWorkOrderDueDate: nullableString(row.linked_work_order_due_date),
+    linkedWorkOrderOverdue: row.linked_work_order_overdue === true,
     convertedAt: nullableString(row.converted_at),
   };
 }
@@ -265,11 +273,11 @@ function workflowClass(status: NotificationWorkflowStatus): string {
 function workflowLabel(status: NotificationWorkflowStatus): string {
   switch (status) {
     case "AWAITING_WORK_ORDER":
-      return "Awaiting work order";
+      return "Awaiting SAP work order";
     case "CONVERTED":
       return "Converted";
     default:
-      return "Closed without work";
+      return "Closed in SAP without work order";
   }
 }
 
@@ -292,6 +300,7 @@ export const EquipmentNotifications = (): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [summaryWarning, setSummaryWarning] = useState<string | null>(null);
+  const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -407,9 +416,31 @@ export const EquipmentNotifications = (): JSX.Element => {
         notification.priorityDescription,
         notification.reportedBy,
         notification.linkedWorkOrderNumber,
+        notification.linkedWorkOrderStatus,
+        notification.linkedWorkOrderPriority,
       ].some((value) => value?.toLowerCase().includes(query));
     });
   }, [filter, notifications, search]);
+
+
+  const copyNotificationNumber = useCallback(
+    async (notificationNumber: string) => {
+      if (!notificationNumber) return;
+
+      try {
+        await navigator.clipboard.writeText(notificationNumber);
+        setCopiedNotification(notificationNumber);
+        window.setTimeout(() => {
+          setCopiedNotification((current) =>
+            current === notificationNumber ? null : current,
+          );
+        }, 1600);
+      } catch (error) {
+        console.warn("Notification copy failed:", error);
+      }
+    },
+    [],
+  );
 
   if (!equipment) {
     return (
@@ -573,8 +604,8 @@ export const EquipmentNotifications = (): JSX.Element => {
                   </h2>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  Notifications remain a risk driver until converted into
-                  executable work or closed without work.
+                  Notifications are reconciled read-only from imported SAP
+                  notifications and referenced SAP work orders.
                 </p>
               </div>
 
@@ -678,9 +709,31 @@ export const EquipmentNotifications = (): JSX.Element => {
                               className="border-b border-gray-800/70 transition-colors last:border-b-0 hover:bg-white/[0.015]"
                             >
                               <td className="px-4 py-4 align-top">
-                                <p className="text-xs font-semibold text-blue-300">
-                                  {notification.notificationNumber || "—"}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-semibold text-blue-300">
+                                    {notification.notificationNumber || "—"}
+                                  </p>
+                                  {notification.notificationNumber ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void copyNotificationNumber(
+                                          notification.notificationNumber,
+                                        )
+                                      }
+                                      className="rounded-md border border-gray-700 p-1 text-slate-500 transition-colors hover:border-blue-500/50 hover:text-blue-300"
+                                      aria-label={`Copy SAP notification ${notification.notificationNumber}`}
+                                      title="Copy SAP notification number"
+                                    >
+                                      {copiedNotification ===
+                                      notification.notificationNumber ? (
+                                        <Check className="h-3 w-3 text-emerald-300" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                    </button>
+                                  ) : null}
+                                </div>
                                 <p className="mt-1 text-[11px] text-slate-600">
                                   {notification.notificationTypeDescription ??
                                     notification.notificationTypeCode ??
@@ -777,12 +830,34 @@ export const EquipmentNotifications = (): JSX.Element => {
                                   </button>
                                 ) : (
                                   <span className="text-xs font-medium text-orange-300">
-                                    Awaiting conversion
+                                    {notification.workflowStatus ===
+                                    "CLOSED_WITHOUT_WORK"
+                                      ? "Closed in SAP without work order"
+                                      : "Awaiting SAP work order"}
                                   </span>
                                 )}
                                 {notification.linkedWorkOrderStatus ? (
                                   <p className="mt-1 text-[11px] text-slate-600">
-                                    {notification.linkedWorkOrderStatus}
+                                    Status: {notification.linkedWorkOrderStatus}
+                                  </p>
+                                ) : null}
+                                {notification.linkedWorkOrderPriority ? (
+                                  <p className="mt-1 text-[11px] text-slate-600">
+                                    Priority: {notification.linkedWorkOrderPriority}
+                                  </p>
+                                ) : null}
+                                {notification.linkedWorkOrderDueDate ? (
+                                  <p
+                                    className={`mt-1 text-[11px] ${
+                                      notification.linkedWorkOrderOverdue
+                                        ? "font-medium text-red-300"
+                                        : "text-slate-600"
+                                    }`}
+                                  >
+                                    Due: {formatDate(notification.linkedWorkOrderDueDate)}
+                                    {notification.linkedWorkOrderOverdue
+                                      ? " · Overdue"
+                                      : ""}
                                   </p>
                                 ) : null}
                               </td>
