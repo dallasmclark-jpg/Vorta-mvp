@@ -62,14 +62,8 @@ insert into public.operator_career_paths (
   target_job_role,
   target_level,
   path_name,
-  pathway_category,
   readiness_score,
   estimated_timeframe,
-  management_track,
-  project_track,
-  specialist_track,
-  leadership_track,
-  succession_priority,
   status,
   equipment_id,
   target_capability_role,
@@ -91,20 +85,11 @@ select
   selected.equipment_name || ' AM Step ' || selected.target_am_step,
   least(selected.operator_level + 1, 4),
   selected.equipment_code || ' AM Step ' || selected.target_am_step || ' Development',
-  'Autonomous Maintenance',
   selected.calculated_readiness,
   case
     when selected.calculated_readiness >= 70 then '6-8 weeks'
     when selected.calculated_readiness >= 55 then '8-12 weeks'
     else '3-4 months'
-  end,
-  false,
-  false,
-  true,
-  false,
-  case
-    when selected.criticality in ('critical', 'high') then 'high'
-    else 'medium'
   end,
   'active',
   selected.equipment_id,
