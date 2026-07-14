@@ -274,7 +274,6 @@ function priorityIcon(icon: string) {
 
 const TABS = [
   { label: "Overview",        id: "overview" },
-  { label: "Health",          id: "health" },
   { label: "Notifications",   id: "notifications" },
   { label: "Work Orders",     id: "wo",      badge: 12 },
   { label: "Calibrations",    id: "pm",      badge: 8 },
@@ -305,7 +304,6 @@ export const EquipmentOverview = (): JSX.Element => {
 
   const handleTabClick = (tabId: string) => {
     const id = eq.id;
-    if (tabId === "health")  navigate(`/equipment/${id}/health`);
     if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
     if (tabId === "wo")      navigate(`/equipment/${id}/work-orders`);
     if (tabId === "pm")      navigate(`/equipment/${id}/pms`);
@@ -508,7 +506,6 @@ export const EquipmentOverview = (): JSX.Element => {
                     <CardNum n={1} />
                     <h2 className="text-sm font-semibold text-slate-200">Asset Health Summary</h2>
                   </div>
-                  <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">View Health →</button>
                 </div>
                 <div className="flex items-center gap-4">
                   <DonutChart value={ovw.healthScore} size={72} strokeWidth={8} color={healthColor} />
