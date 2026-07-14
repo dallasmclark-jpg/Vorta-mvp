@@ -24,6 +24,7 @@ import {
   type EquipmentRecommendedWorkAction,
   type EquipmentRecommendedWorkQueue,
 } from "./equipmentService";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 // ─── Work Orders types (local, mirrors equipmentTypes.ts shapes) ─────────────
 
@@ -44,18 +45,6 @@ interface WorkOrder {
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-
-const TABS = [
-  { label: "Overview",          id: "overview" },
-  { label: "Notifications",     id: "notifications" },
-  { label: "Work Orders",       id: "wo" },
-  { label: "Calibrations",      id: "pm" },
-  { label: "History",           id: "history" },
-  { label: "Skills & Engineers",id: "skills" },
-  { label: "Spares",            id: "spares" },
-  { label: "Documents",         id: "docs" },
-  { label: "AI Insights",       id: "ai" },
-];
 
 // ─── Style helpers ────────────────────────────────────────────────────────────
 
@@ -389,23 +378,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
         </div>
 
         {/* Tab navigation */}
-        <div className="mt-4 flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button key={tab.id} type="button" onClick={() => handleTabClick(tab.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                tab.id === "wo"
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}>
-              {tab.label}
-              {tab.badge && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500/20 px-1 text-[9px] font-bold text-blue-400">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <EquipmentTabNavigation equipmentId={eq.id} activeTab="work-orders" />
       </div>
 
       {/* ── Page Content ─────────────────────────────────────────────────── */}
