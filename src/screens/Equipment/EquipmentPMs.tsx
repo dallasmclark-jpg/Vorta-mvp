@@ -8,8 +8,10 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  UserCircle,
   Wrench,
 } from "lucide-react";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { supabase } from "../../lib/supabaseClient";
@@ -247,12 +249,24 @@ export const EquipmentPMs = (): JSX.Element => {
 
   const riskBadgeClass =
     equipment.riskLevel === "Critical"
-      ? "bg-red-500/10 text-red-300"
+      ? "bg-[#ef444420] text-red-400"
       : equipment.riskLevel === "High"
-        ? "bg-orange-500/10 text-orange-300"
+        ? "bg-[#f9731620] text-orange-400"
         : equipment.riskLevel === "Medium"
-          ? "bg-yellow-500/10 text-yellow-300"
-          : "bg-emerald-500/10 text-emerald-300";
+          ? "bg-[#eab30820] text-yellow-400"
+          : "bg-[#10b98120] text-emerald-400";
+
+  const statusDotClass =
+    equipment.status === "Running"
+      ? "bg-emerald-500"
+      : equipment.status === "At Risk"
+        ? "bg-orange-400"
+        : equipment.status === "Fault"
+          ? "bg-red-500"
+          : "bg-yellow-400";
+
+  const riskTotal =
+    equipment.riskBreakdown.reduce((sum, driver) => sum + driver.pct, 0) || 1;
 
   const summaryCards = [
     {
@@ -292,7 +306,7 @@ export const EquipmentPMs = (): JSX.Element => {
   return (
     <section className="flex w-full flex-col overflow-x-hidden pb-10">
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-4">
           <nav
             aria-label="Breadcrumb"
             className="flex items-center gap-1.5 text-sm text-slate-500"
@@ -310,38 +324,145 @@ export const EquipmentPMs = (): JSX.Element => {
             </span>
           </nav>
 
-          <Button
+          <button
             type="button"
-            variant="outline"
-            onClick={() => void loadCalibrations()}
-            disabled={loading}
-            className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+            onClick={() => navigate("/settings")}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            aria-label="Open settings"
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
+            <UserCircle className="h-7 w-7" />
+          </button>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-50">
-              {equipment.name}
-            </h1>
-            <p className="mt-1 text-xs text-slate-500">
-              {equipment.assetNumber} · {equipment.type} · {equipment.area}
-            </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
+            <img
+              src={equipment.image}
+              alt={equipment.name}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                (event.target as HTMLImageElement).style.display = "none";
+              }}
+            />
           </div>
 
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${riskBadgeClass}`}
-          >
-            {equipment.riskScore}% {equipment.riskLevel} risk
-          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+                {equipment.name}
+              </h1>
+              <Badge
+                className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
+                {equipment.riskLevel} Risk
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full ${statusDotClass}`}
+                aria-hidden="true"
+              />
+              <span className="text-sm font-semibold text-slate-200">
+                {equipment.status}
+              </span>
+              <span className="text-sm text-slate-500">
+                {equipment.statusNote}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+              <span className="font-medium text-slate-300">
+                {equipment.assetNumber}
+              </span>
+              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide text-slate-400">
+                {equipment.type}
+              </span>
+              <span>📍 {equipment.area}</span>
+              <span>
+                Manufacturer:{" "}
+                <span className="text-slate-300">
+                  {equipment.manufacturer}
+                </span>
+              </span>
+              <span>
+                Model:{" "}
+                <span className="text-slate-300">{equipment.model}</span>
+              </span>
+              <span>
+                Serial Number:{" "}
+                <span className="text-slate-300">
+                  {equipment.serialNumber}
+                </span>
+              </span>
+              <span>
+                Install Date:{" "}
+                <span className="text-slate-300">
+                  {equipment.installDate}
+                </span>
+              </span>
+              <span>
+                Warranty:{" "}
+                <span className="text-orange-400">
+                  {equipment.warranty}
+                </span>
+              </span>
+              <span>
+                Criticality:{" "}
+                <span className="text-slate-300">
+                  {equipment.criticality}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-2 lg:w-52">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Risk Score
+            </span>
+            <div className="flex items-end gap-3">
+              <span className="text-4xl font-bold text-slate-50">
+                {equipment.riskScore}%
+              </span>
+              <Badge
+                className={`mb-1 inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
+                {equipment.riskLevel}
+              </Badge>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-500">
+                Risk Drivers
+              </span>
+              <div className="flex h-2 overflow-hidden rounded-full">
+                {equipment.riskBreakdown.map((driver) => (
+                  <div
+                    key={driver.label}
+                    style={{
+                      width: `${(driver.pct / riskTotal) * 100}%`,
+                      backgroundColor: driver.color,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                {equipment.riskBreakdown.map((driver) => (
+                  <span
+                    key={driver.label}
+                    className="inline-flex items-center gap-1 text-[10px] text-slate-400"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${driver.dotClass}`}
+                    />
+                    {driver.label} {driver.pct}%
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto border-b border-gray-800">
+        <div className="mt-4 flex gap-0 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -349,9 +470,9 @@ export const EquipmentPMs = (): JSX.Element => {
               onClick={() =>
                 navigate(`/equipment/${equipment.id}/${tab.id}`)
               }
-              className={`shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
                 tab.id === "pms"
-                  ? "border-blue-500 text-blue-300"
+                  ? "border-blue-500 text-blue-400"
                   : "border-transparent text-slate-500 hover:text-slate-300"
               }`}
             >
@@ -409,6 +530,19 @@ export const EquipmentPMs = (): JSX.Element => {
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadCalibrations()}
+                  disabled={loading}
+                  className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                  />
+                  Refresh
+                </Button>
+
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                   <input
