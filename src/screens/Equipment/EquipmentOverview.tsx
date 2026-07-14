@@ -20,6 +20,7 @@ import { DEFAULT_EQUIPMENT_ID, getEquipmentById, EquipmentBase } from "./equipme
 import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentRiskPrediction } from "./equipmentService";
 import type { EquipmentRiskPrediction } from "./equipmentService";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -317,12 +318,6 @@ export const EquipmentOverview = (): JSX.Element => {
     eq.riskLevel === "Medium"   ? "bg-[#eab30820] text-yellow-400" :
     "bg-[#10b98120] text-emerald-400";
 
-  const statusDotClass =
-    eq.status === "Running"    ? "bg-emerald-500" :
-    eq.status === "At Risk"    ? "bg-orange-400" :
-    eq.status === "Fault"      ? "bg-red-500" :
-    "bg-yellow-400";
-
   const healthColor =
     ovw.healthScore >= 75 ? "#10b981" :
     ovw.healthScore >= 50 ? "#f97316" : "#ef4444";
@@ -395,7 +390,7 @@ export const EquipmentOverview = (): JSX.Element => {
 
             {/* Status */}
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusDotClass}`} aria-hidden="true" />
+              <EquipmentRiskIndicator riskLevel={eq.riskLevel} />
               <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
               <span className="text-sm text-slate-500">{eq.statusNote}</span>
             </div>
