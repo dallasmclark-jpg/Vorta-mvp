@@ -212,7 +212,7 @@ export const CareerSection = (): JSX.Element => (
             </h2>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-blue-400">{READINESS}%</p>
+            <p className="text-3xl font-bold text-amber-400">{READINESS}%</p>
             <p className="text-xs font-medium text-slate-400">ready for next role</p>
           </div>
         </div>
@@ -239,13 +239,13 @@ export const CareerSection = (): JSX.Element => (
 
             <div className="relative flex min-w-[260px] flex-1 items-center px-6">
               <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-800">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400" style={{ width: `${READINESS}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400" style={{ width: `${READINESS}%` }} />
               </div>
               <div
                 className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
                 style={{ left: `${READINESS}%` }}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#141820] bg-blue-500 text-xs font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.45)]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#141820] bg-amber-500 text-xs font-bold text-slate-950 shadow-[0_0_24px_rgba(245,158,11,0.4)]">
                   {READINESS}%
                 </div>
               </div>
