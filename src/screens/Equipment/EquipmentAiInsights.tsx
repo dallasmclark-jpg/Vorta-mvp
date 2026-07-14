@@ -170,18 +170,6 @@ export const EquipmentAiInsights = (): JSX.Element => {
         ? "High risk — intervention recommended"
         : "Risk stable — continue monitoring";
 
-  const handleTabClick = (tabId: string) => {
-    const id = eq.id;
-    if (tabId === "overview") navigate(`/equipment/${id}/overview`);
-    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
-    if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
-    if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
-    if (tabId === "history")  navigate(`/equipment/${id}/history`);
-    if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
-    if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
-    if (tabId === "docs")     navigate(`/equipment/${id}/documents`);
-  };
-
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
 
