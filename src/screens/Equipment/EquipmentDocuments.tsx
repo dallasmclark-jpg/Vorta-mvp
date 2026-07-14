@@ -21,20 +21,9 @@ import { Card, CardContent } from "../../components/ui/card";
 import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentDocuments } from "./equipmentService";
 import type { EquipmentDocument, DocumentStatus } from "./equipmentTypes";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-
-const TABS = [
-  { label: "Overview",           id: "overview" },
-  { label: "Notifications",      id: "notifications" },
-  { label: "Work Orders",        id: "wo",      badge: 12 },
-  { label: "PMs",                id: "pm",      badge: 8 },
-  { label: "History",            id: "history" },
-  { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares",             id: "spares" },
-  { label: "Documents",          id: "docs" },
-  { label: "AI Insights",        id: "ai" },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -254,23 +243,7 @@ export const EquipmentDocuments = (): JSX.Element => {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button key={tab.id} type="button" onClick={() => handleTabClick(tab.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                tab.id === "docs"
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}>
-              {tab.label}
-              {tab.badge && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500/20 px-1 text-[9px] font-bold text-blue-400">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <EquipmentTabNavigation equipmentId={eq.id} activeTab="documents" />
       </div>
 
       {/* ── Page Content ──────────────────────────────────────────────────── */}
