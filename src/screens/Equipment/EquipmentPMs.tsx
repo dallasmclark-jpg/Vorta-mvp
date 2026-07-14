@@ -50,7 +50,6 @@ interface EquipmentCalibration {
 
 const TABS = [
   { label: "Overview", id: "overview" },
-  { label: "Health", id: "health" },
   { label: "Notifications", id: "notifications" },
   { label: "Work Orders", id: "work-orders" },
   { label: "Calibrations", id: "pms" },
