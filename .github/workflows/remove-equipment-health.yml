@@ -1,16 +1,15 @@
 name: Remove equipment health page
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/health-cleanup-trigger
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
+    if: github.event.issue.title == 'Run equipment health cleanup'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +96,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm .github/workflows/remove-equipment-health.yml
-          rm .github/health-cleanup-trigger
+          rm -f .github/health-cleanup-trigger
           git add -A
           git commit -m "Remove equipment health page"
           git push
