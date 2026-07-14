@@ -404,7 +404,7 @@ export const EquipmentOverview = (): JSX.Element => {
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
               <span className="font-medium text-slate-300">{eq.assetNumber}</span>
               <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide text-slate-400">{eq.type}</span>
-              <span className="flex items-center gap-1">📍 {eq.area}</span>
+              <span>📍 {eq.area}</span>
               <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
               <span>Model: <span className="text-slate-300">{eq.model}</span></span>
               <span>Serial Number: <span className="text-slate-300">{eq.serialNumber}</span></span>
