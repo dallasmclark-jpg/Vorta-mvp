@@ -111,18 +111,6 @@ export const EquipmentDocuments = (): JSX.Element => {
 
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
-  const handleTabClick = (tabId: string) => {
-    const id = eq.id;
-    if (tabId === "overview") navigate(`/equipment/${id}/overview`);
-    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
-    if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
-    if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
-    if (tabId === "history")  navigate(`/equipment/${id}/history`);
-    if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
-    if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
-    if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
-  };
-
   // Derived filter options
   const allTypes    = useMemo(() => [...new Set(documents.map((d) => d.category).filter(Boolean))].sort(), [documents]);
   const allSources  = useMemo(() => [...new Set(documents.map((d) => d.sourceSystem).filter(Boolean))].sort(), [documents]);
