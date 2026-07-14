@@ -277,7 +277,7 @@ const TABS = [
   { label: "Health",          id: "health" },
   { label: "Notifications",   id: "notifications" },
   { label: "Work Orders",     id: "wo",      badge: 12 },
-  { label: "PMs",             id: "pm",      badge: 8 },
+  { label: "Calibrations",    id: "pm",      badge: 8 },
   { label: "History",         id: "history" },
   { label: "Skills & Engineers", id: "skills" },
   { label: "Spares",          id: "spares" },
