@@ -228,19 +228,6 @@ export const EquipmentHistory = (): JSX.Element => {
 
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
-  const handleTabClick = (tabId: string) => {
-    const id = eq.id;
-    if (tabId === "overview") navigate(`/equipment/${id}/overview`);
-    if (tabId === "notifications") navigate(`/equipment/${id}/notifications`);
-    if (tabId === "wo")       navigate(`/equipment/${id}/work-orders`);
-    if (tabId === "pm")       navigate(`/equipment/${id}/pms`);
-    if (tabId === "skills")   navigate(`/equipment/${id}/skills`);
-    if (tabId === "spares")   navigate(`/equipment/${id}/spares`);
-    if (tabId === "docs")     navigate(`/equipment/${id}/documents`);
-    if (tabId === "ai")       navigate(`/equipment/${id}/ai-insights`);
-    // other tabs placeholder
-  };
-
   const filtered = historyRows.filter(
     (r) =>
       r.woNumber.toLowerCase().includes(search.toLowerCase()) ||
