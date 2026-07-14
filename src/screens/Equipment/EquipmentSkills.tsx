@@ -167,11 +167,6 @@ export const EquipmentSkills = (): JSX.Element => {
   const statusDotClass = eq.status === "Running" ? "bg-emerald-500" : eq.status === "At Risk" ? "bg-orange-400" : eq.status === "Fault" ? "bg-red-500" : "bg-yellow-400";
   const riskTotal = eq.riskBreakdown.reduce((sum, item) => sum + item.pct, 0) || 1;
 
-  const handleTabClick = (tabId: string) => {
-    const routes: Record<string, string> = { overview: "overview", notifications: "notifications", wo: "work-orders", pm: "pms", history: "history", skills: "skills", spares: "spares", docs: "documents", ai: "ai-insights" };
-    navigate(`/equipment/${eq.id}/${routes[tabId]}`);
-  };
-
   const primarySme = showcase?.engineers.find((engineer) => engineer.capabilityRole === "PRIMARY_SME");
   const gaps = showcase?.requiredSkills.filter((skill) => skill.qualifiedEngineerCount < skill.minimumQualifiedEngineers).length ?? 0;
 
