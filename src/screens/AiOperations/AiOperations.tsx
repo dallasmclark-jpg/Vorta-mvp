@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Network,
   Sparkles,
+  TrendingUp,
   UploadCloud,
   Users,
   Wrench,
@@ -27,6 +28,7 @@ import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
+import { CareerSection } from "../Career";
 import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
@@ -43,6 +45,7 @@ const nav: NavGroup[] = [
     items: [
       { label: "Skills Matrix", icon: Network,       to: "/skills-matrix" },
       { label: "Engineers",     icon: Users,         to: "/engineers"     },
+      { label: "My Career",     icon: TrendingUp,    to: "/career"        },
       { label: "Requirements",  icon: ClipboardList, to: "/requirements"  },
     ],
   },
@@ -80,6 +83,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="dashboard"          element={<DashboardOverviewSection />} />
       <Route path="skills-matrix"      element={<SkillsMatrixSection />} />
       <Route path="engineers"          element={<EngineersSection />} />
+      <Route path="career"             element={<CareerSection />} />
       <Route path="requirements"       element={<RequirementsSection />} />
       <Route path="training"           element={<TrainingSection />} />
       <Route path="training-providers" element={<TrainingProvidersSection />} />
