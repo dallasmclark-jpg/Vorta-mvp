@@ -25,6 +25,7 @@ import {
   type EquipmentRecommendedWorkQueue,
 } from "./equipmentService";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 
 // ─── Work Orders types (local, mirrors equipmentTypes.ts shapes) ─────────────
 
@@ -146,12 +147,6 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     eq.riskLevel === "High"     ? "bg-[#f9731620] text-orange-400" :
     eq.riskLevel === "Medium"   ? "bg-[#eab30820] text-yellow-400" :
     "bg-[#10b98120] text-emerald-400";
-
-  const statusDotClass =
-    eq.status === "Running" ? "bg-emerald-500" :
-    eq.status === "At Risk" ? "bg-orange-400" :
-    eq.status === "Fault"   ? "bg-red-500" :
-    "bg-yellow-400";
 
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
@@ -320,7 +315,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusDotClass}`} aria-hidden="true" />
+              <EquipmentRiskIndicator riskLevel={eq.riskLevel} />
               <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
               <span className="text-sm text-slate-500">{eq.statusNote}</span>
             </div>
