@@ -50,7 +50,7 @@ const TABS = [
   { label: "Health",            id: "health" },
   { label: "Notifications",     id: "notifications" },
   { label: "Work Orders",       id: "wo" },
-  { label: "PMs",               id: "pm" },
+  { label: "Calibrations",      id: "pm" },
   { label: "History",           id: "history" },
   { label: "Skills & Engineers",id: "skills" },
   { label: "Spares",            id: "spares" },
@@ -253,18 +253,29 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       return "Open spare record";
     }
 
-    if (
-      action.pmNumber ||
-      action.actionType === "Preventive Maintenance"
-    ) {
-      return "Open PM record";
-    }
-
     if (action.workOrderNumber) {
       return "Locate work order";
     }
 
+    if (
+      action.pmNumber ||
+      action.actionType === "Preventive Maintenance"
+    ) {
+      return "Review work orders";
+    }
+
     return "Review action";
+  };
+
+  const scrollToWorkOrders = () => {
+    requestAnimationFrame(() => {
+      document
+        .getElementById("open-work-orders")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    });
   };
 
   const openRiskAction = (
@@ -278,29 +289,23 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       return;
     }
 
-    if (
-      action.pmNumber ||
-      action.actionType === "Preventive Maintenance"
-    ) {
-      navigate(`/equipment/${eq.id}/pms`);
-      return;
-    }
-
     if (action.workOrderNumber) {
       setSearch(action.workOrderNumber);
       setSearchParams(
         { workOrder: action.workOrderNumber },
         { replace: true },
       );
+      scrollToWorkOrders();
+      return;
+    }
 
-      requestAnimationFrame(() => {
-        document
-          .getElementById("open-work-orders")
-          ?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-      });
+    if (
+      action.pmNumber ||
+      action.actionType === "Preventive Maintenance"
+    ) {
+      setSearch("");
+      setSearchParams({}, { replace: true });
+      scrollToWorkOrders();
     }
   };
 
