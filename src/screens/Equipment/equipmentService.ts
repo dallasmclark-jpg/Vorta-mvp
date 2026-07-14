@@ -3641,4 +3641,116 @@ export async function getRiskDashboardScopeKpis():
   }
 }
 
+// ─── Consolidated equipment skills showcase ───────────────────────────────────
 
+export interface EquipmentRequiredSkill {
+  id: string; skillId: string; name: string; category: string | null;
+  requiredLevel: number; minimumQualifiedEngineers: number;
+  criticality: string | null; executionAuthority: string | null;
+  validationRequired: boolean; qualifiedEngineerCount: number;
+}
+
+export interface EquipmentEngineerCapability {
+  capabilityId: string; engineerId: string; engineerName: string;
+  discipline: string | null; shiftPattern: string | null;
+  availabilityStatus: string | null; capabilityRole: string;
+  capabilityStatus: string | null; competencyLevel: number | null;
+  validationStatus: string | null; requiredSkillMatches: number;
+  requiredSkillTotal: number; criticalSkillMatches: number; criticalSkillTotal: number;
+}
+
+export interface EquipmentOperatorCapability {
+  assignmentId: string; operatorId: string; operatorName: string;
+  shiftName: string | null; roleOnEquipment: string | null; amStep: number | null;
+  amValidationStatus: string | null; validatedAmSkillCount: number; amTrainingGapCount: number;
+}
+
+export interface EquipmentDevelopmentPath {
+  personType: string; pathId: string; personId: string; personName: string;
+  shiftName: string | null; currentJobRole: string | null; targetJobRole: string | null;
+  targetCapabilityRole: string | null; readinessScore: number; mentorName: string | null;
+  supervisedCompleted: number; supervisedRequired: number;
+  evidenceCompleted: number; evidenceRequired: number; targetCompletionDate: string | null;
+}
+
+export interface EquipmentShiftCoverage {
+  shiftCode: string; validatedAmOperatorCount: number; covered: boolean;
+}
+
+export interface EquipmentSkillsShowcase {
+  equipmentId: string; equipmentCode: string; equipmentName: string;
+  equipmentType: string | null; area: string | null; requiredSkillCount: number;
+  primarySmeCount: number; backupSmeCount: number; developingBackupCount: number;
+  activeAmOperatorCount: number; rotatingShiftCoverageCount: number;
+  rotatingShiftGapCount: number; peopleResilienceScore: number;
+  requiredSkills: EquipmentRequiredSkill[]; engineers: EquipmentEngineerCapability[];
+  operators: EquipmentOperatorCapability[]; developmentPaths: EquipmentDevelopmentPath[];
+  shiftCoverage: EquipmentShiftCoverage[];
+}
+
+export async function getEquipmentSkillsShowcase(equipmentId: string): Promise<EquipmentSkillsShowcase> {
+  const { data, error } = await supabase.rpc("vorta_get_equipment_skills_showcase", {
+    p_equipment_id: equipmentId,
+  });
+  if (error) throw new Error(error.message);
+  const row = data?.[0];
+  if (!row) throw new Error("No skills showcase data is available for this equipment.");
+
+  const requiredSkills: EquipmentRequiredSkill[] = (Array.isArray(row.required_skills) ? row.required_skills : []).map((skill: any) => ({
+    id: skill.id ?? "", skillId: skill.skill_id ?? "", name: skill.name ?? "Unnamed skill",
+    category: skill.category ?? null, requiredLevel: Number(skill.required_level ?? 0),
+    minimumQualifiedEngineers: Number(skill.minimum_qualified_engineers ?? 0),
+    criticality: skill.criticality ?? null, executionAuthority: skill.execution_authority ?? null,
+    validationRequired: Boolean(skill.validation_required),
+    qualifiedEngineerCount: Number(skill.qualified_engineer_count ?? 0),
+  }));
+  const engineers: EquipmentEngineerCapability[] = (Array.isArray(row.engineers) ? row.engineers : []).map((engineer: any) => ({
+    capabilityId: engineer.capability_id ?? "", engineerId: engineer.engineer_id ?? "",
+    engineerName: engineer.engineer_name ?? "Unknown engineer", discipline: engineer.discipline ?? null,
+    shiftPattern: engineer.shift_pattern ?? null, availabilityStatus: engineer.availability_status ?? null,
+    capabilityRole: engineer.capability_role ?? "QUALIFIED_SUPPORT",
+    capabilityStatus: engineer.capability_status ?? null,
+    competencyLevel: engineer.competency_level == null ? null : Number(engineer.competency_level),
+    validationStatus: engineer.validation_status ?? null,
+    requiredSkillMatches: Number(engineer.required_skill_matches ?? 0),
+    requiredSkillTotal: Number(engineer.required_skill_total ?? 0),
+    criticalSkillMatches: Number(engineer.critical_skill_matches ?? 0),
+    criticalSkillTotal: Number(engineer.critical_skill_total ?? 0),
+  }));
+  const operators: EquipmentOperatorCapability[] = (Array.isArray(row.operators) ? row.operators : []).map((operator: any) => ({
+    assignmentId: operator.assignment_id ?? "", operatorId: operator.operator_id ?? "",
+    operatorName: operator.operator_name ?? "Unknown operator", shiftName: operator.shift_name ?? null,
+    roleOnEquipment: operator.role_on_equipment ?? null,
+    amStep: operator.am_step == null ? null : Number(operator.am_step),
+    amValidationStatus: operator.am_validation_status ?? null,
+    validatedAmSkillCount: Number(operator.validated_am_skill_count ?? 0),
+    amTrainingGapCount: Number(operator.am_training_gap_count ?? 0),
+  }));
+  const developmentPaths: EquipmentDevelopmentPath[] = (Array.isArray(row.development_paths) ? row.development_paths : []).map((path: any) => ({
+    personType: path.person_type ?? "", pathId: path.path_id ?? "", personId: path.person_id ?? "",
+    personName: path.person_name ?? "Unknown person", shiftName: path.shift_name ?? null,
+    currentJobRole: path.current_job_role ?? null, targetJobRole: path.target_job_role ?? null,
+    targetCapabilityRole: path.target_capability_role ?? null, readinessScore: Number(path.readiness_score ?? 0),
+    mentorName: path.mentor_name ?? null, supervisedCompleted: Number(path.supervised_completed ?? 0),
+    supervisedRequired: Number(path.supervised_required ?? 0), evidenceCompleted: Number(path.evidence_completed ?? 0),
+    evidenceRequired: Number(path.evidence_required ?? 0), targetCompletionDate: path.target_completion_date ?? null,
+  }));
+  const shiftCoverage: EquipmentShiftCoverage[] = (Array.isArray(row.shift_coverage) ? row.shift_coverage : []).map((shift: any) => ({
+    shiftCode: shift.shiftCode ?? shift.shift_code ?? "",
+    validatedAmOperatorCount: Number(shift.validatedAmOperatorCount ?? shift.validated_am_operator_count ?? 0),
+    covered: Boolean(shift.covered),
+  }));
+
+  return {
+    equipmentId: row.equipment_id, equipmentCode: row.equipment_code ?? "",
+    equipmentName: row.equipment_name ?? "", equipmentType: row.equipment_type ?? null,
+    area: row.area ?? null, requiredSkillCount: Number(row.required_skill_count ?? requiredSkills.length),
+    primarySmeCount: Number(row.primary_sme_count ?? 0), backupSmeCount: Number(row.backup_sme_count ?? 0),
+    developingBackupCount: Number(row.developing_backup_count ?? 0),
+    activeAmOperatorCount: Number(row.active_am_operator_count ?? 0),
+    rotatingShiftCoverageCount: Number(row.rotating_shift_coverage_count ?? 0),
+    rotatingShiftGapCount: Number(row.rotating_shift_gap_count ?? 0),
+    peopleResilienceScore: Number(row.people_resilience_score ?? 0),
+    requiredSkills, engineers, operators, developmentPaths, shiftCoverage,
+  };
+}
