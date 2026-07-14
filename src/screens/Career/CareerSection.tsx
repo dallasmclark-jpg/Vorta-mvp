@@ -20,48 +20,56 @@ const COMPLETED_TRAINING = [
     title: "Reliability-Centred Maintenance II",
     provider: "Aladon Network",
     completed: "May 2025",
+    verified: "22 May 2025",
     category: "Reliability",
   },
   {
     title: "Maintenance Planning & Scheduling",
     provider: "Mobius Institute",
     completed: "November 2024",
+    verified: "18 Nov 2024",
     category: "Planning",
   },
   {
     title: "Root Cause Analysis Leader",
     provider: "Reliability Academy",
     completed: "July 2024",
+    verified: "26 Jul 2024",
     category: "Problem Solving",
   },
   {
     title: "SAP PM Advanced",
     provider: "SAP Learning",
     completed: "March 2024",
+    verified: "21 Mar 2024",
     category: "Systems",
   },
   {
     title: "IOSH Managing Safely",
     provider: "IOSH",
     completed: "October 2023",
+    verified: "19 Oct 2023",
     category: "Safety",
   },
   {
     title: "Lean Six Sigma Green Belt",
     provider: "The Manufacturing Institute",
     completed: "June 2023",
+    verified: "22 Jun 2023",
     category: "Continuous Improvement",
   },
   {
     title: "Leading High-Performance Maintenance Teams",
     provider: "Engineering Leadership Institute",
     completed: "February 2023",
+    verified: "24 Feb 2023",
     category: "Leadership",
   },
   {
     title: "Budgeting & Cost Control for Engineering",
     provider: "Cranfield Executive Development",
     completed: "September 2022",
+    verified: "23 Sep 2022",
     category: "Commercial",
   },
 ];
@@ -71,24 +79,28 @@ const CERTIFICATES = [
     name: "IOSH Managing Safely",
     issuer: "IOSH",
     awarded: "October 2023",
+    verified: "20 Oct 2023",
     validity: "No expiry",
   },
   {
     name: "Lean Six Sigma Green Belt",
     issuer: "The Manufacturing Institute",
     awarded: "June 2023",
+    verified: "23 Jun 2023",
     validity: "No expiry",
   },
   {
     name: "RCM II Practitioner",
     issuer: "Aladon Network",
     awarded: "May 2025",
+    verified: "23 May 2025",
     validity: "Current",
   },
   {
     name: "SAP S/4HANA Asset Management",
     issuer: "SAP",
     awarded: "March 2024",
+    verified: "22 Mar 2024",
     validity: "Current",
   },
 ];
@@ -166,11 +178,11 @@ function SummaryCard({
           <Icon className="h-4 w-4 text-blue-400" />
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             {label}
           </p>
           <p className="mt-1 text-xl font-bold text-slate-50">{value}</p>
-          <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
+          <p className="mt-0.5 text-xs text-slate-400">{detail}</p>
         </div>
       </CardContent>
     </Card>
@@ -179,9 +191,9 @@ function SummaryCard({
 
 export const CareerSection = (): JSX.Element => (
   <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
-    <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
+    <header className="flex w-full flex-col gap-4 py-5 lg:flex-row lg:items-end lg:justify-start lg:gap-8">
       <div className="flex flex-col items-start gap-1">
-        <p className="text-xs font-medium text-slate-500">Maintenance leadership</p>
+        <p className="text-xs font-medium text-slate-400">Maintenance leadership</p>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-slate-50">My Career</h1>
           <Badge className="h-auto rounded border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300 shadow-none">
@@ -192,8 +204,8 @@ export const CareerSection = (): JSX.Element => (
           Track completed development and close the eligibility gap to your next leadership role.
         </p>
       </div>
-      <div className="rounded-lg border border-gray-800 bg-[#10141b] px-4 py-2.5 text-right">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <div className="rounded-lg border border-gray-800 bg-[#10141b] px-4 py-2.5 text-left">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
           Career profile
         </p>
         <p className="mt-0.5 text-sm font-semibold text-slate-200">Dallas Clark</p>
@@ -204,7 +216,7 @@ export const CareerSection = (): JSX.Element => (
       <CardContent className="p-4 md:p-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Leadership progression
             </p>
             <h2 className="mt-1 text-lg font-bold text-slate-50">
@@ -218,8 +230,8 @@ export const CareerSection = (): JSX.Element => (
         </div>
 
         <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-[780px] items-stretch">
-            <div className="w-[260px] shrink-0 rounded-xl border border-blue-500/30 bg-blue-500/10 p-5">
+          <div className="mx-auto flex min-w-[920px] max-w-[1240px] items-stretch">
+            <div className="w-[300px] shrink-0 rounded-xl border border-blue-500/30 bg-blue-500/10 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15">
                   <Briefcase className="h-4 w-4 text-blue-300" />
@@ -228,7 +240,7 @@ export const CareerSection = (): JSX.Element => (
                   Current
                 </Badge>
               </div>
-              <p className="mt-5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <p className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 Current position
               </p>
               <h3 className="mt-1 text-lg font-bold text-slate-50">Maintenance Manager</h3>
@@ -237,7 +249,7 @@ export const CareerSection = (): JSX.Element => (
               </p>
             </div>
 
-            <div className="relative flex min-w-[260px] flex-1 items-center px-6">
+            <div className="relative flex min-w-[220px] flex-1 items-center px-5">
               <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-800">
                 <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400" style={{ width: `${READINESS}%` }} />
               </div>
@@ -249,15 +261,15 @@ export const CareerSection = (): JSX.Element => (
                   {READINESS}%
                 </div>
               </div>
-              <span className="absolute bottom-5 left-6 text-[10px] font-medium text-slate-500">
+              <span className="absolute bottom-5 left-5 text-[11px] font-medium text-slate-400">
                 Current capability
               </span>
-              <span className="absolute bottom-5 right-6 text-[10px] font-medium text-slate-500">
+              <span className="absolute bottom-5 right-5 text-[11px] font-medium text-slate-400">
                 Full eligibility
               </span>
             </div>
 
-            <div className="w-[280px] shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 p-5">
+            <div className="w-[330px] shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15">
                   <Target className="h-4 w-4 text-violet-300" />
@@ -266,7 +278,7 @@ export const CareerSection = (): JSX.Element => (
                   Next role
                 </Badge>
               </div>
-              <p className="mt-5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <p className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 Target position
               </p>
               <h3 className="mt-1 text-lg font-bold text-slate-50">
@@ -296,7 +308,7 @@ export const CareerSection = (): JSX.Element => (
               <BookOpen className="h-4 w-4 text-blue-400" />
               <h2 className="text-sm font-semibold text-slate-100">Completed training</h2>
             </div>
-            <span className="text-xs text-slate-500">{COMPLETED_TRAINING.length} records</span>
+            <span className="text-xs text-slate-400">{COMPLETED_TRAINING.length} records</span>
           </div>
           <div className="divide-y divide-gray-800">
             {COMPLETED_TRAINING.map((training) => (
@@ -305,14 +317,20 @@ export const CareerSection = (): JSX.Element => (
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-200">{training.title}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{training.provider}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                      <span>{training.provider}</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                        <ShieldCheck className="h-3 w-3" />
+                        Evidence verified {training.verified}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 pl-7 sm:pl-0">
                   <Badge className="h-auto rounded bg-slate-500/10 px-2 py-0.5 text-[9px] font-medium text-slate-400 shadow-none">
                     {training.category}
                   </Badge>
-                  <span className="w-24 text-right text-xs text-slate-500">{training.completed}</span>
+                  <span className="w-24 text-right text-xs text-slate-400">{training.completed}</span>
                 </div>
               </div>
             ))}
@@ -362,13 +380,14 @@ export const CareerSection = (): JSX.Element => (
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left">
-            <thead className="border-b border-gray-800 bg-[#10141b] text-[10px] uppercase tracking-wide text-slate-500">
+          <table className="w-full min-w-[820px] text-left">
+            <thead className="border-b border-gray-800 bg-[#10141b] text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-5 py-3 font-semibold">Certificate</th>
                 <th className="px-4 py-3 font-semibold">Issuer</th>
                 <th className="px-4 py-3 font-semibold">Awarded</th>
                 <th className="px-4 py-3 font-semibold">Validity</th>
+                <th className="px-4 py-3 font-semibold">Evidence verified</th>
                 <th className="px-5 py-3 text-right font-semibold">Status</th>
               </tr>
             </thead>
@@ -379,6 +398,7 @@ export const CareerSection = (): JSX.Element => (
                   <td className="px-4 py-3.5 text-xs text-slate-400">{certificate.issuer}</td>
                   <td className="px-4 py-3.5 text-xs text-slate-400">{certificate.awarded}</td>
                   <td className="px-4 py-3.5 text-xs text-slate-400">{certificate.validity}</td>
+                  <td className="px-4 py-3.5 text-xs text-slate-400">{certificate.verified}</td>
                   <td className="px-5 py-3.5 text-right">
                     <Badge className="h-auto rounded bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300 shadow-none">
                       Current
