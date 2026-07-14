@@ -28,6 +28,7 @@ import {
   getCachedEquipmentIdentity,
   getEquipmentIdentityById,
 } from "./equipmentService";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 type NotificationWorkflowStatus =
   | "AWAITING_WORK_ORDER"
@@ -82,18 +83,6 @@ const EMPTY_SUMMARY: NotificationSummary = {
   oldestAwaitingDays: 0,
   notificationRiskScore: 0,
 };
-
-const TABS = [
-  { label: "Overview", id: "overview" },
-  { label: "Notifications", id: "notifications" },
-  { label: "Work Orders", id: "work-orders" },
-  { label: "Calibrations", id: "pms" },
-  { label: "History", id: "history" },
-  { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares", id: "spares" },
-  { label: "Documents", id: "documents" },
-  { label: "AI Insights", id: "ai-insights" },
-] as const;
 
 const FILTERS: Array<{
   label: string;
@@ -674,24 +663,7 @@ export const EquipmentNotifications = (): JSX.Element => {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() =>
-                navigate(`/equipment/${equipment.id}/${tab.id}`)
-              }
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                tab.id === "notifications"
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <EquipmentTabNavigation equipmentId={equipment.id} activeTab="notifications" />
       </div>
 
       <div className="space-y-5 px-4 pt-5 md:px-6">
