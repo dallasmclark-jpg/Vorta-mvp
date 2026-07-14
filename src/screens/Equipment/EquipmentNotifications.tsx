@@ -55,6 +55,9 @@ interface EquipmentNotification {
   riskReason: string | null;
   linkedWorkOrderNumber: string | null;
   linkedWorkOrderStatus: string | null;
+  linkedWorkOrderPriority: string | null;
+  linkedWorkOrderDueDate: string | null;
+  linkedWorkOrderOverdue: boolean;
   convertedAt: string | null;
 }
 
@@ -167,6 +170,13 @@ function mapNotification(
       row.linked_work_order_number,
     ),
     linkedWorkOrderStatus: nullableString(row.linked_work_order_status),
+    linkedWorkOrderPriority: nullableString(
+      row.linked_work_order_priority,
+    ),
+    linkedWorkOrderDueDate: nullableString(
+      row.linked_work_order_due_date,
+    ),
+    linkedWorkOrderOverdue: row.linked_work_order_overdue === true,
     convertedAt: nullableString(row.converted_at),
   };
 }
@@ -411,6 +421,8 @@ export const EquipmentNotifications = (): JSX.Element => {
         notification.priorityDescription,
         notification.reportedBy,
         notification.linkedWorkOrderNumber,
+        notification.linkedWorkOrderStatus,
+        notification.linkedWorkOrderPriority,
       ].some((value) => value?.toLowerCase().includes(query));
     });
   }, [filter, notifications, search]);
@@ -826,7 +838,33 @@ export const EquipmentNotifications = (): JSX.Element => {
                                 )}
                                 {notification.linkedWorkOrderStatus ? (
                                   <p className="mt-1 text-[11px] text-slate-600">
-                                    {notification.linkedWorkOrderStatus}
+                                    Status {notification.linkedWorkOrderStatus}
+                                  </p>
+                                ) : null}
+                                {notification.linkedWorkOrderPriority ? (
+                                  <p className="text-[11px] text-slate-600">
+                                    Priority {notification.linkedWorkOrderPriority}
+                                  </p>
+                                ) : null}
+                                {notification.linkedWorkOrderDueDate ? (
+                                  <p
+                                    className={`text-[11px] ${
+                                      notification.linkedWorkOrderOverdue
+                                        ? "font-medium text-red-300"
+                                        : "text-slate-600"
+                                    }`}
+                                  >
+                                    {notification.linkedWorkOrderOverdue
+                                      ? "Overdue · "
+                                      : ""}
+                                    Due{" "}
+                                    {formatDate(
+                                      notification.linkedWorkOrderDueDate,
+                                    )}
+                                  </p>
+                                ) : notification.linkedWorkOrderOverdue ? (
+                                  <p className="text-[11px] font-medium text-red-300">
+                                    Overdue
                                   </p>
                                 ) : null}
                               </td>
