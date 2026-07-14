@@ -231,7 +231,11 @@ using (
     when equipment_id is not null
       then private.vorta_rls_has_equipment_access(equipment_id, false)
     else public.vorta_has_site_access(
-      (select engineer.site_id from public.engineers engineer where engineer.id = engineer_id),
+      (
+        select engineer.site_id
+        from public.engineers engineer
+        where engineer.id = engineer_career_paths.engineer_id
+      ),
       false
     )
   end
@@ -247,7 +251,7 @@ using (
   exists (
     select 1
     from public.engineer_career_paths path
-    where path.id = career_path_id
+    where path.id = engineer_career_path_requirements.career_path_id
   )
 );
 
@@ -262,7 +266,11 @@ using (
     when equipment_id is not null
       then private.vorta_rls_has_equipment_access(equipment_id, false)
     else public.vorta_has_site_access(
-      (select operator.site_id from public.operators operator where operator.id = operator_id),
+      (
+        select operator.site_id
+        from public.operators operator
+        where operator.id = operator_career_paths.operator_id
+      ),
       false
     )
   end
@@ -278,7 +286,7 @@ using (
   exists (
     select 1
     from public.operator_career_paths path
-    where path.id = career_path_id
+    where path.id = operator_career_path_requirements.career_path_id
   )
 );
 
@@ -304,8 +312,8 @@ returns table (
   person_id uuid,
   person_name text,
   shift_name text,
-  current_role text,
-  target_role text,
+  current_job_role text,
+  target_job_role text,
   target_capability_role text,
   current_level integer,
   target_level integer,
