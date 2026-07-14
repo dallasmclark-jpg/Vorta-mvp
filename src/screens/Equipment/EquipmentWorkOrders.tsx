@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ChevronRight,
   Search,
@@ -77,7 +81,9 @@ function statusClass(s: WoStatus) {
 export const EquipmentWorkOrders = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedWorkOrder = searchParams.get("workOrder")?.trim() ?? "";
+  const [search, setSearch] = useState(selectedWorkOrder);
 
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
@@ -119,6 +125,23 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       active = false;
     };
   }, [resolvedId]);
+
+  useEffect(() => {
+    if (!selectedWorkOrder) return;
+
+    setSearch(selectedWorkOrder);
+
+    if (openWOs.length === 0) return;
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`work-order-${selectedWorkOrder}`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    });
+  }, [openWOs.length, selectedWorkOrder]);
 
   if (!eq) {
     return (
@@ -265,6 +288,10 @@ export const EquipmentWorkOrders = (): JSX.Element => {
 
     if (action.workOrderNumber) {
       setSearch(action.workOrderNumber);
+      setSearchParams(
+        { workOrder: action.workOrderNumber },
+        { replace: true },
+      );
 
       requestAnimationFrame(() => {
         document
@@ -662,7 +689,17 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               type="search"
               placeholder="Search WO, description or engineer"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                const nextSearch = event.target.value;
+                setSearch(nextSearch);
+
+                if (
+                  selectedWorkOrder &&
+                  nextSearch !== selectedWorkOrder
+                ) {
+                  setSearchParams({}, { replace: true });
+                }
+              }}
               className="w-full rounded-lg border border-gray-700 bg-[#141820] py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50"
             />
           </div>
@@ -698,12 +735,22 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                 <tbody>
                   {filteredWOs.map((wo, index) => (
                     <tr
+                      id={`work-order-${wo.id}`}
                       key={wo.id}
-                      className={
+                      aria-current={
+                        wo.id === selectedWorkOrder
+                          ? "true"
+                          : undefined
+                      }
+                      className={`${
                         index !== filteredWOs.length - 1
                           ? "border-b border-gray-800"
                           : ""
-                      }
+                      } ${
+                        wo.id === selectedWorkOrder
+                          ? "bg-blue-500/[0.08] ring-1 ring-inset ring-blue-500/30"
+                          : ""
+                      }`}
                     >
                       <td className="py-3 pl-1 pr-3 font-mono text-[11px] font-semibold text-slate-200">
                         {wo.id}
