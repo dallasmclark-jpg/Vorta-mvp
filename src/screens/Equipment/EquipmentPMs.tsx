@@ -24,6 +24,7 @@ import {
   getEquipmentIdentityById,
 } from "./equipmentService";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 
 type CalibrationFilter = "ALL" | "ATTENTION" | "CONTROLLED";
 
@@ -244,15 +245,6 @@ export const EquipmentPMs = (): JSX.Element => {
           ? "bg-[#eab30820] text-yellow-400"
           : "bg-[#10b98120] text-emerald-400";
 
-  const statusDotClass =
-    equipment.status === "Running"
-      ? "bg-emerald-500"
-      : equipment.status === "At Risk"
-        ? "bg-orange-400"
-        : equipment.status === "Fault"
-          ? "bg-red-500"
-          : "bg-yellow-400";
-
   const riskTotal =
     equipment.riskBreakdown.reduce((sum, driver) => sum + driver.pct, 0) || 1;
 
@@ -347,10 +339,7 @@ export const EquipmentPMs = (): JSX.Element => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span
-                className={`h-2 w-2 rounded-full ${statusDotClass}`}
-                aria-hidden="true"
-              />
+              <EquipmentRiskIndicator riskLevel={equipment.riskLevel} />
               <span className="text-sm font-semibold text-slate-200">
                 {equipment.status}
               </span>
