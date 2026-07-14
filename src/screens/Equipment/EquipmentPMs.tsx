@@ -23,6 +23,7 @@ import {
   getCachedEquipmentIdentity,
   getEquipmentIdentityById,
 } from "./equipmentService";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 type CalibrationFilter = "ALL" | "ATTENTION" | "CONTROLLED";
 
@@ -47,18 +48,6 @@ interface EquipmentCalibration {
   linkedWorkOrderDueDate: string | null;
   riskState: string;
 }
-
-const TABS = [
-  { label: "Overview", id: "overview" },
-  { label: "Notifications", id: "notifications" },
-  { label: "Work Orders", id: "work-orders" },
-  { label: "Calibrations", id: "pms" },
-  { label: "History", id: "history" },
-  { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares", id: "spares" },
-  { label: "Documents", id: "documents" },
-  { label: "AI Insights", id: "ai-insights" },
-] as const;
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -461,24 +450,7 @@ export const EquipmentPMs = (): JSX.Element => {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() =>
-                navigate(`/equipment/${equipment.id}/${tab.id}`)
-              }
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
-                tab.id === "pms"
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <EquipmentTabNavigation equipmentId={equipment.id} activeTab="pms" />
       </div>
 
       <div className="space-y-5 px-4 pt-5 md:px-6">
