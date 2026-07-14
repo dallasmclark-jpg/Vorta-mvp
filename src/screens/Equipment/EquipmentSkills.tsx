@@ -27,18 +27,7 @@ import {
   getEquipmentIdentityById,
   getEquipmentSkillsShowcase,
 } from "./equipmentService";
-
-const TABS = [
-  { label: "Overview", id: "overview" },
-  { label: "Notifications", id: "notifications" },
-  { label: "Work Orders", id: "wo", badge: 12 },
-  { label: "PMs", id: "pm", badge: 8 },
-  { label: "History", id: "history" },
-  { label: "Skills & Engineers", id: "skills" },
-  { label: "Spares", id: "spares" },
-  { label: "Documents", id: "docs" },
-  { label: "AI Insights", id: "ai" },
-];
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 const ROLE_STYLES: Record<string, string> = {
   PRIMARY_SME: "bg-emerald-500/15 text-emerald-300",
@@ -214,7 +203,7 @@ export const EquipmentSkills = (): JSX.Element => {
             <div className="flex flex-wrap gap-x-2">{eq.riskBreakdown.map((item) => <span key={item.label} className="text-[10px] text-slate-400">{item.label} {item.pct}%</span>)}</div>
           </div>
         </div>
-        <div className="mt-4 flex overflow-x-auto">{TABS.map((tab) => <button key={tab.id} type="button" onClick={() => handleTabClick(tab.id)} className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${tab.id === "skills" ? "border-blue-500 text-blue-400" : "border-transparent text-slate-500 hover:text-slate-300"}`}>{tab.label}{tab.badge ? <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500/20 px-1 text-[9px] font-bold text-blue-400">{tab.badge}</span> : null}</button>)}</div>
+        <EquipmentTabNavigation equipmentId={eq.id} activeTab="skills" />
       </div>
 
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
