@@ -1,6 +1,10 @@
 name: Apply future schedule opacity
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/future-schedule-opacity-run
   pull_request_target:
     types: [opened]
 
@@ -10,7 +14,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.pull_request.title == 'Apply future schedule opacity'
+    if: github.event_name == 'push' || github.event.pull_request.title == 'Apply future schedule opacity'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,8 +87,12 @@ jobs:
       - name: Build production application
         run: npm run build
 
-      - name: Remove temporary workflow
-        run: rm -f .github/workflows/apply-future-schedule-opacity.yml
+      - name: Remove temporary files
+        run: |
+          rm -f .github/workflows/apply-future-schedule-opacity.yml
+          rm -f .github/future-schedule-opacity-trigger
+          rm -f .github/future-schedule-opacity-trigger-branch
+          rm -f .github/future-schedule-opacity-run
 
       - name: Commit implementation
         run: |
@@ -95,6 +103,7 @@ jobs:
           git push origin main
 
       - name: Close trigger pull request
+        if: github.event_name == 'pull_request_target'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr close "${{ github.event.pull_request.number }}" --comment "Future PM and calibration schedule opacity reduced and production build passed."
