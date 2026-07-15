@@ -1,0 +1,193 @@
+name: Fix equipment document navigation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-equipment-document-navigation-fix
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Use in-app navigation for controlled documents
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          documents_path = Path('src/screens/Equipment/EquipmentDocuments.tsx')
+          source = documents_path.read_text()
+
+          import_anchor = 'import { EquipmentTabNavigation } from "./EquipmentTabNavigation";\n'
+          import_replacement = import_anchor + 'import { equipmentDocumentViewerUrl } from "./equipmentDocumentNavigation";\n'
+          if 'equipmentDocumentViewerUrl' not in source:
+              if import_anchor not in source:
+                  raise SystemExit('EquipmentDocuments import anchor not found')
+              source = source.replace(import_anchor, import_replacement, 1)
+
+          old_intervention = '''                    {item.document?.sourceUrl ? (
+                      <a
+                        href={item.document.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 hover:text-blue-200"
+                      >
+                        Open source <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-slate-600">Source link unavailable</span>
+                    )}
+'''
+          new_intervention = '''                    {item.document ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            equipmentDocumentViewerUrl(
+                              equipment.id,
+                              item.document as EquipmentDocument,
+                            ),
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 hover:text-blue-200"
+                      >
+                        Open document <BookOpen className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-600">Document unavailable</span>
+                    )}
+'''
+          if old_intervention in source:
+              source = source.replace(old_intervention, new_intervention, 1)
+          elif new_intervention not in source:
+              raise SystemExit('EquipmentDocuments intervention link anchor not found')
+
+          old_register = '''                            {document.sourceUrl ? (
+                              <a
+                                href={document.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />Open source
+                              </a>
+                            ) : (
+                              <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-700 px-3 text-xs text-slate-600">
+                                <Link2 className="h-3.5 w-3.5" />Source pending
+                              </span>
+                            )}
+'''
+          new_register = '''                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  equipmentDocumentViewerUrl(
+                                    equipment.id,
+                                    document,
+                                  ),
+                                )
+                              }
+                              className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
+                            >
+                              <BookOpen className="h-3.5 w-3.5" />Open document
+                            </button>
+'''
+          if old_register in source:
+              source = source.replace(old_register, new_register, 1)
+          elif new_register not in source:
+              raise SystemExit('EquipmentDocuments register link anchor not found')
+
+          documents_path.write_text(source)
+
+          insights_path = Path('src/screens/Equipment/EquipmentAiInsights.tsx')
+          source = insights_path.read_text()
+
+          callback_anchor = '''  const scrollToAssistant = useCallback(() => {
+    assistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+'''
+          callback_replacement = callback_anchor + '''
+  const openEvidenceSource = useCallback(
+    (url: string) => {
+      if (url.startsWith("/")) {
+        navigate(url);
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    [navigate],
+  );
+'''
+          if 'const openEvidenceSource = useCallback(' not in source:
+              if callback_anchor not in source:
+                  raise SystemExit('EquipmentAiInsights callback anchor not found')
+              source = source.replace(callback_anchor, callback_replacement, 1)
+
+          old_sources = '''                <div className="rounded-xl border border-gray-800 bg-[#0d1219] p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sources and actions</p><div className="mt-3 space-y-2">{askResult.sources.length ? askResult.sources.map((source) => source.url ? <a key={`${source.label}-${source.detail}`} href={source.url} target="_blank" rel="noreferrer" className="flex items-start justify-between gap-3 rounded-lg border border-gray-800 bg-[#0a0f16] p-3 hover:border-violet-500/30"><div><p className="text-xs font-semibold text-slate-200">{source.label}</p><p className="mt-1 text-[10px] text-slate-500">{source.detail}</p></div><ArrowRight className="h-3.5 w-3.5 shrink-0 text-violet-400" /></a> : <div key={`${source.label}-${source.detail}`} className="rounded-lg border border-gray-800 bg-[#0a0f16] p-3"><p className="text-xs font-semibold text-slate-200">{source.label}</p><p className="mt-1 text-[10px] text-slate-500">{source.detail}</p></div>) : <p className="text-xs text-slate-500">No indexed source section matched this question.</p>}</div></div>
+'''
+          new_sources = '''                <div className="rounded-xl border border-gray-800 bg-[#0d1219] p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sources and actions</p>
+                  <div className="mt-3 space-y-2">
+                    {askResult.sources.length ? (
+                      askResult.sources.map((source) =>
+                        source.url ? (
+                          <button
+                            key={`${source.label}-${source.detail}`}
+                            type="button"
+                            onClick={() => openEvidenceSource(source.url as string)}
+                            className="flex w-full items-start justify-between gap-3 rounded-lg border border-gray-800 bg-[#0a0f16] p-3 text-left hover:border-violet-500/30"
+                          >
+                            <div>
+                              <p className="text-xs font-semibold text-slate-200">{source.label}</p>
+                              <p className="mt-1 text-[10px] text-slate-500">{source.detail}</p>
+                            </div>
+                            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                          </button>
+                        ) : (
+                          <div key={`${source.label}-${source.detail}`} className="rounded-lg border border-gray-800 bg-[#0a0f16] p-3">
+                            <p className="text-xs font-semibold text-slate-200">{source.label}</p>
+                            <p className="mt-1 text-[10px] text-slate-500">{source.detail}</p>
+                          </div>
+                        ),
+                      )
+                    ) : (
+                      <p className="text-xs text-slate-500">No indexed source section matched this question.</p>
+                    )}
+                  </div>
+                </div>
+'''
+          if old_sources in source:
+              source = source.replace(old_sources, new_sources, 1)
+          elif new_sources not in source:
+              raise SystemExit('EquipmentAiInsights sources block anchor not found')
+
+          insights_path.write_text(source)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Remove temporary trigger files
+        run: |
+          rm -f .github/workflows/fix-equipment-document-navigation.yml
+          rm -f .github/run-equipment-document-navigation-fix
+
+      - name: Commit navigation fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix controlled document navigation"
+          git push origin main
