@@ -141,6 +141,7 @@ export interface EquipmentDocument {
   documentType?: string;
   sourceSystem?: string;
   sourceUrl?: string | null;
+  originalSourceUrl?: string | null;
   fileId?: string | null;
   externalReference?: string | null;
   drawingNumber?: string | null;
