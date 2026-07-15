@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/apply-database-workforce-photos.yml
 
+# Trigger after the workflow is registered on main.
 permissions:
   contents: write
 
@@ -35,7 +36,6 @@ jobs:
                   raise SystemExit(f"{path}: expected one match, found {count}: {old[:140]!r}")
               file.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-          # Equipment service keeps the workforce entity ID and its database portrait together.
           service = "src/screens/Equipment/equipmentService.ts"
           replace_once(
               service,
@@ -71,7 +71,6 @@ jobs:
     shiftName: operator.shift_name ?? null, roleOnEquipment: operator.role_on_equipment ?? null,''',
           )
 
-          # Equipment Skills page: large Primary SME portrait and portraits for every capability row.
           skills = "src/screens/Equipment/EquipmentSkills.tsx"
           replace_once(
               skills,
@@ -148,7 +147,6 @@ function SkillStatus({ skill }: { skill: EquipmentRequiredSkill }) {''',
               '''              <PrimarySmeCard engineer={primarySme} />''',
           )
 
-          # Engineer register and drawer now consume avatar_url returned by the engineers-data function.
           engineers = "src/screens/Engineers/EngineersSection.tsx"
           replace_once(
               engineers,
