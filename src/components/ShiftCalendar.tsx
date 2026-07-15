@@ -1,8 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
 
 export type ShiftType =
   | "day"
@@ -17,11 +15,11 @@ export type ShiftType =
   | "cert-renewal";
 
 export interface ShiftEvent {
-  date: string; // "YYYY-MM-DD"
+  date: string;
   type: ShiftType;
-  label?: string;   // short area / title shown in cell
-  time?: string;    // "06:00–18:00"
-  warn?: boolean;   // compliance / skill warning
+  label?: string;
+  time?: string;
+  warn?: boolean;
 }
 
 export interface ShiftCalendarProps {
@@ -32,237 +30,512 @@ export interface ShiftCalendarProps {
   onSelectDate?: (date: string) => void;
 }
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+type CalendarView = "week" | "month";
+type FilterValue = "all" | ShiftType;
 
-const SHIFT_CONFIG: Record<ShiftType, { bg: string; text: string; dot: string; label: string }> = {
-  day:          { bg: "bg-[#3b82f620]", text: "text-blue-400",    dot: "bg-blue-500",    label: "Day Shift"      },
-  night:        { bg: "bg-[#6366f120]", text: "text-indigo-300",  dot: "bg-indigo-400",  label: "Night Shift"    },
-  off:          { bg: "bg-[#ffffff08]", text: "text-slate-500",   dot: "bg-slate-700",   label: "Rest / Off"     },
-  training:     { bg: "bg-[#facc1520]", text: "text-yellow-400",  dot: "bg-yellow-400",  label: "Training"       },
-  unavailable:  { bg: "bg-[#ef444418]", text: "text-red-400",     dot: "bg-red-500",     label: "Unavailable"    },
-  overtime:     { bg: "bg-[#10b98118]", text: "text-emerald-400", dot: "bg-emerald-500", label: "Overtime / Cover"},
-  restricted:   { bg: "bg-[#f9731618]", text: "text-orange-400",  dot: "bg-orange-400",  label: "Restricted"     },
-  assigned:     { bg: "bg-[#3b82f620]", text: "text-blue-400",    dot: "bg-blue-500",    label: "Assigned"       },
-  booking:      { bg: "bg-[#facc1520]", text: "text-yellow-400",  dot: "bg-yellow-400",  label: "Booking"        },
-  "cert-renewal":{ bg: "bg-[#f9731618]", text: "text-orange-400", dot: "bg-orange-400",  label: "Cert Renewal"   },
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+const SHIFT_CONFIG: Record<
+  ShiftType,
+  { bg: string; border: string; text: string; dot: string; label: string; group: "schedule" | "risk" }
+> = {
+  day: {
+    bg: "bg-emerald-500/20",
+    border: "border-emerald-500/30",
+    text: "text-emerald-400",
+    dot: "bg-emerald-500",
+    label: "Day Shift",
+    group: "schedule",
+  },
+  night: {
+    bg: "bg-indigo-500/20",
+    border: "border-indigo-500/30",
+    text: "text-indigo-300",
+    dot: "bg-indigo-400",
+    label: "Night Shift",
+    group: "schedule",
+  },
+  off: {
+    bg: "bg-slate-800/30",
+    border: "border-slate-800",
+    text: "text-slate-600",
+    dot: "bg-slate-700",
+    label: "Off Shift",
+    group: "schedule",
+  },
+  training: {
+    bg: "bg-amber-500/20",
+    border: "border-amber-500/30",
+    text: "text-amber-400",
+    dot: "bg-amber-400",
+    label: "Training",
+    group: "risk",
+  },
+  unavailable: {
+    bg: "bg-red-500/20",
+    border: "border-red-500/30",
+    text: "text-red-400",
+    dot: "bg-red-500",
+    label: "Unavailable",
+    group: "risk",
+  },
+  overtime: {
+    bg: "bg-blue-500/20",
+    border: "border-blue-500/30",
+    text: "text-blue-400",
+    dot: "bg-blue-400",
+    label: "Overtime / Cover",
+    group: "schedule",
+  },
+  restricted: {
+    bg: "bg-orange-500/20",
+    border: "border-orange-500/30",
+    text: "text-orange-400",
+    dot: "bg-orange-400",
+    label: "Restricted",
+    group: "risk",
+  },
+  assigned: {
+    bg: "bg-blue-500/20",
+    border: "border-blue-500/30",
+    text: "text-blue-400",
+    dot: "bg-blue-400",
+    label: "Assigned",
+    group: "schedule",
+  },
+  booking: {
+    bg: "bg-cyan-500/20",
+    border: "border-cyan-500/30",
+    text: "text-cyan-400",
+    dot: "bg-cyan-400",
+    label: "Booking",
+    group: "risk",
+  },
+  "cert-renewal": {
+    bg: "bg-purple-500/20",
+    border: "border-purple-500/30",
+    text: "text-purple-400",
+    dot: "bg-purple-400",
+    label: "Certification Renewal",
+    group: "risk",
+  },
 };
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FILTERS: Array<{ value: FilterValue; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "day", label: "Day" },
+  { value: "night", label: "Night" },
+  { value: "training", label: "Training" },
+  { value: "unavailable", label: "Unavailable" },
+  { value: "overtime", label: "Cover" },
+  { value: "restricted", label: "Restricted" },
+];
 
-const LEGEND_TYPES: ShiftType[] = ["day", "night", "off", "training", "unavailable", "overtime", "restricted"];
+const STATUS_LEGEND: ShiftType[] = ["day", "night", "training", "unavailable", "overtime"];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function toYMD(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function toYmd(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
 }
 
-function startOfMonth(y: number, m: number): Date {
-  return new Date(y, m, 1);
+function startOfWeek(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() + (day === 0 ? -6 : 1 - day));
+  return result;
 }
 
-function isoMonday(d: Date): number {
-  // Monday = 0, Sunday = 6
-  return (d.getDay() + 6) % 7;
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
 
-export function ShiftCalendar({ title = "Shift Calendar", initialMonth, events, onSelectDate }: ShiftCalendarProps) {
-  const today = new Date();
-  const [cursor, setCursor] = useState(() => {
-    const base = initialMonth ?? today;
-    return new Date(base.getFullYear(), base.getMonth(), 1);
-  });
-  const [selected, setSelected] = useState<string | null>(null);
+function formatWeekLabel(date: Date): string {
+  return `Week of ${date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })}`;
+}
 
-  const year  = cursor.getFullYear();
-  const month = cursor.getMonth();
+function accentClasses(role: ShiftCalendarProps["role"]): {
+  active: string;
+  ring: string;
+  badge: string;
+} {
+  if (role === "operator") {
+    return {
+      active: "bg-emerald-600 text-white",
+      ring: "ring-emerald-500/40",
+      badge: "bg-emerald-500/20 text-emerald-400",
+    };
+  }
+  if (role === "contractor") {
+    return {
+      active: "bg-amber-600 text-white",
+      ring: "ring-amber-500/40",
+      badge: "bg-amber-500/20 text-amber-400",
+    };
+  }
+  return {
+    active: "bg-blue-600 text-white",
+    ring: "ring-blue-500/40",
+    badge: "bg-blue-500/20 text-blue-400",
+  };
+}
 
-  const monthLabel = cursor.toLocaleString("default", { month: "long", year: "numeric" });
+function EventCell({
+  events,
+  group,
+  date,
+  isToday,
+  selected,
+  onSelect,
+}: {
+  events: ShiftEvent[];
+  group: "schedule" | "risk";
+  date: Date;
+  isToday: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}): JSX.Element {
+  const matching = events.filter((event) => SHIFT_CONFIG[event.type].group === group);
 
-  // Build day cells
-  const firstDay    = startOfMonth(year, month);
-  const leadingBlanks = isoMonday(firstDay);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const cells: (number | null)[] = [
-    ...Array(leadingBlanks).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  // pad to complete final row
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  // Event index keyed by "YYYY-MM-DD"
-  const eventMap = new Map<string, ShiftEvent[]>();
-  for (const ev of events) {
-    if (!eventMap.has(ev.date)) eventMap.set(ev.date, []);
-    eventMap.get(ev.date)!.push(ev);
+  if (matching.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`flex h-[48px] w-full items-center justify-center rounded border border-transparent transition-colors hover:bg-white/[0.03] ${
+          selected ? "bg-blue-500/[0.06]" : ""
+        }`}
+        aria-label={`No ${group === "schedule" ? "shift" : "risk"} items on ${date.toLocaleDateString("en-GB")}`}
+      >
+        <span className="text-[10px] text-slate-700">OFF</span>
+      </button>
+    );
   }
 
-  const handleSelect = (day: number) => {
-    const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const primary = matching[0];
+  const config = SHIFT_CONFIG[primary.type];
+  const hasWarning = matching.some((event) => event.warn);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative flex h-[48px] w-full flex-col items-start justify-center gap-0.5 overflow-hidden rounded border px-2 py-1 text-left transition-opacity hover:opacity-80 ${config.bg} ${config.border} ${
+        selected ? "ring-1 ring-blue-400/60" : ""
+      } ${isToday ? "shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28)]" : ""}`}
+    >
+      <span className={`text-[9px] font-semibold uppercase leading-none opacity-70 ${config.text}`}>
+        {group === "schedule" ? "SHIFT" : "ACTION"}
+      </span>
+      <span className={`max-w-full truncate text-[10px] font-semibold leading-tight ${config.text}`}>
+        {primary.label ?? config.label}
+      </span>
+      {primary.time && (
+        <span className={`text-[9px] leading-none opacity-70 ${config.text}`}>{primary.time}</span>
+      )}
+      {matching.length > 1 && (
+        <span className={`absolute bottom-1 right-1 text-[9px] font-semibold ${config.text}`}>
+          +{matching.length - 1}
+        </span>
+      )}
+      {hasWarning && (
+        <AlertTriangle className="absolute right-1 top-1 h-2.5 w-2.5 text-orange-300" aria-label="Warning" />
+      )}
+    </button>
+  );
+}
+
+export function ShiftCalendar({
+  title = "Operational Workforce Calendar",
+  initialMonth,
+  events,
+  role = "engineer",
+  onSelectDate,
+}: ShiftCalendarProps): JSX.Element {
+  const today = useMemo(() => new Date(), []);
+  const [cursor, setCursor] = useState(() => initialMonth ?? today);
+  const [view, setView] = useState<CalendarView>("week");
+  const [filter, setFilter] = useState<FilterValue>("all");
+  const [selected, setSelected] = useState<string | null>(null);
+  const accent = accentClasses(role);
+
+  const filteredEvents = useMemo(
+    () => (filter === "all" ? events : events.filter((event) => event.type === filter)),
+    [events, filter],
+  );
+
+  const eventMap = useMemo(() => {
+    const map = new Map<string, ShiftEvent[]>();
+    for (const event of filteredEvents) {
+      const current = map.get(event.date) ?? [];
+      current.push(event);
+      map.set(event.date, current);
+    }
+    return map;
+  }, [filteredEvents]);
+
+  const weekStart = useMemo(() => startOfWeek(cursor), [cursor]);
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
+    [weekStart],
+  );
+
+  const periodLabel =
+    view === "week"
+      ? formatWeekLabel(weekStart)
+      : cursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+  const selectDate = (date: Date) => {
+    const ymd = toYmd(date);
     setSelected(ymd);
     onSelectDate?.(ymd);
   };
 
-  const prev = () => setCursor(new Date(year, month - 1, 1));
-  const next = () => setCursor(new Date(year, month + 1, 1));
+  const goPrevious = () => {
+    setCursor((current) => (view === "week" ? addDays(current, -7) : addMonths(current, -1)));
+  };
+
+  const goNext = () => {
+    setCursor((current) => (view === "week" ? addDays(current, 7) : addMonths(current, 1)));
+  };
+
+  const goToday = () => {
+    setCursor(new Date(today));
+    setSelected(toYmd(today));
+  };
+
+  const monthCells = useMemo(() => {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const first = new Date(year, month, 1);
+    const leading = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: Array<Date | null> = [
+      ...Array.from({ length: leading }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
+    ];
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [cursor]);
 
   return (
-    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-      <CardContent className="p-0">
+    <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <CardContent className="p-5">
+        <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-sm font-semibold text-slate-50">{title}</h2>
+              <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${accent.badge}`}>
+                WORKFORCE LOOKAHEAD
+              </span>
+            </div>
 
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between gap-3 border-b border-gray-800 px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-200">{title}</h2>
-          <div className="flex items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {FILTERS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setFilter(item.value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    filter === item.value
+                      ? accent.active
+                      : "bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 xl:items-end">
+            <div className="flex flex-col gap-2 xl:items-end">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Schedule Status</p>
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                {STATUS_LEGEND.map((type) => {
+                  const config = SHIFT_CONFIG[type];
+                  return (
+                    <span
+                      key={type}
+                      className={`inline-flex h-5 items-center justify-center gap-1.5 rounded border px-2 text-[10px] font-semibold ${config.bg} ${config.border} ${config.text}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+                      {config.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex w-max max-w-full flex-wrap items-center gap-2 xl:col-start-1">
             <button
               type="button"
-              onClick={prev}
-              className="flex h-6 w-6 items-center justify-center rounded border border-gray-700 text-slate-400 transition-colors hover:border-gray-600 hover:text-slate-200"
-              aria-label="Previous month"
+              onClick={goToday}
+              className="rounded border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-slate-50 hover:bg-white/15"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={goPrevious}
+              className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+              aria-label={view === "week" ? "Previous week" : "Previous month"}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="min-w-[130px] text-center text-xs font-medium text-slate-300">{monthLabel}</span>
+            <span className="min-w-[150px] text-center text-xs font-semibold text-slate-200">{periodLabel}</span>
             <button
               type="button"
-              onClick={next}
-              className="flex h-6 w-6 items-center justify-center rounded border border-gray-700 text-slate-400 transition-colors hover:border-gray-600 hover:text-slate-200"
-              aria-label="Next month"
+              onClick={goNext}
+              className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-slate-400 hover:bg-white/15 hover:text-slate-200"
+              aria-label={view === "week" ? "Next week" : "Next month"}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
+            <div className="ml-1 flex overflow-hidden rounded border border-white/10">
+              <button
+                type="button"
+                onClick={() => setView("week")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  view === "week" ? accent.active : "bg-white/10 text-slate-400 hover:bg-white/15"
+                }`}
+              >
+                Week
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("month")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  view === "month" ? accent.active : "bg-white/10 text-slate-400 hover:bg-white/15"
+                }`}
+              >
+                Month
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Desktop / Tablet grid ── */}
-        <div className="hidden sm:block overflow-x-auto">
-          <div className="min-w-[560px] p-4">
+        {view === "week" ? (
+          <div className="overflow-x-auto">
+            <div className="min-w-[780px]">
+              <div
+                className="mb-2 grid gap-1"
+                style={{ gridTemplateColumns: "120px repeat(7, minmax(0, 1fr))" }}
+              >
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Calendar</div>
+                {weekDates.map((date, index) => {
+                  const isToday = toYmd(date) === toYmd(today);
+                  return (
+                    <div key={toYmd(date)} className="text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{DAYS[index]}</p>
+                      <p className={`mt-0.5 text-[10px] ${isToday ? "font-semibold text-blue-400" : "text-slate-600"}`}>
+                        {date.getDate()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
 
-            {/* Day headers */}
-            <div className="mb-1 grid grid-cols-7 gap-1">
-              {DAYS.map((d) => (
-                <div key={d} className="py-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-                  {d}
+              {([
+                { key: "schedule" as const, label: "Shift / Cover" },
+                { key: "risk" as const, label: "Training / Risk" },
+              ]).map((row) => (
+                <div
+                  key={row.key}
+                  className="grid items-center gap-1 border-b border-gray-800/50 py-1.5 last:border-b-0"
+                  style={{ gridTemplateColumns: "120px repeat(7, minmax(0, 1fr))" }}
+                >
+                  <div className="pr-3">
+                    <p className="text-xs font-semibold text-slate-300">{row.label}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-600">Weekly view</p>
+                  </div>
+                  {weekDates.map((date) => {
+                    const ymd = toYmd(date);
+                    return (
+                      <EventCell
+                        key={`${row.key}-${ymd}`}
+                        events={eventMap.get(ymd) ?? []}
+                        group={row.key}
+                        date={date}
+                        isToday={ymd === toYmd(today)}
+                        selected={selected === ymd}
+                        onSelect={() => selectDate(date)}
+                      />
+                    );
+                  })}
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[560px]">
+              <div className="mb-2 grid grid-cols-7 gap-1">
+                {DAYS.map((day) => (
+                  <div key={day} className="py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {monthCells.map((date, index) => {
+                  if (!date) {
+                    return <div key={`blank-${index}`} className="min-h-[76px] rounded-lg border border-transparent bg-slate-900/20" />;
+                  }
+                  const ymd = toYmd(date);
+                  const dayEvents = eventMap.get(ymd) ?? [];
+                  const isToday = ymd === toYmd(today);
+                  const isSelected = selected === ymd;
 
-            {/* Cells */}
-            <div className="grid grid-cols-7 gap-1">
-              {cells.map((day, idx) => {
-                if (day === null) return <div key={`blank-${idx}`} />;
-
-                const ymd   = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const dayEvs = eventMap.get(ymd) ?? [];
-                const isToday = ymd === toYMD(today);
-                const isSel   = ymd === selected;
-                const primaryEv = dayEvs[0];
-                const cfg = primaryEv ? SHIFT_CONFIG[primaryEv.type] : null;
-                const hasWarn = dayEvs.some((e) => e.warn);
-
-                return (
-                  <button
-                    key={ymd}
-                    type="button"
-                    onClick={() => handleSelect(day)}
-                    className={`relative flex min-h-[68px] flex-col items-start gap-0.5 rounded-lg border p-1.5 text-left transition-colors
-                      ${isSel   ? "border-blue-500/60 bg-[#3b82f615]" : "border-gray-800 hover:border-gray-700 hover:bg-[#1a2030]"}
-                      ${isToday ? "ring-1 ring-blue-500/40" : ""}`}
-                  >
-                    {/* Day number */}
-                    <span className={`text-[11px] font-semibold tabular-nums ${isToday ? "text-blue-400" : "text-slate-400"}`}>
-                      {day}
-                    </span>
-
-                    {/* Events */}
-                    {dayEvs.slice(0, 2).map((ev, i) => {
-                      const c = SHIFT_CONFIG[ev.type];
-                      return (
-                        <span
-                          key={i}
-                          className={`inline-flex w-full items-center gap-1 rounded px-1 py-0.5 text-[9px] font-semibold leading-none ${c.bg} ${c.text}`}
-                        >
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${c.dot}`} />
-                          <span className="truncate">{ev.label ?? c.label}</span>
-                        </span>
-                      );
-                    })}
-                    {dayEvs.length > 2 && (
-                      <span className="text-[9px] text-slate-600">+{dayEvs.length - 2} more</span>
-                    )}
-
-                    {/* Warning */}
-                    {hasWarn && (
-                      <AlertTriangle className="absolute right-1 top-1 h-2.5 w-2.5 text-orange-400" aria-label="Warning" />
-                    )}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={ymd}
+                      type="button"
+                      onClick={() => selectDate(date)}
+                      className={`relative flex min-h-[76px] flex-col items-start gap-1 rounded-lg border bg-slate-800/40 p-2 text-left transition-colors hover:bg-slate-700/50 ${
+                        isSelected ? "border-blue-500/60" : "border-gray-800"
+                      } ${isToday ? `ring-1 ${accent.ring}` : ""}`}
+                    >
+                      <span className={`text-xs font-semibold ${isToday ? "text-blue-400" : "text-slate-300"}`}>
+                        {date.getDate()}
+                      </span>
+                      {dayEvents.slice(0, 2).map((event, eventIndex) => {
+                        const config = SHIFT_CONFIG[event.type];
+                        return (
+                          <span
+                            key={`${ymd}-${eventIndex}`}
+                            className={`inline-flex w-full items-center gap-1 rounded px-1 py-0.5 text-[9px] font-semibold leading-none ${config.bg} ${config.text}`}
+                          >
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${config.dot}`} />
+                            <span className="truncate">{event.label ?? config.label}</span>
+                          </span>
+                        );
+                      })}
+                      {dayEvents.length > 2 && (
+                        <span className="text-[9px] text-slate-500">+{dayEvents.length - 2} more</span>
+                      )}
+                      {dayEvents.some((event) => event.warn) && (
+                        <AlertTriangle className="absolute right-1.5 top-1.5 h-2.5 w-2.5 text-orange-400" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* ── Mobile: agenda list ── */}
-        <div className="sm:hidden">
-          <div className="flex flex-col divide-y divide-gray-800/60 px-4 py-2">
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-              const ymd    = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const dayEvs = eventMap.get(ymd) ?? [];
-              const isToday = ymd === toYMD(today);
-              if (dayEvs.length === 0) return null;
-
-              return (
-                <div
-                  key={ymd}
-                  className={`flex items-start gap-3 py-2 ${isToday ? "bg-[#3b82f608] -mx-4 px-4" : ""}`}
-                >
-                  <div className="w-10 shrink-0 text-right">
-                    <span className={`text-xs font-semibold tabular-nums ${isToday ? "text-blue-400" : "text-slate-400"}`}>
-                      {String(day).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div className="flex min-w-0 flex-wrap gap-1">
-                    {dayEvs.map((ev, i) => {
-                      const c = SHIFT_CONFIG[ev.type];
-                      return (
-                        <span
-                          key={i}
-                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.bg} ${c.text}`}
-                        >
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${c.dot}`} />
-                          {ev.label ?? c.label}
-                          {ev.time && <span className="opacity-60"> · {ev.time}</span>}
-                          {ev.warn && <AlertTriangle className="h-2.5 w-2.5 text-orange-400" />}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Legend ── */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-gray-800 px-5 py-3">
-          {LEGEND_TYPES.map((t) => {
-            const c = SHIFT_CONFIG[t];
-            return (
-              <span key={t} className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
-                <span className={`h-2 w-2 rounded-full ${c.dot}`} />
-                {c.label}
-              </span>
-            );
-          })}
-          <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
-            <AlertTriangle className="h-2.5 w-2.5 text-orange-400" />
-            Warning
-          </span>
-        </div>
-
+        )}
       </CardContent>
     </Card>
   );
