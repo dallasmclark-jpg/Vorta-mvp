@@ -38,6 +38,8 @@ import {
 } from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentScheduleTimeline } from "./EquipmentScheduleTimeline";
+import type { MaintenanceScheduleRecord } from "./equipmentScheduleService";
 
 type CalibrationFilter = "ALL" | "ATTENTION" | "CONTROLLED";
 
@@ -321,6 +323,33 @@ export const EquipmentPMs = (): JSX.Element => {
   useEffect(() => {
     void loadCalibrationIntelligence();
   }, [loadCalibrationIntelligence]);
+
+  const calibrationTimelineRecords = useMemo<MaintenanceScheduleRecord[]>(
+    () =>
+      calibrations.map((calibration) => ({
+        id: calibration.calibrationId,
+        reference: calibration.calibrationNumber,
+        title: calibration.title,
+        scheduleType: "Calibration",
+        frequency: null,
+        frequencyUnit: null,
+        lastCompletedDate: calibration.lastCompletedDate,
+        nextDueDate: calibration.nextDueDate,
+        status: calibration.scheduleStatus,
+        criticality: calibration.criticality,
+        assignedEngineer: calibration.assignedEngineer,
+        procedureReference: calibration.procedureReference,
+        checklistReference: calibration.checklistReference,
+        calibrationPoint: calibration.calibrationPoint,
+        toleranceSpecification: calibration.toleranceSpecification,
+        lastResult: calibration.lastResult,
+        certificateReference: calibration.certificateReference,
+        linkedWorkOrderNumber: calibration.linkedWorkOrderNumber,
+        linkedWorkOrderStatus: calibration.linkedWorkOrderStatus,
+        linkedWorkOrderDueDate: calibration.linkedWorkOrderDueDate,
+      })),
+    [calibrations],
+  );
 
   const attention = useMemo(
     () => calibrations.filter(needsAttention),
@@ -929,6 +958,23 @@ export const EquipmentPMs = (): JSX.Element => {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-cyan-500/20 bg-[#141820] shadow-none">
+          <CardContent className="p-5 md:p-6">
+            <EquipmentScheduleTimeline
+              mode="calibration"
+              records={calibrationTimelineRecords}
+              loading={loading}
+              onOpenWorkOrder={(workOrderNumber) =>
+                navigate(
+                  `/equipment/${equipment.id}/work-orders?workOrder=${encodeURIComponent(
+                    workOrderNumber,
+                  )}#work-order-register`,
+                )
+              }
+            />
           </CardContent>
         </Card>
 

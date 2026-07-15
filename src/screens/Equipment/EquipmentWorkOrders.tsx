@@ -43,6 +43,11 @@ import {
 } from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentScheduleTimeline } from "./EquipmentScheduleTimeline";
+import {
+  getEquipmentMaintenanceSchedules,
+  type MaintenanceScheduleRecord,
+} from "./equipmentScheduleService";
 
 type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type WoStatus = "OPEN" | "IN PROGRESS" | "ON HOLD" | "WAITING PARTS";
@@ -219,6 +224,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   >([]);
   const [riskQueue, setRiskQueue] =
     useState<EquipmentRecommendedWorkQueue | null>(null);
+  const [pmSchedules, setPmSchedules] = useState<MaintenanceScheduleRecord[]>([]);
   const [search, setSearch] = useState(selectedWorkOrder);
   const [filter, setFilter] = useState<WorkFilter>("ALL");
   const [registerView, setRegisterView] = useState<RegisterView>("OPEN");
@@ -233,19 +239,22 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     setLoadError(null);
 
     try {
-      const [identity, workOrders, queue] = await Promise.all([
+      const [identity, workOrders, queue, schedules] = await Promise.all([
         getEquipmentIdentityById(resolvedId),
         getEquipmentWorkOrders(resolvedId),
         getEquipmentRecommendedWorkQueue(resolvedId),
+        getEquipmentMaintenanceSchedules(resolvedId, "pm"),
       ]);
 
       setEquipment(identity);
       setOpenWorkOrders(workOrders.open as WorkOrder[]);
       setCompletedWorkOrders(workOrders.completed as CompletedWorkOrder[]);
       setRiskQueue(queue);
+      setPmSchedules(schedules);
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to load equipment work-order intelligence", error);
+      setPmSchedules([]);
       setLoadError(
         "Work-order intelligence could not be refreshed. Showing the latest available equipment data.",
       );
@@ -1045,6 +1054,30 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-violet-500/20 bg-[#141820] shadow-none">
+          <CardContent className="p-5 md:p-6">
+            <EquipmentScheduleTimeline
+              mode="pm"
+              records={pmSchedules}
+              loading={loading}
+              onOpenWorkOrder={(workOrderNumber) => {
+                setRegisterView("OPEN");
+                setFilter("PREVENTIVE");
+                setSearch(workOrderNumber);
+                setSearchParams(
+                  { workOrder: workOrderNumber },
+                  { replace: true },
+                );
+                requestAnimationFrame(() => {
+                  document
+                    .getElementById("work-order-register")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            />
           </CardContent>
         </Card>
 
