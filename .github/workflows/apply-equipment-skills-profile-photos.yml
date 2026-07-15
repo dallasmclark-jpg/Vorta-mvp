@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/apply-equipment-skills-profile-photos.yml
 
+# Trigger after registration on main.
 permissions:
   contents: write
 
