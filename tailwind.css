@@ -269,7 +269,14 @@
 
   .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
     > header {
-    grid-template-columns: minmax(180px, 0.55fr) minmax(360px, 1.45fr);
+    grid-template-columns: minmax(180px, 1fr) minmax(360px, 640px) minmax(180px, 1fr);
+  }
+
+  .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+    > header
+    > div:nth-child(2) {
+    width: 100%;
+    justify-self: center;
   }
 
   .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
