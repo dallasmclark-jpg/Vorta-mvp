@@ -1,16 +1,16 @@
 name: Restore history event dot timeline
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/restore-history-event-dot-timeline.yml
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   update-history-timeline:
+    if: github.event.issue.title == 'Run history event dot timeline update'
     runs-on: ubuntu-latest
     steps:
       - name: Check out main
@@ -274,4 +274,7 @@ jobs:
           git commit -m "Restore work-event dot timeline on equipment history"
           git push origin main
 
-# Triggered through a merged maintenance update.
+      - name: Close trigger issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue close "${{ github.event.issue.number }}" --comment "History event dot timeline update completed."
