@@ -677,14 +677,13 @@ export const EquipmentNotifications = (): JSX.Element => {
       if (!equipment) return;
 
       const resolvedPrompt =
-        prompt ??
-        question.trim() ??
+        prompt ||
+        question.trim() ||
         `Explain the maintenance notification risk for ${equipment.name}.`;
 
       navigate(
         `/equipment/${equipment.id}/ai-insights?prompt=${encodeURIComponent(
-          resolvedPrompt ||
-            `Explain the maintenance notification risk for ${equipment.name}.`,
+          resolvedPrompt,
         )}`,
       );
     },
@@ -1382,7 +1381,7 @@ export const EquipmentNotifications = (): JSX.Element => {
                             notification.linkedWorkOrderNumber
                               ? navigate(
                                   `/equipment/${equipment.id}/work-orders?workOrder=${encodeURIComponent(
-                                    notification.linkedWorkOrderNumber,
+                                    notification.linkedWorkOrderNumber ?? "",
                                   )}#open-work-orders`,
                                 )
                               : undefined
@@ -1718,7 +1717,7 @@ export const EquipmentNotifications = (): JSX.Element => {
                                   onClick={() =>
                                     navigate(
                                       `/equipment/${equipment.id}/work-orders?workOrder=${encodeURIComponent(
-                                        notification.linkedWorkOrderNumber,
+                                        notification.linkedWorkOrderNumber ?? "",
                                       )}#open-work-orders`,
                                     )
                                   }
