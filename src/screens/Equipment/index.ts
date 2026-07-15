@@ -3,7 +3,7 @@ export { EquipmentOverview } from "./EquipmentOverview";
 export { EquipmentNotifications } from "./EquipmentNotifications";
 export { EquipmentWorkOrders } from "./EquipmentWorkOrders";
 export { EquipmentPMs } from "./EquipmentPMs";
-export { EquipmentHistoryWithEventTimeline as EquipmentHistory } from "./EquipmentHistoryWithEventTimeline";
+export { EquipmentHistoryWithAggregatedEventTimeline as EquipmentHistory } from "./EquipmentHistoryWithAggregatedEventTimeline";
 export { EquipmentSkills } from "./EquipmentSkills";
 export { EquipmentSpares } from "./EquipmentSpares";
 export { EquipmentDocuments } from "./EquipmentDocuments";
