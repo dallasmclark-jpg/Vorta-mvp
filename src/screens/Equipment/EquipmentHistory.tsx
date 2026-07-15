@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Bell,
   BrainCircuit,
   Check,
@@ -42,6 +41,7 @@ import {
 } from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentHistoryTimeline } from "./EquipmentHistoryTimeline";
 
 type HistoryRange = "all" | "12m" | "6m" | "30d";
 type HistoryFilter =
@@ -272,9 +272,6 @@ function extractFailurePattern(description: string): string | null {
   return null;
 }
 
-function monthKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
 
 export const EquipmentHistory = (): JSX.Element => {
   const navigate = useNavigate();
@@ -490,60 +487,6 @@ export const EquipmentHistory = (): JSX.Element => {
   const earliestRisk = riskHistory[0]?.riskScore ?? latestRisk;
   const riskChange = latestRisk - earliestRisk;
   const projectedRisk = riskQueue?.projectedRiskScore ?? latestRisk;
-
-  const monthlySeries = useMemo(() => {
-    const months = Array.from({ length: 12 }, (_, index) => {
-      const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 11 + index, 1);
-      return {
-        key: monthKey(date),
-        label: new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date),
-        date,
-        eventCount: 0,
-        downtimeMinutes: 0,
-        riskScore: null as number | null,
-      };
-    });
-
-    rangedRows.forEach((row) => {
-      const date = parseDate(row.date);
-      if (!date) return;
-      const month = months.find((item) => item.key === monthKey(date));
-      if (!month) return;
-      month.eventCount += 1;
-      month.downtimeMinutes += parseDowntimeMinutes(row.downtime);
-    });
-
-    riskHistory.forEach((snapshot) => {
-      const date = parseDate(snapshot.snapshotDate);
-      if (!date) return;
-      const month = months.find((item) => item.key === monthKey(date));
-      if (month) month.riskScore = snapshot.riskScore;
-    });
-
-    let carriedRisk: number | null = null;
-    months.forEach((month) => {
-      if (month.riskScore != null) carriedRisk = month.riskScore;
-      if (month.riskScore == null && carriedRisk != null) {
-        month.riskScore = carriedRisk;
-      }
-    });
-    if (months.length > 0) months[months.length - 1].riskScore = latestRisk;
-
-    return months;
-  }, [latestRisk, rangedRows, referenceDate, riskHistory]);
-
-  const maxMonthlyEvents = Math.max(
-    1,
-    ...monthlySeries.map((month) => month.eventCount),
-  );
-  const riskPoints = monthlySeries
-    .map((month, index) => {
-      if (month.riskScore == null) return null;
-      const x = 62 + index * 96;
-      const y = 198 - (month.riskScore / 100) * 160;
-      return `${x},${y}`;
-    })
-    .filter((point): point is string => Boolean(point));
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1036,147 +979,19 @@ export const EquipmentHistory = (): JSX.Element => {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.45fr)]">
           <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-5 md:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-violet-400" />
-                    <h2 className="text-base font-semibold text-slate-100">
-                      Maintenance and Risk Timeline
-                    </h2>
-                  </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Monthly maintenance activity with the available equipment-risk trajectory.
-                  </p>
-                </div>
-                <div className="flex rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
-                  {([
-                    ["All", "all"],
-                    ["12M", "12m"],
-                    ["6M", "6m"],
-                    ["30D", "30d"],
-                  ] as const).map(([label, value]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setRange(value)}
-                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                        range === value
-                          ? "bg-violet-600 text-white"
-                          : "text-slate-500 hover:text-slate-300"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+  <CardContent className="p-5 md:p-6">
+    <EquipmentHistoryTimeline
+      equipmentId={equipment.id}
+      rows={historyRows}
+      range={range}
+      onRangeChange={setRange}
+      loading={loading}
+      onOpenWorkOrder={openWorkOrder}
+    />
+  </CardContent>
+</Card>
 
-              <div className="mt-5 overflow-x-auto">
-                <svg
-                  viewBox="0 0 1180 240"
-                  className="min-w-[760px] w-full"
-                  role="img"
-                  aria-label="Monthly maintenance events and equipment risk trend"
-                >
-                  {[38, 78, 118, 158, 198].map((y) => (
-                    <line
-                      key={y}
-                      x1="44"
-                      x2="1148"
-                      y1={y}
-                      y2={y}
-                      stroke="#ffffff0a"
-                      strokeWidth="1"
-                    />
-                  ))}
-                  {monthlySeries.map((month, index) => {
-                    const height = (month.eventCount / maxMonthlyEvents) * 110;
-                    const x = 44 + index * 96;
-                    return (
-                      <g key={month.key}>
-                        <rect
-                          x={x}
-                          y={198 - height}
-                          width="36"
-                          height={height}
-                          rx="6"
-                          fill="#8b5cf6"
-                          opacity="0.35"
-                        />
-                        <rect
-                          x={x}
-                          y={198 - height}
-                          width="36"
-                          height="2"
-                          rx="1"
-                          fill="#a78bfa"
-                        />
-                        <text
-                          x={x + 18}
-                          y="225"
-                          textAnchor="middle"
-                          fill="#64748b"
-                          fontSize="10"
-                        >
-                          {month.label}
-                        </text>
-                        {month.eventCount > 0 ? (
-                          <text
-                            x={x + 18}
-                            y={190 - height}
-                            textAnchor="middle"
-                            fill="#c4b5fd"
-                            fontSize="9"
-                            fontWeight="600"
-                          >
-                            {month.eventCount}
-                          </text>
-                        ) : null}
-                      </g>
-                    );
-                  })}
-                  {riskPoints.length > 1 ? (
-                    <polyline
-                      points={riskPoints.join(" ")}
-                      fill="none"
-                      stroke="#22d3ee"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  ) : null}
-                  {monthlySeries.map((month, index) =>
-                    month.riskScore == null ? null : (
-                      <circle
-                        key={`risk-${month.key}`}
-                        cx={62 + index * 96}
-                        cy={198 - (month.riskScore / 100) * 160}
-                        r="4"
-                        fill="#0f172a"
-                        stroke="#22d3ee"
-                        strokeWidth="2"
-                      />
-                    ),
-                  )}
-                </svg>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2 w-5 rounded bg-violet-500/40 ring-1 ring-inset ring-violet-400/60" />
-                  Maintenance events
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-0.5 w-5 bg-cyan-400" />
-                  Equipment risk score
-                </span>
-                <span>{formatDuration(totalDowntimeMinutes)} downtime in selected range</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+<Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="p-5 md:p-6">
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-cyan-400" />
