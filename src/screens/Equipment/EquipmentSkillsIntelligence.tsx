@@ -14,7 +14,6 @@ import {
   type EquipmentDevelopmentPath,
   type EquipmentEngineerCapability,
   type EquipmentOperatorCapability,
-  type EquipmentRequiredSkill,
   type EquipmentSkillsShowcase,
   getCachedEquipmentIdentity,
   getEquipmentIdentityById,
