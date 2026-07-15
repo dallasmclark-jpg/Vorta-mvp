@@ -16,6 +16,50 @@ section > div.sticky
   > :is(:nth-child(6), :nth-child(7), :nth-child(8)) {
   display: none;
 }
+
+/* Remove low-value guidance and legend items from the shift-cover map. */
+.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+    > div:nth-child(3) > div.ml-auto
+  )
+  > p,
+.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+    > div:nth-child(3) > div.ml-auto
+  )
+  > div:first-child
+  > div:nth-child(2)
+  > div:nth-child(3),
+.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+    > div:nth-child(3) > div.ml-auto
+  )
+  > div:first-child
+  > div:nth-child(2)
+  > div:first-child
+  > div
+  > div:last-child {
+  display: none !important;
+}
+
+@media (min-width: 1280px) {
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    ) {
+    grid-template-areas:
+      "title legends"
+      "filters legends"
+      ". navigation" !important;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2) {
+    grid-template-areas:
+      "status"
+      "risk" !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
     </style>
 <link href="tailwind.css" rel="stylesheet"/>
 <link href="tailwind.css" rel="stylesheet" />
