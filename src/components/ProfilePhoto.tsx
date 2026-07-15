@@ -22,7 +22,8 @@ function hashName(name: string): number {
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  return `${parts[0]?.[0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+  const lastPart = parts[parts.length - 1];
+  return `${parts[0]?.[0] ?? ""}${lastPart?.[0] ?? ""}`.toUpperCase();
 }
 
 /**
