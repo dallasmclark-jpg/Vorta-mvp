@@ -1,0 +1,100 @@
+name: Integrate equipment document viewer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-equipment-document-viewer
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Link document records and AI citations to the internal viewer
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          service_path = Path('src/screens/Equipment/equipmentService.ts')
+          service = service_path.read_text()
+
+          import_anchor = 'import { EQUIPMENT_IMAGES, resolveEquipmentImage } from "./equipmentImages";\n'
+          import_line = 'import { buildEquipmentDocumentViewerUrl } from "./equipmentDocumentNavigation";\n'
+          if import_line not in service:
+            if import_anchor not in service:
+              raise SystemExit('equipmentService import anchor not found')
+            service = service.replace(import_anchor, import_anchor + import_line, 1)
+
+          document_source_anchor = '          sourceUrl: row.source_url ?? null,\n          fileId: row.file_id ?? null,\n'
+          document_source_replacement = '''          sourceUrl: buildEquipmentDocumentViewerUrl(
+            equipmentId,
+            row.id,
+            row.page_number,
+            row.manual_section,
+          ),
+          originalSourceUrl: row.source_url ?? null,
+          fileId: row.file_id ?? null,
+'''
+          if document_source_replacement not in service:
+            if document_source_anchor not in service:
+              raise SystemExit('knowledge document source mapping anchor not found')
+            service = service.replace(document_source_anchor, document_source_replacement, 1)
+
+          chunk_source_anchor = '      sourceUrl: row.source_url,\n      approvalStatus: row.approval_status,\n'
+          chunk_source_replacement = '''      sourceUrl: buildEquipmentDocumentViewerUrl(
+        equipmentId,
+        row.document_id,
+        row.page_number,
+        row.section_title ?? row.chunk_ref,
+      ),
+      approvalStatus: row.approval_status,
+'''
+          if chunk_source_replacement not in service:
+            if chunk_source_anchor not in service:
+              raise SystemExit('knowledge search source mapping anchor not found')
+            service = service.replace(chunk_source_anchor, chunk_source_replacement, 1)
+
+          service_path.write_text(service)
+
+          viewer_path = Path('src/screens/Equipment/EquipmentDocumentViewer.tsx')
+          viewer = viewer_path.read_text()
+          source_anchor = '  const sourceIsExternal = isBrowserSafeDocumentUrl(document.sourceUrl);\n'
+          source_replacement = '''  const controlledSourceUrl =
+    document.originalSourceUrl ?? document.sourceUrl;
+  const sourceIsExternal = isBrowserSafeDocumentUrl(controlledSourceUrl);
+'''
+          if source_replacement not in viewer:
+            if source_anchor not in viewer:
+              raise SystemExit('document viewer source anchor not found')
+            viewer = viewer.replace(source_anchor, source_replacement, 1)
+          viewer = viewer.replace('href={document.sourceUrl as string}', 'href={controlledSourceUrl as string}')
+          viewer_path.write_text(viewer)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Remove one-shot integration files
+        run: |
+          rm -f .github/workflows/integrate-equipment-document-viewer.yml
+          rm -f .github/run-equipment-document-viewer
+
+      - name: Commit integrated document viewer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Integrate full documents with Ask Vorta"
+          git push origin main
