@@ -1,347 +1,719 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowRight,
   Bell,
+  BrainCircuit,
+  CheckCircle2,
   ChevronRight,
+  ClipboardCopy,
+  Copy,
+  Database,
   Download,
-  Edit,
-  RefreshCw,
-  UserCircle,
+  FileSearch,
+  Gauge,
   Package,
-  ShoppingCart,
-  BookmarkPlus,
-  Layers,
-  Printer,
-  Zap,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  UserCircle,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-
-import { EquipmentBase, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentComponents, EquipmentComponentsResult } from "./equipmentService";
-import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
+import type { EquipmentBase } from "./equipmentData";
+import {
+  getCachedEquipmentIdentity,
+  getEquipmentComponents,
+  getEquipmentIdentityById,
+  getEquipmentRecommendedWorkQueue,
+} from "./equipmentService";
+import type {
+  EquipmentComponentsResult,
+  EquipmentRecommendedWorkQueue,
+} from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
+type InventoryPart = EquipmentComponentsResult["inventory"][number];
+type ExposureBand = "Critical" | "High" | "Medium" | "Covered";
 
-// ─── Static actions ────────────────────────────────────────────────────────────
+interface RankedPart extends InventoryPart {
+  gap: number;
+  coverage: number;
+  exposureScore: number;
+  exposureBand: ExposureBand;
+  consequence: string;
+  recommendation: string;
+}
 
+function clamp(value: number, minimum = 0, maximum = 100): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
 
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
+function normaliseCriticality(value: string): string {
+  return value.trim().toLowerCase();
+}
 
-const QUICK_ACTIONS = [
-  { Icon: Package,      label: "Request Spare"           },
-  { Icon: ShoppingCart, label: "Create Purchase Request" },
-  { Icon: BookmarkPlus, label: "Reserve Spare"           },
-  { Icon: Layers,       label: "View Inventory"          },
-  { Icon: Printer,      label: "Print Stock Report"      },
-];
+function isCriticalPart(part: InventoryPart): boolean {
+  const criticality = normaliseCriticality(part.criticality);
+  return criticality === "critical" || criticality === "high";
+}
 
-// ─── Donut chart ──────────────────────────────────────────────────────────────
+function isOutOfStock(part: InventoryPart): boolean {
+  return part.stock <= 0 || part.status.toLowerCase().includes("out");
+}
 
-function StockDonut({ ok, low, out }: { ok: number; low: number; out: number }) {
-  const size = 110; const sw = 14;
-  const r = (size - sw) / 2; const circ = 2 * Math.PI * r;
-  const total = ok + low + out || 1;
-  const pct = Math.round((ok / total) * 100);
-  const segs = [
-    { value: ok,  color: "#10b981" },
+function isBelowTarget(part: InventoryPart): boolean {
+  return part.stock < Math.max(part.max, 0);
+}
+
+function consequenceFor(part: InventoryPart): string {
+  const label = `${part.name} ${part.partNumber}`.toLowerCase();
+
+  if (label.includes("reject") && label.includes("sensor")) {
+    return "Reject verification unavailable; production may require a quality hold.";
+  }
+  if (label.includes("level probe") || label.includes("level sensor")) {
+    return "Loss of level control can stop filling and interrupt batch continuity.";
+  }
+  if (label.includes("hmi") || label.includes("touchscreen")) {
+    return "Operator interface failure can extend diagnosis and recovery time.";
+  }
+  if (label.includes("servo") || label.includes("motor")) {
+    return "Drive failure can stop the affected equipment axis until replacement.";
+  }
+  if (label.includes("clutch") || label.includes("starwheel")) {
+    return "Infeed timing failure can stop product transfer through the filler.";
+  }
+  if (label.includes("needle") || label.includes("nozzle")) {
+    return "Product-contact component failure can interrupt sterile filling readiness.";
+  }
+  if (label.includes("valve") || label.includes("manifold")) {
+    return "Pneumatic control loss can disable multiple machine functions.";
+  }
+  if (label.includes("guard") || label.includes("switch")) {
+    return "Safety-circuit failure can prevent the equipment from being released to run.";
+  }
+
+  return isCriticalPart(part)
+    ? "Failure would restrict safe operation until a suitable replacement is available."
+    : "Stock depletion would increase maintenance recovery time.";
+}
+
+function exposureBand(score: number, covered: boolean): ExposureBand {
+  if (covered) return "Covered";
+  if (score >= 75) return "Critical";
+  if (score >= 52) return "High";
+  return "Medium";
+}
+
+function exposureTone(band: ExposureBand): string {
+  if (band === "Critical") {
+    return "border-red-500/25 bg-red-500/10 text-red-300";
+  }
+  if (band === "High") {
+    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+  }
+  if (band === "Medium") {
+    return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
+  }
+  return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+}
+
+function criticalityTone(criticality: string): string {
+  const value = normaliseCriticality(criticality);
+  if (value === "critical") {
+    return "bg-red-500/10 text-red-300";
+  }
+  if (value === "high") {
+    return "bg-orange-500/10 text-orange-300";
+  }
+  if (value === "medium") {
+    return "bg-yellow-500/10 text-yellow-300";
+  }
+  return "bg-slate-800 text-slate-400";
+}
+
+function riskTone(level: string): string {
+  if (level === "Critical") {
+    return "border-red-500/25 bg-red-500/10 text-red-300";
+  }
+  if (level === "High") {
+    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+  }
+  if (level === "Medium") {
+    return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
+  }
+  return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+}
+
+function StockDonut({
+  coverage,
+  available,
+  low,
+  out,
+}: {
+  coverage: number;
+  available: number;
+  low: number;
+  out: number;
+}) {
+  const size = 132;
+  const strokeWidth = 13;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const segments = [
+    { value: available, color: "#10b981" },
     { value: low, color: "#eab308" },
     { value: out, color: "#ef4444" },
   ];
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
   let offset = 0;
-  const arcs = segs.map((s) => {
-    const len = (s.value / total) * circ;
-    const a = { offset, len, color: s.color };
-    offset += len + 2;
-    return a;
-  });
-  const cx = size / 2; const cy = size / 2;
+
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2433" strokeWidth={sw} />
-      {arcs.map((a, i) => (
-        <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-          stroke={a.color} strokeWidth={sw}
-          strokeDasharray={`${Math.max(0, a.len - 2)} ${circ}`}
-          strokeDashoffset={-a.offset}
-          transform={`rotate(-90 ${cx} ${cy})`} />
-      ))}
-      <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle"
-        fill="white" fontSize="18" fontWeight="700">{pct}%</text>
-      <text x="50%" y="62%" dominantBaseline="middle" textAnchor="middle"
-        fill="#94a3b8" fontSize="8.5"></text>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-label={`Stock resilience ${coverage}%`}
+    >
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="#1f2937"
+        strokeWidth={strokeWidth}
+      />
+      {segments.map((segment) => {
+        const length = (segment.value / total) * circumference;
+        const currentOffset = offset;
+        offset += length;
+
+        return (
+          <circle
+            key={segment.color}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${Math.max(0, length - 2)} ${circumference}`}
+            strokeDashoffset={-currentOffset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        );
+      })}
+      <text
+        x="50%"
+        y="47%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        fill="#f8fafc"
+        fontSize="22"
+        fontWeight="700"
+      >
+        {coverage}%
+      </text>
+      <text
+        x="50%"
+        y="63%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        fill="#64748b"
+        fontSize="9"
+      >
+        target cover
+      </text>
     </svg>
   );
 }
 
-function statusBadgeClass(s: string) {
-  if (s === "Out of Stock") return "bg-[#ef444420] text-red-400";
-  if (s === "Low Stock")    return "bg-[#eab30820] text-yellow-400";
-  return "bg-[#10b98120] text-emerald-400";
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div>
+        {eyebrow ? (
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-400">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h2 className="mt-1 text-base font-semibold text-slate-50">{title}</h2>
+        {description ? (
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      {action}
+    </div>
+  );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function Metric({
+  label,
+  value,
+  note,
+  tone = "text-slate-50",
+}: {
+  label: string;
+  value: ReactNode;
+  note?: string;
+  tone?: string;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className={`mt-1 text-xl font-bold ${tone}`}>{value}</p>
+      {note ? <p className="mt-1 text-[10px] text-slate-600">{note}</p> : null}
+    </div>
+  );
+}
 
 export const EquipmentSpares = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+
+  const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
+    getCachedEquipmentIdentity(resolvedId),
+  );
   const [components, setComponents] = useState<EquipmentComponentsResult>({
     inventory: [],
     criticalComponents: [],
-    stockSummary: { totalComponents: 0, outOfStock: 0, lowStock: 0, okStock: 0 },
+    stockSummary: {
+      totalComponents: 0,
+      outOfStock: 0,
+      lowStock: 0,
+      okStock: 0,
+    },
   });
+  const [workQueue, setWorkQueue] =
+    useState<EquipmentRecommendedWorkQueue | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hasLoadedComponents, setHasLoadedComponents] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [question, setQuestion] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
 
-  const loadEquipmentSpares = useCallback(async () => {
+  const loadSparesIntelligence = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
+
     try {
-      const [identity, componentResult] = await Promise.all([
+      const [identity, componentResult, queue] = await Promise.all([
         getEquipmentIdentityById(resolvedId),
         getEquipmentComponents(resolvedId),
+        getEquipmentRecommendedWorkQueue(resolvedId),
       ]);
-      setEq(identity);
+
+      setEquipment(identity);
       setComponents(componentResult);
-      setHasLoadedComponents(true);
+      setWorkQueue(queue);
       setLastUpdated(new Date());
+      setHasLoaded(true);
     } catch (error) {
-      console.error("Failed to load equipment spares", error);
-      setLoadError("Unable to refresh spares data. Showing the latest available data.");
-      setHasLoadedComponents(true);
+      console.error("Failed to load equipment spares intelligence", error);
+      setLoadError(
+        "Unable to refresh spares intelligence. Showing the latest available data.",
+      );
+      setHasLoaded(true);
     } finally {
       setIsRefreshing(false);
     }
   }, [resolvedId]);
+
   useEffect(() => {
-    loadEquipmentSpares();
-  }, [loadEquipmentSpares]);
+    void loadSparesIntelligence();
+  }, [loadSparesIntelligence]);
+
+  const rankedParts = useMemo<RankedPart[]>(() => {
+    return components.inventory
+      .map((part) => {
+        const target = Math.max(part.max, 0);
+        const gap = Math.max(target - part.stock, 0);
+        const coverage =
+          target > 0 ? clamp(Math.round((part.stock / target) * 100)) : 100;
+        const criticality = normaliseCriticality(part.criticality);
+        const criticalityWeight =
+          criticality === "critical"
+            ? 32
+            : criticality === "high"
+              ? 24
+              : criticality === "medium"
+                ? 12
+                : 5;
+        const availabilityWeight = isOutOfStock(part)
+          ? 42
+          : isBelowTarget(part)
+            ? 20
+            : 0;
+        const gapWeight =
+          target > 0 ? Math.round((gap / target) * 20) : 0;
+        const leadWeight = Math.min(18, Math.max(0, part.leadDays));
+        const exposureScore = clamp(
+          availabilityWeight + criticalityWeight + gapWeight + leadWeight,
+        );
+        const covered = gap === 0 && !isOutOfStock(part);
+        const band = exposureBand(exposureScore, covered);
+
+        return {
+          ...part,
+          gap,
+          coverage,
+          exposureScore,
+          exposureBand: band,
+          consequence: consequenceFor(part),
+          recommendation: covered
+            ? "Maintain current holding"
+            : `Restore stock to ${target} unit${target === 1 ? "" : "s"}`,
+        };
+      })
+      .sort((left, right) => {
+        if (right.exposureScore !== left.exposureScore) {
+          return right.exposureScore - left.exposureScore;
+        }
+        return left.name.localeCompare(right.name);
+      });
+  }, [components.inventory]);
 
   const inventoryValue = useMemo(
-    () => components.inventory.reduce((total, item) => total + item.stock * (item.unitCost ?? 0), 0),
-    [components.inventory]
+    () =>
+      components.inventory.reduce(
+        (total, part) => total + part.stock * (part.unitCost ?? 0),
+        0,
+      ),
+    [components.inventory],
   );
 
-  const lastUpdatedLabel = useMemo(() => {
-    if (!lastUpdated) return "Loading latest data";
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(lastUpdated);
-  }, [lastUpdated]);
+  const gapValue = useMemo(
+    () =>
+      rankedParts.reduce(
+        (total, part) => total + part.gap * (part.unitCost ?? 0),
+        0,
+      ),
+    [rankedParts],
+  );
 
-  const preferredSuppliers = useMemo(() => {
+  const targetUnits = useMemo(
+    () => rankedParts.reduce((total, part) => total + Math.max(part.max, 0), 0),
+    [rankedParts],
+  );
+
+  const coveredTargetUnits = useMemo(
+    () =>
+      rankedParts.reduce(
+        (total, part) =>
+          total + Math.min(Math.max(part.stock, 0), Math.max(part.max, 0)),
+        0,
+      ),
+    [rankedParts],
+  );
+
+  const stockResilience =
+    targetUnits > 0
+      ? clamp(Math.round((coveredTargetUnits / targetUnits) * 100))
+      : 100;
+
+  const criticalParts = useMemo(
+    () => rankedParts.filter((part) => isCriticalPart(part)),
+    [rankedParts],
+  );
+
+  const criticalAtRisk = useMemo(
+    () => criticalParts.filter((part) => part.gap > 0 || isOutOfStock(part)),
+    [criticalParts],
+  );
+
+  const longLeadCritical = useMemo(
+    () =>
+      criticalParts.filter(
+        (part) => part.leadDays >= 14 && (part.gap > 0 || isOutOfStock(part)),
+      ),
+    [criticalParts],
+  );
+
+  const suppliers = useMemo(() => {
     const supplierMap = new Map<
       string,
       {
         name: string;
-        componentCount: number;
+        partCount: number;
         criticalCount: number;
+        atRiskCount: number;
         leadDays: number[];
+        value: number;
       }
     >();
 
-    for (const item of components.inventory) {
-      const supplier = item.supplier.trim();
-      if (!supplier) continue;
-
-      const existing = supplierMap.get(supplier) ?? {
-        name: supplier,
-        componentCount: 0,
+    for (const part of rankedParts) {
+      const name = part.supplier.trim() || "Supplier not set";
+      const existing = supplierMap.get(name) ?? {
+        name,
+        partCount: 0,
         criticalCount: 0,
+        atRiskCount: 0,
         leadDays: [],
+        value: 0,
       };
 
-      existing.componentCount += 1;
-
-      const criticality = item.criticality.toLowerCase();
-      if (criticality === "high" || criticality === "critical") {
-        existing.criticalCount += 1;
-      }
-
-      if (item.leadDays > 0) {
-        existing.leadDays.push(item.leadDays);
-      }
-
-      supplierMap.set(supplier, existing);
+      existing.partCount += 1;
+      existing.value += part.stock * (part.unitCost ?? 0);
+      if (isCriticalPart(part)) existing.criticalCount += 1;
+      if (part.gap > 0 || isOutOfStock(part)) existing.atRiskCount += 1;
+      if (part.leadDays > 0) existing.leadDays.push(part.leadDays);
+      supplierMap.set(name, existing);
     }
 
     return Array.from(supplierMap.values())
-      .map((supplier) => {
-        const averageLeadDays =
+      .map((supplier) => ({
+        ...supplier,
+        averageLead:
           supplier.leadDays.length > 0
             ? Math.round(
-                supplier.leadDays.reduce((total, days) => total + days, 0) /
-                  supplier.leadDays.length
+                supplier.leadDays.reduce((sum, days) => sum + days, 0) /
+                  supplier.leadDays.length,
               )
-            : null;
-
-        const linkedPartsLabel =
-          supplier.componentCount === 1 ? "1 linked part" : `${supplier.componentCount} linked parts`;
-
-        const leadLabel =
-          averageLeadDays !== null
-            ? `Avg lead ${averageLeadDays} day${averageLeadDays === 1 ? "" : "s"}`
-            : "Lead time not set";
-
-        const criticalLabel =
-          supplier.criticalCount > 0
-            ? ` · ${supplier.criticalCount} critical`
-            : "";
-
-        return {
-          name: supplier.name,
-          componentCount: supplier.componentCount,
-          criticalCount: supplier.criticalCount,
-          meta: `${linkedPartsLabel} · ${leadLabel}${criticalLabel}`,
-        };
-      })
-      .sort((a, b) => {
-        if (b.criticalCount !== a.criticalCount) return b.criticalCount - a.criticalCount;
-        if (b.componentCount !== a.componentCount) return b.componentCount - a.componentCount;
-        return a.name.localeCompare(b.name);
+            : 0,
+      }))
+      .sort((left, right) => {
+        if (right.atRiskCount !== left.atRiskCount) {
+          return right.atRiskCount - left.atRiskCount;
+        }
+        return right.criticalCount - left.criticalCount;
       });
-  }, [components.inventory]);
+  }, [rankedParts]);
 
-  const upcomingRequirements = useMemo(() => {
-    return components.inventory
-      .filter((item) => item.stock <= item.max)
-      .map((item) => {
-        const isOutOfStock = item.stock === 0 || item.status === "Out of Stock";
-        const isLowStock = item.status === "Low Stock" || item.stock < item.max;
+  const filteredParts = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-        return {
-          name: item.name,
-          when: isOutOfStock ? "Order Now" : isLowStock ? "Reorder Soon" : "Monitor",
-          urgentClass: isOutOfStock
-            ? "bg-red-500/20 text-red-400"
-            : isLowStock
-              ? "bg-orange-500/20 text-orange-400"
-              : "bg-yellow-500/20 text-yellow-400",
-          stock: item.stock,
-          max: item.max,
-        };
-      })
-      .sort((a, b) => {
-        if (a.stock !== b.stock) return a.stock - b.stock;
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 3);
-  }, [components.inventory]);
+    return rankedParts.filter((part) => {
+      const matchesSearch =
+        !query ||
+        part.name.toLowerCase().includes(query) ||
+        part.partNumber.toLowerCase().includes(query) ||
+        part.supplier.toLowerCase().includes(query) ||
+        part.location.toLowerCase().includes(query);
 
-  const usageBars = useMemo(() => {
-    const stockGapRows = components.inventory
-      .map((item) => {
-        const target = Math.max(item.max, 0);
-        const stock = Math.max(item.stock, 0);
-        const gap = Math.max(target - stock, 0);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "attention" && part.exposureBand !== "Covered") ||
+        (statusFilter === "out" && isOutOfStock(part)) ||
+        (statusFilter === "critical" && isCriticalPart(part));
 
-        return {
-          label: item.name,
-          count: gap,
-          pct: target > 0 ? Math.round((gap / target) * 100) : 0,
-        };
-      })
-      .filter((item) => item.count > 0)
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.label.localeCompare(b.label);
-      })
-      .slice(0, 5);
+      return matchesSearch && matchesStatus;
+    });
+  }, [rankedParts, search, statusFilter]);
 
-    const maxGap = Math.max(...stockGapRows.map((item) => item.count), 1);
-
-    return stockGapRows.map((item) => ({
-      ...item,
-      pct: Math.max(8, Math.round((item.count / maxGap) * 100)),
-    }));
-  }, [components.inventory]);
-
-  const recentStockIssues = useMemo(() => {
-    return components.inventory
-      .filter((item) => item.stock === 0 || item.status === "Out of Stock" || item.status === "Low Stock" || item.stock < item.max)
-      .map((item) => {
-        const isOutOfStock = item.stock === 0 || item.status === "Out of Stock";
-        const isLowStock = item.status === "Low Stock" || item.stock < item.max;
-
-        return {
-          text: isOutOfStock
-            ? `${item.name} is out of stock`
-            : isLowStock
-              ? `${item.name} below target stock`
-              : `${item.name} requires stock review`,
-          when: item.location ? `Stores: ${item.location}` : "Stores location not set",
-          dotColor: isOutOfStock
-            ? "bg-red-400"
-            : isLowStock
-              ? "bg-orange-400"
-              : "bg-slate-400",
-          severityRank: isOutOfStock ? 0 : isLowStock ? 1 : 2,
-          stock: item.stock,
-          max: item.max,
-        };
-      })
-      .sort((a, b) => {
-        if (a.severityRank !== b.severityRank) return a.severityRank - b.severityRank;
-        if (a.stock !== b.stock) return a.stock - b.stock;
-        return a.text.localeCompare(b.text);
-      })
-      .slice(0, 5);
-  }, [components.inventory]);
-
-  if (!eq) {
+  if (!equipment) {
     return (
-      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+      <section className="flex w-full flex-col pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 py-4 md:px-6">
+          <div className="h-40 animate-pulse rounded-xl bg-[#141820]" />
         </div>
       </section>
     );
   }
 
-  const riskBadgeClass =
-    eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
-    eq.riskLevel === "High"     ? "bg-[#f9731620] text-orange-400" :
-    "bg-[#10b98120] text-emerald-400";
+  const eq = equipment;
+  const riskTotal =
+    eq.riskBreakdown.reduce((sum, driver) => sum + driver.pct, 0) || 1;
+  const sparesRiskContribution =
+    eq.riskBreakdown.find((driver) =>
+      driver.label.toLowerCase().includes("spare"),
+    )?.pct ?? 0;
+  const topExposure = rankedParts[0] ?? null;
+  const currentRisk = workQueue?.currentRiskScore || eq.riskScore;
+  const spareQueueAction = workQueue?.actions.find(
+    (action) => action.sparePartNumber || action.partName,
+  );
+  const potentialReduction =
+    spareQueueAction?.calculatedReduction ??
+    Math.min(8, Math.max(2, components.stockSummary.outOfStock * 3));
+  const projectedRisk = clamp(currentRisk - potentialReduction);
+  const riskBadgeClass = riskTone(eq.riskLevel);
 
-  const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
+  const lastUpdatedLabel = lastUpdated
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(lastUpdated)
+    : "Loading latest import";
+
+  const briefing =
+    topExposure && topExposure.exposureBand !== "Covered"
+      ? `${eq.name} has ${components.stockSummary.outOfStock} part${
+          components.stockSummary.outOfStock === 1 ? "" : "s"
+        } out of stock and ${components.stockSummary.lowStock} below target. ${
+          topExposure.name
+        } creates the highest current exposure because it is ${
+          topExposure.status.toLowerCase()
+        }, is rated ${topExposure.criticality.toLowerCase()} and has a ${
+          topExposure.leadDays
+        }-day replenishment lead time.`
+      : `${eq.name} currently has full critical-spares coverage. Vorta is monitoring target holdings, supplier lead times and equipment failure consequences for early deterioration.`;
+
+  const askVorta = () => {
+    const prompt =
+      question.trim() ||
+      `Explain the spare-parts risk for ${eq.name} and the highest-value replenishment action.`;
+    navigate(
+      `/equipment/${eq.id}/ai-insights?prompt=${encodeURIComponent(prompt)}`,
+    );
+  };
+
+  const copyText = async (value: string, key: string) => {
+    if (!navigator.clipboard) return;
+    await navigator.clipboard.writeText(value);
+    setCopied(key);
+    window.setTimeout(() => setCopied(null), 1600);
+  };
+
+  const exportInventory = () => {
+    const rows = [
+      [
+        "Part",
+        "Part Number",
+        "Criticality",
+        "Stock",
+        "Target",
+        "Status",
+        "Supplier",
+        "Lead Days",
+        "Storage Location",
+        "Unit Cost",
+        "Exposure Score",
+      ],
+      ...rankedParts.map((part) => [
+        part.name,
+        part.partNumber,
+        part.criticality,
+        String(part.stock),
+        String(part.max),
+        part.status,
+        part.supplier,
+        String(part.leadDays),
+        part.location,
+        String(part.unitCost ?? 0),
+        String(part.exposureScore),
+      ]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${eq.assetNumber}-spares-intelligence.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-      {loadError && (
+      {loadError ? (
         <div className="mx-4 mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 md:mx-6">
           {loadError}
         </div>
-      )}
+      ) : null}
 
-      {/* ── Sticky Header ─────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <nav className="flex items-center gap-1.5 text-sm text-slate-500">
-            <button type="button" onClick={() => navigate("/equipment")} className="transition-colors hover:text-slate-300">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500"
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/equipment")}
+              className="transition-colors hover:text-slate-300"
+            >
               Equipment
             </button>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-slate-300">{eq.name} ({eq.assetNumber})</span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate text-slate-300">
+              {eq.name} ({eq.assetNumber})
+            </span>
           </nav>
+
           <div className="flex shrink-0 items-center gap-2">
-            <Button type="button" variant="outline"
-              className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100">
-              <Edit className="h-3.5 w-3.5" /> Edit Equipment
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void copyText(eq.assetNumber, "asset")}
+              className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+            >
+              {copied === "asset" ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copied === "asset" ? "Copied" : "Copy asset ref"}
             </Button>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => void loadSparesIntelligence()}
+              disabled={isRefreshing}
+              aria-label="Refresh spares intelligence"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/equipment/${eq.id}/notifications`)}
+              aria-label="Equipment notifications"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            >
               <Bell className="h-4 w-4" />
             </button>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              aria-label="Profile settings"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            >
               <UserCircle className="h-7 w-7" />
             </button>
           </div>
@@ -349,53 +721,97 @@ export const EquipmentSpares = (): JSX.Element => {
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
           <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
-            <img src={eq.image} alt={eq.name} className="h-full w-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <img
+              src={eq.image}
+              alt={eq.name}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
           </div>
+
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-50">{eq.name}</h1>
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+                {eq.name}
+              </h1>
+              <Badge
+                className={`inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
                 {eq.riskLevel} Risk
               </Badge>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex flex-wrap items-center gap-2">
               <EquipmentRiskIndicator riskLevel={eq.riskLevel} />
-              <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
+              <span className="text-sm font-semibold text-slate-200">
+                {eq.status}
+              </span>
               <span className="text-sm text-slate-500">{eq.statusNote}</span>
             </div>
+
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-              <span className="font-medium text-slate-300">{eq.assetNumber}</span>
-              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">{eq.type}</span>
+              <span className="font-medium text-slate-300">
+                {eq.assetNumber}
+              </span>
+              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">
+                {eq.type}
+              </span>
               <span>📍 {eq.area}</span>
-              <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
-              <span>Model: <span className="text-slate-300">{eq.model}</span></span>
-              <span>Serial Number: <span className="text-slate-300">{eq.serialNumber}</span></span>
-              <span>Install Date: <span className="text-slate-300">{eq.installDate}</span></span>
-              <span>Warranty: <span className="text-orange-400">{eq.warranty}</span></span>
-              <span>Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
+              <span>
+                Manufacturer:{" "}
+                <span className="text-slate-300">{eq.manufacturer}</span>
+              </span>
+              <span>
+                Model: <span className="text-slate-300">{eq.model}</span>
+              </span>
+              <span>
+                Criticality:{" "}
+                <span className="text-slate-300">{eq.criticality}</span>
+              </span>
             </div>
           </div>
+
           <div className="flex shrink-0 flex-col gap-2 lg:w-52">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Score</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Risk Score
+            </span>
             <div className="flex items-end gap-3">
-              <span className="text-4xl font-bold text-slate-50">{eq.riskScore}%</span>
-              <Badge className={`mb-1 inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
+              <span className="text-4xl font-bold text-slate-50">
+                {currentRisk}%
+              </span>
+              <Badge
+                className={`mb-1 inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
                 {eq.riskLevel}
               </Badge>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-slate-500">Risk Drivers</span>
-              <div className="flex h-2 overflow-hidden rounded-full">
-                {eq.riskBreakdown.map((b) => (
-                  <div key={b.label} style={{ width: `${(b.pct / riskTotal) * 100}%`, backgroundColor: b.color }} />
+              <span className="text-xs font-medium text-slate-500">
+                Risk drivers
+              </span>
+              <div className="flex h-2 overflow-hidden rounded-full bg-gray-800">
+                {eq.riskBreakdown.map((driver) => (
+                  <div
+                    key={driver.label}
+                    style={{
+                      width: `${(driver.pct / riskTotal) * 100}%`,
+                      backgroundColor: driver.color,
+                    }}
+                  />
                 ))}
               </div>
               <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                {eq.riskBreakdown.map((b) => (
-                  <span key={b.label} className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-                    <span className={`h-1.5 w-1.5 rounded-full ${b.dotClass}`} />
-                    {b.label} {b.pct}%
+                {eq.riskBreakdown.map((driver) => (
+                  <span
+                    key={driver.label}
+                    className="inline-flex items-center gap-1 text-[10px] text-slate-400"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${driver.dotClass}`}
+                    />
+                    {driver.label} {driver.pct}%
                   </span>
                 ))}
               </div>
@@ -406,375 +822,736 @@ export const EquipmentSpares = (): JSX.Element => {
         <EquipmentTabNavigation equipmentId={eq.id} activeTab="spares" />
       </div>
 
-      {/* ── Page Content ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
-
-        {/* Page title + actions */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-50">Spares</h2>
-            <p className="text-xs text-slate-500">Spare parts inventory, stock health and upcoming requirements for this equipment.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline"
-              className="h-auto gap-1.5 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100 shadow-none">
-              Request Spare
-            </Button>
-            <Button type="button" variant="outline"
-              className="h-auto gap-1.5 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100 shadow-none">
-              <Download className="h-3.5 w-3.5" /> Export
-            </Button>
-          </div>
-        </div>
-
-        {/* ── KPI Row ───────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-          {[
-            { label: "Total Spares",     value: String(components.stockSummary.totalComponents), sub: "Active Parts",        valueClass: "text-slate-50" },
-            { label: "Critical Spares",  value: String(components.stockSummary.lowStock),        sub: "Low Stock",           valueClass: "text-orange-400" },
-            { label: "Out of Stock",     value: String(components.stockSummary.outOfStock),       sub: "Requires Action",     valueClass: "text-red-400" },
-            { label: "Inventory Value",  value: new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(inventoryValue),  sub: "Current Stock Value", valueClass: "text-slate-50" },
-            { label: "30 Day Usage",     value: "£7,920",   sub: "↑18% vs previous month", valueClass: "text-emerald-400" },
-          ].map((kpi) => (
-            <Card key={kpi.label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{kpi.label}</p>
-                <p className={`text-2xl font-bold ${kpi.valueClass}`}>{kpi.value}</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">{kpi.sub}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* ── Summary Row: Stock Availability | Critical Spares | AI Rec ── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-          {/* Stock Availability */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Stock Availability</h3>
-              <div className="flex items-center gap-4">
-                <StockDonut
-                  ok={components.stockSummary.okStock}
-                  low={components.stockSummary.lowStock}
-                  out={components.stockSummary.outOfStock}
-                />
-                <div className="flex flex-col gap-1.5">
-                  {[
-                    { label: "Available",    count: components.stockSummary.okStock,  color: "#10b981" },
-                    { label: "Low Stock",    count: components.stockSummary.lowStock, color: "#eab308" },
-                    { label: "Out of Stock", count: components.stockSummary.outOfStock, color: "#ef4444" },
-                  ].map((l) => (
-                    <div key={l.label} className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
-                        <span className="text-[11px] text-slate-400">{l.label}</span>
-                      </div>
-                      <span className="text-[11px] font-bold text-slate-200">{l.count}</span>
-                    </div>
-                  ))}
+        <Card className="overflow-hidden rounded-2xl border border-indigo-500/25 bg-[linear-gradient(135deg,#131923_0%,#10151d_55%,#111525_100%)] shadow-none">
+          <CardContent className="p-0">
+            <div className="grid xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.55fr)]">
+              <div className="p-5 md:p-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="h-auto rounded bg-indigo-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-300 shadow-none">
+                    Spares intelligence
+                  </Badge>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <Database className="h-3.5 w-3.5" />
+                    SAP IH01 · MB52 · equipment BOM · refreshed{" "}
+                    {lastUpdated ? "now" : "pending"}
+                  </span>
                 </div>
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Critical Spares →
-              </button>
-            </CardContent>
-          </Card>
 
-          {/* Critical Spares Requiring Attention */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Critical Spares Requiring Attention</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {components.criticalComponents.map((s) => (
-                  <div key={s.name} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                        <Package className="h-3.5 w-3.5 text-slate-400" />
-                      </div>
-                      <span className="text-xs text-slate-200">{s.name}</span>
-                    </div>
-                    <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(s.status)}`}>
-                      {s.status}
-                    </Badge>
+                <h2 className="mt-4 text-xl font-semibold text-slate-50">
+                  Spares Resilience Briefing
+                </h2>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+                  {briefing}
+                </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3">
+                    <Metric
+                      label="Target stock cover"
+                      value={`${stockResilience}%`}
+                      tone={
+                        stockResilience >= 90
+                          ? "text-emerald-300"
+                          : stockResilience >= 70
+                            ? "text-yellow-300"
+                            : "text-red-300"
+                      }
+                    />
                   </div>
-                ))}
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View All Critical Spares →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* AI Spare Recommendation */}
-          <Card className="rounded-xl border border-blue-500/20 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-blue-400" />
-                <h3 className="text-sm font-semibold text-slate-200">AI Spare Recommendation</h3>
-              </div>
-              <div className="mb-3 flex flex-col gap-2">
-                {[
-                  "Increase Encoder stock to 3",
-                  "Increase Drive Belt stock to 4",
-                ].map((rec) => (
-                  <div key={rec} className="flex items-start gap-2">
-                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
-                    <span className="text-[11px] text-slate-300">{rec}</span>
+                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3">
+                    <Metric
+                      label="Critical parts exposed"
+                      value={criticalAtRisk.length}
+                      tone={
+                        criticalAtRisk.length > 0
+                          ? "text-orange-300"
+                          : "text-emerald-300"
+                      }
+                    />
                   </div>
-                ))}
-              </div>
-              <div className="mb-3 flex gap-4 rounded-lg bg-gray-800/60 p-2.5">
-                <div>
-                  <p className="text-[10px] text-slate-500">Est. downtime reduction</p>
-                  <p className="text-base font-bold text-emerald-400">23%</p>
+                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3">
+                    <Metric
+                      label="Stock gap value"
+                      value={formatCurrency(gapValue)}
+                      tone="text-slate-50"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3">
+                    <Metric
+                      label="Risk after action"
+                      value={`${projectedRisk}%`}
+                      note={`-${potentialReduction} calculated points`}
+                      tone="text-emerald-300"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-500">Confidence</p>
-                  <p className="text-base font-bold text-blue-400">91%</p>
+
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <div className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-gray-700 bg-[#0a0f16] px-3 focus-within:border-blue-500/60">
+                    <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
+                    <input
+                      value={question}
+                      onChange={(event) => setQuestion(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") askVorta();
+                      }}
+                      placeholder={`Ask Vorta about ${eq.assetNumber} spare risk...`}
+                      className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={askVorta}
+                    className="min-h-11 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"
+                  >
+                    <BrainCircuit className="h-4 w-4" />
+                    Ask Vorta
+                  </Button>
                 </div>
               </div>
-              <button type="button"
-                className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-400 hover:bg-blue-500/20 transition-colors">
-                Review Recommendations
-              </button>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* ── Main Inventory Row ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <div className="border-t border-gray-800 bg-[#0b1017]/70 p-5 xl:border-l xl:border-t-0 md:p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Current exposure
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-gray-800 bg-[#0b0f15] p-3">
+                    <Metric
+                      label="Out of stock"
+                      value={components.stockSummary.outOfStock}
+                      tone="text-red-300"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-[#0b0f15] p-3">
+                    <Metric
+                      label="Below target"
+                      value={rankedParts.filter((part) => part.gap > 0).length}
+                      tone="text-yellow-300"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-[#0b0f15] p-3">
+                    <Metric
+                      label="Long-lead critical"
+                      value={longLeadCritical.length}
+                      tone="text-orange-300"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-[#0b0f15] p-3">
+                    <Metric
+                      label="Equipment risk share"
+                      value={`${sparesRiskContribution}%`}
+                      tone="text-indigo-300"
+                    />
+                  </div>
+                </div>
 
-          {/* Spares Inventory Summary */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Spares Inventory Summary</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[420px] border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      {["Part", "Stock", "Status"].map((h) => (
-                        <th key={h} className="py-2 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 first:pl-0">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!hasLoadedComponents ? (
-                      <tr>
-                        <td colSpan={3} className="py-6 text-center text-[11px] text-slate-500">
-                          Loading spares inventory...
-                        </td>
-                      </tr>
-                    ) : components.inventory.length > 0 ? (
-                      components.inventory.map((row, i) => (
-                        <tr key={row.partNumber} className={i !== components.inventory.length - 1 ? "border-b border-gray-800" : ""}>
-                          <td className="py-3 pr-3">
-                            <p className="font-semibold text-slate-200">{row.name}</p>
-                            <p className="font-mono text-[10px] text-slate-500">{row.partNumber}</p>
-                          </td>
-                          <td className="py-3 pr-3">
-                            <span className={`font-bold ${row.stock === 0 ? "text-red-400" : row.stock < row.max ? "text-yellow-400" : "text-slate-200"}`}>
-                              {row.stock}
-                            </span>
-                            <span className="text-slate-500"> / {row.max}</span>
-                          </td>
-                          <td className="py-3">
-                            <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold shadow-none ${statusBadgeClass(row.status)}`}>
-                              {row.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="py-6 text-center text-[11px] text-slate-500">
-                          No spares linked to this equipment yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-                <span>
-                  {hasLoadedComponents
-                    ? `Showing ${components.inventory.length} part${components.inventory.length !== 1 ? "s" : ""}.`
-                    : "Loading linked parts..."}
-                </span>
-                <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors">
-                  View Full Inventory →
+                {topExposure ? (
+                  <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3">
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-100">
+                          Highest exposure
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-red-200">
+                          {topExposure.name}
+                        </p>
+                        <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                          {topExposure.consequence}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => navigate(`/equipment/${eq.id}/ai-insights`)}
+                  className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300"
+                >
+                  Open full risk explanation
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Spare Usage */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-1 text-sm font-semibold text-slate-200">Stock Gap Priority</h3>
-              <p className="mb-4 text-[11px] text-slate-500">Top stock gaps against target holding</p>
-              <div className="flex flex-col gap-3">
-                {!hasLoadedComponents ? (
-                  <p className="text-[11px] text-slate-500">
-                    Loading stock gaps...
-                  </p>
-                ) : usageBars.length > 0 ? (
-                  usageBars.map((bar) => (
-                    <div key={bar.label} className="flex items-center gap-2">
-                      <span className="w-20 shrink-0 truncate text-[11px] text-slate-300">{bar.label}</span>
-                      <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-800">
-                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${bar.pct}%` }} />
-                      </div>
-                      <span className="w-4 shrink-0 text-right text-[11px] font-bold text-slate-200">{bar.count}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[11px] text-slate-500">
-                    No stock gaps against target holding.
-                  </p>
-                )}
+        <Card className="rounded-2xl border border-orange-500/25 bg-[#141820] shadow-none">
+          <CardContent className="p-5 md:p-6">
+            <SectionHeading
+              eyebrow="Risk-ranked replenishment"
+              title="Highest-value stock interventions"
+              description="Vorta ranks each part using stock gap, equipment criticality, failure consequence and supplier lead time. The list is read-only and remains aligned to SAP as the system of record."
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportInventory}
+                  className="h-9 gap-2 border-gray-700 bg-transparent text-xs text-slate-300 hover:bg-gray-800"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export intelligence
+                </Button>
+              }
+            />
+
+            <div className="mt-5 overflow-hidden rounded-xl border border-gray-800">
+              <div className="hidden grid-cols-[56px_minmax(220px,1.5fr)_110px_105px_minmax(130px,0.8fr)_110px_44px] gap-3 border-b border-gray-800 bg-[#0d1219] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 lg:grid">
+                <span>Priority</span>
+                <span>Part and consequence</span>
+                <span>Stock</span>
+                <span>Lead time</span>
+                <span>Supplier</span>
+                <span>Exposure</span>
+                <span />
               </div>
-              <button type="button" className="mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Stock Gap Report →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* ── Lower Row ─────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-          {/* Upcoming Spare Requirements */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Upcoming Spare Requirements</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {!hasLoadedComponents ? (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    Loading spare requirements...
-                  </p>
-                ) : upcomingRequirements.length > 0 ? (
-                  upcomingRequirements.map((r) => (
-                    <div key={r.name} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                          <Package className="h-3.5 w-3.5 text-slate-400" />
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-medium text-slate-200">{r.name}</span>
-                          <span className="text-[10px] text-slate-500">Stock {r.stock} / {r.max}</span>
-                        </div>
-                      </div>
-                      <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-semibold shadow-none ${r.urgentClass}`}>
-                        {r.when}
-                      </Badge>
+              {rankedParts.slice(0, 4).map((part, index) => (
+                <button
+                  key={part.partNumber}
+                  type="button"
+                  onClick={() =>
+                    void copyText(part.partNumber, `plan-${part.partNumber}`)
+                  }
+                  className="grid w-full gap-3 border-b border-gray-800 px-4 py-4 text-left transition-colors last:border-0 hover:bg-white/[0.025] lg:grid-cols-[56px_minmax(220px,1.5fr)_110px_105px_minmax(130px,0.8fr)_110px_44px] lg:items-center"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-800 text-xs font-bold text-slate-300">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-100">
+                        {part.name}
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-600">
+                        {part.partNumber}
+                      </span>
                     </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    No upcoming spare requirements for this equipment.
-                  </p>
-                )}
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Requirements →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* Preferred Suppliers */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Preferred Suppliers</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {!hasLoadedComponents ? (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    Loading preferred suppliers...
-                  </p>
-                ) : preferredSuppliers.length > 0 ? (
-                  preferredSuppliers.map((supplier) => (
-                    <div key={supplier.name} className="flex flex-col gap-0.5 py-3">
-                      <span className="text-xs font-semibold text-slate-200">{supplier.name}</span>
-                      <span className="text-[10px] text-slate-500">{supplier.meta}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    No preferred suppliers linked to this equipment yet.
-                  </p>
-                )}
-              </div>
-              <button type="button" className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                Manage Suppliers →
-              </button>
-            </CardContent>
-          </Card>
-
-          {/* Recent Spare Issues */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-200">Recent Spare Issues</h3>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {!hasLoadedComponents ? (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    Loading stock issues...
-                  </p>
-                ) : recentStockIssues.length > 0 ? (
-                  recentStockIssues.map((item) => (
-                    <div key={item.text} className="flex items-start gap-2.5 py-3">
-                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dotColor}`} />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[11px] font-medium text-slate-200">{item.text}</span>
-                        <span className="text-[10px] text-slate-500">
-                          {item.when} · Stock {item.stock} / {item.max}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-3 text-[11px] text-slate-500">
-                    No recent spare stock issues for this equipment.
-                  </p>
-                )}
-              </div>
-              <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                View Stock Issue History →
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Quick Actions ─────────────────────────────────────────────────── */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-200">Quick Actions</h3>
-            <div className="flex flex-col gap-2">
-              {QUICK_ACTIONS.map(({ Icon, label }) => (
-                <button key={label} type="button"
-                  className="flex w-full items-center gap-3 rounded-lg border border-gray-800 bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-[#1a2030]">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                    <Icon className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-500">
+                      {part.consequence}
+                    </p>
                   </div>
-                  <span className="flex-1 text-xs font-medium text-slate-300">{label}</span>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      {part.stock} / {part.max}
+                    </p>
+                    <p className="text-[10px] text-slate-600">
+                      Gap {part.gap}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-200">
+                      {part.leadDays} days
+                    </p>
+                    <p className="text-[10px] text-slate-600">
+                      {part.location || "Location not set"}
+                    </p>
+                  </div>
+                  <span className="truncate text-xs text-slate-400">
+                    {part.supplier || "Not set"}
+                  </span>
+                  <Badge
+                    className={`w-fit rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${exposureTone(
+                      part.exposureBand,
+                    )}`}
+                  >
+                    {part.exposureBand}
+                  </Badge>
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-500">
+                    {copied === `plan-${part.partNumber}` ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <ClipboardCopy className="h-3.5 w-3.5" />
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: {lastUpdatedLabel}</span>
-          <button
-            type="button"
-            aria-label="Refresh spares data"
-            onClick={loadEquipmentSpares}
-            disabled={isRefreshing}
-            className="text-slate-600 transition-colors hover:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-          </button>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.45fr)]">
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5">
+              <SectionHeading
+                eyebrow="BOM and inventory intelligence"
+                title="Equipment spares register"
+                description={`${filteredParts.length} of ${rankedParts.length} linked parts shown. Search by part, SAP material reference, supplier or storage location.`}
+              />
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <div className="flex min-h-10 flex-1 items-center gap-2 rounded-lg border border-gray-700 bg-[#0b0f15] px-3 focus-within:border-blue-500/50">
+                  <Search className="h-4 w-4 text-slate-600" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search parts, material number, supplier or stores..."
+                    className="min-w-0 flex-1 bg-transparent text-xs text-slate-200 outline-none placeholder:text-slate-600"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="min-h-10 rounded-lg border border-gray-700 bg-[#0b0f15] px-3 text-xs text-slate-300 outline-none focus:border-blue-500/50"
+                >
+                  <option value="all">All parts</option>
+                  <option value="attention">Requires attention</option>
+                  <option value="out">Out of stock</option>
+                  <option value="critical">Critical and high</option>
+                </select>
+              </div>
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-800">
+                      {[
+                        "Part",
+                        "Criticality",
+                        "Stock / target",
+                        "Supplier",
+                        "Lead",
+                        "Storage",
+                        "Exposure",
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-600 first:pl-0"
+                        >
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!hasLoaded ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="py-10 text-center text-xs text-slate-500"
+                        >
+                          Loading linked equipment spares...
+                        </td>
+                      </tr>
+                    ) : filteredParts.length > 0 ? (
+                      filteredParts.map((part) => (
+                        <tr
+                          key={part.partNumber}
+                          className="border-b border-gray-800 last:border-0"
+                        >
+                          <td className="py-3 pr-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1219]">
+                                <Package className="h-4 w-4 text-slate-500" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-200">
+                                  {part.name}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void copyText(
+                                      part.partNumber,
+                                      part.partNumber,
+                                    )
+                                  }
+                                  className="mt-0.5 inline-flex items-center gap-1 font-mono text-[10px] text-slate-600 hover:text-blue-400"
+                                >
+                                  {part.partNumber}
+                                  {copied === part.partNumber ? (
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-2 py-3">
+                            <Badge
+                              className={`rounded px-2 py-1 text-[10px] font-semibold shadow-none ${criticalityTone(
+                                part.criticality,
+                              )}`}
+                            >
+                              {part.criticality}
+                            </Badge>
+                          </td>
+                          <td className="px-2 py-3">
+                            <p
+                              className={`font-semibold ${
+                                isOutOfStock(part)
+                                  ? "text-red-300"
+                                  : part.gap > 0
+                                    ? "text-yellow-300"
+                                    : "text-emerald-300"
+                              }`}
+                            >
+                              {part.stock} / {part.max}
+                            </p>
+                            <div className="mt-1.5 h-1.5 w-24 overflow-hidden rounded-full bg-gray-800">
+                              <div
+                                className={`h-full rounded-full ${
+                                  isOutOfStock(part)
+                                    ? "bg-red-500"
+                                    : part.gap > 0
+                                      ? "bg-yellow-500"
+                                      : "bg-emerald-500"
+                                }`}
+                                style={{ width: `${part.coverage}%` }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-3 text-slate-400">
+                            {part.supplier || "Not set"}
+                          </td>
+                          <td className="px-2 py-3">
+                            <span
+                              className={
+                                part.leadDays >= 14
+                                  ? "font-semibold text-orange-300"
+                                  : "text-slate-400"
+                              }
+                            >
+                              {part.leadDays}d
+                            </span>
+                          </td>
+                          <td className="px-2 py-3 text-slate-400">
+                            {part.location || "Not set"}
+                          </td>
+                          <td className="px-2 py-3">
+                            <Badge
+                              className={`rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${exposureTone(
+                                part.exposureBand,
+                              )}`}
+                            >
+                              {part.exposureBand} · {part.exposureScore}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="py-10 text-center text-xs text-slate-500"
+                        >
+                          No linked parts match these filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-4">
+            <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <SectionHeading
+                  eyebrow="Stock resilience"
+                  title="Target holding coverage"
+                  description="Current quantities compared with equipment-specific target holdings."
+                />
+                <div className="mt-5 flex items-center justify-center gap-5">
+                  <StockDonut
+                    coverage={stockResilience}
+                    available={components.stockSummary.okStock}
+                    low={components.stockSummary.lowStock}
+                    out={components.stockSummary.outOfStock}
+                  />
+                  <div className="space-y-3">
+                    {[
+                      {
+                        label: "At target",
+                        value: components.stockSummary.okStock,
+                        tone: "bg-emerald-400",
+                      },
+                      {
+                        label: "Low stock",
+                        value: components.stockSummary.lowStock,
+                        tone: "bg-yellow-400",
+                      },
+                      {
+                        label: "Out of stock",
+                        value: components.stockSummary.outOfStock,
+                        tone: "bg-red-400",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex items-center justify-between gap-5"
+                      >
+                        <span className="inline-flex items-center gap-2 text-xs text-slate-400">
+                          <span
+                            className={`h-2 w-2 rounded-full ${item.tone}`}
+                          />
+                          {item.label}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-100">
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3 border-t border-gray-800 pt-4">
+                  <Metric
+                    label="Available units"
+                    value={coveredTargetUnits}
+                    tone="text-slate-100"
+                  />
+                  <Metric
+                    label="Target units"
+                    value={targetUnits}
+                    tone="text-slate-100"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border border-red-500/20 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <SectionHeading
+                  eyebrow="Failure consequence"
+                  title={topExposure?.name ?? "No exposed critical part"}
+                  description={
+                    topExposure?.consequence ??
+                    "All linked critical parts are currently covered."
+                  }
+                />
+                {topExposure ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-gray-800 bg-[#0d1219] p-3">
+                        <Metric
+                          label="Current / target"
+                          value={`${topExposure.stock} / ${topExposure.max}`}
+                          tone="text-red-300"
+                        />
+                      </div>
+                      <div className="rounded-xl border border-gray-800 bg-[#0d1219] p-3">
+                        <Metric
+                          label="Lead time"
+                          value={`${topExposure.leadDays}d`}
+                          tone="text-orange-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-800 bg-[#0d1219] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                        Vorta recommendation
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-300">
+                        {topExposure.recommendation}. Confirm availability with{" "}
+                        {topExposure.supplier || "the linked supplier"} and
+                        review work orders currently waiting for this component.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/equipment/${eq.id}/work-orders`)
+                      }
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300"
+                    >
+                      View related work orders
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5">
+              <SectionHeading
+                eyebrow="Supplier resilience"
+                title="Lead-time and concentration exposure"
+                description="Supplier dependency is ranked by exposed critical parts, linked components and average replenishment lead."
+              />
+              <div className="mt-4 overflow-hidden rounded-xl border border-gray-800">
+                <div className="grid grid-cols-[minmax(180px,1fr)_90px_100px_110px] gap-3 border-b border-gray-800 bg-[#0d1219] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                  <span>Supplier</span>
+                  <span>Parts</span>
+                  <span>At risk</span>
+                  <span>Average lead</span>
+                </div>
+                {suppliers.slice(0, 6).map((supplier) => (
+                  <div
+                    key={supplier.name}
+                    className="grid grid-cols-[minmax(180px,1fr)_90px_100px_110px] gap-3 border-b border-gray-800 px-4 py-3 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-slate-200">
+                        {supplier.name}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-600">
+                        {supplier.criticalCount} critical ·{" "}
+                        {formatCurrency(supplier.value)} current value
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-400">
+                      {supplier.partCount}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${
+                        supplier.atRiskCount > 0
+                          ? "text-orange-300"
+                          : "text-emerald-300"
+                      }`}
+                    >
+                      {supplier.atRiskCount}
+                    </span>
+                    <span
+                      className={`text-xs ${
+                        supplier.averageLead >= 14
+                          ? "font-semibold text-orange-300"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {supplier.averageLead} days
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5">
+              <SectionHeading
+                eyebrow="Stock-gap priority"
+                title="Units required to restore target cover"
+                description="The largest equipment-specific gaps, weighted by current failure exposure."
+              />
+              <div className="mt-5 space-y-4">
+                {rankedParts
+                  .filter((part) => part.gap > 0)
+                  .slice(0, 6)
+                  .map((part) => {
+                    const maxGap = Math.max(
+                      ...rankedParts.map((candidate) => candidate.gap),
+                      1,
+                    );
+                    const width = Math.max(
+                      8,
+                      Math.round((part.gap / maxGap) * 100),
+                    );
+
+                    return (
+                      <div key={part.partNumber}>
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="truncate text-slate-300">
+                            {part.name}
+                          </span>
+                          <span className="font-semibold text-slate-100">
+                            {part.gap}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-800">
+                          <div
+                            className={`h-full rounded-full ${
+                              part.exposureBand === "Critical"
+                                ? "bg-red-500/80"
+                                : part.exposureBand === "High"
+                                  ? "bg-orange-500/80"
+                                  : "bg-yellow-500/80"
+                            }`}
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {rankedParts.every((part) => part.gap === 0) ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4 text-xs text-emerald-300">
+                    All linked parts meet their equipment-specific target
+                    holdings.
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="p-5">
+            <SectionHeading
+              eyebrow="Read-only intelligence actions"
+              title="Continue the equipment investigation"
+              description="Vorta links the relevant SAP records, BOM evidence and maintenance context without creating or changing transactions."
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "View waiting-parts work",
+                  description: "Open linked work orders and statuses",
+                  Icon: Wrench,
+                  onClick: () =>
+                    navigate(`/equipment/${eq.id}/work-orders`),
+                },
+                {
+                  label: "Search BOM documents",
+                  description: "Find manuals, drawings and part references",
+                  Icon: FileSearch,
+                  onClick: () =>
+                    navigate(`/equipment/${eq.id}/documents`),
+                },
+                {
+                  label: "Review source imports",
+                  description: "Open IH01 and MB52 import history",
+                  Icon: Database,
+                  onClick: () => navigate("/settings/data-import"),
+                },
+                {
+                  label: "Export spares intelligence",
+                  description: "Download the current ranked inventory",
+                  Icon: Download,
+                  onClick: exportInventory,
+                },
+              ].map(({ label, description, Icon, onClick }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={onClick}
+                  className="flex items-center gap-3 rounded-xl border border-gray-800 bg-[#0d1219] p-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#101722]"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                    <Icon className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-200">
+                      {label}
+                    </p>
+                    <p className="mt-0.5 text-[10px] leading-4 text-slate-600">
+                      {description}
+                    </p>
+                  </div>
+                  <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-700" />
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-2 border-t border-gray-800 py-3 text-[11px] text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Read-only data from SAP IH01, MB52 and the equipment BOM. Last
+            refreshed {lastUpdatedLabel}.
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Gauge className="h-3.5 w-3.5" />
+            {rankedParts.length} linked parts · {criticalParts.length} critical
+            or high
+          </span>
         </div>
       </div>
     </section>
