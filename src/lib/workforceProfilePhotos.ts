@@ -1,4 +1,8 @@
-const WORKFORCE_PATHS = new Set(["/engineers", "/production/operators"]);
+const WORKFORCE_PATHS = new Set([
+  "/engineers",
+  "/production/operators",
+  "/maintenance/labour-risk/shift-cover",
+]);
 const AVATAR_SELECTOR = "div.flex.shrink-0.items-center.justify-center.font-bold";
 const HUMAN_NAME = /^[A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+){1,2}$/;
 
@@ -12,6 +16,8 @@ const NON_NAME_LABELS = new Set([
   "Medium Risk",
   "Low Risk",
   "Critical Risk",
+  "Available Cover Pool",
+  "Shift Cover Risk",
 ]);
 
 function hashName(name: string): number {
@@ -48,7 +54,9 @@ function findProfileName(avatar: HTMLElement): string | null {
   const row = avatar.closest("tr");
   const rowName = firstNameFrom(row, [
     "td:first-child p.font-medium",
+    "td:first-child p.font-semibold",
     "td:first-child span.font-medium",
+    "td:first-child span.font-semibold",
     "td:first-child p",
     "td:first-child span",
   ]);
@@ -59,12 +67,26 @@ function findProfileName(avatar: HTMLElement): string | null {
   if (drawerName) return drawerName;
 
   const mobileCard = avatar.closest("div.rounded-xl.border.p-4");
-  const mobileName = firstNameFrom(mobileCard, ["p.font-medium", "p"]);
+  const mobileName = firstNameFrom(mobileCard, [
+    "p.font-medium",
+    "p.font-semibold",
+    "span.font-medium",
+    "span.font-semibold",
+    "p",
+  ]);
   if (mobileName) return mobileName;
 
   let ancestor: Element | null = avatar.parentElement;
-  for (let depth = 0; ancestor && depth < 5; depth += 1, ancestor = ancestor.parentElement) {
-    const genericName = firstNameFrom(ancestor, ["h2", "p.font-medium", "span.font-medium"]);
+  for (let depth = 0; ancestor && depth < 7; depth += 1, ancestor = ancestor.parentElement) {
+    const genericName = firstNameFrom(ancestor, [
+      "h2",
+      "p.text-sm.font-semibold",
+      "p.font-semibold",
+      "p.font-medium",
+      "span.text-sm.font-semibold",
+      "span.font-semibold",
+      "span.font-medium",
+    ]);
     if (genericName) return genericName;
   }
 
