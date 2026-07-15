@@ -273,3 +273,5 @@ jobs:
           git add src/screens/Equipment/EquipmentHistory.tsx .github/workflows/restore-history-event-dot-timeline.yml
           git commit -m "Restore work-event dot timeline on equipment history"
           git push origin main
+
+# Triggered through a merged maintenance update.
