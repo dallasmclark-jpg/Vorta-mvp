@@ -25,12 +25,6 @@ function getInitials(name: string): string {
   return `${parts[0]?.[0] ?? ""}${lastPart?.[0] ?? ""}`.toUpperCase();
 }
 
-function avatarTable(entityType: WorkforceEntityType): "engineers" | "operators" | "profiles" {
-  if (entityType === "engineer") return "engineers";
-  if (entityType === "operator") return "operators";
-  return "profiles";
-}
-
 /**
  * @deprecated Profile portraits now come from the workforce record in Supabase.
  * Retained temporarily so older imports continue to compile while pages migrate.
@@ -78,13 +72,18 @@ export function ProfilePhoto({
     }
 
     void supabase
-      .from(avatarTable(entityType))
-      .select("avatar_url")
-      .eq("id", entityId)
+      .rpc("vorta_get_workforce_avatar", {
+        p_entity_type: entityType,
+        p_entity_id: entityId,
+      })
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
-        const url = !error && typeof data?.avatar_url === "string" ? data.avatar_url.trim() || null : null;
+        const row = data as { avatar_url?: unknown } | null;
+        const url =
+          !error && typeof row?.avatar_url === "string"
+            ? row.avatar_url.trim() || null
+            : null;
         avatarCache.set(cacheKey, url);
         setDatabasePhotoUrl(url);
       });
