@@ -1,0 +1,138 @@
+name: Apply outlined future schedule dots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/outlined-future-schedule-run
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Use outlined future schedule dots
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/screens/Equipment/EquipmentScheduleTimeline.tsx')
+          source = path.read_text()
+
+          source = source.replace('''            opacity="0.78"\n          >\n            CURRENT + NEXT 8 MONTHS''', '''            opacity="1"\n          >\n            CURRENT + NEXT 8 MONTHS''', 1)
+          source = source.replace('''                  opacity={futureBucket ? 0.76 : 1}\n                >''', '''                  opacity="1"\n                >''', 1)
+          source = source.replace('''                  opacity={futureBucket ? 0.72 : 1}\n                >''', '''                  opacity="1"\n                >''', 1)
+
+          pattern = re.compile(r'''                      <circle\n                        cx=\{x\}\n                        cy=\{y\}\n                        r=\{radius \+ 4\}\n                        fill="none"\n                        stroke=\{ring\}\n                        strokeWidth="2"\n                        strokeDasharray=\{dashed \? "4 3" : undefined\}\n                        opacity=\{\n.*?                      </text>''', re.S)
+
+          replacement = '''                      {futureAttention ? (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={radius + 5}
+                          fill="none"
+                          stroke={ring}
+                          strokeWidth="2"
+                          opacity="0.9"
+                          pointerEvents="none"
+                        />
+                      ) : !futureOnly ? (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={radius + 4}
+                          fill="none"
+                          stroke={ring}
+                          strokeWidth="2"
+                          strokeDasharray={dashed ? "4 3" : undefined}
+                          opacity={completedOnly ? 0.2 : 0.72}
+                          pointerEvents="none"
+                        />
+                      ) : null}
+                      {isSelected ? (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={radius + 8}
+                          fill="none"
+                          stroke="#f8fafc"
+                          strokeWidth="1.5"
+                          opacity="0.95"
+                          pointerEvents="none"
+                        />
+                      ) : null}
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={radius}
+                        fill={futureOnly ? "none" : fill}
+                        stroke={futureOnly ? category.color : "#0b1017"}
+                        strokeWidth={futureOnly ? "2.5" : "2.5"}
+                        strokeDasharray={
+                          futureOnly && projectedCount === grouped.length
+                            ? "5 4"
+                            : undefined
+                        }
+                        opacity={futureOnly ? 0.95 : completedOnly ? 0.92 : 0.86}
+                        pointerEvents="none"
+                      >
+                        <title>{titleText}</title>
+                      </circle>
+                      <text
+                        x={x}
+                        y={y + 4}
+                        textAnchor="middle"
+                        fill={futureOnly ? category.color : "#ffffff"}
+                        fontSize={grouped.length >= 100 ? "9" : "11"}
+                        fontWeight="800"
+                        opacity="1"
+                        pointerEvents="none"
+                      >
+                        {grouped.length}
+                      </text>'''
+
+          source, count = pattern.subn(replacement, source, count=1)
+          if count != 1:
+            raise SystemExit(f'Expected one future dot block replacement, replaced {count}')
+
+          source = source.replace(
+            'className="h-2.5 w-2.5 rounded-full border border-dashed border-blue-400 bg-blue-500/20"',
+            'className="h-2.5 w-2.5 rounded-full border-2 border-dashed border-blue-400 bg-transparent"',
+            1,
+          )
+          source = source.replace(
+            'Future planned, reduced opacity',
+            'Future planned, outlined',
+            1,
+          )
+
+          path.write_text(source)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Remove one-shot files
+        run: |
+          rm -f .github/workflows/apply-outlined-future-schedule-dots.yml
+          rm -f .github/outlined-future-schedule-run
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use outlined future PM and calibration dots"
+          git push origin main
