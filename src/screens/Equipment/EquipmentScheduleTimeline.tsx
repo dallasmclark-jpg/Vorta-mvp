@@ -564,7 +564,7 @@ export function EquipmentScheduleTimeline({
             fontSize="10"
             fontWeight="700"
             letterSpacing="1.3"
-            opacity="0.78"
+            opacity="1"
           >
             CURRENT + NEXT 8 MONTHS
           </text>
@@ -618,7 +618,7 @@ export function EquipmentScheduleTimeline({
                   fill="#cbd5e1"
                   fontSize="12"
                   fontWeight="600"
-                  opacity={futureBucket ? 0.76 : 1}
+                  opacity="1"
                 >
                   {bucket.label}
                 </text>
@@ -628,7 +628,7 @@ export function EquipmentScheduleTimeline({
                   textAnchor="middle"
                   fill="#64748b"
                   fontSize="11"
-                  opacity={futureBucket ? 0.72 : 1}
+                  opacity="1"
                 >
                   {bucket.sublabel}
                 </text>
@@ -789,71 +789,71 @@ export function EquipmentScheduleTimeline({
                         r={radius + 7}
                         fill="transparent"
                       />
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={radius + 4}
-                        fill="none"
-                        stroke={ring}
-                        strokeWidth="2"
-                        strokeDasharray={dashed ? "4 3" : undefined}
-                        opacity={
-                          completedOnly
-                            ? 0.2
-                            : futureOnly
-                              ? futureAttention
-                                ? 0.72
-                                : 0.42
-                              : 0.72
-                        }
-                        pointerEvents="none"
-                      />
-                      {isSelected ? (
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={radius + 8}
-                          fill="none"
-                          stroke="#f8fafc"
-                          strokeWidth="1.5"
-                          opacity="0.95"
-                          pointerEvents="none"
-                        />
-                      ) : null}
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={radius}
-                        fill={fill}
-                        stroke="#0b1017"
-                        strokeWidth="2.5"
-                        opacity={
-                          completedOnly
-                            ? 0.92
-                            : futureOnly
-                              ? futureAttention
-                                ? 0.68
-                                : 0.46
-                              : 0.86
-                        }
-                        pointerEvents="none"
-                      >
-                        <title>{titleText}</title>
-                      </circle>
-                      <text
-                        x={x}
-                        y={y + 4}
-                        textAnchor="middle"
-                        fill="#ffffff"
-                        fontSize={grouped.length >= 100 ? "9" : "11"}
-                        fontWeight="800"
-                        opacity={
-                          futureOnly ? (futureAttention ? 0.88 : 0.68) : 1
-                        }
-                        pointerEvents="none"
-                      >
-                        {grouped.length}
-                      </text>
+                      {futureAttention ? (
+              <circle
+                cx={x}
+                cy={y}
+                r={radius + 5}
+                fill="none"
+                stroke={ring}
+                strokeWidth="2"
+                opacity="0.9"
+                pointerEvents="none"
+              />
+            ) : !futureOnly ? (
+              <circle
+                cx={x}
+                cy={y}
+                r={radius + 4}
+                fill="none"
+                stroke={ring}
+                strokeWidth="2"
+                strokeDasharray={dashed ? "4 3" : undefined}
+                opacity={completedOnly ? 0.2 : 0.72}
+                pointerEvents="none"
+              />
+            ) : null}
+            {isSelected ? (
+              <circle
+                cx={x}
+                cy={y}
+                r={radius + 8}
+                fill="none"
+                stroke="#f8fafc"
+                strokeWidth="1.5"
+                opacity="0.95"
+                pointerEvents="none"
+              />
+            ) : null}
+            <circle
+              cx={x}
+              cy={y}
+              r={radius}
+              fill={futureOnly ? "none" : fill}
+              stroke={futureOnly ? category.color : "#0b1017"}
+              strokeWidth={futureOnly ? "2.5" : "2.5"}
+              strokeDasharray={
+                futureOnly && projectedCount === grouped.length
+                  ? "5 4"
+                  : undefined
+              }
+              opacity={futureOnly ? 0.95 : completedOnly ? 0.92 : 0.86}
+              pointerEvents="none"
+            >
+              <title>{titleText}</title>
+            </circle>
+            <text
+              x={x}
+              y={y + 4}
+              textAnchor="middle"
+              fill={futureOnly ? category.color : "#ffffff"}
+              fontSize={grouped.length >= 100 ? "9" : "11"}
+              fontWeight="800"
+              opacity="1"
+              pointerEvents="none"
+            >
+              {grouped.length}
+            </text>
                     </g>
                   );
                 })}
@@ -1073,8 +1073,8 @@ export function EquipmentScheduleTimeline({
           Due soon / adjustment
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full border border-dashed border-blue-400 bg-blue-500/20" />
-          Future planned, reduced opacity
+          <span className="h-2.5 w-2.5 rounded-full border-2 border-dashed border-blue-400 bg-transparent" />
+          Future planned, outlined
         </span>
         <Badge className="h-auto rounded border border-gray-700 bg-gray-800/60 px-2 py-1 text-[10px] font-medium text-slate-400 shadow-none">
           Number inside = grouped schedule count
