@@ -1,3 +1,5 @@
+import { supabase } from "./supabaseClient";
+
 const WORKFORCE_PATHS = new Set([
   "/engineers",
   "/production/operators",
@@ -21,6 +23,7 @@ const NON_NAME_LABELS = new Set([
 ]);
 
 type PortraitCollection = "men" | "women";
+type WorkforceEntityType = "engineer" | "operator";
 
 interface CuratedPortrait {
   collection: PortraitCollection;
@@ -28,56 +31,10 @@ interface CuratedPortrait {
 }
 
 /**
- * Explicit demo-only portrait assignments.
- *
- * These are curated synthetic personas rather than random name-to-image hashes.
- * Unknown profiles deliberately keep their initials until a customer-controlled
- * profile photo URL is available.
+ * Fallbacks are retained only for static demo personas that do not exist as
+ * workforce records yet. Real engineers and operators resolve from Supabase.
  */
 const CURATED_DEMO_PORTRAITS: Record<string, CuratedPortrait> = {
-  // Maintenance engineers
-  "Alex Turner": { collection: "men", image: 11 },
-  "Amelia Fox": { collection: "women", image: 11 },
-  "Andrew Patel": { collection: "men", image: 12 },
-  "Ben Cooper": { collection: "men", image: 13 },
-  "Ben Harrison": { collection: "men", image: 14 },
-  "Callum Scott": { collection: "men", image: 15 },
-  "Charlotte Reed": { collection: "women", image: 12 },
-  "Chloe Williams": { collection: "women", image: 13 },
-  "Chris Morgan": { collection: "men", image: 16 },
-  "Daniel Roberts": { collection: "men", image: 17 },
-  "Dylan Morris": { collection: "men", image: 18 },
-  "Emma Clarke": { collection: "women", image: 14 },
-  "Ethan White": { collection: "men", image: 19 },
-  "Gareth Owen": { collection: "men", image: 20 },
-  "Grace Murphy": { collection: "women", image: 15 },
-  "Hannah Lewis": { collection: "women", image: 16 },
-  "Hannah Roberts": { collection: "women", image: 17 },
-  "Isla Green": { collection: "women", image: 18 },
-  "Jack Price": { collection: "men", image: 21 },
-  "James Mitchell": { collection: "men", image: 22 },
-  "Josh Edwards": { collection: "men", image: 23 },
-  "Laura Davies": { collection: "women", image: 19 },
-  "Leanne Carter": { collection: "women", image: 20 },
-  "Luke Harrison": { collection: "men", image: 24 },
-  "Matthew Evans": { collection: "men", image: 25 },
-  "Matthew Lewis": { collection: "men", image: 26 },
-  "Megan Ellis": { collection: "women", image: 21 },
-  "Mohammed Khan": { collection: "men", image: 27 },
-  "Natalie Morgan": { collection: "women", image: 22 },
-  "Nathan Brooks": { collection: "men", image: 28 },
-  "Nia Roberts": { collection: "women", image: 23 },
-  "Oliver Clarke": { collection: "men", image: 29 },
-  "Olivia Bennett": { collection: "women", image: 24 },
-  "Owen Griffiths": { collection: "men", image: 30 },
-  "Priya Shah": { collection: "women", image: 25 },
-  "Rebecca Hughes": { collection: "women", image: 26 },
-  "Rhys Thomas": { collection: "men", image: 31 },
-  "Sophie Bennett": { collection: "women", image: 27 },
-  "Sophie Williams": { collection: "women", image: 28 },
-  "Zara Ahmed": { collection: "women", image: 29 },
-
-  // Shift-cover demo engineers
   "James Hadley": { collection: "men", image: 32 },
   "Sarah Mitchell": { collection: "women", image: 30 },
   "Tom Okafor": { collection: "men", image: 33 },
@@ -90,8 +47,6 @@ const CURATED_DEMO_PORTRAITS: Record<string, CuratedPortrait> = {
   "Chloe Watts": { collection: "women", image: 33 },
   "Ryan Tate": { collection: "men", image: 38 },
   "Priya Sharma": { collection: "women", image: 34 },
-
-  // Production operators
   "Sarah Hughes": { collection: "women", image: 35 },
   "Mark Evans": { collection: "men", image: 39 },
   "Aisha Khan": { collection: "women", image: 36 },
@@ -101,10 +56,45 @@ const CURATED_DEMO_PORTRAITS: Record<string, CuratedPortrait> = {
   "Owen Price": { collection: "men", image: 42 },
 };
 
-function demoPortraitUrl(name: string): string | null {
+const avatarUrlCache = new Map<string, string | null>();
+
+function fallbackPortraitUrl(name: string): string | null {
   const portrait = CURATED_DEMO_PORTRAITS[name.trim()];
   if (!portrait) return null;
   return `https://randomuser.me/api/portraits/${portrait.collection}/${portrait.image}.jpg`;
+}
+
+function entityTypeForPath(pathname: string): WorkforceEntityType | null {
+  if (pathname === "/engineers") return "engineer";
+  if (pathname === "/production/operators") return "operator";
+  return null;
+}
+
+async function databasePortraitUrl(name: string): Promise<string | null> {
+  const entityType = entityTypeForPath(window.location.pathname);
+  if (!entityType) return null;
+
+  const cacheKey = `${entityType}:${name.trim()}`;
+  if (avatarUrlCache.has(cacheKey)) return avatarUrlCache.get(cacheKey) ?? null;
+
+  const { data, error } = await supabase
+    .rpc("vorta_get_workforce_avatar_by_name", {
+      p_entity_type: entityType,
+      p_name: name.trim(),
+    })
+    .maybeSingle();
+
+  const row = data as { avatar_url?: unknown } | null;
+  const url =
+    !error && typeof row?.avatar_url === "string"
+      ? row.avatar_url.trim() || null
+      : null;
+  avatarUrlCache.set(cacheKey, url);
+  return url;
+}
+
+async function resolvePortraitUrl(name: string): Promise<string | null> {
+  return (await databasePortraitUrl(name)) ?? fallbackPortraitUrl(name);
 }
 
 function isLikelyName(value: string): boolean {
@@ -176,17 +166,18 @@ function isAvatarPlaceholder(element: Element): element is HTMLElement {
   return /^[A-Z]{2,3}$/.test(initials);
 }
 
-function applyProfilePhoto(avatar: HTMLElement, name: string): void {
-  const portraitUrl = demoPortraitUrl(name);
+async function applyProfilePhoto(avatar: HTMLElement, name: string): Promise<void> {
+  avatar.dataset.vortaProfilePhoto = "loading";
+  const portraitUrl = await resolvePortraitUrl(name);
+
+  if (!avatar.isConnected) return;
   if (!portraitUrl) {
     avatar.dataset.vortaProfilePhoto = "initials";
     return;
   }
 
-  avatar.dataset.vortaProfilePhoto = "loading";
-
   const image = new Image();
-  image.alt = `${name} demo profile portrait`;
+  image.alt = `${name} profile portrait`;
   image.decoding = "async";
   image.referrerPolicy = "no-referrer";
   image.src = portraitUrl;
@@ -198,7 +189,7 @@ function applyProfilePhoto(avatar: HTMLElement, name: string): void {
     image.className = "h-full w-full object-cover object-center";
     avatar.appendChild(image);
     avatar.dataset.vortaProfilePhoto = "true";
-    avatar.setAttribute("aria-label", `${name} demo profile portrait`);
+    avatar.setAttribute("aria-label", `${name} profile portrait`);
     avatar.style.overflow = "hidden";
     avatar.style.backgroundColor = "#111827";
     avatar.style.border = "1px solid rgba(255, 255, 255, 0.10)";
@@ -217,7 +208,7 @@ function enhanceWorkforcePhotos(): void {
     if (!isAvatarPlaceholder(element)) continue;
     const name = findProfileName(element);
     if (!name) continue;
-    applyProfilePhoto(element, name);
+    void applyProfilePhoto(element, name);
   }
 }
 
