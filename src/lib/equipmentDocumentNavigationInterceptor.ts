@@ -18,6 +18,20 @@ function normaliseControlledDocumentLinks(root: ParentNode = document): void {
   });
 }
 
+function navigateInsideVorta(value: string): void {
+  const url = new URL(value, window.location.href);
+  const nextLocation = `${url.pathname}${url.search}${url.hash}`;
+  const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextLocation === currentLocation) return;
+
+  window.history.pushState(window.history.state, '', nextLocation);
+  window.dispatchEvent(
+    new PopStateEvent('popstate', {
+      state: window.history.state,
+    }),
+  );
+}
+
 normaliseControlledDocumentLinks();
 
 document.addEventListener(
@@ -40,7 +54,7 @@ document.addEventListener(
     if (!anchor || !isControlledEquipmentDocumentUrl(anchor.href)) return;
 
     event.preventDefault();
-    window.location.assign(anchor.href);
+    navigateInsideVorta(anchor.href);
   },
   true,
 );
