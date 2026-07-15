@@ -1,0 +1,100 @@
+name: Apply future schedule opacity
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.title == 'Apply future schedule opacity'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Reduce future schedule opacity
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('src/screens/Equipment/EquipmentScheduleTimeline.tsx')
+          source = path.read_text()
+
+          anchor = '''                  const completedOnly = grouped.every(
+                    (occurrence) => occurrence.kind === "completed",
+                  );
+'''
+          replacement = '''                  const completedOnly = grouped.every(
+                    (occurrence) => occurrence.kind === "completed",
+                  );
+                  const futureOnly = grouped.every(
+                    (occurrence) =>
+                      occurrence.kind === "scheduled" && occurrence.date >= today,
+                  );
+                  const futureAttention =
+                    futureOnly &&
+                    (hasFailed || hasOverdue || hasAdjustment || hasDueSoon);
+'''
+          if replacement not in source:
+            if anchor not in source:
+              raise SystemExit('Future schedule opacity anchor not found')
+            source = source.replace(anchor, replacement, 1)
+
+          source = source.replace(
+            'opacity={completedOnly ? 0.2 : 0.72}',
+            'opacity={completedOnly ? 0.2 : futureOnly ? (futureAttention ? 0.72 : 0.42) : 0.72}',
+            1,
+          )
+          source = source.replace(
+            'opacity={completedOnly ? 0.92 : 0.86}',
+            'opacity={completedOnly ? 0.92 : futureOnly ? (futureAttention ? 0.68 : 0.46) : 0.86}',
+            1,
+          )
+
+          text_anchor = '''                        fontWeight="800"
+                        pointerEvents="none"
+                      >
+'''
+          text_replacement = '''                        fontWeight="800"
+                        opacity={
+                          futureOnly ? (futureAttention ? 0.88 : 0.68) : 1
+                        }
+                        pointerEvents="none"
+                      >
+'''
+          if text_replacement not in source:
+            if text_anchor not in source:
+              raise SystemExit('Future count opacity anchor not found')
+            source = source.replace(text_anchor, text_replacement, 1)
+
+          path.write_text(source)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Remove temporary workflow
+        run: rm -f .github/workflows/apply-future-schedule-opacity.yml
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Reduce future PM and calibration opacity"
+          git push origin main
+
+      - name: Close trigger pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr close "${{ github.event.pull_request.number }}" --comment "Future PM and calibration schedule opacity reduced and production build passed."
