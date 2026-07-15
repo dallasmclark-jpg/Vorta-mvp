@@ -295,3 +295,11 @@
     text-align: right;
   }
 }
+
+/* Match every equipment header to the Documents page metadata set. */
+section:has(> div.sticky nav[aria-label="Breadcrumb"])
+  > div.sticky
+  .flex.flex-wrap.gap-x-4.gap-y-1.text-xs.text-slate-400:has(> :nth-child(9))
+  > :is(:nth-child(6), :nth-child(7), :nth-child(8)) {
+  display: none;
+}
