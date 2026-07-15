@@ -23,7 +23,7 @@ import { TrainingSection } from "../Training";
 import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
-import { EquipmentSection, EquipmentOverview, EquipmentNotifications, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentAiInsights } from "../Equipment";
+import { EquipmentSection, EquipmentOverview, EquipmentNotifications, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentDocumentViewer, EquipmentAiInsights } from "../Equipment";
 import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
@@ -98,6 +98,7 @@ export const AiOperations = (): JSX.Element => (
       <Route path="equipment/:equipmentId/history"      element={<EquipmentHistory />} />
       <Route path="equipment/:equipmentId/skills"       element={<EquipmentSkills />} />
       <Route path="equipment/:equipmentId/spares"       element={<EquipmentSpares />} />
+      <Route path="equipment/:equipmentId/documents/:documentId" element={<EquipmentDocumentViewer />} />
       <Route path="equipment/:equipmentId/documents"    element={<EquipmentDocuments />} />
       <Route path="equipment/:equipmentId/ai-insights"  element={<EquipmentAiInsights />} />
       <Route path="support"            element={<SupportSection />} />
