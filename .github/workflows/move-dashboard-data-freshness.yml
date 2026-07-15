@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/move-dashboard-data-freshness.yml
 
+# One-time workflow registered before this trigger commit.
 permissions:
   contents: write
 
