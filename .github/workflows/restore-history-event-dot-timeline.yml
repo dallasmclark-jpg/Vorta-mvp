@@ -1,16 +1,16 @@
 name: Restore history event dot timeline
 
 on:
-  pull_request_target:
-    types: [opened]
+  push:
+    branches: [main]
+    paths:
+      - .github/history-dot-timeline-trigger.txt
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update-history-timeline:
-    if: github.event.pull_request.title == 'Run history event dot timeline update'
     runs-on: ubuntu-latest
     steps:
       - name: Check out main
@@ -262,19 +262,14 @@ jobs:
           path.write_text(text)
           PY
 
-      - name: Remove one-shot workflow
-        run: rm .github/workflows/restore-history-event-dot-timeline.yml
+      - name: Remove one-shot files
+        run: rm .github/workflows/restore-history-event-dot-timeline.yml .github/history-dot-timeline-trigger.txt
 
       - name: Commit history timeline update
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/screens/Equipment/EquipmentHistory.tsx .github/workflows/restore-history-event-dot-timeline.yml
+          git add src/screens/Equipment/EquipmentHistory.tsx .github/workflows/restore-history-event-dot-timeline.yml .github/history-dot-timeline-trigger.txt
           git commit -m "Restore work-event dot timeline on equipment history"
           git push origin main
-
-      - name: Close trigger pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr close "${{ github.event.pull_request.number }}" --comment "History event dot timeline update completed."
