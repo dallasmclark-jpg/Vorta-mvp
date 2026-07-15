@@ -230,3 +230,61 @@
     transform: translateY(calc(-100% - var(--gap)));
   }
 }
+
+/* Keep dashboard data freshness with the scope tabs, leaving Ask Vorta uncluttered. */
+.flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+  > header
+  > div:nth-child(3)
+  p {
+  display: none;
+}
+
+.flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+  > header
+  > div:nth-child(3)::before {
+  content: "Latest data refresh · 2h ago";
+  color: rgb(148 163 184);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+  > header
+  > div:nth-child(3)::after {
+  content: "SAP · Skills · Training";
+  color: rgb(100 116 139);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"]) {
+    position: relative;
+  }
+
+  .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+    > div:first-child {
+    padding-right: 15.5rem;
+  }
+
+  .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+    > header {
+    grid-template-columns: minmax(180px, 0.55fr) minmax(360px, 1.45fr);
+  }
+
+  .flex.flex-col.gap-5:has(> div > [aria-label="Risk intelligence scope"])
+    > header
+    > div:nth-child(3) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    min-height: 2.25rem;
+    width: 14.5rem;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.125rem;
+    text-align: right;
+  }
+}
