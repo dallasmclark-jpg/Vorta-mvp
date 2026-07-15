@@ -62,22 +62,10 @@ interface Cycle {
 }
 
 const PM_CATEGORIES = [
-  {
-    label: "Preventive maintenance",
-    color: "#8b5cf6",
-  },
-  {
-    label: "Inspections",
-    color: "#3b82f6",
-  },
-  {
-    label: "Statutory / validation",
-    color: "#f59e0b",
-  },
-  {
-    label: "Condition-based",
-    color: "#06b6d4",
-  },
+  { label: "Preventive maintenance", color: "#8b5cf6" },
+  { label: "Inspections", color: "#3b82f6" },
+  { label: "Statutory / validation", color: "#f59e0b" },
+  { label: "Condition-based", color: "#06b6d4" },
 ] as const;
 
 const CALIBRATION_COLORS = [
@@ -94,12 +82,13 @@ function parseDate(value: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatDate(date: Date): string {
+function formatDate(value: Date | null | undefined): string {
+  if (!value) return "Date unavailable";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(date);
+  }).format(value);
 }
 
 function normalise(value: string | null | undefined): string {
@@ -152,7 +141,8 @@ function inferCycle(record: MaintenanceScheduleRecord): Cycle | null {
   const frequency = normalise(record.frequency);
   const unit = normalise(record.frequencyUnit);
   const numericValue = Number(frequency.match(/\d+(?:\.\d+)?/)?.[0] ?? 1);
-  const multiplier = Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 1;
+  const multiplier =
+    Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 1;
 
   if (unit.includes("DAY") || frequency.includes("DAILY")) {
     return { days: Math.max(1, Math.round(multiplier)) };
@@ -206,7 +196,11 @@ function advanceDate(value: Date, cycle: Cycle): Date {
   const months = cycle.months ?? 1;
   const targetDay = value.getDate();
   const date = new Date(value.getFullYear(), value.getMonth() + months, 1);
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const lastDay = new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0,
+  ).getDate();
   date.setDate(Math.min(targetDay, lastDay));
   return date;
 }
@@ -233,14 +227,16 @@ function categoryForPm(record: MaintenanceScheduleRecord): string {
 }
 
 function truncateLabel(value: string, maxLength = 26): string {
-  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
+  return value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength - 1)}…`;
 }
 
 function criticalityRank(value: string | null): number {
-  const normalised = normalise(value);
-  if (normalised === "CRITICAL") return 4;
-  if (normalised === "HIGH") return 3;
-  if (normalised === "MEDIUM") return 2;
+  const level = normalise(value);
+  if (level === "CRITICAL") return 4;
+  if (level === "HIGH") return 3;
+  if (level === "MEDIUM") return 2;
   return 1;
 }
 
@@ -250,9 +246,8 @@ function buildCategories(
 ): TimelineCategory[] {
   if (mode === "pm") {
     return PM_CATEGORIES.map((category) => ({
-      label: category.label,
+      ...category,
       fullLabel: category.label,
-      color: category.color,
       recordIds: new Set(
         records
           .filter((record) => categoryForPm(record) === category.label)
@@ -435,6 +430,7 @@ export function EquipmentScheduleTimeline({
   const selectedSummaries = useMemo<ScheduleSummary[]>(() => {
     if (!selected) return [];
     const grouped = new Map<string, ScheduleSummary>();
+
     selected.occurrences.forEach((occurrence) => {
       const current = grouped.get(occurrence.record.id) ?? {
         record: occurrence.record,
@@ -443,6 +439,7 @@ export function EquipmentScheduleTimeline({
       current.occurrences.push(occurrence);
       grouped.set(occurrence.record.id, current);
     });
+
     return Array.from(grouped.values())
       .map((summary) => ({
         ...summary,
@@ -475,8 +472,10 @@ export function EquipmentScheduleTimeline({
   const yForCategory = (index: number) => plotTop + index * rowGap;
   const todayBoundaryX = (xForBucket(2) + xForBucket(3)) / 2;
   const futureEndX = width - right;
+
   const futureOccurrenceCount = occurrences.filter(
-    (occurrence) => occurrence.kind === "scheduled" && occurrence.date >= today,
+    (occurrence) =>
+      occurrence.kind === "scheduled" && occurrence.date >= today,
   ).length;
   const recentCompletionCount = occurrences.filter(
     (occurrence) => occurrence.kind === "completed",
@@ -543,7 +542,7 @@ export function EquipmentScheduleTimeline({
             height={plotBottom - 8}
             rx="10"
             fill={mode === "pm" ? "#8b5cf6" : "#06b6d4"}
-            opacity="0.025"
+            opacity="0.018"
           />
 
           <text
@@ -565,6 +564,7 @@ export function EquipmentScheduleTimeline({
             fontSize="10"
             fontWeight="700"
             letterSpacing="1.3"
+            opacity="0.78"
           >
             CURRENT + NEXT 8 MONTHS
           </text>
@@ -600,6 +600,7 @@ export function EquipmentScheduleTimeline({
 
           {buckets.map((bucket, index) => {
             const x = xForBucket(index);
+            const futureBucket = index >= 3;
             return (
               <g key={bucket.key}>
                 <line
@@ -617,6 +618,7 @@ export function EquipmentScheduleTimeline({
                   fill="#cbd5e1"
                   fontSize="12"
                   fontWeight="600"
+                  opacity={futureBucket ? 0.76 : 1}
                 >
                   {bucket.label}
                 </text>
@@ -626,6 +628,7 @@ export function EquipmentScheduleTimeline({
                   textAnchor="middle"
                   fill="#64748b"
                   fontSize="11"
+                  opacity={futureBucket ? 0.72 : 1}
                 >
                   {bucket.sublabel}
                 </text>
@@ -702,6 +705,15 @@ export function EquipmentScheduleTimeline({
                   const completedOnly = grouped.every(
                     (occurrence) => occurrence.kind === "completed",
                   );
+                  const futureOnly = grouped.every(
+                    (occurrence) =>
+                      occurrence.kind === "scheduled" &&
+                      occurrence.date >= today,
+                  );
+                  const futureAttention =
+                    futureOnly &&
+                    (hasFailed || hasOverdue || hasAdjustment || hasDueSoon);
+
                   const fill = hasFailed
                     ? "#ef4444"
                     : hasAdjustment
@@ -709,18 +721,24 @@ export function EquipmentScheduleTimeline({
                       : completedOnly
                         ? "#10b981"
                         : category.color;
-                  const ring = hasFailed || hasOverdue
-                    ? "#ef4444"
-                    : hasAdjustment || hasDueSoon
-                      ? "#f59e0b"
-                      : "#60a5fa";
+                  const ring =
+                    hasFailed || hasOverdue
+                      ? "#ef4444"
+                      : hasAdjustment || hasDueSoon
+                        ? "#f59e0b"
+                        : "#60a5fa";
                   const dashed =
                     !hasFailed &&
                     !hasOverdue &&
                     !hasAdjustment &&
                     !hasDueSoon &&
                     !completedOnly;
-                  const radius = grouped.length >= 20 ? 18 : grouped.length >= 8 ? 17 : 16;
+                  const radius =
+                    grouped.length >= 20
+                      ? 18
+                      : grouped.length >= 8
+                        ? 17
+                        : 16;
                   const x = xForBucket(bucketIndex);
                   const groupKey = `${category.fullLabel}-${bucket.key}`;
                   const isSelected = selected?.key === groupKey;
@@ -733,45 +751,34 @@ export function EquipmentScheduleTimeline({
                     bucket.sublabel
                   }${projectedCount ? ` · ${projectedCount} projected` : ""}`;
 
+                  const openGroup = () => {
+                    setSelected((current) =>
+                      current?.key === groupKey
+                        ? null
+                        : {
+                            key: groupKey,
+                            category,
+                            bucket,
+                            occurrences: [...grouped].sort(
+                              (leftOccurrence, rightOccurrence) =>
+                                leftOccurrence.date.getTime() -
+                                rightOccurrence.date.getTime(),
+                            ),
+                          },
+                    );
+                  };
+
                   return (
                     <g
                       key={groupKey}
                       role="button"
                       tabIndex={0}
                       aria-label={titleText}
-                      onClick={() =>
-                        setSelected((current) =>
-                          current?.key === groupKey
-                            ? null
-                            : {
-                                key: groupKey,
-                                category,
-                                bucket,
-                                occurrences: [...grouped].sort(
-                                  (leftOccurrence, rightOccurrence) =>
-                                    leftOccurrence.date.getTime() -
-                                    rightOccurrence.date.getTime(),
-                                ),
-                              },
-                        )
-                      }
+                      onClick={openGroup}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          setSelected((current) =>
-                            current?.key === groupKey
-                              ? null
-                              : {
-                                  key: groupKey,
-                                  category,
-                                  bucket,
-                                  occurrences: [...grouped].sort(
-                                    (leftOccurrence, rightOccurrence) =>
-                                      leftOccurrence.date.getTime() -
-                                      rightOccurrence.date.getTime(),
-                                  ),
-                                },
-                          );
+                          openGroup();
                         }
                       }}
                       className="cursor-pointer outline-none"
@@ -790,7 +797,15 @@ export function EquipmentScheduleTimeline({
                         stroke={ring}
                         strokeWidth="2"
                         strokeDasharray={dashed ? "4 3" : undefined}
-                        opacity={completedOnly ? 0.2 : 0.72}
+                        opacity={
+                          completedOnly
+                            ? 0.2
+                            : futureOnly
+                              ? futureAttention
+                                ? 0.72
+                                : 0.42
+                              : 0.72
+                        }
                         pointerEvents="none"
                       />
                       {isSelected ? (
@@ -812,7 +827,15 @@ export function EquipmentScheduleTimeline({
                         fill={fill}
                         stroke="#0b1017"
                         strokeWidth="2.5"
-                        opacity={completedOnly ? 0.92 : 0.86}
+                        opacity={
+                          completedOnly
+                            ? 0.92
+                            : futureOnly
+                              ? futureAttention
+                                ? 0.68
+                                : 0.46
+                              : 0.86
+                        }
                         pointerEvents="none"
                       >
                         <title>{titleText}</title>
@@ -824,6 +847,9 @@ export function EquipmentScheduleTimeline({
                         fill="#ffffff"
                         fontSize={grouped.length >= 100 ? "9" : "11"}
                         fontWeight="800"
+                        opacity={
+                          futureOnly ? (futureAttention ? 0.88 : 0.68) : 1
+                        }
                         pointerEvents="none"
                       >
                         {grouped.length}
@@ -876,8 +902,9 @@ export function EquipmentScheduleTimeline({
                     ).length
                   }{" "}
                   projected call
-                  {selected.occurrences.filter((occurrence) => occurrence.projected)
-                    .length === 1
+                  {selected.occurrences.filter(
+                    (occurrence) => occurrence.projected,
+                  ).length === 1
                     ? ""
                     : "s"}
                 </p>
@@ -979,60 +1006,52 @@ export function EquipmentScheduleTimeline({
                   {mode === "calibration" ? (
                     <div className="mt-3 rounded-lg border border-cyan-500/15 bg-cyan-500/[0.04] p-3">
                       <div className="flex items-center gap-2">
-                        <FileCheck2 className="h-3.5 w-3.5 text-cyan-400" />
+                        <CircleDot className="h-3.5 w-3.5 text-cyan-400" />
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-cyan-300/80">
-                          Calibration evidence
+                          Calibration control
                         </p>
                       </div>
-                      <p className="mt-2 text-xs leading-5 text-slate-300">
+                      <p className="mt-2 text-xs font-semibold text-slate-200">
                         {record.calibrationPoint ?? "Calibration point not recorded"}
                       </p>
-                      <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                      <p className="mt-1 text-[11px] leading-5 text-slate-500">
                         {record.toleranceSpecification ?? "Tolerance not recorded"}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-500">
-                        <span>{record.lastResult ?? "No previous result"}</span>
-                        <span>·</span>
-                        <span>
-                          {record.certificateReference ?? "Certificate not linked"}
-                        </span>
-                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        Result: {record.lastResult ?? "No result imported"} · Certificate:{" "}
+                        {record.certificateReference ?? "Not available"}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="mt-3 rounded-lg border border-violet-500/15 bg-violet-500/[0.04] p-3">
-                      <div className="flex items-center gap-2">
-                        <Wrench className="h-3.5 w-3.5 text-violet-400" />
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-300/80">
-                          Execution readiness evidence
-                        </p>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
-                        <span>
-                          Procedure: {record.procedureReference ?? "Not linked"}
-                        </span>
-                        <span>
-                          Checklist: {record.checklistReference ?? "Not linked"}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {record.linkedWorkOrderNumber && onOpenWorkOrder ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenWorkOrder(record.linkedWorkOrderNumber as string)
-                      }
-                      className={`mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold transition-colors ${
-                        mode === "pm"
-                          ? "text-violet-300 hover:border-violet-500/40 hover:bg-violet-500/5"
-                          : "text-cyan-300 hover:border-cyan-500/40 hover:bg-cyan-500/5"
-                      }`}
-                    >
-                      <Activity className="h-3.5 w-3.5" />
-                      Open {record.linkedWorkOrderNumber}
-                    </button>
                   ) : null}
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-gray-800 pt-3">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+                      {record.procedureReference ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <FileCheck2 className="h-3 w-3" />
+                          {record.procedureReference}
+                        </span>
+                      ) : null}
+                      {record.checklistReference ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {record.checklistReference}
+                        </span>
+                      ) : null}
+                    </div>
+                    {record.linkedWorkOrderNumber && onOpenWorkOrder ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenWorkOrder(record.linkedWorkOrderNumber as string)
+                        }
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300"
+                      >
+                        <Wrench className="h-3.5 w-3.5" />
+                        Open {record.linkedWorkOrderNumber}
+                      </button>
+                    ) : null}
+                  </div>
                 </article>
               );
             })}
@@ -1040,30 +1059,29 @@ export function EquipmentScheduleTimeline({
         </div>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-400">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#141820]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
           Completed / passed
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-slate-700 ring-2 ring-red-500" />
+          <span className="h-2.5 w-2.5 rounded-full border-2 border-red-400 bg-red-500/30" />
           Overdue / failed
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-slate-700 ring-2 ring-orange-400" />
+          <span className="h-2.5 w-2.5 rounded-full border-2 border-orange-400 bg-orange-500/30" />
           Due soon / adjustment
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full border border-dashed border-blue-400 bg-blue-500/40" />
-          Future scheduled call
+          <span className="h-2.5 w-2.5 rounded-full border border-dashed border-blue-400 bg-blue-500/20" />
+          Future planned, reduced opacity
         </span>
+        <Badge className="h-auto rounded border border-gray-700 bg-gray-800/60 px-2 py-1 text-[10px] font-medium text-slate-400 shadow-none">
+          Number inside = grouped schedule count
+        </Badge>
         <span className="inline-flex items-center gap-1.5">
-          <CircleDot className="h-3.5 w-3.5" />
-          Number inside = grouped schedule events
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Select any dot to inspect its source schedules
+          <Activity className="h-3.5 w-3.5" />
+          Select a dot to inspect source schedules
         </span>
       </div>
     </div>
