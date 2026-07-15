@@ -1,0 +1,154 @@
+name: Add workforce profile photos
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/add-workforce-profile-photos.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-workforce-photos:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Add profile photos to engineers and operators
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old[:120]!r}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          engineers = Path("src/screens/Engineers/EngineersSection.tsx")
+          replace_once(
+              engineers,
+              'import { ExplainWithAi } from "../../components/ExplainWithAi";\nimport { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";',
+              'import { ExplainWithAi } from "../../components/ExplainWithAi";\nimport { ProfilePhoto } from "../../components/ProfilePhoto";\nimport { ShiftCalendar, ShiftEvent } from "../../components/ShiftCalendar";',
+          )
+          replace_once(
+              engineers,
+              '''        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${getAvatarColor(eng.full_name)}`}>
+          {getInitials(eng.full_name)}
+        </div>''',
+              '''        <ProfilePhoto
+          name={eng.full_name}
+          photoUrl={eng.profile_photo_url}
+          sizeClass="h-10 w-10"
+          shapeClass="rounded-xl"
+          fallbackClass={getAvatarColor(eng.full_name)}
+          fallbackText={getInitials(eng.full_name)}
+          className="text-sm"
+        />''',
+          )
+          replace_once(
+              engineers,
+              '''                                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${getAvatarColor(eng.full_name)}`}>
+                                    {getInitials(eng.full_name)}
+                                  </div>''',
+              '''                                  <ProfilePhoto
+                                    name={eng.full_name}
+                                    photoUrl={eng.profile_photo_url}
+                                    sizeClass="h-7 w-7"
+                                    shapeClass="rounded-lg"
+                                    fallbackClass={getAvatarColor(eng.full_name)}
+                                    fallbackText={getInitials(eng.full_name)}
+                                    className="text-[10px]"
+                                  />''',
+          )
+
+          drawer = Path("src/screens/Engineers/EngineerDrawer.tsx")
+          replace_once(
+              drawer,
+              'import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";',
+              'import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";\nimport { ProfilePhoto } from "../../components/ProfilePhoto";',
+          )
+          replace_once(
+              drawer,
+              '''  full_name: string;
+  discipline: string | null;''',
+              '''  full_name: string;
+  profile_photo_url?: string | null;
+  discipline: string | null;''',
+          )
+          replace_once(
+              drawer,
+              '''          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold ${getAvatarColor(engineer.full_name)}`}>
+            {getInitials(engineer.full_name)}
+          </div>''',
+              '''          <ProfilePhoto
+            name={engineer.full_name}
+            photoUrl={engineer.profile_photo_url}
+            sizeClass="h-16 w-16"
+            shapeClass="rounded-2xl"
+            fallbackClass={getAvatarColor(engineer.full_name)}
+            fallbackText={getInitials(engineer.full_name)}
+            className="text-xl"
+            eager
+          />''',
+          )
+
+          operators = Path("src/screens/ProductionManager/ProductionOperatorsSection.tsx")
+          replace_once(
+              operators,
+              'import { SyncIndicator } from "../../components/SyncIndicator";\nimport { TrendIndicator } from "../../components/TrendIndicator";',
+              'import { SyncIndicator } from "../../components/SyncIndicator";\nimport { ProfilePhoto } from "../../components/ProfilePhoto";\nimport { TrendIndicator } from "../../components/TrendIndicator";',
+          )
+          replace_once(
+              operators,
+              '''                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1e2535] text-[10px] font-bold text-slate-300">
+                        {op.initials}
+                      </div>''',
+              '''                      <ProfilePhoto
+                        name={op.name}
+                        sizeClass="h-8 w-8"
+                        shapeClass="rounded-full"
+                        fallbackText={op.initials}
+                        className="text-[10px]"
+                      />''',
+          )
+          replace_once(
+              operators,
+              '''                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1e2535] text-[10px] font-bold text-slate-300">
+                  {op.initials}
+                </div>''',
+              '''                <ProfilePhoto
+                  name={op.name}
+                  sizeClass="h-9 w-9"
+                  shapeClass="rounded-full"
+                  fallbackText={op.initials}
+                  className="text-[10px]"
+                />''',
+          )
+          PY
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify production build
+        run: npm run build
+
+      - name: Commit focused photo support
+        shell: bash
+        run: |
+          rm .github/workflows/add-workforce-profile-photos.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/ProfilePhoto.tsx src/screens/Engineers/EngineersSection.tsx src/screens/Engineers/EngineerDrawer.tsx src/screens/ProductionManager/ProductionOperatorsSection.tsx .github/workflows/add-workforce-profile-photos.yml
+          git commit -m "Add profile photos to engineers and operators"
+          git push origin HEAD:main
