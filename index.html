@@ -46,7 +46,7 @@ section > div.sticky
     grid-template-areas:
       "title legends"
       "filters legends"
-      ". navigation" !important;
+      "navigation ." !important;
   }
 
   .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
@@ -60,16 +60,16 @@ section > div.sticky
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  /* Keep Today, date navigation and Week/Month together at the far right. */
+  /* Keep Today, date navigation and Week/Month together at the far left. */
   .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
       > div:nth-child(3) > div.ml-auto
     )
     > div:nth-child(3) {
     width: max-content !important;
     max-width: 100%;
-    margin-left: auto !important;
-    justify-self: end !important;
-    justify-content: flex-end !important;
+    margin-left: 0 !important;
+    justify-self: start !important;
+    justify-content: flex-start !important;
   }
 
   .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
