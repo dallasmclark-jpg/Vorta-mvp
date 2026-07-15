@@ -1,16 +1,15 @@
 name: Restore history event dot timeline
 
 on:
-  issues:
-    types: [opened]
+  schedule:
+    - cron: "40 19 15 7 *"
+  workflow_dispatch:
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   update-history-timeline:
-    if: github.event.issue.title == 'Run history event dot timeline update'
     runs-on: ubuntu-latest
     steps:
       - name: Check out main
@@ -273,8 +272,3 @@ jobs:
           git add src/screens/Equipment/EquipmentHistory.tsx .github/workflows/restore-history-event-dot-timeline.yml
           git commit -m "Restore work-event dot timeline on equipment history"
           git push origin main
-
-      - name: Close trigger issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh issue close "${{ github.event.issue.number }}" --comment "History event dot timeline update completed."
