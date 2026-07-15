@@ -1,323 +1,880 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  AlertTriangle,
+  Activity,
+  ArrowRight,
+  BarChart3,
   Bell,
-  Calendar,
+  BrainCircuit,
+  Check,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
-  ClipboardList,
+  Clock3,
+  Copy,
+  Database,
   Download,
-  Edit,
-  Edit2,
-  Eye,
-  FileText,
-  Filter,
+  FileSearch,
+  Gauge,
+  History,
   RefreshCw,
+  Repeat2,
   Search,
+  ShieldCheck,
+  Sparkles,
   UserCircle,
   Wrench,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-
-import { EquipmentBase, DEFAULT_EQUIPMENT_ID, getEquipmentById } from "./equipmentData";
-import { getEquipmentIdentityById, getCachedEquipmentIdentity, getEquipmentActivity } from "./equipmentService";
-import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import {
+  DEFAULT_EQUIPMENT_ID,
+  type EquipmentBase,
+} from "./equipmentData";
+import {
+  getCachedEquipmentIdentity,
+  getEquipmentActivity,
+  getEquipmentIdentityById,
+  getEquipmentRecommendedWorkQueue,
+  getEquipmentRiskHistory,
+  type EquipmentRecommendedWorkQueue,
+  type EquipmentRiskHistory,
+} from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
+import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-type WoType      = "BREAKDOWN" | "CORRECTIVE" | "PREVENTIVE" | "INSPECTION" | "PARTS";
-type WoPriority  = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-type WoOutcome   = "RESOLVED" | "PARTIAL" | "OPEN";
+type HistoryRange = "all" | "12m" | "6m" | "30d";
+type HistoryFilter =
+  | "ALL"
+  | "ATTENTION"
+  | "CORRECTIVE"
+  | "PREVENTIVE"
+  | "INSPECTION";
 
 interface HistoryRow {
   date: string;
   woNumber: string;
-  type: WoType;
-  priority: WoPriority;
+  type: string;
+  priority: string;
   description: string;
   downtime: string;
-  outcome: WoOutcome;
+  outcome: string;
 }
 
-interface SparePartRow {
-  name: string;
-  partNumber: string;
-  usage: number | "-";
-  cost: string;
+interface FailurePattern {
+  label: string;
+  count: number;
+  downtimeMinutes: number;
+  weakOutcomes: number;
+  references: string[];
+  latestDate: string;
 }
 
-const SPARE_PARTS: SparePartRow[] = [
-  { name: "Vacuum Pad",     partNumber: "VPK-7731", usage: 4,   cost: "£1,240" },
-  { name: "Drive Belt",     partNumber: "DB-2040",  usage: "-", cost: "£560"   },
-  { name: "Bearing",        partNumber: "BA-7731",  usage: 2,   cost: "£2,100" },
-  { name: "Servo Motor",    partNumber: "SM-1102",  usage: 2,   cost: "£820"   },
-  { name: "Encoder",        partNumber: "EW-3301",  usage: 1,   cost: "£340"   },
-];
-
-interface FailureHistoryRow {
-  date: string;
-  priority: WoPriority;
-  woNumber: string;
+interface MetricProps {
+  label: string;
+  value: string | number;
+  detail: string;
+  tone?: string;
 }
 
-const FAILURE_HISTORY: FailureHistoryRow[] = [
-  { date: "24 Apr 2025", priority: "CRITICAL", woNumber: "WO-10482" },
-  { date: "15 Apr 2025", priority: "CRITICAL", woNumber: "WO-10452" },
-  { date: "08 Apr 2025", priority: "HIGH",     woNumber: "WO-10435" },
-  { date: "28 Mar 2025", priority: "HIGH",     woNumber: "WO-10418" },
-  { date: "12 Mar 2025", priority: "CRITICAL", woNumber: "WO-10392" },
-];
-
-const ACTIVITY_FEED = [
-  { datetime: "24 Apr 2025 14:45", text: "WO-10482 completed",           Icon: CheckCircle2,  iconClass: "text-emerald-400" },
-  { datetime: "23 Apr 2025 16:30", text: "PM-PL-02-DAILY completed",     Icon: CheckCircle2,  iconClass: "text-emerald-400" },
-  { datetime: "21 Apr 2025 10:30", text: "Monthly inspection completed",  Icon: Search,        iconClass: "text-blue-400"    },
-  { datetime: "18 Apr 2025 09:10", text: "Drive belt replaced",           Icon: Wrench,        iconClass: "text-slate-400"   },
-  { datetime: "15 Apr 2025 09:10", text: "Bearing failure logged",        Icon: AlertTriangle, iconClass: "text-red-400"     },
-  { datetime: "12 Apr 2025 11:20", text: "Engineer note added",           Icon: FileText,      iconClass: "text-slate-400"   },
-];
-
-// ─── Timeline data ────────────────────────────────────────────────────────────
-// months 0-11 = May…Apr; dot positions are approx x fractions
-
-const TIMELINE_ROWS = [
-  { label: "Preventive",     color: "#10b981", dots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
-  { label: "Corrective",     color: "#eab308", dots: [1, 3, 5, 7, 9, 10] },
-  { label: "Inspections",    color: "#3b82f6", dots: [0, 2, 5, 8, 11] },
-  { label: "Parts Replaced", color: "#06b6d4", dots: [2, 6, 9] },
-  { label: "Breakdowns",     color: "#ef4444", dots: [3, 7, 11] },
-  { label: "Major Events",   color: "#8b5cf6", dots: [5, 10] },
-];
-
-const MONTHS = ["May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-
-// ─── Style helpers ────────────────────────────────────────────────────────────
-
-function typeClass(t: WoType) {
-  if (t === "BREAKDOWN")  return "bg-[#ef444420] text-red-400";
-  if (t === "CORRECTIVE") return "bg-[#f9731620] text-orange-400";
-  if (t === "PREVENTIVE") return "bg-[#10b98120] text-emerald-400";
-  if (t === "INSPECTION") return "bg-[#3b82f620] text-blue-400";
-  return "bg-[#06b6d420] text-cyan-400";
-}
-
-function priorityClass(p: WoPriority) {
-  if (p === "CRITICAL") return "bg-[#ef444420] text-red-400";
-  if (p === "HIGH")     return "bg-[#f9731620] text-orange-400";
-  if (p === "MEDIUM")   return "bg-[#eab30820] text-yellow-400";
-  return "bg-[#10b98120] text-emerald-400";
-}
-
-function outcomeClass(o: WoOutcome) {
-  if (o === "RESOLVED") return "bg-[#10b98120] text-emerald-400";
-  if (o === "PARTIAL")  return "bg-[#eab30820] text-yellow-400";
-  return "bg-[#6b728020] text-slate-400";
-}
-
-// ─── Segmented donut ──────────────────────────────────────────────────────────
-
-function SegmentedDonut({
-  segments,
-  size = 100,
-  strokeWidth = 14,
+function Metric({
   label,
-  sublabel,
-}: {
-  segments: { value: number; color: string }[];
-  size?: number;
-  strokeWidth?: number;
-  label?: string;
-  sublabel?: string;
-}) {
-  const r = (size - strokeWidth) / 2;
-  const circ = 2 * Math.PI * r;
-  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
-  let offset = 0;
-  const arcs = segments.map((seg) => {
-    const len = (seg.value / total) * circ;
-    const arc = { offset, len, color: seg.color };
-    offset += len + 2;
-    return arc;
-  });
-  const cx = size / 2;
-  const cy = size / 2;
+  value,
+  detail,
+  tone = "text-slate-50",
+}: MetricProps): JSX.Element {
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2433" strokeWidth={strokeWidth} />
-      {arcs.map((a, i) => (
-        <circle key={i} cx={cx} cy={cy} r={r}
-          fill="none" stroke={a.color} strokeWidth={strokeWidth}
-          strokeDasharray={`${Math.max(0, a.len - 2)} ${circ}`}
-          strokeDashoffset={-a.offset}
-          transform={`rotate(-90 ${cx} ${cy})`}
-        />
-      ))}
-      {label && (
-        <text x="50%" y={sublabel ? "46%" : "52%"} dominantBaseline="middle"
-          textAnchor="middle" fill="white" fontSize={size * 0.15} fontWeight="700">
-          {label}
-        </text>
-      )}
-      {sublabel && (
-        <text x="50%" y="62%" dominantBaseline="middle"
-          textAnchor="middle" fill="#94a3b8" fontSize={size * 0.09}>
-          {sublabel}
-        </text>
-      )}
-    </svg>
+    <div className="rounded-xl border border-gray-800 bg-[#0b1017]/80 p-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </p>
+      <p className={`mt-1.5 text-2xl font-semibold ${tone}`}>{value}</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-500">{detail}</p>
+    </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) return direct;
+  const iso = new Date(`${value}T00:00:00`);
+  return Number.isNaN(iso.getTime()) ? null : iso;
+}
+
+function formatDate(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) return value || "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(value: Date | null): string {
+  if (!value) return "Loading latest history";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
+}
+
+function parseDowntimeMinutes(value: string): number {
+  const hours = Number(value.match(/(\d+(?:\.\d+)?)\s*h/i)?.[1] ?? 0);
+  const minutes = Number(value.match(/(\d+)\s*m/i)?.[1] ?? 0);
+  return Math.round(hours * 60 + minutes);
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes <= 0) return "0 min";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours === 0) return `${remainder} min`;
+  if (remainder === 0) return `${hours}h`;
+  return `${hours}h ${remainder}m`;
+}
+
+function normalise(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function isCorrective(row: HistoryRow): boolean {
+  const type = normalise(row.type);
+  return type.includes("CORRECTIVE") || type.includes("BREAKDOWN");
+}
+
+function isPreventive(row: HistoryRow): boolean {
+  return normalise(row.type).includes("PREVENTIVE");
+}
+
+function isInspection(row: HistoryRow): boolean {
+  const type = normalise(row.type);
+  return type.includes("INSPECTION") || type.includes("CALIBRATION");
+}
+
+function isWeakOutcome(outcome: string): boolean {
+  const value = normalise(outcome);
+  return (
+    value.includes("TEMPORARY") ||
+    value.includes("RECUR") ||
+    value.includes("PARTIAL") ||
+    value.includes("OPEN") ||
+    value.includes("FAIL") ||
+    value.includes("HOLD")
+  );
+}
+
+function isResolvedOutcome(outcome: string): boolean {
+  const value = normalise(outcome);
+  return (
+    value.includes("SUCCESS") ||
+    value.includes("RESOLVED") ||
+    value.includes("COMPLETED") ||
+    value.includes("PASS")
+  );
+}
+
+function priorityRank(priority: string): number {
+  switch (normalise(priority)) {
+    case "CRITICAL":
+      return 4;
+    case "HIGH":
+      return 3;
+    case "MEDIUM":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+function priorityClass(priority: string): string {
+  switch (normalise(priority)) {
+    case "CRITICAL":
+      return "border-red-500/25 bg-red-500/10 text-red-300";
+    case "HIGH":
+      return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+    case "MEDIUM":
+      return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
+    default:
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+}
+
+function typeClass(type: string): string {
+  const value = normalise(type);
+  if (value.includes("BREAKDOWN")) {
+    return "border-red-500/25 bg-red-500/10 text-red-300";
+  }
+  if (value.includes("CORRECTIVE")) {
+    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+  }
+  if (value.includes("PREVENTIVE")) {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+  if (value.includes("CALIBRATION")) {
+    return "border-cyan-500/25 bg-cyan-500/10 text-cyan-300";
+  }
+  if (value.includes("INSPECTION")) {
+    return "border-blue-500/25 bg-blue-500/10 text-blue-300";
+  }
+  return "border-slate-600 bg-slate-800/70 text-slate-300";
+}
+
+function outcomeClass(outcome: string): string {
+  if (isWeakOutcome(outcome)) {
+    return "border-red-500/25 bg-red-500/10 text-red-300";
+  }
+  if (isResolvedOutcome(outcome)) {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+  return "border-slate-600 bg-slate-800/70 text-slate-300";
+}
+
+function riskTone(level: string): string {
+  switch (level.toLowerCase()) {
+    case "critical":
+      return "border-red-500/25 bg-red-500/10 text-red-300";
+    case "high":
+      return "border-orange-500/25 bg-orange-500/10 text-orange-300";
+    case "medium":
+      return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
+    default:
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+}
+
+function extractFailurePattern(description: string): string | null {
+  const faultCode = description.match(/\bF-\d{3,}\b/i)?.[0];
+  if (faultCode) return faultCode.toUpperCase();
+
+  const text = description.toLowerCase();
+  const patterns: Array<[string, string[]]> = [
+    ["Reject sensor / false reject", ["reject sensor", "false reject", "reject confirmation"]],
+    ["Reject actuator / cylinder", ["reject actuator", "reject cylinder", "return position"]],
+    ["Filler bowl level control", ["filler bowl", "level control"]],
+    ["PLC / communication", ["plc", "communication fault"]],
+    ["HMI / batch pause", ["hmi", "batch pause"]],
+    ["Servo axis", ["servo"]],
+    ["Bearing / vibration", ["bearing", "vibration"]],
+    ["Guard interlock", ["guard door", "interlock"]],
+    ["Pneumatic supply", ["pneumatic", "air pressure", "valve manifold"]],
+    ["Calibration drift", ["calibration", "tolerance", "adjustment"]],
+  ];
+
+  for (const [label, terms] of patterns) {
+    if (terms.some((term) => text.includes(term))) return label;
+  }
+
+  return null;
+}
+
+function monthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export const EquipmentHistory = (): JSX.Element => {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
-  const [timeRange, setTimeRange] = useState<"all" | "12m" | "6m" | "30d">("all");
-  const [search, setSearch]       = useState("");
-  const [page] = useState(1);
-
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
-  const [eq, setEq] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
+
+  const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
+    getCachedEquipmentIdentity(resolvedId),
+  );
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
+  const [riskHistory, setRiskHistory] = useState<EquipmentRiskHistory[]>([]);
+  const [riskQueue, setRiskQueue] =
+    useState<EquipmentRecommendedWorkQueue | null>(null);
+  const [range, setRange] = useState<HistoryRange>("12m");
+  const [filter, setFilter] = useState<HistoryFilter>("ALL");
+  const [search, setSearch] = useState("");
+  const [question, setQuestion] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
-    getEquipmentIdentityById(resolvedId).then(setEq);
+    void getEquipmentIdentityById(resolvedId).then(setEquipment);
+  }, [resolvedId]);
+
+  const loadHistoryIntelligence = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const [activity, riskSnapshots, queue] = await Promise.all([
+        getEquipmentActivity(resolvedId),
+        getEquipmentRiskHistory(resolvedId, 365),
+        getEquipmentRecommendedWorkQueue(resolvedId),
+      ]);
+
+      setHistoryRows(
+        activity.map((row) => ({
+          date: row.date,
+          woNumber: row.woNumber,
+          type: row.type,
+          priority: row.priority,
+          description: row.description,
+          downtime: row.downtime,
+          outcome: row.outcome,
+        })),
+      );
+      setRiskHistory(riskSnapshots);
+      setRiskQueue(queue);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.warn("Equipment history intelligence failed:", error);
+      setHistoryRows([]);
+      setRiskHistory([]);
+      setRiskQueue(null);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Equipment history could not be loaded.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => {
-    getEquipmentActivity(resolvedId).then((rows) => {
-      setHistoryRows(rows.map((r) => ({
-        date:        r.date,
-        woNumber:    r.woNumber,
-        type:        r.type as WoType,
-        priority:    r.priority as WoPriority,
-        description: r.description,
-        downtime:    r.downtime,
-        outcome:     r.outcome as WoOutcome,
-      })));
+    void loadHistoryIntelligence();
+  }, [loadHistoryIntelligence]);
+
+  const referenceDate = useMemo(() => {
+    const validDates = historyRows
+      .map((row) => parseDate(row.date))
+      .filter((date): date is Date => Boolean(date));
+    if (validDates.length === 0) return new Date();
+    return new Date(Math.max(...validDates.map((date) => date.getTime())));
+  }, [historyRows]);
+
+  const rangedRows = useMemo(() => {
+    if (range === "all") return historyRows;
+
+    const cutoff = new Date(referenceDate);
+    if (range === "12m") cutoff.setMonth(cutoff.getMonth() - 12);
+    if (range === "6m") cutoff.setMonth(cutoff.getMonth() - 6);
+    if (range === "30d") cutoff.setDate(cutoff.getDate() - 30);
+
+    return historyRows.filter((row) => {
+      const date = parseDate(row.date);
+      return date ? date >= cutoff : false;
     });
-  }, [resolvedId]);
+  }, [historyRows, range, referenceDate]);
 
-  if (!eq) {
+  const correctiveRows = useMemo(
+    () => rangedRows.filter(isCorrective),
+    [rangedRows],
+  );
+
+  const preventiveRows = useMemo(
+    () => rangedRows.filter((row) => isPreventive(row) || isInspection(row)),
+    [rangedRows],
+  );
+
+  const failurePatterns = useMemo<FailurePattern[]>(() => {
+    const map = new Map<string, FailurePattern>();
+
+    correctiveRows.forEach((row) => {
+      const label = extractFailurePattern(row.description);
+      if (!label) return;
+
+      const existing = map.get(label) ?? {
+        label,
+        count: 0,
+        downtimeMinutes: 0,
+        weakOutcomes: 0,
+        references: [],
+        latestDate: row.date,
+      };
+      existing.count += 1;
+      existing.downtimeMinutes += parseDowntimeMinutes(row.downtime);
+      existing.weakOutcomes += isWeakOutcome(row.outcome) ? 1 : 0;
+      if (!existing.references.includes(row.woNumber)) {
+        existing.references.push(row.woNumber);
+      }
+      const existingDate = parseDate(existing.latestDate)?.getTime() ?? 0;
+      const rowDate = parseDate(row.date)?.getTime() ?? 0;
+      if (rowDate > existingDate) existing.latestDate = row.date;
+      map.set(label, existing);
+    });
+
+    return [...map.values()].sort(
+      (left, right) =>
+        right.count - left.count ||
+        right.downtimeMinutes - left.downtimeMinutes,
+    );
+  }, [correctiveRows]);
+
+  const highestPattern = failurePatterns[0] ?? null;
+  const weakOutcomeRows = useMemo(
+    () => rangedRows.filter((row) => isWeakOutcome(row.outcome)),
+    [rangedRows],
+  );
+  const resolvedRows = useMemo(
+    () => rangedRows.filter((row) => isResolvedOutcome(row.outcome)),
+    [rangedRows],
+  );
+  const totalDowntimeMinutes = useMemo(
+    () =>
+      rangedRows.reduce(
+        (sum, row) => sum + parseDowntimeMinutes(row.downtime),
+        0,
+      ),
+    [rangedRows],
+  );
+  const topDowntimeRows = useMemo(
+    () =>
+      [...rangedRows]
+        .sort(
+          (left, right) =>
+            parseDowntimeMinutes(right.downtime) -
+            parseDowntimeMinutes(left.downtime),
+        )
+        .slice(0, 3),
+    [rangedRows],
+  );
+  const topDowntimeMinutes = topDowntimeRows.reduce(
+    (sum, row) => sum + parseDowntimeMinutes(row.downtime),
+    0,
+  );
+  const downtimeConcentration =
+    totalDowntimeMinutes > 0
+      ? Math.round((topDowntimeMinutes / totalDowntimeMinutes) * 100)
+      : 0;
+  const repeatedEventCount = failurePatterns
+    .filter((pattern) => pattern.count > 1)
+    .reduce((sum, pattern) => sum + pattern.count, 0);
+  const recurrenceRate =
+    correctiveRows.length > 0
+      ? Math.round((repeatedEventCount / correctiveRows.length) * 100)
+      : 0;
+  const avgCorrectiveDowntime =
+    correctiveRows.length > 0
+      ? Math.round(
+          correctiveRows.reduce(
+            (sum, row) => sum + parseDowntimeMinutes(row.downtime),
+            0,
+          ) / correctiveRows.length,
+        )
+      : 0;
+  const outcomeQuality =
+    rangedRows.length > 0
+      ? Math.round((resolvedRows.length / rangedRows.length) * 100)
+      : 100;
+  const evidenceCompleteness =
+    rangedRows.length > 0
+      ? Math.round(
+          (rangedRows.filter(
+            (row) =>
+              row.woNumber &&
+              row.date &&
+              row.description &&
+              row.type &&
+              row.outcome,
+          ).length /
+            rangedRows.length) *
+            100,
+        )
+      : 100;
+
+  const latestRisk =
+    riskHistory.length > 0
+      ? riskHistory[riskHistory.length - 1].riskScore
+      : equipment?.riskScore ?? 0;
+  const earliestRisk = riskHistory[0]?.riskScore ?? latestRisk;
+  const riskChange = latestRisk - earliestRisk;
+  const projectedRisk = riskQueue?.projectedRiskScore ?? latestRisk;
+
+  const monthlySeries = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 11 + index, 1);
+      return {
+        key: monthKey(date),
+        label: new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date),
+        date,
+        eventCount: 0,
+        downtimeMinutes: 0,
+        riskScore: null as number | null,
+      };
+    });
+
+    rangedRows.forEach((row) => {
+      const date = parseDate(row.date);
+      if (!date) return;
+      const month = months.find((item) => item.key === monthKey(date));
+      if (!month) return;
+      month.eventCount += 1;
+      month.downtimeMinutes += parseDowntimeMinutes(row.downtime);
+    });
+
+    riskHistory.forEach((snapshot) => {
+      const date = parseDate(snapshot.snapshotDate);
+      if (!date) return;
+      const month = months.find((item) => item.key === monthKey(date));
+      if (month) month.riskScore = snapshot.riskScore;
+    });
+
+    let carriedRisk: number | null = null;
+    months.forEach((month) => {
+      if (month.riskScore != null) carriedRisk = month.riskScore;
+      if (month.riskScore == null && carriedRisk != null) {
+        month.riskScore = carriedRisk;
+      }
+    });
+    if (months.length > 0) months[months.length - 1].riskScore = latestRisk;
+
+    return months;
+  }, [latestRisk, rangedRows, referenceDate, riskHistory]);
+
+  const maxMonthlyEvents = Math.max(
+    1,
+    ...monthlySeries.map((month) => month.eventCount),
+  );
+  const riskPoints = monthlySeries
+    .map((month, index) => {
+      if (month.riskScore == null) return null;
+      const x = 62 + index * 96;
+      const y = 198 - (month.riskScore / 100) * 160;
+      return `${x},${y}`;
+    })
+    .filter((point): point is string => Boolean(point));
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return [...rangedRows]
+      .filter((row) => {
+        const matchesFilter =
+          filter === "ALL" ||
+          (filter === "ATTENTION" &&
+            (isWeakOutcome(row.outcome) ||
+              priorityRank(row.priority) >= 3 ||
+              parseDowntimeMinutes(row.downtime) > 0)) ||
+          (filter === "CORRECTIVE" && isCorrective(row)) ||
+          (filter === "PREVENTIVE" && isPreventive(row)) ||
+          (filter === "INSPECTION" && isInspection(row));
+        if (!matchesFilter) return false;
+        if (!query) return true;
+
+        return [
+          row.woNumber,
+          row.description,
+          row.type,
+          row.priority,
+          row.outcome,
+          row.date,
+        ].some((value) => value.toLowerCase().includes(query));
+      })
+      .sort((left, right) => {
+        const leftDate = parseDate(left.date)?.getTime() ?? 0;
+        const rightDate = parseDate(right.date)?.getTime() ?? 0;
+        return rightDate - leftDate;
+      });
+  }, [filter, rangedRows, search]);
+
+  const briefing = useMemo(() => {
+    if (!equipment) return "";
+    const patternSentence = highestPattern
+      ? `${highestPattern.label} is the leading repeat pattern with ${highestPattern.count} linked events and ${formatDuration(highestPattern.downtimeMinutes)} recorded downtime.`
+      : "No repeat failure pattern is currently dominant in the available SAP history.";
+    const outcomeSentence =
+      weakOutcomeRows.length > 0
+        ? `${weakOutcomeRows.length} record${weakOutcomeRows.length === 1 ? "" : "s"} ended with an open, temporary, partial or recurring outcome.`
+        : "No weak maintenance outcomes are present in the selected period.";
+
+    return `${equipment.name} has ${rangedRows.length} maintenance records in the selected period, including ${correctiveRows.length} corrective or breakdown events and ${preventiveRows.length} preventive, inspection or calibration events. ${patternSentence} ${outcomeSentence} The three largest events account for ${downtimeConcentration}% of recorded downtime, while equipment risk is currently ${latestRisk}% with ${Math.abs(riskChange)} point${Math.abs(riskChange) === 1 ? "" : "s"} ${riskChange > 0 ? "increase" : riskChange < 0 ? "reduction" : "change"} across the available risk history.`;
+  }, [
+    correctiveRows.length,
+    downtimeConcentration,
+    equipment,
+    highestPattern,
+    latestRisk,
+    preventiveRows.length,
+    rangedRows.length,
+    riskChange,
+    weakOutcomeRows.length,
+  ]);
+
+  const copyValue = useCallback(async (value: string, key: string) => {
+    if (!navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(key);
+      window.setTimeout(() => {
+        setCopied((current) => (current === key ? null : current));
+      }, 1600);
+    } catch (error) {
+      console.warn("History reference copy failed:", error);
+    }
+  }, []);
+
+  const askVorta = useCallback(
+    (prompt?: string) => {
+      if (!equipment) return;
+      const resolvedPrompt =
+        prompt ||
+        question.trim() ||
+        `Analyse the maintenance history for ${equipment.name}. Identify repeat failures, weak outcomes, downtime concentration and the highest-value reliability actions, citing relevant work orders, parts and documents.`;
+      navigate(
+        `/equipment/${equipment.id}/ai-insights?prompt=${encodeURIComponent(
+          resolvedPrompt,
+        )}`,
+      );
+    },
+    [equipment, navigate, question],
+  );
+
+  const openWorkOrder = useCallback(
+    (workOrderNumber: string) => {
+      if (!equipment) return;
+      navigate(
+        `/equipment/${equipment.id}/work-orders?workOrder=${encodeURIComponent(
+          workOrderNumber,
+        )}#work-order-register`,
+      );
+    },
+    [equipment, navigate],
+  );
+
+  const exportHistory = useCallback(() => {
+    if (!equipment) return;
+    const rows = [
+      [
+        "Date",
+        "Work Order",
+        "Type",
+        "Priority",
+        "Description",
+        "Downtime",
+        "Outcome",
+        "Failure Pattern",
+      ],
+      ...filteredRows.map((row) => [
+        row.date,
+        row.woNumber,
+        row.type,
+        row.priority,
+        row.description,
+        row.downtime,
+        row.outcome,
+        extractFailurePattern(row.description) ?? "",
+      ]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${equipment.assetNumber}-maintenance-history-intelligence.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [equipment, filteredRows]);
+
+  if (!equipment) {
     return (
-      <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-          <div className="h-28 animate-pulse rounded-xl bg-[#141820]" />
+      <section className="flex w-full flex-col overflow-x-hidden pb-10">
+        <div className="border-b border-gray-800 bg-[#0b0e14] px-4 py-4 md:px-6">
+          <div className="h-40 animate-pulse rounded-xl bg-[#141820]" />
         </div>
       </section>
     );
   }
 
-  const riskBadgeClass =
-    eq.riskLevel === "Critical" ? "bg-[#ef444420] text-red-400" :
-    eq.riskLevel === "High"     ? "bg-[#f9731620] text-orange-400" :
-    eq.riskLevel === "Medium"   ? "bg-[#eab30820] text-yellow-400" :
-    "bg-[#10b98120] text-emerald-400";
-
-  const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
-
-  const filtered = historyRows.filter(
-    (r) =>
-      r.woNumber.toLowerCase().includes(search.toLowerCase()) ||
-      r.description.toLowerCase().includes(search.toLowerCase()),
+  const riskTotal =
+    equipment.riskBreakdown.reduce(
+      (sum, driver) => sum + driver.pct,
+      0,
+    ) || 1;
+  const riskBadgeClass = riskTone(equipment.riskLevel);
+  const maxPatternCount = Math.max(
+    1,
+    ...failurePatterns.map((pattern) => pattern.count),
   );
-
-  // Timeline grid geometry — wider canvas so SVG scales up cleanly at full card width
-  const TIMELINE_W = 800;
-  const TIMELINE_H = TIMELINE_ROWS.length * 28 + 40;
-  const LEFT_PAD   = 120;
-  const RIGHT_PAD  = 16;
-  const TOP_PAD    = 10;
-  const chartW     = TIMELINE_W - LEFT_PAD - RIGHT_PAD;
-  const colW       = chartW / (MONTHS.length - 1);
+  const primaryRiskAction = riskQueue?.actions[0] ?? null;
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
+      {loadError ? (
+        <div className="mx-4 mt-4 rounded-xl border border-red-500/25 bg-red-500/[0.06] px-4 py-3 text-xs text-red-200 md:mx-6">
+          {loadError}
+        </div>
+      ) : null}
 
-      {/* ── Sticky Header ─────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-
-        {/* Top bar */}
         <div className="mb-4 flex items-center justify-between gap-4">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-slate-500">
-            <button type="button" onClick={() => navigate("/equipment")} className="transition-colors hover:text-slate-300">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500"
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/equipment")}
+              className="transition-colors hover:text-slate-300"
+            >
               Equipment
             </button>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-slate-300">{eq.name} ({eq.assetNumber})</span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate text-slate-300">
+              {equipment.name} ({equipment.assetNumber})
+            </span>
           </nav>
+
           <div className="flex shrink-0 items-center gap-2">
-            <Button type="button" variant="outline"
-              className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-gray-800 hover:text-slate-100">
-              <Edit className="h-3.5 w-3.5" /> Edit Equipment
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void copyValue(equipment.assetNumber, "asset")}
+              className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+            >
+              {copied === "asset" ? (
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copied === "asset" ? "Copied" : "Copy asset ref"}
             </Button>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => void loadHistoryIntelligence()}
+              disabled={loading}
+              aria-label="Refresh maintenance history intelligence"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/equipment/${equipment.id}/notifications`)}
+              aria-label="Equipment notifications"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            >
               <Bell className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => navigate("/settings")} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              aria-label="Profile settings"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            >
               <UserCircle className="h-7 w-7" />
             </button>
           </div>
         </div>
 
-        {/* Equipment header row */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
           <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
-            <img src={eq.image} alt={eq.name} className="h-full w-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <img
+              src={equipment.image}
+              alt={equipment.name}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
           </div>
+
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-50">{eq.name}</h1>
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
-                {eq.riskLevel} Risk
+              <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+                {equipment.name}
+              </h1>
+              <Badge
+                className={`inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
+                {equipment.riskLevel} Risk
               </Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <EquipmentRiskIndicator riskLevel={eq.riskLevel} />
-              <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
-              <span className="text-sm text-slate-500">{eq.statusNote}</span>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <EquipmentRiskIndicator riskLevel={equipment.riskLevel} />
+              <span className="text-sm font-semibold text-slate-200">
+                {equipment.status}
+              </span>
+              <span className="text-sm text-slate-500">
+                {equipment.statusNote}
+              </span>
             </div>
+
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-              <span className="font-medium text-slate-300">{eq.assetNumber}</span>
-              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">{eq.type}</span>
-              <span>📍 {eq.area}</span>
-              <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
-              <span>Model: <span className="text-slate-300">{eq.model}</span></span>
-              <span>Serial Number: <span className="text-slate-300">{eq.serialNumber}</span></span>
-              <span>Install Date: <span className="text-slate-300">{eq.installDate}</span></span>
-              <span>Warranty: <span className="text-orange-400">{eq.warranty}</span></span>
-              <span>Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
+              <span className="font-medium text-slate-300">
+                {equipment.assetNumber}
+              </span>
+              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">
+                {equipment.type}
+              </span>
+              <span>📍 {equipment.area}</span>
+              <span>
+                Manufacturer: {" "}
+                <span className="text-slate-300">
+                  {equipment.manufacturer}
+                </span>
+              </span>
+              <span>
+                Model: <span className="text-slate-300">{equipment.model}</span>
+              </span>
+              <span>
+                Criticality: {" "}
+                <span className="text-slate-300">
+                  {equipment.criticality}
+                </span>
+              </span>
             </div>
           </div>
+
           <div className="flex shrink-0 flex-col gap-2 lg:w-52">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Score</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Risk Score
+            </span>
             <div className="flex items-end gap-3">
-              <span className="text-4xl font-bold text-slate-50">{eq.riskScore}%</span>
-              <Badge className={`mb-1 inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>
-                {eq.riskLevel}
+              <span className="text-4xl font-bold text-slate-50">
+                {equipment.riskScore}%
+              </span>
+              <Badge
+                className={`mb-1 inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}
+              >
+                {equipment.riskLevel}
               </Badge>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-slate-500">Risk Drivers</span>
-              <div className="flex h-2 overflow-hidden rounded-full">
-                {eq.riskBreakdown.map((b) => (
-                  <div key={b.label} style={{ width: `${(b.pct / riskTotal) * 100}%`, backgroundColor: b.color }} />
+              <span className="text-xs font-medium text-slate-500">
+                Risk drivers
+              </span>
+              <div className="flex h-2 overflow-hidden rounded-full bg-gray-800">
+                {equipment.riskBreakdown.map((driver) => (
+                  <div
+                    key={driver.label}
+                    style={{
+                      width: `${(driver.pct / riskTotal) * 100}%`,
+                      backgroundColor: driver.color,
+                    }}
+                  />
                 ))}
               </div>
               <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                {eq.riskBreakdown.map((b) => (
-                  <span key={b.label} className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-                    <span className={`h-1.5 w-1.5 rounded-full ${b.dotClass}`} />
-                    {b.label} {b.pct}%
+                {equipment.riskBreakdown.map((driver) => (
+                  <span
+                    key={driver.label}
+                    className="inline-flex items-center gap-1 text-[10px] text-slate-400"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${driver.dotClass}`}
+                    />
+                    {driver.label} {driver.pct}%
                   </span>
                 ))}
               </div>
@@ -325,265 +882,545 @@ export const EquipmentHistory = (): JSX.Element => {
           </div>
         </div>
 
-        {/* Tab navigation */}
-        <EquipmentTabNavigation equipmentId={eq.id} activeTab="history" />
+        <EquipmentTabNavigation
+          equipmentId={equipment.id}
+          activeTab="history"
+        />
       </div>
 
-      {/* ── Page Content ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
+        <Card className="overflow-hidden rounded-2xl border border-violet-500/25 bg-[linear-gradient(135deg,#151824_0%,#10151d_55%,#151222_100%)] shadow-none">
+          <CardContent className="p-0">
+            <div className="grid xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.55fr)]">
+              <div className="p-5 md:p-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="h-auto rounded bg-violet-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300 shadow-none">
+                    Reliability history intelligence
+                  </Badge>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <Database className="h-3.5 w-3.5" />
+                    SAP work history · downtime · outcomes · risk snapshots · {formatDateTime(lastUpdated)}
+                  </span>
+                </div>
 
-        {/* ── Timeline Card ────────────────────────────────────────────────── */}
-        <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-          <CardContent className="p-4">
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-200">Maintenance History Timeline</h2>
-                <p className="text-[11px] text-slate-500">Equipment events over the last 12 months (May 2024 → Apr 2025)</p>
-              </div>
-              <div className="flex items-center gap-1">
-                {([
-                  { id: "all", label: "All Activity" },
-                  { id: "12m", label: "12 Months" },
-                  { id: "6m",  label: "6 Months" },
-                  { id: "30d", label: "30 Days" },
-                ] as const).map((opt) => (
-                  <button key={opt.id} type="button" onClick={() => setTimeRange(opt.id)}
-                    className={`rounded px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                      timeRange === opt.id
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-500 hover:bg-gray-800 hover:text-slate-300"
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <h2 className="mt-4 text-xl font-semibold text-slate-50">
+                  Reliability History Briefing
+                </h2>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+                  {briefing}
+                </p>
 
-            {/* SVG Timeline */}
-            <div className="w-full">
-              <svg
-                viewBox={`0 0 ${TIMELINE_W} ${TIMELINE_H}`}
-                className="h-auto w-full"
-                aria-hidden="true"
-              >
-                {/* Month grid lines */}
-                {MONTHS.map((_, i) => (
-                  <line key={i}
-                    x1={LEFT_PAD + i * colW} y1={TOP_PAD}
-                    x2={LEFT_PAD + i * colW} y2={TIMELINE_H - 22}
-                    stroke="#ffffff08" strokeWidth="1"
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Metric
+                    label="History records"
+                    value={rangedRows.length}
+                    detail={`${correctiveRows.length} corrective · ${preventiveRows.length} planned or verified`}
                   />
-                ))}
+                  <Metric
+                    label="Recorded downtime"
+                    value={formatDuration(totalDowntimeMinutes)}
+                    detail={`${formatDuration(avgCorrectiveDowntime)} average per corrective event`}
+                    tone={totalDowntimeMinutes > 0 ? "text-orange-300" : "text-emerald-300"}
+                  />
+                  <Metric
+                    label="Recurrence rate"
+                    value={`${recurrenceRate}%`}
+                    detail={`${failurePatterns.filter((pattern) => pattern.count > 1).length} repeat pattern${failurePatterns.filter((pattern) => pattern.count > 1).length === 1 ? "" : "s"} detected`}
+                    tone={recurrenceRate >= 40 ? "text-red-300" : recurrenceRate > 0 ? "text-yellow-300" : "text-emerald-300"}
+                  />
+                  <Metric
+                    label="Outcome quality"
+                    value={`${outcomeQuality}%`}
+                    detail={`${weakOutcomeRows.length} weak or unresolved outcome${weakOutcomeRows.length === 1 ? "" : "s"}`}
+                    tone={outcomeQuality >= 80 ? "text-emerald-300" : outcomeQuality >= 60 ? "text-yellow-300" : "text-red-300"}
+                  />
+                </div>
 
-                {/* Event rows */}
-                {TIMELINE_ROWS.map((row, ri) => {
-                  const y = TOP_PAD + ri * 28 + 10;
-                  return (
-                    <g key={row.label}>
-                      <text x={LEFT_PAD - 6} y={y + 4} textAnchor="end"
-                        fill="#94a3b8" fontSize="9" fontWeight="500">
-                        {row.label}
-                      </text>
-                      {/* Faint connector line */}
-                      <line x1={LEFT_PAD} y1={y + 4} x2={LEFT_PAD + chartW} y2={y + 4}
-                        stroke="#ffffff06" strokeWidth="1" />
-                      {/* Dots */}
-                      {row.dots.map((mi) => (
-                        <circle key={mi}
-                          cx={LEFT_PAD + mi * colW}
-                          cy={y + 4}
-                          r="4"
-                          fill={row.color}
-                          opacity="0.9"
-                        />
-                      ))}
-                    </g>
-                  );
-                })}
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <div className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-gray-700 bg-[#0a0f16] px-3 focus-within:border-violet-500/60">
+                    <Sparkles className="h-4 w-4 shrink-0 text-violet-400" />
+                    <input
+                      value={question}
+                      onChange={(event) => setQuestion(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") askVorta();
+                      }}
+                      placeholder={`Ask Vorta about ${equipment.assetNumber} reliability history...`}
+                      className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => askVorta()}
+                    className="min-h-11 gap-2 bg-violet-600 px-5 text-white hover:bg-violet-500"
+                  >
+                    <BrainCircuit className="h-4 w-4" />
+                    Ask Vorta
+                  </Button>
+                </div>
+              </div>
 
-                {/* Month labels */}
-                {MONTHS.map((m, i) => (
-                  <text key={m}
-                    x={LEFT_PAD + i * colW} y={TIMELINE_H - 6}
-                    textAnchor="middle" fill="#475569" fontSize="8.5">
-                    {m}
-                  </text>
-                ))}
-              </svg>
+              <div className="border-t border-gray-800 bg-[#0b1017]/70 p-5 xl:border-l xl:border-t-0 md:p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Highest recurring exposure
+                </p>
+
+                {highestPattern ? (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-300">
+                        <Repeat2 className="h-5 w-5" />
+                      </div>
+                      <Badge className="h-auto rounded border border-red-500/25 bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-300 shadow-none">
+                        {highestPattern.count} linked events
+                      </Badge>
+                    </div>
+                    <h3 className="mt-4 text-base font-semibold text-slate-100">
+                      {highestPattern.label}
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      The pattern has generated {formatDuration(highestPattern.downtimeMinutes)} recorded downtime and {highestPattern.weakOutcomes} weak or recurring outcome{highestPattern.weakOutcomes === 1 ? "" : "s"}.
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <Metric
+                        label="Latest event"
+                        value={formatDate(highestPattern.latestDate)}
+                        detail="Most recent linked record"
+                      />
+                      <Metric
+                        label="Risk after actions"
+                        value={`${projectedRisk}%`}
+                        detail={`${riskQueue?.totalCalculatedReduction ?? 0} points available`}
+                        tone="text-emerald-300"
+                      />
+                    </div>
+
+                    <div className="mt-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-300/80">
+                        Linked evidence
+                      </p>
+                      <p className="mt-1 break-words font-mono text-xs leading-5 text-violet-100/70">
+                        {highestPattern.references.slice(0, 4).join(" · ")}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        askVorta(
+                          `Analyse the repeat failure pattern ${highestPattern.label} on ${equipment.name}. Use ${highestPattern.references.join(", ")} and explain the likely root cause, weak repairs, downtime impact, relevant spares, documents and permanent corrective action.`,
+                        )
+                      }
+                      className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 hover:text-violet-300"
+                    >
+                      Analyse repeat failure
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    <p className="mt-3 text-sm font-semibold text-emerald-200">
+                      No dominant repeat pattern
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-emerald-100/60">
+                      The available maintenance history does not currently show a recurring failure mode.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <button type="button" className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              View complete maintenance history →
-            </button>
           </CardContent>
         </Card>
 
-        {/* ── KPI Row ───────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
-          {[
-            { label: "Total Work Orders", value: "156",       suffix: "",    trend: "+15%",  trendUp: true  },
-            { label: "Breakdowns",        value: "27",        suffix: "",    trend: "-16%",  trendUp: false },
-            { label: "Total Downtime",    value: "142h 35m",  suffix: "",    trend: "",      trendUp: null  },
-            { label: "Downtime Cost",     value: "£28,450",   suffix: "",    trend: "",      trendUp: null  },
-            { label: "MTTR",              value: "6.2",       suffix: " hrs",trend: "-24h",  trendUp: false },
-            { label: "MTBF",              value: "312",       suffix: " hrs",trend: "",      trendUp: null  },
-          ].map((kpi) => (
-            <Card key={kpi.label} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{kpi.label}</p>
-                <p className="text-2xl font-bold text-slate-50">
-                  {kpi.value}<span className="text-base font-semibold text-slate-400">{kpi.suffix}</span>
-                </p>
-                {kpi.trend && (
-                  <p className={`mt-1 text-[11px] font-semibold ${kpi.trendUp ? "text-emerald-400" : "text-red-400"}`}>
-                    {kpi.trendUp ? "↑" : "↓"} {kpi.trend}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.45fr)]">
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-violet-400" />
+                    <h2 className="text-base font-semibold text-slate-100">
+                      Maintenance and Risk Timeline
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Monthly maintenance activity with the available equipment-risk trajectory.
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* ── Main row: History table + right column ─────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
-
-          {/* History table */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-
-              {/* Toolbar */}
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[160px] max-w-xs">
-                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-                  <input type="text" placeholder="Search WO number, description..."
-                    value={search} onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-lg border border-gray-700 bg-[#0d1118] py-1.5 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50" />
                 </div>
-                {["Type: All", "Priority: All", "Outcome: All"].map((f) => (
-                  <button key={f} type="button"
-                    className="flex items-center gap-1 rounded-lg border border-gray-700 bg-[#0d1118] px-3 py-1.5 text-xs text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                    {f} <ChevronRight className="h-3 w-3 rotate-90" />
-                  </button>
-                ))}
-                <button type="button"
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-[#0d1118] px-3 py-1.5 text-xs text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                  <Filter className="h-3 w-3" /> More filters
-                </button>
-                <Button type="button" variant="outline"
-                  className="ml-auto h-auto gap-1.5 border-blue-500/50 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold text-blue-400 hover:bg-blue-600/20 shadow-none">
-                  <Download className="h-3.5 w-3.5" /> Export
-                </Button>
+                <div className="flex rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
+                  {([
+                    ["All", "all"],
+                    ["12M", "12m"],
+                    ["6M", "6m"],
+                    ["30D", "30d"],
+                  ] as const).map(([label, value]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRange(value)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        range === value
+                          ? "bg-violet-600 text-white"
+                          : "text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      {["Date", "WO Number", "Type", "Priority", "Description", "Downtime", "Outcome"].map((h) => (
-                        <th key={h} className="py-2 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 first:pl-0">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((row, i) => (
-                      <tr key={row.woNumber} className={i !== filtered.length - 1 ? "border-b border-gray-800" : ""}>
-                        <td className="py-3 pr-3 text-slate-400 whitespace-nowrap">{row.date}</td>
-                        <td className="py-3 pr-3 font-mono text-[11px] font-semibold text-slate-200">{row.woNumber}</td>
-                        <td className="py-3 pr-3">
-                          <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${typeClass(row.type)}`}>
-                            {row.type}
-                          </Badge>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${priorityClass(row.priority)}`}>
-                            {row.priority}
-                          </Badge>
-                        </td>
-                        <td className="py-3 pr-3 max-w-[200px]">
-                          <span className="block truncate text-slate-300" title={row.description}>{row.description}</span>
-                        </td>
-                        <td className="py-3 pr-3 font-semibold text-slate-200 whitespace-nowrap">{row.downtime}</td>
-                        <td className="py-3">
-                          <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${outcomeClass(row.outcome)}`}>
-                            {row.outcome}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-5 overflow-x-auto">
+                <svg
+                  viewBox="0 0 1180 240"
+                  className="min-w-[760px] w-full"
+                  role="img"
+                  aria-label="Monthly maintenance events and equipment risk trend"
+                >
+                  {[38, 78, 118, 158, 198].map((y) => (
+                    <line
+                      key={y}
+                      x1="44"
+                      x2="1148"
+                      y1={y}
+                      y2={y}
+                      stroke="#ffffff0a"
+                      strokeWidth="1"
+                    />
+                  ))}
+                  {monthlySeries.map((month, index) => {
+                    const height = (month.eventCount / maxMonthlyEvents) * 110;
+                    const x = 44 + index * 96;
+                    return (
+                      <g key={month.key}>
+                        <rect
+                          x={x}
+                          y={198 - height}
+                          width="36"
+                          height={height}
+                          rx="6"
+                          fill="#8b5cf6"
+                          opacity="0.35"
+                        />
+                        <rect
+                          x={x}
+                          y={198 - height}
+                          width="36"
+                          height="2"
+                          rx="1"
+                          fill="#a78bfa"
+                        />
+                        <text
+                          x={x + 18}
+                          y="225"
+                          textAnchor="middle"
+                          fill="#64748b"
+                          fontSize="10"
+                        >
+                          {month.label}
+                        </text>
+                        {month.eventCount > 0 ? (
+                          <text
+                            x={x + 18}
+                            y={190 - height}
+                            textAnchor="middle"
+                            fill="#c4b5fd"
+                            fontSize="9"
+                            fontWeight="600"
+                          >
+                            {month.eventCount}
+                          </text>
+                        ) : null}
+                      </g>
+                    );
+                  })}
+                  {riskPoints.length > 1 ? (
+                    <polyline
+                      points={riskPoints.join(" ")}
+                      fill="none"
+                      stroke="#22d3ee"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ) : null}
+                  {monthlySeries.map((month, index) =>
+                    month.riskScore == null ? null : (
+                      <circle
+                        key={`risk-${month.key}`}
+                        cx={62 + index * 96}
+                        cy={198 - (month.riskScore / 100) * 160}
+                        r="4"
+                        fill="#0f172a"
+                        stroke="#22d3ee"
+                        strokeWidth="2"
+                      />
+                    ),
+                  )}
+                </svg>
               </div>
 
-              {/* Pagination */}
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">Page {page} of 12</span>
-                <div className="flex items-center gap-1">
-                  <button type="button"
-                    className="flex items-center gap-1 rounded border border-gray-700 px-2.5 py-1 text-[11px] text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                    <ChevronLeft className="h-3 w-3" /> Previous
-                  </button>
-                  <button type="button"
-                    className="flex items-center gap-1 rounded border border-gray-700 px-2.5 py-1 text-[11px] text-slate-400 hover:bg-gray-800 hover:text-slate-200 transition-colors">
-                    Next <ChevronRight className="h-3 w-3" />
-                  </button>
-                </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-5 rounded bg-violet-500/40 ring-1 ring-inset ring-violet-400/60" />
+                  Maintenance events
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-0.5 w-5 bg-cyan-400" />
+                  Equipment risk score
+                </span>
+                <span>{formatDuration(totalDowntimeMinutes)} downtime in selected range</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Right column */}
-          <div className="flex flex-col gap-4">
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-cyan-400" />
+                <h2 className="text-base font-semibold text-slate-100">
+                  Current Reliability Context
+                </h2>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Historical evidence connected to the live Vorta risk model.
+              </p>
 
-            {/* Top Failure Modes */}
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-slate-200">Top Failure Modes</h2>
-                  <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                    View all →
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Metric
+                  label="Current risk"
+                  value={`${latestRisk}%`}
+                  detail={equipment.riskLevel}
+                  tone={latestRisk >= 75 ? "text-red-300" : latestRisk >= 50 ? "text-orange-300" : "text-emerald-300"}
+                />
+                <Metric
+                  label="Projected risk"
+                  value={`${projectedRisk}%`}
+                  detail={`${riskQueue?.totalCalculatedReduction ?? 0} points available`}
+                  tone="text-emerald-300"
+                />
+                <Metric
+                  label="Risk movement"
+                  value={`${riskChange > 0 ? "+" : ""}${riskChange}`}
+                  detail="Across available snapshots"
+                  tone={riskChange > 0 ? "text-red-300" : riskChange < 0 ? "text-emerald-300" : "text-slate-100"}
+                />
+                <Metric
+                  label="Evidence quality"
+                  value={`${evidenceCompleteness}%`}
+                  detail="Core record fields present"
+                  tone={evidenceCompleteness >= 90 ? "text-emerald-300" : "text-yellow-300"}
+                />
+              </div>
+
+              {primaryRiskAction ? (
+                <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+                    Highest-value current action
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-slate-100">
+                    {primaryRiskAction.action}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {primaryRiskAction.detail ?? primaryRiskAction.driver}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const action = primaryRiskAction;
+                      if (action.workOrderNumber) {
+                        openWorkOrder(action.workOrderNumber);
+                      } else if (action.sparePartNumber) {
+                        navigate(`/equipment/${equipment.id}/spares`);
+                      } else {
+                        askVorta(`Explain why this is the highest-value action for ${equipment.name}: ${action.action}`);
+                      }
+                    }}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200"
+                  >
+                    Open supporting evidence
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex flex-col gap-2.5">
-                  {[
-                    { label: "Motor Overload",          count: 12, color: "#ef4444" },
-                    { label: "PLC Communication Fault", count: 8,  color: "#f97316" },
-                    { label: "Bearing Failure",         count: 6,  color: "#eab308" },
-                    { label: "Sensor Failure",          count: 5,  color: "#10b981" },
-                    { label: "Pneumatic Leak",          count: 4,  color: "#3b82f6" },
-                    { label: "Encoder Fault",           count: 3,  color: "#8b5cf6" },
-                  ].map((fm) => (
-                    <div key={fm.label} className="flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-800">
-                        <div className="h-full rounded-full" style={{ width: `${(fm.count / 12) * 100}%`, backgroundColor: fm.color }} />
-                      </div>
-                      <span className="w-20 shrink-0 truncate text-[11px] text-slate-400">{fm.label}</span>
-                      <span className="shrink-0 text-[11px] font-bold text-slate-200">{fm.count}</span>
-                    </div>
-                  ))}
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Repeat2 className="h-4 w-4 text-red-400" />
+                    <h2 className="text-base font-semibold text-slate-100">
+                      Failure Pattern Intelligence
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Repeated fault codes and recurring maintenance themes ranked by frequency and downtime.
+                  </p>
                 </div>
+                <Badge className="h-auto rounded border border-red-500/20 bg-red-500/[0.07] px-2 py-1 text-[10px] font-semibold text-red-300 shadow-none">
+                  {failurePatterns.filter((pattern) => pattern.count > 1).length} repeat patterns
+                </Badge>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {failurePatterns.slice(0, 6).map((pattern, index) => (
+                  <article
+                    key={pattern.label}
+                    className="rounded-xl border border-gray-800 bg-[#0d1219] p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-xs font-bold text-red-300">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-100">
+                              {pattern.label}
+                            </h3>
+                            <p className="mt-1 font-mono text-[10px] text-blue-300">
+                              {pattern.references.slice(0, 5).join(" · ")}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-semibold text-slate-100">
+                              {pattern.count}
+                            </p>
+                            <p className="text-[9px] uppercase tracking-wide text-slate-600">
+                              events
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-800">
+                          <div
+                            className="h-full rounded-full bg-red-400/70 ring-1 ring-inset ring-red-300/60"
+                            style={{
+                              width: `${(pattern.count / maxPatternCount) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                          <span>{formatDuration(pattern.downtimeMinutes)} downtime</span>
+                          <span>{pattern.weakOutcomes} weak outcome{pattern.weakOutcomes === 1 ? "" : "s"}</span>
+                          <span>Latest {formatDate(pattern.latestDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+
+                {!loading && failurePatterns.length === 0 ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-8 text-center">
+                    <ShieldCheck className="mx-auto h-6 w-6 text-emerald-400" />
+                    <p className="mt-3 text-sm font-semibold text-emerald-200">
+                      No recurring failure pattern detected
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Available corrective history does not yet form a repeat cluster.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-4">
+            <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2">
+                  <Clock3 className="h-4 w-4 text-orange-400" />
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Downtime Concentration
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  The largest recorded events in the selected period.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {topDowntimeRows.map((row, index) => {
+                    const minutes = parseDowntimeMinutes(row.downtime);
+                    const width =
+                      topDowntimeMinutes > 0
+                        ? (minutes / Math.max(1, parseDowntimeMinutes(topDowntimeRows[0]?.downtime ?? ""))) * 100
+                        : 0;
+                    return (
+                      <button
+                        key={row.woNumber}
+                        type="button"
+                        onClick={() => openWorkOrder(row.woNumber)}
+                        className="w-full rounded-xl border border-gray-800 bg-[#0d1219] p-3 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/[0.03]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono text-[10px] text-blue-300">
+                              {index + 1}. {row.woNumber}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-300">
+                              {row.description}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs font-semibold text-orange-300">
+                            {row.downtime}
+                          </span>
+                        </div>
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-800">
+                          <div
+                            className="h-full rounded-full bg-orange-400/70"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="mt-4 text-xs text-slate-500">
+                  Top three events account for <span className="font-semibold text-orange-300">{downtimeConcentration}%</span> of recorded downtime.
+                </p>
               </CardContent>
             </Card>
 
-            {/* Failure History */}
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-slate-200">Failure History</h2>
-                  <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                    View all →
-                  </button>
+            <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-emerald-400" />
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Maintenance Balance
+                  </h2>
                 </div>
-                <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                  {FAILURE_HISTORY.map((fh) => (
-                    <div key={fh.woNumber} className="flex items-center justify-between py-2.5">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[11px] text-slate-300">{fh.date}</span>
-                        <span className="font-mono text-[10px] text-slate-500">{fh.woNumber}</span>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Planned work versus reactive intervention in the selected period.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {[
+                    { label: "Corrective / breakdown", value: correctiveRows.length, tone: "bg-red-400" },
+                    { label: "Preventive", value: rangedRows.filter(isPreventive).length, tone: "bg-emerald-400" },
+                    { label: "Inspection / calibration", value: rangedRows.filter(isInspection).length, tone: "bg-cyan-400" },
+                    { label: "Other", value: rangedRows.filter((row) => !isCorrective(row) && !isPreventive(row) && !isInspection(row)).length, tone: "bg-slate-500" },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+                        <span className="text-slate-400">{item.label}</span>
+                        <span className="font-semibold text-slate-200">{item.value}</span>
                       </div>
-                      <Badge className={`h-auto rounded px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${priorityClass(fh.priority)}`}>
-                        {fh.priority}
-                      </Badge>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
+                        <div
+                          className={`h-full rounded-full ${item.tone}`}
+                          style={{
+                            width: `${rangedRows.length > 0 ? (item.value / rangedRows.length) * 100 : 0}%`,
+                            opacity: 0.7,
+                          }}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -592,179 +1429,264 @@ export const EquipmentHistory = (): JSX.Element => {
           </div>
         </div>
 
-        {/* ── Middle row: Spare Parts | Maintenance Frequency | Component Interventions ─ */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card
+          id="history-register"
+          className="scroll-mt-48 rounded-2xl border border-gray-800 bg-[#141820] shadow-none"
+        >
+          <CardContent className="p-0">
+            <div className="flex flex-col gap-3 border-b border-gray-800 p-4 lg:flex-row lg:items-center lg:justify-between md:p-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-violet-400" />
+                  <h2 className="text-base font-semibold text-slate-100">
+                    Maintenance Evidence Register
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Searchable SAP work history with outcome, downtime and repeat-pattern evidence.
+                </p>
+              </div>
 
-          {/* Spare Parts Used */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-200">Spare Parts Used</h2>
-                <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                  View all parts →
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      {["Part Name", "Part Number", "Usage", "Total Cost"].map((h) => (
-                        <th key={h} className="py-1.5 pr-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 first:pl-0">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SPARE_PARTS.map((p, i) => (
-                      <tr key={p.partNumber} className={i !== SPARE_PARTS.length - 1 ? "border-b border-gray-800" : ""}>
-                        <td className="py-2 pr-2 text-slate-200 font-medium">{p.name}</td>
-                        <td className="py-2 pr-2 font-mono text-[10px] text-slate-400">{p.partNumber}</td>
-                        <td className="py-2 pr-2 text-slate-400 text-center">{p.usage}</td>
-                        <td className="py-2 font-semibold text-slate-200">{p.cost}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+              <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search WO, failure, outcome..."
+                    className="h-9 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-violet-500 sm:w-64"
+                  />
+                </div>
 
-          {/* Maintenance Frequency */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-200">Maintenance Frequency</h2>
-                <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                  View detailed report →
-                </button>
-              </div>
-              <div className="flex justify-center mb-3">
-                <SegmentedDonut
-                  segments={[
-                    { value: 15, color: "#ef4444" },
-                    { value: 25, color: "#f97316" },
-                    { value: 40, color: "#10b981" },
-                    { value: 15, color: "#3b82f6" },
-                    { value: 5,  color: "#6b7280" },
-                  ]}
-                  size={110}
-                  strokeWidth={14}
-                  label="Maintenance"
-                  sublabel="100%"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { label: "Breakdown",  pct: "15%", color: "#ef4444" },
-                  { label: "Corrective", pct: "25%", color: "#f97316" },
-                  { label: "Preventive", pct: "40%", color: "#10b981" },
-                  { label: "Inspection", pct: "15%", color: "#3b82f6" },
-                  { label: "Other",      pct: "5%",  color: "#6b7280" },
-                ].map((l) => (
-                  <div key={l.label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
-                      <span className="text-[11px] text-slate-400">{l.label}</span>
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-200">{l.pct}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex flex-wrap rounded-lg border border-gray-700 bg-[#0b0e14] p-1">
+                  {([
+                    ["All", "ALL"],
+                    ["Attention", "ATTENTION"],
+                    ["Corrective", "CORRECTIVE"],
+                    ["Preventive", "PREVENTIVE"],
+                    ["Inspection", "INSPECTION"],
+                  ] as const).map(([label, value]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFilter(value)}
+                      className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                        filter === value
+                          ? "bg-violet-600 text-white"
+                          : "text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-          {/* Component Interventions */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-200">Component Interventions</h2>
-                <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                  View all →
-                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportHistory}
+                  className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
               </div>
-              <div className="flex flex-col gap-2.5">
-                {[
-                  { label: "Gripper Assembly", count: 24, color: "#10b981" },
-                  { label: "Main Arm",         count: 18, color: "#3b82f6" },
-                  { label: "Control Panel",    count: 15, color: "#f97316" },
-                  { label: "Drive Motor",      count: 12, color: "#8b5cf6" },
-                  { label: "Encoder",          count: 9,  color: "#eab308" },
-                  { label: "Pneumatic System", count: 7,  color: "#6b7280" },
-                ].map((ci) => (
-                  <div key={ci.label} className="flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-800">
-                      <div className="h-full rounded-full" style={{ width: `${(ci.count / 24) * 100}%`, backgroundColor: ci.color }} />
-                    </div>
-                    <span className="w-28 shrink-0 truncate text-[11px] text-slate-400">{ci.label}</span>
-                    <span className="shrink-0 text-[11px] font-bold text-slate-200">{ci.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* ── Bottom row: Activity Feed + Quick Actions ─────────────────── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1120px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-gray-800 text-[10px] uppercase tracking-wide text-slate-600">
+                    <th className="px-4 py-3 font-semibold">Date / reference</th>
+                    <th className="px-4 py-3 font-semibold">Work type</th>
+                    <th className="px-4 py-3 font-semibold">Priority</th>
+                    <th className="px-4 py-3 font-semibold">Maintenance evidence</th>
+                    <th className="px-4 py-3 font-semibold">Downtime</th>
+                    <th className="px-4 py-3 font-semibold">Outcome</th>
+                    <th className="px-4 py-3 font-semibold">Pattern</th>
+                    <th className="px-4 py-3 font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading
+                    ? Array.from({ length: 5 }).map((_, index) => (
+                        <tr key={index} className="border-b border-gray-800/70">
+                          <td colSpan={8} className="px-4 py-4">
+                            <div className="h-12 animate-pulse rounded-lg bg-[#171c25]" />
+                          </td>
+                        </tr>
+                      ))
+                    : filteredRows.map((row) => {
+                        const pattern = extractFailurePattern(row.description);
+                        return (
+                          <tr
+                            key={`${row.woNumber}-${row.date}`}
+                            className="border-b border-gray-800/70 transition-colors last:border-b-0 hover:bg-white/[0.015]"
+                          >
+                            <td className="px-4 py-4 align-top">
+                              <p className="text-xs text-slate-400">
+                                {formatDate(row.date)}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => openWorkOrder(row.woNumber)}
+                                className="mt-1 font-mono text-xs font-semibold text-blue-300 hover:text-blue-200"
+                              >
+                                {row.woNumber}
+                              </button>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <Badge
+                                className={`h-auto rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${typeClass(
+                                  row.type,
+                                )}`}
+                              >
+                                {row.type}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <Badge
+                                className={`h-auto rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${priorityClass(
+                                  row.priority,
+                                )}`}
+                              >
+                                {row.priority}
+                              </Badge>
+                            </td>
+                            <td className="max-w-[420px] px-4 py-4 align-top">
+                              <p className="text-xs leading-5 text-slate-300">
+                                {row.description}
+                              </p>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-4 align-top text-xs font-semibold text-orange-300">
+                              {row.downtime}
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <Badge
+                                className={`h-auto rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${outcomeClass(
+                                  row.outcome,
+                                )}`}
+                              >
+                                {row.outcome}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              {pattern ? (
+                                <span className="inline-flex rounded border border-violet-500/20 bg-violet-500/[0.07] px-2 py-1 font-mono text-[10px] text-violet-300">
+                                  {pattern}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-600">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void copyValue(row.woNumber, row.woNumber)}
+                                  aria-label={`Copy ${row.woNumber}`}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-700 text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                                >
+                                  {copied === row.woNumber ? (
+                                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openWorkOrder(row.woNumber)}
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-700 px-3 text-xs font-semibold text-blue-400 transition-colors hover:border-blue-500/40 hover:bg-blue-500/5 hover:text-blue-300"
+                                >
+                                  Open WO
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Activity Feed */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-200">Activity Feed</h2>
-                <button type="button" className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap">
-                  View full activity feed →
-                </button>
+            {!loading && filteredRows.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <FileSearch className="mx-auto h-7 w-7 text-slate-600" />
+                <p className="mt-3 text-sm font-medium text-slate-300">
+                  No history records match this view
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Change the date range, filter or search term.
+                </p>
               </div>
-              <div className="flex flex-col gap-0 divide-y divide-gray-800">
-                {ACTIVITY_FEED.map((item) => {
-                  const Icon = item.Icon;
-                  return (
-                    <div key={item.datetime + item.text} className="flex items-center gap-3 py-2.5">
-                      <Icon className={`h-3.5 w-3.5 shrink-0 ${item.iconClass}`} />
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <span className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">{item.datetime}</span>
-                        <span className="truncate text-[11px] text-slate-200">{item.text}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+            ) : null}
 
-          {/* Quick Actions */}
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-            <CardContent className="p-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-200">Quick Actions</h2>
-              <div className="flex flex-col gap-2">
-                {[
-                  { Icon: ClipboardList, label: "Create Work Order" },
-                  { Icon: Calendar,      label: "Create PM" },
-                  { Icon: Wrench,        label: "Request Spare Part" },
-                  { Icon: AlertTriangle, label: "Log Downtime" },
-                  { Icon: Download,      label: "Export History Report" },
-                ].map(({ Icon, label }) => (
-                  <button key={label} type="button"
-                    className="flex w-full items-center gap-3 rounded-lg border border-gray-800 bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-[#1a2030]">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-800">
-                      <Icon className="h-3.5 w-3.5 text-slate-400" />
-                    </div>
-                    <span className="flex-1 text-xs font-medium text-slate-300">{label}</span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-800 px-4 py-3 text-xs text-slate-500">
+              <span>
+                Showing {filteredRows.length} of {rangedRows.length} records in the selected period
+              </span>
+              <span>
+                Vorta remains read-only; maintenance execution and record changes continue in SAP.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between border-t border-gray-800 py-3 text-xs text-slate-500">
-          <span>All data is synced from Vorta Network and SAP PM. Last updated: 24 Apr 2025, 14:45</span>
-          <button type="button" aria-label="Refresh" className="text-slate-600 hover:text-slate-400 transition-colors">
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+          <CardContent className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-blue-400" />
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Reliability Investigation
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Continue from historical evidence into the records that explain current equipment risk.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(`/equipment/${equipment.id}/work-orders`)}
+                  className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  View work execution
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(`/equipment/${equipment.id}/documents`)}
+                  className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                >
+                  <FileSearch className="h-3.5 w-3.5" />
+                  Search documents
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(`/equipment/${equipment.id}/spares`)}
+                  className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Review critical spares
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => askVorta()}
+                  className="h-9 gap-2 bg-violet-600 px-3 text-xs text-white hover:bg-violet-500"
+                >
+                  <BrainCircuit className="h-3.5 w-3.5" />
+                  Analyse history
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </section>
   );
