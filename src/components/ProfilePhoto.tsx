@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+
+type WorkforceEntityType = "engineer" | "operator" | "profile";
 
 interface ProfilePhotoProps {
   name: string;
   photoUrl?: string | null;
+  entityType?: WorkforceEntityType;
+  entityId?: string | null;
   sizeClass?: string;
   shapeClass?: string;
   fallbackClass?: string;
@@ -12,10 +17,18 @@ interface ProfilePhotoProps {
   eager?: boolean;
 }
 
+const avatarCache = new Map<string, string | null>();
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const lastPart = parts[parts.length - 1];
   return `${parts[0]?.[0] ?? ""}${lastPart?.[0] ?? ""}`.toUpperCase();
+}
+
+function avatarTable(entityType: WorkforceEntityType): "engineers" | "operators" | "profiles" {
+  if (entityType === "engineer") return "engineers";
+  if (entityType === "operator") return "operators";
+  return "profiles";
 }
 
 /**
@@ -29,6 +42,8 @@ export function getDemoProfilePhotoUrl(_name: string): string {
 export function ProfilePhoto({
   name,
   photoUrl,
+  entityType,
+  entityId,
   sizeClass = "h-10 w-10",
   shapeClass = "rounded-xl",
   fallbackClass = "bg-slate-800 text-slate-300",
@@ -37,8 +52,47 @@ export function ProfilePhoto({
   alt,
   eager = false,
 }: ProfilePhotoProps): JSX.Element {
-  const resolvedPhotoUrl = photoUrl?.trim() || null;
+  const suppliedPhotoUrl = photoUrl?.trim() || null;
+  const cacheKey = entityType && entityId ? `${entityType}:${entityId}` : null;
+  const [databasePhotoUrl, setDatabasePhotoUrl] = useState<string | null>(() =>
+    cacheKey ? avatarCache.get(cacheKey) ?? null : null,
+  );
+  const resolvedPhotoUrl = suppliedPhotoUrl || databasePhotoUrl;
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (suppliedPhotoUrl || !entityType || !entityId || !cacheKey) {
+      setDatabasePhotoUrl(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (avatarCache.has(cacheKey)) {
+      setDatabasePhotoUrl(avatarCache.get(cacheKey) ?? null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void supabase
+      .from(avatarTable(entityType))
+      .select("avatar_url")
+      .eq("id", entityId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const url = !error && typeof data?.avatar_url === "string" ? data.avatar_url.trim() || null : null;
+        avatarCache.set(cacheKey, url);
+        setDatabasePhotoUrl(url);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheKey, entityId, entityType, suppliedPhotoUrl]);
 
   useEffect(() => {
     setFailed(false);
