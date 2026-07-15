@@ -303,3 +303,121 @@ section:has(> div.sticky nav[aria-label="Breadcrumb"])
   > :is(:nth-child(6), :nth-child(7), :nth-child(8)) {
   display: none;
 }
+
+/* Use the shift-cover map header space as one deliberate control layout. */
+@media (min-width: 1280px) {
+  .mb-4.flex.flex-col.gap-3:has(> div:first-child > div:first-child > h2)
+    :where(*) {
+    min-width: 0;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    ) {
+    display: grid;
+    grid-template-areas:
+      "title legends"
+      "filters legends"
+      "help navigation";
+    grid-template-columns: minmax(0, 1fr) minmax(520px, auto);
+    column-gap: 2rem;
+    row-gap: 0.875rem;
+    align-items: start;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child {
+    display: contents;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:first-child {
+    grid-area: title;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2) {
+    grid-area: legends;
+    display: grid;
+    grid-template-areas:
+      "status status"
+      "risk interaction";
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: end;
+    align-items: start;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2)
+    > div:first-child {
+    grid-area: status;
+    align-items: flex-end;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2)
+    > div:nth-child(2) {
+    grid-area: risk;
+    align-items: flex-end;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2)
+    > div:nth-child(3) {
+    grid-area: interaction;
+    align-items: flex-end;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:first-child
+    > div:nth-child(2)
+    > div
+    > div {
+    justify-content: flex-end;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:nth-child(2) {
+    grid-area: filters;
+    align-self: start;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > div:nth-child(3) {
+    grid-area: navigation;
+    justify-self: end;
+    align-self: end;
+  }
+
+  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+      > div:nth-child(3) > div.ml-auto
+    )
+    > p {
+    grid-area: help;
+    align-self: end;
+  }
+}
