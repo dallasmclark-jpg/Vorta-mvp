@@ -12,14 +12,6 @@ interface ProfilePhotoProps {
   eager?: boolean;
 }
 
-function hashName(name: string): number {
-  let hash = 0;
-  for (const character of name.trim().toLowerCase()) {
-    hash = (hash * 31 + character.charCodeAt(0)) & 0x7fffffff;
-  }
-  return hash;
-}
-
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const lastPart = parts[parts.length - 1];
@@ -27,12 +19,11 @@ function getInitials(name: string): string {
 }
 
 /**
- * Deterministic demo portrait used until a customer-controlled profile photo URL
- * is supplied from Supabase Storage or an identity provider.
+ * @deprecated Profile portraits now come from the workforce record in Supabase.
+ * Retained temporarily so older imports continue to compile while pages migrate.
  */
-export function getDemoProfilePhotoUrl(name: string): string {
-  const portraitNumber = (hashName(name) % 70) + 1;
-  return `https://i.pravatar.cc/160?img=${portraitNumber}`;
+export function getDemoProfilePhotoUrl(_name: string): string {
+  return "";
 }
 
 export function ProfilePhoto({
@@ -46,7 +37,7 @@ export function ProfilePhoto({
   alt,
   eager = false,
 }: ProfilePhotoProps): JSX.Element {
-  const resolvedPhotoUrl = photoUrl?.trim() || getDemoProfilePhotoUrl(name);
+  const resolvedPhotoUrl = photoUrl?.trim() || null;
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -55,11 +46,11 @@ export function ProfilePhoto({
 
   const sharedClassName = `${sizeClass} ${shapeClass} ${className}`;
 
-  if (failed) {
+  if (!resolvedPhotoUrl || failed) {
     return (
       <div
         className={`flex shrink-0 items-center justify-center overflow-hidden font-bold ${sharedClassName} ${fallbackClass}`}
-        aria-label={`${name} profile photo unavailable`}
+        aria-label={resolvedPhotoUrl ? `${name} profile photo unavailable` : `${name} initials`}
       >
         {fallbackText ?? getInitials(name)}
       </div>
