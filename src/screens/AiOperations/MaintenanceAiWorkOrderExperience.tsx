@@ -6,10 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type PropsWithChildren,
 } from "react";
-import {
-  supabase,
-  warmMaintenancePortalData,
-} from "../../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
+import { warmMaintenancePortalDataFast } from "../../lib/maintenancePortalFastWarmup";
 import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefetch";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
@@ -101,14 +99,7 @@ export function MaintenanceAiWorkOrderExperience({
   children,
 }: PropsWithChildren): JSX.Element {
   useEffect(() => {
-    const timeoutId = window.setTimeout(
-      warmMaintenancePortalData,
-      150,
-    );
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    warmMaintenancePortalDataFast();
   }, []);
 
   const handleNavigationIntent = useCallback(
