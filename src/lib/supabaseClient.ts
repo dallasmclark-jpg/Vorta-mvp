@@ -167,10 +167,27 @@ const MAINTENANCE_READ_FUNCTIONS = new Set([
 ]);
 
 const MAINTENANCE_CACHE_TTL_MS = 5 * 60_000;
+const MAINTENANCE_SESSION_CACHE_PREFIX =
+  "vorta:maintenance-data:";
+
+type FunctionInvokeOptions = {
+  body?: unknown;
+};
+
+type FunctionInvocationResult = {
+  data: unknown;
+  error: unknown;
+  response?: Response | null;
+};
 
 type CachedFunctionInvocation = {
   expiresAt: number;
   promise: Promise<unknown>;
+};
+
+type StoredFunctionInvocation = {
+  storedAt: number;
+  data: unknown;
 };
 
 const maintenanceFunctionCache =
@@ -184,22 +201,266 @@ const originalFunctionInvoke =
     options?: unknown,
   ) => Promise<unknown>;
 
+function invocationBody(
+  options?: unknown,
+): unknown {
+  if (
+    options &&
+    typeof options === "object" &&
+    "body" in options
+  ) {
+    return (options as FunctionInvokeOptions).body ?? null;
+  }
+
+  return null;
+}
+
 function invocationCacheKey(
   functionName: string,
   options?: unknown,
 ): string {
-  const body =
-    options &&
-    typeof options === "object" &&
-    "body" in options
-      ? (options as { body?: unknown }).body
-      : null;
-
   try {
-    return `${functionName}:${JSON.stringify(body ?? null)}`;
+    return `${functionName}:${JSON.stringify(
+      invocationBody(options),
+    )}`;
   } catch {
     return functionName;
   }
+}
+
+function sessionCacheKey(key: string): string {
+  return `${MAINTENANCE_SESSION_CACHE_PREFIX}${key}`;
+}
+
+function readStoredInvocation(
+  key: string,
+): StoredFunctionInvocation | null {
+  try {
+    const raw = sessionStorage.getItem(
+      sessionCacheKey(key),
+    );
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as StoredFunctionInvocation;
+    if (
+      typeof parsed?.storedAt !== "number" ||
+      !("data" in parsed)
+    ) {
+      sessionStorage.removeItem(
+        sessionCacheKey(key),
+      );
+      return null;
+    }
+
+    if (
+      Date.now() - parsed.storedAt >=
+      MAINTENANCE_CACHE_TTL_MS
+    ) {
+      sessionStorage.removeItem(
+        sessionCacheKey(key),
+      );
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function storeInvocation(
+  key: string,
+  data: unknown,
+): void {
+  try {
+    sessionStorage.setItem(
+      sessionCacheKey(key),
+      JSON.stringify({
+        storedAt: Date.now(),
+        data,
+      } satisfies StoredFunctionInvocation),
+    );
+  } catch {
+    // Storage quotas or privacy settings should not block page loading.
+  }
+}
+
+function removeStoredInvocations(
+  functionName?: string,
+): void {
+  try {
+    for (
+      let index = sessionStorage.length - 1;
+      index >= 0;
+      index -= 1
+    ) {
+      const storageKey = sessionStorage.key(index);
+      if (
+        !storageKey ||
+        !storageKey.startsWith(
+          MAINTENANCE_SESSION_CACHE_PREFIX,
+        )
+      ) {
+        continue;
+      }
+
+      if (!functionName) {
+        sessionStorage.removeItem(storageKey);
+        continue;
+      }
+
+      const invocationKey = storageKey.slice(
+        MAINTENANCE_SESSION_CACHE_PREFIX.length,
+      );
+      if (
+        invocationKey === functionName ||
+        invocationKey.startsWith(`${functionName}:`)
+      ) {
+        sessionStorage.removeItem(storageKey);
+      }
+    }
+  } catch {
+    // Session storage is an optimisation only.
+  }
+}
+
+function shouldUseMaintenanceProxy(): boolean {
+  if (typeof window === "undefined") return false;
+
+  return !isLocalSupabaseHost(
+    window.location.hostname,
+  );
+}
+
+async function invokeMaintenanceProxy(
+  functionName: string,
+  options?: unknown,
+): Promise<FunctionInvocationResult> {
+  const {
+    data: sessionData,
+    error: sessionError,
+  } = await supabase.auth.getSession();
+  const accessToken =
+    sessionData.session?.access_token;
+
+  if (!accessToken) {
+    return {
+      data: null,
+      error:
+        sessionError ??
+        new Error("Authentication required"),
+      response: null,
+    };
+  }
+
+  const response = await fetch(
+    `/api/maintenance-data/${encodeURIComponent(
+      functionName,
+    )}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: supabaseAnonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        invocationBody(options) ?? {},
+      ),
+    },
+  );
+
+  const contentType =
+    response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "Maintenance data proxy returned an invalid response",
+    );
+  }
+
+  const data = await response.json() as {
+    error?: unknown;
+    [key: string]: unknown;
+  };
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: new Error(
+        typeof data.error === "string"
+          ? data.error
+          : "Maintenance data could not be loaded",
+      ),
+      response,
+    };
+  }
+
+  return {
+    data,
+    error: null,
+    response,
+  };
+}
+
+async function invokeMaintenanceNetwork(
+  functionName: string,
+  options?: unknown,
+): Promise<unknown> {
+  if (shouldUseMaintenanceProxy()) {
+    try {
+      return await invokeMaintenanceProxy(
+        functionName,
+        options,
+      );
+    } catch (error) {
+      console.warn(
+        "Maintenance data proxy unavailable; falling back to Supabase",
+        error,
+      );
+    }
+  }
+
+  return originalFunctionInvoke(
+    functionName,
+    options,
+  );
+}
+
+function createNetworkInvocation(
+  functionName: string,
+  options: unknown,
+  key: string,
+): Promise<unknown> {
+  const promise = invokeMaintenanceNetwork(
+    functionName,
+    options,
+  ).then((result) => {
+    const invocationResult = result as FunctionInvocationResult;
+
+    if (invocationResult?.error) {
+      maintenanceFunctionCache.delete(key);
+      return result;
+    }
+
+    storeInvocation(
+      key,
+      invocationResult?.data ?? null,
+    );
+
+    return result;
+  }).catch((error) => {
+    maintenanceFunctionCache.delete(key);
+    throw error;
+  });
+
+  maintenanceFunctionCache.set(key, {
+    expiresAt:
+      Date.now() +
+      MAINTENANCE_CACHE_TTL_MS,
+    promise,
+  });
+
+  return promise;
 }
 
 const cachedFunctionInvoke = (
@@ -232,32 +493,29 @@ const cachedFunctionInvoke = (
     return cached.promise;
   }
 
-  const promise = originalFunctionInvoke(
+  const stored = readStoredInvocation(key);
+  if (stored) {
+    const promise = Promise.resolve({
+      data: stored.data,
+      error: null,
+      response: null,
+    } satisfies FunctionInvocationResult);
+
+    maintenanceFunctionCache.set(key, {
+      expiresAt:
+        stored.storedAt +
+        MAINTENANCE_CACHE_TTL_MS,
+      promise,
+    });
+
+    return promise;
+  }
+
+  return createNetworkInvocation(
     functionName,
     options,
-  ).then((result) => {
-    const invocationResult = result as {
-      error?: unknown;
-    };
-
-    if (invocationResult?.error) {
-      maintenanceFunctionCache.delete(key);
-    }
-
-    return result;
-  }).catch((error) => {
-    maintenanceFunctionCache.delete(key);
-    throw error;
-  });
-
-  maintenanceFunctionCache.set(key, {
-    expiresAt:
-      now +
-      MAINTENANCE_CACHE_TTL_MS,
-    promise,
-  });
-
-  return promise;
+    key,
+  );
 };
 
 (
@@ -274,6 +532,7 @@ export function clearMaintenancePortalDataCache(
 ): void {
   if (!functionName) {
     maintenanceFunctionCache.clear();
+    removeStoredInvocations();
     return;
   }
 
@@ -285,45 +544,65 @@ export function clearMaintenancePortalDataCache(
       maintenanceFunctionCache.delete(key);
     }
   }
+
+  removeStoredInvocations(functionName);
 }
 
 let maintenanceWarmupStarted = false;
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout: number },
+  ) => number;
+};
+
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+async function warmMaintenanceDataSequentially(): Promise<void> {
+  const functionNames = [
+    "skills-matrix-data",
+    "engineers-data",
+    "requirements-data",
+    "training-providers-data",
+    "ai-matching-data",
+    "training-data",
+  ];
+
+  for (const functionName of functionNames) {
+    await cachedFunctionInvoke(functionName);
+    await pause(80);
+  }
+}
+
 export function warmMaintenancePortalData(): void {
-  if (maintenanceWarmupStarted) {
+  if (
+    maintenanceWarmupStarted ||
+    typeof window === "undefined"
+  ) {
     return;
   }
 
   maintenanceWarmupStarted = true;
 
-  const primaryFunctions = [
-    "skills-matrix-data",
-    "engineers-data",
-    "requirements-data",
-  ];
-  const secondaryFunctions = [
-    "training-data",
-    "training-providers-data",
-    "ai-matching-data",
-  ];
+  const startWarmup = () => {
+    void warmMaintenanceDataSequentially();
+  };
+  const idleWindow = window as IdleWindow;
 
-  void Promise.allSettled(
-    primaryFunctions.map(
-      (functionName) =>
-        cachedFunctionInvoke(
-          functionName,
-        ),
-    ),
-  ).then(() =>
-    Promise.allSettled(
-      secondaryFunctions.map(
-        (functionName) =>
-          cachedFunctionInvoke(
-            functionName,
-          ),
-      ),
-    ),
-  );
+  if (idleWindow.requestIdleCallback) {
+    idleWindow.requestIdleCallback(
+      startWarmup,
+      { timeout: 1_200 },
+    );
+    return;
+  }
+
+  window.setTimeout(startWarmup, 600);
 }
 
 let cachedPortalUserId: string | null = null;
