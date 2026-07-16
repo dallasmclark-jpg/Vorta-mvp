@@ -18,6 +18,9 @@ const enhancedOverlaySource = readSource(
 const workOrderRegisterBridgeSource = readSource(
   "../src/screens/Equipment/EquipmentWorkOrdersWithExecution.tsx",
 );
+const workOrderEvidenceSource = readSource(
+  "../src/screens/Equipment/WorkOrderEvidenceControl.tsx",
+);
 const documentInterceptorSource = readSource(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
 );
@@ -68,6 +71,10 @@ check(
   bridgeSource.includes('data-global-work-order-overlay="true"'),
 );
 check(
+  "Work order register buttons retain their native controls",
+  bridgeSource.includes('interactiveElement.closest("#work-order-register")'),
+);
+check(
   "Maintenance portal mounts the enhanced execution overlay",
   bridgeSource.includes("<MaintenanceWorkOrderExecutionOverlay />"),
 );
@@ -81,11 +88,32 @@ check(
     ),
 );
 check(
+  "Work order register ignores native row controls",
+  workOrderRegisterBridgeSource.includes(
+    'target.closest("button,a,input,select,textarea")',
+  ),
+);
+check(
+  "Work order register mounts execution evidence control",
+  workOrderRegisterBridgeSource.includes("<WorkOrderEvidenceControl />"),
+);
+check(
   "Work order register no longer contains a duplicate execution drawer",
   !workOrderRegisterBridgeSource.includes("ExecutionDrawer") &&
     !workOrderRegisterBridgeSource.includes(
       'data-work-order-execution-drawer="true"',
     ),
+);
+check(
+  "Execution evidence control reconciles confirmations and material issues",
+  workOrderEvidenceSource.includes("Evidence coverage") &&
+    workOrderEvidenceSource.includes('row.movement_type === "261"') &&
+    workOrderEvidenceSource.includes("Final confirmations"),
+);
+check(
+  "Execution evidence control surfaces follow-up outcomes",
+  workOrderEvidenceSource.includes("Follow-up required") &&
+    workOrderEvidenceSource.includes("Temporary fixes, recurring faults"),
 );
 check(
   "Execution overlay presents a manager verdict",
