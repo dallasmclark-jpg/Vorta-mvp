@@ -1,4 +1,5 @@
 import "./vortaAiLauncherEnhancement";
+import "./vortaAiPanelEnhancement";
 
 function isControlledEquipmentDocumentUrl(value: string): boolean {
   try {
