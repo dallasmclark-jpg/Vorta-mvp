@@ -1,9 +1,13 @@
 import {
   useCallback,
+  useEffect,
   type MouseEvent as ReactMouseEvent,
   type PropsWithChildren,
 } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import {
+  supabase,
+  warmMaintenancePortalData,
+} from "../../lib/supabaseClient";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
@@ -80,6 +84,17 @@ async function getEquipmentIdForWorkOrder(
 export function MaintenanceAiWorkOrderExperience({
   children,
 }: PropsWithChildren): JSX.Element {
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      warmMaintenancePortalData,
+      150,
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
   const handleWorkOrderClick = useCallback(
     async (event: ReactMouseEvent<HTMLDivElement>): Promise<void> => {
       if (
