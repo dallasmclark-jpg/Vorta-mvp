@@ -2,6 +2,7 @@ import "./vortaAiLauncherEnhancement";
 import "./vortaAiPanelEnhancement";
 import "./vortaAiPanelMinimiseFix";
 import "./vortaAiPanelFinalCleanup";
+import "./vortaAiFaultIntelligence";
 
 function isControlledEquipmentDocumentUrl(value: string): boolean {
   try {
