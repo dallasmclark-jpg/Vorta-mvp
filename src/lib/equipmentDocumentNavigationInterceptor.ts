@@ -3,6 +3,7 @@ import "./vortaAiPanelEnhancement";
 import "./vortaAiPanelMinimiseFix";
 import "./vortaAiPanelFinalCleanup";
 import "./vortaAiWorkOrderNavigationFix";
+import "./vortaAiGenericFaultBridge";
 
 function isControlledEquipmentDocumentUrl(value: string): boolean {
   try {
