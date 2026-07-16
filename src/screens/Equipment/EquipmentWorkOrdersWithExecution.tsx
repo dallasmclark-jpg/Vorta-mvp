@@ -6,7 +6,6 @@ import { useParams } from "react-router-dom";
 import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { EquipmentWorkOrders as EquipmentWorkOrdersBase } from "./EquipmentWorkOrders";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "./GlobalWorkOrderExecutionOverlay";
-import { WorkOrderEvidenceControl } from "./WorkOrderEvidenceControl";
 
 function workOrderNumberFromRow(row: HTMLTableRowElement): string | null {
   if (row.id.startsWith("work-order-")) {
@@ -57,7 +56,6 @@ export function EquipmentWorkOrdersWithExecution(): JSX.Element {
 
   return (
     <div className="contents" onClickCapture={handleWorkOrderClick}>
-      <WorkOrderEvidenceControl />
       <EquipmentWorkOrdersBase />
     </div>
   );
