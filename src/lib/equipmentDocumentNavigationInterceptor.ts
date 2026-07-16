@@ -1,5 +1,6 @@
 import "./vortaAiLauncherEnhancement";
 import "./vortaAiPanelEnhancement";
+import "./vortaAiPanelMinimiseFix";
 
 function isControlledEquipmentDocumentUrl(value: string): boolean {
   try {
