@@ -15,6 +15,9 @@ const bridgeSource = readSource(
 const enhancedOverlaySource = readSource(
   "../src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx",
 );
+const workOrderRegisterBridgeSource = readSource(
+  "../src/screens/Equipment/EquipmentWorkOrdersWithExecution.tsx",
+);
 const documentInterceptorSource = readSource(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
 );
@@ -67,6 +70,22 @@ check(
 check(
   "Maintenance portal mounts the enhanced execution overlay",
   bridgeSource.includes("<MaintenanceWorkOrderExecutionOverlay />"),
+);
+check(
+  "Work order register rows dispatch the shared overlay event",
+  workOrderRegisterBridgeSource.includes(
+    "new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT",
+  ) &&
+    workOrderRegisterBridgeSource.includes(
+      '"#work-order-register tbody tr"',
+    ),
+);
+check(
+  "Work order register no longer contains a duplicate execution drawer",
+  !workOrderRegisterBridgeSource.includes("ExecutionDrawer") &&
+    !workOrderRegisterBridgeSource.includes(
+      'data-work-order-execution-drawer="true"',
+    ),
 );
 check(
   "Execution overlay presents a manager verdict",
