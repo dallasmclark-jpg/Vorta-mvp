@@ -24,13 +24,12 @@ import { TrainingProvidersSection } from "../TrainingProviders";
 import { AiMatchingSection } from "../AiMatching";
 import { SettingsSection } from "../Settings";
 import { EquipmentSection, EquipmentOverview, EquipmentNotifications, EquipmentWorkOrders, EquipmentPMs, EquipmentHistory, EquipmentSkills, EquipmentSpares, EquipmentDocuments, EquipmentDocumentViewer, EquipmentAiInsights } from "../Equipment";
-import { GlobalWorkOrderExecutionOverlay } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { CareerSection } from "../Career";
-import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
+import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 
 const nav: NavGroup[] = [
   {
@@ -107,7 +106,6 @@ export const AiOperations = (): JSX.Element => (
       <Route path="maintenance/labour-risk/:riskType" element={<LabourRiskDetailPage />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
-    <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
-    <GlobalWorkOrderExecutionOverlay />
+    <MaintenanceAiWorkOrderExperience />
   </PortalShell>
 );
