@@ -1,13 +1,16 @@
 import {
   useCallback,
   useEffect,
+  type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type PropsWithChildren,
 } from "react";
 import {
   supabase,
   warmMaintenancePortalData,
 } from "../../lib/supabaseClient";
+import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefetch";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
@@ -62,6 +65,19 @@ function isScheduleAction(element: HTMLElement): boolean {
   );
 }
 
+function routePathFromTarget(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+
+  const anchor = target.closest<HTMLAnchorElement>("a[href]");
+  const href = anchor?.getAttribute("href")?.trim();
+  if (!href) return null;
+
+  const url = new URL(href, window.location.origin);
+  return url.origin === window.location.origin
+    ? url.pathname
+    : null;
+}
+
 async function getEquipmentIdForWorkOrder(
   workOrderNumber: string,
 ): Promise<string | null> {
@@ -94,6 +110,20 @@ export function MaintenanceAiWorkOrderExperience({
       window.clearTimeout(timeoutId);
     };
   }, []);
+
+  const handleNavigationIntent = useCallback(
+    (
+      event:
+        | ReactPointerEvent<HTMLDivElement>
+        | ReactFocusEvent<HTMLDivElement>,
+    ): void => {
+      const pathname = routePathFromTarget(event.target);
+      if (!pathname) return;
+
+      prefetchMaintenancePortalRoute(pathname);
+    },
+    [],
+  );
 
   const handleWorkOrderClick = useCallback(
     async (event: ReactMouseEvent<HTMLDivElement>): Promise<void> => {
@@ -162,7 +192,13 @@ export function MaintenanceAiWorkOrderExperience({
   );
 
   return (
-    <div className="contents" onClickCapture={handleWorkOrderClick}>
+    <div
+      className="contents"
+      onPointerOverCapture={handleNavigationIntent}
+      onPointerDownCapture={handleNavigationIntent}
+      onFocusCapture={handleNavigationIntent}
+      onClickCapture={handleWorkOrderClick}
+    >
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
       <MaintenanceWorkOrderExecutionOverlay />
