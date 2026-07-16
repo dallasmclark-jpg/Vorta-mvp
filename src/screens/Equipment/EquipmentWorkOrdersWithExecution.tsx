@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { EquipmentWorkOrders as EquipmentWorkOrdersBase } from "./EquipmentWorkOrders";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "./GlobalWorkOrderExecutionOverlay";
+import { WorkOrderEvidenceControl } from "./WorkOrderEvidenceControl";
 
 function workOrderNumberFromRow(row: HTMLTableRowElement): string | null {
   if (row.id.startsWith("work-order-")) {
@@ -28,6 +29,7 @@ export function EquipmentWorkOrdersWithExecution(): JSX.Element {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (target.closest('[data-global-work-order-overlay="true"]')) return;
+      if (target.closest("button,a,input,select,textarea")) return;
 
       const row = target.closest<HTMLTableRowElement>(
         "#work-order-register tbody tr",
@@ -55,6 +57,7 @@ export function EquipmentWorkOrdersWithExecution(): JSX.Element {
 
   return (
     <div className="contents" onClickCapture={handleWorkOrderClick}>
+      <WorkOrderEvidenceControl />
       <EquipmentWorkOrdersBase />
     </div>
   );
