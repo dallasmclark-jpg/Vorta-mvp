@@ -57,13 +57,28 @@ function installLauncherStyles(): void {
       font-size: 0 !important;
       opacity: 1 !important;
       cursor: pointer !important;
-      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease !important;
+      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease !important;
     }
 
     [data-vorta-ai-launcher="true"]:hover {
       border-color: rgba(96, 165, 250, 0.86) !important;
       background: rgba(37, 99, 235, 0.2) !important;
       box-shadow: 0 0 26px rgba(37, 99, 235, 0.2) !important;
+    }
+
+    [data-vorta-ai-launcher="true"]:disabled {
+      border-color: rgba(71, 85, 105, 0.58) !important;
+      background: rgba(30, 41, 59, 0.35) !important;
+      color: #64748b !important;
+      box-shadow: none !important;
+      cursor: not-allowed !important;
+      opacity: 0.62 !important;
+    }
+
+    [data-vorta-ai-launcher="true"]:disabled:hover {
+      border-color: rgba(71, 85, 105, 0.58) !important;
+      background: rgba(30, 41, 59, 0.35) !important;
+      box-shadow: none !important;
     }
 
     [data-vorta-ai-launcher="true"] > svg {
@@ -75,6 +90,10 @@ function installLauncherStyles(): void {
       color: #93c5fd;
       font-size: 1rem;
       line-height: 1;
+    }
+
+    [data-vorta-ai-launcher="true"]:disabled::before {
+      color: #64748b;
     }
 
     [data-vorta-ai-launcher="true"]::after {
@@ -102,7 +121,7 @@ function installLauncherStyles(): void {
       }
     }
 
-    [data-vorta-ai-launcher="true"][data-discovery="true"] {
+    [data-vorta-ai-launcher="true"][data-discovery="true"]:not(:disabled) {
       animation: vorta-ai-discovery-pulse 2.4s ease-in-out 2;
     }
 
@@ -144,17 +163,6 @@ function markLauncherSeen(): void {
     });
 }
 
-function openAssistantWithDraft(question: string): void {
-  window.dispatchEvent(
-    new CustomEvent("vorta-global-ai-prompt", {
-      detail: {
-        question: question.trim(),
-        submit: false,
-      },
-    }),
-  );
-}
-
 function findLauncherButton(row: HTMLElement): HTMLButtonElement | null {
   for (const child of Array.from(row.children)) {
     if (child instanceof HTMLButtonElement) return child;
@@ -190,20 +198,21 @@ function enhanceLaunchers(): boolean {
       textContainer.dataset.vortaAiText = "true";
       inputShell.dataset.vortaAiInputShell = "true";
       inputShell.dataset.open = String(open);
-      inputShell.title = "Open Vorta AI assistant";
+      inputShell.title = "Type your question, then press Ask Vorta AI";
 
       launcherButton.dataset.vortaAiLauncher = "true";
       launcherButton.dataset.open = String(open);
       launcherButton.dataset.vortaAiLabel = open
         ? "AI Assistant Open"
         : "Ask Vorta AI";
-      launcherButton.disabled = false;
       launcherButton.setAttribute("aria-pressed", String(open));
-      launcherButton.title = open
-        ? "Vorta AI assistant is open"
-        : "Open Vorta AI assistant";
+      launcherButton.title = launcherButton.disabled
+        ? "Enter a question before opening Vorta AI"
+        : open
+          ? "Vorta AI assistant is open"
+          : "Ask Vorta AI";
 
-      if (!open && !hasSeenLauncher()) {
+      if (!open && !launcherButton.disabled && !hasSeenLauncher()) {
         launcherButton.dataset.discovery = "true";
       } else {
         delete launcherButton.dataset.discovery;
@@ -255,33 +264,29 @@ function installVortaAiLauncherEnhancement(): void {
         '[data-vorta-ai-launcher="true"]',
       );
 
-      if (launcherButton) {
-        const row = launcherButton.parentElement;
-        const input = row?.querySelector<HTMLInputElement>(
-          'input[placeholder^="Ask Vorta"]',
-        );
+      if (!launcherButton || launcherButton.disabled) return;
 
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        markLauncherSeen();
-        openAssistantWithDraft(input?.value ?? "");
-        scheduleEnhancement();
+      markLauncherSeen();
+      scheduleEnhancement();
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const target = event.target;
+
+      if (
+        event.key !== "Enter" ||
+        !(target instanceof HTMLInputElement) ||
+        !target.matches('input[placeholder^="Ask Vorta"]')
+      ) {
         return;
       }
 
-      const inputShell = target.closest<HTMLElement>(
-        '[data-vorta-ai-input-shell="true"]',
-      );
-
-      if (!inputShell || target.closest("button")) return;
-
-      const input = inputShell.querySelector<HTMLInputElement>(
-        'input[placeholder^="Ask Vorta"]',
-      );
-
-      markLauncherSeen();
-      openAssistantWithDraft(input?.value ?? "");
-      scheduleEnhancement();
+      event.preventDefault();
+      event.stopImmediatePropagation();
     },
     true,
   );
