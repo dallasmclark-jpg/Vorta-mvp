@@ -247,3 +247,5 @@ jobs:
           git add src/components/ai/VortaAiCommandBar.tsx .github/workflows/polish-vorta-ai-launcher.yml
           git commit -m "Polish Ask Vorta AI launcher"
           git push origin HEAD:main
+
+# One-time trigger update
