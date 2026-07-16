@@ -3,12 +3,14 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PropsWithChildren,
 } from "react";
+import { supabase } from "../../lib/supabaseClient";
 import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
 const WORK_ORDER_NUMBER = /\b(?:WO-\d+|\d{8,14})\b/i;
+const PM_REFERENCE = /\bPM-\d+\b/i;
 
 function decodeEquipmentId(value: string): string {
   try {
@@ -46,11 +48,40 @@ function getEquipmentId(element: HTMLElement): string | null {
   return equipmentIdFromPath(window.location.pathname);
 }
 
+function isScheduleAction(element: HTMLElement): boolean {
+  const text = element.textContent?.toLowerCase() ?? "";
+  return (
+    PM_REFERENCE.test(element.textContent ?? "") ||
+    text.includes("calibration") ||
+    text.includes("pm backlog") ||
+    text.includes("preventive maintenance")
+  );
+}
+
+async function getEquipmentIdForWorkOrder(
+  workOrderNumber: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("work_orders")
+    .select("equipment_id")
+    .eq("wo_number", workOrderNumber)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Work order equipment lookup failed:", error.message);
+    return null;
+  }
+
+  return typeof data?.equipment_id === "string"
+    ? data.equipment_id
+    : null;
+}
+
 export function MaintenanceAiWorkOrderExperience({
   children,
 }: PropsWithChildren): JSX.Element {
   const handleWorkOrderClick = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>): void => {
+    async (event: ReactMouseEvent<HTMLDivElement>): Promise<void> => {
       if (
         event.defaultPrevented ||
         event.button !== 0 ||
@@ -76,13 +107,22 @@ export function MaintenanceAiWorkOrderExperience({
         return;
       }
 
-      const equipmentId = getEquipmentId(interactiveElement);
       const workOrderNumber = getWorkOrderNumber(interactiveElement);
-      if (!equipmentId || !workOrderNumber) return;
+      if (!workOrderNumber) return;
+
+      const directEquipmentId = getEquipmentId(interactiveElement);
+      if (!directEquipmentId && isScheduleAction(interactiveElement)) {
+        return;
+      }
 
       event.preventDefault();
       event.stopPropagation();
       event.nativeEvent.stopImmediatePropagation();
+
+      const equipmentId =
+        directEquipmentId ??
+        (await getEquipmentIdForWorkOrder(workOrderNumber));
+      if (!equipmentId) return;
 
       const faultPanel = interactiveElement.closest<HTMLElement>(
         '[data-vorta-fault-panel="true"]',
@@ -94,16 +134,14 @@ export function MaintenanceAiWorkOrderExperience({
         )
         ?.click();
 
-      window.queueMicrotask(() => {
-        window.dispatchEvent(
-          new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT, {
-            detail: {
-              equipmentId,
-              workOrderNumber,
-            },
-          }),
-        );
-      });
+      window.dispatchEvent(
+        new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT, {
+          detail: {
+            equipmentId,
+            workOrderNumber,
+          },
+        }),
+      );
     },
     [],
   );
