@@ -3,10 +3,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PropsWithChildren,
 } from "react";
-import {
-  GlobalWorkOrderExecutionOverlay,
-  VORTA_WORK_ORDER_DETAIL_EVENT,
-} from "../Equipment/GlobalWorkOrderExecutionOverlay";
+import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
+import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
@@ -107,7 +105,7 @@ export function MaintenanceAiWorkOrderExperience({
     <div className="contents" onClickCapture={handleWorkOrderClick}>
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
-      <GlobalWorkOrderExecutionOverlay />
+      <MaintenanceWorkOrderExecutionOverlay />
     </div>
   );
 }
