@@ -69,6 +69,13 @@ export function MaintenanceAiWorkOrderExperience({
       const interactiveElement = target.closest<HTMLElement>("a[href],button");
       if (!interactiveElement) return;
 
+      if (
+        interactiveElement instanceof HTMLButtonElement &&
+        interactiveElement.closest("#work-order-register")
+      ) {
+        return;
+      }
+
       const equipmentId = getEquipmentId(interactiveElement);
       const workOrderNumber = getWorkOrderNumber(interactiveElement);
       if (!equipmentId || !workOrderNumber) return;
