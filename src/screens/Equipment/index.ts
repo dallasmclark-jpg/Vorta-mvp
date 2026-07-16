@@ -1,7 +1,7 @@
 export { EquipmentSection } from "./EquipmentSection";
 export { EquipmentOverview } from "./EquipmentOverview";
 export { EquipmentNotifications } from "./EquipmentNotifications";
-export { EquipmentWorkOrders } from "./EquipmentWorkOrders";
+export { EquipmentWorkOrdersWithExecution as EquipmentWorkOrders } from "./EquipmentWorkOrdersWithExecution";
 export { EquipmentPMs } from "./EquipmentPMs";
 export { EquipmentHistory } from "./EquipmentHistory";
 export { EquipmentSkills } from "./EquipmentSkills";
