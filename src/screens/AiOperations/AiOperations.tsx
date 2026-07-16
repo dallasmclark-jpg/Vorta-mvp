@@ -29,7 +29,7 @@ import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { CareerSection } from "../Career";
-import { GlobalMaintenanceAiAssistant } from "./GlobalMaintenanceAiAssistant";
+import { GlobalMaintenanceAiAssistantWithFaults } from "./GlobalMaintenanceAiAssistantWithFaults";
 
 const nav: NavGroup[] = [
   {
@@ -106,6 +106,6 @@ export const AiOperations = (): JSX.Element => (
       <Route path="maintenance/labour-risk/:riskType" element={<LabourRiskDetailPage />} />
       <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
     </Routes>
-    <GlobalMaintenanceAiAssistant role="maintenance-manager" />
+    <GlobalMaintenanceAiAssistantWithFaults role="maintenance-manager" />
   </PortalShell>
 );
