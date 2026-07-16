@@ -153,42 +153,40 @@ function installPanelStyles(): void {
   document.head.appendChild(style);
 }
 
-function setElementHidden(element: HTMLElement, hidden: boolean): void {
-  element.hidden = hidden;
-  element.setAttribute("aria-hidden", String(hidden));
+function setText(element: HTMLElement, value: string): void {
+  if (element.textContent !== value) element.textContent = value;
 }
 
-function enhanceSuggestions(contextSection: HTMLElement, panel: HTMLElement): void {
-  const questionsContainer = contextSection.firstElementChild;
-  if (!(questionsContainer instanceof HTMLElement)) return;
+function setHidden(element: HTMLElement, hidden: boolean): void {
+  if (element.hidden !== hidden) element.hidden = hidden;
+  const ariaValue = String(hidden);
+  if (element.getAttribute("aria-hidden") !== ariaValue) {
+    element.setAttribute("aria-hidden", ariaValue);
+  }
+}
 
-  const questionButtons = Array.from(
-    questionsContainer.querySelectorAll<HTMLButtonElement>(":scope > button"),
+function enhanceSuggestions(context: HTMLElement, panel: HTMLElement): void {
+  const container = context.firstElementChild;
+  if (!(container instanceof HTMLElement)) return;
+
+  const buttons = Array.from(
+    container.querySelectorAll<HTMLButtonElement>(":scope > button"),
   ).filter((button) => button.dataset.vortaAiMoreSuggestions !== "true");
 
-  if (questionButtons.length < 3) return;
+  if (buttons.length < 3) return;
 
-  const shortLabels = [
-    "Review first today",
-    "Highest site risk",
-    "Most critical equipment",
-  ];
-
-  questionButtons.slice(0, 3).forEach((button, index) => {
-    button.textContent = shortLabels[index];
-  });
+  ["Review first today", "Highest site risk", "Most critical equipment"].forEach(
+    (label, index) => setText(buttons[index], label),
+  );
 
   const expanded = panel.dataset.suggestionsExpanded === "true";
+  buttons.slice(3).forEach((button) => setHidden(button, !expanded));
 
-  questionButtons.slice(3).forEach((button) => {
-    setElementHidden(button, !expanded);
-  });
-
-  let moreButton = questionsContainer.querySelector<HTMLButtonElement>(
+  let moreButton = container.querySelector<HTMLButtonElement>(
     '[data-vorta-ai-more-suggestions="true"]',
   );
 
-  if (!moreButton && questionButtons.length > 3) {
+  if (!moreButton && buttons.length > 3) {
     moreButton = document.createElement("button");
     moreButton.type = "button";
     moreButton.dataset.vortaAiMoreSuggestions = "true";
@@ -196,68 +194,62 @@ function enhanceSuggestions(contextSection: HTMLElement, panel: HTMLElement): vo
       panel.dataset.suggestionsExpanded = String(
         panel.dataset.suggestionsExpanded !== "true",
       );
-      enhanceSuggestions(contextSection, panel);
+      enhanceSuggestions(context, panel);
     });
-    questionsContainer.appendChild(moreButton);
+    container.appendChild(moreButton);
   }
 
   if (moreButton) {
-    moreButton.textContent = expanded ? "Fewer suggestions" : "More suggestions";
+    setText(moreButton, expanded ? "Fewer suggestions" : "More suggestions");
   }
 
-  const liveRegion = contextSection.querySelector<HTMLElement>(
-    '[aria-live="polite"]',
-  );
-
+  const liveRegion = context.querySelector<HTMLElement>('[aria-live="polite"]');
   if (
     liveRegion &&
     /Using site risk|Using equipment risk|Shift skills context loaded/i.test(
       liveRegion.textContent ?? "",
     )
   ) {
-    liveRegion.textContent = "Verified site, equipment and source context.";
+    setText(liveRegion, "Verified site, equipment and source context.");
   }
 }
 
 function simplifyBadges(answerRoot: HTMLElement): void {
-  const badgeRow = answerRoot.firstElementChild;
-  if (!(badgeRow instanceof HTMLElement)) return;
+  const row = answerRoot.firstElementChild;
+  if (!(row instanceof HTMLElement)) return;
 
-  const badges = Array.from(badgeRow.children).filter(
+  const badges = Array.from(row.children).filter(
     (child): child is HTMLElement => child instanceof HTMLElement,
   );
-
   if (badges.length < 2) return;
 
-  const roleLabel = badges[1].textContent?.trim() || "Vorta AI";
-  badges[0].textContent = `${roleLabel} response`;
-  badges.slice(1).forEach((badge) => setElementHidden(badge, true));
+  const role = badges[1].textContent?.trim() || "Vorta AI";
+  setText(badges[0], `${role} response`);
+  badges.slice(1).forEach((badge) => setHidden(badge, true));
 }
 
-function updateAnswerDetails(answerRoot: HTMLElement): void {
+function updateDetails(answerRoot: HTMLElement): void {
   const expanded = answerRoot.dataset.detailsExpanded === "true";
 
   answerRoot
     .querySelectorAll<HTMLElement>('[data-vorta-ai-detail="true"]')
-    .forEach((element) => setElementHidden(element, !expanded));
+    .forEach((element) => setHidden(element, !expanded));
 
   const toggle = answerRoot.querySelector<HTMLButtonElement>(
     '[data-vorta-ai-details-toggle="true"]',
   );
+  if (!toggle) return;
 
-  if (toggle) {
-    toggle.textContent = expanded
-      ? "Hide evidence and sources ︿"
-      : "Evidence and sources ﹀";
-    toggle.setAttribute("aria-expanded", String(expanded));
-  }
+  setText(
+    toggle,
+    expanded ? "Hide evidence and sources ︿" : "Evidence and sources ﹀",
+  );
+  toggle.setAttribute("aria-expanded", String(expanded));
 }
 
 function enhanceAnswer(message: HTMLElement): void {
   const bubble = message.firstElementChild;
-  if (!(bubble instanceof HTMLElement)) return;
-
-  const answerRoot = bubble.firstElementChild;
+  const answerRoot = bubble?.firstElementChild;
   if (!(answerRoot instanceof HTMLElement)) return;
 
   const headings = Array.from(answerRoot.querySelectorAll<HTMLHeadingElement>("h4"));
@@ -267,7 +259,6 @@ function enhanceAnswer(message: HTMLElement): void {
   const actionHeading = headings.find(
     (heading) => heading.textContent?.trim().toLowerCase() === "recommended action",
   );
-
   if (!evidenceHeading || !actionHeading) return;
 
   answerRoot.dataset.vortaAiAnswerRoot = "true";
@@ -279,7 +270,6 @@ function enhanceAnswer(message: HTMLElement): void {
 
   if (directAnswer instanceof HTMLParagraphElement) {
     directAnswer.dataset.vortaAiDirectAnswer = "true";
-
     if (
       !directAnswer.previousElementSibling?.matches(
         '[data-vorta-ai-answer-label="true"]',
@@ -294,7 +284,6 @@ function enhanceAnswer(message: HTMLElement): void {
 
   const evidenceSection = evidenceHeading.parentElement;
   const actionSection = actionHeading.parentElement;
-
   if (!(evidenceSection instanceof HTMLElement) || !(actionSection instanceof HTMLElement)) {
     return;
   }
@@ -303,7 +292,6 @@ function enhanceAnswer(message: HTMLElement): void {
 
   const children = Array.from(answerRoot.children);
   const actionIndex = children.indexOf(actionSection);
-
   children.slice(actionIndex + 1, -1).forEach((child) => {
     if (
       child instanceof HTMLElement &&
@@ -325,58 +313,53 @@ function enhanceAnswer(message: HTMLElement): void {
       answerRoot.dataset.detailsExpanded = String(
         answerRoot.dataset.detailsExpanded !== "true",
       );
-      updateAnswerDetails(answerRoot);
+      updateDetails(answerRoot);
     });
     actionSection.after(toggle);
   }
 
-  updateAnswerDetails(answerRoot);
+  updateDetails(answerRoot);
 }
 
-function enhanceMessages(messagesSection: HTMLElement): void {
-  messagesSection.dataset.vortaAiPanelMessages = "true";
+function enhanceMessages(messages: HTMLElement): void {
+  messages.dataset.vortaAiPanelMessages = "true";
 
-  const children = Array.from(messagesSection.children).filter(
+  const children = Array.from(messages.children).filter(
     (child): child is HTMLElement => child instanceof HTMLElement,
   );
 
-  const existingHint = messagesSection.querySelector<HTMLElement>(
-    '[data-vorta-ai-intro-hint="true"]',
-  );
-
-  const introMessage = children.find((child) =>
+  const intro = children.find((child) =>
     /Introduction|I can answer Maintenance Manager questions/i.test(
       child.textContent ?? "",
     ),
   );
 
-  if (introMessage) {
-    introMessage.dataset.vortaAiIntroMessage = "true";
-    setElementHidden(introMessage, true);
+  if (intro) {
+    intro.dataset.vortaAiIntroMessage = "true";
+    setHidden(intro, true);
   }
 
-  let hint = existingHint;
+  let hint = messages.querySelector<HTMLElement>('[data-vorta-ai-intro-hint="true"]');
   if (!hint) {
     hint = document.createElement("div");
     hint.dataset.vortaAiIntroHint = "true";
     hint.textContent =
       "Ask about site risk, equipment, labour, PMs, spares or supporting documents.";
-    messagesSection.prepend(hint);
+    messages.prepend(hint);
   }
 
-  const conversationMessages = Array.from(messagesSection.children).filter(
+  const conversation = Array.from(messages.children).filter(
     (child) =>
       child instanceof HTMLElement &&
       child.dataset.vortaAiIntroHint !== "true" &&
       child.dataset.vortaAiIntroMessage !== "true",
-  );
+  ) as HTMLElement[];
 
-  setElementHidden(hint, conversationMessages.length > 0);
+  setHidden(hint, conversation.length > 0);
 
-  conversationMessages.forEach((message) => {
+  conversation.forEach((message) => {
     const isUser = message.className.includes("justify-end");
     message.dataset.vortaAiMessage = isUser ? "user" : "assistant";
-
     if (!isUser) enhanceAnswer(message);
   });
 }
@@ -385,50 +368,40 @@ function enhancePanel(): void {
   const closeButton = document.querySelector<HTMLButtonElement>(
     'button[aria-label="Close global assistant"]',
   );
-  if (!closeButton) return;
-
-  const panel = closeButton.closest<HTMLElement>("div.fixed");
+  const panel = closeButton?.closest<HTMLElement>("div.fixed");
   if (!panel) return;
 
   panel.dataset.vortaAiPanel = "true";
 
-  const panelChildren = Array.from(panel.children).filter(
+  const children = Array.from(panel.children).filter(
     (child): child is HTMLElement => child instanceof HTMLElement,
   );
 
-  const header = panelChildren[0];
+  const header = children[0];
   if (header) header.dataset.vortaAiPanelHeader = "true";
 
-  const messagesSection = panelChildren.find((child) =>
-    child.className.includes("overflow-y-auto"),
-  );
-
-  const footerSection = panelChildren.find((child) =>
+  const messages = children.find((child) => child.className.includes("overflow-y-auto"));
+  const footer = children.find((child) =>
     Boolean(
       child.querySelector(
         'input[placeholder*="Ask about"], input[placeholder*="Loading site context"], input[placeholder*="Retry site context"]',
       ),
     ),
   );
-
-  const contextSection = panelChildren.find(
+  const context = children.find(
     (child) =>
       child !== header &&
-      child !== messagesSection &&
-      child !== footerSection &&
+      child !== messages &&
+      child !== footer &&
       Boolean(child.querySelector('[aria-live="polite"]')),
   );
 
-  if (contextSection) {
-    contextSection.dataset.vortaAiPanelContext = "true";
-    enhanceSuggestions(contextSection, panel);
+  if (context) {
+    context.dataset.vortaAiPanelContext = "true";
+    enhanceSuggestions(context, panel);
   }
-
-  if (messagesSection) enhanceMessages(messagesSection);
-
-  if (footerSection) {
-    footerSection.dataset.vortaAiPanelFooter = "true";
-  }
+  if (messages) enhanceMessages(messages);
+  if (footer) footer.dataset.vortaAiPanelFooter = "true";
 }
 
 function installVortaAiPanelEnhancement(): void {
@@ -449,12 +422,7 @@ function installVortaAiPanelEnhancement(): void {
   };
 
   const observer = new MutationObserver(schedule);
-  observer.observe(root, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
-
+  observer.observe(root, { childList: true, subtree: true });
   schedule();
 }
 
