@@ -1,26 +1,10 @@
+const WORK_ORDER_DETAIL_EVENT = "vorta-work-order-detail";
+
 function getWorkOrderNumber(anchor: HTMLAnchorElement): string | null {
   const firstLabel = anchor.querySelector("span")?.textContent?.trim() ?? "";
   if (firstLabel) return firstLabel;
 
   return anchor.textContent?.match(/\b(?:WO-\d+|\d{8,14})\b/i)?.[0] ?? null;
-}
-
-function isCompletedRecord(anchor: HTMLAnchorElement): boolean {
-  return Array.from(anchor.querySelectorAll("span")).some(
-    (element) => element.textContent?.trim().toLowerCase() === "completed",
-  );
-}
-
-function navigateInsideVorta(path: string): void {
-  const current = `${window.location.pathname}${window.location.search}`;
-  if (current === path) return;
-
-  window.history.pushState(window.history.state, "", path);
-  window.dispatchEvent(
-    new PopStateEvent("popstate", {
-      state: window.history.state,
-    }),
-  );
 }
 
 document.addEventListener(
@@ -51,19 +35,30 @@ document.addEventListener(
     if (!workOrderNumber) return;
 
     event.preventDefault();
-    event.stopPropagation();
+    event.stopImmediatePropagation();
 
     anchor
       .closest('[data-vorta-fault-panel="true"]')
       ?.querySelector<HTMLButtonElement>('button[data-vorta-fault-close="true"]')
       ?.click();
 
-    const view = isCompletedRecord(anchor) ? "completed" : "open";
-    navigateInsideVorta(
-      `/equipment/${routeMatch[1]}/work-orders?workOrder=${encodeURIComponent(
-        workOrderNumber,
-      )}&view=${view}`,
-    );
+    let equipmentId = routeMatch[1];
+    try {
+      equipmentId = decodeURIComponent(equipmentId);
+    } catch {
+      // The route value is already usable when it is not URI encoded.
+    }
+
+    window.queueMicrotask(() => {
+      window.dispatchEvent(
+        new CustomEvent(WORK_ORDER_DETAIL_EVENT, {
+          detail: {
+            equipmentId,
+            workOrderNumber,
+          },
+        }),
+      );
+    });
   },
   true,
 );
