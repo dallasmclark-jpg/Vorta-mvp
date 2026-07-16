@@ -12,6 +12,9 @@ const aiOperationsSource = readSource(
 const bridgeSource = readSource(
   "../src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
 );
+const enhancedOverlaySource = readSource(
+  "../src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx",
+);
 const documentInterceptorSource = readSource(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
 );
@@ -60,6 +63,31 @@ check(
 check(
   "React bridge ignores clicks inside the work order overlay",
   bridgeSource.includes('data-global-work-order-overlay="true"'),
+);
+check(
+  "Maintenance portal mounts the enhanced execution overlay",
+  bridgeSource.includes("<MaintenanceWorkOrderExecutionOverlay />"),
+);
+check(
+  "Execution overlay presents a manager verdict",
+  enhancedOverlaySource.includes("Execution evidence complete") &&
+    enhancedOverlaySource.includes("Follow-up required") &&
+    enhancedOverlaySource.includes("Latest engineer update"),
+);
+check(
+  "Execution overlay distinguishes final and interim confirmations",
+  enhancedOverlaySource.includes("Final confirmation") &&
+    enhancedOverlaySource.includes("Interim confirmation"),
+);
+check(
+  "Execution overlay summarises 261 material issues",
+  enhancedOverlaySource.includes('movement.movementType === "261"') &&
+    enhancedOverlaySource.includes("261 goods issues"),
+);
+check(
+  "Execution overlay prevents background scrolling and restores focus",
+  enhancedOverlaySource.includes('document.body.style.overflow = "hidden"') &&
+    enhancedOverlaySource.includes("previousFocusRef.current?.focus()"),
 );
 check(
   "Document navigation no longer imports the global work order interceptor",
