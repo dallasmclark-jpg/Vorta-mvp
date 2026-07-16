@@ -93,7 +93,9 @@ function simplifyRealAnswer(message: HTMLElement): void {
     );
 
     if (badges.length > 0) {
-      badges[0].textContent = "Maintenance Manager response";
+      if (badges[0].textContent !== "Maintenance Manager response") {
+        badges[0].textContent = "Maintenance Manager response";
+      }
       showElement(badges[0]);
       badges.slice(1).forEach(hideElement);
     }
