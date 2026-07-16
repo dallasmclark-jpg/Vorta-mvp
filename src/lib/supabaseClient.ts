@@ -156,3 +156,191 @@ export const supabase = createClient(
     },
   },
 );
+
+const MAINTENANCE_READ_FUNCTIONS = new Set([
+  "skills-matrix-data",
+  "engineers-data",
+  "requirements-data",
+  "training-data",
+  "training-providers-data",
+  "ai-matching-data",
+]);
+
+const MAINTENANCE_CACHE_TTL_MS = 5 * 60_000;
+
+type CachedFunctionInvocation = {
+  expiresAt: number;
+  promise: Promise<unknown>;
+};
+
+const maintenanceFunctionCache =
+  new Map<string, CachedFunctionInvocation>();
+
+const originalFunctionInvoke =
+  supabase.functions.invoke.bind(
+    supabase.functions,
+  ) as (
+    functionName: string,
+    options?: unknown,
+  ) => Promise<unknown>;
+
+function invocationCacheKey(
+  functionName: string,
+  options?: unknown,
+): string {
+  const body =
+    options &&
+    typeof options === "object" &&
+    "body" in options
+      ? (options as { body?: unknown }).body
+      : null;
+
+  try {
+    return `${functionName}:${JSON.stringify(body ?? null)}`;
+  } catch {
+    return functionName;
+  }
+}
+
+const cachedFunctionInvoke = (
+  functionName: string,
+  options?: unknown,
+): Promise<unknown> => {
+  if (
+    !MAINTENANCE_READ_FUNCTIONS.has(
+      functionName,
+    )
+  ) {
+    return originalFunctionInvoke(
+      functionName,
+      options,
+    );
+  }
+
+  const key = invocationCacheKey(
+    functionName,
+    options,
+  );
+  const now = Date.now();
+  const cached =
+    maintenanceFunctionCache.get(key);
+
+  if (
+    cached &&
+    cached.expiresAt > now
+  ) {
+    return cached.promise;
+  }
+
+  const promise = originalFunctionInvoke(
+    functionName,
+    options,
+  ).then((result) => {
+    const invocationResult = result as {
+      error?: unknown;
+    };
+
+    if (invocationResult?.error) {
+      maintenanceFunctionCache.delete(key);
+    }
+
+    return result;
+  }).catch((error) => {
+    maintenanceFunctionCache.delete(key);
+    throw error;
+  });
+
+  maintenanceFunctionCache.set(key, {
+    expiresAt:
+      now +
+      MAINTENANCE_CACHE_TTL_MS,
+    promise,
+  });
+
+  return promise;
+};
+
+(
+  supabase.functions as unknown as {
+    invoke: (
+      functionName: string,
+      options?: unknown,
+    ) => Promise<unknown>;
+  }
+).invoke = cachedFunctionInvoke;
+
+export function clearMaintenancePortalDataCache(
+  functionName?: string,
+): void {
+  if (!functionName) {
+    maintenanceFunctionCache.clear();
+    return;
+  }
+
+  for (const key of maintenanceFunctionCache.keys()) {
+    if (
+      key === functionName ||
+      key.startsWith(`${functionName}:`)
+    ) {
+      maintenanceFunctionCache.delete(key);
+    }
+  }
+}
+
+let maintenanceWarmupStarted = false;
+
+export function warmMaintenancePortalData(): void {
+  if (maintenanceWarmupStarted) {
+    return;
+  }
+
+  maintenanceWarmupStarted = true;
+
+  const primaryFunctions = [
+    "skills-matrix-data",
+    "engineers-data",
+    "requirements-data",
+  ];
+  const secondaryFunctions = [
+    "training-data",
+    "training-providers-data",
+    "ai-matching-data",
+  ];
+
+  void Promise.allSettled(
+    primaryFunctions.map(
+      (functionName) =>
+        cachedFunctionInvoke(
+          functionName,
+        ),
+    ),
+  ).then(() =>
+    Promise.allSettled(
+      secondaryFunctions.map(
+        (functionName) =>
+          cachedFunctionInvoke(
+            functionName,
+          ),
+      ),
+    ),
+  );
+}
+
+let cachedPortalUserId: string | null = null;
+
+supabase.auth.onAuthStateChange(
+  (_event, session) => {
+    const nextUserId =
+      session?.user.id ?? null;
+
+    if (
+      cachedPortalUserId !== null &&
+      nextUserId !== cachedPortalUserId
+    ) {
+      clearMaintenancePortalDataCache();
+      maintenanceWarmupStarted = false;
+    }
+
+    cachedPortalUserId = nextUserId;
+  },
+);
