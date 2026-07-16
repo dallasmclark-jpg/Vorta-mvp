@@ -33,12 +33,21 @@ const check = (name, condition) => {
 };
 
 check(
-  "Maintenance portal mounts the React work order experience",
-  aiOperationsSource.includes("<MaintenanceAiWorkOrderExperience />"),
+  "Maintenance routes are wrapped by the React work order experience",
+  aiOperationsSource.includes("<MaintenanceAiWorkOrderExperience>") &&
+    aiOperationsSource.includes("</MaintenanceAiWorkOrderExperience>"),
 );
 check(
   "React bridge owns work order click capture",
   bridgeSource.includes("onClickCapture={handleWorkOrderClick}"),
+);
+check(
+  "React bridge covers linked work order buttons and anchors",
+  bridgeSource.includes('closest<HTMLElement>("a[href],button")'),
+);
+check(
+  "React bridge resolves equipment from the active equipment route",
+  bridgeSource.includes("equipmentIdFromPath(window.location.pathname)"),
 );
 check(
   "React bridge opens the shared execution overlay event",
@@ -47,6 +56,10 @@ check(
 check(
   "React bridge closes the fault assistant before opening work order detail",
   bridgeSource.includes('button[data-vorta-fault-close="true"]'),
+);
+check(
+  "React bridge ignores clicks inside the work order overlay",
+  bridgeSource.includes('data-global-work-order-overlay="true"'),
 );
 check(
   "Document navigation no longer imports the global work order interceptor",
