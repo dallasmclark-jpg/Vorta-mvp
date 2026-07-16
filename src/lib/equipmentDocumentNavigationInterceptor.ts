@@ -1,3 +1,5 @@
+import "./vortaAiLauncherEnhancement";
+
 function isControlledEquipmentDocumentUrl(value: string): boolean {
   try {
     const url = new URL(value, window.location.href);
