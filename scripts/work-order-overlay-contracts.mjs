@@ -18,14 +18,15 @@ const enhancedOverlaySource = readSource(
 const workOrderRegisterBridgeSource = readSource(
   "../src/screens/Equipment/EquipmentWorkOrdersWithExecution.tsx",
 );
-const workOrderEvidenceSource = readSource(
-  "../src/screens/Equipment/WorkOrderEvidenceControl.tsx",
-);
 const documentInterceptorSource = readSource(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
 );
 const retiredInterceptorUrl = new URL(
   "../src/lib/vortaAiWorkOrderNavigationFix.ts",
+  import.meta.url,
+);
+const retiredEvidenceControlUrl = new URL(
+  "../src/screens/Equipment/WorkOrderEvidenceControl.tsx",
   import.meta.url,
 );
 
@@ -94,8 +95,9 @@ check(
   ),
 );
 check(
-  "Work order register mounts execution evidence control",
-  workOrderRegisterBridgeSource.includes("<WorkOrderEvidenceControl />"),
+  "Work order page preserves the shared equipment header hierarchy",
+  workOrderRegisterBridgeSource.includes("<EquipmentWorkOrdersBase />") &&
+    !workOrderRegisterBridgeSource.includes("WorkOrderEvidenceControl"),
 );
 check(
   "Work order register no longer contains a duplicate execution drawer",
@@ -103,17 +105,6 @@ check(
     !workOrderRegisterBridgeSource.includes(
       'data-work-order-execution-drawer="true"',
     ),
-);
-check(
-  "Execution evidence control reconciles confirmations and material issues",
-  workOrderEvidenceSource.includes("Evidence coverage") &&
-    workOrderEvidenceSource.includes('row.movement_type === "261"') &&
-    workOrderEvidenceSource.includes("Final confirmations"),
-);
-check(
-  "Execution evidence control surfaces follow-up outcomes",
-  workOrderEvidenceSource.includes("Follow-up required") &&
-    workOrderEvidenceSource.includes("Temporary fixes, recurring faults"),
 );
 check(
   "Execution overlay presents a manager verdict",
@@ -143,6 +134,10 @@ check(
 check(
   "Obsolete document-wide work order interceptor has been removed",
   !existsSync(retiredInterceptorUrl),
+);
+check(
+  "Duplicate equipment-level evidence control has been removed",
+  !existsSync(retiredEvidenceControlUrl),
 );
 
 if (failures.length > 0) {
