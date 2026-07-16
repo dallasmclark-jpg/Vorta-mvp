@@ -1,0 +1,726 @@
+name: Apply maintenance dashboard improvements
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-maintenance-dashboard-improvements.yml
+
+permissions:
+  contents: write
+
+jobs:
+  improve-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Patch maintenance manager dashboard
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+          import re
+
+          service_path = Path('src/screens/Equipment/equipmentService.ts')
+          dashboard_path = Path('src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx')
+          css_path = Path('tailwind.css')
+
+          service = service_path.read_text()
+          dashboard = dashboard_path.read_text()
+          css = css_path.read_text()
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
+
+          service_pattern = re.compile(
+              r"export interface OperationalRiskDashboardPayload \{.*?\n\}\n\nexport async function refreshAndGetOperationalDashboard\(\):\n  Promise<OperationalRiskDashboardPayload \| null> \{.*?\n\}\n\n(?=export async function refreshOperationalRisk)",
+              re.S,
+          )
+          service_replacement = '''export interface OperationalDashboardFreshness {
+            maintenanceDataAt: string | null;
+            workforceDataAt: string | null;
+            riskCalculatedAt: string | null;
+          }
+
+          export interface OperationalRiskDashboardPayload {
+            areaProfiles: AreaRiskProfile[];
+            siteRisk: SiteRiskProfile | null;
+            scopes: RiskDashboardScope[];
+            freshness: OperationalDashboardFreshness | null;
+          }
+
+          function mapOperationalRiskDashboardPayload(
+            data: unknown,
+            rpcName: string,
+          ): OperationalRiskDashboardPayload | null {
+            if (
+              !data ||
+              typeof data !== "object" ||
+              Array.isArray(data)
+            ) {
+              console.warn(`${rpcName} returned an invalid payload.`);
+              return null;
+            }
+
+            const payload = data as Record<string, unknown>;
+            const areaProfiles = Array.isArray(payload.areaProfiles)
+              ? payload.areaProfiles as AreaRiskProfile[]
+              : [];
+            const scopes = Array.isArray(payload.scopes)
+              ? payload.scopes as RiskDashboardScope[]
+              : [];
+            const siteRisk =
+              payload.siteRisk &&
+              typeof payload.siteRisk === "object" &&
+              !Array.isArray(payload.siteRisk)
+                ? payload.siteRisk as SiteRiskProfile
+                : null;
+            const rawFreshness =
+              payload.freshness &&
+              typeof payload.freshness === "object" &&
+              !Array.isArray(payload.freshness)
+                ? payload.freshness as Record<string, unknown>
+                : null;
+            const toTimestamp = (value: unknown): string | null =>
+              typeof value === "string" && value.trim() ? value : null;
+            const freshness = rawFreshness
+              ? {
+                  maintenanceDataAt: toTimestamp(rawFreshness.maintenanceDataAt),
+                  workforceDataAt: toTimestamp(rawFreshness.workforceDataAt),
+                  riskCalculatedAt: toTimestamp(rawFreshness.riskCalculatedAt),
+                }
+              : null;
+
+            if (
+              areaProfiles.length === 0 ||
+              scopes.length === 0 ||
+              !siteRisk
+            ) {
+              console.warn(`${rpcName} returned incomplete operational data.`);
+              return null;
+            }
+
+            return {
+              areaProfiles,
+              siteRisk,
+              scopes,
+              freshness,
+            };
+          }
+
+          export async function getOperationalDashboardSnapshot():
+            Promise<OperationalRiskDashboardPayload | null> {
+            try {
+              const { data, error } = await supabase.rpc(
+                "vorta_get_operational_dashboard_snapshot",
+              );
+
+              if (error) {
+                console.warn(
+                  "vorta_get_operational_dashboard_snapshot failed:",
+                  error.message,
+                );
+                return null;
+              }
+
+              return mapOperationalRiskDashboardPayload(
+                data,
+                "vorta_get_operational_dashboard_snapshot",
+              );
+            } catch (error) {
+              console.warn(
+                "vorta_get_operational_dashboard_snapshot threw:",
+                error,
+              );
+              return null;
+            }
+          }
+
+          export async function refreshAndGetOperationalDashboard():
+            Promise<OperationalRiskDashboardPayload | null> {
+            try {
+              const { data, error } = await supabase.rpc(
+                "vorta_refresh_and_get_operational_dashboard",
+              );
+
+              if (error) {
+                console.warn(
+                  "vorta_refresh_and_get_operational_dashboard failed:",
+                  error.message,
+                );
+                return null;
+              }
+
+              return mapOperationalRiskDashboardPayload(
+                data,
+                "vorta_refresh_and_get_operational_dashboard",
+              );
+            } catch (error) {
+              console.warn(
+                "vorta_refresh_and_get_operational_dashboard threw:",
+                error,
+              );
+              return null;
+            }
+          }
+
+          '''
+          service, count = service_pattern.subn(service_replacement, service, count=1)
+          if count != 1:
+              raise SystemExit(f'operational dashboard service block: expected one match, found {count}')
+
+          dashboard = replace_once(
+              dashboard,
+              'import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";\n',
+              'import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";\nimport { VORTA_WORK_ORDER_DETAIL_EVENT } from "../../../Equipment/GlobalWorkOrderExecutionOverlay";\n',
+              'work order event import',
+          )
+          dashboard = replace_once(
+              dashboard,
+              '  refreshAndGetOperationalDashboard,\n  refreshRiskWorkPlan,',
+              '  getOperationalDashboardSnapshot,\n  refreshAndGetOperationalDashboard,\n  refreshRiskWorkPlan,',
+              'snapshot service import',
+          )
+          dashboard = replace_once(
+              dashboard,
+              '  type RiskDashboardScopeKpiCache,\n} from "../../../Equipment/equipmentService";',
+              '  type RiskDashboardScopeKpiCache,\n  type OperationalDashboardFreshness,\n} from "../../../Equipment/equipmentService";',
+              'freshness type import',
+          )
+
+          dashboard = replace_once(
+              dashboard,
+              'const getLabourRiskPresentation = (',
+              '''const formatFreshnessTimestamp = (value: string | null | undefined): string => {
+            if (!value) return "Unavailable";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "Unavailable";
+
+            const elapsedMinutes = Math.max(
+              0,
+              Math.round((Date.now() - date.getTime()) / 60_000),
+            );
+            if (elapsedMinutes < 1) return "just now";
+            if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+            const elapsedHours = Math.round(elapsedMinutes / 60);
+            if (elapsedHours < 24) return `${elapsedHours}h ago`;
+            return new Intl.DateTimeFormat("en-GB", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(date);
+          };
+
+          const isFreshnessStale = (value: string | null | undefined): boolean => {
+            if (!value) return true;
+            const timestamp = new Date(value).getTime();
+            return Number.isNaN(timestamp) || Date.now() - timestamp > 30 * 60_000;
+          };
+
+          const getLabourRiskPresentation = (''',
+              'freshness format helpers',
+          )
+
+          dashboard = replace_once(
+              dashboard,
+              '  const riskKpiGridRef =\n    useRef<HTMLDivElement>(null);',
+              '  const riskKpiGridRef =\n    useRef<HTMLDivElement>(null);\n  const hasBackgroundRefreshedRef = useRef(false);',
+              'background refresh ref',
+          )
+
+          state_patterns = [
+              r'  const \[\n    hasOpenedRiskPlan,\n    setHasOpenedRiskPlan,\n  \] = useState\(false\);\n',
+              r'  const \[\n    hasUsedNextEquipment,\n    setHasUsedNextEquipment,\n  \] = useState\(false\);\n',
+              r'  const \[\n    hasUsedNextArea,\n    setHasUsedNextArea,\n  \] = useState\(false\);\n',
+          ]
+          for pattern in state_patterns:
+              dashboard, count = re.subn(pattern, '', dashboard, count=1)
+              if count != 1:
+                  raise SystemExit(f'remove pulse state failed for {pattern}: {count}')
+
+          dashboard = replace_once(
+              dashboard,
+              '  const [\n    dashboardLoadError,\n    setDashboardLoadError,\n  ] = useState<string | null>(null);',
+              '''  const [
+            dashboardLoadError,
+            setDashboardLoadError,
+          ] = useState<string | null>(null);
+          const [
+            dashboardFreshness,
+            setDashboardFreshness,
+          ] = useState<OperationalDashboardFreshness | null>(null);''',
+              'freshness state',
+          )
+
+          load_pattern = re.compile(
+              r'  const loadRiskDashboard = useCallback\(.*?\n  useEffect\(\(\) => \{\n    void loadRiskDashboard\(\n      "daily",\n      "site",\n    \);\n  \}, \[loadRiskDashboard\]\);',
+              re.S,
+          )
+          load_replacement = '''  const loadRiskDashboard = useCallback(
+            async (
+              period: RiskKpiPeriodKey,
+              scopeKey: string,
+              refresh = false,
+            ) => {
+              setDashboardRefreshing(refresh);
+              setOperationalRiskLoading(true);
+              setSecondaryRiskLoading(true);
+              setRiskReductionPlanLoading(true);
+              setRiskKpiLoading(true);
+              setDashboardLoadError(null);
+
+              try {
+                const operationalDashboard = refresh
+                  ? await refreshAndGetOperationalDashboard()
+                  : await getOperationalDashboardSnapshot();
+
+                if (!operationalDashboard) {
+                  throw new Error(
+                    refresh
+                      ? "Current operational risk could not be recalculated."
+                      : "The latest operational risk snapshot could not be loaded.",
+                  );
+                }
+
+                const {
+                  areaProfiles,
+                  siteRisk: siteProfile,
+                  scopes,
+                  freshness,
+                } = operationalDashboard;
+
+                setAreaRiskCards(areaProfiles);
+                setSiteRisk(siteProfile);
+                setRiskScopes(scopes);
+                setDashboardFreshness(freshness);
+
+                const validScopeKey = scopes.some(
+                  (scope) => scope.scopeKey === scopeKey,
+                )
+                  ? scopeKey
+                  : "site";
+
+                setSelectedRiskScopeKey(validScopeKey);
+                setRiskPlanHistory([]);
+                setRiskEquipmentPlanHistory([]);
+                setSelectedInterventionPlan(null);
+                setOperationalRiskLoading(false);
+
+                try {
+                  if (refresh) {
+                    const workPlanRefreshSucceeded = await refreshRiskWorkPlan();
+                    if (!workPlanRefreshSucceeded) {
+                      throw new Error(
+                        "The maintenance work plan could not be rebuilt.",
+                      );
+                    }
+                  }
+
+                  const [areaPlans, planCache, scopeKpiCache] = await Promise.all([
+                    getAreaInterventionPlans(),
+                    getRiskDashboardScopePlans(),
+                    getRiskDashboardScopeKpis(),
+                  ]);
+
+                  setInterventionPlans(areaPlans);
+                  setRiskScopePlanCache(planCache);
+                  setRiskScopeKpiCache(scopeKpiCache);
+                  setRiskReductionPlan(
+                    planCache[validScopeKey] ?? planCache.site ?? null,
+                  );
+                  setRiskKpiDashboard(
+                    scopeKpiCache[validScopeKey]?.[period] ??
+                      scopeKpiCache.site?.[period] ??
+                      scopeKpiCache.site?.daily ??
+                      null,
+                  );
+                } catch (error) {
+                  console.warn(
+                    "Secondary dashboard intelligence failed:",
+                    error,
+                  );
+                  setInterventionPlans([]);
+                  setRiskScopePlanCache({});
+                  setRiskScopeKpiCache({});
+                  setRiskReductionPlan(null);
+                  setRiskKpiDashboard(null);
+                  setDashboardLoadError(
+                    "Current site risk is ready, but the work plan and performance indicators could not be generated.",
+                  );
+                }
+              } catch (error) {
+                console.warn(
+                  "Operational dashboard risk load failed:",
+                  error,
+                );
+                setDashboardLoadError(
+                  refresh
+                    ? "Current site risk could not be recalculated. Try the refresh again."
+                    : "The latest site risk snapshot could not be loaded.",
+                );
+              } finally {
+                setOperationalRiskLoading(false);
+                setSecondaryRiskLoading(false);
+                setRiskReductionPlanLoading(false);
+                setRiskKpiLoading(false);
+                setDashboardRefreshing(false);
+              }
+            },
+            [],
+          );
+
+          useEffect(() => {
+            void loadRiskDashboard("daily", "site", false);
+          }, [loadRiskDashboard]);
+
+          useEffect(() => {
+            if (
+              !dashboardFreshness?.riskCalculatedAt ||
+              hasBackgroundRefreshedRef.current ||
+              !isFreshnessStale(dashboardFreshness.riskCalculatedAt)
+            ) {
+              return;
+            }
+
+            hasBackgroundRefreshedRef.current = true;
+            const timeoutId = window.setTimeout(() => {
+              void loadRiskDashboard(
+                selectedKpiPeriod,
+                selectedRiskScopeKey,
+                true,
+              );
+            }, 800);
+
+            return () => window.clearTimeout(timeoutId);
+          }, [
+            dashboardFreshness?.riskCalculatedAt,
+            loadRiskDashboard,
+            selectedKpiPeriod,
+            selectedRiskScopeKey,
+          ]);'''
+          dashboard, count = load_pattern.subn(load_replacement, dashboard, count=1)
+          if count != 1:
+              raise SystemExit(f'load dashboard block: expected one match, found {count}')
+
+          dashboard = replace_once(
+              dashboard,
+              '''  const handleAssetClick = (id: string) => {
+            navigate(`/equipment/${id}/overview`);
+          };
+''',
+              '''  const handleAssetClick = (id: string) => {
+            navigate(`/equipment/${id}/overview`);
+          };
+
+          const handleRiskPlanAction = useCallback(
+            (equipmentId: string, action: RiskPlanAction) => {
+              const route = getRiskPlanActionRoute(equipmentId, action);
+              const workOrderNumber = action.workOrderNumbers[0] ?? null;
+
+              if (workOrderNumber && route.endsWith("/work-orders")) {
+                window.dispatchEvent(
+                  new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT, {
+                    detail: {
+                      equipmentId,
+                      workOrderNumber,
+                    },
+                  }),
+                );
+                return;
+              }
+
+              const focusReference =
+                action.pmNumbers[0] ?? action.sparePartNumbers[0] ?? null;
+              navigate(
+                focusReference
+                  ? `${route}?focus=${encodeURIComponent(focusReference)}`
+                  : route,
+              );
+            },
+            [navigate],
+          );
+''',
+              'exact action handler',
+          )
+
+          header_old = '''        <div className="flex shrink-0 items-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
+              disabled={dashboardRefreshing}
+              className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
+            >
+              Run Risk Analysis
+            </Button>
+            <button
+              type="button"
+              onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
+              disabled={dashboardRefreshing}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+              aria-label="Refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+              aria-label="User profile"
+            >
+              <UserCircle className="h-8 w-8" />
+            </button>
+          </div>'''
+          header_new = '''        <div className="flex shrink-0 items-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                void loadRiskDashboard(
+                  selectedKpiPeriod,
+                  selectedRiskScopeKey,
+                  true,
+                )
+              }
+              disabled={dashboardRefreshing}
+              className="h-9 gap-2 border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              {dashboardRefreshing
+                ? "Refreshing intelligence…"
+                : "Refresh risk intelligence"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+              aria-label="User profile"
+            >
+              <UserCircle className="h-8 w-8" />
+            </button>
+          </div>'''
+          dashboard = replace_once(dashboard, header_old, header_new, 'single refresh control')
+
+          freshness_old = '''              <div className="flex flex-col gap-0.5 text-left lg:items-end lg:text-right">
+                <p className="text-xs text-slate-400">
+                  Based on latest import
+                </p>
+
+                <p className="text-xs text-slate-500">
+                  SAP / Skills / Training data refreshed 2h ago
+                </p>
+              </div>'''
+          freshness_new = '''              <div className="flex flex-col gap-0.5 text-left lg:items-end lg:text-right">
+                <p
+                  className={`text-xs font-medium ${
+                    isFreshnessStale(dashboardFreshness?.riskCalculatedAt)
+                      ? "text-yellow-400"
+                      : "text-emerald-400"
+                  }`}
+                >
+                  Risk calculated {formatFreshnessTimestamp(
+                    dashboardFreshness?.riskCalculatedAt,
+                  )}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Maintenance {formatFreshnessTimestamp(
+                    dashboardFreshness?.maintenanceDataAt,
+                  )}
+                  {" · Workforce "}
+                  {formatFreshnessTimestamp(
+                    dashboardFreshness?.workforceDataAt,
+                  )}
+                </p>
+              </div>'''
+          dashboard = replace_once(dashboard, freshness_old, freshness_new, 'live freshness display')
+
+          dashboard = dashboard.replace('                    setHasOpenedRiskPlan(true);\n', '')
+          dashboard = dashboard.replace('                                setHasUsedNextArea(true);\n', '')
+          dashboard = dashboard.replace('                                    setHasUsedNextEquipment(true);\n', '')
+
+          pulse_button_pattern = re.compile(
+              r'className=\{`inline-flex min-w-\[180px\].*?\$\{\n\s*hasOpenedRiskPlan\n\s*\? .*?\n\s*: .*?\n\s*\}`\}',
+              re.S,
+          )
+          dashboard, count = pulse_button_pattern.subn(
+              'className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820]"',
+              dashboard,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'work plan pulse class: expected one match, found {count}')
+
+          for state_name, label in [('hasUsedNextArea', 'next area'), ('hasUsedNextEquipment', 'next equipment')]:
+              pattern = re.compile(
+                  rf'className=\{{`inline-flex min-h-9.*?\$\{{\n\s*!{state_name}\n\s*\? .*?\n\s*: .*?\n\s*\}}`\}}',
+                  re.S,
+              )
+              dashboard, count = pattern.subn(
+                  'className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-bold text-blue-300 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15 disabled:cursor-wait disabled:opacity-50"',
+                  dashboard,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f'{label} pulse class: expected one match, found {count}')
+
+          action_click_pattern = re.compile(
+              r'onClick=\{\(\) =>\n\s+navigate\(\n\s+getRiskPlanActionRoute\(\n\s+riskReductionPlan\.equipmentId,\n\s+action,\n\s+\),\n\s+\)\n\s+\}',
+          )
+          dashboard, count = action_click_pattern.subn(
+              'onClick={() =>\n                                  handleRiskPlanAction(\n                                    riskReductionPlan.equipmentId,\n                                    action,\n                                  )\n                                }',
+              dashboard,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'exact action click: expected one match, found {count}')
+
+          equipment_card_pattern = re.compile(
+              r'<Card\n\s+key=\{equipment\.id\}\n\s+onClick=\{\(\) =>\n\s+handleAssetClick\(\n\s+equipment\.id,\n\s+\)\n\s+\}\n\s+className="cursor-pointer rounded-xl border border-gray-800 bg-\[#141820\] shadow-none transition-colors hover:border-gray-700 hover:bg-\[#181e2a\]"\n\s+>',
+          )
+          equipment_card_replacement = '''<Card
+                  key={equipment.id}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`View ${equipment.label} equipment`}
+                  onClick={() => handleAssetClick(equipment.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleAssetClick(equipment.id);
+                    }
+                  }}
+                  className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                >'''
+          dashboard, count = equipment_card_pattern.subn(equipment_card_replacement, dashboard, count=1)
+          if count != 1:
+              raise SystemExit(f'equipment keyboard card: expected one match, found {count}')
+
+          labour_card_pattern = re.compile(
+              r'<Card\n\s+key=\{item\.title\}\n\s+onClick=\{\(\) => \{(.*?)\n\s+\}\}\n\s+className="cursor-pointer rounded-xl border border-gray-800 bg-\[#141820\] shadow-none transition-colors hover:border-gray-700 hover:bg-\[#181e2a\]"\n\s+>',
+              re.S,
+          )
+          labour_match = labour_card_pattern.search(dashboard)
+          if not labour_match:
+              raise SystemExit('labour keyboard card: no match')
+          labour_body = labour_match.group(1)
+          labour_replacement = f'''<Card
+              key={{item.title}}
+              role="link"
+              tabIndex={{0}}
+              aria-label={{`Open ${{item.title}} labour risk`}}
+              onClick={{() => {{{labour_body}
+              }}}}
+              onKeyDown={{(event) => {{
+                if (event.key === "Enter" || event.key === " ") {{
+                  event.preventDefault();
+                  event.currentTarget.click();
+                }}
+              }}}}
+              className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            >'''
+          dashboard = labour_card_pattern.sub(labour_replacement, dashboard, count=1)
+
+          dashboard = dashboard.replace(
+              'className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2 scroll-smooth touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${',
+              'className={`grid w-full auto-cols-[260px] grid-flow-col snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2 scroll-smooth touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:auto-cols-[280px] xl:auto-cols-auto xl:grid-flow-row xl:grid-cols-3 xl:overflow-visible xl:snap-none ${',
+              1,
+          )
+          dashboard = dashboard.replace(
+              'xl:w-[292px] xl:min-w-[292px]',
+              'xl:w-full xl:min-w-0',
+          )
+          dashboard = dashboard.replace(
+              'className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"',
+              'className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 xl:hidden"',
+          )
+          dashboard = dashboard.replace('>Cover Gaps</p>', '>Coverage Gaps</p>', 1)
+
+          modal_open = '            <div\n              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"\n              onClick={() => setSelectedInterventionPlan(null)}\n            >'
+          modal_new = '            <div\n              role="dialog"\n              aria-modal="true"\n              aria-label="Recommended maintenance intervention"\n              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"\n              onClick={() => setSelectedInterventionPlan(null)}\n              onKeyDown={(event) => {\n                if (event.key === "Escape") {\n                  setSelectedInterventionPlan(null);\n                }\n              }}\n            >'
+          dashboard = replace_once(dashboard, modal_open, modal_new, 'intervention dialog semantics')
+
+          css_pattern = re.compile(
+              r'/\* Keep dashboard data freshness with the scope tabs, leaving Ask Vorta uncluttered\. \*/.*?\n\}\n\n(?=/\* Match every equipment header)',
+              re.S,
+          )
+          css, count = css_pattern.subn('', css, count=1)
+          if count != 1:
+              raise SystemExit(f'remove hard-coded freshness CSS: expected one match, found {count}')
+
+          service_path.write_text(service)
+          dashboard_path.write_text(dashboard)
+          css_path.write_text(css)
+
+          contract = '''import { readFileSync } from "node:fs";
+
+          const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+          const dashboard = read("../src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx");
+          const service = read("../src/screens/Equipment/equipmentService.ts");
+          const css = read("../tailwind.css");
+          const failures = [];
+          const check = (name, condition) => {
+            if (condition) console.log(`✓ ${name}`);
+            else { failures.push(name); console.error(`✗ ${name}`); }
+          };
+
+          check("Dashboard reads cached snapshot on entry", dashboard.includes("getOperationalDashboardSnapshot"));
+          check("Dashboard explicitly refreshes intelligence", dashboard.includes("Refresh risk intelligence"));
+          check("Duplicate analysis control removed", !dashboard.includes("Run Risk Analysis"));
+          check("Freshness comes from live payload", dashboard.includes("dashboardFreshness?.riskCalculatedAt"));
+          check("Hard-coded freshness removed from CSS", !css.includes("Latest data refresh · 2h ago"));
+          check("Work-order actions open exact overlay", dashboard.includes("VORTA_WORK_ORDER_DETAIL_EVENT"));
+          check("Persistent dashboard pulses removed", !dashboard.includes("hasUsedNextArea") && !dashboard.includes("hasUsedNextEquipment") && !dashboard.includes("hasOpenedRiskPlan"));
+          check("Dashboard cards are keyboard accessible", dashboard.includes('aria-label={`View ${equipment.label} equipment`}') && dashboard.includes('aria-label={`Open ${item.title} labour risk`}'));
+          check("Desktop KPI comparison uses a grid", dashboard.includes("xl:grid-cols-3"));
+          check("Snapshot service exposes genuine freshness", service.includes("OperationalDashboardFreshness") && service.includes("vorta_get_operational_dashboard_snapshot"));
+
+          if (failures.length) {
+            console.error(`\\n${failures.length} maintenance dashboard contract(s) failed.`);
+            process.exitCode = 1;
+          } else {
+            console.log("\\nMaintenance dashboard contracts passed.");
+          }
+          '''
+          Path('scripts/maintenance-dashboard-contracts.mjs').write_text(contract)
+
+          package_path = Path('package.json')
+          package = json.loads(package_path.read_text())
+          scripts = package.setdefault('scripts', {})
+          existing = scripts.get('test:contracts', '')
+          command = 'node scripts/maintenance-dashboard-contracts.mjs'
+          if command not in existing:
+              scripts['test:contracts'] = f'{existing} && {command}' if existing else command
+          package_path.write_text(json.dumps(package, indent=2) + '\n')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run contracts and production build
+        run: npm run check
+
+      - name: Commit improvements
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/apply-maintenance-dashboard-improvements.yml
+          git add src/screens/Equipment/equipmentService.ts \
+                  src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx \
+                  tailwind.css package.json scripts/maintenance-dashboard-contracts.mjs
+          git commit -m "Improve maintenance manager dashboard workflow"
+          git push origin main
