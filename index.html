@@ -120,6 +120,41 @@ section > div.sticky
     </svg>
   </div>
 </div>
+<script>
+  (() => {
+    const recoveryKey = "vorta:stale-build-recovery";
+    const recoveryQuery = "vorta_refresh";
+    const recoveryWindowMs = 30000;
+
+    const recoverFromStaleBuild = (event) => {
+      const now = Date.now();
+      const lastAttempt = Number(sessionStorage.getItem(recoveryKey) || "0");
+
+      if (now - lastAttempt < recoveryWindowMs) {
+        return;
+      }
+
+      event.preventDefault();
+      sessionStorage.setItem(recoveryKey, String(now));
+
+      const freshUrl = new URL(window.location.href);
+      freshUrl.searchParams.set(recoveryQuery, String(now));
+      window.location.replace(freshUrl.toString());
+    };
+
+    window.addEventListener("vite:preloadError", recoverFromStaleBuild);
+
+    window.addEventListener("load", () => {
+      sessionStorage.removeItem(recoveryKey);
+
+      const cleanUrl = new URL(window.location.href);
+      if (cleanUrl.searchParams.has(recoveryQuery)) {
+        cleanUrl.searchParams.delete(recoveryQuery);
+        window.history.replaceState({}, "", cleanUrl.toString());
+      }
+    });
+  })();
+</script>
 <script type="module" src="./src/lib/workforceProfilePhotos.ts"></script>
 <script type="module" src="./src/lib/equipmentDocumentNavigationInterceptor.ts"></script>
 <script type="module" src="./src/index.tsx"></script>
