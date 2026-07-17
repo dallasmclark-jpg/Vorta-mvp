@@ -1,1 +1,1 @@
-export { SkillsMatrixSection } from "./SkillsMatrixStableBootstrap";
+export { SkillsMatrixSection } from "./SkillsMatrixResolvedExperience";
