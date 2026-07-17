@@ -63,9 +63,9 @@ assert.notEqual(
   "Skills Matrix training action icon could not be located",
 );
 assert.notEqual(
-  initialSkillClearIndex,
+  scopeResetLabelIndex,
   -1,
-  "Skills Matrix initial skill reset could not be located",
+  "Skills Matrix scope-reset workflow block could not be located",
 );
 
 const robustEngineerMatcher =
@@ -93,7 +93,7 @@ for (const [index, replacement] of [
   }
 }
 
-if (lines[initialSkillClearIndex] !== "") {
+if (initialSkillClearIndex >= 0 && lines[initialSkillClearIndex] !== "") {
   lines[initialSkillClearIndex] = "";
   changed = true;
 }
