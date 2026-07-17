@@ -1,201 +1,153 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
-
-// One skill per category — ordered by domain importance for heatmap diversity
-const HEATMAP_CATEGORY_PRIORITY = [
-  "Pharmaceutical Compliance",
-  "Pharmaceutical Equipment",
-  "CMMS / Maintenance Systems",
-  "Reliability Engineering",
-  "Electrical Maintenance",
-  "Automation & Controls",
-  "Pharmaceutical OEM Expertise",
-  "Bosch OEM Expertise",
-  "Mechanical Maintenance",
-  "Certifications & Qualifications",
-];
+import { context, preflight, response } from "./auth.ts";
+import { build } from "./transform.ts";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+  const options = preflight(req);
+  if (options) return options;
+  if (!["GET", "POST"].includes(req.method)) {
+    return response(req, { error: "Method not allowed" }, 405);
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } }
-  );
+  try {
+    const { db, siteId, organisationId } = await context(req);
 
-  // ── Parallel fetch ───────────────────────────────────────────────────────
-  const [
-    { data: engineers },
-    { data: allAssignments },
-    { data: riskProfiles },
-    { data: skillGapSnaps },
-    { data: departments },
-  ] = await Promise.all([
-    supabase
-      .from("engineers")
-      .select("id,full_name,discipline,shift_pattern,availability_status,department_id,employment_type")
-      .order("full_name"),
-    supabase
-      .from("engineer_skills")
-      .select("engineer_id,skill_id,validated_rating,manager_rating,self_rating,training_required,verification_status"),
-    supabase
-      .from("engineer_risk_profiles")
-      .select("engineer_id,retirement_risk,leaving_risk,critical_knowledge_holder"),
-    supabase
-      .from("skill_gap_snapshots")
-      .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,risk_level,recommendation,snapshot_date"),
-    supabase.from("departments").select("id,name"),
-  ]);
+    const [
+      siteResult,
+      engineersResult,
+      departmentsResult,
+      teamsResult,
+      equipmentResult,
+      gapsResult,
+    ] = await Promise.all([
+      db.from("sites")
+        .select("id,name,updated_at")
+        .eq("id", siteId)
+        .maybeSingle(),
+      db.from("engineers")
+        .select("id,full_name,avatar_url,discipline,shift_pattern,availability_status,department_id,employment_type,updated_at")
+        .eq("site_id", siteId)
+        .eq("organisation_id", organisationId)
+        .order("full_name"),
+      db.from("departments")
+        .select("id,name")
+        .eq("site_id", siteId)
+        .order("name"),
+      db.from("maintenance_shift_teams")
+        .select("id,code,name,pattern_type,cycle_offset,active")
+        .eq("site_id", siteId)
+        .eq("active", true),
+      db.from("equipment_assets")
+        .select("id,equipment_code,name,area,criticality,status,department_id,updated_at")
+        .eq("site_id", siteId),
+      db.from("skill_gap_snapshots")
+        .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,sme_engineer_id,risk_level,recommendation,snapshot_date")
+        .eq("site_id", siteId)
+        .eq("organisation_id", organisationId),
+    ]);
 
-  const engList     = engineers      ?? [];
-  const assignList  = allAssignments ?? [];
-  const riskList    = riskProfiles   ?? [];
-  const snapList    = skillGapSnaps  ?? [];
-  const deptList    = departments    ?? [];
+    const baseError =
+      siteResult.error ??
+      engineersResult.error ??
+      departmentsResult.error ??
+      teamsResult.error ??
+      equipmentResult.error ??
+      gapsResult.error;
+    if (baseError) throw baseError;
 
-  // ── Skill metadata ──────────────────────────────────────────────────────
-  const allSkillIds = [
-    ...new Set([
-      ...(assignList as { skill_id: string }[]).map((a) => a.skill_id),
-      ...(snapList   as { skill_id: string }[]).map((s) => s.skill_id),
-    ]),
-  ];
-  const { data: allSkills } = await supabase
-    .from("skills")
-    .select("id,name,category,is_critical")
-    .in("id", allSkillIds);
+    const engineers = engineersResult.data ?? [];
+    const engineerIds = engineers.map((row: any) => row.id);
+    const teams = teamsResult.data ?? [];
+    const teamIds = teams.map((row: any) => row.id);
+    const equipment = equipmentResult.data ?? [];
+    const equipmentIds = equipment.map((row: any) => row.id);
 
-  const skillsById  = new Map((allSkills ?? []).map((s: { id: string }) => [s.id, s]));
-  const deptMap     = new Map(deptList.map((d: { id: string; name: string }) => [d.id, d.name]));
-  const riskProfMap = new Map((riskList as { engineer_id: string }[]).map((r) => [r.engineer_id, r]));
+    const [
+      assignmentsResult,
+      risksResult,
+      membersResult,
+      requirementsResult,
+      capabilitiesResult,
+    ] = await Promise.all([
+      engineerIds.length
+        ? db.from("engineer_skills")
+            .select("engineer_id,skill_id,validated_rating,manager_rating,self_rating,target_rating,years_experience,last_used_date,expiry_date,last_validated_at,verification_status,training_required,practice_authority,priority_level,evidence,evidence_url")
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+      engineerIds.length
+        ? db.from("engineer_risk_profiles")
+            .select("engineer_id,retirement_risk,leaving_risk,critical_knowledge_holder,reviewed_at")
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+      teamIds.length
+        ? db.from("maintenance_shift_team_members")
+            .select("team_id,engineer_id,active_from,active_to")
+            .in("team_id", teamIds)
+        : Promise.resolve({ data: [], error: null }),
+      equipmentIds.length
+        ? db.from("equipment_required_skills")
+            .select("equipment_id,skill_id,required_level,criticality,minimum_qualified_engineers,execution_authority,validation_required,evidence_reference")
+            .in("equipment_id", equipmentIds)
+        : Promise.resolve({ data: [], error: null }),
+      equipmentIds.length && engineerIds.length
+        ? db.from("equipment_engineer_capabilities")
+            .select("equipment_id,engineer_id,competency_level,capability_role,capability_status,practice_authority,validation_status,specialism,evidence_reference,valid_from,valid_until")
+            .in("equipment_id", equipmentIds)
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-  // ── Heatmap column selection: one per priority category, full coverage ──
-  const skillEngCount = new Map<string, number>();
-  for (const a of assignList as { skill_id: string }[]) {
-    skillEngCount.set(a.skill_id, (skillEngCount.get(a.skill_id) ?? 0) + 1);
-  }
-  const halfCoverage = Math.ceil(engList.length / 2);
-  const fullCoverageIds = new Set(
-    [...skillEngCount.entries()]
-      .filter(([, c]) => c >= halfCoverage)
-      .map(([id]) => id)
-  );
+    const detailError =
+      assignmentsResult.error ??
+      risksResult.error ??
+      membersResult.error ??
+      requirementsResult.error ??
+      capabilitiesResult.error;
+    if (detailError) throw detailError;
 
-  const seenSkillIds = new Set<string>();
-  const heatmapSkills: unknown[] = [];
-  for (const cat of HEATMAP_CATEGORY_PRIORITY) {
-    const candidates = (allSkills ?? []).filter(
-      (s: { category: string; is_critical: boolean; id: string }) =>
-        s.category === cat && s.is_critical && fullCoverageIds.has(s.id)
+    const skillIds = [...new Set([
+      ...(assignmentsResult.data ?? []).map((row: any) => row.skill_id),
+      ...(requirementsResult.data ?? []).map((row: any) => row.skill_id),
+      ...(gapsResult.data ?? []).map((row: any) => row.skill_id),
+    ].filter(Boolean))];
+
+    const skillsResult = skillIds.length
+      ? await db.from("skills")
+          .select("id,name,category,subcategory,description,is_critical,certification_required,expiry_required,display_order")
+          .in("id", skillIds)
+      : { data: [], error: null };
+    if (skillsResult.error) throw skillsResult.error;
+
+    return response(req, build({
+      generatedAt: new Date().toISOString(),
+      site: siteResult.data ?? {
+        id: siteId,
+        name: "Maintenance site",
+        updated_at: null,
+      },
+      engineers,
+      departments: departmentsResult.data ?? [],
+      shiftTeams: teams,
+      shiftMembers: membersResult.data ?? [],
+      assignments: assignmentsResult.data ?? [],
+      risks: risksResult.data ?? [],
+      equipment,
+      requirements: requirementsResult.data ?? [],
+      capabilities: capabilitiesResult.data ?? [],
+      gaps: gapsResult.data ?? [],
+      skills: skillsResult.data ?? [],
+    }));
+  } catch (error) {
+    const status = Number((error as any)?.status) || 500;
+    if (status >= 500) console.error("skills-matrix-data failed", error);
+    return response(
+      req,
+      {
+        error: status < 500
+          ? String((error as any)?.message ?? "Access denied")
+          : "Skills matrix data could not be loaded",
+      },
+      status,
     );
-    if (candidates.length === 0) continue;
-    // Pick highest coverage skill in this category
-    const best = candidates.sort(
-      (a: { id: string }, b: { id: string }) =>
-        (skillEngCount.get(b.id) ?? 0) - (skillEngCount.get(a.id) ?? 0)
-    )[0];
-    if (!seenSkillIds.has(best.id)) {
-      seenSkillIds.add(best.id);
-      heatmapSkills.push(best);
-    }
   }
-
-  const heatmapSkillIds = new Set(heatmapSkills.map((s: unknown) => (s as { id: string }).id));
-  const heatmapAssignments = (assignList as { skill_id: string }[]).filter((a) =>
-    heatmapSkillIds.has(a.skill_id)
-  );
-
-  // ── Per-engineer derived stats (from ALL assignments) ───────────────────
-  const engStats = new Map<string, { total: number; count: number; trainingCount: number }>();
-  for (const a of assignList as {
-    engineer_id: string;
-    validated_rating: number | null;
-    manager_rating: number | null;
-    self_rating: number | null;
-    training_required: boolean;
-  }[]) {
-    const r = a.validated_rating ?? a.manager_rating ?? a.self_rating ?? null;
-    if (!engStats.has(a.engineer_id)) {
-      engStats.set(a.engineer_id, { total: 0, count: 0, trainingCount: 0 });
-    }
-    const e = engStats.get(a.engineer_id)!;
-    if (r !== null) { e.total += r; e.count++; }
-    if (a.training_required) e.trainingCount++;
-  }
-
-  const engineersWithStats = engList.map((eng: { id: string }) => {
-    const st  = engStats.get(eng.id);
-    const avg = st && st.count > 0 ? st.total / st.count : 0;
-    const score = Math.round((avg / 5) * 100);
-    const risk  =
-      score >= 80 ? "low"
-      : score >= 68 ? "medium"
-      : score >= 55 ? "high"
-      : "critical";
-    const rp = riskProfMap.get(eng.id) as {
-      retirement_risk: string; leaving_risk: string; critical_knowledge_holder: boolean
-    } | undefined;
-    return {
-      ...eng,
-      skills_score:              score,
-      risk_level:                risk,
-      training_count:            st?.trainingCount ?? 0,
-      critical_knowledge_holder: rp?.critical_knowledge_holder ?? false,
-      retirement_risk:           rp?.retirement_risk           ?? null,
-      leaving_risk:              rp?.leaving_risk              ?? null,
-      department_name:           deptMap.get((eng as { department_id: string }).department_id) ?? null,
-    };
-  });
-
-  // ── Enrich skill gap snapshots ──────────────────────────────────────────
-  const enrichedGaps = (snapList as {
-    skill_id: string; department_id: string | null
-  }[]).map((sg) => ({
-    ...sg,
-    skill_name:      (skillsById.get(sg.skill_id) as { name: string }  | undefined)?.name     ?? "Unknown",
-    skill_category:  (skillsById.get(sg.skill_id) as { category: string } | undefined)?.category ?? "",
-    department_name: sg.department_id ? (deptMap.get(sg.department_id) ?? null) : null,
-  }));
-
-  // Sort by SPOF first, then engineers_below_target DESC
-  enrichedGaps.sort((a, b) => {
-    const spofA = (a as { single_point_of_failure: boolean }).single_point_of_failure ? 0 : 1;
-    const spofB = (b as { single_point_of_failure: boolean }).single_point_of_failure ? 0 : 1;
-    if (spofA !== spofB) return spofA - spofB;
-    return (
-      (b as { engineers_below_target: number }).engineers_below_target -
-      (a as { engineers_below_target: number }).engineers_below_target
-    );
-  });
-
-  // ── Stats ───────────────────────────────────────────────────────────────
-  const stats = {
-    totalEngineers:  engList.length,
-    skillsAssessed:  assignList.length,
-    criticalGaps:    snapList.filter((s: { risk_level: string }) => s.risk_level === "critical").length,
-    trainingRequired: assignList.filter((a: { training_required: boolean }) => a.training_required).length,
-    criticalHolders: riskList.filter((r: { critical_knowledge_holder: boolean }) => r.critical_knowledge_holder).length,
-  };
-
-  return new Response(
-    JSON.stringify({
-      engineers:         engineersWithStats,
-      departments:       deptList,
-      heatmapSkills,
-      heatmapAssignments,
-      skillGaps:         enrichedGaps,
-      riskProfiles:      riskList,
-      stats,
-    }),
-    { headers: { "Content-Type": "application/json", ...corsHeaders } }
-  );
 });
