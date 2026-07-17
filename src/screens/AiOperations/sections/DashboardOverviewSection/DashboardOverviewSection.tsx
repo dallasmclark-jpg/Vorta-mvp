@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RefreshCw,
@@ -16,7 +11,12 @@ import {
 } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../../components/ui/card";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
 import {
   getAreaInterventionPlans,
@@ -39,35 +39,23 @@ import {
   type RiskDashboardScopeKpiCache,
 } from "../../../Equipment/equipmentService";
 
-const formatSiteRisk = (value: number): string =>
-  Number(value).toFixed(1);
+const formatSiteRisk = (value: number): string => Number(value).toFixed(1);
 
 const parseDateOnly = (value: string): Date => {
-  const [year, month, day] = value
-    .split("-")
-    .map(Number);
+  const [year, month, day] = value.split("-").map(Number);
 
-  return new Date(
-    year,
-    month - 1,
-    day,
-  );
+  return new Date(year, month - 1, day);
 };
 
-const formatCalendarDate = (
-  value: string,
-): string => {
+const formatCalendarDate = (value: string): string => {
   if (!value) {
     return "—";
   }
 
-  return parseDateOnly(value).toLocaleDateString(
-    "en-GB",
-    {
-      day: "numeric",
-      month: "short",
-    },
-  );
+  return parseDateOnly(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 };
 
 const getLabourRiskPresentation = (
@@ -77,8 +65,7 @@ const getLabourRiskPresentation = (
   if (noEngineerOverride || score >= 85) {
     return {
       level: "Critical",
-      badgeClassName:
-        "bg-[#ef444420] text-red-500 hover:bg-[#ef444420]",
+      badgeClassName: "bg-[#ef444420] text-red-500 hover:bg-[#ef444420]",
       progressClassName: "bg-red-500",
       label: noEngineerOverride
         ? "Critical no-cover override"
@@ -89,8 +76,7 @@ const getLabourRiskPresentation = (
   if (score >= 65) {
     return {
       level: "High",
-      badgeClassName:
-        "bg-orange-500/20 text-orange-400 hover:bg-orange-500/20",
+      badgeClassName: "bg-orange-500/20 text-orange-400 hover:bg-orange-500/20",
       progressClassName: "bg-orange-500",
       label: "High labour exposure",
     };
@@ -99,8 +85,7 @@ const getLabourRiskPresentation = (
   if (score >= 40) {
     return {
       level: "Medium",
-      badgeClassName:
-        "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
+      badgeClassName: "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
       progressClassName: "bg-yellow-400",
       label: "Reduced labour resilience",
     };
@@ -118,19 +103,15 @@ const getLabourRiskPresentation = (
 
   return {
     level: "Minimal",
-    badgeClassName:
-      "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20",
+    badgeClassName: "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20",
     progressClassName: "bg-cyan-400",
     label: "Labour coverage stable",
   };
 };
 
-const useInViewOnce = <T extends HTMLElement,>(
-  threshold = 0.25,
-) => {
+const useInViewOnce = <T extends HTMLElement>(threshold = 0.25) => {
   const elementRef = useRef<T>(null);
-  const [hasEnteredView, setHasEnteredView] =
-    useState(false);
+  const [hasEnteredView, setHasEnteredView] = useState(false);
 
   useEffect(() => {
     const element = elementRef.current;
@@ -139,15 +120,11 @@ const useInViewOnce = <T extends HTMLElement,>(
       return;
     }
 
-    const prefersReducedMotion =
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
-    if (
-      prefersReducedMotion ||
-      !("IntersectionObserver" in window)
-    ) {
+    if (prefersReducedMotion || !("IntersectionObserver" in window)) {
       setHasEnteredView(true);
       return;
     }
@@ -192,45 +169,28 @@ const RiskMeter = ({
   animate?: boolean;
   ariaLabel?: string;
 }) => {
-  const {
-    elementRef,
-    hasEnteredView,
-  } = useInViewOnce<HTMLDivElement>();
+  const { elementRef, hasEnteredView } = useInViewOnce<HTMLDivElement>();
 
-  const [
-    isEmphasising,
-    setIsEmphasising,
-  ] = useState(false);
+  const [isEmphasising, setIsEmphasising] = useState(false);
 
-  const clampedValue = Math.max(
-    0,
-    Math.min(100, value),
-  );
+  const clampedValue = Math.max(0, Math.min(100, value));
 
-  const displayedValue =
-    animate && !hasEnteredView
-      ? 0
-      : clampedValue;
+  const displayedValue = animate && !hasEnteredView ? 0 : clampedValue;
 
   useEffect(() => {
     if (
       !animate ||
       !hasEnteredView ||
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
       return;
     }
 
     setIsEmphasising(true);
 
-    const timeoutId = window.setTimeout(
-      () => {
-        setIsEmphasising(false);
-      },
-      850,
-    );
+    const timeoutId = window.setTimeout(() => {
+      setIsEmphasising(false);
+    }, 850);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -246,9 +206,7 @@ const RiskMeter = ({
       aria-valuemax={100}
       aria-valuenow={clampedValue}
       className={`relative h-3 w-full overflow-visible rounded-lg bg-[#050914] ring-1 ring-inset ring-slate-600/45 transition-shadow duration-300 ${
-        isEmphasising
-          ? "shadow-[0_0_10px_rgba(255,255,255,0.10)]"
-          : ""
+        isEmphasising ? "shadow-[0_0_10px_rgba(255,255,255,0.10)]" : ""
       }`}
     >
       <div
@@ -269,10 +227,7 @@ const RiskMeter = ({
             : ""
         }`}
         style={{
-          left:
-            displayedValue <= 0
-              ? "0"
-              : `calc(${displayedValue}% - 1px)`,
+          left: displayedValue <= 0 ? "0" : `calc(${displayedValue}% - 1px)`,
         }}
         aria-hidden="true"
       />
@@ -304,34 +259,25 @@ const RISK_KPI_PERIODS: Array<{
   },
 ];
 
-const formatKpiPeriodRange = (
-  start: string,
-  end: string,
-): string => {
+const formatKpiPeriodRange = (start: string, end: string): string => {
   if (!start || !end) {
     return "";
   }
 
   if (start === end) {
-    return parseDateOnly(
-      start,
-    ).toLocaleDateString("en-GB", {
+    return parseDateOnly(start).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
     });
   }
 
-  const startLabel = parseDateOnly(
-    start,
-  ).toLocaleDateString("en-GB", {
+  const startLabel = parseDateOnly(start).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
 
-  const endLabel = parseDateOnly(
-    end,
-  ).toLocaleDateString("en-GB", {
+  const endLabel = parseDateOnly(end).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -340,9 +286,7 @@ const formatKpiPeriodRange = (
   return `${startLabel} – ${endLabel}`;
 };
 
-const getKpiRagPresentation = (
-  status: RiskReductionKpi["ragStatus"],
-) => {
+const getKpiRagPresentation = (status: RiskReductionKpi["ragStatus"]) => {
   switch (status) {
     case "green":
       return {
@@ -362,8 +306,7 @@ const getKpiRagPresentation = (
         borderClassName: "border-yellow-500/30",
         backgroundClassName: "bg-yellow-500/[0.035]",
         valueClassName: "text-yellow-400",
-        badgeClassName:
-          "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+        badgeClassName: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
         dotClassName: "bg-yellow-400",
         barClassName: "bg-yellow-500",
       };
@@ -374,8 +317,7 @@ const getKpiRagPresentation = (
         borderClassName: "border-red-500/30",
         backgroundClassName: "bg-red-500/[0.035]",
         valueClassName: "text-red-400",
-        badgeClassName:
-          "border-red-500/20 bg-red-500/10 text-red-400",
+        badgeClassName: "border-red-500/20 bg-red-500/10 text-red-400",
         dotClassName: "bg-red-400",
         barClassName: "bg-red-500",
       };
@@ -386,24 +328,18 @@ const getKpiRagPresentation = (
         borderClassName: "border-gray-800",
         backgroundClassName: "bg-[#141820]",
         valueClassName: "text-slate-400",
-        badgeClassName:
-          "border-gray-700 bg-gray-800/70 text-slate-400",
+        badgeClassName: "border-gray-700 bg-gray-800/70 text-slate-400",
         dotClassName: "bg-slate-500",
         barClassName: "bg-slate-600",
       };
   }
 };
 
-const formatKpiPercentage = (
-  value: number | null,
-): string =>
-  value === null
-    ? "—"
-    : `${value.toFixed(1)}%`;
+const formatKpiPercentage = (value: number | null): string =>
+  value === null ? "—" : `${value.toFixed(1)}%`;
 
-const formatKpiTarget = (
-  target: number,
-): string => `Target ≥ ${target.toFixed(1)}%`;
+const formatKpiTarget = (target: number): string =>
+  `Target ≥ ${target.toFixed(1)}%`;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -412,17 +348,13 @@ interface RiskEquipmentPlanHistoryItem {
   equipmentName: string;
 }
 
-type RiskPlanAction =
-  SiteRiskReductionPlan["actions"][number];
+type RiskPlanAction = SiteRiskReductionPlan["actions"][number];
 
 const getRiskPlanActionRoute = (
   equipmentId: string,
   action: RiskPlanAction,
 ): string => {
-  const normalizedDriver =
-    action.driver
-      .trim()
-      .toLowerCase();
+  const normalizedDriver = action.driver.trim().toLowerCase();
 
   /*
    * Spare and stock availability actions
@@ -445,7 +377,12 @@ const getRiskPlanActionRoute = (
     normalizedDriver.includes("labour") ||
     normalizedDriver.includes("coverage")
   ) {
-    return `/equipment/${equipmentId}/skills`;
+    const params = new URLSearchParams({
+      from: "dashboard",
+      returnTo: "/dashboard",
+      equipment: equipmentId,
+    });
+    return `/equipment/${equipmentId}/skills?${params.toString()}`;
   }
 
   /*
@@ -457,9 +394,7 @@ const getRiskPlanActionRoute = (
    * may also have a generated work order.
    */
   if (
-    normalizedDriver.includes(
-      "calibration",
-    ) ||
+    normalizedDriver.includes("calibration") ||
     normalizedDriver.includes("pm") ||
     action.pmNumbers.length > 0
   ) {
@@ -471,9 +406,7 @@ const getRiskPlanActionRoute = (
    * only reference a work order belong on
    * the Work Orders page.
    */
-  if (
-    action.workOrderNumbers.length > 0
-  ) {
+  if (action.workOrderNumbers.length > 0) {
     return `/equipment/${equipmentId}/work-orders`;
   }
 
@@ -482,6 +415,33 @@ const getRiskPlanActionRoute = (
    * still open the correct equipment.
    */
   return `/equipment/${equipmentId}/overview`;
+};
+
+const getLabourRiskWorkflowRoute = (
+  item: RiskDashboardLabourCard,
+  activeScopeArea: string | null,
+): string => {
+  const params = new URLSearchParams({
+    from: "dashboard",
+    returnTo: "/dashboard",
+  });
+
+  if (activeScopeArea) {
+    params.set("scope", "area");
+    params.set("area", activeScopeArea);
+  }
+
+  if (item.slug === "single-point-failure" || item.slug === "skill-gaps") {
+    params.set("priority", "1");
+    return `/skills-matrix?${params.toString()}`;
+  }
+
+  if (item.slug === "training-expiring") {
+    params.set("priority", "High");
+    return `/training?${params.toString()}`;
+  }
+
+  return `/maintenance/labour-risk/${item.slug}?${params.toString()}`;
 };
 
 const RISK_KPI_FIXED_DISPLAY_ORDER = [
@@ -493,9 +453,7 @@ const RISK_KPI_FIXED_DISPLAY_ORDER = [
   "Critical Spares Ready",
 ] as const;
 
-const normalizeRiskKpiLabel = (
-  value: string,
-): string =>
+const normalizeRiskKpiLabel = (value: string): string =>
   value
     .trim()
     .toLowerCase()
@@ -505,12 +463,10 @@ const orderRiskKpisForDisplay = (
   kpis: RiskReductionKpi[],
 ): RiskReductionKpi[] => {
   const orderByLabel = new Map(
-    RISK_KPI_FIXED_DISPLAY_ORDER.map(
-      (label, index) => [
-        normalizeRiskKpiLabel(label),
-        index,
-      ],
-    ),
+    RISK_KPI_FIXED_DISPLAY_ORDER.map((label, index) => [
+      normalizeRiskKpiLabel(label),
+      index,
+    ]),
   );
 
   return kpis
@@ -518,18 +474,10 @@ const orderRiskKpisForDisplay = (
       kpi,
       originalIndex,
       fixedIndex:
-        orderByLabel.get(
-          normalizeRiskKpiLabel(
-            kpi.label,
-          ),
-        ) ??
-        RISK_KPI_FIXED_DISPLAY_ORDER.length +
-          originalIndex,
+        orderByLabel.get(normalizeRiskKpiLabel(kpi.label)) ??
+        RISK_KPI_FIXED_DISPLAY_ORDER.length + originalIndex,
     }))
-    .sort(
-      (a, b) =>
-        a.fixedIndex - b.fixedIndex,
-    )
+    .sort((a, b) => a.fixedIndex - b.fixedIndex)
     .map(({ kpi }) => kpi);
 };
 
@@ -539,10 +487,7 @@ type RiskKpiExplanation = {
   dataSources: string;
 };
 
-const RISK_KPI_EXPLANATIONS: Record<
-  string,
-  RiskKpiExplanation
-> = {
+const RISK_KPI_EXPLANATIONS: Record<string, RiskKpiExplanation> = {
   risk_reduction_achieved: {
     calculation:
       "Sum of the actual risk reduction recorded for priority actions completed during the selected period.",
@@ -566,8 +511,7 @@ const RISK_KPI_EXPLANATIONS: Record<
       "Count of high or critical equipment exposures that moved into a lower risk band after completed actions.",
     whyItMatters:
       "Shows whether the site is removing its most serious equipment exposures instead of merely reducing minor risks.",
-    dataSources:
-      "Locked pre-action and post-action equipment risk levels.",
+    dataSources: "Locked pre-action and post-action equipment risk levels.",
   },
 
   priority_actions_completed_on_time: {
@@ -598,169 +542,101 @@ const RISK_KPI_EXPLANATIONS: Record<
   },
 };
 
-const getRiskKpiExplanation = (
-  kpi: RiskReductionKpi,
-): RiskKpiExplanation =>
+const getRiskKpiExplanation = (kpi: RiskReductionKpi): RiskKpiExplanation =>
   RISK_KPI_EXPLANATIONS[kpi.key] ?? {
     calculation:
       "Calculated from eligible Vorta records within the selected reporting period.",
-    whyItMatters:
-      kpi.description,
-    dataSources:
-      "Vorta maintenance, risk and operational data.",
+    whyItMatters: kpi.description,
+    dataSources: "Vorta maintenance, risk and operational data.",
   };
 
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
-  const riskKpiGridRef =
-    useRef<HTMLDivElement>(null);
+  const riskKpiGridRef = useRef<HTMLDivElement>(null);
 
-  const handleRiskKpiScroll = (
-    direction: "previous" | "next",
-  ) => {
-    const container =
-      riskKpiGridRef.current;
+  const handleRiskKpiScroll = (direction: "previous" | "next") => {
+    const container = riskKpiGridRef.current;
 
     if (!container) {
       return;
     }
 
-    const firstCard =
-      container.querySelector<HTMLElement>(
-        "[data-risk-kpi-card]",
-      );
+    const firstCard = container.querySelector<HTMLElement>(
+      "[data-risk-kpi-card]",
+    );
 
-    const cardWidth =
-      firstCard?.offsetWidth ?? 280;
+    const cardWidth = firstCard?.offsetWidth ?? 280;
 
     container.scrollBy({
-      left:
-        direction === "next"
-          ? cardWidth + 16
-          : -(cardWidth + 16),
+      left: direction === "next" ? cardWidth + 16 : -(cardWidth + 16),
       behavior: "smooth",
     });
   };
 
-  const [
-    hasRiskKpiGridEnteredView,
-    setHasRiskKpiGridEnteredView,
-  ] = useState(false);
+  const [hasRiskKpiGridEnteredView, setHasRiskKpiGridEnteredView] =
+    useState(false);
 
-  const [areaRiskCards, setAreaRiskCards] =
-    useState<AreaRiskProfile[]>([]);
+  const [areaRiskCards, setAreaRiskCards] = useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
-  const [
-    hasOpenedRiskPlan,
-    setHasOpenedRiskPlan,
-  ] = useState(false);
-  const [
-    hasUsedNextEquipment,
-    setHasUsedNextEquipment,
-  ] = useState(false);
-  const [
-    hasUsedNextArea,
-    setHasUsedNextArea,
-  ] = useState(false);
-  const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
-  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
-
+  const [hasOpenedRiskPlan, setHasOpenedRiskPlan] = useState(false);
+  const [hasUsedNextEquipment, setHasUsedNextEquipment] = useState(false);
+  const [hasUsedNextArea, setHasUsedNextArea] = useState(false);
+  const [interventionPlans, setInterventionPlans] = useState<
+    AreaInterventionPlan[]
+  >([]);
+  const [selectedInterventionPlan, setSelectedInterventionPlan] =
+    useState<AreaInterventionPlan | null>(null);
 
   const [riskReductionPlan, setRiskReductionPlan] =
     useState<SiteRiskReductionPlan | null>(null);
   const [riskReductionPlanLoading, setRiskReductionPlanLoading] =
     useState(true);
-  const [dashboardRefreshing, setDashboardRefreshing] =
-    useState(false);
-  const [
-    operationalRiskLoading,
-    setOperationalRiskLoading,
-  ] = useState(true);
+  const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
+  const [operationalRiskLoading, setOperationalRiskLoading] = useState(true);
 
-  const [
-    secondaryRiskLoading,
-    setSecondaryRiskLoading,
-  ] = useState(true);
+  const [secondaryRiskLoading, setSecondaryRiskLoading] = useState(true);
 
-  const [
-    dashboardLoadError,
-    setDashboardLoadError,
-  ] = useState<string | null>(null);
-
-  const [
-    selectedKpiPeriod,
-    setSelectedKpiPeriod,
-  ] = useState<RiskKpiPeriodKey>("daily");
-
-  const [
-    riskKpiDashboard,
-    setRiskKpiDashboard,
-  ] = useState<RiskReductionKpiDashboard | null>(
+  const [dashboardLoadError, setDashboardLoadError] = useState<string | null>(
     null,
   );
 
-  const [
-    riskKpiLoading,
-    setRiskKpiLoading,
-  ] = useState(false);
+  const [selectedKpiPeriod, setSelectedKpiPeriod] =
+    useState<RiskKpiPeriodKey>("daily");
 
-  const [
-    hasRevealedRiskKpiBars,
-    setHasRevealedRiskKpiBars,
-  ] = useState(false);
+  const [riskKpiDashboard, setRiskKpiDashboard] =
+    useState<RiskReductionKpiDashboard | null>(null);
 
-  const [
-    hasCompletedRiskKpiIntro,
-    setHasCompletedRiskKpiIntro,
-  ] = useState(false);
+  const [riskKpiLoading, setRiskKpiLoading] = useState(false);
 
-  const [
-    riskScopes,
-    setRiskScopes,
-  ] = useState<
-    RiskDashboardScope[]
-  >([]);
+  const [hasRevealedRiskKpiBars, setHasRevealedRiskKpiBars] = useState(false);
 
-  const [
-    selectedRiskScopeKey,
-    setSelectedRiskScopeKey,
-  ] = useState("site");
+  const [hasCompletedRiskKpiIntro, setHasCompletedRiskKpiIntro] =
+    useState(false);
 
-  const [
-    riskScopePlanCache,
-    setRiskScopePlanCache,
-  ] = useState<
-    RiskDashboardScopePlanCache
-  >({});
+  const [riskScopes, setRiskScopes] = useState<RiskDashboardScope[]>([]);
 
-  const [
-    riskScopeKpiCache,
-    setRiskScopeKpiCache,
-  ] = useState<
-    RiskDashboardScopeKpiCache
-  >({});
+  const [selectedRiskScopeKey, setSelectedRiskScopeKey] = useState("site");
 
-  const [
-    activeRiskKpiInfoKey,
-    setActiveRiskKpiInfoKey,
-  ] = useState<string | null>(null);
+  const [riskScopePlanCache, setRiskScopePlanCache] =
+    useState<RiskDashboardScopePlanCache>({});
+
+  const [riskScopeKpiCache, setRiskScopeKpiCache] =
+    useState<RiskDashboardScopeKpiCache>({});
+
+  const [activeRiskKpiInfoKey, setActiveRiskKpiInfoKey] = useState<
+    string | null
+  >(null);
 
   const [riskPlanHistory, setRiskPlanHistory] = useState<string[]>([]);
 
-  const [
-    riskEquipmentPlanHistory,
-    setRiskEquipmentPlanHistory,
-  ] = useState<
+  const [riskEquipmentPlanHistory, setRiskEquipmentPlanHistory] = useState<
     RiskEquipmentPlanHistoryItem[]
   >([]);
   const previousRiskPlanEquipment =
     riskEquipmentPlanHistory.length > 0
-      ? riskEquipmentPlanHistory[
-          riskEquipmentPlanHistory.length -
-            1
-        ]
+      ? riskEquipmentPlanHistory[riskEquipmentPlanHistory.length - 1]
       : null;
 
   const previousRiskPlanArea =
@@ -769,31 +645,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
       : null;
 
   const activeRiskScope =
-    riskScopes.find(
-      (scope) =>
-        scope.scopeKey ===
-        selectedRiskScopeKey,
-    ) ??
-    riskScopes.find(
-      (scope) =>
-        scope.scopeKey === "site",
-    ) ??
+    riskScopes.find((scope) => scope.scopeKey === selectedRiskScopeKey) ??
+    riskScopes.find((scope) => scope.scopeKey === "site") ??
     null;
 
-  const isSiteRiskScope =
-    activeRiskScope?.scopeType !==
-    "area";
+  const isSiteRiskScope = activeRiskScope?.scopeType !== "area";
 
-  const activeScopeArea =
-    activeRiskScope?.area ?? null;
+  const activeScopeArea = activeRiskScope?.area ?? null;
 
-  const activeScopeLabel =
-    activeRiskScope?.scopeLabel ??
-    "Site Risk";
+  const activeScopeLabel = activeRiskScope?.scopeLabel ?? "Site Risk";
 
-  const activeScopeChildCards =
-    activeRiskScope?.childCards ??
-    [];
+  const activeScopeChildCards = activeRiskScope?.childCards ?? [];
 
   const siteRiskReduction = riskReductionPlan
     ? Math.max(
@@ -807,29 +669,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
     : 0;
 
   useEffect(() => {
-    if (
-      !riskKpiDashboard ||
-      hasRiskKpiGridEnteredView
-    ) {
+    if (!riskKpiDashboard || hasRiskKpiGridEnteredView) {
       return;
     }
 
-    const gridElement =
-      riskKpiGridRef.current;
+    const gridElement = riskKpiGridRef.current;
 
     if (!gridElement) {
       return;
     }
 
-    const prefersReducedMotion =
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
-    if (
-      prefersReducedMotion ||
-      !("IntersectionObserver" in window)
-    ) {
+    if (prefersReducedMotion || !("IntersectionObserver" in window)) {
       setHasRiskKpiGridEnteredView(true);
       setHasRevealedRiskKpiBars(true);
       setHasCompletedRiskKpiIntro(true);
@@ -856,10 +710,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     return () => {
       observer.disconnect();
     };
-  }, [
-    riskKpiDashboard,
-    hasRiskKpiGridEnteredView,
-  ]);
+  }, [riskKpiDashboard, hasRiskKpiGridEnteredView]);
 
   useEffect(() => {
     if (
@@ -873,90 +724,57 @@ export const DashboardOverviewSection = (): JSX.Element => {
     let firstFrameId = 0;
     let secondFrameId = 0;
 
-    firstFrameId =
-      window.requestAnimationFrame(() => {
-        secondFrameId =
-          window.requestAnimationFrame(() => {
-            setHasRevealedRiskKpiBars(true);
-          });
+    firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        setHasRevealedRiskKpiBars(true);
       });
+    });
 
     return () => {
-      window.cancelAnimationFrame(
-        firstFrameId,
-      );
+      window.cancelAnimationFrame(firstFrameId);
 
-      window.cancelAnimationFrame(
-        secondFrameId,
-      );
+      window.cancelAnimationFrame(secondFrameId);
     };
-  }, [
-    hasRiskKpiGridEnteredView,
-    riskKpiDashboard,
-    hasRevealedRiskKpiBars,
-  ]);
+  }, [hasRiskKpiGridEnteredView, riskKpiDashboard, hasRevealedRiskKpiBars]);
 
   useEffect(() => {
-    if (
-      !hasRevealedRiskKpiBars ||
-      hasCompletedRiskKpiIntro
-    ) {
+    if (!hasRevealedRiskKpiBars || hasCompletedRiskKpiIntro) {
       return;
     }
 
-    const completionTimeoutId =
-      window.setTimeout(() => {
-        setHasCompletedRiskKpiIntro(true);
-      }, 2300);
+    const completionTimeoutId = window.setTimeout(() => {
+      setHasCompletedRiskKpiIntro(true);
+    }, 2300);
 
     return () => {
-      window.clearTimeout(
-        completionTimeoutId,
-      );
+      window.clearTimeout(completionTimeoutId);
     };
-  }, [
-    hasRevealedRiskKpiBars,
-    hasCompletedRiskKpiIntro,
-  ]);
+  }, [hasRevealedRiskKpiBars, hasCompletedRiskKpiIntro]);
 
   useEffect(() => {
     setActiveRiskKpiInfoKey(null);
-  }, [
-    selectedKpiPeriod,
-    selectedRiskScopeKey,
-  ]);
+  }, [selectedKpiPeriod, selectedRiskScopeKey]);
 
   useEffect(() => {
     if (!activeRiskKpiInfoKey) {
       return;
     }
 
-    const handleEscape = (
-      event: KeyboardEvent,
-    ) => {
+    const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setActiveRiskKpiInfoKey(null);
       }
     };
 
-    window.addEventListener(
-      "keydown",
-      handleEscape,
-    );
+    window.addEventListener("keydown", handleEscape);
 
     return () => {
-      window.removeEventListener(
-        "keydown",
-        handleEscape,
-      );
+      window.removeEventListener("keydown", handleEscape);
     };
   }, [activeRiskKpiInfoKey]);
 
   const loadRiskDashboard = useCallback(
-    async (
-      period: RiskKpiPeriodKey,
-      scopeKey: string,
-    ) => {
+    async (period: RiskKpiPeriodKey, scopeKey: string) => {
       setDashboardRefreshing(true);
       setOperationalRiskLoading(true);
       setSecondaryRiskLoading(true);
@@ -965,8 +783,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
       setDashboardLoadError(null);
 
       try {
-        const operationalDashboard =
-          await refreshAndGetOperationalDashboard();
+        const operationalDashboard = await refreshAndGetOperationalDashboard();
 
         if (!operationalDashboard) {
           throw new Error(
@@ -984,17 +801,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
         setSiteRisk(siteProfile);
         setRiskScopes(scopes);
 
-        const validScopeKey =
-          scopes.some(
-            (scope) =>
-              scope.scopeKey === scopeKey,
-          )
-            ? scopeKey
-            : "site";
+        const validScopeKey = scopes.some(
+          (scope) => scope.scopeKey === scopeKey,
+        )
+          ? scopeKey
+          : "site";
 
-        setSelectedRiskScopeKey(
-          validScopeKey,
-        );
+        setSelectedRiskScopeKey(validScopeKey);
 
         setRiskPlanHistory([]);
         setRiskEquipmentPlanHistory([]);
@@ -1010,20 +823,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
         setOperationalRiskLoading(false);
 
         try {
-          const workPlanRefreshSucceeded =
-            await refreshRiskWorkPlan();
+          const workPlanRefreshSucceeded = await refreshRiskWorkPlan();
 
           if (!workPlanRefreshSucceeded) {
-            throw new Error(
-              "The maintenance work plan could not be rebuilt.",
-            );
+            throw new Error("The maintenance work plan could not be rebuilt.");
           }
 
-          const [
-            areaPlans,
-            planCache,
-            scopeKpiCache,
-          ] = await Promise.all([
+          const [areaPlans, planCache, scopeKpiCache] = await Promise.all([
             getAreaInterventionPlans(),
             getRiskDashboardScopePlans(),
             getRiskDashboardScopeKpis(),
@@ -1031,38 +837,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
           setInterventionPlans(areaPlans);
           setRiskScopePlanCache(planCache);
-          setRiskScopeKpiCache(
-            scopeKpiCache,
-          );
+          setRiskScopeKpiCache(scopeKpiCache);
 
           const requestedPlan =
-            planCache[validScopeKey] ??
-            planCache.site ??
-            null;
+            planCache[validScopeKey] ?? planCache.site ?? null;
 
-          setRiskReductionPlan(
-            requestedPlan,
-          );
+          setRiskReductionPlan(requestedPlan);
 
           const requestedKpis =
-            scopeKpiCache[
-              validScopeKey
-            ]?.[period] ??
-            scopeKpiCache.site?.[
-              period
-            ] ??
-            scopeKpiCache.site
-              ?.daily ??
+            scopeKpiCache[validScopeKey]?.[period] ??
+            scopeKpiCache.site?.[period] ??
+            scopeKpiCache.site?.daily ??
             null;
 
-          setRiskKpiDashboard(
-            requestedKpis,
-          );
+          setRiskKpiDashboard(requestedKpis);
         } catch (error) {
-          console.warn(
-            "Secondary dashboard intelligence failed:",
-            error,
-          );
+          console.warn("Secondary dashboard intelligence failed:", error);
 
           setInterventionPlans([]);
           setRiskScopePlanCache({});
@@ -1075,10 +865,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           );
         }
       } catch (error) {
-        console.warn(
-          "Operational dashboard risk refresh failed:",
-          error,
-        );
+        console.warn("Operational dashboard risk refresh failed:", error);
 
         setDashboardLoadError(
           "Current site risk could not be calculated. Run the analysis again.",
@@ -1095,10 +882,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   );
 
   useEffect(() => {
-    void loadRiskDashboard(
-      "daily",
-      "site",
-    );
+    void loadRiskDashboard("daily", "site");
   }, [loadRiskDashboard]);
 
   const handleLoadRiskReductionPlan = async (
@@ -1151,93 +935,59 @@ export const DashboardOverviewSection = (): JSX.Element => {
     void handleLoadRiskReductionPlan(previousRiskPlanArea, "back");
   };
 
-  const handleLoadAreaEquipmentPlan =
-    async (
-      equipmentId?: string,
-      navigationMode:
-        | "forward"
-        | "back"
-        | "reset" = "forward",
-    ) => {
-      if (
-        riskReductionPlanLoading ||
-        isSiteRiskScope ||
-        !activeScopeArea
-      ) {
+  const handleLoadAreaEquipmentPlan = async (
+    equipmentId?: string,
+    navigationMode: "forward" | "back" | "reset" = "forward",
+  ) => {
+    if (riskReductionPlanLoading || isSiteRiskScope || !activeScopeArea) {
+      return;
+    }
+    setRiskReductionPlanLoading(true);
+    setIsRiskDetailOpen(true);
+    try {
+      const plan = await getAreaEquipmentRiskReductionPlan(
+        activeScopeArea,
+        equipmentId,
+      );
+      if (!plan) {
         return;
       }
-      setRiskReductionPlanLoading(
-        true,
-      );
-      setIsRiskDetailOpen(true);
-      try {
-        const plan =
-          await getAreaEquipmentRiskReductionPlan(
-            activeScopeArea,
-            equipmentId,
-          );
-        if (!plan) {
-          return;
-        }
-        const currentEquipmentId =
-          riskReductionPlan?.equipmentId;
-        const currentEquipmentName =
-          riskReductionPlan
-            ?.equipmentName;
-        if (
-          navigationMode ===
-            "forward" &&
-          currentEquipmentId &&
-          currentEquipmentName &&
-          currentEquipmentId !==
-            plan.equipmentId
-        ) {
-          setRiskEquipmentPlanHistory(
-            (history) => [
-              ...history,
-              {
-                equipmentId:
-                  currentEquipmentId,
-                equipmentName:
-                  currentEquipmentName,
-              },
-            ],
-          );
-        }
-        if (
-          navigationMode === "back"
-        ) {
-          setRiskEquipmentPlanHistory(
-            (history) =>
-              history.slice(0, -1),
-          );
-        }
-        if (
-          navigationMode === "reset"
-        ) {
-          setRiskEquipmentPlanHistory(
-            [],
-          );
-        }
-        setRiskReductionPlan(plan);
-      } finally {
-        setRiskReductionPlanLoading(
-          false,
-        );
-      }
-    };
-  const handleLoadPreviousRiskEquipment =
-    () => {
+      const currentEquipmentId = riskReductionPlan?.equipmentId;
+      const currentEquipmentName = riskReductionPlan?.equipmentName;
       if (
-        !previousRiskPlanEquipment
+        navigationMode === "forward" &&
+        currentEquipmentId &&
+        currentEquipmentName &&
+        currentEquipmentId !== plan.equipmentId
       ) {
-        return;
+        setRiskEquipmentPlanHistory((history) => [
+          ...history,
+          {
+            equipmentId: currentEquipmentId,
+            equipmentName: currentEquipmentName,
+          },
+        ]);
       }
-      void handleLoadAreaEquipmentPlan(
-        previousRiskPlanEquipment.equipmentId,
-        "back",
-      );
-    };
+      if (navigationMode === "back") {
+        setRiskEquipmentPlanHistory((history) => history.slice(0, -1));
+      }
+      if (navigationMode === "reset") {
+        setRiskEquipmentPlanHistory([]);
+      }
+      setRiskReductionPlan(plan);
+    } finally {
+      setRiskReductionPlanLoading(false);
+    }
+  };
+  const handleLoadPreviousRiskEquipment = () => {
+    if (!previousRiskPlanEquipment) {
+      return;
+    }
+    void handleLoadAreaEquipmentPlan(
+      previousRiskPlanEquipment.equipmentId,
+      "back",
+    );
+  };
 
   const handleAssetClick = (id: string) => {
     navigate(`/equipment/${id}/overview`);
@@ -1251,162 +1001,84 @@ export const DashboardOverviewSection = (): JSX.Element => {
       return;
     }
 
-    navigate(
-      `/equipment?area=${encodeURIComponent(trimmedArea)}`,
-    );
+    navigate(`/equipment?area=${encodeURIComponent(trimmedArea)}`);
   };
 
-  const activeLabourRiskItems =
-    (
-      activeRiskScope?.labourCards ??
-      []
-    )
-      .slice()
-      .sort(
-        (a, b) =>
-          b.score - a.score,
-      )
-      .map(
-      (
-        item:
-          RiskDashboardLabourCard,
-      ) => {
-        const isShiftCover =
-          item.slug ===
-          "shift-cover";
+  const activeLabourRiskItems = (activeRiskScope?.labourCards ?? [])
+    .slice()
+    .sort((a, b) => b.score - a.score)
+    .map((item: RiskDashboardLabourCard) => {
+      const isShiftCover = item.slug === "shift-cover";
 
-        const presentation =
-          getLabourRiskPresentation(
-            item.score,
-            isShiftCover &&
-              Boolean(
-                activeRiskScope
-                  ?.noEngineerOverride,
-              ),
-          );
+      const presentation = getLabourRiskPresentation(
+        item.score,
+        isShiftCover && Boolean(activeRiskScope?.noEngineerOverride),
+      );
 
-        return {
-          ...item,
-          level:
-            presentation.level,
-          score:
-            formatSiteRisk(
-              item.score,
-            ),
-          progress: Math.max(
-            0,
-            Math.min(
-              100,
-              item.score,
-            ),
-          ),
-          label:
-            item.statusLabel ||
-            presentation.label,
-          badgeClassName:
-            presentation.badgeClassName,
-          progressClassName:
-            presentation.progressClassName,
-        };
-      },
-    );
+      return {
+        ...item,
+        level: presentation.level,
+        score: formatSiteRisk(item.score),
+        progress: Math.max(0, Math.min(100, item.score)),
+        label: item.statusLabel || presentation.label,
+        badgeClassName: presentation.badgeClassName,
+        progressClassName: presentation.progressClassName,
+      };
+    });
 
-  const handleRiskScopeChange = (
-    scopeKey: string,
-  ) => {
-    if (
-      scopeKey ===
-      selectedRiskScopeKey
-    ) {
+  const handleRiskScopeChange = (scopeKey: string) => {
+    if (scopeKey === selectedRiskScopeKey) {
       return;
     }
 
-    const nextScope =
-      riskScopes.find(
-        (scope) =>
-          scope.scopeKey ===
-          scopeKey,
-      );
+    const nextScope = riskScopes.find((scope) => scope.scopeKey === scopeKey);
 
     if (!nextScope) {
       return;
     }
 
-    const nextPlan =
-      riskScopePlanCache[
-        scopeKey
-      ] ?? null;
+    const nextPlan = riskScopePlanCache[scopeKey] ?? null;
 
-    const nextKpis =
-      riskScopeKpiCache[
-        scopeKey
-      ]?.[
-        selectedKpiPeriod
-      ] ?? null;
+    const nextKpis = riskScopeKpiCache[scopeKey]?.[selectedKpiPeriod] ?? null;
 
-    setSelectedRiskScopeKey(
-      scopeKey,
-    );
-    setRiskReductionPlan(
-      nextPlan,
-    );
+    setSelectedRiskScopeKey(scopeKey);
+    setRiskReductionPlan(nextPlan);
 
     if (nextKpis) {
-      setRiskKpiDashboard(
-        nextKpis,
-      );
+      setRiskKpiDashboard(nextKpis);
     }
 
     setIsRiskDetailOpen(false);
     setRiskPlanHistory([]);
     setRiskEquipmentPlanHistory([]);
-    setSelectedInterventionPlan(
-      null,
-    );
+    setSelectedInterventionPlan(null);
   };
 
-  const handleKpiPeriodChange = (
-    period: RiskKpiPeriodKey,
-  ) => {
-    if (
-      period ===
-        selectedKpiPeriod ||
-      riskKpiLoading
-    ) {
+  const handleKpiPeriodChange = (period: RiskKpiPeriodKey) => {
+    if (period === selectedKpiPeriod || riskKpiLoading) {
       return;
     }
 
-    const cachedDashboard =
-      riskScopeKpiCache[
-        selectedRiskScopeKey
-      ]?.[period];
+    const cachedDashboard = riskScopeKpiCache[selectedRiskScopeKey]?.[period];
 
     if (!cachedDashboard) {
       return;
     }
 
-    const preservedScrollLeft =
-      riskKpiGridRef.current?.scrollLeft ??
-      0;
+    const preservedScrollLeft = riskKpiGridRef.current?.scrollLeft ?? 0;
 
-    setSelectedKpiPeriod(
-      period,
-    );
-    setRiskKpiDashboard(
-      cachedDashboard,
-    );
+    setSelectedKpiPeriod(period);
+    setRiskKpiDashboard(cachedDashboard);
 
     window.requestAnimationFrame(() => {
       if (riskKpiGridRef.current) {
-        riskKpiGridRef.current.scrollLeft =
-          preservedScrollLeft;
+        riskKpiGridRef.current.scrollLeft = preservedScrollLeft;
       }
     });
   };
 
   return (
     <section className="flex w-full flex-col gap-6 px-4 pb-12 pt-4 md:px-6 xl:px-8">
-
       {/* ── Header ────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start">
         <div className="flex flex-col gap-1">
@@ -1421,7 +1093,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
+            onClick={() =>
+              void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)
+            }
             disabled={dashboardRefreshing}
             className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
@@ -1429,12 +1103,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </Button>
           <button
             type="button"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
+            onClick={() =>
+              void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)
+            }
             disabled={dashboardRefreshing}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
             aria-label="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`}
+            />
           </button>
           <button
             type="button"
@@ -1465,80 +1143,57 @@ export const DashboardOverviewSection = (): JSX.Element => {
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
         <CardContent className="p-5">
           <div className="flex flex-col gap-5">
-
             <div className="overflow-x-auto border-b border-gray-800 pb-4">
               <div
                 role="tablist"
                 aria-label="Risk intelligence scope"
                 className="flex min-w-max items-center gap-2"
               >
-                {riskScopes.map(
-                  (scope) => {
-                    const isSelected =
-                      scope.scopeKey ===
-                      selectedRiskScopeKey;
+                {riskScopes.map((scope) => {
+                  const isSelected = scope.scopeKey === selectedRiskScopeKey;
 
-                    const dotClassName =
-                      scope.riskScore >= 85
-                        ? "bg-red-400"
-                        : scope.riskScore >= 65
-                          ? "bg-orange-400"
-                          : scope.riskScore >= 40
-                            ? "bg-yellow-400"
-                            : scope.riskScore >= 20
-                              ? "bg-emerald-400"
-                              : "bg-cyan-400";
+                  const dotClassName =
+                    scope.riskScore >= 85
+                      ? "bg-red-400"
+                      : scope.riskScore >= 65
+                        ? "bg-orange-400"
+                        : scope.riskScore >= 40
+                          ? "bg-yellow-400"
+                          : scope.riskScore >= 20
+                            ? "bg-emerald-400"
+                            : "bg-cyan-400";
 
-                    return (
-                      <button
-                        type="button"
-                        role="tab"
-                        key={
-                          scope.scopeKey
-                        }
-                        aria-selected={
-                          isSelected
-                        }
-                        onClick={() =>
-                          handleRiskScopeChange(
-                            scope.scopeKey,
-                          )
-                        }
-                        className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
-                          isSelected
-                            ? "border-blue-500/40 bg-blue-600 text-white"
-                            : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
+                  return (
+                    <button
+                      type="button"
+                      role="tab"
+                      key={scope.scopeKey}
+                      aria-selected={isSelected}
+                      onClick={() => handleRiskScopeChange(scope.scopeKey)}
+                      className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                        isSelected
+                          ? "border-blue-500/40 bg-blue-600 text-white"
+                          : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          isSelected ? "bg-white" : dotClassName
                         }`}
+                      />
+
+                      <span>{scope.scopeLabel}</span>
+
+                      <span
+                        className={
+                          isSelected ? "text-blue-100" : "text-slate-600"
+                        }
                       >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            isSelected
-                              ? "bg-white"
-                              : dotClassName
-                          }`}
-                        />
-
-                        <span>
-                          {
-                            scope.scopeLabel
-                          }
-                        </span>
-
-                        <span
-                          className={
-                            isSelected
-                              ? "text-blue-100"
-                              : "text-slate-600"
-                          }
-                        >
-                          {formatSiteRisk(
-                            scope.riskScore,
-                          )}
-                        </span>
-                      </button>
-                    );
-                  },
-                )}
+                        {formatSiteRisk(scope.riskScore)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1557,16 +1212,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
 
               <div className="min-w-0">
-                <VortaAiCommandBar
-                  role="maintenance-manager"
-                  embedded
-                />
+                <VortaAiCommandBar role="maintenance-manager" embedded />
               </div>
 
               <div className="flex flex-col gap-0.5 text-left lg:items-end lg:text-right">
-                <p className="text-xs text-slate-400">
-                  Based on latest import
-                </p>
+                <p className="text-xs text-slate-400">Based on latest import</p>
 
                 <p className="text-xs text-slate-500">
                   SAP / Skills / Training data refreshed 2h ago
@@ -1577,77 +1227,93 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* KPI strip */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
-                <p className="text-xs text-slate-500">{isSiteRiskScope
-                  ? "Site Risk"
-                  : "Area Risk"}</p>
-                <p className="text-xl font-semibold text-slate-50">{activeRiskScope
-                  ? formatSiteRisk(
-                      activeRiskScope.riskScore,
-                    )
-                  : "—"}</p>
-                <p className="text-xs text-orange-400">{activeRiskScope ? (
-                  <>
-                    <span>
-                      {activeRiskScope.riskLevel}
-                      {" · live"}
-                    </span>
+                <p className="text-xs text-slate-500">
+                  {isSiteRiskScope ? "Site Risk" : "Area Risk"}
+                </p>
+                <p className="text-xl font-semibold text-slate-50">
+                  {activeRiskScope
+                    ? formatSiteRisk(activeRiskScope.riskScore)
+                    : "—"}
+                </p>
+                <p className="text-xs text-orange-400">
+                  {activeRiskScope ? (
+                    <>
+                      <span>
+                        {activeRiskScope.riskLevel}
+                        {" · live"}
+                      </span>
 
-                    <span className="text-slate-500">
-                      {" · Op "}
-                      {formatSiteRisk(
-                        activeRiskScope.operationalRiskScore,
-                      )}
-                      {" · Labour "}
-                      {formatSiteRisk(
-                        activeRiskScope.labourRiskScore,
-                      )}
-                    </span>
-                  </>
-                ) : (
-                  "No live data"
-                )}</p>
+                      <span className="text-slate-500">
+                        {" · Op "}
+                        {formatSiteRisk(activeRiskScope.operationalRiskScore)}
+                        {" · Labour "}
+                        {formatSiteRisk(activeRiskScope.labourRiskScore)}
+                      </span>
+                    </>
+                  ) : (
+                    "No live data"
+                  )}
+                </p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
-                <p className="text-xs text-slate-500">{isSiteRiskScope
-                  ? "Highest Area"
-                  : "Highest Asset"}</p>
-                <p className="text-base font-semibold text-slate-50">{activeRiskScope?.highestChildName ??
-                  "—"}</p>
-                <p className="text-xs text-red-400">{activeRiskScope?.highestChildLevel
-                  ? `${activeRiskScope.highestChildLevel} risk`
-                  : activeRiskScope?.highestChildScore !==
-                      null &&
-                    activeRiskScope?.highestChildScore !==
-                      undefined
-                    ? `Risk ${activeRiskScope.highestChildScore}`
-                    : "No live data"}</p>
+                <p className="text-xs text-slate-500">
+                  {isSiteRiskScope ? "Highest Area" : "Highest Asset"}
+                </p>
+                <p className="text-base font-semibold text-slate-50">
+                  {activeRiskScope?.highestChildName ?? "—"}
+                </p>
+                <p className="text-xs text-red-400">
+                  {activeRiskScope?.highestChildLevel
+                    ? `${activeRiskScope.highestChildLevel} risk`
+                    : activeRiskScope?.highestChildScore !== null &&
+                        activeRiskScope?.highestChildScore !== undefined
+                      ? `Risk ${activeRiskScope.highestChildScore}`
+                      : "No live data"}
+                </p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">PM Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.overduePmCount ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">
+                  {activeRiskScope?.overduePmCount ?? "—"}
+                </p>
                 <p className="text-xs text-orange-400">Overdue PMs</p>
               </div>
               <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
                 <p className="text-xs text-slate-500">Calibration Backlog</p>
-                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.calibrationBacklogCount ?? "—"}</p>
+                <p className="text-xl font-semibold text-slate-50">
+                  {activeRiskScope?.calibrationBacklogCount ?? "—"}
+                </p>
                 <p className="text-xs text-yellow-400">Due / overdue</p>
               </div>
-              <div className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2.5 ${
-                activeRiskScope?.noEngineerOverride
-                  ? "border-red-500/50"
-                  : "border-gray-800"
-              }`}>
-                <p className="text-xs text-slate-500">Cover Gaps</p>
-                <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.coverGapCount ?? "—"}</p>
-                <p className={`text-xs ${
+              <div
+                className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2.5 ${
                   activeRiskScope?.noEngineerOverride
-                    ? "text-red-400"
-                    : "text-slate-400"
-                }`}>{activeRiskScope?.noEngineerOverride
-                  ? "0 engineers · critical override"
-                  : activeRiskScope
-                    ? (activeRiskScope.scheduledEngineerCount + " engineers · " + (activeRiskScope.labourShiftType === "night" ? "night" : "day") + " shift")
-                    : "No live data"}</p>
+                    ? "border-red-500/50"
+                    : "border-gray-800"
+                }`}
+              >
+                <p className="text-xs text-slate-500">Cover Gaps</p>
+                <p className="text-xl font-semibold text-slate-50">
+                  {activeRiskScope?.coverGapCount ?? "—"}
+                </p>
+                <p
+                  className={`text-xs ${
+                    activeRiskScope?.noEngineerOverride
+                      ? "text-red-400"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {activeRiskScope?.noEngineerOverride
+                    ? "0 engineers · critical override"
+                    : activeRiskScope
+                      ? activeRiskScope.scheduledEngineerCount +
+                        " engineers · " +
+                        (activeRiskScope.labourShiftType === "night"
+                          ? "night"
+                          : "day") +
+                        " shift"
+                      : "No live data"}
+                </p>
               </div>
             </div>
 
@@ -1662,12 +1328,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <p className="text-sm font-semibold leading-snug text-slate-50">
                   {riskReductionPlan
                     ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
-                      isSiteRiskScope
-                        ? "area"
-                        : "area"
-                    } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
-                    : activeRiskScope?.priorityAction ??
-                      "Review the highest-risk asset and clear the largest leading risk driver."}
+                        isSiteRiskScope ? "area" : "area"
+                      } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                    : (activeRiskScope?.priorityAction ??
+                      "Review the highest-risk asset and clear the largest leading risk driver.")}
                 </p>
               </div>
 
@@ -1676,9 +1340,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   type="button"
                   onClick={() => {
                     setHasOpenedRiskPlan(true);
-                    setIsRiskDetailOpen(
-                      (open) => !open,
-                    );
+                    setIsRiskDetailOpen((open) => !open);
                   }}
                   aria-expanded={isRiskDetailOpen}
                   className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
@@ -1687,15 +1349,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       : "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.30)] hover:bg-cyan-400/30 hover:shadow-[0_0_24px_rgba(34,211,238,0.45)]"
                   }`}
                 >
-                  {isRiskDetailOpen
-                    ? "Hide work plan"
-                    : "View work plan"}
+                  {isRiskDetailOpen ? "Hide work plan" : "View work plan"}
 
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${
-                      isRiskDetailOpen
-                        ? "rotate-180"
-                        : ""
+                      isRiskDetailOpen ? "rotate-180" : ""
                     }`}
                     aria-hidden="true"
                   />
@@ -1723,7 +1381,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       <div className="flex flex-wrap items-center gap-3">
                         {isSiteRiskScope &&
                           siteRisk?.highestArea &&
-                          riskReductionPlan.highestArea !== siteRisk.highestArea &&
+                          riskReductionPlan.highestArea !==
+                            siteRisk.highestArea &&
                           previousRiskPlanArea !== siteRisk.highestArea && (
                             <button
                               type="button"
@@ -1744,14 +1403,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           activeRiskScope.highestChildName &&
                           riskReductionPlan.equipmentId !==
                             activeRiskScope.highestChildId &&
-                          previousRiskPlanEquipment
-                            ?.equipmentId !==
+                          previousRiskPlanEquipment?.equipmentId !==
                             activeRiskScope.highestChildId && (
                             <button
                               type="button"
-                              disabled={
-                                riskReductionPlanLoading
-                              }
+                              disabled={riskReductionPlanLoading}
                               onClick={() =>
                                 void handleLoadAreaEquipmentPlan(
                                   undefined,
@@ -1760,10 +1416,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               }
                               className="text-xs font-medium text-slate-500 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
                             >
-                              Back to highest equipment: {" "}
-                              {
-                                activeRiskScope.highestChildName
-                              }
+                              Back to highest equipment:{" "}
+                              {activeRiskScope.highestChildName}
                             </button>
                           )}
                       </div>
@@ -1781,9 +1435,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                          {isSiteRiskScope
-                            ? "Plan area"
-                            : "Plan equipment"}
+                          {isSiteRiskScope ? "Plan area" : "Plan equipment"}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {isSiteRiskScope
@@ -1820,7 +1472,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 : "text-slate-400"
                             }
                           >
-                            {formatSiteRisk(riskReductionPlan.projectedSiteRisk)}
+                            {formatSiteRisk(
+                              riskReductionPlan.projectedSiteRisk,
+                            )}
                           </span>
                         </p>
                       </div>
@@ -1876,7 +1530,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             Recommended Work Queue
                           </h3>
                           <p className="mt-1 text-xs text-slate-500">
-                            Ranked by final asset risk reduction, including current-shift labour coverage, then criticality, overdue age and duration.
+                            Ranked by final asset risk reduction, including
+                            current-shift labour coverage, then criticality,
+                            overdue age and duration.
                           </p>
                         </div>
 
@@ -1894,13 +1550,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               a.priority - b.priority,
                           )
                           .map((action, index) => {
-                            const workOrder = action.workOrderNumbers[0] ?? null;
+                            const workOrder =
+                              action.workOrderNumbers[0] ?? null;
                             const reference =
                               action.pmNumbers[0] ??
                               action.sparePartNumbers[0] ??
                               null;
-                            const durationMinutes = action.estimatedDurationMinutes ?? 0;
-                            const procurementLeadDays = action.procurementLeadDays ?? 0;
+                            const durationMinutes =
+                              action.estimatedDurationMinutes ?? 0;
+                            const procurementLeadDays =
+                              action.procurementLeadDays ?? 0;
 
                             return (
                               <button
@@ -1979,9 +1638,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] text-slate-500">
-                          PM backlog
-                        </p>
+                        <p className="text-[10px] text-slate-500">PM backlog</p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentPmBacklog}
                           <span className="mx-1.5 text-slate-600">→</span>
@@ -2057,84 +1714,84 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       {isSiteRiskScope ? (
-                      <div
-                        className={`col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3 ${
-                          riskReductionPlan.nextArea
-                            ? "border-blue-500/20 bg-blue-500/5"
-                            : "border-gray-800 bg-[#0d1117]"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          {riskReductionPlan.nextArea ? (
-                            <>
-                              <p className="text-[10px] uppercase tracking-wider text-blue-400">
-                                Next recommended area
-                              </p>
+                        <div
+                          className={`col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3 ${
+                            riskReductionPlan.nextArea
+                              ? "border-blue-500/20 bg-blue-500/5"
+                              : "border-gray-800 bg-[#0d1117]"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            {riskReductionPlan.nextArea ? (
+                              <>
+                                <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                                  Next recommended area
+                                </p>
 
-                              <p className="mt-1 text-sm font-semibold text-slate-100">
-                                {riskReductionPlan.nextArea}
-                              </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-100">
+                                  {riskReductionPlan.nextArea}
+                                </p>
 
-                              <p className="text-xs text-slate-500">
-                                Risk {riskReductionPlan.nextAreaRisk} ·{" "}
-                                {riskReductionPlan.nextAreaLevel}
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                                Area review
-                              </p>
+                                <p className="text-xs text-slate-500">
+                                  Risk {riskReductionPlan.nextAreaRisk} ·{" "}
+                                  {riskReductionPlan.nextAreaLevel}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                  Area review
+                                </p>
 
-                              <p className="mt-1 text-sm font-semibold text-slate-300">
-                                All ranked areas reviewed
-                              </p>
-                            </>
-                          )}
+                                <p className="mt-1 text-sm font-semibold text-slate-300">
+                                  All ranked areas reviewed
+                                </p>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-4">
+                            {previousRiskPlanArea && (
+                              <button
+                                type="button"
+                                disabled={riskReductionPlanLoading}
+                                onClick={handleLoadPreviousRiskArea}
+                                title={`Return to ${previousRiskPlanArea}`}
+                                aria-label={`Return to previous area: ${previousRiskPlanArea}`}
+                                className="text-xs font-semibold text-slate-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
+                              >
+                                ← Previous area
+                              </button>
+                            )}
+
+                            {riskReductionPlan.nextArea && (
+                              <button
+                                type="button"
+                                disabled={riskReductionPlanLoading}
+                                onClick={() => {
+                                  setHasUsedNextArea(true);
+                                  void handleLoadRiskReductionPlan(
+                                    riskReductionPlan.nextArea,
+                                    "forward",
+                                  );
+                                }}
+                                title={`View next recommended area: ${riskReductionPlan.nextArea}`}
+                                aria-label={`View next recommended area: ${riskReductionPlan.nextArea}`}
+                                className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 disabled:cursor-wait disabled:opacity-50 ${
+                                  !hasUsedNextArea
+                                    ? "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/40 shadow-[0_0_22px_rgba(34,211,238,0.55)] hover:bg-cyan-400/30"
+                                    : "border-blue-400/20 bg-blue-500/5 text-blue-400 ring-0 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
+                                }`}
+                              >
+                                Next area
+                                <ChevronDown
+                                  aria-hidden="true"
+                                  className="h-4 w-4 -rotate-90"
+                                />
+                              </button>
+                            )}
+                          </div>
                         </div>
-
-                        <div className="flex shrink-0 items-center gap-4">
-                          {previousRiskPlanArea && (
-                            <button
-                              type="button"
-                              disabled={riskReductionPlanLoading}
-                              onClick={handleLoadPreviousRiskArea}
-                              title={`Return to ${previousRiskPlanArea}`}
-                              aria-label={`Return to previous area: ${previousRiskPlanArea}`}
-                              className="text-xs font-semibold text-slate-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
-                            >
-                              ← Previous area
-                            </button>
-                          )}
-
-                          {riskReductionPlan.nextArea && (
-                            <button
-                              type="button"
-                              disabled={riskReductionPlanLoading}
-                              onClick={() => {
-                                setHasUsedNextArea(true);
-                                void handleLoadRiskReductionPlan(
-                                  riskReductionPlan.nextArea,
-                                  "forward",
-                                );
-                              }}
-                              title={`View next recommended area: ${riskReductionPlan.nextArea}`}
-                              aria-label={`View next recommended area: ${riskReductionPlan.nextArea}`}
-                              className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 disabled:cursor-wait disabled:opacity-50 ${
-                                !hasUsedNextArea
-                                  ? "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/40 shadow-[0_0_22px_rgba(34,211,238,0.55)] hover:bg-cyan-400/30"
-                                  : "border-blue-400/20 bg-blue-500/5 text-blue-400 ring-0 shadow-none hover:bg-blue-500/10 hover:text-blue-300"
-                              }`}
-                            >
-                              Next area
-                              <ChevronDown
-                                aria-hidden="true"
-                                className="h-4 w-4 -rotate-90"
-                              />
-                            </button>
-                          )}
-                        </div>
-                      </div>
                       ) : (
                         !isSiteRiskScope && (
                           <div
@@ -2152,18 +1809,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     Next recommended equipment
                                   </p>
                                   <p className="mt-1 truncate text-sm font-semibold text-slate-100">
-                                    {
-                                      riskReductionPlan.nextEquipmentName
-                                    }
+                                    {riskReductionPlan.nextEquipmentName}
                                   </p>
                                   <p className="text-xs text-slate-500">
-                                    {riskReductionPlan.equipmentRank !==
-                                      null &&
-                                    riskReductionPlan.equipmentCount !==
-                                      null
+                                    {riskReductionPlan.equipmentRank !== null &&
+                                    riskReductionPlan.equipmentCount !== null
                                       ? `Equipment ${
-                                          riskReductionPlan.equipmentRank +
-                                          1
+                                          riskReductionPlan.equipmentRank + 1
                                         } of ${
                                           riskReductionPlan.equipmentCount
                                         } · `
@@ -2171,14 +1823,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     {riskReductionPlan.nextEquipmentCode
                                       ? `${riskReductionPlan.nextEquipmentCode} · `
                                       : ""}
-                                    Risk {" "}
-                                    {
-                                      riskReductionPlan.nextEquipmentRisk
-                                    }
+                                    Risk {riskReductionPlan.nextEquipmentRisk}
                                     {" · "}
-                                    {
-                                      riskReductionPlan.nextEquipmentLevel
-                                    }
+                                    {riskReductionPlan.nextEquipmentLevel}
                                   </p>
                                 </>
                               ) : (
@@ -2190,8 +1837,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     All ranked equipment reviewed
                                   </p>
                                   <p className="text-xs text-slate-500">
-                                    {riskReductionPlan.equipmentCount !==
-                                    null
+                                    {riskReductionPlan.equipmentCount !== null
                                       ? `${riskReductionPlan.equipmentCount} equipment assets reviewed`
                                       : `All ${activeScopeLabel} equipment reviewed`}
                                   </p>
@@ -2202,12 +1848,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               {previousRiskPlanEquipment && (
                                 <button
                                   type="button"
-                                  disabled={
-                                    riskReductionPlanLoading
-                                  }
-                                  onClick={
-                                    handleLoadPreviousRiskEquipment
-                                  }
+                                  disabled={riskReductionPlanLoading}
+                                  onClick={handleLoadPreviousRiskEquipment}
                                   title={`Return to ${previousRiskPlanEquipment.equipmentName}`}
                                   aria-label={`Return to previous equipment: ${previousRiskPlanEquipment.equipmentName}`}
                                   className="text-xs font-semibold text-slate-400 transition-colors hover:text-blue-300 disabled:cursor-wait disabled:opacity-50"
@@ -2218,9 +1860,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               {riskReductionPlan.nextEquipmentId && (
                                 <button
                                   type="button"
-                                  disabled={
-                                    riskReductionPlanLoading
-                                  }
+                                  disabled={riskReductionPlanLoading}
                                   onClick={() => {
                                     setHasUsedNextEquipment(true);
                                     void handleLoadAreaEquipmentPlan(
@@ -2231,7 +1871,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   }}
                                   aria-label={`View next recommended equipment: ${
                                     riskReductionPlan.nextEquipmentName ??
-                                      "next equipment"
+                                    "next equipment"
                                   }`}
                                   className={`inline-flex min-h-9 items-center gap-1 rounded-lg border px-4 py-2 text-xs font-bold transition-all duration-200 disabled:cursor-wait disabled:opacity-50 ${
                                     !hasUsedNextEquipment
@@ -2259,14 +1899,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Plant Area Risk ──────────────────────────────────────────── */}
       <section className="flex w-full flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-50">{isSiteRiskScope
-            ? "Plant Area Risk"
-            : `${activeScopeLabel} Equipment Risk`}</h2>
+          <h2 className="text-base font-semibold text-slate-50">
+            {isSiteRiskScope
+              ? "Plant Area Risk"
+              : `${activeScopeLabel} Equipment Risk`}
+          </h2>
           <button
             type="button"
             onClick={() =>
-              isSiteRiskScope ||
-              !activeScopeArea
+              isSiteRiskScope || !activeScopeArea
                 ? navigate("/equipment")
                 : navigateToAreaEquipment(activeScopeArea)
             }
@@ -2278,33 +1919,43 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </button>
         </div>
 
-        {isSiteRiskScope ? (() => {
-          const visibleAreaRiskCards = areaRiskCards.slice(0, 4);
+        {isSiteRiskScope ? (
+          (() => {
+            const visibleAreaRiskCards = areaRiskCards.slice(0, 4);
 
-          return (
-            <div className="relative">
-              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {visibleAreaRiskCards.map((area) => {
-                  const riskLabel = area.riskLevel;
-                  const isHighestRisk = areaRiskCards[0]?.area === area.area;
-                  const interventionPlan = interventionPlans.find((plan) => plan.area === area.area);
+            return (
+              <div className="relative">
+                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {visibleAreaRiskCards.map((area) => {
+                    const riskLabel = area.riskLevel;
+                    const isHighestRisk = areaRiskCards[0]?.area === area.area;
+                    const interventionPlan = interventionPlans.find(
+                      (plan) => plan.area === area.area,
+                    );
 
-                  const badgeClass =
-                    area.riskScore >= 85 ? "bg-red-500/20 text-red-400" :
-                    area.riskScore >= 65 ? "bg-orange-500/20 text-orange-400" :
-                    area.riskScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                    area.riskScore >= 20 ? "bg-emerald-500/20 text-emerald-400" :
-                    "bg-cyan-500/20 text-cyan-400";
+                    const badgeClass =
+                      area.riskScore >= 85
+                        ? "bg-red-500/20 text-red-400"
+                        : area.riskScore >= 65
+                          ? "bg-orange-500/20 text-orange-400"
+                          : area.riskScore >= 40
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : area.riskScore >= 20
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-cyan-500/20 text-cyan-400";
 
-                  const progressClass =
-                    area.riskScore >= 85 ? "bg-red-500" :
-                    area.riskScore >= 65 ? "bg-orange-500" :
-                    area.riskScore >= 40 ? "bg-yellow-400" :
-                    area.riskScore >= 20 ? "bg-emerald-500" :
-                    "bg-cyan-400";
+                    const progressClass =
+                      area.riskScore >= 85
+                        ? "bg-red-500"
+                        : area.riskScore >= 65
+                          ? "bg-orange-500"
+                          : area.riskScore >= 40
+                            ? "bg-yellow-400"
+                            : area.riskScore >= 20
+                              ? "bg-emerald-500"
+                              : "bg-cyan-400";
 
-                  const driver =
-                    area.noEngineerOverride
+                    const driver = area.noEngineerOverride
                       ? "No engineers on current shift"
                       : area.labourRiskScore >= 65
                         ? "Labour coverage"
@@ -2318,129 +1969,146 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 ? "Skills coverage"
                                 : "Stable leading indicators";
 
-                  const trend =
-                    isHighestRisk ? "Highest site area risk" :
-                    area.riskScore >= 65 ? "Elevated risk" :
-                    area.riskScore >= 40 ? "Monitor closely" :
-                    "Stable";
+                    const trend = isHighestRisk
+                      ? "Highest site area risk"
+                      : area.riskScore >= 65
+                        ? "Elevated risk"
+                        : area.riskScore >= 40
+                          ? "Monitor closely"
+                          : "Stable";
 
-                  return (
-                    <Card
-                      key={area.area}
-                      role="link"
-                      tabIndex={0}
-                      aria-label={`View equipment in ${area.area}`}
-                      onClick={() =>
-                        navigateToAreaEquipment(area.area)
-                      }
-                      onKeyDown={(event) => {
-                        if (
-                          event.target !== event.currentTarget
-                        ) {
-                          return;
-                        }
+                    return (
+                      <Card
+                        key={area.area}
+                        role="link"
+                        tabIndex={0}
+                        aria-label={`View equipment in ${area.area}`}
+                        onClick={() => navigateToAreaEquipment(area.area)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) {
+                            return;
+                          }
 
-                        if (
-                          event.key === "Enter" ||
-                          event.key === " "
-                        ) {
-                          event.preventDefault();
-                          navigateToAreaEquipment(area.area);
-                        }
-                      }}
-                      className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
-                        isHighestRisk
-                          ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
-                          : "border-gray-800 hover:border-gray-700"
-                      }`}
-                    >
-                      <CardContent className="flex h-full flex-col items-start gap-3 p-4">
-                        <div className="flex w-full items-center justify-between gap-3">
-                          <h3 className="text-sm font-semibold text-slate-50">{area.area}</h3>
-                          <span className={`inline-flex rounded px-2 py-1 text-xs font-medium ${badgeClass}`}>
-                            {riskLabel}
-                          </span>
-                        </div>
-
-                        <p className="min-h-9 self-stretch text-xs text-slate-400">
-                          {driver}
-                        </p>
-
-                        <div className="flex w-full flex-col gap-1">
-                          <p className="text-xs text-slate-400">Area risk score</p>
-                          <p className="text-xl font-semibold text-slate-50">{area.riskScore || "—"}</p>
-                        </div>
-
-                        <dl className="flex w-full flex-col gap-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <dt className="text-sm text-slate-400">Highest asset</dt>
-                            <dd className="text-right text-sm font-semibold text-slate-50">
-                              {area.highestAssetName ?? "—"}
-                            </dd>
-                          </div>
-                          <div className="flex items-start justify-between gap-3">
-                            <dt className="text-sm text-slate-400">Overdue PMs</dt>
-                            <dd className="text-sm font-semibold text-slate-50">{area.overduePmCount}</dd>
-                          </div>
-                          <div className="flex items-start justify-between gap-3">
-                            <dt className="text-sm text-slate-400">Calibration backlog</dt>
-                            <dd className="text-sm font-semibold text-slate-50">{area.calibrationOverdueCount}</dd>
-                          </div>
-                          <div className="flex items-start justify-between gap-3">
-                            <dt className="text-sm text-slate-400">Labour risk</dt>
-                            <dd className={`text-sm font-semibold ${
-                              area.noEngineerOverride
-                                ? "text-red-400"
-                                : area.labourRiskScore >= 65
-                                  ? "text-orange-400"
-                                  : area.labourRiskScore >= 40
-                                    ? "text-yellow-400"
-                                    : "text-slate-50"
-                            }`}>
-                              {formatSiteRisk(
-                                area.labourRiskScore,
-                              )}
-                            </dd>
-                          </div>
-                        </dl>
-
-                        <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
-                          <RiskMeter
-  value={area.riskScore}
-  fillClassName={progressClass}
-  animate={isHighestRisk}
-  ariaLabel={`${area.area} area risk score ${area.riskScore}`}
-/>
-                          <p className="text-xs text-slate-400">{trend}</p>
-                          {interventionPlan && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedInterventionPlan(interventionPlan); }}
-                              className="mt-1 w-fit rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15 hover:text-blue-300"
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            navigateToAreaEquipment(area.area);
+                          }
+                        }}
+                        className={`cursor-pointer rounded-xl border bg-[#141820] shadow-none transition-colors hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
+                          isHighestRisk
+                            ? "border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.10)] hover:border-red-500/70"
+                            : "border-gray-800 hover:border-gray-700"
+                        }`}
+                      >
+                        <CardContent className="flex h-full flex-col items-start gap-3 p-4">
+                          <div className="flex w-full items-center justify-between gap-3">
+                            <h3 className="text-sm font-semibold text-slate-50">
+                              {area.area}
+                            </h3>
+                            <span
+                              className={`inline-flex rounded px-2 py-1 text-xs font-medium ${badgeClass}`}
                             >
-                              View intervention plan →
-                            </button>
-                          )}
-                        </div>
+                              {riskLabel}
+                            </span>
+                          </div>
+
+                          <p className="min-h-9 self-stretch text-xs text-slate-400">
+                            {driver}
+                          </p>
+
+                          <div className="flex w-full flex-col gap-1">
+                            <p className="text-xs text-slate-400">
+                              Area risk score
+                            </p>
+                            <p className="text-xl font-semibold text-slate-50">
+                              {area.riskScore || "—"}
+                            </p>
+                          </div>
+
+                          <dl className="flex w-full flex-col gap-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <dt className="text-sm text-slate-400">
+                                Highest asset
+                              </dt>
+                              <dd className="text-right text-sm font-semibold text-slate-50">
+                                {area.highestAssetName ?? "—"}
+                              </dd>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <dt className="text-sm text-slate-400">
+                                Overdue PMs
+                              </dt>
+                              <dd className="text-sm font-semibold text-slate-50">
+                                {area.overduePmCount}
+                              </dd>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <dt className="text-sm text-slate-400">
+                                Calibration backlog
+                              </dt>
+                              <dd className="text-sm font-semibold text-slate-50">
+                                {area.calibrationOverdueCount}
+                              </dd>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <dt className="text-sm text-slate-400">
+                                Labour risk
+                              </dt>
+                              <dd
+                                className={`text-sm font-semibold ${
+                                  area.noEngineerOverride
+                                    ? "text-red-400"
+                                    : area.labourRiskScore >= 65
+                                      ? "text-orange-400"
+                                      : area.labourRiskScore >= 40
+                                        ? "text-yellow-400"
+                                        : "text-slate-50"
+                                }`}
+                              >
+                                {formatSiteRisk(area.labourRiskScore)}
+                              </dd>
+                            </div>
+                          </dl>
+
+                          <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
+                            <RiskMeter
+                              value={area.riskScore}
+                              fillClassName={progressClass}
+                              animate={isHighestRisk}
+                              ariaLabel={`${area.area} area risk score ${area.riskScore}`}
+                            />
+                            <p className="text-xs text-slate-400">{trend}</p>
+                            {interventionPlan && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedInterventionPlan(interventionPlan);
+                                }}
+                                className="mt-1 w-fit rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15 hover:text-blue-300"
+                              >
+                                View intervention plan →
+                              </button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {areaRiskCards.length === 0 && (
+                    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                      <CardContent className="p-4 text-sm text-slate-400">
+                        Area risk data is not available yet.
                       </CardContent>
                     </Card>
-                  );
-                })}
-                {areaRiskCards.length === 0 && (
-                  <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-                    <CardContent className="p-4 text-sm text-slate-400">
-                      Area risk data is not available yet.
-                    </CardContent>
-                  </Card>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })()
-        : (
-        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {activeScopeChildCards.map(
-            (equipment) => {
+            );
+          })()
+        ) : (
+          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            {activeScopeChildCards.map((equipment) => {
               const badgeClassName =
                 equipment.riskScore >= 85
                   ? "bg-red-500/20 text-red-400"
@@ -2463,23 +2131,18 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         ? "bg-emerald-500"
                         : "bg-cyan-400";
 
-              const trendLabel =
-                equipment.noEngineerOverride
-                  ? "Critical no-cover override"
-                  : equipment.riskScore >= 65
-                    ? "Priority equipment"
-                    : equipment.riskScore >= 40
-                      ? "Monitor closely"
-                      : "Stable";
+              const trendLabel = equipment.noEngineerOverride
+                ? "Critical no-cover override"
+                : equipment.riskScore >= 65
+                  ? "Priority equipment"
+                  : equipment.riskScore >= 40
+                    ? "Monitor closely"
+                    : "Stable";
 
               return (
                 <Card
                   key={equipment.id}
-                  onClick={() =>
-                    handleAssetClick(
-                      equipment.id,
-                    )
-                  }
+                  onClick={() => handleAssetClick(equipment.id)}
                   className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
                 >
                   <CardContent className="flex h-full flex-col items-start gap-3 p-4">
@@ -2491,8 +2154,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                         <p className="mt-1 text-[10px] text-slate-500">
                           {equipment.code}
-                          {equipment.code &&
-                          equipment.equipmentType
+                          {equipment.code && equipment.equipmentType
                             ? " · "
                             : ""}
                           {equipment.equipmentType}
@@ -2522,9 +2184,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <dl className="flex w-full flex-col gap-3">
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-sm text-slate-400">
-                          Overdue PMs
-                        </dt>
+                        <dt className="text-sm text-slate-400">Overdue PMs</dt>
 
                         <dd className="text-sm font-semibold text-slate-50">
                           {equipment.overduePmCount}
@@ -2542,9 +2202,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-sm text-slate-400">
-                          Cover gaps
-                        </dt>
+                        <dt className="text-sm text-slate-400">Cover gaps</dt>
 
                         <dd className="text-sm font-semibold text-slate-50">
                           {equipment.coverGapCount}
@@ -2552,49 +2210,37 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="flex items-start justify-between gap-3">
-                        <dt className="text-sm text-slate-400">
-                          Labour risk
-                        </dt>
+                        <dt className="text-sm text-slate-400">Labour risk</dt>
 
                         <dd
                           className={`text-sm font-semibold ${
                             equipment.noEngineerOverride
                               ? "text-red-400"
-                              : equipment.labourRiskScore >=
-                                  65
+                              : equipment.labourRiskScore >= 65
                                 ? "text-orange-400"
-                                : equipment.labourRiskScore >=
-                                    40
+                                : equipment.labourRiskScore >= 40
                                   ? "text-yellow-400"
                                   : "text-slate-50"
                           }`}
                         >
-                          {formatSiteRisk(
-                            equipment.labourRiskScore,
-                          )}
+                          {formatSiteRisk(equipment.labourRiskScore)}
                         </dd>
                       </div>
                     </dl>
 
                     <div className="mt-auto flex w-full flex-col gap-1.5 pt-1">
                       <RiskMeter
-  value={equipment.riskScore}
-  fillClassName={progressClassName}
-  animate={
-    equipment.id ===
-      activeRiskScope?.highestChildId ||
-    (
-      !activeRiskScope?.highestChildId &&
-      activeScopeChildCards[0]?.id ===
-        equipment.id
-    )
-  }
-  ariaLabel={`${equipment.label} equipment risk score ${equipment.riskScore}`}
-/>
+                        value={equipment.riskScore}
+                        fillClassName={progressClassName}
+                        animate={
+                          equipment.id === activeRiskScope?.highestChildId ||
+                          (!activeRiskScope?.highestChildId &&
+                            activeScopeChildCards[0]?.id === equipment.id)
+                        }
+                        ariaLabel={`${equipment.label} equipment risk score ${equipment.riskScore}`}
+                      />
 
-                      <p className="text-xs text-slate-400">
-                        {trendLabel}
-                      </p>
+                      <p className="text-xs text-slate-400">{trendLabel}</p>
 
                       <span className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-blue-400 transition-colors group-hover:text-blue-300">
                         View equipment →
@@ -2603,17 +2249,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   </CardContent>
                 </Card>
               );
-            },
-          )}
+            })}
 
-          {activeScopeChildCards.length === 0 && (
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="p-5 text-sm text-slate-400">
-                No equipment risk data is available for this area.
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            {activeScopeChildCards.length === 0 && (
+              <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                <CardContent className="p-5 text-sm text-slate-400">
+                  No equipment risk data is available for this area.
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
 
         {isSiteRiskScope && selectedInterventionPlan && (
@@ -2628,8 +2273,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
               {/* Modal header */}
               <div className="flex items-start justify-between gap-4 border-b border-gray-800 px-6 py-5">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recommended Maintenance Intervention</p>
-                  <h2 className="mt-0.5 text-base font-semibold text-slate-50">{selectedInterventionPlan.area}</h2>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Recommended Maintenance Intervention
+                  </p>
+                  <h2 className="mt-0.5 text-base font-semibold text-slate-50">
+                    {selectedInterventionPlan.area}
+                  </h2>
                 </div>
                 <button
                   type="button"
@@ -2644,14 +2293,19 @@ export const DashboardOverviewSection = (): JSX.Element => {
               {/* Modal body */}
               <div className="flex-1 overflow-y-auto px-6 py-5">
                 <div className="flex flex-col gap-6">
-
                   {/* Hero comparison */}
                   <div className="flex flex-wrap items-center gap-6 rounded-lg border border-gray-800 bg-[#0d1117] px-5 py-4">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Current Risk</span>
+                      <span className="text-[10px] text-slate-500">
+                        Current Risk
+                      </span>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-bold text-slate-50">{selectedInterventionPlan.currentRiskScore}</span>
-                        <span className="text-sm font-semibold text-orange-400">{selectedInterventionPlan.currentRiskLevel}</span>
+                        <span className="text-3xl font-bold text-slate-50">
+                          {selectedInterventionPlan.currentRiskScore}
+                        </span>
+                        <span className="text-sm font-semibold text-orange-400">
+                          {selectedInterventionPlan.currentRiskLevel}
+                        </span>
                       </div>
                     </div>
 
@@ -2664,38 +2318,73 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Predicted Risk</span>
+                      <span className="text-[10px] text-slate-500">
+                        Predicted Risk
+                      </span>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-bold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskScore}</span>
-                        <span className="text-sm font-semibold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskLevel}</span>
+                        <span className="text-3xl font-bold text-emerald-400">
+                          {
+                            selectedInterventionPlan.recommendedPredictedRiskScore
+                          }
+                        </span>
+                        <span className="text-sm font-semibold text-emerald-400">
+                          {
+                            selectedInterventionPlan.recommendedPredictedRiskLevel
+                          }
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Reduction</span>
-                      <span className="text-3xl font-bold text-emerald-400">▼{selectedInterventionPlan.recommendedReduction}</span>
+                      <span className="text-[10px] text-slate-500">
+                        Reduction
+                      </span>
+                      <span className="text-3xl font-bold text-emerald-400">
+                        ▼{selectedInterventionPlan.recommendedReduction}
+                      </span>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Efficiency</span>
-                      <span className="text-lg font-semibold text-slate-200">{selectedInterventionPlan.recommendedEfficiency} risk pts/hr</span>
+                      <span className="text-[10px] text-slate-500">
+                        Efficiency
+                      </span>
+                      <span className="text-lg font-semibold text-slate-200">
+                        {selectedInterventionPlan.recommendedEfficiency} risk
+                        pts/hr
+                      </span>
                     </div>
                   </div>
 
                   {selectedInterventionPlan.justification && (
-                    <p className="text-xs text-slate-400">{selectedInterventionPlan.justification}</p>
+                    <p className="text-xs text-slate-400">
+                      {selectedInterventionPlan.justification}
+                    </p>
                   )}
 
                   {/* Options table */}
                   {selectedInterventionPlan.options.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Intervention Options</h3>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Intervention Options
+                      </h3>
                       <div className="overflow-x-auto rounded-lg border border-gray-800">
                         <table className="w-full min-w-[560px] border-collapse text-xs">
                           <thead>
                             <tr className="border-b border-gray-800 bg-[#0d1117]">
-                              {["Option", "Duration", "Predicted Risk", "Reduction", "Efficiency", "Impact"].map((col) => (
-                                <th key={col} className="px-3 py-2.5 text-left font-semibold text-slate-500">{col}</th>
+                              {[
+                                "Option",
+                                "Duration",
+                                "Predicted Risk",
+                                "Reduction",
+                                "Efficiency",
+                                "Impact",
+                              ].map((col) => (
+                                <th
+                                  key={col}
+                                  className="px-3 py-2.5 text-left font-semibold text-slate-500"
+                                >
+                                  {col}
+                                </th>
                               ))}
                             </tr>
                           </thead>
@@ -2704,26 +2393,55 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               <tr
                                 key={i}
                                 className={`border-b border-gray-800 last:border-0 ${
-                                  opt.recommended ? "bg-blue-500/5" : "bg-transparent"
+                                  opt.recommended
+                                    ? "bg-blue-500/5"
+                                    : "bg-transparent"
                                 }`}
                               >
                                 <td className="px-3 py-2.5">
                                   <div className="flex items-center gap-2">
-                                    <span className={opt.recommended ? "font-semibold text-slate-50" : "text-slate-300"}>{opt.option}</span>
+                                    <span
+                                      className={
+                                        opt.recommended
+                                          ? "font-semibold text-slate-50"
+                                          : "text-slate-300"
+                                      }
+                                    >
+                                      {opt.option}
+                                    </span>
                                     {opt.recommended && (
-                                      <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-400">Recommended</span>
+                                      <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-400">
+                                        Recommended
+                                      </span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 py-2.5 text-slate-400">{opt.durationHours} hrs</td>
+                                <td className="px-3 py-2.5 text-slate-400">
+                                  {opt.durationHours} hrs
+                                </td>
                                 <td className="px-3 py-2.5">
-                                  <span className={opt.recommended ? "font-semibold text-emerald-400" : "text-slate-300"}>
-                                    {opt.predictedRiskScore} <span className="text-slate-500">{opt.predictedRiskLevel}</span>
+                                  <span
+                                    className={
+                                      opt.recommended
+                                        ? "font-semibold text-emerald-400"
+                                        : "text-slate-300"
+                                    }
+                                  >
+                                    {opt.predictedRiskScore}{" "}
+                                    <span className="text-slate-500">
+                                      {opt.predictedRiskLevel}
+                                    </span>
                                   </span>
                                 </td>
-                                <td className="px-3 py-2.5 font-semibold text-emerald-400">▼{opt.reduction}</td>
-                                <td className="px-3 py-2.5 text-slate-400">{opt.efficiency} pts/hr</td>
-                                <td className="px-3 py-2.5 text-slate-400">{opt.productionImpact}</td>
+                                <td className="px-3 py-2.5 font-semibold text-emerald-400">
+                                  ▼{opt.reduction}
+                                </td>
+                                <td className="px-3 py-2.5 text-slate-400">
+                                  {opt.efficiency} pts/hr
+                                </td>
+                                <td className="px-3 py-2.5 text-slate-400">
+                                  {opt.productionImpact}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2733,25 +2451,52 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   )}
 
                   {/* Target work package */}
-                  {Object.keys(selectedInterventionPlan.targetWorkPackage).length > 0 && (
+                  {Object.keys(selectedInterventionPlan.targetWorkPackage)
+                    .length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work Package</h3>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Target Work Package
+                      </h3>
                       <div className="flex flex-wrap gap-3">
                         {[
-                          { key: "targetAssets",       label: "Target assets" },
-                          { key: "overduePMs",          label: "Overdue PMs" },
-                          { key: "calibrationBacklog",  label: "Calibration backlog" },
-                          { key: "criticalSpares",      label: "Critical spares" },
-                          { key: "skillGaps",           label: "Skill gaps" },
-                        ].filter(({ key }) => (selectedInterventionPlan.targetWorkPackage as Record<string, number>)[key] !== undefined)
-                         .map(({ key, label }) => (
-                          <div key={key} className="flex flex-col items-center rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-2.5">
-                            <span className="text-xl font-bold text-slate-50">
-                              {(selectedInterventionPlan.targetWorkPackage as Record<string, number>)[key]}
-                            </span>
-                            <span className="text-[10px] text-slate-500">{label}</span>
-                          </div>
-                        ))}
+                          { key: "targetAssets", label: "Target assets" },
+                          { key: "overduePMs", label: "Overdue PMs" },
+                          {
+                            key: "calibrationBacklog",
+                            label: "Calibration backlog",
+                          },
+                          { key: "criticalSpares", label: "Critical spares" },
+                          { key: "skillGaps", label: "Skill gaps" },
+                        ]
+                          .filter(
+                            ({ key }) =>
+                              (
+                                selectedInterventionPlan.targetWorkPackage as Record<
+                                  string,
+                                  number
+                                >
+                              )[key] !== undefined,
+                          )
+                          .map(({ key, label }) => (
+                            <div
+                              key={key}
+                              className="flex flex-col items-center rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-2.5"
+                            >
+                              <span className="text-xl font-bold text-slate-50">
+                                {
+                                  (
+                                    selectedInterventionPlan.targetWorkPackage as Record<
+                                      string,
+                                      number
+                                    >
+                                  )[key]
+                                }
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                {label}
+                              </span>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -2759,44 +2504,72 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Target work list */}
                   <div>
                     <div className="mb-3">
-                      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work List</h3>
-                      <p className="mt-0.5 text-[11px] text-slate-600">Priority work included in the recommended intervention.</p>
+                      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Target Work List
+                      </h3>
+                      <p className="mt-0.5 text-[11px] text-slate-600">
+                        Priority work included in the recommended intervention.
+                      </p>
                     </div>
                     {selectedInterventionPlan.workItems.length > 0 ? (
                       <div className="flex flex-col gap-2">
-                        {selectedInterventionPlan.workItems.slice(0, 5).map((item, i) => (
-                          <div key={i} className="rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
-                                    {item.priority}
-                                  </span>
-                                  <span className="text-xs font-semibold text-slate-100">{item.asset}</span>
-                                  {item.assetCode && (
-                                    <span className="text-[10px] text-slate-500">{item.assetCode}</span>
-                                  )}
+                        {selectedInterventionPlan.workItems
+                          .slice(0, 5)
+                          .map((item, i) => (
+                            <div
+                              key={i}
+                              className="rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
+                                      {item.priority}
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-100">
+                                      {item.asset}
+                                    </span>
+                                    {item.assetCode && (
+                                      <span className="text-[10px] text-slate-500">
+                                        {item.assetCode}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5">
+                                    <span className="text-[11px] text-slate-400">
+                                      <span className="text-slate-600">
+                                        Action:{" "}
+                                      </span>
+                                      {item.action}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400">
+                                      <span className="text-slate-600">
+                                        Driver:{" "}
+                                      </span>
+                                      {item.driver}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400">
+                                      <span className="text-slate-600">
+                                        Risk:{" "}
+                                      </span>
+                                      {item.riskScore}{" "}
+                                      <span className="text-orange-400">
+                                        {item.riskLevel}
+                                      </span>
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5">
-                                  <span className="text-[11px] text-slate-400">
-                                    <span className="text-slate-600">Action: </span>{item.action}
+                                <div className="shrink-0 flex flex-col items-end gap-0.5">
+                                  <span className="text-sm font-bold text-emerald-400">
+                                    ▼{item.estimatedReduction}
                                   </span>
-                                  <span className="text-[11px] text-slate-400">
-                                    <span className="text-slate-600">Driver: </span>{item.driver}
-                                  </span>
-                                  <span className="text-[11px] text-slate-400">
-                                    <span className="text-slate-600">Risk: </span>
-                                    {item.riskScore} <span className="text-orange-400">{item.riskLevel}</span>
+                                  <span className="text-[10px] text-slate-500">
+                                    {item.estimatedHours} hrs
                                   </span>
                                 </div>
-                              </div>
-                              <div className="shrink-0 flex flex-col items-end gap-0.5">
-                                <span className="text-sm font-bold text-emerald-400">▼{item.estimatedReduction}</span>
-                                <span className="text-[10px] text-slate-500">{item.estimatedHours} hrs</span>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     ) : selectedInterventionPlan.targetWorkList ? (
                       <div className="flex flex-col gap-2">
@@ -2806,18 +2579,31 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           .filter(Boolean)
                           .slice(0, 5)
                           .map((item, i) => {
-                            const reductionMatch = item.match(/\b(\d+)\s*(?:risk\s+)?(?:reduction|pts?|points?)\b/i);
-                            const reductionValue = reductionMatch ? reductionMatch[1] : null;
+                            const reductionMatch = item.match(
+                              /\b(\d+)\s*(?:risk\s+)?(?:reduction|pts?|points?)\b/i,
+                            );
+                            const reductionValue = reductionMatch
+                              ? reductionMatch[1]
+                              : null;
                             return (
-                              <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
+                              <div
+                                key={i}
+                                className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
+                              >
                                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
                                   {i + 1}
                                 </span>
-                                <span className="min-w-0 flex-1 text-xs text-slate-300 leading-snug">{item}</span>
+                                <span className="min-w-0 flex-1 text-xs text-slate-300 leading-snug">
+                                  {item}
+                                </span>
                                 {reductionValue && (
                                   <div className="shrink-0 flex flex-col items-end gap-0">
-                                    <span className="text-[10px] text-slate-500">Risk reduction</span>
-                                    <span className="text-sm font-bold text-emerald-400">▼{reductionValue}</span>
+                                    <span className="text-[10px] text-slate-500">
+                                      Risk reduction
+                                    </span>
+                                    <span className="text-sm font-bold text-emerald-400">
+                                      ▼{reductionValue}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -2826,7 +2612,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
                     ) : (
                       <p className="rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-xs text-slate-500">
-                        Work list will be generated from the highest-risk assets in this area.
+                        Work list will be generated from the highest-risk assets
+                        in this area.
                       </p>
                     )}
                   </div>
@@ -2834,20 +2621,41 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Required resources */}
                   {selectedInterventionPlan.resourceRequirements.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Required Resources</h3>
+                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Required Resources
+                      </h3>
                       <div className="flex flex-col gap-2">
-                        {selectedInterventionPlan.resourceRequirements.map((req, i) => (
-                          <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
-                            <span className="text-sm font-semibold text-slate-200">{req.role}</span>
-                            <div className="flex items-center gap-6 text-xs text-slate-400">
-                              <span>Engineers required: <span className="font-semibold text-slate-200">{req.engineers}</span></span>
-                              <span>Estimated labour: <span className="font-semibold text-slate-200">{req.estimatedHours} hrs</span></span>
+                        {selectedInterventionPlan.resourceRequirements.map(
+                          (req, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3"
+                            >
+                              <span className="text-sm font-semibold text-slate-200">
+                                {req.role}
+                              </span>
+                              <div className="flex items-center gap-6 text-xs text-slate-400">
+                                <span>
+                                  Engineers required:{" "}
+                                  <span className="font-semibold text-slate-200">
+                                    {req.engineers}
+                                  </span>
+                                </span>
+                                <span>
+                                  Estimated labour:{" "}
+                                  <span className="font-semibold text-slate-200">
+                                    {req.estimatedHours} hrs
+                                  </span>
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                       {selectedInterventionPlan.dateNote && (
-                        <p className="mt-2.5 text-[11px] text-slate-500">{selectedInterventionPlan.dateNote}</p>
+                        <p className="mt-2.5 text-[11px] text-slate-500">
+                          {selectedInterventionPlan.dateNote}
+                        </p>
                       )}
                     </div>
                   )}
@@ -2882,57 +2690,50 @@ export const DashboardOverviewSection = (): JSX.Element => {
       {/* ── Labour Risk ─────────────────────────────────────────────── */}
       <section className="flex w-full flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-50">{isSiteRiskScope
-            ? "Labour Risk"
-            : `${activeScopeLabel} Labour Risk`}</h2>
+          <h2 className="text-base font-semibold text-slate-50">
+            {isSiteRiskScope
+              ? "Labour Risk"
+              : `${activeScopeLabel} Labour Risk`}
+          </h2>
           <button
             type="button"
-            onClick={() =>
-              isSiteRiskScope
-                ? navigate("/maintenance/labour-risk/shift-cover")
-                : navigate(
-                    `/maintenance/labour-risk/shift-cover?scope=area&area=${encodeURIComponent(
-                      activeScopeArea ?? "",
-                    )}`,
-                  )
-            }
+            onClick={() => {
+              const params = new URLSearchParams({
+                from: "dashboard",
+                returnTo: "/dashboard",
+              });
+              if (!isSiteRiskScope && activeScopeArea) {
+                params.set("scope", "area");
+                params.set("area", activeScopeArea);
+              }
+              navigate(
+                `/maintenance/labour-risk/shift-cover?${params.toString()}`,
+              );
+            }}
             className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
           >
             View all labour risks →
           </button>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {activeLabourRiskItems.map(
-  (item, index) => (
+          {activeLabourRiskItems.map((item, index) => (
             <Card
               key={item.title}
-              onClick={() => {
-                const basePath =
-                  `/maintenance/labour-risk/${item.slug}`;
-
-                if (
-                  !isSiteRiskScope &&
-                  activeScopeArea
-                ) {
-                  const query =
-                    new URLSearchParams({
-                      scope: "area",
-                      area: activeScopeArea,
-                    });
-
-                  navigate(
-                    `${basePath}?${query.toString()}`,
-                  );
-                  return;
-                }
-
-                navigate(basePath);
-              }}
+              onClick={() =>
+                navigate(
+                  getLabourRiskWorkflowRoute(
+                    item,
+                    isSiteRiskScope ? null : activeScopeArea,
+                  ),
+                )
+              }
               className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
             >
               <CardContent className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="flex-1 text-sm font-semibold text-slate-50">{item.title}</h3>
+                  <h3 className="flex-1 text-sm font-semibold text-slate-50">
+                    {item.title}
+                  </h3>
                   <Badge
                     variant="secondary"
                     className={`rounded px-2 py-1 text-xs font-medium shadow-none ${item.badgeClassName}`}
@@ -2943,29 +2744,38 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <p className="text-xs text-slate-400">{item.description}</p>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-xs text-slate-400">Overall risk score</p>
-                  <p className="text-xl font-semibold text-slate-50">{item.score}</p>
+                  <p className="text-xl font-semibold text-slate-50">
+                    {item.score}
+                  </p>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-slate-400">{item.metricLabel}</span>
-                  <span className="text-xs font-semibold text-slate-50">{item.metricValue}</span>
+                  <span className="text-xs text-slate-400">
+                    {item.metricLabel}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-50">
+                    {item.metricValue}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-slate-400">{item.extraLabel}</span>
-                  <span className="text-xs font-semibold text-slate-50">{item.extraValue}</span>
+                  <span className="text-xs text-slate-400">
+                    {item.extraLabel}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-50">
+                    {item.extraValue}
+                  </span>
                 </div>
                 <div className="mt-auto flex flex-col gap-1.5 pt-1">
                   <RiskMeter
-  value={item.progress}
-  fillClassName={item.progressClassName}
-  animate={index === 0}
-  ariaLabel={`${item.title} risk score ${item.score}`}
-/>
+                    value={item.progress}
+                    fillClassName={item.progressClassName}
+                    animate={index === 0}
+                    ariaLabel={`${item.title} risk score ${item.score}`}
+                  />
                   <p className="text-xs text-slate-400">{item.label}</p>
                 </div>
               </CardContent>
             </Card>
-          ),
-)}
+          ))}
         </div>
       </section>
 
@@ -3006,39 +2816,27 @@ export const DashboardOverviewSection = (): JSX.Element => {
               aria-label="KPI period"
               className="inline-flex rounded-lg border border-gray-800 bg-[#0d1117] p-1"
             >
-              {RISK_KPI_PERIODS.map(
-                (period) => {
-                  const isSelected =
-                    selectedKpiPeriod ===
-                    period.key;
+              {RISK_KPI_PERIODS.map((period) => {
+                const isSelected = selectedKpiPeriod === period.key;
 
-                  return (
-                    <button
-                      type="button"
-                      role="tab"
-                      key={period.key}
-                      aria-selected={
-                        isSelected
-                      }
-                      disabled={
-                        riskKpiLoading
-                      }
-                      onClick={() =>
-                        void handleKpiPeriodChange(
-                          period.key,
-                        )
-                      }
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                        isSelected
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-slate-400 hover:bg-gray-800 hover:text-slate-200"
-                      } disabled:cursor-wait`}
-                    >
-                      {period.label}
-                    </button>
-                  );
-                },
-              )}
+                return (
+                  <button
+                    type="button"
+                    role="tab"
+                    key={period.key}
+                    aria-selected={isSelected}
+                    disabled={riskKpiLoading}
+                    onClick={() => void handleKpiPeriodChange(period.key)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-400 hover:bg-gray-800 hover:text-slate-200"
+                    } disabled:cursor-wait`}
+                  >
+                    {period.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -3050,11 +2848,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </span>
             <button
               type="button"
-              onClick={() =>
-                handleRiskKpiScroll(
-                  "previous",
-                )
-              }
+              onClick={() => handleRiskKpiScroll("previous")}
               aria-label="Scroll to previous risk KPI"
               title="Previous KPI"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
@@ -3063,11 +2857,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </button>
             <button
               type="button"
-              onClick={() =>
-                handleRiskKpiScroll(
-                  "next",
-                )
-              }
+              onClick={() => handleRiskKpiScroll("next")}
               aria-label="Scroll to next risk KPI"
               title="Next KPI"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
@@ -3083,83 +2873,46 @@ export const DashboardOverviewSection = (): JSX.Element => {
             tabIndex={0}
             aria-label="Risk reduction KPI cards"
             className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2 scroll-smooth touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-              riskKpiLoading
-                ? "opacity-70"
-                : "opacity-100"
+              riskKpiLoading ? "opacity-70" : "opacity-100"
             } transition-opacity`}
           >
-            {orderRiskKpisForDisplay(
-              riskKpiDashboard.kpis,
-            ).map(
+            {orderRiskKpisForDisplay(riskKpiDashboard.kpis).map(
               (kpi, index) => {
-                const presentation =
-                  getKpiRagPresentation(
-                    kpi.ragStatus,
-                  );
+                const presentation = getKpiRagPresentation(kpi.ragStatus);
 
                 const chartValue =
                   kpi.value === null
                     ? 0
-                    : Math.max(
-                        0,
-                        Math.min(
-                          100,
-                          kpi.value,
-                        ),
-                      );
+                    : Math.max(0, Math.min(100, kpi.value));
 
-                const chartTarget = Math.max(
-                  0,
-                  Math.min(
-                    100,
-                    kpi.target,
-                  ),
-                );
+                const chartTarget = Math.max(0, Math.min(100, kpi.target));
 
                 const targetGap =
                   kpi.value === null
                     ? null
-                    : Number(
-                        (
-                          kpi.value -
-                          kpi.target
-                        ).toFixed(1),
-                      );
+                    : Number((kpi.value - kpi.target).toFixed(1));
 
                 const targetGapLabel =
-                  kpi.noData ||
-                  targetGap === null
+                  kpi.noData || targetGap === null
                     ? "No eligible work in this period"
                     : targetGap === 0
                       ? "Target achieved"
                       : targetGap > 0
-                        ? `${Math.abs(
-                            targetGap,
-                          ).toFixed(
-                            1,
-                          )} pts above target`
-                        : `${Math.abs(
-                            targetGap,
-                          ).toFixed(
-                            1,
-                          )} pts below target`;
+                        ? `${Math.abs(targetGap).toFixed(1)} pts above target`
+                        : `${Math.abs(targetGap).toFixed(1)} pts below target`;
 
                 const targetGapClassName =
-                  kpi.noData ||
-                  targetGap === null
+                  kpi.noData || targetGap === null
                     ? "text-slate-400"
                     : targetGap >= 0
                       ? "text-emerald-400"
-                      : kpi.ragStatus ===
-                          "amber"
+                      : kpi.ragStatus === "amber"
                         ? "text-yellow-400"
                         : "text-red-400";
 
-                const isInfoOpen =
-                  activeRiskKpiInfoKey === kpi.key;
+                const isInfoOpen = activeRiskKpiInfoKey === kpi.key;
 
-                const explanation =
-                  getRiskKpiExplanation(kpi);
+                const explanation = getRiskKpiExplanation(kpi);
 
                 return (
                   <Card
@@ -3190,10 +2943,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             }}
                             className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-[#0d1117] text-slate-500 transition-colors hover:border-blue-500/60 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                           >
-                            <Info
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
+                            <Info className="h-3 w-3" aria-hidden="true" />
                           </button>
                         </div>
 
@@ -3218,14 +2968,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               className={`w-full rounded-t-[10px] motion-safe:transition-[height] motion-safe:ease-out ${presentation.barClassName}`}
                               style={{
                                 height: `${
-                                  hasRevealedRiskKpiBars
-                                    ? chartValue
-                                    : 0
+                                  hasRevealedRiskKpiBars ? chartValue : 0
                                 }%`,
-                                transitionDuration:
-                                  hasCompletedRiskKpiIntro
-                                    ? "300ms"
-                                    : "1500ms",
+                                transitionDuration: hasCompletedRiskKpiIntro
+                                  ? "300ms"
+                                  : "1500ms",
                                 transitionDelay:
                                   hasRevealedRiskKpiBars &&
                                   !hasCompletedRiskKpiIntro
@@ -3249,15 +2996,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           <p
                             className={`text-3xl font-semibold leading-tight tracking-tight ${presentation.valueClassName}`}
                           >
-                            {formatKpiPercentage(
-                              kpi.value,
-                            )}
+                            {formatKpiPercentage(kpi.value)}
                           </p>
 
                           <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-slate-600">
-                            {formatKpiTarget(
-                              kpi.target,
-                            )}
+                            {formatKpiTarget(kpi.target)}
                           </p>
 
                           <p
@@ -3289,9 +3032,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       aria-modal="false"
                       aria-hidden={!isInfoOpen}
                       aria-labelledby={`risk-kpi-info-title-${kpi.key}`}
-                      onClick={(event) =>
-                        event.stopPropagation()
-                      }
+                      onClick={(event) => event.stopPropagation()}
                       className={`absolute inset-0 z-30 flex flex-col bg-[#10151d]/[0.98] p-4 backdrop-blur-sm transition-all duration-200 motion-reduce:transition-none ${
                         isInfoOpen
                           ? "pointer-events-auto translate-y-0 opacity-100"
@@ -3322,10 +3063,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           }}
                           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                         >
-                          <X
-                            className="h-3.5 w-3.5"
-                            aria-hidden="true"
-                          />
+                          <X className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </div>
 
@@ -3393,7 +3131,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
           </Card>
         )}
       </section>
-
     </section>
   );
 };

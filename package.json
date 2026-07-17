@@ -8,7 +8,7 @@
     "dev": "vite",
     "prepare:skills-matrix": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs",
     "pretest:contracts": "npm run prepare:skills-matrix",
-    "test:contracts": "node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs",
+    "test:contracts": "node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs && node scripts/equipment-people-workflow-contracts.mjs",
     "prebuild": "npm run prepare:skills-matrix",
     "build": "npm run test:contracts && vite build",
     "check": "npm run build"

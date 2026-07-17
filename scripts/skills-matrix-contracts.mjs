@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
 const page = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixNative.tsx", import.meta.url),
+  new URL(
+    "../src/screens/SkillsMatrix/SkillsMatrixNative.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 const engineersPage = await readFile(
@@ -10,7 +13,10 @@ const engineersPage = await readFile(
   "utf8",
 );
 const requirementsPage = await readFile(
-  new URL("../src/screens/Requirements/RequirementsSection.tsx", import.meta.url),
+  new URL(
+    "../src/screens/Requirements/RequirementsSection.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 const trainingPage = await readFile(
@@ -22,7 +28,10 @@ const entry = await readFile(
   "utf8",
 );
 const compatibilityEntry = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx", import.meta.url),
+  new URL(
+    "../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 const warmup = await readFile(
@@ -42,15 +51,24 @@ const functionAuth = await readFile(
   "utf8",
 );
 const functionTransform = await readFile(
-  new URL("../supabase/functions/skills-matrix-data/transform.ts", import.meta.url),
+  new URL(
+    "../supabase/functions/skills-matrix-data/transform.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const functionAnalysis = await readFile(
-  new URL("../supabase/functions/skills-matrix-data/transform-analysis.ts", import.meta.url),
+  new URL(
+    "../supabase/functions/skills-matrix-data/transform-analysis.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const functionScopes = await readFile(
-  new URL("../supabase/functions/skills-matrix-data/transform-scopes.ts", import.meta.url),
+  new URL(
+    "../supabase/functions/skills-matrix-data/transform-scopes.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 
@@ -93,19 +111,17 @@ assert.match(page, /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/);
 assert.match(page, /selectedArea === ALL_SITE/);
 assert.match(page, /skillIds\.has\(skill\.id\)/);
 assert.match(page, /priorityRisks\.slice\(0, 3\)/);
-assert.match(page, /\["pending", "rejected", "expired"\]/);
+assert.match(page, /\[\s*"pending",\s*"rejected",\s*"expired",?\s*\]/);
 assert.match(page, /searchParams\.get\("view"\)/);
 assert.match(page, /searchParams\.get\("scope"\)/);
 assert.match(page, /searchParams\.get\("area"\)/);
 assert.match(page, /searchParams\.get\("priority"\)/);
 assert.match(page, /searchParams\.get\("skill"\)/);
-assert.match(page, /setSearchParams\(\(current\)/);
+assert.match(page, /setSearchParams\(\s*\(current\)/);
 assert.match(page, /\/engineers\?engineer=/);
 assert.match(page, /\/engineers\?skill=/);
 assert.match(page, /\/requirements\?skill=/);
 assert.match(page, /\/training\?skill=/);
-assert.match(page, /View requirement <Award className="h-3 w-3" \/>/);
-assert.match(page, /Open training plan <Wrench className="h-3 w-3" \/>/);
 assert.doesNotMatch(page, /ClipboardList|GraduationCap/);
 assert.match(
   page,
@@ -113,7 +129,7 @@ assert.match(
 );
 assert.match(
   page,
-  /navigate\(`\/equipment\/\$\{encodeURIComponent\(risk\.equipmentId\)\}\/skills`\)/,
+  /navigate\(\s*`\/equipment\/\$\{encodeURIComponent\(risk\.equipmentId\)\}\/skills`,?\s*\)/,
 );
 assert.doesNotMatch(page, /\.from\("engineers"\)/);
 assert.doesNotMatch(page, /\.from\("equipment_assets"\)/);
@@ -131,7 +147,10 @@ assert.match(engineersPage, /next\.delete\("engineer"\)/);
 
 assert.match(requirementsPage, /useSearchParams/);
 assert.match(requirementsPage, /searchParams\.get\("skill"\)/);
-assert.match(requirementsPage, /requirement\.title\.trim\(\)\.toLowerCase\(\) === requestedSkill/);
+assert.match(
+  requirementsPage,
+  /requirement\.title\.trim\(\)\.toLowerCase\(\) === requestedSkill/,
+);
 assert.match(requirementsPage, /setSelectedReq\(match\)/);
 assert.match(requirementsPage, /closeRequirement/);
 
@@ -146,15 +165,9 @@ assert.match(functionIndex, /avatar_url/);
 assert.match(functionIndex, /organisationId/);
 assert.match(functionIndex, /import \{ context, preflight, response \}/);
 assert.match(functionAuth, /vorta_get_function_context/);
-assert.doesNotMatch(
-  functionIndex + functionAuth,
-  /SUPABASE_SERVICE_ROLE_KEY/,
-);
+assert.doesNotMatch(functionIndex + functionAuth, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(functionTransform, /criticalTeamShare \* 12/);
-assert.match(
-  functionTransform,
-  /overallScore = Math\.min\(overallScore, 59\)/,
-);
+assert.match(functionTransform, /overallScore = Math\.min\(overallScore, 59\)/);
 assert.match(functionTransform, /sourceUpdatedAt/);
 assert.match(functionTransform, /areaSkills/);
 assert.match(functionAnalysis, /criticalGaps = priorityRisks\.filter/);

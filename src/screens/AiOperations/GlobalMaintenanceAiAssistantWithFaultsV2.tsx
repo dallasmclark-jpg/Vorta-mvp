@@ -135,8 +135,7 @@ function EngineerAvatar({
 
 function shiftStateLabel(
   engineer:
-    | FaultEngineerRecommendationWithIdentity
-    | EquipmentSmeRecommendation,
+    FaultEngineerRecommendationWithIdentity | EquipmentSmeRecommendation,
 ): string {
   if (engineer.shiftState === "confirmed") return "Confirmed on shift";
   if (engineer.shiftState === "scheduled") return "Scheduled today";
@@ -145,8 +144,7 @@ function shiftStateLabel(
 
 function shiftStateClass(
   engineer:
-    | FaultEngineerRecommendationWithIdentity
-    | EquipmentSmeRecommendation,
+    FaultEngineerRecommendationWithIdentity | EquipmentSmeRecommendation,
 ): string {
   if (engineer.shiftState === "confirmed") {
     return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
@@ -164,7 +162,11 @@ function capabilityLabel(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Element {
+function HistorySection({
+  records,
+}: {
+  records: FaultHistoryRecord[];
+}): JSX.Element {
   if (records.length === 0) {
     return (
       <section className="space-y-2">
@@ -225,7 +227,9 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
                   {record.assignedEngineer && (
                     <span>Assigned: {record.assignedEngineer}</span>
                   )}
-                  {record.faultCode && <span>Fault code: {record.faultCode}</span>}
+                  {record.faultCode && (
+                    <span>Fault code: {record.faultCode}</span>
+                  )}
                 </div>
               </div>
               <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-400" />
@@ -240,10 +244,29 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
 function EquipmentSmeSection({
   sme,
   equipmentName,
+  equipmentId,
+  returnTo,
 }: {
   sme: EquipmentSmeRecommendation | null;
   equipmentName: string;
+  equipmentId: string | null;
+  returnTo: string;
 }): JSX.Element {
+  const engineerHref = sme
+    ? `/engineers?${new URLSearchParams({
+        engineer: sme.id,
+        from: "ask-vorta",
+        returnTo,
+        ...(equipmentId ? { equipment: equipmentId } : {}),
+      }).toString()}`
+    : equipmentId
+      ? `/equipment/${encodeURIComponent(equipmentId)}/skills?${new URLSearchParams(
+          {
+            from: "ask-vorta",
+            returnTo,
+          },
+        ).toString()}`
+      : "/engineers";
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -254,17 +277,21 @@ function EquipmentSmeSection({
           <p className="mt-0.5 text-[9px] text-slate-500">{equipmentName}</p>
         </div>
         <a
-          href="/engineers"
+          href={engineerHref}
           className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
         >
-          Open engineer record →
+          {sme ? "Open engineer record →" : "Open capability evidence →"}
         </a>
       </div>
 
       {sme ? (
         <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.07] p-3">
           <div className="flex items-start gap-3">
-            <EngineerAvatar name={sme.name} avatarUrl={sme.avatarUrl} size="lg" />
+            <EngineerAvatar
+              name={sme.name}
+              avatarUrl={sme.avatarUrl}
+              size="lg"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[12px] font-semibold text-slate-100">
@@ -279,7 +306,9 @@ function EquipmentSmeSection({
                   {shiftStateLabel(sme)}
                 </Badge>
               </div>
-              <p className="mt-0.5 text-[9px] text-slate-400">{sme.discipline}</p>
+              <p className="mt-0.5 text-[9px] text-slate-400">
+                {sme.discipline}
+              </p>
               <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300">
                 {sme.specialism}
               </p>
@@ -305,11 +334,16 @@ function EquipmentSmeSection({
 
 function PrimaryEngineerCard({
   engineer,
+  href,
 }: {
   engineer: FaultEngineerRecommendationWithIdentity;
+  href: string;
 }): JSX.Element {
   return (
-    <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.07] p-3">
+    <a
+      href={href}
+      className="block rounded-xl border border-blue-500/25 bg-blue-500/[0.07] p-3 transition-colors hover:border-blue-400/45 hover:bg-blue-500/[0.1]"
+    >
       <div className="flex items-start gap-3">
         <EngineerAvatar
           name={engineer.name}
@@ -339,7 +373,9 @@ function PrimaryEngineerCard({
             {engineer.relevantSkills.join(" · ")}
           </p>
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[8.5px] text-slate-500">
-            <span>{engineer.rating}/5 {engineer.ratingSource} rating</span>
+            <span>
+              {engineer.rating}/5 {engineer.ratingSource} rating
+            </span>
             {engineer.assetMatchPercent > 0 && (
               <span>{engineer.assetMatchPercent}% equipment-skill match</span>
             )}
@@ -363,7 +399,7 @@ function PrimaryEngineerCard({
           </p>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 
@@ -372,11 +408,15 @@ function EngineerSection({
   shiftLabel,
   shiftWindow,
   shiftBasis,
+  equipmentId,
+  returnTo,
 }: {
   engineers: FaultEngineerRecommendationWithIdentity[];
   shiftLabel: string;
   shiftWindow: string;
   shiftBasis: string;
+  equipmentId: string | null;
+  returnTo: string;
 }): JSX.Element {
   const primary = engineers[0];
   const secondary = engineers.slice(1, 5);
@@ -393,10 +433,19 @@ function EngineerSection({
           </p>
         </div>
         <a
-          href="/engineers"
+          href={
+            equipmentId
+              ? `/equipment/${encodeURIComponent(equipmentId)}/skills?${new URLSearchParams(
+                  {
+                    from: "ask-vorta",
+                    returnTo,
+                  },
+                ).toString()}`
+              : "/engineers"
+          }
           className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
         >
-          Open skills →
+          Open capability evidence →
         </a>
       </div>
 
@@ -406,14 +455,30 @@ function EngineerSection({
 
       {primary ? (
         <div className="space-y-2">
-          <PrimaryEngineerCard engineer={primary} />
+          <PrimaryEngineerCard
+            engineer={primary}
+            href={`/engineers?${new URLSearchParams({
+              engineer: primary.id,
+              skillName: primary.primarySkill,
+              from: "ask-vorta",
+              returnTo,
+              ...(equipmentId ? { equipment: equipmentId } : {}),
+            }).toString()}`}
+          />
 
           {secondary.length > 0 && (
             <div className="divide-y divide-gray-800 rounded-lg border border-gray-800 bg-[#0d131b] px-3">
               {secondary.map((engineer) => (
-                <div
+                <a
                   key={engineer.id}
-                  className="flex items-center gap-2.5 py-2.5"
+                  href={`/engineers?${new URLSearchParams({
+                    engineer: engineer.id,
+                    skillName: engineer.primarySkill,
+                    from: "ask-vorta",
+                    returnTo,
+                    ...(equipmentId ? { equipment: equipmentId } : {}),
+                  }).toString()}`}
+                  className="flex items-center gap-2.5 py-2.5 transition-colors hover:bg-blue-500/[0.035]"
                 >
                   <EngineerAvatar
                     name={engineer.name}
@@ -448,7 +513,7 @@ function EngineerSection({
                       {engineer.ratingSource}
                     </p>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}
@@ -490,9 +555,7 @@ function DocumentSection({
         <div className="space-y-2">
           {documents.slice(0, 5).map((document) => {
             const location = [
-              document.drawingNumber
-                ? `Drawing ${document.drawingNumber}`
-                : "",
+              document.drawingNumber ? `Drawing ${document.drawingNumber}` : "",
               document.sheetNumber ? `Sheet ${document.sheetNumber}` : "",
               document.pageNumber != null ? `Page ${document.pageNumber}` : "",
               document.sectionTitle ?? "",
@@ -577,6 +640,10 @@ function FaultIntelligenceDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const returnTo =
+    typeof window === "undefined"
+      ? "/dashboard"
+      : `${window.location.pathname}${window.location.search}`;
 
   const runQuestion = useCallback(async (nextQuestion: string) => {
     const trimmed = nextQuestion.trim();
@@ -613,7 +680,9 @@ function FaultIntelligenceDrawer({
       if (!nextQuestion) return;
 
       if (detail?.role && detail.role !== role) {
-        console.warn("Fault intelligence received a prompt for a different role.");
+        console.warn(
+          "Fault intelligence received a prompt for a different role.",
+        );
       }
 
       setOpen(true);
@@ -623,7 +692,8 @@ function FaultIntelligenceDrawer({
     };
 
     window.addEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
-    return () => window.removeEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
+    return () =>
+      window.removeEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
   }, [role, runQuestion]);
 
   useEffect(() => {
@@ -637,7 +707,10 @@ function FaultIntelligenceDrawer({
 
     window.addEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
     return () =>
-      window.removeEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
+      window.removeEventListener(
+        "vorta-global-ai-prompt",
+        closeForGeneralPrompt,
+      );
   }, []);
 
   const actions = useMemo(() => {
@@ -650,10 +723,9 @@ function FaultIntelligenceDrawer({
         )}, for equipment-specific escalation or technical confirmation.`
       : null;
 
-    return [...new Set([...baseActions, ...(smeAction ? [smeAction] : [])])].slice(
-      0,
-      4,
-    );
+    return [
+      ...new Set([...baseActions, ...(smeAction ? [smeAction] : [])]),
+    ].slice(0, 4);
   }, [result]);
 
   const submitFollowUp = (nextQuestion: string): void => {
@@ -702,7 +774,9 @@ function FaultIntelligenceDrawer({
               onClick={() => setMinimised((value) => !value)}
               className="rounded-md p-2 text-slate-500 transition-colors hover:bg-gray-800 hover:text-slate-300"
               aria-label={
-                minimised ? "Expand fault assistant" : "Minimise fault assistant"
+                minimised
+                  ? "Expand fault assistant"
+                  : "Minimise fault assistant"
               }
             >
               <ChevronDown
@@ -856,6 +930,8 @@ function FaultIntelligenceDrawer({
                     equipmentName={
                       result.primaryEquipment?.name ?? "No matched equipment"
                     }
+                    equipmentId={result.primaryEquipment?.id ?? null}
+                    returnTo={returnTo}
                   />
                   <HistorySection records={result.history} />
                   <EngineerSection
@@ -863,6 +939,8 @@ function FaultIntelligenceDrawer({
                     shiftLabel={result.shiftLabel}
                     shiftWindow={result.shiftWindow}
                     shiftBasis={result.shiftBasis}
+                    equipmentId={result.primaryEquipment?.id ?? null}
+                    returnTo={returnTo}
                   />
                   <DocumentSection
                     documents={result.documents}
@@ -890,8 +968,8 @@ function FaultIntelligenceDrawer({
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[9px] text-slate-500">
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                      No synthetic work orders, documents, people, profile images,
-                      SME roles or ratings
+                      No synthetic work orders, documents, people, profile
+                      images, SME roles or ratings
                     </span>
                     <span>
                       {result.searchedAssetCount} asset

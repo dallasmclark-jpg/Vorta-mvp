@@ -97,7 +97,7 @@ await patch(
     replaceOnce(
       /  useEffect\(\(\) => \{\n    setSearch\(""\);\n    setPriorityOnly\(false\);\n    setSelectedSkillId\(null\);\n    setSelectedArea\(ALL_SITE\);\n    setShowAllWeaknesses\(false\);\n  \}, \[selectedScopeId\]\);/,
       `  useEffect(() => {
-    setSelectedSkillId(null);
+
     setShowAllWeaknesses(false);
   }, [selectedScopeId]);`,
       "scope-change reset behaviour",
@@ -158,7 +158,7 @@ await patch(
     );
 
     replaceOnce(
-      /<td className=\{`sticky left-0 z-10 min-w-\[190px\] px-4 py-2\.5 \$\{rowBg\}`\}>\n                                     <p className="truncate font-medium text-slate-200">\{engineer\.name\}<\/p>\n                                     <p className="mt-0\.5 truncate text-\[11px\] text-slate-500">\{engineer\.discipline\}<\/p>\n                                   <\/td>/,
+      /<td className=\{`sticky left-0 z-10 min-w-\[190px\] px-4 py-2\.5 \$\{rowBg\}`\}>\s*<p className="truncate font-medium text-slate-200">\{engineer\.name\}<\/p>\s*<p className="mt-0\.5 truncate text-\[11px\] text-slate-500">\{engineer\.discipline\}<\/p>\s*<\/td>/,
       `<td className={\`sticky left-0 z-10 min-w-[190px] px-4 py-2.5 \${rowBg}\`}>
                                      <button
                                        type="button"
@@ -177,7 +177,7 @@ await patch(
     );
 
     replaceOnce(
-      /<div className="flex items-center gap-2">\n                                 <span className="rounded-md bg-blue-500\/10 px-2 py-1 text-\[11px\] font-semibold text-blue-300">\n                                   \+\{risk\.projectedScoreGain\} pts\n                                 <\/span>\n                                 <button[\s\S]*?\n                                 <\/button>\n                               <\/div>/,
+      /<div className="flex items-center gap-2">\s*<span className="rounded-md bg-blue-500\/10 px-2 py-1 text-\[11px\] font-semibold text-blue-300">\s*\+\{risk\.projectedScoreGain\} pts\s*<\/span>\s*<button[\s\S]*?Equipment <ArrowRight className="h-3 w-3" \/>\s*<\/button>\s*<\/div>/,
       `<div className="flex flex-wrap items-center gap-2">
                                  <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[11px] font-semibold text-blue-300">
                                    +{risk.projectedScoreGain} pts
@@ -202,7 +202,7 @@ await patch(
                                    }
                                    className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
                                  >
-                                   View requirement <ClipboardList className="h-3 w-3" />
+                                   View requirement <Award className="h-3 w-3" />
                                  </button>
                                  <button
                                    type="button"
@@ -213,7 +213,7 @@ await patch(
                                    }
                                    className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
                                  >
-                                   Open training plan <GraduationCap className="h-3 w-3" />
+                                   Open training plan <Wrench className="h-3 w-3" />
                                  </button>
                                  <button
                                    type="button"
@@ -356,7 +356,7 @@ await patch(
     );
 
     replaceOnce(
-      /              <div className="flex flex-wrap items-center gap-2">\n                 <div className="relative min-w-\[160px\] flex-1">/,
+      /<div className="flex flex-wrap items-center gap-2">\s*<div className="relative min-w-\[160px\] flex-1">/,
       `              <div className="flex flex-wrap items-center gap-2">
                  {skillFilterId ? (
                    <button

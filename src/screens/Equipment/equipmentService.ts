@@ -16,7 +16,10 @@ import {
   EquipmentActivity,
   AiInsight,
 } from "./equipmentTypes";
-import { getEquipmentById as getEquipmentByIdFallback, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
+import {
+  getEquipmentById as getEquipmentByIdFallback,
+  DEFAULT_EQUIPMENT_ID,
+} from "./equipmentData";
 import { EQUIPMENT_IMAGES, resolveEquipmentImage } from "./equipmentImages";
 
 // ─── Mock equipment data ──────────────────────────────────────────────────────
@@ -39,7 +42,12 @@ const MOCK_EQUIPMENT: Equipment[] = [
     image: EQUIPMENT_IMAGES.palletiser,
     riskScore: 71,
     riskLevel: "High",
-    riskBreakdown: riskBreakdownFor("High", "Palletiser 2", "PALLETISER", "PL-02"),
+    riskBreakdown: riskBreakdownFor(
+      "High",
+      "Palletiser 2",
+      "PALLETISER",
+      "PL-02",
+    ),
   },
   {
     id: "fl-03",
@@ -58,101 +66,551 @@ const MOCK_EQUIPMENT: Equipment[] = [
     image: EQUIPMENT_IMAGES.vialFiller,
     riskScore: 92,
     riskLevel: "Critical",
-    riskBreakdown: riskBreakdownFor("Critical", "Filling Line 3", "FILLING LINE", "FL-03"),
+    riskBreakdown: riskBreakdownFor(
+      "Critical",
+      "Filling Line 3",
+      "FILLING LINE",
+      "FL-03",
+    ),
   },
 ];
 
 // ─── Mock work orders ─────────────────────────────────────────────────────────
 
 const MOCK_WORK_ORDERS: WorkOrder[] = [
-  { id: "WO-10482", equipmentId: "pl-02", priority: "CRITICAL", description: "High vibration detected on main arm",    type: "Corrective",  status: "OPEN",         engineer: "James Wilson", requestedDate: "24 Apr 2025", dueDate: "25 Apr 2025", age: "1d", overdue: true },
-  { id: "WO-10491", equipmentId: "pl-02", priority: "HIGH",     description: "Gripper alignment check required",       type: "Inspection",  status: "IN PROGRESS",  engineer: "Sarah Chen",   requestedDate: "20 Apr 2025", dueDate: "27 Apr 2025", age: "4d" },
-  { id: "WO-10435", equipmentId: "pl-02", priority: "MEDIUM",   description: "PLC communication intermittent",         type: "Predictive",  status: "ON HOLD",       engineer: "Mike Torres",  requestedDate: "22 Apr 2025", dueDate: "29 Apr 2025", age: "2d" },
-  { id: "WO-10412", equipmentId: "pl-02", priority: "LOW",      description: "Conveyor belt tension check",            type: "Preventive",  status: "WAITING PARTS", engineer: "Lisa Park",    requestedDate: "21 Apr 2025", dueDate: "30 Apr 2025", age: "3d" },
-  { id: "WO-10398", equipmentId: "pl-02", priority: "HIGH",     description: "Motor overload protection trip",         type: "Corrective",  status: "OPEN",          engineer: "James Wilson", requestedDate: "19 Apr 2025", dueDate: "28 Apr 2025", age: "5d", overdue: true },
-  { id: "WO-10374", equipmentId: "pl-02", priority: "MEDIUM",   description: "Sensor calibration required",            type: "Preventive",  status: "OPEN",          engineer: "Sarah Chen",   requestedDate: "18 Apr 2025", dueDate: "25 Apr 2025", age: "6d" },
-  { id: "WO-10356", equipmentId: "pl-02", priority: "LOW",      description: "Pneumatic leak inspection",              type: "Inspection",  status: "OPEN",          engineer: "Mike Torres",  requestedDate: "17 Apr 2025", dueDate: "24 Apr 2025", age: "7d" },
-  { id: "WO-10321", equipmentId: "pl-02", priority: "HIGH",     description: "Bearing inspection required",            type: "Preventive",  status: "OPEN",          engineer: "Lisa Park",    requestedDate: "16 Apr 2025", dueDate: "23 Apr 2025", age: "8d", overdue: true },
+  {
+    id: "WO-10482",
+    equipmentId: "pl-02",
+    priority: "CRITICAL",
+    description: "High vibration detected on main arm",
+    type: "Corrective",
+    status: "OPEN",
+    engineer: "James Wilson",
+    requestedDate: "24 Apr 2025",
+    dueDate: "25 Apr 2025",
+    age: "1d",
+    overdue: true,
+  },
+  {
+    id: "WO-10491",
+    equipmentId: "pl-02",
+    priority: "HIGH",
+    description: "Gripper alignment check required",
+    type: "Inspection",
+    status: "IN PROGRESS",
+    engineer: "Sarah Chen",
+    requestedDate: "20 Apr 2025",
+    dueDate: "27 Apr 2025",
+    age: "4d",
+  },
+  {
+    id: "WO-10435",
+    equipmentId: "pl-02",
+    priority: "MEDIUM",
+    description: "PLC communication intermittent",
+    type: "Predictive",
+    status: "ON HOLD",
+    engineer: "Mike Torres",
+    requestedDate: "22 Apr 2025",
+    dueDate: "29 Apr 2025",
+    age: "2d",
+  },
+  {
+    id: "WO-10412",
+    equipmentId: "pl-02",
+    priority: "LOW",
+    description: "Conveyor belt tension check",
+    type: "Preventive",
+    status: "WAITING PARTS",
+    engineer: "Lisa Park",
+    requestedDate: "21 Apr 2025",
+    dueDate: "30 Apr 2025",
+    age: "3d",
+  },
+  {
+    id: "WO-10398",
+    equipmentId: "pl-02",
+    priority: "HIGH",
+    description: "Motor overload protection trip",
+    type: "Corrective",
+    status: "OPEN",
+    engineer: "James Wilson",
+    requestedDate: "19 Apr 2025",
+    dueDate: "28 Apr 2025",
+    age: "5d",
+    overdue: true,
+  },
+  {
+    id: "WO-10374",
+    equipmentId: "pl-02",
+    priority: "MEDIUM",
+    description: "Sensor calibration required",
+    type: "Preventive",
+    status: "OPEN",
+    engineer: "Sarah Chen",
+    requestedDate: "18 Apr 2025",
+    dueDate: "25 Apr 2025",
+    age: "6d",
+  },
+  {
+    id: "WO-10356",
+    equipmentId: "pl-02",
+    priority: "LOW",
+    description: "Pneumatic leak inspection",
+    type: "Inspection",
+    status: "OPEN",
+    engineer: "Mike Torres",
+    requestedDate: "17 Apr 2025",
+    dueDate: "24 Apr 2025",
+    age: "7d",
+  },
+  {
+    id: "WO-10321",
+    equipmentId: "pl-02",
+    priority: "HIGH",
+    description: "Bearing inspection required",
+    type: "Preventive",
+    status: "OPEN",
+    engineer: "Lisa Park",
+    requestedDate: "16 Apr 2025",
+    dueDate: "23 Apr 2025",
+    age: "8d",
+    overdue: true,
+  },
 ];
 
 const MOCK_COMPLETED_WORK_ORDERS: CompletedWorkOrder[] = [
-  { id: "WO-10420", equipmentId: "pl-02", description: "Routine lubrication", type: "Preventive", completedBy: "James Wilson", completionDate: "23 Apr 2025", mttr: "0.5h", outcome: "SUCCESS" },
-  { id: "WO-10415", equipmentId: "pl-02", description: "Calibration check",   type: "Preventive", completedBy: "Sarah Chen",   completionDate: "21 Apr 2025", mttr: "1.2h", outcome: "SUCCESS" },
-  { id: "WO-10409", equipmentId: "pl-02", description: "Sensor replacement",  type: "Preventive", completedBy: "Mike Torres",  completionDate: "19 Apr 2025", mttr: "2.4h", outcome: "PARTIAL" },
-  { id: "WO-10402", equipmentId: "pl-02", description: "Bearing inspection",  type: "Preventive", completedBy: "Lisa Park",    completionDate: "18 Apr 2025", mttr: "3.1h", outcome: "SUCCESS" },
+  {
+    id: "WO-10420",
+    equipmentId: "pl-02",
+    description: "Routine lubrication",
+    type: "Preventive",
+    completedBy: "James Wilson",
+    completionDate: "23 Apr 2025",
+    mttr: "0.5h",
+    outcome: "SUCCESS",
+  },
+  {
+    id: "WO-10415",
+    equipmentId: "pl-02",
+    description: "Calibration check",
+    type: "Preventive",
+    completedBy: "Sarah Chen",
+    completionDate: "21 Apr 2025",
+    mttr: "1.2h",
+    outcome: "SUCCESS",
+  },
+  {
+    id: "WO-10409",
+    equipmentId: "pl-02",
+    description: "Sensor replacement",
+    type: "Preventive",
+    completedBy: "Mike Torres",
+    completionDate: "19 Apr 2025",
+    mttr: "2.4h",
+    outcome: "PARTIAL",
+  },
+  {
+    id: "WO-10402",
+    equipmentId: "pl-02",
+    description: "Bearing inspection",
+    type: "Preventive",
+    completedBy: "Lisa Park",
+    completionDate: "18 Apr 2025",
+    mttr: "3.1h",
+    outcome: "SUCCESS",
+  },
 ];
 
 // ─── Mock PMs ─────────────────────────────────────────────────────────────────
 
 const MOCK_PMS: PreventiveMaintenance[] = [
-  { id: "PM-PL-02-DAILY",   equipmentId: "pl-02", name: "Daily Visual Inspection", code: "PM-PL-02-DAILY",   frequency: "Daily",     type: "Inspection",  lastCompleted: "24 Apr 2025", nextDue: "25 Apr 2025", status: "ON TRACK",  compliance: 90 },
-  { id: "PM-PL-02-LUB-01",  equipmentId: "pl-02", name: "Conveyor Lubrication",    code: "PM-PL-02-LUB-01",  frequency: "Weekly",    type: "Lubrication", lastCompleted: "20 Apr 2025", nextDue: "27 Apr 2025", status: "DUE SOON",  compliance: 75 },
-  { id: "PM-PL-02-BEAR-01", equipmentId: "pl-02", name: "Bearing Inspection",      code: "PM-PL-02-BEAR-01", frequency: "Monthly",   type: "Inspection",  lastCompleted: "15 Mar 2025", nextDue: "15 Apr 2025", status: "OVERDUE",   compliance: 45 },
-  { id: "PM-PL-02-LOGIC",   equipmentId: "pl-02", name: "PLC Logic Review",        code: "PM-PL-02-LOGIC",   frequency: "Quarterly", type: "Test",        lastCompleted: "10 Jan 2025", nextDue: "10 Apr 2025", status: "COMPLETED", compliance: 100 },
-  { id: "PM-PL-02-ALIGN",   equipmentId: "pl-02", name: "Drive-End Alignment",     code: "PM-PL-02-ALIGN",   frequency: "Monthly",   type: "Service",     lastCompleted: "05 Apr 2025", nextDue: "05 May 2025", status: "ON TRACK",  compliance: 95 },
+  {
+    id: "PM-PL-02-DAILY",
+    equipmentId: "pl-02",
+    name: "Daily Visual Inspection",
+    code: "PM-PL-02-DAILY",
+    frequency: "Daily",
+    type: "Inspection",
+    lastCompleted: "24 Apr 2025",
+    nextDue: "25 Apr 2025",
+    status: "ON TRACK",
+    compliance: 90,
+  },
+  {
+    id: "PM-PL-02-LUB-01",
+    equipmentId: "pl-02",
+    name: "Conveyor Lubrication",
+    code: "PM-PL-02-LUB-01",
+    frequency: "Weekly",
+    type: "Lubrication",
+    lastCompleted: "20 Apr 2025",
+    nextDue: "27 Apr 2025",
+    status: "DUE SOON",
+    compliance: 75,
+  },
+  {
+    id: "PM-PL-02-BEAR-01",
+    equipmentId: "pl-02",
+    name: "Bearing Inspection",
+    code: "PM-PL-02-BEAR-01",
+    frequency: "Monthly",
+    type: "Inspection",
+    lastCompleted: "15 Mar 2025",
+    nextDue: "15 Apr 2025",
+    status: "OVERDUE",
+    compliance: 45,
+  },
+  {
+    id: "PM-PL-02-LOGIC",
+    equipmentId: "pl-02",
+    name: "PLC Logic Review",
+    code: "PM-PL-02-LOGIC",
+    frequency: "Quarterly",
+    type: "Test",
+    lastCompleted: "10 Jan 2025",
+    nextDue: "10 Apr 2025",
+    status: "COMPLETED",
+    compliance: 100,
+  },
+  {
+    id: "PM-PL-02-ALIGN",
+    equipmentId: "pl-02",
+    name: "Drive-End Alignment",
+    code: "PM-PL-02-ALIGN",
+    frequency: "Monthly",
+    type: "Service",
+    lastCompleted: "05 Apr 2025",
+    nextDue: "05 May 2025",
+    status: "ON TRACK",
+    compliance: 95,
+  },
 ];
 
 // ─── Mock skills ──────────────────────────────────────────────────────────────
 
 const MOCK_SKILLS: EquipmentSkill[] = [
-  { equipmentId: "pl-02", name: "Siemens S7 PLC",    covered: false },
-  { equipmentId: "pl-02", name: "Safety Circuits",   covered: false },
-  { equipmentId: "pl-02", name: "Vision Systems",    covered: true  },
-  { equipmentId: "pl-02", name: "Hydraulics",        covered: true  },
-  { equipmentId: "pl-02", name: "Robot Programming", covered: true  },
+  { equipmentId: "pl-02", name: "Siemens S7 PLC", covered: false },
+  { equipmentId: "pl-02", name: "Safety Circuits", covered: false },
+  { equipmentId: "pl-02", name: "Vision Systems", covered: true },
+  { equipmentId: "pl-02", name: "Hydraulics", covered: true },
+  { equipmentId: "pl-02", name: "Robot Programming", covered: true },
 ];
 
 const MOCK_ENGINEERS: Engineer[] = [
-  { id: "jw-01", initials: "JW", name: "James Wilson",  role: "Mechanical Engineer", match: 96, status: "Available",   shift: "Days"   },
-  { id: "sj-01", initials: "SJ", name: "Sarah Jones",   role: "Senior Technician",   match: 91, status: "Night Shift", shift: "Nights" },
-  { id: "le-01", initials: "LE", name: "Liam Evans",    role: "Maintenance Lead",    match: 87, status: "Available",   shift: "Days"   },
-  { id: "mc-01", initials: "MC", name: "Mike Chen",     role: "Junior Technician",   match: 84, status: "Busy",        shift: "Days"   },
+  {
+    id: "jw-01",
+    initials: "JW",
+    name: "James Wilson",
+    role: "Mechanical Engineer",
+    match: 96,
+    status: "Available",
+    shift: "Days",
+  },
+  {
+    id: "sj-01",
+    initials: "SJ",
+    name: "Sarah Jones",
+    role: "Senior Technician",
+    match: 91,
+    status: "Night Shift",
+    shift: "Nights",
+  },
+  {
+    id: "le-01",
+    initials: "LE",
+    name: "Liam Evans",
+    role: "Maintenance Lead",
+    match: 87,
+    status: "Available",
+    shift: "Days",
+  },
+  {
+    id: "mc-01",
+    initials: "MC",
+    name: "Mike Chen",
+    role: "Junior Technician",
+    match: 84,
+    status: "Busy",
+    shift: "Days",
+  },
 ];
 
 // ─── Mock spare parts ─────────────────────────────────────────────────────────
 
 const MOCK_SPARES: SparePart[] = [
-  { id: "sp-01", equipmentId: "pl-02", name: "Encoder Rotary 1024",      partNumber: "EN-2205", stock: 0, max: 2, status: "Out of Stock" },
-  { id: "sp-02", equipmentId: "pl-02", name: "Servo Motor AC 3kW",       partNumber: "SM-4521", stock: 2, max: 3, status: "Low Stock"    },
-  { id: "sp-03", equipmentId: "pl-02", name: "Pneumatic Cylinder 50mm",  partNumber: "PC-3301", stock: 1, max: 2, status: "Low Stock"    },
-  { id: "sp-04", equipmentId: "pl-02", name: "Drive Belt Poly-V 1200mm", partNumber: "DB-1192", stock: 4, max: 4, status: "OK"           },
-  { id: "sp-05", equipmentId: "pl-02", name: "Bearing Kit 6205-2RS",     partNumber: "BK-411C", stock: 6, max: 4, status: "OK"           },
-  { id: "sp-06", equipmentId: "pl-02", name: "Filter Hydraulic 10µm",    partNumber: "FT-160",  stock: 3, max: 2, status: "OK"           },
+  {
+    id: "sp-01",
+    equipmentId: "pl-02",
+    name: "Encoder Rotary 1024",
+    partNumber: "EN-2205",
+    stock: 0,
+    max: 2,
+    status: "Out of Stock",
+  },
+  {
+    id: "sp-02",
+    equipmentId: "pl-02",
+    name: "Servo Motor AC 3kW",
+    partNumber: "SM-4521",
+    stock: 2,
+    max: 3,
+    status: "Low Stock",
+  },
+  {
+    id: "sp-03",
+    equipmentId: "pl-02",
+    name: "Pneumatic Cylinder 50mm",
+    partNumber: "PC-3301",
+    stock: 1,
+    max: 2,
+    status: "Low Stock",
+  },
+  {
+    id: "sp-04",
+    equipmentId: "pl-02",
+    name: "Drive Belt Poly-V 1200mm",
+    partNumber: "DB-1192",
+    stock: 4,
+    max: 4,
+    status: "OK",
+  },
+  {
+    id: "sp-05",
+    equipmentId: "pl-02",
+    name: "Bearing Kit 6205-2RS",
+    partNumber: "BK-411C",
+    stock: 6,
+    max: 4,
+    status: "OK",
+  },
+  {
+    id: "sp-06",
+    equipmentId: "pl-02",
+    name: "Filter Hydraulic 10µm",
+    partNumber: "FT-160",
+    stock: 3,
+    max: 2,
+    status: "OK",
+  },
 ];
 
 // ─── Mock documents ───────────────────────────────────────────────────────────
 
 const MOCK_DOCUMENTS: EquipmentDocument[] = [
-  { id: "doc-01", equipmentId: "pl-02", name: "Operation Manual v4.2",        category: "Manual",      date: "24 Apr 2025", size: "4.2 MB",  status: "Current"    },
-  { id: "doc-02", equipmentId: "pl-02", name: "Electrical Schematic Rev.C",   category: "Schematic",   date: "18 Apr 2025", size: "8.1 MB",  status: "Current"    },
-  { id: "doc-03", equipmentId: "pl-02", name: "Safety Certificate ISO-14001", category: "Certificate", date: "12 Apr 2025", size: "1.2 MB",  status: "Expiring"   },
-  { id: "doc-04", equipmentId: "pl-02", name: "Hydraulic Assembly Drawing",   category: "Drawing",     date: "05 Apr 2025", size: "12.4 MB", status: "Current"    },
-  { id: "doc-05", equipmentId: "pl-02", name: "PM Procedure — Quarterly",     category: "Procedure",   date: "28 Mar 2025", size: "2.8 MB",  status: "Current"    },
-  { id: "doc-06", equipmentId: "pl-02", name: "Risk Assessment v2.1",         category: "Compliance",  date: "15 Mar 2025", size: "3.1 MB",  status: "Review Due" },
-  { id: "doc-07", equipmentId: "pl-02", name: "PLC Program Backup",           category: "Other",       date: "10 Mar 2025", size: "18.6 MB", status: "Current"    },
-  { id: "doc-08", equipmentId: "pl-02", name: "Calibration Certificate",      category: "Certificate", date: "01 Mar 2025", size: "0.8 MB",  status: "Expired"    },
+  {
+    id: "doc-01",
+    equipmentId: "pl-02",
+    name: "Operation Manual v4.2",
+    category: "Manual",
+    date: "24 Apr 2025",
+    size: "4.2 MB",
+    status: "Current",
+  },
+  {
+    id: "doc-02",
+    equipmentId: "pl-02",
+    name: "Electrical Schematic Rev.C",
+    category: "Schematic",
+    date: "18 Apr 2025",
+    size: "8.1 MB",
+    status: "Current",
+  },
+  {
+    id: "doc-03",
+    equipmentId: "pl-02",
+    name: "Safety Certificate ISO-14001",
+    category: "Certificate",
+    date: "12 Apr 2025",
+    size: "1.2 MB",
+    status: "Expiring",
+  },
+  {
+    id: "doc-04",
+    equipmentId: "pl-02",
+    name: "Hydraulic Assembly Drawing",
+    category: "Drawing",
+    date: "05 Apr 2025",
+    size: "12.4 MB",
+    status: "Current",
+  },
+  {
+    id: "doc-05",
+    equipmentId: "pl-02",
+    name: "PM Procedure — Quarterly",
+    category: "Procedure",
+    date: "28 Mar 2025",
+    size: "2.8 MB",
+    status: "Current",
+  },
+  {
+    id: "doc-06",
+    equipmentId: "pl-02",
+    name: "Risk Assessment v2.1",
+    category: "Compliance",
+    date: "15 Mar 2025",
+    size: "3.1 MB",
+    status: "Review Due",
+  },
+  {
+    id: "doc-07",
+    equipmentId: "pl-02",
+    name: "PLC Program Backup",
+    category: "Other",
+    date: "10 Mar 2025",
+    size: "18.6 MB",
+    status: "Current",
+  },
+  {
+    id: "doc-08",
+    equipmentId: "pl-02",
+    name: "Calibration Certificate",
+    category: "Certificate",
+    date: "01 Mar 2025",
+    size: "0.8 MB",
+    status: "Expired",
+  },
 ];
 
 // ─── Mock activity / history ──────────────────────────────────────────────────
 
 const MOCK_ACTIVITY: EquipmentActivity[] = [
-  { id: "ha-01", equipmentId: "pl-02", date: "24 Apr 2025", woNumber: "WO-10482", type: "BREAKDOWN",  priority: "CRITICAL", description: "High vibration on main arm — emergency stop triggered",  downtime: "3h 20m", outcome: "RESOLVED" },
-  { id: "ha-02", equipmentId: "pl-02", date: "23 Apr 2025", woNumber: "WO-10435", type: "CORRECTIVE", priority: "HIGH",     description: "PLC communication intermittent — board reseated",         downtime: "1h 45m", outcome: "PARTIAL"  },
-  { id: "ha-03", equipmentId: "pl-02", date: "21 Apr 2025", woNumber: "WO-10491", type: "PREVENTIVE", priority: "MEDIUM",   description: "Gripper alignment check — within tolerance",               downtime: "0h 00m", outcome: "RESOLVED" },
-  { id: "ha-04", equipmentId: "pl-02", date: "20 Apr 2025", woNumber: "WO-10478", type: "INSPECTION", priority: "MEDIUM",   description: "Monthly visual inspection — no defects found",             downtime: "0h 00m", outcome: "RESOLVED" },
-  { id: "ha-05", equipmentId: "pl-02", date: "18 Apr 2025", woNumber: "WO-10465", type: "PARTS",      priority: "MEDIUM",   description: "Drive belt replaced — worn beyond 80% threshold",          downtime: "0h 30m", outcome: "RESOLVED" },
-  { id: "ha-06", equipmentId: "pl-02", date: "15 Apr 2025", woNumber: "WO-10452", type: "BREAKDOWN",  priority: "CRITICAL", description: "Bearing failure on arm joint — partial bearing replacement", downtime: "6h 10m", outcome: "PARTIAL"  },
+  {
+    id: "ha-01",
+    equipmentId: "pl-02",
+    date: "24 Apr 2025",
+    woNumber: "WO-10482",
+    type: "BREAKDOWN",
+    priority: "CRITICAL",
+    description: "High vibration on main arm — emergency stop triggered",
+    downtime: "3h 20m",
+    outcome: "RESOLVED",
+  },
+  {
+    id: "ha-02",
+    equipmentId: "pl-02",
+    date: "23 Apr 2025",
+    woNumber: "WO-10435",
+    type: "CORRECTIVE",
+    priority: "HIGH",
+    description: "PLC communication intermittent — board reseated",
+    downtime: "1h 45m",
+    outcome: "PARTIAL",
+  },
+  {
+    id: "ha-03",
+    equipmentId: "pl-02",
+    date: "21 Apr 2025",
+    woNumber: "WO-10491",
+    type: "PREVENTIVE",
+    priority: "MEDIUM",
+    description: "Gripper alignment check — within tolerance",
+    downtime: "0h 00m",
+    outcome: "RESOLVED",
+  },
+  {
+    id: "ha-04",
+    equipmentId: "pl-02",
+    date: "20 Apr 2025",
+    woNumber: "WO-10478",
+    type: "INSPECTION",
+    priority: "MEDIUM",
+    description: "Monthly visual inspection — no defects found",
+    downtime: "0h 00m",
+    outcome: "RESOLVED",
+  },
+  {
+    id: "ha-05",
+    equipmentId: "pl-02",
+    date: "18 Apr 2025",
+    woNumber: "WO-10465",
+    type: "PARTS",
+    priority: "MEDIUM",
+    description: "Drive belt replaced — worn beyond 80% threshold",
+    downtime: "0h 30m",
+    outcome: "RESOLVED",
+  },
+  {
+    id: "ha-06",
+    equipmentId: "pl-02",
+    date: "15 Apr 2025",
+    woNumber: "WO-10452",
+    type: "BREAKDOWN",
+    priority: "CRITICAL",
+    description: "Bearing failure on arm joint — partial bearing replacement",
+    downtime: "6h 10m",
+    outcome: "PARTIAL",
+  },
 ];
 
 // ─── Mock AI insights ─────────────────────────────────────────────────────────
 
 const MOCK_AI_INSIGHTS: AiInsight[] = [
-  { id: "ai-01", equipmentId: "pl-02", type: "risk",           title: "Bearing Wear",                   description: "High probability of bearing failure based on vibration trend and failure history.", severity: "HIGH",   confidence: 86, createdAt: "24 Apr 2025" },
-  { id: "ai-02", equipmentId: "pl-02", type: "recommendation", title: "Schedule Bearing Inspection",    description: "Inspect drive-end bearing and check alignment within 3 days.",                      severity: "HIGH",   confidence: 91, createdAt: "24 Apr 2025" },
-  { id: "ai-03", equipmentId: "pl-02", type: "risk",           title: "Overdue PM Compliance",          description: "PM compliance is 67%. Schedule quarterly inspection to prevent warranty impact.",    severity: "MEDIUM", confidence: 88, createdAt: "24 Apr 2025" },
-  { id: "ai-04", equipmentId: "pl-02", type: "pattern",        title: "Vibration Spike Detected",       description: "Unusual vibration pattern on drive-end bearing matches pre-failure signature.",       severity: "HIGH",   confidence: 88, createdAt: "24 Apr 2025" },
-  { id: "ai-05", equipmentId: "pl-02", type: "opportunity",    title: "Spare Network Opportunity",      description: "Connect with Palletiser 4 spare pool to reduce stockholding by £3,200/yr.",          severity: "LOW",    confidence: 75, createdAt: "24 Apr 2025" },
-  { id: "ai-06", equipmentId: "pl-02", type: "opportunity",    title: "PM Optimisation",                description: "AI suggests extending oil change interval from 3 to 4 months based on oil analysis.", severity: "LOW",    confidence: 82, createdAt: "24 Apr 2025" },
+  {
+    id: "ai-01",
+    equipmentId: "pl-02",
+    type: "risk",
+    title: "Bearing Wear",
+    description:
+      "High probability of bearing failure based on vibration trend and failure history.",
+    severity: "HIGH",
+    confidence: 86,
+    createdAt: "24 Apr 2025",
+  },
+  {
+    id: "ai-02",
+    equipmentId: "pl-02",
+    type: "recommendation",
+    title: "Schedule Bearing Inspection",
+    description: "Inspect drive-end bearing and check alignment within 3 days.",
+    severity: "HIGH",
+    confidence: 91,
+    createdAt: "24 Apr 2025",
+  },
+  {
+    id: "ai-03",
+    equipmentId: "pl-02",
+    type: "risk",
+    title: "Overdue PM Compliance",
+    description:
+      "PM compliance is 67%. Schedule quarterly inspection to prevent warranty impact.",
+    severity: "MEDIUM",
+    confidence: 88,
+    createdAt: "24 Apr 2025",
+  },
+  {
+    id: "ai-04",
+    equipmentId: "pl-02",
+    type: "pattern",
+    title: "Vibration Spike Detected",
+    description:
+      "Unusual vibration pattern on drive-end bearing matches pre-failure signature.",
+    severity: "HIGH",
+    confidence: 88,
+    createdAt: "24 Apr 2025",
+  },
+  {
+    id: "ai-05",
+    equipmentId: "pl-02",
+    type: "opportunity",
+    title: "Spare Network Opportunity",
+    description:
+      "Connect with Palletiser 4 spare pool to reduce stockholding by £3,200/yr.",
+    severity: "LOW",
+    confidence: 75,
+    createdAt: "24 Apr 2025",
+  },
+  {
+    id: "ai-06",
+    equipmentId: "pl-02",
+    type: "opportunity",
+    title: "PM Optimisation",
+    description:
+      "AI suggests extending oil change interval from 3 to 4 months based on oil analysis.",
+    severity: "LOW",
+    confidence: 82,
+    createdAt: "24 Apr 2025",
+  },
 ];
 
 // ─── Service functions ────────────────────────────────────────────────────────
@@ -197,23 +655,53 @@ interface EquipmentAssetRow {
   criticality: string | null;
   status: string | null;
   image_url: string | null;
-  equipment_risk_profiles?: EquipmentRiskProfileRow[] | EquipmentRiskProfileRow | null;
+  equipment_risk_profiles?:
+    EquipmentRiskProfileRow[] | EquipmentRiskProfileRow | null;
 }
 
-function getRiskProfile(row: EquipmentAssetRow): EquipmentRiskProfileRow | null {
+function getRiskProfile(
+  row: EquipmentAssetRow,
+): EquipmentRiskProfileRow | null {
   const profile = row.equipment_risk_profiles;
   if (Array.isArray(profile)) return profile[0] ?? null;
   return profile ?? null;
 }
 
 // Risk Drivers show the leading factors increasing the likelihood of future equipment risk.
-function riskBreakdownFromProfile(profile: EquipmentRiskProfileRow): Equipment["riskBreakdown"] {
+function riskBreakdownFromProfile(
+  profile: EquipmentRiskProfileRow,
+): Equipment["riskBreakdown"] {
   const items: Equipment["riskBreakdown"] = [
-    { label: "PM Backlog",        pct: profile.pm_backlog_pct         ?? 0, color: "#f97316", dotClass: "bg-orange-500" },
-    { label: "Asset Criticality", pct: profile.asset_criticality_pct  ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
-    { label: "Calibration",       pct: profile.calibration_pct        ?? 0, color: "#06b6d4", dotClass: "bg-cyan-400"   },
-    { label: "Labour Coverage",  pct: profile.skills_pct             ?? 0, color: "#eab308", dotClass: "bg-yellow-400" },
-    { label: "Spares",            pct: profile.spares_pct             ?? 0, color: "#6366f1", dotClass: "bg-indigo-500" },
+    {
+      label: "PM Backlog",
+      pct: profile.pm_backlog_pct ?? 0,
+      color: "#f97316",
+      dotClass: "bg-orange-500",
+    },
+    {
+      label: "Asset Criticality",
+      pct: profile.asset_criticality_pct ?? 0,
+      color: "#dc2626",
+      dotClass: "bg-red-600",
+    },
+    {
+      label: "Calibration",
+      pct: profile.calibration_pct ?? 0,
+      color: "#06b6d4",
+      dotClass: "bg-cyan-400",
+    },
+    {
+      label: "Labour Coverage",
+      pct: profile.skills_pct ?? 0,
+      color: "#eab308",
+      dotClass: "bg-yellow-400",
+    },
+    {
+      label: "Spares",
+      pct: profile.spares_pct ?? 0,
+      color: "#6366f1",
+      dotClass: "bg-indigo-500",
+    },
   ];
   return items.filter((item) => item.pct > 0);
 }
@@ -232,16 +720,37 @@ function mapCriticality(
   let baseScore: number;
 
   switch (c) {
-    case "critical": riskLevel = "Critical"; baseScore = 88; break;
-    case "high":     riskLevel = "High";     baseScore = 71; break;
-    case "medium":   riskLevel = "Medium";   baseScore = 45; break;
-    case "low":      riskLevel = "Low";      baseScore = 22; break;
-    default:         riskLevel = "Medium";   baseScore = 45;
+    case "critical":
+      riskLevel = "Critical";
+      baseScore = 88;
+      break;
+    case "high":
+      riskLevel = "High";
+      baseScore = 71;
+      break;
+    case "medium":
+      riskLevel = "Medium";
+      baseScore = 45;
+      break;
+    case "low":
+      riskLevel = "Low";
+      baseScore = 22;
+      break;
+    default:
+      riskLevel = "Medium";
+      baseScore = 45;
   }
 
   let adjustment = 0;
-  if (h.includes("vial") || h.includes("filler") || h.includes("filling") || h.includes("vf-")) adjustment += 4;
-  if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom")) adjustment += 6;
+  if (
+    h.includes("vial") ||
+    h.includes("filler") ||
+    h.includes("filling") ||
+    h.includes("vf-")
+  )
+    adjustment += 4;
+  if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom"))
+    adjustment += 6;
   if (h.includes("boiler") || h.includes("steam")) adjustment += 3;
   if (h.includes("case pack") || h.includes("case-pack")) adjustment += 5;
   if (h.includes("plc") || h.includes("automation")) adjustment += 2;
@@ -249,7 +758,10 @@ function mapCriticality(
   if (h.includes("forklift") || h.includes("warehouse")) adjustment -= 6;
   if (h.includes("lighting")) adjustment -= 10;
 
-  return { riskLevel, riskScore: Math.max(5, Math.min(96, baseScore + adjustment)) };
+  return {
+    riskLevel,
+    riskScore: Math.max(5, Math.min(96, baseScore + adjustment)),
+  };
 }
 
 // Produces asset-specific Risk Drivers (leading indicators only). Percentages always total 100%.
@@ -263,11 +775,11 @@ function riskBreakdownFor(
   const h = `${name ?? ""} ${type ?? ""} ${code ?? ""}`.toLowerCase();
 
   const colours = {
-    pm:          { color: "#f97316", dotClass: "bg-orange-500" },
+    pm: { color: "#f97316", dotClass: "bg-orange-500" },
     criticality: { color: "#dc2626", dotClass: "bg-red-600" },
     calibration: { color: "#06b6d4", dotClass: "bg-cyan-400" },
-    skills:      { color: "#eab308", dotClass: "bg-yellow-400" },
-    spares:      { color: "#6366f1", dotClass: "bg-indigo-500" },
+    skills: { color: "#eab308", dotClass: "bg-yellow-400" },
+    spares: { color: "#6366f1", dotClass: "bg-indigo-500" },
   };
 
   const createBreakdown = (
@@ -276,15 +788,26 @@ function riskBreakdownFor(
     calibration: number,
     skills: number,
     spares: number,
-  ): Equipment["riskBreakdown"] => [
-    { label: "PM Backlog",        pct: pmBacklog,        ...colours.pm },
-    { label: "Asset Criticality", pct: assetCriticality, ...colours.criticality },
-    { label: "Calibration",       pct: calibration,      ...colours.calibration },
-    { label: "Skills",            pct: skills,           ...colours.skills },
-    { label: "Spares",            pct: spares,           ...colours.spares },
-  ].filter((item) => item.pct > 0);
+  ): Equipment["riskBreakdown"] =>
+    [
+      { label: "PM Backlog", pct: pmBacklog, ...colours.pm },
+      {
+        label: "Asset Criticality",
+        pct: assetCriticality,
+        ...colours.criticality,
+      },
+      { label: "Calibration", pct: calibration, ...colours.calibration },
+      { label: "Skills", pct: skills, ...colours.skills },
+      { label: "Spares", pct: spares, ...colours.spares },
+    ].filter((item) => item.pct > 0);
 
-  if (h.includes("vial") || h.includes("filler") || h.includes("filling") || h.includes("vf-") || h.includes("fl-"))
+  if (
+    h.includes("vial") ||
+    h.includes("filler") ||
+    h.includes("filling") ||
+    h.includes("vf-") ||
+    h.includes("fl-")
+  )
     return createBreakdown(20, 35, 25, 15, 5);
 
   if (h.includes("hvac") || h.includes("ahu") || h.includes("cleanroom"))
@@ -293,7 +816,14 @@ function riskBreakdownFor(
   if (h.includes("boiler") || h.includes("steam") || h.includes("bl-"))
     return createBreakdown(35, 35, 5, 10, 15);
 
-  if (h.includes("palletis") || h.includes("palletiz") || h.includes("pl-") || h.includes("case pack") || h.includes("case-pack") || h.includes("cp-"))
+  if (
+    h.includes("palletis") ||
+    h.includes("palletiz") ||
+    h.includes("pl-") ||
+    h.includes("case pack") ||
+    h.includes("case-pack") ||
+    h.includes("cp-")
+  )
     return createBreakdown(40, 25, 5, 10, 20);
 
   if (h.includes("plc") || h.includes("automation"))
@@ -302,7 +832,12 @@ function riskBreakdownFor(
   if (h.includes("conveyor") || h.includes("cv-"))
     return createBreakdown(45, 20, 0, 10, 25);
 
-  if (h.includes("motor") || h.includes("drive") || h.includes("press line") || h.includes("pm-"))
+  if (
+    h.includes("motor") ||
+    h.includes("drive") ||
+    h.includes("press line") ||
+    h.includes("pm-")
+  )
     return createBreakdown(35, 20, 0, 10, 35);
 
   if (h.includes("compressor") || h.includes("air comp") || h.includes("ac-"))
@@ -314,10 +849,10 @@ function riskBreakdownFor(
   if (h.includes("lighting") || h.includes("light") || h.includes("lt-"))
     return createBreakdown(35, 15, 0, 15, 35);
 
-  if (riskLevel === "Critical") return createBreakdown(30, 35, 20, 10,  5);
-  if (riskLevel === "High")     return createBreakdown(35, 30, 15, 10, 10);
-  if (riskLevel === "Low")      return createBreakdown(35, 20,  0, 20, 25);
-  return                               createBreakdown(35, 25, 10, 15, 15);
+  if (riskLevel === "Critical") return createBreakdown(30, 35, 20, 10, 5);
+  if (riskLevel === "High") return createBreakdown(35, 30, 15, 10, 10);
+  if (riskLevel === "Low") return createBreakdown(35, 20, 0, 20, 25);
+  return createBreakdown(35, 25, 10, 15, 15);
 }
 
 // ─── EquipmentListItem — UI shape for the equipment list page ────────────────
@@ -350,7 +885,8 @@ export interface SiteRiskProfile {
 export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
   const { data, error } = await supabase
     .from("site_risk_profile")
-    .select(`
+    .select(
+      `
       risk_score,
       risk_level,
       highest_area,
@@ -373,7 +909,8 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
       labour_shift_date,
       labour_shift_type,
       no_engineer_override
-    `)
+    `,
+    )
     .eq("id", 1)
     .maybeSingle();
 
@@ -399,23 +936,15 @@ export async function getSiteRiskProfile(): Promise<SiteRiskProfile | null> {
     priorityAction: data.priority_action ?? null,
     riskSummary: data.risk_summary ?? null,
     siteId: data.site_id ?? null,
-    operationalRiskScore: Number(
-      data.operational_risk_score ?? 0,
-    ),
-    labourRiskScore: Number(
-      data.labour_risk_score ?? 0,
-    ),
-    scheduledEngineerCount:
-      data.scheduled_engineer_count ?? 0,
-    labourShiftDate:
-      data.labour_shift_date ?? null,
+    operationalRiskScore: Number(data.operational_risk_score ?? 0),
+    labourRiskScore: Number(data.labour_risk_score ?? 0),
+    scheduledEngineerCount: data.scheduled_engineer_count ?? 0,
+    labourShiftDate: data.labour_shift_date ?? null,
     labourShiftType:
-      data.labour_shift_type === "day" ||
-      data.labour_shift_type === "night"
+      data.labour_shift_type === "day" || data.labour_shift_type === "night"
         ? data.labour_shift_type
         : null,
-    noEngineerOverride:
-      data.no_engineer_override ?? false,
+    noEngineerOverride: data.no_engineer_override ?? false,
   };
 }
 
@@ -429,10 +958,13 @@ export interface EquipmentRiskExplanation {
   estimatedReduction: number;
 }
 
-export async function getEquipmentRiskExplanations(equipmentId: string): Promise<EquipmentRiskExplanation[]> {
+export async function getEquipmentRiskExplanations(
+  equipmentId: string,
+): Promise<EquipmentRiskExplanation[]> {
   const { data, error } = await supabase
     .from("equipment_risk_explanations")
-    .select(`
+    .select(
+      `
       equipment_id,
       driver,
       driver_score,
@@ -440,12 +972,14 @@ export async function getEquipmentRiskExplanations(equipmentId: string): Promise
       evidence,
       recommended_action,
       estimated_reduction
-    `)
+    `,
+    )
     .eq("equipment_id", equipmentId)
     .order("driver_pct", { ascending: false });
 
   if (error || !data) {
-    if (error) console.warn("equipment_risk_explanations fetch failed:", error.message);
+    if (error)
+      console.warn("equipment_risk_explanations fetch failed:", error.message);
     return [];
   }
 
@@ -530,137 +1064,80 @@ export async function getEquipmentRecommendedWorkQueue(
     return null;
   }
 
-  const row =
-    Array.isArray(data) && data.length > 0
-      ? data[0]
-      : null;
+  const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
 
   if (!row) {
     return null;
   }
 
-  const nullableNumber = (
-    value: unknown,
-  ): number | null => {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
+  const nullableNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === "") {
       return null;
     }
 
     const parsed = Number(value);
 
-    return Number.isFinite(parsed)
-      ? parsed
-      : null;
+    return Number.isFinite(parsed) ? parsed : null;
   };
 
-  const rawActions = Array.isArray(row.actions)
-    ? row.actions
-    : [];
+  const rawActions = Array.isArray(row.actions) ? row.actions : [];
 
-  const actions: EquipmentRecommendedWorkAction[] =
-    rawActions
-      .map((action: any) => ({
-        priority: Number(action.priority ?? 0),
-        driver: String(action.driver ?? ""),
-        action: String(action.action ?? ""),
-        detail: action.detail ?? null,
-        status: action.status ?? null,
-        actionType: action.actionType ?? null,
+  const actions: EquipmentRecommendedWorkAction[] = rawActions
+    .map((action: any) => ({
+      priority: Number(action.priority ?? 0),
+      driver: String(action.driver ?? ""),
+      action: String(action.action ?? ""),
+      detail: action.detail ?? null,
+      status: action.status ?? null,
+      actionType: action.actionType ?? null,
 
-        calculatedReduction: Number(
-          action.calculatedReduction ?? 0,
-        ),
-        projectedScore: Number(
-          action.projectedScore ?? 0,
-        ),
+      calculatedReduction: Number(action.calculatedReduction ?? 0),
+      projectedScore: Number(action.projectedScore ?? 0),
 
-        workOrderNumber:
-          action.workOrderNumber ?? null,
-        workOrderDescription:
-          action.workOrderDescription ?? null,
-        workOrderStatus:
-          action.workOrderStatus ?? null,
-        workOrderPriority:
-          action.workOrderPriority ?? null,
-        workOrderDueDate:
-          action.workOrderDueDate ?? null,
-        orderTypeCode:
-          action.orderTypeCode ?? null,
-        orderTypeDescription:
-          action.orderTypeDescription ?? null,
+      workOrderNumber: action.workOrderNumber ?? null,
+      workOrderDescription: action.workOrderDescription ?? null,
+      workOrderStatus: action.workOrderStatus ?? null,
+      workOrderPriority: action.workOrderPriority ?? null,
+      workOrderDueDate: action.workOrderDueDate ?? null,
+      orderTypeCode: action.orderTypeCode ?? null,
+      orderTypeDescription: action.orderTypeDescription ?? null,
 
-        pmNumber: action.pmNumber ?? null,
-        pmTitle: action.pmTitle ?? null,
-        pmStatus: action.pmStatus ?? null,
-        pmDueDate: action.pmDueDate ?? null,
-        pmCriticality:
-          action.pmCriticality ?? null,
-        procedureRef:
-          action.procedureRef ?? null,
-        checklistRef:
-          action.checklistRef ?? null,
-        durationMinutes: Number(
-          action.durationMinutes ??
-            action.estimatedDurationMinutes ??
-            0,
-        ),
+      pmNumber: action.pmNumber ?? null,
+      pmTitle: action.pmTitle ?? null,
+      pmStatus: action.pmStatus ?? null,
+      pmDueDate: action.pmDueDate ?? null,
+      pmCriticality: action.pmCriticality ?? null,
+      procedureRef: action.procedureRef ?? null,
+      checklistRef: action.checklistRef ?? null,
+      durationMinutes: Number(
+        action.durationMinutes ?? action.estimatedDurationMinutes ?? 0,
+      ),
 
-        sparePartNumber:
-          action.sparePartNumber ?? null,
-        partName: action.partName ?? null,
-        stockOnHand: nullableNumber(
-          action.stockOnHand,
-        ),
-        minimumStock: nullableNumber(
-          action.minimumStock,
-        ),
-        targetStock: nullableNumber(
-          action.targetStock,
-        ),
-        leadTimeDays: Number(
-          action.leadTimeDays ??
-            action.procurementLeadDays ??
-            0,
-        ),
-        partAvailabilityStatus:
-          action.partAvailabilityStatus ?? null,
-        partCriticality:
-          action.partCriticality ?? null,
-        storageLocation:
-          action.storageLocation ?? null,
-        supplierName:
-          action.supplierName ?? null,
-      }))
-      .sort(
-        (left, right) =>
-          left.priority - right.priority,
-      )
-      .slice(0, 3);
+      sparePartNumber: action.sparePartNumber ?? null,
+      partName: action.partName ?? null,
+      stockOnHand: nullableNumber(action.stockOnHand),
+      minimumStock: nullableNumber(action.minimumStock),
+      targetStock: nullableNumber(action.targetStock),
+      leadTimeDays: Number(
+        action.leadTimeDays ?? action.procurementLeadDays ?? 0,
+      ),
+      partAvailabilityStatus: action.partAvailabilityStatus ?? null,
+      partCriticality: action.partCriticality ?? null,
+      storageLocation: action.storageLocation ?? null,
+      supplierName: action.supplierName ?? null,
+    }))
+    .sort((left, right) => left.priority - right.priority)
+    .slice(0, 3);
 
   return {
     equipmentId: row.equipment_id,
-    equipmentName:
-      row.equipment_name ??
-      "Unnamed equipment",
-    equipmentCode:
-      row.equipment_code ?? "",
-    currentRiskScore: Number(
-      row.current_risk_score ?? 0,
-    ),
-    currentRiskLevel:
-      row.current_risk_level ?? "Minimal",
-    projectedRiskScore: Number(
-      row.projected_risk_score ?? 0,
-    ),
-    projectedRiskLevel:
-      row.projected_risk_level ?? "Minimal",
-    totalCalculatedReduction: Number(
-      row.total_calculated_reduction ?? 0,
-    ),
+    equipmentName: row.equipment_name ?? "Unnamed equipment",
+    equipmentCode: row.equipment_code ?? "",
+    currentRiskScore: Number(row.current_risk_score ?? 0),
+    currentRiskLevel: row.current_risk_level ?? "Minimal",
+    projectedRiskScore: Number(row.projected_risk_score ?? 0),
+    projectedRiskLevel: row.projected_risk_level ?? "Minimal",
+    totalCalculatedReduction: Number(row.total_calculated_reduction ?? 0),
     actions,
   };
 }
@@ -686,13 +1163,9 @@ export interface AreaRiskProfile {
   noEngineerOverride: boolean;
 }
 
-export type RiskDashboardScopeType =
-  | "site"
-  | "area";
+export type RiskDashboardScopeType = "site" | "area";
 
-export type RiskDashboardChildKind =
-  | "area"
-  | "equipment";
+export type RiskDashboardChildKind = "area" | "equipment";
 
 export interface RiskDashboardChildCard {
   kind: RiskDashboardChildKind;
@@ -701,12 +1174,7 @@ export interface RiskDashboardChildCard {
   code: string | null;
   equipmentType: string | null;
   riskScore: number;
-  riskLevel:
-    | "Critical"
-    | "High"
-    | "Medium"
-    | "Low"
-    | "Minimal";
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
   primaryDriver: string;
   highestChildName: string | null;
   highestChildScore: number | null;
@@ -740,12 +1208,7 @@ export interface RiskDashboardScope {
   area: string | null;
   displayOrder: number;
   riskScore: number;
-  riskLevel:
-    | "Critical"
-    | "High"
-    | "Medium"
-    | "Low"
-    | "Minimal";
+  riskLevel: "Critical" | "High" | "Medium" | "Low" | "Minimal";
   operationalRiskScore: number;
   labourRiskScore: number;
   highestChildId: string | null;
@@ -763,10 +1226,7 @@ export interface RiskDashboardScope {
   criticalSparesMissing: number;
   scheduledEngineerCount: number;
   labourShiftDate: string | null;
-  labourShiftType:
-    | "day"
-    | "night"
-    | null;
+  labourShiftType: "day" | "night" | null;
   noEngineerOverride: boolean;
   priorityAction: string | null;
   riskSummary: string | null;
@@ -777,7 +1237,8 @@ export interface RiskDashboardScope {
 export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
   const { data, error } = await supabase
     .from("area_risk_profiles")
-    .select(`
+    .select(
+      `
       area,
       risk_score,
       risk_level,
@@ -796,7 +1257,8 @@ export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
       labour_risk_score,
       scheduled_engineer_count,
       no_engineer_override
-    `)
+    `,
+    )
     .order("risk_score", { ascending: false });
 
   if (error || !data) {
@@ -819,31 +1281,21 @@ export async function getAreaRiskProfiles(): Promise<AreaRiskProfile[]> {
     singlePointSkillGapCount: row.single_point_skill_gap_count ?? 0,
     riskSummary: row.risk_summary ?? null,
     priorityAction: row.priority_action ?? null,
-    operationalRiskScore: Number(
-      row.operational_risk_score ?? 0,
-    ),
-    labourRiskScore: Number(
-      row.labour_risk_score ?? 0,
-    ),
-    scheduledEngineerCount:
-      row.scheduled_engineer_count ?? 0,
-    noEngineerOverride:
-      row.no_engineer_override ?? false,
+    operationalRiskScore: Number(row.operational_risk_score ?? 0),
+    labourRiskScore: Number(row.labour_risk_score ?? 0),
+    scheduledEngineerCount: row.scheduled_engineer_count ?? 0,
+    noEngineerOverride: row.no_engineer_override ?? false,
   }));
 }
 
-export async function getRiskDashboardScopes():
-  Promise<RiskDashboardScope[]> {
+export async function getRiskDashboardScopes(): Promise<RiskDashboardScope[]> {
   try {
     const { data, error } = await supabase.rpc(
       "vorta_get_risk_dashboard_scopes",
     );
 
     if (error) {
-      console.warn(
-        "vorta_get_risk_dashboard_scopes failed:",
-        error.message,
-      );
+      console.warn("vorta_get_risk_dashboard_scopes failed:", error.message);
       return [];
     }
 
@@ -851,238 +1303,91 @@ export async function getRiskDashboardScopes():
       return [];
     }
 
-    return data.map(
-      (row: any): RiskDashboardScope => {
-        const rawChildren = Array.isArray(
-          row.child_cards,
-        )
-          ? row.child_cards
-          : [];
+    return data.map((row: any): RiskDashboardScope => {
+      const rawChildren = Array.isArray(row.child_cards) ? row.child_cards : [];
 
-        const rawLabourCards =
-          Array.isArray(
-            row.labour_cards,
-          )
-            ? row.labour_cards
-            : [];
+      const rawLabourCards = Array.isArray(row.labour_cards)
+        ? row.labour_cards
+        : [];
 
-        return {
-          scopeKey:
-            row.scope_key ?? "",
-          scopeType:
-            row.scope_type === "area"
-              ? "area"
-              : "site",
-          scopeLabel:
-            row.scope_label ??
-            "Site Risk",
-          area:
-            row.area ?? null,
-          displayOrder: Number(
-            row.display_order ?? 0,
-          ),
-          riskScore: Number(
-            row.risk_score ?? 0,
-          ),
-          riskLevel:
-            row.risk_level ??
-            "Minimal",
-          operationalRiskScore: Number(
-            row.operational_risk_score ??
-              0,
-          ),
-          labourRiskScore: Number(
-            row.labour_risk_score ?? 0,
-          ),
-          highestChildId:
-            row.highest_child_id ??
-            null,
-          highestChildCode:
-            row.highest_child_code ??
-            null,
-          highestChildName:
-            row.highest_child_name ??
-            null,
+      return {
+        scopeKey: row.scope_key ?? "",
+        scopeType: row.scope_type === "area" ? "area" : "site",
+        scopeLabel: row.scope_label ?? "Site Risk",
+        area: row.area ?? null,
+        displayOrder: Number(row.display_order ?? 0),
+        riskScore: Number(row.risk_score ?? 0),
+        riskLevel: row.risk_level ?? "Minimal",
+        operationalRiskScore: Number(row.operational_risk_score ?? 0),
+        labourRiskScore: Number(row.labour_risk_score ?? 0),
+        highestChildId: row.highest_child_id ?? null,
+        highestChildCode: row.highest_child_code ?? null,
+        highestChildName: row.highest_child_name ?? null,
+        highestChildScore:
+          row.highest_child_score === null ||
+          row.highest_child_score === undefined
+            ? null
+            : Number(row.highest_child_score),
+        highestChildLevel: row.highest_child_level ?? null,
+        assetCount: Number(row.asset_count ?? 0),
+        atRiskAssetCount: Number(row.at_risk_asset_count ?? 0),
+        criticalAssetCount: Number(row.critical_asset_count ?? 0),
+        highAssetCount: Number(row.high_asset_count ?? 0),
+        overduePmCount: Number(row.overdue_pm_count ?? 0),
+        calibrationBacklogCount: Number(row.calibration_backlog_count ?? 0),
+        coverGapCount: Number(row.cover_gap_count ?? 0),
+        criticalSparesMissing: Number(row.critical_spares_missing ?? 0),
+        scheduledEngineerCount: Number(row.scheduled_engineer_count ?? 0),
+        labourShiftDate: row.labour_shift_date ?? null,
+        labourShiftType:
+          row.labour_shift_type === "day" || row.labour_shift_type === "night"
+            ? row.labour_shift_type
+            : null,
+        noEngineerOverride: row.no_engineer_override ?? false,
+        priorityAction: row.priority_action ?? null,
+        riskSummary: row.risk_summary ?? null,
+        childCards: rawChildren.map((item: any): RiskDashboardChildCard => ({
+          kind: item.kind === "equipment" ? "equipment" : "area",
+          id: item.id ?? "",
+          label: item.label ?? "Unnamed",
+          code: item.code ?? null,
+          equipmentType: item.equipmentType ?? null,
+          riskScore: Number(item.riskScore ?? 0),
+          riskLevel: item.riskLevel ?? "Minimal",
+          primaryDriver: item.primaryDriver ?? "Stable leading indicators",
+          highestChildName: item.highestChildName ?? null,
           highestChildScore:
-            row.highest_child_score ===
-              null ||
-            row.highest_child_score ===
-              undefined
+            item.highestChildScore === null ||
+            item.highestChildScore === undefined
               ? null
-              : Number(
-                  row.highest_child_score,
-                ),
-          highestChildLevel:
-            row.highest_child_level ??
-            null,
-          assetCount: Number(
-            row.asset_count ?? 0,
-          ),
-          atRiskAssetCount: Number(
-            row.at_risk_asset_count ??
-              0,
-          ),
-          criticalAssetCount: Number(
-            row.critical_asset_count ??
-              0,
-          ),
-          highAssetCount: Number(
-            row.high_asset_count ?? 0,
-          ),
-          overduePmCount: Number(
-            row.overdue_pm_count ?? 0,
-          ),
-          calibrationBacklogCount:
-            Number(
-              row.calibration_backlog_count ??
-                0,
-            ),
-          coverGapCount: Number(
-            row.cover_gap_count ?? 0,
-          ),
-          criticalSparesMissing:
-            Number(
-              row.critical_spares_missing ??
-                0,
-            ),
-          scheduledEngineerCount:
-            Number(
-              row.scheduled_engineer_count ??
-                0,
-            ),
-          labourShiftDate:
-            row.labour_shift_date ??
-            null,
-          labourShiftType:
-            row.labour_shift_type ===
-              "day" ||
-            row.labour_shift_type ===
-              "night"
-              ? row.labour_shift_type
-              : null,
-          noEngineerOverride:
-            row.no_engineer_override ??
-            false,
-          priorityAction:
-            row.priority_action ??
-            null,
-          riskSummary:
-            row.risk_summary ?? null,
-          childCards: rawChildren.map(
-            (
-              item: any,
-            ): RiskDashboardChildCard => ({
-              kind:
-                item.kind ===
-                "equipment"
-                  ? "equipment"
-                  : "area",
-              id: item.id ?? "",
-              label:
-                item.label ??
-                "Unnamed",
-              code:
-                item.code ?? null,
-              equipmentType:
-                item.equipmentType ??
-                null,
-              riskScore: Number(
-                item.riskScore ?? 0,
-              ),
-              riskLevel:
-                item.riskLevel ??
-                "Minimal",
-              primaryDriver:
-                item.primaryDriver ??
-                "Stable leading indicators",
-              highestChildName:
-                item.highestChildName ??
-                null,
-              highestChildScore:
-                item.highestChildScore ===
-                  null ||
-                item.highestChildScore ===
-                  undefined
-                  ? null
-                  : Number(
-                      item.highestChildScore,
-                    ),
-              overduePmCount: Number(
-                item.overduePmCount ??
-                  0,
-              ),
-              calibrationBacklogCount:
-                Number(
-                  item.calibrationBacklogCount ??
-                    0,
-                ),
-              criticalSparesMissing:
-                Number(
-                  item.criticalSparesMissing ??
-                    0,
-                ),
-              coverGapCount: Number(
-                item.coverGapCount ??
-                  0,
-              ),
-              labourRiskScore: Number(
-                item.labourRiskScore ??
-                  0,
-              ),
-              operationalRiskScore:
-                Number(
-                  item.operationalRiskScore ??
-                    0,
-                ),
-              scheduledEngineerCount:
-                Number(
-                  item.scheduledEngineerCount ??
-                    0,
-                ),
-              qualifiedEngineerCount:
-                Number(
-                  item.qualifiedEngineerCount ??
-                    0,
-                ),
-              noEngineerOverride:
-                item.noEngineerOverride ??
-                false,
-            }),
-          ),
-          labourCards:
-            rawLabourCards.map(
-              (
-                item: any,
-              ): RiskDashboardLabourCard => ({
-                title:
-                  item.title ?? "",
-                slug:
-                  item.slug ?? "",
-                score: Number(
-                  item.score ?? 0,
-                ),
-                description:
-                  item.description ?? "",
-                metricLabel:
-                  item.metricLabel ?? "",
-                metricValue:
-                  item.metricValue ?? "0",
-                extraLabel:
-                  item.extraLabel ?? "",
-                extraValue:
-                  item.extraValue ?? "",
-                statusLabel:
-                  item.statusLabel ?? "",
-              }),
-            ),
-        };
-      },
-    );
+              : Number(item.highestChildScore),
+          overduePmCount: Number(item.overduePmCount ?? 0),
+          calibrationBacklogCount: Number(item.calibrationBacklogCount ?? 0),
+          criticalSparesMissing: Number(item.criticalSparesMissing ?? 0),
+          coverGapCount: Number(item.coverGapCount ?? 0),
+          labourRiskScore: Number(item.labourRiskScore ?? 0),
+          operationalRiskScore: Number(item.operationalRiskScore ?? 0),
+          scheduledEngineerCount: Number(item.scheduledEngineerCount ?? 0),
+          qualifiedEngineerCount: Number(item.qualifiedEngineerCount ?? 0),
+          noEngineerOverride: item.noEngineerOverride ?? false,
+        })),
+        labourCards: rawLabourCards.map(
+          (item: any): RiskDashboardLabourCard => ({
+            title: item.title ?? "",
+            slug: item.slug ?? "",
+            score: Number(item.score ?? 0),
+            description: item.description ?? "",
+            metricLabel: item.metricLabel ?? "",
+            metricValue: item.metricValue ?? "0",
+            extraLabel: item.extraLabel ?? "",
+            extraValue: item.extraValue ?? "",
+            statusLabel: item.statusLabel ?? "",
+          }),
+        ),
+      };
+    });
   } catch (error) {
-    console.warn(
-      "vorta_get_risk_dashboard_scopes threw:",
-      error,
-    );
+    console.warn("vorta_get_risk_dashboard_scopes threw:", error);
     return [];
   }
 }
@@ -1113,34 +1418,214 @@ export interface EquipmentListItem {
 
 // Fallback list used when Supabase is unavailable.
 const MOCK_LIST: EquipmentListItem[] = [
-  { id: "fl-03",  name: "Filling Line 3",      assetNumber: "FL-03",  type: "FILLING LINE", area: "Building 2", riskScore: 92, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Filling Line 3",      "FILLING LINE", "FL-03"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "cp-04",  name: "Case Packer 4",        assetNumber: "CP-04",  type: "PACKING",      area: "Packing",    riskScore: 88, riskLevel: "Critical", breakdown: riskBreakdownFor("Critical", "Case Packer 4",        "PACKING",      "CP-04"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "bl-01",  name: "Boiler 1",             assetNumber: "BL-01",  type: "UTILITIES",    area: "Utilities",  riskScore: 74, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Boiler 1",             "UTILITIES",    "BL-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "pl-02",  name: "Palletiser 2",         assetNumber: "PL-02",  type: "PALLETISER",   area: "Building 2", riskScore: 71, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Palletiser 2",         "PALLETISER",   "PL-02"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "l2-plc", name: "Line 2 PLC",           assetNumber: "L2-PLC", type: "AUTOMATION",   area: "Packing",    riskScore: 68, riskLevel: "High",     breakdown: riskBreakdownFor("High",     "Line 2 PLC",           "AUTOMATION",   "L2-PLC"), oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "cv-04",  name: "Conveyor 4",           assetNumber: "CV-04",  type: "CONVEYOR",     area: "Building 2", riskScore: 58, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Conveyor 4",           "CONVEYOR",     "CV-04"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Press Line Motor",     "PROCESSING",   "PM-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Air Compressor 1",     "COMPRESSOR",   "AC-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Warehouse Forklift 3", "WAREHOUSE",    "WF-03"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal",  "Lighting System",      "FACILITIES",   "LT-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  {
+    id: "fl-03",
+    name: "Filling Line 3",
+    assetNumber: "FL-03",
+    type: "FILLING LINE",
+    area: "Building 2",
+    riskScore: 92,
+    riskLevel: "Critical",
+    breakdown: riskBreakdownFor(
+      "Critical",
+      "Filling Line 3",
+      "FILLING LINE",
+      "FL-03",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "cp-04",
+    name: "Case Packer 4",
+    assetNumber: "CP-04",
+    type: "PACKING",
+    area: "Packing",
+    riskScore: 88,
+    riskLevel: "Critical",
+    breakdown: riskBreakdownFor(
+      "Critical",
+      "Case Packer 4",
+      "PACKING",
+      "CP-04",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "bl-01",
+    name: "Boiler 1",
+    assetNumber: "BL-01",
+    type: "UTILITIES",
+    area: "Utilities",
+    riskScore: 74,
+    riskLevel: "High",
+    breakdown: riskBreakdownFor("High", "Boiler 1", "UTILITIES", "BL-01"),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "pl-02",
+    name: "Palletiser 2",
+    assetNumber: "PL-02",
+    type: "PALLETISER",
+    area: "Building 2",
+    riskScore: 71,
+    riskLevel: "High",
+    breakdown: riskBreakdownFor("High", "Palletiser 2", "PALLETISER", "PL-02"),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "l2-plc",
+    name: "Line 2 PLC",
+    assetNumber: "L2-PLC",
+    type: "AUTOMATION",
+    area: "Packing",
+    riskScore: 68,
+    riskLevel: "High",
+    breakdown: riskBreakdownFor("High", "Line 2 PLC", "AUTOMATION", "L2-PLC"),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "cv-04",
+    name: "Conveyor 4",
+    assetNumber: "CV-04",
+    type: "CONVEYOR",
+    area: "Building 2",
+    riskScore: 58,
+    riskLevel: "Medium",
+    breakdown: riskBreakdownFor("Medium", "Conveyor 4", "CONVEYOR", "CV-04"),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "pm-01",
+    name: "Press Line Motor",
+    assetNumber: "PM-01",
+    type: "PROCESSING",
+    area: "Processing",
+    riskScore: 52,
+    riskLevel: "Medium",
+    breakdown: riskBreakdownFor(
+      "Medium",
+      "Press Line Motor",
+      "PROCESSING",
+      "PM-01",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "ac-01",
+    name: "Air Compressor 1",
+    assetNumber: "AC-01",
+    type: "COMPRESSOR",
+    area: "Building 2",
+    riskScore: 33,
+    riskLevel: "Low",
+    breakdown: riskBreakdownFor(
+      "Low",
+      "Air Compressor 1",
+      "COMPRESSOR",
+      "AC-01",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "wf-03",
+    name: "Warehouse Forklift 3",
+    assetNumber: "WF-03",
+    type: "WAREHOUSE",
+    area: "Warehouse",
+    riskScore: 28,
+    riskLevel: "Low",
+    breakdown: riskBreakdownFor(
+      "Low",
+      "Warehouse Forklift 3",
+      "WAREHOUSE",
+      "WF-03",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
+  {
+    id: "lt-01",
+    name: "Lighting System",
+    assetNumber: "LT-01",
+    type: "FACILITIES",
+    area: "Building 2",
+    riskScore: 12,
+    riskLevel: "Minimal",
+    breakdown: riskBreakdownFor(
+      "Minimal",
+      "Lighting System",
+      "FACILITIES",
+      "LT-01",
+    ),
+    oem: "—",
+    criticality: "Unknown",
+    overduePmCount: 0,
+    openWorkOrderCount: 0,
+    calibrationOverdueCount: 0,
+  },
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
-  const fallback = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
-  const profile  = getRiskProfile(row);
+  const fallback = mapCriticality(
+    row.criticality,
+    row.name,
+    row.equipment_type,
+    row.equipment_code,
+  );
+  const profile = getRiskProfile(row);
   const riskLevel = profile?.risk_level ?? fallback.riskLevel;
   const riskScore = profile?.risk_score ?? fallback.riskScore;
   return {
-    id:          row.id,
-    name:        row.name,
+    id: row.id,
+    name: row.name,
     assetNumber: row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
-    type:        (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
-    area:        row.area ?? "—",
+    type: (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
+    area: row.area ?? "—",
     riskScore,
     riskLevel,
     breakdown: profile
       ? riskBreakdownFromProfile(profile)
-      : riskBreakdownFor(riskLevel, row.name, row.equipment_type, row.equipment_code),
+      : riskBreakdownFor(
+          riskLevel,
+          row.name,
+          row.equipment_type,
+          row.equipment_code,
+        ),
   };
 }
 
@@ -1158,35 +1643,49 @@ function isStaleDemoImage(imageUrl: string | null | undefined): boolean {
 }
 
 function resolveEquipmentDisplayImage(row: EquipmentAssetRow): string {
-  const placeholder = resolveEquipmentImage(row.name, row.equipment_type, row.equipment_code);
+  const placeholder = resolveEquipmentImage(
+    row.name,
+    row.equipment_type,
+    row.equipment_code,
+  );
   return isStaleDemoImage(row.image_url) ? placeholder : row.image_url!;
 }
 
 function rowToEquipment(row: EquipmentAssetRow): Equipment {
-  const fallback  = mapCriticality(row.criticality, row.name, row.equipment_type, row.equipment_code);
-  const profile   = getRiskProfile(row);
+  const fallback = mapCriticality(
+    row.criticality,
+    row.name,
+    row.equipment_type,
+    row.equipment_code,
+  );
+  const profile = getRiskProfile(row);
   const riskLevel = profile?.risk_level ?? fallback.riskLevel;
   const riskScore = profile?.risk_score ?? fallback.riskScore;
   return {
-    id:           row.id,
-    name:         row.name,
-    assetNumber:  row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
-    type:         (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
-    area:         row.area ?? "—",
+    id: row.id,
+    name: row.name,
+    assetNumber: row.equipment_code ?? row.id.slice(0, 8).toUpperCase(),
+    type: (row.equipment_type ?? "EQUIPMENT").toUpperCase(),
+    area: row.area ?? "—",
     manufacturer: row.oem ?? "—",
-    model:        row.model ?? "—",
+    model: row.model ?? "—",
     serialNumber: "—",
-    installDate:  "—",
-    warranty:     "—",
-    criticality:  row.criticality ?? "—",
-    status:       (row.status as Equipment["status"]) ?? "Running",
-    statusNote:   profile?.risk_summary ?? "",
-    image:        resolveEquipmentDisplayImage(row),
+    installDate: "—",
+    warranty: "—",
+    criticality: row.criticality ?? "—",
+    status: (row.status as Equipment["status"]) ?? "Running",
+    statusNote: profile?.risk_summary ?? "",
+    image: resolveEquipmentDisplayImage(row),
     riskScore,
     riskLevel,
     riskBreakdown: profile
       ? riskBreakdownFromProfile(profile)
-      : riskBreakdownFor(riskLevel, row.name, row.equipment_type, row.equipment_code),
+      : riskBreakdownFor(
+          riskLevel,
+          row.name,
+          row.equipment_type,
+          row.equipment_code,
+        ),
   };
 }
 
@@ -1203,7 +1702,8 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
   try {
     const { data, error } = await supabase
       .from("equipment_assets")
-      .select(`
+      .select(
+        `
         id,
         equipment_code,
         name,
@@ -1239,7 +1739,8 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
           labour_shift_type,
           no_engineer_override
         )
-      `)
+      `,
+      )
       .eq("id", id)
       .maybeSingle();
 
@@ -1248,7 +1749,11 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
       equipmentIdentityCache[id] = result;
       return result;
     }
-    if (error) console.warn("getEquipmentIdentityById failed, using fallback:", error.message);
+    if (error)
+      console.warn(
+        "getEquipmentIdentityById failed, using fallback:",
+        error.message,
+      );
   } catch (e) {
     console.warn("getEquipmentIdentityById threw, using fallback:", e);
   }
@@ -1259,7 +1764,9 @@ export async function getEquipmentIdentityById(id: string): Promise<Equipment> {
 
 export async function getEquipmentList(): Promise<EquipmentListItem[]> {
   try {
-    const { data, error } = await supabase.rpc("vorta_get_demo_equipment_risk_list");
+    const { data, error } = await supabase.rpc(
+      "vorta_get_demo_equipment_risk_list",
+    );
 
     if (error) {
       console.warn("vorta_get_demo_equipment_risk_list failed:", error.message);
@@ -1272,53 +1779,72 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
 
     return data.map((row: any): EquipmentListItem => {
       const riskScore = row.risk_score ?? 0;
-      const riskLevel = (row.risk_level ?? "Minimal") as EquipmentListItem["riskLevel"];
+      const riskLevel = (row.risk_level ??
+        "Minimal") as EquipmentListItem["riskLevel"];
 
       const breakdown = [
-        { label: "PM Backlog",        pct: row.pm_backlog_pct ?? 0,        color: "#f97316", dotClass: "bg-orange-500" },
-        { label: "Asset Criticality", pct: row.asset_criticality_pct ?? 0, color: "#dc2626", dotClass: "bg-red-600"    },
-        { label: "Calibration",       pct: row.calibration_pct ?? 0,       color: "#06b6d4", dotClass: "bg-cyan-400"   },
-        { label: "Labour Coverage",  pct: row.skills_pct ?? 0,            color: "#eab308", dotClass: "bg-yellow-400" },
-        { label: "Spares",            pct: row.spares_pct ?? 0,            color: "#6366f1", dotClass: "bg-indigo-500" },
+        {
+          label: "PM Backlog",
+          pct: row.pm_backlog_pct ?? 0,
+          color: "#f97316",
+          dotClass: "bg-orange-500",
+        },
+        {
+          label: "Asset Criticality",
+          pct: row.asset_criticality_pct ?? 0,
+          color: "#dc2626",
+          dotClass: "bg-red-600",
+        },
+        {
+          label: "Calibration",
+          pct: row.calibration_pct ?? 0,
+          color: "#06b6d4",
+          dotClass: "bg-cyan-400",
+        },
+        {
+          label: "Labour Coverage",
+          pct: row.skills_pct ?? 0,
+          color: "#eab308",
+          dotClass: "bg-yellow-400",
+        },
+        {
+          label: "Spares",
+          pct: row.spares_pct ?? 0,
+          color: "#6366f1",
+          dotClass: "bg-indigo-500",
+        },
       ].filter((item) => item.pct > 0);
 
       return {
-        id:          row.equipment_id,
-        name:        row.equipment_name ?? "Unnamed equipment",
+        id: row.equipment_id,
+        name: row.equipment_name ?? "Unnamed equipment",
         assetNumber: row.equipment_code ?? "",
-        type:        (row.equipment_type ?? "Equipment").toUpperCase(),
-        area:        row.area ?? "—",
+        type: (row.equipment_type ?? "Equipment").toUpperCase(),
+        area: row.area ?? "—",
         riskScore,
         riskLevel,
-        operationalRiskScore: Number(
-          row.operational_risk_score ?? 0,
-        ),
-        labourRiskScore: Number(
-          row.labour_risk_score ?? 0,
-        ),
-        scheduledEngineerCount:
-          row.scheduled_engineer_count ?? 0,
-        qualifiedEngineerCount:
-          row.qualified_engineer_count ?? 0,
-        missingSkillCount:
-          row.missing_skill_count ?? 0,
-        labourShiftDate:
-          row.labour_shift_date ?? null,
-        labourShiftType:
-          row.labour_shift_type ?? null,
-        noEngineerOverride:
-          row.no_engineer_override ?? false,
-        oem:          row.oem ?? "—",
-        criticality:  row.criticality ?? "Unknown",
+        operationalRiskScore: Number(row.operational_risk_score ?? 0),
+        labourRiskScore: Number(row.labour_risk_score ?? 0),
+        scheduledEngineerCount: row.scheduled_engineer_count ?? 0,
+        qualifiedEngineerCount: row.qualified_engineer_count ?? 0,
+        missingSkillCount: row.missing_skill_count ?? 0,
+        labourShiftDate: row.labour_shift_date ?? null,
+        labourShiftType: row.labour_shift_type ?? null,
+        noEngineerOverride: row.no_engineer_override ?? false,
+        oem: row.oem ?? "—",
+        criticality: row.criticality ?? "Unknown",
         overduePmCount: Number(row.overdue_pm_count ?? 0),
         openWorkOrderCount: Number(row.open_work_order_count ?? 0),
-        calibrationOverdueCount: Number(
-          row.calibration_overdue_count ?? 0,
-        ),
+        calibrationOverdueCount: Number(row.calibration_overdue_count ?? 0),
         breakdown:
           breakdown.length > 0
             ? breakdown
-            : riskBreakdownFor(riskLevel, row.equipment_name, row.equipment_type, row.equipment_code),
+            : riskBreakdownFor(
+                riskLevel,
+                row.equipment_name,
+                row.equipment_type,
+                row.equipment_code,
+              ),
       };
     });
   } catch (error) {
@@ -1333,7 +1859,9 @@ export function getAllEquipment(): Equipment[] {
   return MOCK_EQUIPMENT;
 }
 
-export function getEquipmentById(id: string | undefined): Equipment | undefined {
+export function getEquipmentById(
+  id: string | undefined,
+): Equipment | undefined {
   return MOCK_EQUIPMENT.find((e) => e.id === id);
 }
 
@@ -1358,33 +1886,35 @@ interface WorkOrderRow {
 }
 
 function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
-  const priority = (row.priority?.toUpperCase() ?? "LOW") as WorkOrder["priority"];
-  const status   = (row.status?.toUpperCase()   ?? "OPEN") as WorkOrder["status"];
+  const priority = (row.priority?.toUpperCase() ??
+    "LOW") as WorkOrder["priority"];
+  const status = (row.status?.toUpperCase() ?? "OPEN") as WorkOrder["status"];
   return {
-    id:            row.wo_number ?? row.id,
-    equipmentId:   row.equipment_id ?? "",
+    id: row.wo_number ?? row.id,
+    equipmentId: row.equipment_id ?? "",
     priority,
-    description:   row.description ?? "",
-    type:          row.work_type ?? "—",
+    description: row.description ?? "",
+    type: row.work_type ?? "—",
     status,
-    engineer:      row.assigned_engineer ?? "—",
+    engineer: row.assigned_engineer ?? "—",
     requestedDate: row.requested_date ?? "",
-    dueDate:       row.due_date ?? "",
-    age:           row.age_label ?? "—",
-    overdue:       row.is_overdue ?? false,
+    dueDate: row.due_date ?? "",
+    age: row.age_label ?? "—",
+    overdue: row.is_overdue ?? false,
   };
 }
 
 function rowToCompletedWorkOrder(row: WorkOrderRow): CompletedWorkOrder {
   return {
-    id:             row.wo_number ?? row.id,
-    equipmentId:    row.equipment_id ?? "",
-    description:    row.description ?? "",
-    type:           row.work_type ?? "—",
-    completedBy:    row.assigned_engineer ?? "—",
+    id: row.wo_number ?? row.id,
+    equipmentId: row.equipment_id ?? "",
+    description: row.description ?? "",
+    type: row.work_type ?? "—",
+    completedBy: row.assigned_engineer ?? "—",
     completionDate: row.completed_date ?? "",
-    mttr:           row.mttr_hours != null ? `${row.mttr_hours}h` : "—",
-    outcome:        (row.outcome?.toUpperCase() ?? "SUCCESS") as CompletedWorkOrder["outcome"],
+    mttr: row.mttr_hours != null ? `${row.mttr_hours}h` : "—",
+    outcome: (row.outcome?.toUpperCase() ??
+      "SUCCESS") as CompletedWorkOrder["outcome"],
   };
 }
 
@@ -1395,17 +1925,27 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from("work_orders")
-      .select("id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome, wo_number, age_label, is_overdue")
+      .select(
+        "id, equipment_id, priority, description, work_type, status, assigned_engineer, requested_date, due_date, completed_date, mttr_hours, outcome, wo_number, age_label, is_overdue",
+      )
       .eq("equipment_id", equipmentId);
 
     if (!error && data) {
       const rows = data as WorkOrderRow[];
       return {
-        open:      rows.filter((r) => r.status?.toUpperCase() !== "COMPLETED").map(rowToWorkOrder),
-        completed: rows.filter((r) => r.status?.toUpperCase() === "COMPLETED").map(rowToCompletedWorkOrder),
+        open: rows
+          .filter((r) => r.status?.toUpperCase() !== "COMPLETED")
+          .map(rowToWorkOrder),
+        completed: rows
+          .filter((r) => r.status?.toUpperCase() === "COMPLETED")
+          .map(rowToCompletedWorkOrder),
       };
     }
-    if (error) console.warn("getEquipmentWorkOrders Supabase error, using mock:", error.message);
+    if (error)
+      console.warn(
+        "getEquipmentWorkOrders Supabase error, using mock:",
+        error.message,
+      );
   } catch (e) {
     console.warn("getEquipmentWorkOrders threw, using mock:", e);
   }
@@ -1415,28 +1955,36 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
   };
 }
 
-export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMaintenance[]> {
+export async function getEquipmentPMs(
+  equipmentId: string,
+): Promise<PreventiveMaintenance[]> {
   try {
     const { data, error } = await supabase
       .from("preventive_maintenance")
-      .select("id, equipment_id, title, pm_number, frequency, pm_type, last_completed_date, next_due_date, status, completion_percentage")
+      .select(
+        "id, equipment_id, title, pm_number, frequency, pm_type, last_completed_date, next_due_date, status, completion_percentage",
+      )
       .eq("equipment_id", equipmentId);
 
     if (!error && data) {
       return data.map((row) => ({
-        id:            row.id,
-        equipmentId:   row.equipment_id ?? "",
-        name:          row.title ?? "",
-        code:          row.pm_number ?? "",
-        frequency:     row.frequency ?? "",
-        type:          row.pm_type ?? "",
+        id: row.id,
+        equipmentId: row.equipment_id ?? "",
+        name: row.title ?? "",
+        code: row.pm_number ?? "",
+        frequency: row.frequency ?? "",
+        type: row.pm_type ?? "",
         lastCompleted: row.last_completed_date ?? "",
-        nextDue:       row.next_due_date ?? "",
-        status:        (row.status as PreventiveMaintenance["status"]) ?? "ON TRACK",
-        compliance:    row.completion_percentage ?? 0,
+        nextDue: row.next_due_date ?? "",
+        status: (row.status as PreventiveMaintenance["status"]) ?? "ON TRACK",
+        compliance: row.completion_percentage ?? 0,
       }));
     }
-    if (error) console.warn("getEquipmentPMs Supabase error, using mock:", error.message);
+    if (error)
+      console.warn(
+        "getEquipmentPMs Supabase error, using mock:",
+        error.message,
+      );
   } catch (e) {
     console.warn("getEquipmentPMs threw, using mock:", e);
   }
@@ -1507,7 +2055,10 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     if (esErr) throw esErr;
 
     // Build map: skill_id -> list of {engineer_id, level}
-    const skillToEngineers: Record<string, { engineerId: string; level: number }[]> = {};
+    const skillToEngineers: Record<
+      string,
+      { engineerId: string; level: number }[]
+    > = {};
     for (const es of engSkillRows ?? []) {
       const level = es.validated_rating ?? es.manager_rating ?? 0;
       if (!skillToEngineers[es.skill_id]) skillToEngineers[es.skill_id] = [];
@@ -1515,12 +2066,16 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     }
 
     // 4. All unique engineer IDs that have at least one relevant skill
-    const allEngIds = [...new Set((engSkillRows ?? []).map((r: any) => r.engineer_id))];
+    const allEngIds = [
+      ...new Set((engSkillRows ?? []).map((r: any) => r.engineer_id)),
+    ];
 
     // 5. Engineer details
     const { data: engRows, error: engErr } = await supabase
       .from("engineers")
-      .select("id, full_name, discipline, employment_type, availability_status, shift_pattern")
+      .select(
+        "id, full_name, discipline, employment_type, availability_status, shift_pattern",
+      )
       .in("id", allEngIds);
     if (engErr) throw engErr;
 
@@ -1531,72 +2086,105 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     const skills: SkillCoverage[] = reqRows.map((req: any) => {
       const reqLevel: number = req.required_level ?? 1;
       const engineers = skillToEngineers[req.skill_id] ?? [];
-      const highestLevel = engineers.reduce((max, e) => Math.max(max, e.level), 0);
+      const highestLevel = engineers.reduce(
+        (max, e) => Math.max(max, e.level),
+        0,
+      );
       let coverage: "green" | "amber" | "red";
-      if (highestLevel >= reqLevel)          coverage = "green";
+      if (highestLevel >= reqLevel) coverage = "green";
       else if (highestLevel === reqLevel - 1) coverage = "amber";
-      else                                    coverage = "red";
+      else coverage = "red";
       return {
-        skillId:               req.skill_id,
-        name:                  skillNameMap[req.skill_id] ?? req.skill_id,
-        requiredLevel:         reqLevel,
+        skillId: req.skill_id,
+        name: skillNameMap[req.skill_id] ?? req.skill_id,
+        requiredLevel: reqLevel,
         highestValidatedLevel: highestLevel,
         coverage,
-        engineerCount:         engineers.length,
+        engineerCount: engineers.length,
       };
     });
 
     // 7. Build EngineerMatch[]
     // For each engineer count how many required skills they hold at >= required level
-    const engineers: EngineerMatch[] = allEngIds.map((eid) => {
-      const eng = engMap[eid];
-      const name: string = eng?.full_name ?? eid;
-      const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
-      // Count relevant skills (any rating > 0 for a required skill)
-      const relevantSkillCount = (engSkillRows ?? []).filter(
-        (es: any) => es.engineer_id === eid && (es.validated_rating ?? es.manager_rating ?? 0) > 0,
-      ).length;
-      // Match % = (skills this engineer covers at or above required level) / total required skills * 100
-      const matchCount = reqRows.filter((req: any) => {
-        const es = (engSkillRows ?? []).find(
-          (e: any) => e.engineer_id === eid && e.skill_id === req.skill_id,
-        );
-        const myLevel = es ? (es.validated_rating ?? es.manager_rating ?? 0) : 0;
-        return myLevel >= (req.required_level ?? 1);
-      }).length;
-      const matchPercent = Math.round((matchCount / reqRows.length) * 100);
-      const avail: string = eng?.availability_status ?? "Unknown";
-      const shift: string = eng?.shift_pattern ?? "Days";
-      return { id: eid, initials, name, role: eng?.discipline ?? eng?.employment_type ?? "", availability: avail, shift, matchPercent, relevantSkillCount };
-    }).sort((a, b) => b.matchPercent - a.matchPercent);
+    const engineers: EngineerMatch[] = allEngIds
+      .map((eid) => {
+        const eng = engMap[eid];
+        const name: string = eng?.full_name ?? eid;
+        const initials = name
+          .split(" ")
+          .map((w: string) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        // Count relevant skills (any rating > 0 for a required skill)
+        const relevantSkillCount = (engSkillRows ?? []).filter(
+          (es: any) =>
+            es.engineer_id === eid &&
+            (es.validated_rating ?? es.manager_rating ?? 0) > 0,
+        ).length;
+        // Match % = (skills this engineer covers at or above required level) / total required skills * 100
+        const matchCount = reqRows.filter((req: any) => {
+          const es = (engSkillRows ?? []).find(
+            (e: any) => e.engineer_id === eid && e.skill_id === req.skill_id,
+          );
+          const myLevel = es
+            ? (es.validated_rating ?? es.manager_rating ?? 0)
+            : 0;
+          return myLevel >= (req.required_level ?? 1);
+        }).length;
+        const matchPercent = Math.round((matchCount / reqRows.length) * 100);
+        const avail: string = eng?.availability_status ?? "Unknown";
+        const shift: string = eng?.shift_pattern ?? "Days";
+        return {
+          id: eid,
+          initials,
+          name,
+          role: eng?.discipline ?? eng?.employment_type ?? "",
+          availability: avail,
+          shift,
+          matchPercent,
+          relevantSkillCount,
+        };
+      })
+      .sort((a, b) => b.matchPercent - a.matchPercent);
 
     // 8. Coverage summary
     const covered = skills.filter((s) => s.coverage === "green").length;
-    const atRisk  = skills.filter((s) => s.coverage === "amber").length;
+    const atRisk = skills.filter((s) => s.coverage === "amber").length;
     const missing = skills.filter((s) => s.coverage === "red").length;
     const coveragePercent = Math.round((covered / skills.length) * 100);
 
     // 9. Legacy shapes for unchanged parts of the UI
     const legacySkills: EquipmentSkill[] = skills.map((s) => ({
       equipmentId,
-      name:    s.name,
+      name: s.name,
       covered: s.coverage === "green",
     }));
     const legacyEngineers: Engineer[] = engineers.map((e) => ({
-      id:       e.id,
+      id: e.id,
       initials: e.initials,
-      name:     e.name,
-      role:     e.role,
-      match:    e.matchPercent,
-      status:   e.availability,
-      shift:    e.shift,
+      name: e.name,
+      role: e.role,
+      match: e.matchPercent,
+      status: e.availability,
+      shift: e.shift,
     }));
 
-    return { skills, engineers, coverageSummary: { covered, atRisk, missing, coveragePercent }, legacySkills, legacyEngineers };
+    return {
+      skills,
+      engineers,
+      coverageSummary: { covered, atRisk, missing, coveragePercent },
+      legacySkills,
+      legacyEngineers,
+    };
   } catch (e: any) {
-    if (e?.message !== "no rows") console.warn("getEquipmentSkills Supabase error, using mock:", e?.message ?? e);
+    if (e?.message !== "no rows")
+      console.warn(
+        "getEquipmentSkills Supabase error, using mock:",
+        e?.message ?? e,
+      );
     const mockResult = {
-      skills:    MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
+      skills: MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
       engineers: MOCK_ENGINEERS,
     };
     const fallbackSkills = mockResult.skills;
@@ -1604,10 +2192,16 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
     return {
       skills: [],
       engineers: [],
-      coverageSummary: { covered: 0, atRisk: 0, missing: 0, coveragePercent: 0 },
-      legacySkills:    fallbackSkills.length > 0
-        ? fallbackSkills
-        : MOCK_SKILLS.filter((s) => s.equipmentId === DEFAULT_EQUIPMENT_ID),
+      coverageSummary: {
+        covered: 0,
+        atRisk: 0,
+        missing: 0,
+        coveragePercent: 0,
+      },
+      legacySkills:
+        fallbackSkills.length > 0
+          ? fallbackSkills
+          : MOCK_SKILLS.filter((s) => s.equipmentId === DEFAULT_EQUIPMENT_ID),
       legacyEngineers: fallbackEngineers,
     };
   }
@@ -1639,16 +2233,25 @@ export interface EquipmentComponentsResult {
   };
 }
 
-export async function getEquipmentComponents(equipmentId: string): Promise<EquipmentComponentsResult> {
+export async function getEquipmentComponents(
+  equipmentId: string,
+): Promise<EquipmentComponentsResult> {
   const empty: EquipmentComponentsResult = {
     inventory: [],
     criticalComponents: [],
-    stockSummary: { totalComponents: 0, outOfStock: 0, lowStock: 0, okStock: 0 },
+    stockSummary: {
+      totalComponents: 0,
+      outOfStock: 0,
+      lowStock: 0,
+      okStock: 0,
+    },
   };
   try {
     const { data, error } = await supabase
       .from("equipment_components")
-      .select("component_name, component_code, quantity_available, quantity_target, minimum_quantity, availability_status, vendor_name, maker_name, storage_location, criticality, unit_cost, lead_days")
+      .select(
+        "component_name, component_code, quantity_available, quantity_target, minimum_quantity, availability_status, vendor_name, maker_name, storage_location, criticality, unit_cost, lead_days",
+      )
       .eq("equipment_id", equipmentId)
       .order("component_name");
 
@@ -1658,18 +2261,18 @@ export async function getEquipmentComponents(equipmentId: string): Promise<Equip
     }
 
     const inventory: EquipmentComponent[] = (data ?? []).map((r) => ({
-      name:            r.component_name ?? "",
-      partNumber:      r.component_code ?? "",
-      stock:           r.quantity_available ?? 0,
-      max:             r.quantity_target ?? 0,
+      name: r.component_name ?? "",
+      partNumber: r.component_code ?? "",
+      stock: r.quantity_available ?? 0,
+      max: r.quantity_target ?? 0,
       minimumQuantity: r.minimum_quantity ?? 0,
-      status:          r.availability_status ?? "",
-      supplier:        r.vendor_name ?? "",
-      manufacturer:    r.maker_name ?? "",
-      location:        r.storage_location ?? "",
-      criticality:     r.criticality ?? "",
-      unitCost:        r.unit_cost ?? 0,
-      leadDays:        r.lead_days ?? 0,
+      status: r.availability_status ?? "",
+      supplier: r.vendor_name ?? "",
+      manufacturer: r.maker_name ?? "",
+      location: r.storage_location ?? "",
+      criticality: r.criticality ?? "",
+      unitCost: r.unit_cost ?? 0,
+      leadDays: r.lead_days ?? 0,
     }));
 
     const criticalComponents = inventory.filter((c) => {
@@ -1677,8 +2280,12 @@ export async function getEquipmentComponents(equipmentId: string): Promise<Equip
       return status.includes("out of stock") || status.includes("low stock");
     });
 
-    const outOfStock = inventory.filter((c) => c.status.toLowerCase().includes("out of stock")).length;
-    const lowStock   = inventory.filter((c) => c.status.toLowerCase().includes("low stock")).length;
+    const outOfStock = inventory.filter((c) =>
+      c.status.toLowerCase().includes("out of stock"),
+    ).length;
+    const lowStock = inventory.filter((c) =>
+      c.status.toLowerCase().includes("low stock"),
+    ).length;
 
     return {
       inventory,
@@ -1700,12 +2307,16 @@ export function getEquipmentSpares(equipmentId: string): SparePart[] {
   return MOCK_SPARES.filter((s) => s.equipmentId === equipmentId);
 }
 
-export async function getEquipmentDocuments(equipmentId: string): Promise<EquipmentDocument[]> {
+export async function getEquipmentDocuments(
+  equipmentId: string,
+): Promise<EquipmentDocument[]> {
   try {
     const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
 
     if (!resolvedEquipmentId) {
-      const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+      const mockDocuments = MOCK_DOCUMENTS.filter(
+        (d) => d.equipmentId === equipmentId,
+      );
       return mockDocuments.length > 0
         ? mockDocuments
         : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
@@ -1713,7 +2324,8 @@ export async function getEquipmentDocuments(equipmentId: string): Promise<Equipm
 
     const { data, error } = await supabase
       .from("knowledge_documents")
-      .select(`
+      .select(
+        `
         id,
         site_id,
         equipment_id,
@@ -1741,14 +2353,20 @@ export async function getEquipmentDocuments(equipmentId: string): Promise<Equipm
         last_indexed_at,
         created_at,
         updated_at
-      `)
+      `,
+      )
       .eq("equipment_id", resolvedEquipmentId)
       .eq("is_current", true)
       .order("updated_at", { ascending: false });
 
     if (error) {
-      console.warn("getEquipmentDocuments Supabase error, using mock:", error.message);
-      const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+      console.warn(
+        "getEquipmentDocuments Supabase error, using mock:",
+        error.message,
+      );
+      const mockDocuments = MOCK_DOCUMENTS.filter(
+        (d) => d.equipmentId === equipmentId,
+      );
       return mockDocuments.length > 0
         ? mockDocuments
         : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
@@ -1770,14 +2388,18 @@ export async function getEquipmentDocuments(equipmentId: string): Promise<Equipm
           name: row.title ?? "Untitled document",
           category: row.document_type ?? "Document",
           date: row.updated_at ?? row.created_at ?? "",
-          size: row.source_system === "Manual Upload" ? "Linked file" : "External link",
+          size:
+            row.source_system === "Manual Upload"
+              ? "Linked file"
+              : "External link",
           status,
           title: row.title,
           documentType: row.document_type,
           sourceSystem: row.source_system,
           sourceUrl: row.source_url ?? null,
           fileId: row.file_id ?? null,
-          externalReference: row.external_reference ?? row.source_document_id ?? null,
+          externalReference:
+            row.external_reference ?? row.source_document_id ?? null,
           drawingNumber: row.drawing_number ?? null,
           sheetNumber: row.sheet_number ?? null,
           manualSection: row.manual_section ?? null,
@@ -1797,7 +2419,9 @@ export async function getEquipmentDocuments(equipmentId: string): Promise<Equipm
     console.warn("getEquipmentDocuments threw, using mock:", error);
   }
 
-  const mockDocuments = MOCK_DOCUMENTS.filter((d) => d.equipmentId === equipmentId);
+  const mockDocuments = MOCK_DOCUMENTS.filter(
+    (d) => d.equipmentId === equipmentId,
+  );
   return mockDocuments.length > 0
     ? mockDocuments
     : MOCK_DOCUMENTS.filter((d) => d.equipmentId === DEFAULT_EQUIPMENT_ID);
@@ -1810,33 +2434,47 @@ function formatDowntime(minutes: number | null): string {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
-export async function getEquipmentActivity(equipmentId: string): Promise<EquipmentActivity[]> {
+export async function getEquipmentActivity(
+  equipmentId: string,
+): Promise<EquipmentActivity[]> {
   try {
     const { data, error } = await supabase
       .from("work_orders")
-      .select("id, equipment_id, wo_number, work_type, priority, description, downtime_minutes, outcome, status, completed_date, requested_date")
+      .select(
+        "id, equipment_id, wo_number, work_type, priority, description, downtime_minutes, outcome, status, completed_date, requested_date",
+      )
       .eq("equipment_id", equipmentId)
       .order("completed_date", { ascending: false, nullsFirst: false })
       .order("requested_date", { ascending: false });
 
     if (!error && data && data.length > 0) {
       return data.map((row) => ({
-        id:          row.id,
+        id: row.id,
         equipmentId: row.equipment_id ?? "",
-        date:        row.completed_date ?? row.requested_date ?? "",
-        woNumber:    row.wo_number ?? row.id,
-        type:        (row.work_type?.toUpperCase() ?? "CORRECTIVE") as EquipmentActivity["type"],
-        priority:    (row.priority?.toUpperCase() ?? "MEDIUM") as EquipmentActivity["priority"],
+        date: row.completed_date ?? row.requested_date ?? "",
+        woNumber: row.wo_number ?? row.id,
+        type: (row.work_type?.toUpperCase() ??
+          "CORRECTIVE") as EquipmentActivity["type"],
+        priority: (row.priority?.toUpperCase() ??
+          "MEDIUM") as EquipmentActivity["priority"],
         description: row.description ?? "",
-        downtime:    formatDowntime(row.downtime_minutes),
-        outcome:     (row.outcome?.toUpperCase() ?? row.status?.toUpperCase() ?? "OPEN") as EquipmentActivity["outcome"],
+        downtime: formatDowntime(row.downtime_minutes),
+        outcome: (row.outcome?.toUpperCase() ??
+          row.status?.toUpperCase() ??
+          "OPEN") as EquipmentActivity["outcome"],
       }));
     }
-    if (error) console.warn("getEquipmentActivity Supabase error, using mock:", error.message);
+    if (error)
+      console.warn(
+        "getEquipmentActivity Supabase error, using mock:",
+        error.message,
+      );
   } catch (e) {
     console.warn("getEquipmentActivity threw, using mock:", e);
   }
-  const activityMock = MOCK_ACTIVITY.filter((a) => a.equipmentId === equipmentId);
+  const activityMock = MOCK_ACTIVITY.filter(
+    (a) => a.equipmentId === equipmentId,
+  );
   return activityMock.length > 0
     ? activityMock
     : MOCK_ACTIVITY.filter((a) => a.equipmentId === DEFAULT_EQUIPMENT_ID);
@@ -1864,7 +2502,8 @@ export async function getEquipmentRiskHistory(
   fromDate.setDate(fromDate.getDate() - days);
   const { data, error } = await supabase
     .from("equipment_risk_history")
-    .select(`
+    .select(
+      `
       snapshot_date,
       snapshot_label,
       risk_score,
@@ -1872,7 +2511,8 @@ export async function getEquipmentRiskHistory(
       primary_driver,
       main_driver_pct,
       change_reason
-    `)
+    `,
+    )
     .eq("equipment_id", equipmentId)
     .gte("snapshot_date", fromDate.toISOString().slice(0, 10))
     .order("snapshot_date", { ascending: true });
@@ -1881,21 +2521,17 @@ export async function getEquipmentRiskHistory(
     return [];
   }
   return data.map((row) => ({
-    snapshotDate:  row.snapshot_date,
+    snapshotDate: row.snapshot_date,
     snapshotLabel: row.snapshot_label,
-    riskScore:     row.risk_score,
-    riskLevel:     row.risk_level,
+    riskScore: row.risk_score,
+    riskLevel: row.risk_level,
     primaryDriver: row.primary_driver,
     mainDriverPct: row.main_driver_pct ?? 0,
-    changeReason:  row.change_reason,
+    changeReason: row.change_reason,
   }));
 }
 
-export type EquipmentRiskTrendRange =
-  | "7d"
-  | "30d"
-  | "90d"
-  | "ytd";
+export type EquipmentRiskTrendRange = "7d" | "30d" | "90d" | "ytd";
 
 export interface EquipmentRiskTrendPoint {
   periodKey: EquipmentRiskTrendRange;
@@ -1917,22 +2553,18 @@ export type EquipmentRiskTrendSeries = Record<
   EquipmentRiskTrendPoint[]
 >;
 
-const EQUIPMENT_RISK_TREND_PERIODS:
-  readonly EquipmentRiskTrendRange[] = [
-    "7d",
-    "30d",
-    "90d",
-    "ytd",
-  ];
+const EQUIPMENT_RISK_TREND_PERIODS: readonly EquipmentRiskTrendRange[] = [
+  "7d",
+  "30d",
+  "90d",
+  "ytd",
+];
 
 function mapEquipmentRiskTrendPoint(
   row: any,
   requestedPeriod: EquipmentRiskTrendRange,
 ): EquipmentRiskTrendPoint {
-  if (
-    row.risk_score === null ||
-    row.risk_score === undefined
-  ) {
+  if (row.risk_score === null || row.risk_score === undefined) {
     throw new Error(
       `Equipment risk trend returned a null risk score for ${requestedPeriod}.`,
     );
@@ -1946,107 +2578,63 @@ function mapEquipmentRiskTrendPoint(
       row.period_key === "ytd"
         ? row.period_key
         : requestedPeriod,
-    periodLabel:
-      row.period_label ?? "",
-    bucketStart:
-      row.bucket_start ?? "",
-    bucketEnd:
-      row.bucket_end ?? "",
-    snapshotDate:
-      row.snapshot_date ?? "",
-    riskScore: Number(
-      row.risk_score,
-    ),
-    riskLevel:
-      row.risk_level ?? "Minimal",
-    primaryDriver:
-      row.primary_driver ?? null,
-    mainDriverPct: Number(
-      row.main_driver_pct ?? 0,
-    ),
-    changeReason:
-      row.change_reason ?? null,
-    isLive: Boolean(
-      row.is_live,
-    ),
-    sortOrder: Number(
-      row.sort_order ?? 0,
-    ),
+    periodLabel: row.period_label ?? "",
+    bucketStart: row.bucket_start ?? "",
+    bucketEnd: row.bucket_end ?? "",
+    snapshotDate: row.snapshot_date ?? "",
+    riskScore: Number(row.risk_score),
+    riskLevel: row.risk_level ?? "Minimal",
+    primaryDriver: row.primary_driver ?? null,
+    mainDriverPct: Number(row.main_driver_pct ?? 0),
+    changeReason: row.change_reason ?? null,
+    isLive: Boolean(row.is_live),
+    sortOrder: Number(row.sort_order ?? 0),
   };
 }
 
 export async function getEquipmentRiskTrendSeries(
   equipmentId: string,
 ): Promise<EquipmentRiskTrendSeries> {
-  const periodEntries =
-    await Promise.all(
-      EQUIPMENT_RISK_TREND_PERIODS.map(
-        async (period) => {
-          const { data, error } =
-            await supabase.rpc(
-              "vorta_get_equipment_risk_trend",
-              {
-                p_equipment_id:
-                  equipmentId,
-                p_period: period,
-                p_anchor_date: null,
-              },
-            );
-
-          if (error) {
-            throw new Error(
-              `vorta_get_equipment_risk_trend failed for ${period}: ${error.message}`,
-            );
-          }
-
-          const points = (
-            data ?? []
-          )
-            .map((row: any) =>
-              mapEquipmentRiskTrendPoint(
-                row,
-                period,
-              ),
-            )
-            .sort(
-              (left, right) =>
-                left.sortOrder -
-                right.sortOrder,
-            );
-
-          if (
-            points.length === 0
-          ) {
-            throw new Error(
-              `No equipment risk trend points were returned for ${period}.`,
-            );
-          }
-
-          const livePointCount =
-            points.filter(
-              (point) =>
-                point.isLive,
-            ).length;
-
-          if (
-            livePointCount !== 1
-          ) {
-            throw new Error(
-              `Equipment risk trend ${period} returned ${livePointCount} live points instead of one.`,
-            );
-          }
-
-          return [
-            period,
-            points,
-          ] as const;
+  const periodEntries = await Promise.all(
+    EQUIPMENT_RISK_TREND_PERIODS.map(async (period) => {
+      const { data, error } = await supabase.rpc(
+        "vorta_get_equipment_risk_trend",
+        {
+          p_equipment_id: equipmentId,
+          p_period: period,
+          p_anchor_date: null,
         },
-      ),
-    );
+      );
 
-  return Object.fromEntries(
-    periodEntries,
-  ) as EquipmentRiskTrendSeries;
+      if (error) {
+        throw new Error(
+          `vorta_get_equipment_risk_trend failed for ${period}: ${error.message}`,
+        );
+      }
+
+      const points = (data ?? [])
+        .map((row: any) => mapEquipmentRiskTrendPoint(row, period))
+        .sort((left, right) => left.sortOrder - right.sortOrder);
+
+      if (points.length === 0) {
+        throw new Error(
+          `No equipment risk trend points were returned for ${period}.`,
+        );
+      }
+
+      const livePointCount = points.filter((point) => point.isLive).length;
+
+      if (livePointCount !== 1) {
+        throw new Error(
+          `Equipment risk trend ${period} returned ${livePointCount} live points instead of one.`,
+        );
+      }
+
+      return [period, points] as const;
+    }),
+  );
+
+  return Object.fromEntries(periodEntries) as EquipmentRiskTrendSeries;
 }
 
 export interface EquipmentRiskPrediction {
@@ -2062,10 +2650,13 @@ export interface EquipmentRiskPrediction {
   estimatedScoreAfterAction: number;
 }
 
-export async function getEquipmentRiskPrediction(equipmentId: string): Promise<EquipmentRiskPrediction | null> {
+export async function getEquipmentRiskPrediction(
+  equipmentId: string,
+): Promise<EquipmentRiskPrediction | null> {
   const { data, error } = await supabase
     .from("equipment_risk_predictions")
-    .select(`
+    .select(
+      `
       current_score,
       projected_7_day_score,
       projected_30_day_score,
@@ -2076,7 +2667,8 @@ export async function getEquipmentRiskPrediction(equipmentId: string): Promise<E
       reason,
       recommended_action,
       estimated_score_after_action
-    `)
+    `,
+    )
     .eq("equipment_id", equipmentId)
     .order("prediction_date", { ascending: false })
     .limit(1)
@@ -2086,15 +2678,15 @@ export async function getEquipmentRiskPrediction(equipmentId: string): Promise<E
     return null;
   }
   return {
-    currentScore:              data.current_score,
-    projected7:                data.projected_7_day_score,
-    projected30:               data.projected_30_day_score,
-    projected90:               data.projected_90_day_score,
-    projectedLevel:            data.projected_level,
-    trendDirection:            data.trend_direction,
-    primaryDriver:             data.primary_driver,
-    reason:                    data.reason,
-    recommendedAction:         data.recommended_action,
+    currentScore: data.current_score,
+    projected7: data.projected_7_day_score,
+    projected30: data.projected_30_day_score,
+    projected90: data.projected_90_day_score,
+    projectedLevel: data.projected_level,
+    trendDirection: data.trend_direction,
+    primaryDriver: data.primary_driver,
+    reason: data.reason,
+    recommendedAction: data.recommended_action,
     estimatedScoreAfterAction: data.estimated_score_after_action,
   };
 }
@@ -2112,7 +2704,9 @@ export interface EquipmentSummary {
   aiInsights: AiInsight[];
 }
 
-export async function getEquipmentSummary(equipmentId: string): Promise<EquipmentSummary> {
+export async function getEquipmentSummary(
+  equipmentId: string,
+): Promise<EquipmentSummary> {
   const [
     equipment,
     workOrders,
@@ -2201,7 +2795,9 @@ export interface VisualFaultMatch {
 }
 
 function looksLikeUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 const LEGACY_EQUIPMENT_KNOWLEDGE_MAP: Record<string, string[]> = {
@@ -2212,7 +2808,9 @@ const LEGACY_EQUIPMENT_KNOWLEDGE_MAP: Record<string, string[]> = {
   "fd-01": ["DEMO-FD-001", "FD-01", "GEA Freeze Dryer FD-01"],
 };
 
-export async function resolveEquipmentKnowledgeId(equipmentId: string): Promise<string | null> {
+export async function resolveEquipmentKnowledgeId(
+  equipmentId: string,
+): Promise<string | null> {
   if (!equipmentId) return null;
 
   if (looksLikeUuid(equipmentId)) {
@@ -2231,8 +2829,11 @@ export async function resolveEquipmentKnowledgeId(equipmentId: string): Promise<
       .select("id, equipment_code, name")
       .or(
         candidates
-          .map((candidate) => `equipment_code.eq.${candidate},name.eq.${candidate}`)
-          .join(",")
+          .map(
+            (candidate) =>
+              `equipment_code.eq.${candidate},name.eq.${candidate}`,
+          )
+          .join(","),
       )
       .limit(1);
 
@@ -2257,15 +2858,21 @@ export async function searchEquipmentKnowledge(
     const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
 
     if (!resolvedEquipmentId) {
-      console.warn("searchEquipmentKnowledge skipped: no Supabase equipment UUID resolved for", equipmentId);
+      console.warn(
+        "searchEquipmentKnowledge skipped: no Supabase equipment UUID resolved for",
+        equipmentId,
+      );
       return [];
     }
 
-    const { data, error } = await supabase.rpc("vorta_search_equipment_knowledge", {
-      p_equipment_id: resolvedEquipmentId,
-      p_query: query,
-      p_limit: limit,
-    });
+    const { data, error } = await supabase.rpc(
+      "vorta_search_equipment_knowledge",
+      {
+        p_equipment_id: resolvedEquipmentId,
+        p_query: query,
+        p_limit: limit,
+      },
+    );
 
     if (error) {
       console.warn("searchEquipmentKnowledge failed:", error.message);
@@ -2306,13 +2913,17 @@ export async function getVisualDiagnosticCases(
     const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
 
     if (!resolvedEquipmentId) {
-      console.warn("getVisualDiagnosticCases skipped: no equipment UUID resolved for", equipmentId);
+      console.warn(
+        "getVisualDiagnosticCases skipped: no equipment UUID resolved for",
+        equipmentId,
+      );
       return [];
     }
 
     const { data, error } = await supabase
       .from("visual_diagnostic_cases")
-      .select(`
+      .select(
+        `
         id,
         equipment_id,
         title,
@@ -2324,7 +2935,8 @@ export async function getVisualDiagnosticCases(
         detected_maker,
         expected_fault_code,
         expected_component_keywords
-      `)
+      `,
+      )
       .eq("equipment_id", resolvedEquipmentId)
       .order("title");
 
@@ -2361,15 +2973,21 @@ export async function matchVisualDiagnostic(
     const resolvedEquipmentId = await resolveEquipmentKnowledgeId(equipmentId);
 
     if (!resolvedEquipmentId) {
-      console.warn("matchVisualDiagnostic skipped: no equipment UUID resolved for", equipmentId);
+      console.warn(
+        "matchVisualDiagnostic skipped: no equipment UUID resolved for",
+        equipmentId,
+      );
       return [];
     }
 
-    const { data, error } = await supabase.rpc("vorta_match_visual_diagnostic", {
-      p_equipment_id: resolvedEquipmentId,
-      p_extracted_text: extractedText,
-      p_limit: limit,
-    });
+    const { data, error } = await supabase.rpc(
+      "vorta_match_visual_diagnostic",
+      {
+        p_equipment_id: resolvedEquipmentId,
+        p_extracted_text: extractedText,
+        p_limit: limit,
+      },
+    );
 
     if (error) {
       console.warn("matchVisualDiagnostic failed:", error.message);
@@ -2429,7 +3047,8 @@ export interface AreaShutdownPlan {
 export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
   const { data, error } = await supabase
     .from("area_shutdown_plans")
-    .select(`
+    .select(
+      `
       area,
       current_risk_score,
       current_risk_level,
@@ -2446,7 +3065,8 @@ export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
       recommended_actions,
       required_skills,
       required_spares
-    `)
+    `,
+    )
     .order("current_risk_score", { ascending: false });
 
   if (error || !data) {
@@ -2455,22 +3075,28 @@ export async function getAreaShutdownPlans(): Promise<AreaShutdownPlan[]> {
   }
 
   return data.map((row) => ({
-    area:                   row.area,
-    currentRiskScore:       row.current_risk_score ?? 0,
-    currentRiskLevel:       row.current_risk_level ?? "Unknown",
+    area: row.area,
+    currentRiskScore: row.current_risk_score ?? 0,
+    currentRiskLevel: row.current_risk_level ?? "Unknown",
     recommendedWindowHours: row.recommended_window_hours ?? 0,
-    targetAssetCount:       row.target_asset_count ?? 0,
-    targetPmCount:          row.target_pm_count ?? 0,
+    targetAssetCount: row.target_asset_count ?? 0,
+    targetPmCount: row.target_pm_count ?? 0,
     targetCalibrationCount: row.target_calibration_count ?? 0,
-    targetSparesCount:      row.target_spares_count ?? 0,
-    predictedRiskScore:     row.predicted_risk_score ?? 0,
-    predictedRiskLevel:     row.predicted_risk_level ?? "Unknown",
-    estimatedReduction:     row.estimated_reduction ?? 0,
-    confidence:             row.confidence ?? "Medium",
-    justification:          row.justification ?? null,
-    recommendedActions:     Array.isArray(row.recommended_actions) ? row.recommended_actions : [],
-    requiredSkills:         Array.isArray(row.required_skills) ? row.required_skills : [],
-    requiredSpares:         Array.isArray(row.required_spares) ? row.required_spares : [],
+    targetSparesCount: row.target_spares_count ?? 0,
+    predictedRiskScore: row.predicted_risk_score ?? 0,
+    predictedRiskLevel: row.predicted_risk_level ?? "Unknown",
+    estimatedReduction: row.estimated_reduction ?? 0,
+    confidence: row.confidence ?? "Medium",
+    justification: row.justification ?? null,
+    recommendedActions: Array.isArray(row.recommended_actions)
+      ? row.recommended_actions
+      : [],
+    requiredSkills: Array.isArray(row.required_skills)
+      ? row.required_skills
+      : [],
+    requiredSpares: Array.isArray(row.required_spares)
+      ? row.required_spares
+      : [],
   }));
 }
 
@@ -2522,17 +3148,24 @@ export interface AreaInterventionPlan {
     criticalSpares?: number;
     skillGaps?: number;
   };
-  recommendedActions: Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
+  recommendedActions: Array<{
+    asset?: string;
+    action?: string;
+    estimatedReduction?: number;
+  }>;
   workItems: AreaInterventionWorkItem[];
   resourceRequirements: AreaResourceRequirement[];
   targetWorkList: string;
   dateNote: string;
 }
 
-export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
+export async function getAreaInterventionPlans(): Promise<
+  AreaInterventionPlan[]
+> {
   const { data, error } = await supabase
     .from("area_intervention_plans")
-    .select(`
+    .select(
+      `
       area,
       current_risk_score,
       current_risk_level,
@@ -2549,34 +3182,45 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       date_note,
       target_work_list,
       work_items
-    `)
+    `,
+    )
     .order("current_risk_score", { ascending: false });
 
   if (error || !data) {
-    if (error) console.warn("area_intervention_plans fetch failed:", error.message);
+    if (error)
+      console.warn("area_intervention_plans fetch failed:", error.message);
     return [];
   }
 
   return data.map((row) => ({
-    area:                          row.area,
-    currentRiskScore:              row.current_risk_score ?? 0,
-    currentRiskLevel:              row.current_risk_level ?? "Unknown",
-    recommendedOption:             row.recommended_option ?? "Review intervention",
-    recommendedDurationHours:      Number(row.recommended_duration_hours ?? 0),
+    area: row.area,
+    currentRiskScore: row.current_risk_score ?? 0,
+    currentRiskLevel: row.current_risk_level ?? "Unknown",
+    recommendedOption: row.recommended_option ?? "Review intervention",
+    recommendedDurationHours: Number(row.recommended_duration_hours ?? 0),
     recommendedPredictedRiskScore: row.recommended_predicted_risk_score ?? 0,
-    recommendedPredictedRiskLevel: row.recommended_predicted_risk_level ?? "Unknown",
-    recommendedReduction:          row.recommended_reduction ?? 0,
-    recommendedEfficiency:         Number(row.recommended_efficiency ?? 0),
-    justification:                 row.justification ?? null,
-    options:                       Array.isArray(row.options) ? row.options : [],
+    recommendedPredictedRiskLevel:
+      row.recommended_predicted_risk_level ?? "Unknown",
+    recommendedReduction: row.recommended_reduction ?? 0,
+    recommendedEfficiency: Number(row.recommended_efficiency ?? 0),
+    justification: row.justification ?? null,
+    options: Array.isArray(row.options) ? row.options : [],
     targetWorkPackage:
       row.target_work_package && typeof row.target_work_package === "object"
         ? row.target_work_package
         : {},
     recommendedActions: (() => {
       const pkg = row.target_work_package;
-      if (pkg && typeof pkg === "object" && Array.isArray((pkg as Record<string, unknown>).workItems)) {
-        return (pkg as Record<string, unknown>).workItems as Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
+      if (
+        pkg &&
+        typeof pkg === "object" &&
+        Array.isArray((pkg as Record<string, unknown>).workItems)
+      ) {
+        return (pkg as Record<string, unknown>).workItems as Array<{
+          asset?: string;
+          action?: string;
+          estimatedReduction?: number;
+        }>;
       }
       return [];
     })(),
@@ -2585,7 +3229,9 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       : [],
     workItems: Array.isArray(row.work_items) ? row.work_items : [],
     targetWorkList: row.target_work_list ?? "",
-    dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
+    dateNote:
+      row.date_note ??
+      "Select proposed intervention date to check engineer availability.",
   }));
 }
 
@@ -2609,29 +3255,34 @@ export interface AreaEquipmentRiskItem {
   criticalSparesMissing: number;
 }
 
-export async function getAreaEquipmentRisk(area: string): Promise<AreaEquipmentRiskItem[]> {
+export async function getAreaEquipmentRisk(
+  area: string,
+): Promise<AreaEquipmentRiskItem[]> {
   try {
-    const { data, error } = await supabase.rpc("vorta_get_demo_area_equipment_risk", { p_area: area });
+    const { data, error } = await supabase.rpc(
+      "vorta_get_demo_area_equipment_risk",
+      { p_area: area },
+    );
     if (error) {
       console.warn("getAreaEquipmentRisk failed:", error.message);
       return [];
     }
     return (data ?? []).map((row: any) => ({
-      id:                     row.equipment_id,
-      assetNumber:            row.equipment_code ?? "",
-      name:                   row.equipment_name ?? "Unnamed equipment",
-      type:                   row.equipment_type ?? "Equipment",
-      area:                   row.area ?? area,
-      riskScore:              row.risk_score ?? 0,
-      riskLevel:              row.risk_level ?? "Minimal",
-      riskSummary:            row.risk_summary ?? null,
-      priorityAction:         row.priority_action ?? null,
-      overduePmCount:         row.overdue_pm_count ?? 0,
+      id: row.equipment_id,
+      assetNumber: row.equipment_code ?? "",
+      name: row.equipment_name ?? "Unnamed equipment",
+      type: row.equipment_type ?? "Equipment",
+      area: row.area ?? area,
+      riskScore: row.risk_score ?? 0,
+      riskLevel: row.risk_level ?? "Minimal",
+      riskSummary: row.risk_summary ?? null,
+      priorityAction: row.priority_action ?? null,
+      overduePmCount: row.overdue_pm_count ?? 0,
       calibrationOverdueCount: row.calibration_overdue_count ?? 0,
-      openWorkOrderCount:     row.open_work_order_count ?? 0,
-      repeatBreakdownCount:   row.repeat_breakdown_count ?? 0,
-      singlePointSkillGap:    row.single_point_skill_gap ?? false,
-      criticalSparesMissing:  row.critical_spares_missing ?? 0,
+      openWorkOrderCount: row.open_work_order_count ?? 0,
+      repeatBreakdownCount: row.repeat_breakdown_count ?? 0,
+      singlePointSkillGap: row.single_point_skill_gap ?? false,
+      criticalSparesMissing: row.critical_spares_missing ?? 0,
     }));
   } catch (e) {
     console.warn("getAreaEquipmentRisk threw:", e);
@@ -2724,9 +3375,7 @@ export async function getAreaHighestRiskIntervention(
             workOrderNumbers: Array.isArray(item.workOrderNumbers)
               ? item.workOrderNumbers
               : [],
-            pmNumbers: Array.isArray(item.pmNumbers)
-              ? item.pmNumbers
-              : [],
+            pmNumbers: Array.isArray(item.pmNumbers) ? item.pmNumbers : [],
             sparePartNumbers: Array.isArray(item.sparePartNumbers)
               ? item.sparePartNumbers
               : [],
@@ -2744,25 +3393,33 @@ export async function getAreaHighestRiskIntervention(
         : [],
     };
   } catch (error) {
-    console.warn(
-      "vorta_get_area_highest_risk_intervention threw:",
-      error,
-    );
+    console.warn("vorta_get_area_highest_risk_intervention threw:", error);
     return null;
   }
 }
 
 // ─── Building group definitions ───────────────────────────────────────────────
 
-export const BUILDING_GROUPS: Record<string, { label: string; areas: string[] }> = {
-  B1: { label: "Building 1",   areas: ["Biologics", "Media Prep", "Sterile Prep"] },
-  B2: { label: "Building 2",   areas: ["Packaging", "Fill-Finish", "Inspection"] },
-  BU: { label: "Utilities",    areas: ["Utilities"] },
-  BW: { label: "Warehouse",    areas: ["Warehouse"] },
+export const BUILDING_GROUPS: Record<
+  string,
+  { label: string; areas: string[] }
+> = {
+  B1: {
+    label: "Building 1",
+    areas: ["Biologics", "Media Prep", "Sterile Prep"],
+  },
+  B2: {
+    label: "Building 2",
+    areas: ["Packaging", "Fill-Finish", "Inspection"],
+  },
+  BU: { label: "Utilities", areas: ["Utilities"] },
+  BW: { label: "Warehouse", areas: ["Warehouse"] },
   BP: { label: "Purification", areas: ["Purification", "Lyophilisation"] },
 };
 
-export function resolveBuilding(code: string): { label: string; areas: string[] } | null {
+export function resolveBuilding(
+  code: string,
+): { label: string; areas: string[] } | null {
   return BUILDING_GROUPS[code] ?? null;
 }
 
@@ -2777,18 +3434,60 @@ export interface BuildingGroupStats {
 }
 
 export const MOCK_BUILDING_STATS: BuildingGroupStats[] = [
-  { code: "B1", label: "Building 1",   totalAssets: 28, highestRiskScore: 45, criticalCount: 3,  openWorkOrders: 2,  overduePms: 1 },
-  { code: "B2", label: "Building 2",   totalAssets: 34, highestRiskScore: 92, criticalCount: 12, openWorkOrders: 8,  overduePms: 4 },
-  { code: "BU", label: "Utilities",    totalAssets: 18, highestRiskScore: 64, criticalCount: 5,  openWorkOrders: 3,  overduePms: 1 },
-  { code: "BW", label: "Warehouse",    totalAssets: 12, highestRiskScore: 42, criticalCount: 2,  openWorkOrders: 1,  overduePms: 0 },
-  { code: "BP", label: "Purification", totalAssets: 22, highestRiskScore: 28, criticalCount: 1,  openWorkOrders: 1,  overduePms: 0 },
+  {
+    code: "B1",
+    label: "Building 1",
+    totalAssets: 28,
+    highestRiskScore: 45,
+    criticalCount: 3,
+    openWorkOrders: 2,
+    overduePms: 1,
+  },
+  {
+    code: "B2",
+    label: "Building 2",
+    totalAssets: 34,
+    highestRiskScore: 92,
+    criticalCount: 12,
+    openWorkOrders: 8,
+    overduePms: 4,
+  },
+  {
+    code: "BU",
+    label: "Utilities",
+    totalAssets: 18,
+    highestRiskScore: 64,
+    criticalCount: 5,
+    openWorkOrders: 3,
+    overduePms: 1,
+  },
+  {
+    code: "BW",
+    label: "Warehouse",
+    totalAssets: 12,
+    highestRiskScore: 42,
+    criticalCount: 2,
+    openWorkOrders: 1,
+    overduePms: 0,
+  },
+  {
+    code: "BP",
+    label: "Purification",
+    totalAssets: 22,
+    highestRiskScore: 28,
+    criticalCount: 1,
+    openWorkOrders: 1,
+    overduePms: 0,
+  },
 ];
 
 export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
   try {
     const [assetsResult, woResult] = await Promise.all([
       supabase.from("equipment_assets").select("id, area, criticality"),
-      supabase.from("work_orders").select("equipment_id, status, is_overdue, priority"),
+      supabase
+        .from("work_orders")
+        .select("equipment_id, status, is_overdue, priority"),
     ]);
 
     const assets = (assetsResult.data ?? []) as {
@@ -2808,49 +3507,83 @@ export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
     if (assets.length === 0) return MOCK_BUILDING_STATS;
 
     // Build per-asset open-WO summary for risk score enrichment
-    const woMap = new Map<string, { open: number; overdue: number; criticalOpen: number }>();
+    const woMap = new Map<
+      string,
+      { open: number; overdue: number; criticalOpen: number }
+    >();
     for (const wo of workOrders) {
       if (!wo.equipment_id) continue;
       const isOpen = (wo.status ?? "").toLowerCase() !== "completed";
       if (!isOpen) continue;
-      const entry = woMap.get(wo.equipment_id) ?? { open: 0, overdue: 0, criticalOpen: 0 };
+      const entry = woMap.get(wo.equipment_id) ?? {
+        open: 0,
+        overdue: 0,
+        criticalOpen: 0,
+      };
       entry.open += 1;
       if (wo.is_overdue === true) entry.overdue += 1;
-      if ((wo.priority ?? "").toLowerCase() === "critical") entry.criticalOpen += 1;
+      if ((wo.priority ?? "").toLowerCase() === "critical")
+        entry.criticalOpen += 1;
       woMap.set(wo.equipment_id, entry);
     }
 
     // Per-asset composite risk score: criticality base + work-order pressure
-    function assetRiskScore(criticality: string | null, wos: { open: number; overdue: number; criticalOpen: number }): number {
+    function assetRiskScore(
+      criticality: string | null,
+      wos: { open: number; overdue: number; criticalOpen: number },
+    ): number {
       let base: number;
       switch (criticality?.toLowerCase()) {
-        case "critical": base = 80; break;
-        case "high":     base = 60; break;
-        case "medium":   base = 40; break;
-        case "low":      base = 20; break;
-        default:         base = 10;
+        case "critical":
+          base = 80;
+          break;
+        case "high":
+          base = 60;
+          break;
+        case "medium":
+          base = 40;
+          break;
+        case "low":
+          base = 20;
+          break;
+        default:
+          base = 10;
       }
-      const woBonus = Math.min(20, wos.open * 3 + wos.overdue * 5 + wos.criticalOpen * 4);
+      const woBonus = Math.min(
+        20,
+        wos.open * 3 + wos.overdue * 5 + wos.criticalOpen * 4,
+      );
       return Math.min(100, base + woBonus);
     }
 
     const stats = Object.entries(BUILDING_GROUPS).map(([code, group]) => {
-      const groupAssets = assets.filter((a) => group.areas.includes(a.area ?? ""));
-      const groupIdSet  = new Set(groupAssets.map((a) => a.id));
-      const groupWOs    = workOrders.filter((wo) => wo.equipment_id && groupIdSet.has(wo.equipment_id));
+      const groupAssets = assets.filter((a) =>
+        group.areas.includes(a.area ?? ""),
+      );
+      const groupIdSet = new Set(groupAssets.map((a) => a.id));
+      const groupWOs = workOrders.filter(
+        (wo) => wo.equipment_id && groupIdSet.has(wo.equipment_id),
+      );
 
       const scores = groupAssets.map((a) =>
-        assetRiskScore(a.criticality, woMap.get(a.id) ?? { open: 0, overdue: 0, criticalOpen: 0 })
+        assetRiskScore(
+          a.criticality,
+          woMap.get(a.id) ?? { open: 0, overdue: 0, criticalOpen: 0 },
+        ),
       );
 
       return {
         code,
-        label:            group.label,
-        totalAssets:      groupAssets.length,
+        label: group.label,
+        totalAssets: groupAssets.length,
         highestRiskScore: scores.reduce((max, s) => Math.max(max, s), 0),
-        criticalCount:    groupAssets.filter((a) => a.criticality?.toLowerCase() === "critical").length,
-        openWorkOrders:   groupWOs.filter((wo) => (wo.status ?? "").toLowerCase() !== "completed").length,
-        overduePms:       groupWOs.filter((wo) => wo.is_overdue === true).length,
+        criticalCount: groupAssets.filter(
+          (a) => a.criticality?.toLowerCase() === "critical",
+        ).length,
+        openWorkOrders: groupWOs.filter(
+          (wo) => (wo.status ?? "").toLowerCase() !== "completed",
+        ).length,
+        overduePms: groupWOs.filter((wo) => wo.is_overdue === true).length,
       };
     });
 
@@ -2914,170 +3647,68 @@ export interface SiteRiskReductionPlan {
   actions: SiteRiskReductionAction[];
 }
 
-function mapSiteRiskReductionPlanRow(
-  row: any,
-): SiteRiskReductionPlan {
+function mapSiteRiskReductionPlanRow(row: any): SiteRiskReductionPlan {
   return {
-    currentSiteRisk: Number(
-      row.current_site_risk ?? 0,
-    ),
-    currentSiteLevel:
-      row.current_site_level ??
-      "Minimal",
-    projectedSiteRisk: Number(
-      row.projected_site_risk ?? 0,
-    ),
-    projectedSiteLevel:
-      row.projected_site_level ??
-      "Minimal",
-    highestArea:
-      row.highest_area ?? "",
-    currentAreaRisk: Number(
-      row.current_area_risk ?? 0,
-    ),
-    currentAreaLevel:
-      row.current_area_level ??
-      "Minimal",
-    projectedAreaRisk: Number(
-      row.projected_area_risk ?? 0,
-    ),
-    projectedAreaLevel:
-      row.projected_area_level ??
-      "Minimal",
-    equipmentId:
-      row.equipment_id ?? "",
-    equipmentName:
-      row.equipment_name ??
-      "Unnamed equipment",
-    equipmentCode:
-      row.equipment_code ?? "",
-    estimatedDurationMinutes:
-      Number(
-        row.estimated_duration_minutes ??
-          0,
-      ),
-    currentPmBacklog: Number(
-      row.current_pm_backlog ?? 0,
-    ),
-    projectedPmBacklog: Number(
-      row.projected_pm_backlog ?? 0,
-    ),
-    currentCalibrationBacklog:
-      Number(
-        row.current_calibration_backlog ??
-          0,
-      ),
-    projectedCalibrationBacklog:
-      Number(
-        row.projected_calibration_backlog ??
-          0,
-      ),
-    currentStockouts: Number(
-      row.current_stockouts ?? 0,
-    ),
-    projectedStockouts: Number(
-      row.projected_stockouts ?? 0,
-    ),
-    nextArea:
-      row.next_area ?? "",
-    nextAreaRisk: Number(
-      row.next_area_risk ?? 0,
-    ),
-    nextAreaLevel:
-      row.next_area_level ??
-      "Minimal",
+    currentSiteRisk: Number(row.current_site_risk ?? 0),
+    currentSiteLevel: row.current_site_level ?? "Minimal",
+    projectedSiteRisk: Number(row.projected_site_risk ?? 0),
+    projectedSiteLevel: row.projected_site_level ?? "Minimal",
+    highestArea: row.highest_area ?? "",
+    currentAreaRisk: Number(row.current_area_risk ?? 0),
+    currentAreaLevel: row.current_area_level ?? "Minimal",
+    projectedAreaRisk: Number(row.projected_area_risk ?? 0),
+    projectedAreaLevel: row.projected_area_level ?? "Minimal",
+    equipmentId: row.equipment_id ?? "",
+    equipmentName: row.equipment_name ?? "Unnamed equipment",
+    equipmentCode: row.equipment_code ?? "",
+    estimatedDurationMinutes: Number(row.estimated_duration_minutes ?? 0),
+    currentPmBacklog: Number(row.current_pm_backlog ?? 0),
+    projectedPmBacklog: Number(row.projected_pm_backlog ?? 0),
+    currentCalibrationBacklog: Number(row.current_calibration_backlog ?? 0),
+    projectedCalibrationBacklog: Number(row.projected_calibration_backlog ?? 0),
+    currentStockouts: Number(row.current_stockouts ?? 0),
+    projectedStockouts: Number(row.projected_stockouts ?? 0),
+    nextArea: row.next_area ?? "",
+    nextAreaRisk: Number(row.next_area_risk ?? 0),
+    nextAreaLevel: row.next_area_level ?? "Minimal",
     equipmentRank:
-      row.equipment_rank === null ||
-      row.equipment_rank === undefined
+      row.equipment_rank === null || row.equipment_rank === undefined
         ? null
-        : Number(
-            row.equipment_rank,
-          ),
+        : Number(row.equipment_rank),
     equipmentCount:
-      row.equipment_count === null ||
-      row.equipment_count === undefined
+      row.equipment_count === null || row.equipment_count === undefined
         ? null
-        : Number(
-            row.equipment_count,
-          ),
-    nextEquipmentId:
-      row.next_equipment_id ??
-      null,
-    nextEquipmentCode:
-      row.next_equipment_code ??
-      null,
-    nextEquipmentName:
-      row.next_equipment_name ??
-      null,
+        : Number(row.equipment_count),
+    nextEquipmentId: row.next_equipment_id ?? null,
+    nextEquipmentCode: row.next_equipment_code ?? null,
+    nextEquipmentName: row.next_equipment_name ?? null,
     nextEquipmentRisk:
-      row.next_equipment_risk === null ||
-      row.next_equipment_risk === undefined
+      row.next_equipment_risk === null || row.next_equipment_risk === undefined
         ? null
-        : Number(
-            row.next_equipment_risk,
+        : Number(row.next_equipment_risk),
+    nextEquipmentLevel: row.next_equipment_level ?? null,
+    actions: Array.isArray(row.actions)
+      ? row.actions.map((action: any): SiteRiskReductionAction => ({
+          priority: Number(action.priority ?? 0),
+          driver: action.driver ?? "",
+          action: action.action ?? "",
+          detail: action.detail ?? "",
+          status: action.status ?? "",
+          calculatedReduction: Number(action.calculatedReduction ?? 0),
+          projectedScore: Number(action.projectedScore ?? 0),
+          workOrderNumbers: Array.isArray(action.workOrderNumbers)
+            ? action.workOrderNumbers
+            : [],
+          pmNumbers: Array.isArray(action.pmNumbers) ? action.pmNumbers : [],
+          sparePartNumbers: Array.isArray(action.sparePartNumbers)
+            ? action.sparePartNumbers
+            : [],
+          estimatedDurationMinutes: Number(
+            action.estimatedDurationMinutes ?? 0,
           ),
-    nextEquipmentLevel:
-      row.next_equipment_level ??
-      null,
-    actions: Array.isArray(
-      row.actions,
-    )
-      ? row.actions.map(
-          (
-            action: any,
-          ): SiteRiskReductionAction => ({
-            priority: Number(
-              action.priority ?? 0,
-            ),
-            driver:
-              action.driver ?? "",
-            action:
-              action.action ?? "",
-            detail:
-              action.detail ?? "",
-            status:
-              action.status ?? "",
-            calculatedReduction:
-              Number(
-                action.calculatedReduction ??
-                  0,
-              ),
-            projectedScore: Number(
-              action.projectedScore ??
-                0,
-            ),
-            workOrderNumbers:
-              Array.isArray(
-                action.workOrderNumbers,
-              )
-                ? action.workOrderNumbers
-                : [],
-            pmNumbers: Array.isArray(
-              action.pmNumbers,
-            )
-              ? action.pmNumbers
-              : [],
-            sparePartNumbers:
-              Array.isArray(
-                action.sparePartNumbers,
-              )
-                ? action.sparePartNumbers
-                : [],
-            estimatedDurationMinutes:
-              Number(
-                action.estimatedDurationMinutes ??
-                  0,
-              ),
-            procurementLeadDays:
-              Number(
-                action.procurementLeadDays ??
-                  0,
-              ),
-            rankingReason:
-              action.rankingReason ??
-              "",
-          }),
-        )
+          procurementLeadDays: Number(action.procurementLeadDays ?? 0),
+          rankingReason: action.rankingReason ?? "",
+        }))
       : [],
   };
 }
@@ -3109,14 +3740,9 @@ export async function getSiteRiskReductionPlan(
       return null;
     }
 
-    return mapSiteRiskReductionPlanRow(
-      row,
-    );
+    return mapSiteRiskReductionPlanRow(row);
   } catch (error) {
-    console.warn(
-      "vorta_get_site_risk_reduction_plan threw:",
-      error,
-    );
+    console.warn("vorta_get_site_risk_reduction_plan threw:", error);
     return null;
   }
 }
@@ -3126,15 +3752,13 @@ export async function getAreaEquipmentRiskReductionPlan(
   equipmentId?: string,
 ): Promise<SiteRiskReductionPlan | null> {
   try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_get_area_equipment_risk_reduction_plan",
-        {
-          p_area: area,
-          p_equipment_id:
-            equipmentId ?? null,
-        },
-      );
+    const { data, error } = await supabase.rpc(
+      "vorta_get_area_equipment_risk_reduction_plan",
+      {
+        p_area: area,
+        p_equipment_id: equipmentId ?? null,
+      },
+    );
     if (error) {
       console.warn(
         "vorta_get_area_equipment_risk_reduction_plan failed:",
@@ -3146,26 +3770,16 @@ export async function getAreaEquipmentRiskReductionPlan(
     if (!row) {
       return null;
     }
-    return mapSiteRiskReductionPlanRow(
-      row,
-    );
+    return mapSiteRiskReductionPlanRow(row);
   } catch (error) {
-    console.warn(
-      "vorta_get_area_equipment_risk_reduction_plan threw:",
-      error,
-    );
+    console.warn("vorta_get_area_equipment_risk_reduction_plan threw:", error);
     return null;
   }
 }
 
-export type RiskDashboardScopePlanCache =
-  Record<
-    string,
-    SiteRiskReductionPlan
-  >;
+export type RiskDashboardScopePlanCache = Record<string, SiteRiskReductionPlan>;
 
-export async function getRiskDashboardScopePlans():
-  Promise<RiskDashboardScopePlanCache> {
+export async function getRiskDashboardScopePlans(): Promise<RiskDashboardScopePlanCache> {
   try {
     const { data, error } = await supabase.rpc(
       "vorta_get_risk_dashboard_scope_plans",
@@ -3183,32 +3797,17 @@ export async function getRiskDashboardScopePlans():
       return {};
     }
 
-    return data.reduce<
-      RiskDashboardScopePlanCache
-    >(
-      (
-        cache,
-        row: any,
-      ) => {
-        const scopeKey =
-          row.scope_key ?? "";
+    return data.reduce<RiskDashboardScopePlanCache>((cache, row: any) => {
+      const scopeKey = row.scope_key ?? "";
 
-        if (scopeKey) {
-          cache[scopeKey] =
-            mapSiteRiskReductionPlanRow(
-              row,
-            );
-        }
+      if (scopeKey) {
+        cache[scopeKey] = mapSiteRiskReductionPlanRow(row);
+      }
 
-        return cache;
-      },
-      {},
-    );
+      return cache;
+    }, {});
   } catch (error) {
-    console.warn(
-      "vorta_get_risk_dashboard_scope_plans threw:",
-      error,
-    );
+    console.warn("vorta_get_risk_dashboard_scope_plans threw:", error);
     return {};
   }
 }
@@ -3221,13 +3820,11 @@ export interface OperationalRiskDashboardPayload {
   scopes: RiskDashboardScope[];
 }
 
-export async function refreshAndGetOperationalDashboard():
-  Promise<OperationalRiskDashboardPayload | null> {
+export async function refreshAndGetOperationalDashboard(): Promise<OperationalRiskDashboardPayload | null> {
   try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_and_get_operational_dashboard",
-      );
+    const { data, error } = await supabase.rpc(
+      "vorta_refresh_and_get_operational_dashboard",
+    );
 
     if (error) {
       console.warn(
@@ -3238,11 +3835,7 @@ export async function refreshAndGetOperationalDashboard():
       return null;
     }
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
       console.warn(
         "vorta_refresh_and_get_operational_dashboard returned an invalid payload.",
       );
@@ -3250,35 +3843,24 @@ export async function refreshAndGetOperationalDashboard():
       return null;
     }
 
-    const payload =
-      data as Record<string, unknown>;
+    const payload = data as Record<string, unknown>;
 
-    const areaProfiles =
-      Array.isArray(
-        payload.areaProfiles,
-      )
-        ? payload.areaProfiles as AreaRiskProfile[]
-        : [];
+    const areaProfiles = Array.isArray(payload.areaProfiles)
+      ? (payload.areaProfiles as AreaRiskProfile[])
+      : [];
 
-    const scopes =
-      Array.isArray(payload.scopes)
-        ? payload.scopes as RiskDashboardScope[]
-        : [];
+    const scopes = Array.isArray(payload.scopes)
+      ? (payload.scopes as RiskDashboardScope[])
+      : [];
 
     const siteRisk =
       payload.siteRisk &&
       typeof payload.siteRisk === "object" &&
-      !Array.isArray(
-        payload.siteRisk,
-      )
-        ? payload.siteRisk as SiteRiskProfile
+      !Array.isArray(payload.siteRisk)
+        ? (payload.siteRisk as SiteRiskProfile)
         : null;
 
-    if (
-      areaProfiles.length === 0 ||
-      scopes.length === 0 ||
-      !siteRisk
-    ) {
+    if (areaProfiles.length === 0 || scopes.length === 0 || !siteRisk) {
       console.warn(
         "vorta_refresh_and_get_operational_dashboard returned incomplete operational data.",
       );
@@ -3292,10 +3874,7 @@ export async function refreshAndGetOperationalDashboard():
       scopes,
     };
   } catch (error) {
-    console.warn(
-      "vorta_refresh_and_get_operational_dashboard threw:",
-      error,
-    );
+    console.warn("vorta_refresh_and_get_operational_dashboard threw:", error);
 
     return null;
   }
@@ -3303,26 +3882,19 @@ export async function refreshAndGetOperationalDashboard():
 
 export async function refreshOperationalRisk(): Promise<boolean> {
   try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_operational_risk",
-      );
+    const { data, error } = await supabase.rpc(
+      "vorta_refresh_operational_risk",
+    );
 
     if (error) {
-      console.warn(
-        "vorta_refresh_operational_risk failed:",
-        error.message,
-      );
+      console.warn("vorta_refresh_operational_risk failed:", error.message);
 
       return false;
     }
 
     return Number(data ?? 0) === 1;
   } catch (error) {
-    console.warn(
-      "vorta_refresh_operational_risk threw:",
-      error,
-    );
+    console.warn("vorta_refresh_operational_risk threw:", error);
 
     return false;
   }
@@ -3330,26 +3902,17 @@ export async function refreshOperationalRisk(): Promise<boolean> {
 
 export async function refreshRiskWorkPlan(): Promise<boolean> {
   try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_risk_work_plan",
-      );
+    const { data, error } = await supabase.rpc("vorta_refresh_risk_work_plan");
 
     if (error) {
-      console.warn(
-        "vorta_refresh_risk_work_plan failed:",
-        error.message,
-      );
+      console.warn("vorta_refresh_risk_work_plan failed:", error.message);
 
       return false;
     }
 
     return Number(data ?? 0) === 1;
   } catch (error) {
-    console.warn(
-      "vorta_refresh_risk_work_plan threw:",
-      error,
-    );
+    console.warn("vorta_refresh_risk_work_plan threw:", error);
 
     return false;
   }
@@ -3357,44 +3920,25 @@ export async function refreshRiskWorkPlan(): Promise<boolean> {
 
 export async function refreshCurrentRisk(): Promise<boolean> {
   try {
-    const { error } = await supabase.rpc(
-      "vorta_refresh_current_risk",
-    );
+    const { error } = await supabase.rpc("vorta_refresh_current_risk");
 
     if (error) {
-      console.warn(
-        "vorta_refresh_current_risk failed:",
-        error.message,
-      );
+      console.warn("vorta_refresh_current_risk failed:", error.message);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.warn(
-      "vorta_refresh_current_risk threw:",
-      error,
-    );
+    console.warn("vorta_refresh_current_risk threw:", error);
     return false;
   }
 }
 
-export type RiskKpiPeriodKey =
-  | "daily"
-  | "weekly"
-  | "monthly"
-  | "ytd";
+export type RiskKpiPeriodKey = "daily" | "weekly" | "monthly" | "ytd";
 
-export type RiskKpiRagStatus =
-  | "green"
-  | "amber"
-  | "red"
-  | "neutral";
+export type RiskKpiRagStatus = "green" | "amber" | "red" | "neutral";
 
-export type RiskKpiTrendDirection =
-  | "up"
-  | "down"
-  | "flat";
+export type RiskKpiTrendDirection = "up" | "down" | "flat";
 
 export interface RiskReductionKpi {
   key: string;
@@ -3425,14 +3969,8 @@ export interface RiskReductionKpiDashboard {
   kpis: RiskReductionKpi[];
 }
 
-function mapRiskReductionKpiDashboardRow(
-  row: any,
-): RiskReductionKpiDashboard {
-  const rawKpis = Array.isArray(
-    row.kpis,
-  )
-    ? row.kpis
-    : [];
+function mapRiskReductionKpiDashboardRow(row: any): RiskReductionKpiDashboard {
+  const rawKpis = Array.isArray(row.kpis) ? row.kpis : [];
 
   return {
     periodKey:
@@ -3441,92 +3979,49 @@ function mapRiskReductionKpiDashboardRow(
       row.period_key === "ytd"
         ? row.period_key
         : "daily",
-    periodLabel:
-      row.period_label ?? "",
-    periodStart:
-      row.period_start ?? "",
-    periodEnd:
-      row.period_end ?? "",
-    comparisonLabel:
-      row.comparison_label ?? "",
-    kpis: rawKpis.map(
-      (
-        item: any,
-      ): RiskReductionKpi => ({
-        key:
-          item.key ?? "",
-        label:
-          item.label ?? "",
-        description:
-          item.description ?? "",
-        value:
-          item.value === null ||
-          item.value === undefined
-            ? null
-            : Number(item.value),
-        target: Number(
-          item.target ?? 0,
-        ),
-        ragStatus:
-          item.ragStatus ===
-            "green" ||
-          item.ragStatus ===
-            "amber" ||
-          item.ragStatus === "red"
-            ? item.ragStatus
-            : "neutral",
-        numerator: Number(
-          item.numerator ?? 0,
-        ),
-        denominator: Number(
-          item.denominator ?? 0,
-        ),
-        detail:
-          item.detail ?? "",
-        noData:
-          item.noData ?? false,
-        criticalOverride:
-          item.criticalOverride ??
-          false,
-        previousValue:
-          item.previousValue ===
-            null ||
-          item.previousValue ===
-            undefined
-            ? null
-            : Number(
-                item.previousValue,
-              ),
-        trendDelta:
-          item.trendDelta === null ||
-          item.trendDelta ===
-            undefined
-            ? null
-            : Number(
-                item.trendDelta,
-              ),
-        trendDirection:
-          item.trendDirection ===
-            "up" ||
-          item.trendDirection ===
-            "down" ||
-          item.trendDirection === "flat"
-            ? item.trendDirection
-            : null,
-        favourableTrend:
-          typeof item.favourableTrend ===
-          "boolean"
-            ? item.favourableTrend
-            : null,
-        comparisonLabel:
-          item.comparisonLabel ??
-          row.comparison_label ??
-          "",
-        drilldownRoute:
-          item.drilldownRoute ??
-          "/dashboard",
-      }),
-    ),
+    periodLabel: row.period_label ?? "",
+    periodStart: row.period_start ?? "",
+    periodEnd: row.period_end ?? "",
+    comparisonLabel: row.comparison_label ?? "",
+    kpis: rawKpis.map((item: any): RiskReductionKpi => ({
+      key: item.key ?? "",
+      label: item.label ?? "",
+      description: item.description ?? "",
+      value:
+        item.value === null || item.value === undefined
+          ? null
+          : Number(item.value),
+      target: Number(item.target ?? 0),
+      ragStatus:
+        item.ragStatus === "green" ||
+        item.ragStatus === "amber" ||
+        item.ragStatus === "red"
+          ? item.ragStatus
+          : "neutral",
+      numerator: Number(item.numerator ?? 0),
+      denominator: Number(item.denominator ?? 0),
+      detail: item.detail ?? "",
+      noData: item.noData ?? false,
+      criticalOverride: item.criticalOverride ?? false,
+      previousValue:
+        item.previousValue === null || item.previousValue === undefined
+          ? null
+          : Number(item.previousValue),
+      trendDelta:
+        item.trendDelta === null || item.trendDelta === undefined
+          ? null
+          : Number(item.trendDelta),
+      trendDirection:
+        item.trendDirection === "up" ||
+        item.trendDirection === "down" ||
+        item.trendDirection === "flat"
+          ? item.trendDirection
+          : null,
+      favourableTrend:
+        typeof item.favourableTrend === "boolean" ? item.favourableTrend : null,
+      comparisonLabel: item.comparisonLabel ?? row.comparison_label ?? "",
+      drilldownRoute: item.drilldownRoute ?? "/dashboard",
+    })),
   };
 }
 
@@ -3543,10 +4038,7 @@ export async function getRiskReductionKpis(
     );
 
     if (error) {
-      console.warn(
-        "vorta_get_risk_reduction_kpis failed:",
-        error.message,
-      );
+      console.warn("vorta_get_risk_reduction_kpis failed:", error.message);
       return null;
     }
 
@@ -3556,31 +4048,19 @@ export async function getRiskReductionKpis(
       return null;
     }
 
-    return mapRiskReductionKpiDashboardRow(
-      row,
-    );
+    return mapRiskReductionKpiDashboardRow(row);
   } catch (error) {
-    console.warn(
-      "vorta_get_risk_reduction_kpis threw:",
-      error,
-    );
+    console.warn("vorta_get_risk_reduction_kpis threw:", error);
     return null;
   }
 }
 
-export type RiskDashboardScopeKpiCache =
-  Record<
-    string,
-    Partial<
-      Record<
-        RiskKpiPeriodKey,
-        RiskReductionKpiDashboard
-      >
-    >
-  >;
+export type RiskDashboardScopeKpiCache = Record<
+  string,
+  Partial<Record<RiskKpiPeriodKey, RiskReductionKpiDashboard>>
+>;
 
-export async function getRiskDashboardScopeKpis():
-  Promise<RiskDashboardScopeKpiCache> {
+export async function getRiskDashboardScopeKpis(): Promise<RiskDashboardScopeKpiCache> {
   try {
     const { data, error } = await supabase.rpc(
       "vorta_get_risk_dashboard_scope_kpis",
@@ -3601,156 +4081,273 @@ export async function getRiskDashboardScopeKpis():
       return {};
     }
 
-    return data.reduce<
-      RiskDashboardScopeKpiCache
-    >(
-      (
-        cache,
-        row: any,
-      ) => {
-        const scopeKey =
-          row.scope_key ?? "";
+    return data.reduce<RiskDashboardScopeKpiCache>((cache, row: any) => {
+      const scopeKey = row.scope_key ?? "";
 
-        if (!scopeKey) {
-          return cache;
-        }
-
-        const dashboard =
-          mapRiskReductionKpiDashboardRow(
-            row,
-          );
-
-        if (!cache[scopeKey]) {
-          cache[scopeKey] = {};
-        }
-
-        cache[scopeKey][
-          dashboard.periodKey
-        ] = dashboard;
-
+      if (!scopeKey) {
         return cache;
-      },
-      {},
-    );
+      }
+
+      const dashboard = mapRiskReductionKpiDashboardRow(row);
+
+      if (!cache[scopeKey]) {
+        cache[scopeKey] = {};
+      }
+
+      cache[scopeKey][dashboard.periodKey] = dashboard;
+
+      return cache;
+    }, {});
   } catch (error) {
-    console.warn(
-      "vorta_get_risk_dashboard_scope_kpis threw:",
-      error,
-    );
+    console.warn("vorta_get_risk_dashboard_scope_kpis threw:", error);
     return {};
   }
 }
 
 // ─── Consolidated equipment skills showcase ───────────────────────────────────
 
+export interface EquipmentSkillEngineerEvidence {
+  engineerId: string;
+  engineerName: string;
+  avatarUrl: string | null;
+  discipline: string | null;
+  shiftPattern: string | null;
+  availabilityStatus: string | null;
+  rating: number;
+  yearsExperience: number;
+  validationStatus: string | null;
+  capabilityRole: string | null;
+}
+
 export interface EquipmentRequiredSkill {
-  id: string; skillId: string; name: string; category: string | null;
-  requiredLevel: number; minimumQualifiedEngineers: number;
-  criticality: string | null; executionAuthority: string | null;
-  validationRequired: boolean; qualifiedEngineerCount: number;
+  id: string;
+  skillId: string;
+  name: string;
+  category: string | null;
+  requiredLevel: number;
+  minimumQualifiedEngineers: number;
+  criticality: string | null;
+  executionAuthority: string | null;
+  validationRequired: boolean;
+  evidenceReference: string | null;
+  qualifiedEngineerCount: number;
+  validationGap: number;
+  singlePointOfFailure: boolean;
+  qualifiedEngineers: EquipmentSkillEngineerEvidence[];
+  nearestEngineers: EquipmentSkillEngineerEvidence[];
 }
 
 export interface EquipmentEngineerCapability {
-  capabilityId: string; engineerId: string; engineerName: string;
-  discipline: string | null; shiftPattern: string | null;
-  availabilityStatus: string | null; capabilityRole: string;
-  capabilityStatus: string | null; competencyLevel: number | null;
-  validationStatus: string | null; requiredSkillMatches: number;
-  requiredSkillTotal: number; criticalSkillMatches: number; criticalSkillTotal: number;
+  capabilityId: string;
+  engineerId: string;
+  engineerName: string;
+  avatarUrl: string | null;
+  discipline: string | null;
+  shiftPattern: string | null;
+  availabilityStatus: string | null;
+  capabilityRole: string;
+  capabilityStatus: string | null;
+  competencyLevel: number | null;
+  validationStatus: string | null;
+  requiredSkillMatches: number;
+  requiredSkillTotal: number;
+  criticalSkillMatches: number;
+  criticalSkillTotal: number;
 }
 
 export interface EquipmentOperatorCapability {
-  assignmentId: string; operatorId: string; operatorName: string;
-  shiftName: string | null; roleOnEquipment: string | null; amStep: number | null;
-  amValidationStatus: string | null; validatedAmSkillCount: number; amTrainingGapCount: number;
+  assignmentId: string;
+  operatorId: string;
+  operatorName: string;
+  shiftName: string | null;
+  roleOnEquipment: string | null;
+  amStep: number | null;
+  amValidationStatus: string | null;
+  validatedAmSkillCount: number;
+  amTrainingGapCount: number;
 }
 
 export interface EquipmentDevelopmentPath {
-  personType: string; pathId: string; personId: string; personName: string;
-  shiftName: string | null; currentJobRole: string | null; targetJobRole: string | null;
-  targetCapabilityRole: string | null; readinessScore: number; mentorName: string | null;
-  supervisedCompleted: number; supervisedRequired: number;
-  evidenceCompleted: number; evidenceRequired: number; targetCompletionDate: string | null;
+  personType: string;
+  pathId: string;
+  personId: string;
+  personName: string;
+  shiftName: string | null;
+  currentJobRole: string | null;
+  targetJobRole: string | null;
+  targetCapabilityRole: string | null;
+  readinessScore: number;
+  mentorName: string | null;
+  supervisedCompleted: number;
+  supervisedRequired: number;
+  evidenceCompleted: number;
+  evidenceRequired: number;
+  targetCompletionDate: string | null;
 }
 
 export interface EquipmentShiftCoverage {
-  shiftCode: string; validatedAmOperatorCount: number; covered: boolean;
+  shiftCode: string;
+  validatedAmOperatorCount: number;
+  covered: boolean;
 }
 
 export interface EquipmentSkillsShowcase {
-  equipmentId: string; equipmentCode: string; equipmentName: string;
-  equipmentType: string | null; area: string | null; requiredSkillCount: number;
-  primarySmeCount: number; backupSmeCount: number; developingBackupCount: number;
-  activeAmOperatorCount: number; rotatingShiftCoverageCount: number;
-  rotatingShiftGapCount: number; peopleResilienceScore: number;
-  requiredSkills: EquipmentRequiredSkill[]; engineers: EquipmentEngineerCapability[];
-  operators: EquipmentOperatorCapability[]; developmentPaths: EquipmentDevelopmentPath[];
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType: string | null;
+  area: string | null;
+  requiredSkillCount: number;
+  primarySmeCount: number;
+  backupSmeCount: number;
+  developingBackupCount: number;
+  activeAmOperatorCount: number;
+  rotatingShiftCoverageCount: number;
+  rotatingShiftGapCount: number;
+  peopleResilienceScore: number;
+  requiredSkills: EquipmentRequiredSkill[];
+  engineers: EquipmentEngineerCapability[];
+  operators: EquipmentOperatorCapability[];
+  developmentPaths: EquipmentDevelopmentPath[];
   shiftCoverage: EquipmentShiftCoverage[];
 }
 
-export async function getEquipmentSkillsShowcase(equipmentId: string): Promise<EquipmentSkillsShowcase> {
-  const { data, error } = await supabase.rpc("vorta_get_equipment_skills_showcase", {
-    p_equipment_id: equipmentId,
-  });
+export async function getEquipmentSkillsShowcase(
+  equipmentId: string,
+): Promise<EquipmentSkillsShowcase> {
+  const { data, error } = await supabase.rpc(
+    "vorta_get_equipment_skills_showcase",
+    {
+      p_equipment_id: equipmentId,
+    },
+  );
   if (error) throw new Error(error.message);
   const row = data?.[0];
-  if (!row) throw new Error("No skills showcase data is available for this equipment.");
+  if (!row)
+    throw new Error("No skills showcase data is available for this equipment.");
 
-  const requiredSkills: EquipmentRequiredSkill[] = (Array.isArray(row.required_skills) ? row.required_skills : []).map((skill: any) => ({
-    id: skill.id ?? "", skillId: skill.skill_id ?? "", name: skill.name ?? "Unnamed skill",
-    category: skill.category ?? null, requiredLevel: Number(skill.required_level ?? 0),
+  const mapSkillEngineer = (engineer: any): EquipmentSkillEngineerEvidence => ({
+    engineerId: engineer.engineer_id ?? "",
+    engineerName: engineer.engineer_name ?? "Unknown engineer",
+    avatarUrl: engineer.avatar_url ?? null,
+    discipline: engineer.discipline ?? null,
+    shiftPattern: engineer.shift_pattern ?? null,
+    availabilityStatus: engineer.availability_status ?? null,
+    rating: Number(engineer.rating ?? 0),
+    yearsExperience: Number(engineer.years_experience ?? 0),
+    validationStatus: engineer.validation_status ?? null,
+    capabilityRole: engineer.capability_role ?? null,
+  });
+
+  const requiredSkills: EquipmentRequiredSkill[] = (
+    Array.isArray(row.required_skills) ? row.required_skills : []
+  ).map((skill: any) => ({
+    id: skill.id ?? "",
+    skillId: skill.skill_id ?? "",
+    name: skill.name ?? "Unnamed skill",
+    category: skill.category ?? null,
+    requiredLevel: Number(skill.required_level ?? 0),
     minimumQualifiedEngineers: Number(skill.minimum_qualified_engineers ?? 0),
-    criticality: skill.criticality ?? null, executionAuthority: skill.execution_authority ?? null,
+    criticality: skill.criticality ?? null,
+    executionAuthority: skill.execution_authority ?? null,
     validationRequired: Boolean(skill.validation_required),
+    evidenceReference: skill.evidence_reference ?? null,
     qualifiedEngineerCount: Number(skill.qualified_engineer_count ?? 0),
+    validationGap: Number(skill.validation_gap ?? 0),
+    singlePointOfFailure: Boolean(skill.single_point_of_failure),
+    qualifiedEngineers: (Array.isArray(skill.qualified_engineers)
+      ? skill.qualified_engineers
+      : []
+    ).map(mapSkillEngineer),
+    nearestEngineers: (Array.isArray(skill.nearest_engineers)
+      ? skill.nearest_engineers
+      : []
+    ).map(mapSkillEngineer),
   }));
-  const engineers: EquipmentEngineerCapability[] = (Array.isArray(row.engineers) ? row.engineers : []).map((engineer: any) => ({
-    capabilityId: engineer.capability_id ?? "", engineerId: engineer.engineer_id ?? "",
-    engineerName: engineer.engineer_name ?? "Unknown engineer", discipline: engineer.discipline ?? null,
-    shiftPattern: engineer.shift_pattern ?? null, availabilityStatus: engineer.availability_status ?? null,
+  const engineers: EquipmentEngineerCapability[] = (
+    Array.isArray(row.engineers) ? row.engineers : []
+  ).map((engineer: any) => ({
+    capabilityId: engineer.capability_id ?? "",
+    engineerId: engineer.engineer_id ?? "",
+    engineerName: engineer.engineer_name ?? "Unknown engineer",
+    avatarUrl: engineer.avatar_url ?? null,
+    discipline: engineer.discipline ?? null,
+    shiftPattern: engineer.shift_pattern ?? null,
+    availabilityStatus: engineer.availability_status ?? null,
     capabilityRole: engineer.capability_role ?? "QUALIFIED_SUPPORT",
     capabilityStatus: engineer.capability_status ?? null,
-    competencyLevel: engineer.competency_level == null ? null : Number(engineer.competency_level),
+    competencyLevel:
+      engineer.competency_level == null
+        ? null
+        : Number(engineer.competency_level),
     validationStatus: engineer.validation_status ?? null,
     requiredSkillMatches: Number(engineer.required_skill_matches ?? 0),
     requiredSkillTotal: Number(engineer.required_skill_total ?? 0),
     criticalSkillMatches: Number(engineer.critical_skill_matches ?? 0),
     criticalSkillTotal: Number(engineer.critical_skill_total ?? 0),
   }));
-  const operators: EquipmentOperatorCapability[] = (Array.isArray(row.operators) ? row.operators : []).map((operator: any) => ({
-    assignmentId: operator.assignment_id ?? "", operatorId: operator.operator_id ?? "",
-    operatorName: operator.operator_name ?? "Unknown operator", shiftName: operator.shift_name ?? null,
+  const operators: EquipmentOperatorCapability[] = (
+    Array.isArray(row.operators) ? row.operators : []
+  ).map((operator: any) => ({
+    assignmentId: operator.assignment_id ?? "",
+    operatorId: operator.operator_id ?? "",
+    operatorName: operator.operator_name ?? "Unknown operator",
+    shiftName: operator.shift_name ?? null,
     roleOnEquipment: operator.role_on_equipment ?? null,
     amStep: operator.am_step == null ? null : Number(operator.am_step),
     amValidationStatus: operator.am_validation_status ?? null,
     validatedAmSkillCount: Number(operator.validated_am_skill_count ?? 0),
     amTrainingGapCount: Number(operator.am_training_gap_count ?? 0),
   }));
-  const developmentPaths: EquipmentDevelopmentPath[] = (Array.isArray(row.development_paths) ? row.development_paths : []).map((path: any) => ({
-    personType: path.person_type ?? "", pathId: path.path_id ?? "", personId: path.person_id ?? "",
-    personName: path.person_name ?? "Unknown person", shiftName: path.shift_name ?? null,
-    currentJobRole: path.current_job_role ?? null, targetJobRole: path.target_job_role ?? null,
-    targetCapabilityRole: path.target_capability_role ?? null, readinessScore: Number(path.readiness_score ?? 0),
-    mentorName: path.mentor_name ?? null, supervisedCompleted: Number(path.supervised_completed ?? 0),
-    supervisedRequired: Number(path.supervised_required ?? 0), evidenceCompleted: Number(path.evidence_completed ?? 0),
-    evidenceRequired: Number(path.evidence_required ?? 0), targetCompletionDate: path.target_completion_date ?? null,
+  const developmentPaths: EquipmentDevelopmentPath[] = (
+    Array.isArray(row.development_paths) ? row.development_paths : []
+  ).map((path: any) => ({
+    personType: path.person_type ?? "",
+    pathId: path.path_id ?? "",
+    personId: path.person_id ?? "",
+    personName: path.person_name ?? "Unknown person",
+    shiftName: path.shift_name ?? null,
+    currentJobRole: path.current_job_role ?? null,
+    targetJobRole: path.target_job_role ?? null,
+    targetCapabilityRole: path.target_capability_role ?? null,
+    readinessScore: Number(path.readiness_score ?? 0),
+    mentorName: path.mentor_name ?? null,
+    supervisedCompleted: Number(path.supervised_completed ?? 0),
+    supervisedRequired: Number(path.supervised_required ?? 0),
+    evidenceCompleted: Number(path.evidence_completed ?? 0),
+    evidenceRequired: Number(path.evidence_required ?? 0),
+    targetCompletionDate: path.target_completion_date ?? null,
   }));
-  const shiftCoverage: EquipmentShiftCoverage[] = (Array.isArray(row.shift_coverage) ? row.shift_coverage : []).map((shift: any) => ({
+  const shiftCoverage: EquipmentShiftCoverage[] = (
+    Array.isArray(row.shift_coverage) ? row.shift_coverage : []
+  ).map((shift: any) => ({
     shiftCode: shift.shiftCode ?? shift.shift_code ?? "",
-    validatedAmOperatorCount: Number(shift.validatedAmOperatorCount ?? shift.validated_am_operator_count ?? 0),
+    validatedAmOperatorCount: Number(
+      shift.validatedAmOperatorCount ?? shift.validated_am_operator_count ?? 0,
+    ),
     covered: Boolean(shift.covered),
   }));
 
   return {
-    equipmentId: row.equipment_id, equipmentCode: row.equipment_code ?? "",
-    equipmentName: row.equipment_name ?? "", equipmentType: row.equipment_type ?? null,
-    area: row.area ?? null, requiredSkillCount: Number(row.required_skill_count ?? requiredSkills.length),
-    primarySmeCount: Number(row.primary_sme_count ?? 0), backupSmeCount: Number(row.backup_sme_count ?? 0),
+    equipmentId: row.equipment_id,
+    equipmentCode: row.equipment_code ?? "",
+    equipmentName: row.equipment_name ?? "",
+    equipmentType: row.equipment_type ?? null,
+    area: row.area ?? null,
+    requiredSkillCount: Number(
+      row.required_skill_count ?? requiredSkills.length,
+    ),
+    primarySmeCount: Number(row.primary_sme_count ?? 0),
+    backupSmeCount: Number(row.backup_sme_count ?? 0),
     developingBackupCount: Number(row.developing_backup_count ?? 0),
     activeAmOperatorCount: Number(row.active_am_operator_count ?? 0),
     rotatingShiftCoverageCount: Number(row.rotating_shift_coverage_count ?? 0),
     rotatingShiftGapCount: Number(row.rotating_shift_gap_count ?? 0),
     peopleResilienceScore: Number(row.people_resilience_score ?? 0),
-    requiredSkills, engineers, operators, developmentPaths, shiftCoverage,
+    requiredSkills,
+    engineers,
+    operators,
+    developmentPaths,
+    shiftCoverage,
   };
 }

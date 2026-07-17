@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -81,42 +81,89 @@ interface ReqStats {
   criticalGaps: number;
 }
 
-interface Department { id: string; name: string }
+interface Department {
+  id: string;
+  name: string;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TABLE_PAGE_SIZE = 10;
 
-const PRIORITY_ORDER: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+const PRIORITY_ORDER: Record<string, number> = {
+  Critical: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadgeClass(status: string): string {
   switch (status) {
-    case "Critical Gap":       return "bg-[#ef444420] text-red-500";
-    case "Partial Gap":        return "bg-[#f9731620] text-orange-400";
-    case "Training Required":  return "bg-[#facc1520] text-yellow-400";
-    case "Covered":            return "bg-[#10b98120] text-emerald-500";
-    default:                   return "bg-gray-800 text-slate-400";
+    case "Critical Gap":
+      return "bg-[#ef444420] text-red-500";
+    case "Partial Gap":
+      return "bg-[#f9731620] text-orange-400";
+    case "Training Required":
+      return "bg-[#facc1520] text-yellow-400";
+    case "Covered":
+      return "bg-[#10b98120] text-emerald-500";
+    default:
+      return "bg-gray-800 text-slate-400";
   }
 }
 
 function priorityBadgeClass(priority: string): string {
   switch (priority) {
-    case "Critical": return "bg-[#ef444420] text-red-500";
-    case "High":     return "bg-[#f9731620] text-orange-400";
-    case "Medium":   return "bg-[#facc1520] text-yellow-400";
-    case "Low":      return "bg-[#10b98120] text-emerald-500";
-    default:         return "bg-gray-800 text-slate-400";
+    case "Critical":
+      return "bg-[#ef444420] text-red-500";
+    case "High":
+      return "bg-[#f9731620] text-orange-400";
+    case "Medium":
+      return "bg-[#facc1520] text-yellow-400";
+    case "Low":
+      return "bg-[#10b98120] text-emerald-500";
+    default:
+      return "bg-gray-800 text-slate-400";
   }
 }
 
-function urgencyIcon(urgency: string): { icon: React.ElementType; cls: string; bg: string; border: string } {
+function urgencyIcon(urgency: string): {
+  icon: React.ElementType;
+  cls: string;
+  bg: string;
+  border: string;
+} {
   switch (urgency) {
-    case "critical": return { icon: AlertTriangle, cls: "text-red-500",    bg: "bg-[#ef444408]", border: "border-red-500/20"    };
-    case "high":     return { icon: Zap,           cls: "text-orange-400", bg: "bg-[#f9731608]", border: "border-orange-400/20" };
-    case "medium":   return { icon: Brain,         cls: "text-yellow-400", bg: "bg-[#facc1508]", border: "border-yellow-400/20" };
-    default:         return { icon: CheckCircle2,  cls: "text-emerald-500",bg: "bg-[#10b98108]", border: "border-emerald-500/20" };
+    case "critical":
+      return {
+        icon: AlertTriangle,
+        cls: "text-red-500",
+        bg: "bg-[#ef444408]",
+        border: "border-red-500/20",
+      };
+    case "high":
+      return {
+        icon: Zap,
+        cls: "text-orange-400",
+        bg: "bg-[#f9731608]",
+        border: "border-orange-400/20",
+      };
+    case "medium":
+      return {
+        icon: Brain,
+        cls: "text-yellow-400",
+        bg: "bg-[#facc1508]",
+        border: "border-yellow-400/20",
+      };
+    default:
+      return {
+        icon: CheckCircle2,
+        cls: "text-emerald-500",
+        bg: "bg-[#10b98108]",
+        border: "border-emerald-500/20",
+      };
   }
 }
 
@@ -131,7 +178,11 @@ function coverageBarClass(pct: number): string {
 async function fetchRequirements(): Promise<{
   requirements: Requirement[];
   coverageByGroup: CoverageGroup[];
-  certExpiries: { engineer_name: string; skill_name: string; expiry_date: string | null }[];
+  certExpiries: {
+    engineer_name: string;
+    skill_name: string;
+    expiry_date: string | null;
+  }[];
   actionRows: ActionRow[];
   stats: ReqStats;
   departments: Department[];
@@ -140,19 +191,31 @@ async function fetchRequirements(): Promise<{
   const { data, error } = await supabase.functions.invoke("requirements-data");
   if (error || !data) {
     return {
-      requirements: [], coverageByGroup: [], certExpiries: [], actionRows: [],
-      stats: { totalReqs: 0, fullyCovered: 0, skillsAtRisk: 0, criticalGaps: 0 },
+      requirements: [],
+      coverageByGroup: [],
+      certExpiries: [],
+      actionRows: [],
+      stats: {
+        totalReqs: 0,
+        fullyCovered: 0,
+        skillsAtRisk: 0,
+        criticalGaps: 0,
+      },
       departments: [],
       error: true,
     };
   }
   return {
-    requirements:    (data.requirements    ?? []) as Requirement[],
+    requirements: (data.requirements ?? []) as Requirement[],
     coverageByGroup: (data.coverageByGroup ?? []) as CoverageGroup[],
-    certExpiries:    (data.certExpiries    ?? []) as { engineer_name: string; skill_name: string; expiry_date: string | null }[],
-    actionRows:      (data.actionRows      ?? []) as ActionRow[],
-    stats:           data.stats as ReqStats,
-    departments:     (data.departments     ?? []) as Department[],
+    certExpiries: (data.certExpiries ?? []) as {
+      engineer_name: string;
+      skill_name: string;
+      expiry_date: string | null;
+    }[],
+    actionRows: (data.actionRows ?? []) as ActionRow[],
+    stats: data.stats as ReqStats,
+    departments: (data.departments ?? []) as Department[],
   };
 }
 
@@ -165,7 +228,10 @@ interface InsightItem {
   icon: React.ElementType;
 }
 
-function buildInsights(requirements: Requirement[], stats: ReqStats): InsightItem[] {
+function buildInsights(
+  requirements: Requirement[],
+  stats: ReqStats,
+): InsightItem[] {
   const items: InsightItem[] = [];
 
   const critGaps = requirements.filter((r) => r.status === "Critical Gap");
@@ -185,13 +251,21 @@ function buildInsights(requirements: Requirement[], stats: ReqStats): InsightIte
       severity: "critical",
       icon: Shield,
       title: `${spofItems.length} single-point-of-failure requirement${spofItems.length !== 1 ? "s" : ""}`,
-      text: `Loss of one engineer would cause a total coverage failure for: ${spofItems.slice(0, 2).map((r) => r.title).join(", ")}${spofItems.length > 2 ? ` +${spofItems.length - 2} more` : ""}.`,
+      text: `Loss of one engineer would cause a total coverage failure for: ${spofItems
+        .slice(0, 2)
+        .map((r) => r.title)
+        .join(
+          ", ",
+        )}${spofItems.length > 2 ? ` +${spofItems.length - 2} more` : ""}.`,
     });
   }
 
   const trainReqs = requirements.filter((r) => r.training_required > 0);
   if (trainReqs.length > 0) {
-    const totalTraining = trainReqs.reduce((s, r) => s + r.training_required, 0);
+    const totalTraining = trainReqs.reduce(
+      (s, r) => s + r.training_required,
+      0,
+    );
     items.push({
       severity: trainReqs.length > 5 ? "high" : "medium",
       icon: BookOpen,
@@ -211,7 +285,10 @@ function buildInsights(requirements: Requirement[], stats: ReqStats): InsightIte
     });
   }
 
-  const coveragePct = stats.totalReqs > 0 ? Math.round((stats.fullyCovered / stats.totalReqs) * 100) : 0;
+  const coveragePct =
+    stats.totalReqs > 0
+      ? Math.round((stats.fullyCovered / stats.totalReqs) * 100)
+      : 0;
   if (coveragePct < 40) {
     items.push({
       severity: "high",
@@ -226,15 +303,33 @@ function buildInsights(requirements: Requirement[], stats: ReqStats): InsightIte
 
 // ─── Requirement Drawer ───────────────────────────────────────────────────────
 
-function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose: () => void }) {
-  const isOpen   = req !== null;
+function RequirementDrawer({
+  req,
+  onClose,
+}: {
+  req: Requirement | null;
+  onClose: () => void;
+}) {
+  const isOpen = req !== null;
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (req && scrollRef.current) scrollRef.current.scrollTop = 0; }, [req?.id]);
+  useEffect(() => {
+    if (req && scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [req?.id]);
 
   const coveragePct = req?.coverage_pct ?? 0;
-  const coverageColor = coveragePct >= 80 ? "text-emerald-400" : coveragePct >= 50 ? "text-yellow-400" : "text-red-400";
-  const coverageBarFill = coveragePct >= 80 ? "bg-emerald-500" : coveragePct >= 50 ? "bg-yellow-400" : "bg-red-500";
+  const coverageColor =
+    coveragePct >= 80
+      ? "text-emerald-400"
+      : coveragePct >= 50
+        ? "text-yellow-400"
+        : "text-red-400";
+  const coverageBarFill =
+    coveragePct >= 80
+      ? "bg-emerald-500"
+      : coveragePct >= 50
+        ? "bg-yellow-400"
+        : "bg-red-500";
 
   return (
     <DetailDrawer open={isOpen} onClose={onClose}>
@@ -243,7 +338,9 @@ function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose:
         <div className="flex flex-col gap-1.5 min-w-0 pr-3">
           <div className="flex flex-wrap items-center gap-2">
             {req && (
-              <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(req.priority)}`}>
+              <Badge
+                className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(req.priority)}`}
+              >
                 {req.priority}
               </Badge>
             )}
@@ -254,103 +351,174 @@ function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose:
             )}
             {req?.certification_required && (
               <span className="flex items-center gap-1 text-[10px] font-medium text-blue-400">
-                <Shield className="h-3 w-3" />Cert required
+                <Shield className="h-3 w-3" />
+                Cert required
               </span>
             )}
           </div>
-          <h2 className="text-base font-semibold text-slate-50 leading-snug">{req?.title ?? "—"}</h2>
+          <h2 className="text-base font-semibold text-slate-50 leading-snug">
+            {req?.title ?? "—"}
+          </h2>
           <p className="text-sm text-slate-400">{req?.skill_category ?? ""}</p>
         </div>
         <DrawerCloseButton onClose={onClose} />
       </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-4 divide-x divide-gray-800 border-b border-gray-800">
-          {[
-            { label: "Coverage",    value: req ? `${coveragePct}%` : "—",                  cls: coverageColor },
-            { label: "Qualified",   value: req ? String(req.engineers_qualified) : "—",     cls: (req?.engineers_qualified ?? 0) > 0 ? "text-emerald-400" : "text-red-400" },
-            { label: "Gap",         value: req ? (req.gap > 0 ? String(req.gap) : "—") : "—", cls: (req?.gap ?? 0) > 0 ? "text-orange-400" : "text-emerald-400" },
-            { label: "Training",    value: req ? String(req.training_required) : "—",       cls: (req?.training_required ?? 0) > 0 ? "text-yellow-400" : "text-slate-50" },
-          ].map(({ label, value, cls }) => (
-            <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
-              <p className="text-[10px] font-medium text-slate-500">{label}</p>
-              <p className={`text-base font-semibold tabular-nums ${cls}`}>{value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div ref={scrollRef} className="flex flex-1 flex-col gap-0 overflow-y-auto">
-
-          {/* Details */}
-          <div className="border-b border-gray-800 p-5">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Details</p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { label: "Area / Line",   value: req?.area ?? "—"             },
-                { label: "Group",         value: req?.group ?? "—"            },
-                { label: "Department",    value: req?.department_name ?? "—"  },
-                { label: "Required Level", value: req ? `${req.required_level}/5` : "—" },
-                { label: "Current Avg",   value: req ? `${req.current_avg.toFixed(1)}/5` : "—" },
-                { label: "Status",        value: req?.status ?? "—"           },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#111620] p-2.5">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
-                  <span className="text-xs font-medium text-slate-200">{value}</span>
-                </div>
-              ))}
-            </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-4 divide-x divide-gray-800 border-b border-gray-800">
+        {[
+          {
+            label: "Coverage",
+            value: req ? `${coveragePct}%` : "—",
+            cls: coverageColor,
+          },
+          {
+            label: "Qualified",
+            value: req ? String(req.engineers_qualified) : "—",
+            cls:
+              (req?.engineers_qualified ?? 0) > 0
+                ? "text-emerald-400"
+                : "text-red-400",
+          },
+          {
+            label: "Gap",
+            value: req ? (req.gap > 0 ? String(req.gap) : "—") : "—",
+            cls: (req?.gap ?? 0) > 0 ? "text-orange-400" : "text-emerald-400",
+          },
+          {
+            label: "Training",
+            value: req ? String(req.training_required) : "—",
+            cls:
+              (req?.training_required ?? 0) > 0
+                ? "text-yellow-400"
+                : "text-slate-50",
+          },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
+            <p className="text-[10px] font-medium text-slate-500">{label}</p>
+            <p className={`text-base font-semibold tabular-nums ${cls}`}>
+              {value}
+            </p>
           </div>
+        ))}
+      </div>
 
-          {/* Coverage bar */}
-          <div className="border-b border-gray-800 p-5">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Coverage</p>
-              <span className={`text-sm font-semibold tabular-nums ${coverageColor}`}>{coveragePct}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-              <div className={`h-2 rounded-full transition-all ${coverageBarFill}`} style={{ width: `${coveragePct}%` }} />
-            </div>
-            <div className="mt-2 flex items-center gap-4 text-[11px] text-slate-500">
-              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{req?.engineers_qualified ?? 0} qualified</span>
-              {(req?.engineers_below ?? 0) > 0 && <span>{req?.engineers_below} below target</span>}
-              {(req?.training_required ?? 0) > 0 && <span className="text-orange-400">{req?.training_required} need training</span>}
-            </div>
-          </div>
-
-          {/* AI Recommendation */}
-          {req?.recommendation && (
-            <div className="border-b border-gray-800 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="h-4 w-4 text-blue-400" />
-                <p className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">AI Recommendation</p>
-              </div>
-              <p className="text-xs leading-relaxed text-slate-300">{req.recommendation}</p>
-            </div>
-          )}
-
-          {/* Workflow navigation */}
-          <div className="p-5">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Navigate</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "View Skills",       route: "/skills-matrix" },
-                { label: "View Engineers",    route: "/engineers"     },
-                { label: "View Equipment",    route: "/equipment"     },
-                { label: "View Training",     route: "/training"      },
-                { label: "View AI Match",     route: "/ai-matching"   },
-              ].map(({ label, route }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => { onClose(); navigate(route); }}
-                  className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
-                >
+      <div
+        ref={scrollRef}
+        className="flex flex-1 flex-col gap-0 overflow-y-auto"
+      >
+        {/* Details */}
+        <div className="border-b border-gray-800 p-5">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Details
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { label: "Area / Line", value: req?.area ?? "—" },
+              { label: "Group", value: req?.group ?? "—" },
+              { label: "Department", value: req?.department_name ?? "—" },
+              {
+                label: "Required Level",
+                value: req ? `${req.required_level}/5` : "—",
+              },
+              {
+                label: "Current Avg",
+                value: req ? `${req.current_avg.toFixed(1)}/5` : "—",
+              },
+              { label: "Status", value: req?.status ?? "—" },
+            ].map(({ label, value }) => (
+              <div
+                key={label}
+                className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#111620] p-2.5"
+              >
+                <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
                   {label}
-                </button>
-              ))}
-            </div>
+                </span>
+                <span className="text-xs font-medium text-slate-200">
+                  {value}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Coverage bar */}
+        <div className="border-b border-gray-800 p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Coverage
+            </p>
+            <span
+              className={`text-sm font-semibold tabular-nums ${coverageColor}`}
+            >
+              {coveragePct}%
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+            <div
+              className={`h-2 rounded-full transition-all ${coverageBarFill}`}
+              style={{ width: `${coveragePct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center gap-4 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {req?.engineers_qualified ?? 0} qualified
+            </span>
+            {(req?.engineers_below ?? 0) > 0 && (
+              <span>{req?.engineers_below} below target</span>
+            )}
+            {(req?.training_required ?? 0) > 0 && (
+              <span className="text-orange-400">
+                {req?.training_required} need training
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* AI Recommendation */}
+        {req?.recommendation && (
+          <div className="border-b border-gray-800 p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-4 w-4 text-blue-400" />
+              <p className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">
+                AI Recommendation
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">
+              {req.recommendation}
+            </p>
+          </div>
+        )}
+
+        {/* Workflow navigation */}
+        <div className="p-5">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Navigate
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "View Skills", route: "/skills-matrix" },
+              { label: "View Engineers", route: "/engineers" },
+              { label: "View Equipment", route: "/equipment" },
+              { label: "View Training", route: "/training" },
+              { label: "View AI Match", route: "/ai-matching" },
+            ].map(({ label, route }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(route);
+                }}
+                className="rounded-lg border border-gray-700 bg-[#111620] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-[#141b2a] hover:text-blue-300"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </DetailDrawer>
   );
 }
@@ -358,22 +526,32 @@ function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose:
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const RequirementsSection = (): JSX.Element => {
-  const [requirements,    setRequirements]    = useState<Requirement[]>([]);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [coverageByGroup, setCoverageByGroup] = useState<CoverageGroup[]>([]);
-  const [actionRows,      setActionRows]      = useState<ActionRow[]>([]);
-  const [stats,           setStats]           = useState<ReqStats>({ totalReqs: 0, fullyCovered: 0, skillsAtRisk: 0, criticalGaps: 0 });
-  const [departments,     setDepartments]     = useState<Department[]>([]);
-  const [loading,         setLoading]         = useState(true);
-  const [loadError,       setLoadError]       = useState(false);
-  const [tick,            setTick]            = useState(0);
+  const [actionRows, setActionRows] = useState<ActionRow[]>([]);
+  const [stats, setStats] = useState<ReqStats>({
+    totalReqs: 0,
+    fullyCovered: 0,
+    skillsAtRisk: 0,
+    criticalGaps: 0,
+  });
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const [selectedReq, setSelectedReq] = useState<Requirement | null>(null);
+  const returnTo = searchParams.get("returnTo") ?? "";
+  const equipmentContext = searchParams.get("equipment") ?? "";
+  const focusedSkill = searchParams.get("skill") ?? "";
 
   // Filters
-  const [search,         setSearch]         = useState("");
-  const [filterDept,     setFilterDept]     = useState("all");
+  const [search, setSearch] = useState(() => searchParams.get("skill") ?? "");
+  const [filterDept, setFilterDept] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
-  const [filterStatus,   setFilterStatus]   = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
 
   // Table pagination
@@ -385,7 +563,11 @@ export const RequirementsSection = (): JSX.Element => {
     setLoadError(false);
     fetchRequirements().then((payload) => {
       if (cancelled) return;
-      if (payload.error) { setLoadError(true); setLoading(false); return; }
+      if (payload.error) {
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
       setRequirements(payload.requirements);
       setCoverageByGroup(payload.coverageByGroup);
       setActionRows(payload.actionRows);
@@ -393,207 +575,428 @@ export const RequirementsSection = (): JSX.Element => {
       setDepartments(payload.departments);
       setLoading(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tick]);
+
+  useEffect(() => {
+    const requestedSkill = searchParams.get("skill")?.trim().toLowerCase();
+    if (!requestedSkill || requirements.length === 0) return;
+    const match = requirements.find(
+      (requirement) =>
+        requirement.title.trim().toLowerCase() === requestedSkill,
+    );
+    if (match) setSelectedReq(match);
+  }, [requirements, searchParams]);
+
+  const closeRequirement = () => {
+    setSelectedReq(null);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("skill");
+        next.delete("from");
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const categories = useMemo(
-    () => [...new Set(requirements.map((r) => r.skill_category).filter(Boolean))].sort(),
-    [requirements]
+    () =>
+      [
+        ...new Set(requirements.map((r) => r.skill_category).filter(Boolean)),
+      ].sort(),
+    [requirements],
   );
 
   const deptNames = useMemo(
     () => departments.map((d) => d.name).sort(),
-    [departments]
+    [departments],
   );
 
   const filteredRequirements = useMemo(() => {
     const lc = search.toLowerCase();
     return requirements.filter((req) => {
-      if (search && !req.title.toLowerCase().includes(lc) && !req.area.toLowerCase().includes(lc)) return false;
-      if (filterDept !== "all"     && req.department_name !== filterDept) return false;
-      if (filterPriority !== "all" && req.priority !== filterPriority)    return false;
-      if (filterStatus !== "all"   && req.status !== filterStatus)         return false;
-      if (filterCategory !== "all" && req.skill_category !== filterCategory) return false;
+      if (
+        search &&
+        !req.title.toLowerCase().includes(lc) &&
+        !req.area.toLowerCase().includes(lc)
+      )
+        return false;
+      if (filterDept !== "all" && req.department_name !== filterDept)
+        return false;
+      if (filterPriority !== "all" && req.priority !== filterPriority)
+        return false;
+      if (filterStatus !== "all" && req.status !== filterStatus) return false;
+      if (filterCategory !== "all" && req.skill_category !== filterCategory)
+        return false;
       return true;
     });
-  }, [requirements, search, filterDept, filterPriority, filterStatus, filterCategory]);
+  }, [
+    requirements,
+    search,
+    filterDept,
+    filterPriority,
+    filterStatus,
+    filterCategory,
+  ]);
 
-  const hasActiveFilters = !!(search || filterDept !== "all" || filterPriority !== "all" || filterStatus !== "all" || filterCategory !== "all");
+  const hasActiveFilters = !!(
+    search ||
+    filterDept !== "all" ||
+    filterPriority !== "all" ||
+    filterStatus !== "all" ||
+    filterCategory !== "all"
+  );
 
   const resetFilters = () => {
-    setSearch(""); setFilterDept("all"); setFilterPriority("all");
-    setFilterStatus("all"); setFilterCategory("all"); setTablePage(0);
+    setSearch("");
+    setFilterDept("all");
+    setFilterPriority("all");
+    setFilterStatus("all");
+    setFilterCategory("all");
+    setTablePage(0);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("skill");
+        next.delete("from");
+        return next;
+      },
+      { replace: true },
+    );
   };
 
-  const totalTablePages = Math.ceil(filteredRequirements.length / TABLE_PAGE_SIZE);
-  const pagedReqs       = filteredRequirements.slice(tablePage * TABLE_PAGE_SIZE, (tablePage + 1) * TABLE_PAGE_SIZE);
+  const totalTablePages = Math.ceil(
+    filteredRequirements.length / TABLE_PAGE_SIZE,
+  );
+  const pagedReqs = filteredRequirements.slice(
+    tablePage * TABLE_PAGE_SIZE,
+    (tablePage + 1) * TABLE_PAGE_SIZE,
+  );
 
-  const insights = useMemo(() => buildInsights(requirements, stats), [requirements, stats]);
+  const insights = useMemo(
+    () => buildInsights(requirements, stats),
+    [requirements, stats],
+  );
 
   // ── KPI cards ─────────────────────────────────────────────────────────────
 
-  const kpiCards = useMemo(() => [
-    {
-      label: "Total Requirements",
-      value: String(stats.totalReqs),
-      sub: "Site skill requirements",
-      icon: ClipboardList,
-      valueClass: "text-slate-50",
-      trend: { direction: "up" as const,   label: "Growing",         positiveIsUp: true  },
-    },
-    {
-      label: "Fully Covered",
-      value: String(stats.fullyCovered),
-      sub: `${stats.totalReqs > 0 ? Math.round((stats.fullyCovered / stats.totalReqs) * 100) : 0}% coverage rate`,
-      icon: CheckCircle2,
-      valueClass: stats.fullyCovered > 0 ? "text-emerald-400" : "text-slate-50",
-      trend: { direction: "up" as const,   label: "+2 this week",    positiveIsUp: true  },
-    },
-    {
-      label: "Skills at Risk",
-      value: String(stats.skillsAtRisk),
-      sub: "Partial gap or training needed",
-      icon: TrendingUp,
-      valueClass: stats.skillsAtRisk > 0 ? "text-yellow-400" : "text-emerald-400",
-      trend: { direction: "down" as const, label: "-1 vs last week",  positiveIsUp: false },
-    },
-    {
-      label: "Critical Gaps",
-      value: String(stats.criticalGaps),
-      sub: "Zero or insufficient coverage",
-      icon: AlertTriangle,
-      valueClass: stats.criticalGaps > 0 ? "text-red-500" : "text-emerald-400",
-      trend: { direction: "flat" as const, label: "No change",        positiveIsUp: false },
-    },
-  ], [stats]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        label: "Total Requirements",
+        value: String(stats.totalReqs),
+        sub: "Site skill requirements",
+        icon: ClipboardList,
+        valueClass: "text-slate-50",
+        trend: {
+          direction: "up" as const,
+          label: "Growing",
+          positiveIsUp: true,
+        },
+      },
+      {
+        label: "Fully Covered",
+        value: String(stats.fullyCovered),
+        sub: `${stats.totalReqs > 0 ? Math.round((stats.fullyCovered / stats.totalReqs) * 100) : 0}% coverage rate`,
+        icon: CheckCircle2,
+        valueClass:
+          stats.fullyCovered > 0 ? "text-emerald-400" : "text-slate-50",
+        trend: {
+          direction: "up" as const,
+          label: "+2 this week",
+          positiveIsUp: true,
+        },
+      },
+      {
+        label: "Skills at Risk",
+        value: String(stats.skillsAtRisk),
+        sub: "Partial gap or training needed",
+        icon: TrendingUp,
+        valueClass:
+          stats.skillsAtRisk > 0 ? "text-yellow-400" : "text-emerald-400",
+        trend: {
+          direction: "down" as const,
+          label: "-1 vs last week",
+          positiveIsUp: false,
+        },
+      },
+      {
+        label: "Critical Gaps",
+        value: String(stats.criticalGaps),
+        sub: "Zero or insufficient coverage",
+        icon: AlertTriangle,
+        valueClass:
+          stats.criticalGaps > 0 ? "text-red-500" : "text-emerald-400",
+        trend: {
+          direction: "flat" as const,
+          label: "No change",
+          positiveIsUp: false,
+        },
+      },
+    ],
+    [stats],
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
-
-      <RequirementDrawer req={selectedReq} onClose={() => setSelectedReq(null)} />
+      <RequirementDrawer req={selectedReq} onClose={closeRequirement} />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div className="flex flex-col items-start gap-1">
-          <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
+          <p className="text-xs font-medium text-slate-500">
+            Alpha Manufacturing
+          </p>
           <div className="flex items-center gap-2">
             <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
               Requirements
             </h1>
-            <ContextHelp content={{
-              title: "Requirements",
-              body:  "Define and track the skill coverage requirements for your site. Each requirement specifies how many engineers need to be competent in a given skill area.",
-              usage: "Add requirements for each critical skill. Monitor coverage percentages and risk levels. Click any row to see engineer breakdown and AI recommendations.",
-              aiNote: "Vorta AI scores each requirement against live engineer data and assigns a risk level, flagging SPOFs and coverage shortfalls.",
-            }} />
+            <ContextHelp
+              content={{
+                title: "Requirements",
+                body: "Define and track the skill coverage requirements for your site. Each requirement specifies how many engineers need to be competent in a given skill area.",
+                usage:
+                  "Add requirements for each critical skill. Monitor coverage percentages and risk levels. Click any row to see engineer breakdown and AI recommendations.",
+                aiNote:
+                  "Vorta AI scores each requirement against live engineer data and assigns a risk level, flagging SPOFs and coverage shortfalls.",
+              }}
+            />
           </div>
-          <p className="text-sm text-slate-400">Define, track, and manage site capability requirements across skills, equipment, departments, and risk areas.</p>
+          <p className="text-sm text-slate-400">
+            Define, track, and manage site capability requirements across
+            skills, equipment, departments, and risk areas.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-          <Button type="button" variant="outline" className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto gap-2 border-[#ffffff20] bg-[#ffffff1a] px-4 py-2 text-sm font-semibold text-slate-50 hover:bg-[#ffffff24] hover:text-slate-50"
+          >
             <Download className="h-4 w-4" /> Export
           </Button>
-          <Button type="button" className="h-auto gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+          <Button
+            type="button"
+            className="h-auto gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          >
             <Plus className="h-4 w-4" /> Add Requirement
           </Button>
           <ExplainWithAi pageId="requirements" />
-          <button type="button" onClick={() => setTick((t) => t + 1)} disabled={loading}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50">
+          <button
+            type="button"
+            onClick={() => setTick((t) => t + 1)}
+            disabled={loading}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-50"
+          >
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </button>
-          <button type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200"
+          >
             <UserCircle className="h-8 w-8" />
           </button>
         </div>
       </header>
 
+      {returnTo ? (
+        <div className="flex w-full flex-col gap-2 rounded-xl border border-blue-500/25 bg-blue-500/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
+              Equipment capability requirement
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {focusedSkill
+                ? `Showing the requirement and coverage evidence for ${focusedSkill}.`
+                : "Reviewing the requirement linked from the equipment capability record."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(returnTo)}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/10"
+          >
+            Back to equipment{equipmentContext ? " skills" : ""}{" "}
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : null}
+
       {/* ── Sync + AI actions ────────────────────────────────────────────── */}
       <div className="flex w-full flex-col gap-4">
-        <SyncIndicator loading={loading} source="Supabase" confidence={stats.totalReqs > 0 ? Math.min(96, 70 + Math.round((stats.fullyCovered / stats.totalReqs) * 26)) : undefined} />
+        <SyncIndicator
+          loading={loading}
+          source="Supabase"
+          confidence={
+            stats.totalReqs > 0
+              ? Math.min(
+                  96,
+                  70 + Math.round((stats.fullyCovered / stats.totalReqs) * 26),
+                )
+              : undefined
+          }
+        />
         {!loading && !loadError && (
-          <AiActionsPanel actions={[
-            { label: "Review critical skill gaps", description: `${stats.criticalGaps} critical gap${stats.criticalGaps !== 1 ? "s" : ""} with insufficient coverage. Prioritise training or recruitment to close these first.`, priority: "critical", icon: AlertTriangle },
-            { label: "Book training for at-risk skills", description: `${stats.skillsAtRisk} skill${stats.skillsAtRisk !== 1 ? "s" : ""} are at risk. Use AI Matching to find the best-fit training for each engineer.`, priority: "high", icon: Sparkles, href: "/ai-matching" },
-            { label: "Add missing requirements", description: "Ensure all critical equipment and processes have defined skill requirements so AI can track coverage accurately.", priority: "medium", icon: ClipboardList },
-            { label: "Export requirements report", description: "Share the current requirements and coverage status with management or your compliance team.", priority: "low", icon: Download },
-          ] as AiAction[]} />
+          <AiActionsPanel
+            actions={
+              [
+                {
+                  label: "Review critical skill gaps",
+                  description: `${stats.criticalGaps} critical gap${stats.criticalGaps !== 1 ? "s" : ""} with insufficient coverage. Prioritise training or recruitment to close these first.`,
+                  priority: "critical",
+                  icon: AlertTriangle,
+                },
+                {
+                  label: "Book training for at-risk skills",
+                  description: `${stats.skillsAtRisk} skill${stats.skillsAtRisk !== 1 ? "s" : ""} are at risk. Use AI Matching to find the best-fit training for each engineer.`,
+                  priority: "high",
+                  icon: Sparkles,
+                  href: "/ai-matching",
+                },
+                {
+                  label: "Add missing requirements",
+                  description:
+                    "Ensure all critical equipment and processes have defined skill requirements so AI can track coverage accurately.",
+                  priority: "medium",
+                  icon: ClipboardList,
+                },
+                {
+                  label: "Export requirements report",
+                  description:
+                    "Share the current requirements and coverage status with management or your compliance team.",
+                  priority: "low",
+                  icon: Download,
+                },
+              ] as AiAction[]
+            }
+          />
         )}
       </div>
 
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-6">
-
         {/* ── KPI cards ──────────────────────────────────────────────────────── */}
         <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {kpiCards.map(({ label, value, sub, icon: Icon, valueClass, trend }) => (
-            <Card key={label} className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-              <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-xs font-medium text-slate-400">{label}</p>
-                  <Icon className="h-4 w-4 shrink-0 text-slate-600" />
-                </div>
-                <p className={`truncate text-xl font-semibold tabular-nums ${valueClass}`}>
-                  {loading ? "—" : value}
-                </p>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-[11px] text-slate-500">{sub}</p>
-                  {!loading && <TrendIndicator direction={trend.direction} label={trend.label} positiveIsUp={trend.positiveIsUp} />}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {kpiCards.map(
+            ({ label, value, sub, icon: Icon, valueClass, trend }) => (
+              <Card
+                key={label}
+                className="min-w-0 h-full rounded-xl border border-gray-800 bg-[#141820] shadow-none"
+              >
+                <CardContent className="flex min-w-0 h-full flex-col gap-3 p-5">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-xs font-medium text-slate-400">
+                      {label}
+                    </p>
+                    <Icon className="h-4 w-4 shrink-0 text-slate-600" />
+                  </div>
+                  <p
+                    className={`truncate text-xl font-semibold tabular-nums ${valueClass}`}
+                  >
+                    {loading ? "—" : value}
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[11px] text-slate-500">{sub}</p>
+                    {!loading && (
+                      <TrendIndicator
+                        direction={trend.direction}
+                        label={trend.label}
+                        positiveIsUp={trend.positiveIsUp}
+                      />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ),
+          )}
         </section>
 
         {/* ── AI Insights + Coverage ──────────────────────────────────────────── */}
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
-
           {/* AI Requirement Insights */}
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex min-w-0 flex-col gap-4 p-5">
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-slate-50">AI Requirement Insights</h2>
+                <h2 className="font-semibold text-slate-50">
+                  AI Requirement Insights
+                </h2>
                 <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-xs font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  Live
                 </Badge>
               </div>
               <div className="flex flex-col gap-3">
-                {loading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="rounded-lg border border-gray-800 p-4">
-                        <div className="h-4 w-48 animate-pulse rounded bg-gray-800" />
-                        <div className="mt-2 h-3 w-full animate-pulse rounded bg-gray-800/60" />
-                      </div>
-                    ))
-                  : insights.length === 0
-                  ? (
-                      <div className="flex flex-col items-center gap-2 py-8 text-center">
-                        <CheckCircle2 className="h-8 w-8 text-emerald-400/50" />
-                        <p className="text-sm font-medium text-emerald-400">All requirements covered</p>
-                        <p className="text-xs text-slate-500">No critical gaps detected.</p>
-                      </div>
-                    )
-                  : insights.map((ins, i) => {
-                      const conf =
-                        ins.severity === "critical"
-                          ? { bg: "bg-[#ef444408]", border: "border-red-500/20",    icon: "text-red-500",    title: "text-red-400"    }
-                          : ins.severity === "high"
-                          ? { bg: "bg-[#f9731608]", border: "border-orange-400/20", icon: "text-orange-400", title: "text-orange-300" }
-                          : { bg: "bg-[#facc1508]", border: "border-yellow-400/20", icon: "text-yellow-400", title: "text-yellow-300" };
-                      const Icon = ins.icon;
-                      return (
-                        <div key={i} className={`flex items-start gap-2.5 rounded-lg border ${conf.border} ${conf.bg} p-4`}>
-                          <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${conf.icon}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm font-semibold ${conf.title}`}>{ins.title}</p>
-                            <p className="mt-1 text-xs leading-relaxed text-slate-400">{ins.text}</p>
-                          </div>
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-gray-800 p-4"
+                    >
+                      <div className="h-4 w-48 animate-pulse rounded bg-gray-800" />
+                      <div className="mt-2 h-3 w-full animate-pulse rounded bg-gray-800/60" />
+                    </div>
+                  ))
+                ) : insights.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-center">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-400/50" />
+                    <p className="text-sm font-medium text-emerald-400">
+                      All requirements covered
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      No critical gaps detected.
+                    </p>
+                  </div>
+                ) : (
+                  insights.map((ins, i) => {
+                    const conf =
+                      ins.severity === "critical"
+                        ? {
+                            bg: "bg-[#ef444408]",
+                            border: "border-red-500/20",
+                            icon: "text-red-500",
+                            title: "text-red-400",
+                          }
+                        : ins.severity === "high"
+                          ? {
+                              bg: "bg-[#f9731608]",
+                              border: "border-orange-400/20",
+                              icon: "text-orange-400",
+                              title: "text-orange-300",
+                            }
+                          : {
+                              bg: "bg-[#facc1508]",
+                              border: "border-yellow-400/20",
+                              icon: "text-yellow-400",
+                              title: "text-yellow-300",
+                            };
+                    const Icon = ins.icon;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 rounded-lg border ${conf.border} ${conf.bg} p-4`}
+                      >
+                        <Icon
+                          className={`mt-0.5 h-4 w-4 shrink-0 ${conf.icon}`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-semibold ${conf.title}`}>
+                            {ins.title}
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                            {ins.text}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -602,50 +1005,62 @@ export const RequirementsSection = (): JSX.Element => {
           <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
             <CardContent className="flex min-w-0 flex-col gap-4 p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-slate-50">Coverage by Category</h2>
+                <h2 className="font-semibold text-slate-50">
+                  Coverage by Category
+                </h2>
                 <span className="text-[11px] text-slate-500">
-                  {loading ? "—" : `${stats.fullyCovered}/${stats.totalReqs} covered`}
+                  {loading
+                    ? "—"
+                    : `${stats.fullyCovered}/${stats.totalReqs} covered`}
                 </span>
               </div>
               <div className="flex flex-col gap-4">
-                {loading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="flex flex-col gap-1.5">
-                        <div className="h-3.5 w-24 animate-pulse rounded bg-gray-800" />
-                        <div className="h-2 w-full animate-pulse rounded bg-gray-800/60" />
-                      </div>
-                    ))
-                  : coverageByGroup.length === 0
-                  ? (
-                      <div className="flex flex-col items-center gap-2 py-8 text-center">
-                        <ClipboardList className="h-8 w-8 text-slate-700" />
-                        <p className="text-sm text-slate-500">No coverage data available.</p>
-                      </div>
-                    )
-                  : coverageByGroup.map((cg) => (
-                      <div key={cg.group} className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-200">{cg.group}</span>
-                            {cg.gaps > 0 && (
-                              <span className="rounded bg-[#ef444415] px-1.5 py-0.5 text-[10px] font-medium text-red-500">
-                                {cg.gaps} gap{cg.gaps !== 1 ? "s" : ""}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-semibold tabular-nums ${cg.pct >= 80 ? "text-emerald-400" : cg.pct >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-                              {cg.pct}%
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <div className="h-3.5 w-24 animate-pulse rounded bg-gray-800" />
+                      <div className="h-2 w-full animate-pulse rounded bg-gray-800/60" />
+                    </div>
+                  ))
+                ) : coverageByGroup.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-center">
+                    <ClipboardList className="h-8 w-8 text-slate-700" />
+                    <p className="text-sm text-slate-500">
+                      No coverage data available.
+                    </p>
+                  </div>
+                ) : (
+                  coverageByGroup.map((cg) => (
+                    <div key={cg.group} className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-200">
+                            {cg.group}
+                          </span>
+                          {cg.gaps > 0 && (
+                            <span className="rounded bg-[#ef444415] px-1.5 py-0.5 text-[10px] font-medium text-red-500">
+                              {cg.gaps} gap{cg.gaps !== 1 ? "s" : ""}
                             </span>
-                            <span className="text-[11px] text-slate-500">{cg.covered}/{cg.total}</span>
-                          </div>
+                          )}
                         </div>
-                        <Progress
-                          value={cg.pct}
-                          className={`h-2 overflow-hidden rounded bg-gray-800 ${coverageBarClass(cg.pct)}`}
-                        />
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-sm font-semibold tabular-nums ${cg.pct >= 80 ? "text-emerald-400" : cg.pct >= 50 ? "text-yellow-400" : "text-red-400"}`}
+                          >
+                            {cg.pct}%
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {cg.covered}/{cg.total}
+                          </span>
+                        </div>
                       </div>
-                    ))}
+                      <Progress
+                        value={cg.pct}
+                        className={`h-2 overflow-hidden rounded bg-gray-800 ${coverageBarClass(cg.pct)}`}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -654,30 +1069,48 @@ export const RequirementsSection = (): JSX.Element => {
         {/* ── Requirements Table ──────────────────────────────────────────────── */}
         <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
           <CardContent className="flex min-w-0 flex-col gap-4 p-5">
-
             {/* Card header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-semibold text-slate-50">Requirements Register</h2>
+                <h2 className="font-semibold text-slate-50">
+                  Requirements Register
+                </h2>
                 <p className="text-sm text-slate-400">
-                  {loading ? "Loading…" : `${filteredRequirements.length} of ${requirements.length} requirements`}
-                  {totalTablePages > 1 ? ` · page ${Math.min(tablePage + 1, totalTablePages)} of ${totalTablePages}` : ""}
+                  {loading
+                    ? "Loading…"
+                    : `${filteredRequirements.length} of ${requirements.length} requirements`}
+                  {totalTablePages > 1
+                    ? ` · page ${Math.min(tablePage + 1, totalTablePages)} of ${totalTablePages}`
+                    : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {hasActiveFilters && (
-                  <button type="button" onClick={resetFilters}
-                    className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-200">
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-200"
+                  >
                     <X className="h-3 w-3" /> Clear filters
                   </button>
                 )}
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setTablePage((p) => Math.max(0, p - 1))} disabled={tablePage === 0 || loading}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
+                  <button
+                    type="button"
+                    onClick={() => setTablePage((p) => Math.max(0, p - 1))}
+                    disabled={tablePage === 0 || loading}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30"
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => setTablePage((p) => Math.min(totalTablePages - 1, p + 1))} disabled={tablePage >= totalTablePages - 1 || loading}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTablePage((p) => Math.min(totalTablePages - 1, p + 1))
+                    }
+                    disabled={tablePage >= totalTablePages - 1 || loading}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff1a] hover:text-slate-200 disabled:opacity-30"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -692,46 +1125,67 @@ export const RequirementsSection = (): JSX.Element => {
                   type="text"
                   placeholder="Search requirements…"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setTablePage(0); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setTablePage(0);
+                  }}
                   className="h-8 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                 />
               </div>
               <Select
                 value={filterDept}
-                onChange={(v) => { setFilterDept(v); setTablePage(0); }}
-                options={[{ value: "all", label: "All Departments" }, ...deptNames.map((d) => ({ value: d, label: d }))]}
+                onChange={(v) => {
+                  setFilterDept(v);
+                  setTablePage(0);
+                }}
+                options={[
+                  { value: "all", label: "All Departments" },
+                  ...deptNames.map((d) => ({ value: d, label: d })),
+                ]}
                 placeholder="All Departments"
                 size="md"
               />
               <Select
                 value={filterCategory}
-                onChange={(v) => { setFilterCategory(v); setTablePage(0); }}
-                options={[{ value: "all", label: "All Trades" }, ...categories.map((c) => ({ value: c, label: c }))]}
+                onChange={(v) => {
+                  setFilterCategory(v);
+                  setTablePage(0);
+                }}
+                options={[
+                  { value: "all", label: "All Trades" },
+                  ...categories.map((c) => ({ value: c, label: c })),
+                ]}
                 placeholder="All Trades"
                 size="md"
               />
               <Select
                 value={filterPriority}
-                onChange={(v) => { setFilterPriority(v); setTablePage(0); }}
+                onChange={(v) => {
+                  setFilterPriority(v);
+                  setTablePage(0);
+                }}
                 options={[
-                  { value: "all",      label: "All Priorities" },
-                  { value: "Critical", label: "Critical"       },
-                  { value: "High",     label: "High"           },
-                  { value: "Medium",   label: "Medium"         },
-                  { value: "Low",      label: "Low"            },
+                  { value: "all", label: "All Priorities" },
+                  { value: "Critical", label: "Critical" },
+                  { value: "High", label: "High" },
+                  { value: "Medium", label: "Medium" },
+                  { value: "Low", label: "Low" },
                 ]}
                 placeholder="All Priorities"
                 size="sm"
               />
               <Select
                 value={filterStatus}
-                onChange={(v) => { setFilterStatus(v); setTablePage(0); }}
+                onChange={(v) => {
+                  setFilterStatus(v);
+                  setTablePage(0);
+                }}
                 options={[
-                  { value: "all",                label: "All Statuses"        },
-                  { value: "Critical Gap",        label: "Critical Gap"        },
-                  { value: "Partial Gap",         label: "Partial Gap"         },
-                  { value: "Training Required",   label: "Training Required"   },
-                  { value: "Covered",             label: "Covered"             },
+                  { value: "all", label: "All Statuses" },
+                  { value: "Critical Gap", label: "Critical Gap" },
+                  { value: "Partial Gap", label: "Partial Gap" },
+                  { value: "Training Required", label: "Training Required" },
+                  { value: "Covered", label: "Covered" },
                 ]}
                 placeholder="All Statuses"
                 size="sm"
@@ -743,11 +1197,18 @@ export const RequirementsSection = (): JSX.Element => {
               <div className="flex flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-[#ef444408] py-10 text-center">
                 <AlertTriangle className="h-7 w-7 text-red-500/60" />
                 <div>
-                  <p className="font-medium text-red-400">Failed to load requirements</p>
-                  <p className="mt-1 text-sm text-slate-500">Unable to connect to the database.</p>
+                  <p className="font-medium text-red-400">
+                    Failed to load requirements
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Unable to connect to the database.
+                  </p>
                 </div>
-                <button type="button" onClick={() => setTick((t) => t + 1)}
-                  className="rounded-lg border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10">
+                <button
+                  type="button"
+                  onClick={() => setTick((t) => t + 1)}
+                  className="rounded-lg border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                >
                   Try again
                 </button>
               </div>
@@ -760,111 +1221,166 @@ export const RequirementsSection = (): JSX.Element => {
                   <thead>
                     <tr className="border-b border-gray-800 bg-[#0f1318]">
                       {[
-                        { label: "Requirement",        cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[200px]" },
-                        { label: "Department",         cls: "min-w-[120px]" },
-                        { label: "Area",               cls: "min-w-[130px]" },
-                        { label: "Required Level",     cls: "min-w-[110px] text-center" },
-                        { label: "Qualified",          cls: "min-w-[90px] text-center" },
-                        { label: "Gap",                cls: "min-w-[70px] text-center" },
-                        { label: "Priority",           cls: "min-w-[90px]" },
-                        { label: "Status",             cls: "min-w-[130px]" },
-                        { label: "Actions",            cls: "min-w-[80px] text-center" },
+                        {
+                          label: "Requirement",
+                          cls: "sticky left-0 z-10 bg-[#0f1318] min-w-[200px]",
+                        },
+                        { label: "Department", cls: "min-w-[120px]" },
+                        { label: "Area", cls: "min-w-[130px]" },
+                        {
+                          label: "Required Level",
+                          cls: "min-w-[110px] text-center",
+                        },
+                        { label: "Qualified", cls: "min-w-[90px] text-center" },
+                        { label: "Gap", cls: "min-w-[70px] text-center" },
+                        { label: "Priority", cls: "min-w-[90px]" },
+                        { label: "Status", cls: "min-w-[130px]" },
+                        { label: "Actions", cls: "min-w-[80px] text-center" },
                       ].map(({ label, cls }) => (
-                        <th key={label} className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}>
+                        <th
+                          key={label}
+                          className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${cls}`}
+                        >
                           {label}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {loading
-                      ? Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
-                          <tr key={i} className="border-b border-gray-800/50 bg-[#141820]">
-                            {Array.from({ length: 9 }).map((_, j) => (
-                              <td key={j} className="px-4 py-3">
-                                <div className="h-4 w-20 animate-pulse rounded bg-gray-800" />
-                              </td>
-                            ))}
-                          </tr>
-                        ))
-                      : pagedReqs.length === 0
-                      ? (
-                          <tr>
-                            <td colSpan={9} className="py-12 text-center text-sm text-slate-500">
-                              No requirements match the current filters.{" "}
-                              {hasActiveFilters && (
-                                <button type="button" onClick={resetFilters} className="font-medium text-blue-400 hover:underline">
-                                  Clear filters
-                                </button>
-                              )}
+                    {loading ? (
+                      Array.from({ length: TABLE_PAGE_SIZE }).map((_, i) => (
+                        <tr
+                          key={i}
+                          className="border-b border-gray-800/50 bg-[#141820]"
+                        >
+                          {Array.from({ length: 9 }).map((_, j) => (
+                            <td key={j} className="px-4 py-3">
+                              <div className="h-4 w-20 animate-pulse rounded bg-gray-800" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : pagedReqs.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="py-12 text-center text-sm text-slate-500"
+                        >
+                          No requirements match the current filters.{" "}
+                          {hasActiveFilters && (
+                            <button
+                              type="button"
+                              onClick={resetFilters}
+                              className="font-medium text-blue-400 hover:underline"
+                            >
+                              Clear filters
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedReqs.map((req, idx) => {
+                        const rowBg =
+                          idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
+                        const gapColor =
+                          req.gap === 0
+                            ? "text-emerald-400"
+                            : req.gap <= 3
+                              ? "text-yellow-400"
+                              : "text-red-400";
+                        const isActive = selectedReq?.id === req.id;
+                        return (
+                          <tr
+                            key={req.id}
+                            onClick={() =>
+                              setSelectedReq(isActive ? null : req)
+                            }
+                            className={`cursor-pointer border-b border-gray-800/50 ${isActive ? "bg-blue-500/10" : rowBg} transition-colors hover:bg-[#1a2030]`}
+                          >
+                            {/* Requirement title — sticky */}
+                            <td
+                              className={`sticky left-0 z-10 min-w-[200px] px-4 py-2.5 ${isActive ? "bg-blue-500/10" : rowBg}`}
+                            >
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium text-slate-200 leading-tight">
+                                    {req.title}
+                                  </span>
+                                  {req.single_point_of_failure && (
+                                    <Badge className="inline-flex h-auto rounded bg-[#ef444420] px-1 py-0.5 text-[9px] font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
+                                      SPOF
+                                    </Badge>
+                                  )}
+                                  {req.certification_required && (
+                                    <Shield
+                                      className="h-3 w-3 shrink-0 text-blue-400"
+                                      title="Certification required"
+                                    />
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-slate-500">
+                                  {req.skill_category}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-slate-400">
+                              {req.department_name ?? "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-slate-400">
+                              {req.area}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-sm font-semibold tabular-nums text-slate-200">
+                                  {req.required_level}/5
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  avg {req.current_avg.toFixed(1)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span
+                                className={`text-sm font-semibold tabular-nums ${req.engineers_qualified > 0 ? "text-emerald-400" : "text-red-400"}`}
+                              >
+                                {req.engineers_qualified}
+                              </span>
+                            </td>
+                            <td
+                              className={`px-4 py-2.5 text-center text-sm font-semibold tabular-nums ${gapColor}`}
+                            >
+                              {req.gap > 0 ? req.gap : "—"}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <Badge
+                                className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(req.priority)}`}
+                              >
+                                {req.priority}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <Badge
+                                className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(req.status)}`}
+                              >
+                                {req.status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedReq(isActive ? null : req);
+                                }}
+                                className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
+                              >
+                                Review
+                              </button>
                             </td>
                           </tr>
-                        )
-                      : pagedReqs.map((req, idx) => {
-                          const rowBg = idx % 2 === 0 ? "bg-[#141820]" : "bg-[#111620]";
-                          const gapColor = req.gap === 0 ? "text-emerald-400" : req.gap <= 3 ? "text-yellow-400" : "text-red-400";
-                          const isActive = selectedReq?.id === req.id;
-                          return (
-                            <tr
-                              key={req.id}
-                              onClick={() => setSelectedReq(isActive ? null : req)}
-                              className={`cursor-pointer border-b border-gray-800/50 ${isActive ? "bg-blue-500/10" : rowBg} transition-colors hover:bg-[#1a2030]`}
-                            >
-                              {/* Requirement title — sticky */}
-                              <td className={`sticky left-0 z-10 min-w-[200px] px-4 py-2.5 ${isActive ? "bg-blue-500/10" : rowBg}`}>
-                                <div className="flex flex-col gap-0.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-medium text-slate-200 leading-tight">{req.title}</span>
-                                    {req.single_point_of_failure && (
-                                      <Badge className="inline-flex h-auto rounded bg-[#ef444420] px-1 py-0.5 text-[9px] font-medium text-red-500 shadow-none hover:bg-[#ef444420]">
-                                        SPOF
-                                      </Badge>
-                                    )}
-                                    {req.certification_required && (
-                                      <Shield className="h-3 w-3 shrink-0 text-blue-400" title="Certification required" />
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-slate-500">{req.skill_category}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2.5 text-sm text-slate-400">{req.department_name ?? "—"}</td>
-                              <td className="px-4 py-2.5 text-sm text-slate-400">{req.area}</td>
-                              <td className="px-4 py-2.5 text-center">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span className="text-sm font-semibold tabular-nums text-slate-200">{req.required_level}/5</span>
-                                  <span className="text-[10px] text-slate-500">avg {req.current_avg.toFixed(1)}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2.5 text-center">
-                                <span className={`text-sm font-semibold tabular-nums ${req.engineers_qualified > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                  {req.engineers_qualified}
-                                </span>
-                              </td>
-                              <td className={`px-4 py-2.5 text-center text-sm font-semibold tabular-nums ${gapColor}`}>
-                                {req.gap > 0 ? req.gap : "—"}
-                              </td>
-                              <td className="px-4 py-2.5">
-                                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${priorityBadgeClass(req.priority)}`}>
-                                  {req.priority}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-2.5">
-                                <Badge className={`inline-flex h-auto rounded px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(req.status)}`}>
-                                  {req.status}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-2.5 text-center">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setSelectedReq(isActive ? null : req); }}
-                                  className="rounded-lg border border-gray-700 px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:border-gray-600 hover:bg-[#ffffff0a] hover:text-slate-200"
-                                >
-                                  Review
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -874,19 +1390,29 @@ export const RequirementsSection = (): JSX.Element => {
             {!loading && !loadError && totalTablePages > 1 && (
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>
-                  {tablePage * TABLE_PAGE_SIZE + 1}–{Math.min((tablePage + 1) * TABLE_PAGE_SIZE, filteredRequirements.length)} of {filteredRequirements.length}
+                  {tablePage * TABLE_PAGE_SIZE + 1}–
+                  {Math.min(
+                    (tablePage + 1) * TABLE_PAGE_SIZE,
+                    filteredRequirements.length,
+                  )}{" "}
+                  of {filteredRequirements.length}
                 </span>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalTablePages, 8) }).map((_, i) => (
-                    <button key={i} type="button" onClick={() => setTablePage(i)}
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === tablePage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}>
-                      {i + 1}
-                    </button>
-                  ))}
+                  {Array.from({ length: Math.min(totalTablePages, 8) }).map(
+                    (_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setTablePage(i)}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${i === tablePage ? "bg-blue-500/20 font-semibold text-blue-400" : "text-slate-500 hover:bg-[#ffffff1a]"}`}
+                      >
+                        {i + 1}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
             )}
-
           </CardContent>
         </Card>
 
@@ -894,44 +1420,65 @@ export const RequirementsSection = (): JSX.Element => {
         <Card className="min-w-0 w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
           <CardContent className="flex min-w-0 flex-col gap-4 p-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-50">Requirement Actions</h2>
+              <h2 className="font-semibold text-slate-50">
+                Requirement Actions
+              </h2>
               <Badge className="inline-flex h-auto items-center gap-1.5 rounded bg-[#3b82f620] px-2 py-1 text-xs font-medium text-blue-500 shadow-none hover:bg-[#3b82f620]">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Live
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                Live
               </Badge>
             </div>
 
             <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {loading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-lg border border-gray-800 p-4">
-                      <div className="h-4 w-40 animate-pulse rounded bg-gray-800" />
-                      <div className="mt-2 h-3 w-full animate-pulse rounded bg-gray-800/60" />
-                    </div>
-                  ))
-                : actionRows.length === 0
-                ? (
-                    <div className="col-span-full flex flex-col items-center gap-2 py-8 text-center">
-                      <CheckCircle2 className="h-8 w-8 text-emerald-400/50" />
-                      <p className="text-sm font-medium text-emerald-400">No actions outstanding</p>
-                      <p className="text-xs text-slate-500">All requirements are on track.</p>
-                    </div>
-                  )
-                : actionRows.map((row, i) => {
-                    const { icon: Icon, cls, bg, border } = urgencyIcon(row.urgency);
-                    return (
-                      <div key={i} className={`flex items-start gap-3 rounded-lg border ${border} ${bg} p-4`}>
-                        <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${cls}`} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-100">{row.title}</p>
-                          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">{row.subtitle}</p>
-                        </div>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-gray-800 p-4"
+                  >
+                    <div className="h-4 w-40 animate-pulse rounded bg-gray-800" />
+                    <div className="mt-2 h-3 w-full animate-pulse rounded bg-gray-800/60" />
+                  </div>
+                ))
+              ) : actionRows.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center gap-2 py-8 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-400/50" />
+                  <p className="text-sm font-medium text-emerald-400">
+                    No actions outstanding
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    All requirements are on track.
+                  </p>
+                </div>
+              ) : (
+                actionRows.map((row, i) => {
+                  const {
+                    icon: Icon,
+                    cls,
+                    bg,
+                    border,
+                  } = urgencyIcon(row.urgency);
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-3 rounded-lg border ${border} ${bg} p-4`}
+                    >
+                      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${cls}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-100">
+                          {row.title}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+                          {row.subtitle}
+                        </p>
                       </div>
-                    );
-                  })}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
-
       </div>
     </section>
   );
