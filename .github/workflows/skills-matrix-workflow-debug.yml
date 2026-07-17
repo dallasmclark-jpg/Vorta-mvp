@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Apply data trust migration
         run: node scripts/apply-skills-matrix-data-trust-fix.mjs
       - name: Repair workflow migration
@@ -30,12 +32,28 @@ jobs:
           echo "$code" > skills-matrix-workflow-exit-code.txt
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
+      - name: Capture production build result
+        id: build
+        if: steps.migration.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          npx vite build > skills-matrix-build-debug.log 2>&1
+          code=$?
+          echo "$code" > skills-matrix-build-exit-code.txt
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: skills-matrix-workflow-debug
           path: |
             skills-matrix-workflow-debug.log
             skills-matrix-workflow-exit-code.txt
+            skills-matrix-build-debug.log
+            skills-matrix-build-exit-code.txt
       - name: Fail if migration failed
         if: steps.migration.outputs.exit_code != '0'
+        run: exit 1
+      - name: Fail if build failed
+        if: steps.migration.outputs.exit_code == '0' && steps.build.outputs.exit_code != '0'
         run: exit 1
