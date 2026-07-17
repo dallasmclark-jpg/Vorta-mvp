@@ -583,7 +583,14 @@ function BuildingTabs({
 export const SkillsMatrixSection = (): JSX.Element => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [avatars, setAvatars] = useState<Map<string, string>>(new Map());
-  const [payload, setPayload] = useState<SkillsMatrixPayload | null>(null);
+  const [payload, setPayload] = useState<SkillsMatrixPayload | null>(() => {
+    if (typeof window === "undefined") return null;
+    return (
+      window as unknown as {
+        __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
+      }
+    ).__vortaSkillsMatrixPayload ?? null;
+  });
   const [selectedTitle, setSelectedTitle] = useState("Site Maintenance Capability");
   const [selectedVisual, setSelectedVisual] = useState<TeamVisual>(
     TEAM_VISUALS["Site Maintenance Capability"],
@@ -710,18 +717,20 @@ export const SkillsMatrixSection = (): JSX.Element => {
       });
     };
 
-    enhance();
-    const observer = new MutationObserver(enhance);
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["aria-pressed"],
-    });
+    let followUp = 0;
+    const scheduleEnhance = (): void => {
+      enhance();
+      window.clearTimeout(followUp);
+      followUp = window.setTimeout(enhance, 80);
+    };
+
+    scheduleEnhance();
+    root.addEventListener("click", scheduleEnhance, true);
 
     return () => {
       cancelAnimationFrame(frame);
-      observer.disconnect();
+      window.clearTimeout(followUp);
+      root.removeEventListener("click", scheduleEnhance, true);
     };
   }, [avatars, buildingSkills, payload, selectedBuilding, selectedTitle, showAllPeople]);
 

@@ -230,4 +230,30 @@ assert.match(
   "Navigation prefetch must reuse the corrected Skills Matrix payload",
 );
 
+
+assert.doesNotMatch(
+  selection,
+  /MutationObserver/,
+  "Skills Matrix selection enhancements must not continuously observe and rewrite the page",
+);
+assert.doesNotMatch(
+  polish,
+  /MutationObserver/,
+  "Skills Matrix polish must use bounded event updates rather than a DOM observer loop",
+);
+const bootstrap = await readFile(
+  new URL("../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx", import.meta.url),
+  "utf8",
+);
+assert.doesNotMatch(
+  bootstrap,
+  /supabase\.functions\.invoke/,
+  "Skills Matrix must not issue a duplicate payload replay request",
+);
+assert.match(
+  selection,
+  /__vortaSkillsMatrixPayload/,
+  "Skills Matrix must reuse the latest mounted payload without refetching",
+);
+
 console.log("Skills Matrix contracts passed.");

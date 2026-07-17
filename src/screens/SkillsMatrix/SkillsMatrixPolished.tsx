@@ -134,6 +134,11 @@ function rebalanceOverallCapability(
 function publishPayload(payload: SkillsMatrixPayload): void {
   latestPayload = payload;
   if (typeof window === "undefined") return;
+  (
+    window as unknown as {
+      __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
+    }
+  ).__vortaSkillsMatrixPayload = payload;
 
   window.setTimeout(() => {
     window.dispatchEvent(
@@ -417,16 +422,20 @@ export const SkillsMatrixSection = (): JSX.Element => {
       suppressNonActionableMatrixMarkers(root);
     };
 
-    enhance();
-    const observer = new MutationObserver(enhance);
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["aria-pressed"],
-    });
+    let followUp = 0;
+    const scheduleEnhance = (): void => {
+      enhance();
+      window.clearTimeout(followUp);
+      followUp = window.setTimeout(enhance, 80);
+    };
 
-    return () => observer.disconnect();
+    scheduleEnhance();
+    root.addEventListener("click", scheduleEnhance, true);
+
+    return () => {
+      window.clearTimeout(followUp);
+      root.removeEventListener("click", scheduleEnhance, true);
+    };
   }, [payload, showAllWeaknesses]);
 
   const selectedDetail = payload?.details[selectedScopeId] ?? null;
