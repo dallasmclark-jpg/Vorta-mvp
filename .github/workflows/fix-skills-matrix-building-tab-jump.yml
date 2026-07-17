@@ -1,0 +1,139 @@
+name: Fix Skills Matrix building tab jump
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-skills-matrix-building-tab-jump.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Make building filtering synchronous and scroll-stable
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx")
+          text = path.read_text()
+
+          text = text.replace(
+              'import { useEffect, useMemo, useRef, useState } from "react";',
+              'import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";',
+              1,
+          )
+
+          old_tabs = '''    <div className="mb-4 flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {tabs.map((tab) => {
+        const active = tab.name === selected;
+        const disabled = tab.name !== ALL_SITE && tab.skillCount === 0;
+        return (
+          <button
+            key={tab.name}
+            type="button"
+            disabled={disabled}
+            onClick={(event) => {
+                event.stopPropagation();
+                const scrollTop = window.scrollY;
+                onSelect(tab.name);
+                window.requestAnimationFrame(() => {
+                  window.scrollTo({ top: scrollTop, behavior: "auto" });
+                });
+                window.setTimeout(() => {
+                  window.scrollTo({ top: scrollTop, behavior: "auto" });
+                }, 100);
+              }}
+            aria-pressed={active}'''
+
+          new_tabs = '''    <div
+      data-building-tabs-root="true"
+      className="mb-4 flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {tabs.map((tab) => {
+        const active = tab.name === selected;
+        const disabled = tab.name !== ALL_SITE && tab.skillCount === 0;
+        return (
+          <button
+            key={tab.name}
+            type="button"
+            disabled={disabled}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect(tab.name);
+            }}
+            aria-pressed={active}'''
+
+          if old_tabs not in text:
+              raise SystemExit("Building tab click block not found")
+          text = text.replace(old_tabs, new_tabs, 1)
+
+          old_filter_call = '''        const nextBuildingHost = prepareBuildingTabsHost(root);
+        setBuildingTabsHost((current) => current === nextBuildingHost ? current : nextBuildingHost);
+        applyBuildingFilter(root, payload, selectedTitle, selectedBuilding, buildingSkills);'''
+          new_filter_call = '''        const nextBuildingHost = prepareBuildingTabsHost(root);
+        setBuildingTabsHost((current) => current === nextBuildingHost ? current : nextBuildingHost);'''
+          if old_filter_call not in text:
+              raise SystemExit("Inline building filter call not found")
+          text = text.replace(old_filter_call, new_filter_call, 1)
+
+          old_schedule = '''    const scheduleEnhance = (): void => {
+      enhance();
+      window.clearTimeout(followUp);
+      followUp = window.setTimeout(enhance, 80);
+    };'''
+          new_schedule = '''    const scheduleEnhance = (event?: Event): void => {
+      const target = event?.target;
+      if (
+        target instanceof Element &&
+        target.closest('[data-building-tabs-root="true"]')
+      ) {
+        return;
+      }
+      enhance();
+      window.clearTimeout(followUp);
+      followUp = window.setTimeout(enhance, 80);
+    };'''
+          if old_schedule not in text:
+              raise SystemExit("Enhancement scheduler not found")
+          text = text.replace(old_schedule, new_schedule, 1)
+
+          old_effect_end = '''  }, [avatars, buildingSkills, payload, selectedBuilding, selectedTitle, showAllPeople]);
+
+  const intelligence = useMemo<CapabilityIntelligence | null>(() => {'''
+          new_effect_end = '''  }, [avatars, payload, selectedTitle, showAllPeople]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    applyBuildingFilter(
+      root,
+      payload,
+      selectedTitle,
+      selectedBuilding,
+      buildingSkills,
+    );
+  }, [buildingSkills, payload, selectedBuilding, selectedTitle]);
+
+  const intelligence = useMemo<CapabilityIntelligence | null>(() => {'''
+          if old_effect_end not in text:
+              raise SystemExit("Enhancement effect dependency block not found")
+          text = text.replace(old_effect_end, new_effect_end, 1)
+
+          path.write_text(text)
+
+      - name: Commit tab stability fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189824+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx
+          git commit -m "Stop Skills Matrix building tabs moving the page"
+          git push origin main
