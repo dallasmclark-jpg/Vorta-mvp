@@ -40,8 +40,33 @@ for (const requiredText of [
 
 assert.match(
   page,
-  /schemaVersion: "capability-v2"/,
-  "Skills Matrix must use the equipment-weighted capability payload",
+  /schemaVersion: "capability-v3"/,
+  "Skills Matrix must bypass the superseded capability payload cache",
+);
+assert.match(
+  page,
+  /normaliseSkillsMatrixPayload/,
+  "Skills Matrix must correct the overall capability score in its own data path",
+);
+assert.match(
+  page,
+  /criticalTeamShare \* 12/,
+  "Overall capability must be penalised when teams remain critical",
+);
+assert.match(
+  page,
+  /score = Math\.min\(score, 59\)/,
+  "A severely weak team must cap the site capability score",
+);
+assert.match(
+  page,
+  /Calibration Team/,
+  "Calibration must be shown as a specialist team",
+);
+assert.match(
+  page,
+  /Operational Technology Team/,
+  "Operational Technology must be shown as a specialist team",
 );
 assert.match(
   page,
@@ -77,15 +102,9 @@ assert.doesNotMatch(
 assert.match(
   entry,
   /SkillsMatrixPolished/,
-  "Skills Matrix route must use the polished capability experience",
+  "Skills Matrix route must retain the visual polish experience",
 );
 for (const requiredText of [
-  "rebalanceOverallCapability",
-  "shiftResilience",
-  "specialistResilience",
-  "criticalTeams.length >= 5",
-  "Calibration Team",
-  "Operational Technology Team",
   "View all ${visibleRiskCount} weaknesses",
   "Avg experience",
   "Critical SMEs",
@@ -105,24 +124,19 @@ assert.match(
 );
 assert.match(
   polish,
-  /score = Math\.min\(score, 64\)/,
-  "Overall capability must be safety-capped when team resilience is poor",
-);
-assert.match(
-  polish,
   /Unverified.*No evidence/s,
   "Non-actionable validation markers must be suppressed from the matrix",
 );
 
 assert.match(
   warmup,
-  /schemaVersion: "capability-v2"/,
-  "Portal warmup must cache the rebuilt Skills Matrix payload",
+  /schemaVersion: "capability-v3"/,
+  "Portal warmup must cache the corrected Skills Matrix payload",
 );
 assert.match(
   prefetch,
-  /schemaVersion: "capability-v2"/,
-  "Navigation prefetch must reuse the rebuilt Skills Matrix payload",
+  /schemaVersion: "capability-v3"/,
+  "Navigation prefetch must reuse the corrected Skills Matrix payload",
 );
 
 console.log("Skills Matrix contracts passed.");
