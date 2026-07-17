@@ -104,6 +104,13 @@ assert.match(page, /\/engineers\?engineer=/);
 assert.match(page, /\/engineers\?skill=/);
 assert.match(page, /\/requirements\?skill=/);
 assert.match(page, /\/training\?skill=/);
+assert.match(page, /View requirement <Award className="h-3 w-3" \/>/);
+assert.match(page, /Open training plan <Wrench className="h-3 w-3" \/>/);
+assert.doesNotMatch(page, /ClipboardList|GraduationCap/);
+assert.match(
+  page,
+  /useEffect\(\(\) => \{\s*setShowAllWeaknesses\(false\);\s*\}, \[selectedScopeId\]\);/,
+);
 assert.match(
   page,
   /navigate\(`\/equipment\/\$\{encodeURIComponent\(risk\.equipmentId\)\}\/skills`\)/,
