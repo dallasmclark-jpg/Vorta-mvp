@@ -8,6 +8,16 @@ const pagePath = new URL(
 
 let page = await readFile(pagePath, "utf8");
 
+if (
+  page.includes("sourceUpdatedAt: string") &&
+  page.includes("areaSkills: Record<string, string[]>") &&
+  page.includes("const avatarUrl = engineer.avatarUrl;") &&
+  !page.includes('.from("equipment_assets")')
+) {
+  console.log("Skills Matrix data-trust fix already applied.");
+  process.exit(0);
+}
+
 function replaceOnce(pattern, replacement, label) {
   assert.match(page, pattern, `Skills Matrix codemod could not find ${label}`);
   page = page.replace(pattern, replacement);
