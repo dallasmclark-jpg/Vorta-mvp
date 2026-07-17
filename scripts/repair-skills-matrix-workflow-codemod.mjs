@@ -13,12 +13,12 @@ const engineerMatcherIndex = lines.findIndex((line) =>
 );
 const actionMatcherIndex = lines.findIndex(
   (line) =>
-    line.includes('/<div className="flex items-center gap-2">\\n') &&
+    line.includes('/<div className="flex items-center gap-2">') &&
     line.includes("risk\\.projectedScoreGain"),
 );
 const engineerFilterMatcherIndex = lines.findIndex(
   (line) =>
-    line.includes('/              <div className="flex flex-wrap items-center gap-2">\\n') &&
+    line.includes('<div className="flex flex-wrap items-center gap-2">') &&
     line.includes('min-w-\\[160px\\] flex-1'),
 );
 
