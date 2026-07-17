@@ -1,0 +1,22 @@
+name: Source snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package source
+        run: zip -qr vorta-source.zip src scripts supabase netlify package.json vite.config.ts .github/workflows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vorta-source
+          path: vorta-source.zip
+          retention-days: 1
