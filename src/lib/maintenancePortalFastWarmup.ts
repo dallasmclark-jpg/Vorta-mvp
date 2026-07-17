@@ -8,7 +8,7 @@ type WarmupRequest = {
 const MAINTENANCE_PORTAL_REQUESTS: WarmupRequest[] = [
   {
     functionName: "skills-matrix-data",
-    options: { body: { schemaVersion: "capability-v2" } },
+    options: { body: { schemaVersion: "capability-v3" } },
   },
   { functionName: "engineers-data" },
   { functionName: "requirements-data" },
