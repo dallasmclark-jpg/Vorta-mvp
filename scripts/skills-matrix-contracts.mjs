@@ -125,14 +125,24 @@ assert.match(
 for (const requiredText of [
   "Calibration Team",
   "#c084fc",
-  "Selected",
   "data-selected-team-header",
   "data-skills-detail-grid",
   "People & Experience",
   "Priority Coverage Weaknesses",
   "full_name,avatar_url",
   "data-engineer-photo",
-  "repeatedMetrics.style.display = \"none\"",
+  "data-capability-intelligence-host",
+  "Capability intelligence",
+  "Highest-risk capability",
+  "Current cover",
+  "Assets affected",
+  "Recorded action gain",
+  "priorityRisks",
+  "qualifiedCount",
+  "minimumRequired",
+  "recommendedAction",
+  "projectedScoreGain",
+  "vorta:skills-matrix-polished-payload",
 ]) {
   assert.match(
     selection,
@@ -140,6 +150,11 @@ for (const requiredText of [
     `Skills Matrix selection experience must retain ${requiredText}`,
   );
 }
+assert.doesNotMatch(
+  selection,
+  /badge\.textContent = "Selected"/,
+  "Selected team cards must use colour and outline rather than a Selected label",
+);
 assert.match(
   selection,
   /grid\.insertBefore\(peopleCard, riskCard\)/,
@@ -149,6 +164,21 @@ assert.match(
   selection,
   /card\.style\.boxShadow = selected/,
   "Selected team card must have an unmistakable selected state",
+);
+assert.match(
+  selection,
+  /new Set\(risks\.map\(\(risk\) => risk\.equipmentId\)\)/,
+  "Affected asset count must be derived from real ranked coverage records",
+);
+assert.match(
+  selection,
+  /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/,
+  "Single-person dependency count must be derived from real ranked coverage records",
+);
+assert.doesNotMatch(
+  selection,
+  /Math\.random|mock|placeholder insight/i,
+  "Capability intelligence must not generate synthetic or placeholder values",
 );
 
 assert.match(
