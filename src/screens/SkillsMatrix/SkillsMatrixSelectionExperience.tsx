@@ -1,11 +1,67 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { SkillsMatrixSection as SkillsMatrixPolished } from "./SkillsMatrixPolished";
+
+const PAYLOAD_EVENT = "vorta:skills-matrix-polished-payload";
 
 type TeamVisual = {
   border: string;
   background: string;
   glow: string;
+};
+
+type ScopeStatus = "Strong" | "Moderate" | "At risk" | "Critical";
+
+type ScopeSummary = {
+  id: string;
+  code: string;
+  name: string;
+  memberCount: number;
+  score: number;
+  skillsCoverage: number;
+  experienceDepth: number;
+  smeResilience: number;
+  validationHealth: number;
+  criticalGaps: number;
+  spofCount: number;
+  trainingNeeds: number;
+  affectedEquipment: number;
+  status: ScopeStatus;
+};
+
+type PriorityRisk = {
+  id: string;
+  equipmentId: string;
+  equipmentName: string;
+  skillName: string;
+  minimumRequired: number;
+  qualifiedCount: number;
+  gap: number;
+  singlePoint: boolean;
+  recommendedAction: string;
+  projectedScoreGain: number;
+};
+
+type ScopeDetail = {
+  scopeId: string;
+  priorityRisks: PriorityRisk[];
+};
+
+type SkillsMatrixPayload = {
+  overall: ScopeSummary;
+  teams: ScopeSummary[];
+  departments: ScopeSummary[];
+  details: Record<string, ScopeDetail>;
+};
+
+type CapabilityIntelligence = {
+  summary: ScopeSummary;
+  detail: ScopeDetail;
+  priorityCount: number;
+  assetCount: number;
+  singlePointCount: number;
+  topRisk: PriorityRisk | null;
 };
 
 const TEAM_VISUALS: Record<string, TeamVisual> = {
@@ -44,7 +100,7 @@ const TEAM_VISUALS: Record<string, TeamVisual> = {
     background: "rgba(168, 85, 247, 0.09)",
     glow: "rgba(192, 132, 252, 0.28)",
   },
-  "Calibration": {
+  Calibration: {
     border: "#c084fc",
     background: "rgba(168, 85, 247, 0.09)",
     glow: "rgba(192, 132, 252, 0.28)",
@@ -86,26 +142,6 @@ function cardTitle(card: HTMLButtonElement): string {
   return textOf(card.querySelector("p"));
 }
 
-function ensureSelectedBadge(card: HTMLButtonElement, selected: boolean): void {
-  const existing = card.querySelector<HTMLElement>("[data-selected-team-badge]");
-  if (!selected) {
-    existing?.remove();
-    return;
-  }
-  if (existing) return;
-
-  const header = card.firstElementChild as HTMLElement | null;
-  const controls = header?.lastElementChild as HTMLElement | null;
-  if (!controls) return;
-
-  const badge = document.createElement("span");
-  badge.dataset.selectedTeamBadge = "true";
-  badge.textContent = "Selected";
-  badge.className =
-    "rounded border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-100";
-  controls.insertBefore(badge, controls.firstChild);
-}
-
 function applyCardSelection(root: HTMLElement): {
   title: string;
   visual: TeamVisual;
@@ -122,6 +158,7 @@ function applyCardSelection(root: HTMLElement): {
     const visual = TEAM_VISUALS[title] ?? TEAM_VISUALS["Site Maintenance Capability"];
     const selected = card === selectedCard;
 
+    card.querySelector<HTMLElement>("[data-selected-team-badge]")?.remove();
     card.style.borderTopColor = visual.border;
     card.style.borderTopWidth = "2px";
     card.style.borderColor = selected ? visual.border : "rgb(31 41 55)";
@@ -131,7 +168,6 @@ function applyCardSelection(root: HTMLElement): {
       ? `0 0 0 2px ${visual.glow}, 0 12px 28px rgba(0, 0, 0, 0.22)`
       : "none";
     card.style.transform = selected ? "translateY(-1px)" : "none";
-    ensureSelectedBadge(card, selected);
   }
 
   const title = cardTitle(selectedCard);
@@ -142,42 +178,37 @@ function applyCardSelection(root: HTMLElement): {
   };
 }
 
-function refineSelectedHeader(
+function prepareIntelligenceHost(
   root: HTMLElement,
   selection: ReturnType<typeof applyCardSelection>,
-): void {
-  if (!selection) return;
+): HTMLElement | null {
+  if (!selection) return null;
 
   const headings = Array.from(root.querySelectorAll<HTMLHeadingElement>("h2"));
   const heading = headings.find((candidate) => textOf(candidate) === selection.title);
-  if (!heading) return;
+  if (!heading) return null;
 
   const card = heading.closest<HTMLElement>("[class*='rounded-xl']");
-  if (!card) return;
+  if (!card) return null;
 
   card.dataset.selectedTeamHeader = "true";
   card.style.borderTopWidth = "2px";
   card.style.borderTopColor = selection.visual.border;
-  card.style.background = `linear-gradient(90deg, ${selection.visual.background}, rgb(20 24 32) 58%)`;
+  card.style.background = `linear-gradient(90deg, ${selection.visual.background}, rgb(20 24 32) 64%)`;
 
-  const repeatedMetrics = Array.from(card.querySelectorAll<HTMLElement>("p"))
-    .find((paragraph) => textOf(paragraph) === "Critical skills")
-    ?.closest<HTMLElement>(".grid");
-  if (repeatedMetrics) repeatedMetrics.style.display = "none";
-
-  const memberCount = textOf(selection.selectedCard.querySelectorAll("p")[1]);
-  const footer = selection.selectedCard.lastElementChild;
-  const footerValues = Array.from(footer?.querySelectorAll("span") ?? [])
-    .map((span) => textOf(span))
-    .filter(Boolean)
-    .slice(0, 2);
-  const subtitle = heading.parentElement?.parentElement?.querySelector<HTMLParagraphElement>(
-    ":scope > p",
-  );
-  if (subtitle) {
-    subtitle.textContent = [memberCount, ...footerValues].filter(Boolean).join(" · ");
-    subtitle.style.color = "rgb(203 213 225)";
+  let host = card.querySelector<HTMLElement>("[data-capability-intelligence-host]");
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.capabilityIntelligenceHost = "true";
+    card.appendChild(host);
   }
+
+  Array.from(card.children).forEach((child) => {
+    if (!(child instanceof HTMLElement)) return;
+    child.style.display = child === host ? "block" : "none";
+  });
+
+  return host;
 }
 
 function swapPeopleAndCoverage(root: HTMLElement): HTMLElement | null {
@@ -242,9 +273,135 @@ function applyProfileImages(
   }
 }
 
+function scopeByTitle(
+  payload: SkillsMatrixPayload | null,
+  title: string,
+): ScopeSummary | null {
+  if (!payload) return null;
+  return [payload.overall, ...payload.teams, ...payload.departments].find(
+    (scope) => scope.name === title,
+  ) ?? null;
+}
+
+function statusClass(status: ScopeStatus): string {
+  if (status === "Strong") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (status === "Moderate") return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+  if (status === "At risk") return "border-amber-400/30 bg-amber-400/10 text-amber-300";
+  return "border-red-500/30 bg-red-500/10 text-red-400";
+}
+
+function CapabilityIntelligencePanel({
+  intelligence,
+  visual,
+}: {
+  intelligence: CapabilityIntelligence;
+  visual: TeamVisual;
+}): JSX.Element {
+  const { summary, priorityCount, assetCount, singlePointCount, topRisk } = intelligence;
+  const narrative = topRisk
+    ? `${summary.name} is ${summary.status.toLowerCase()} at ${summary.score}/100. ${priorityCount} priority coverage ${priorityCount === 1 ? "record affects" : "records affect"} ${assetCount} ${assetCount === 1 ? "asset" : "assets"}, including ${singlePointCount} single-person ${singlePointCount === 1 ? "dependency" : "dependencies"}. The highest-ranked exposure is ${topRisk.skillName} on ${topRisk.equipmentName}, with current cover ${topRisk.qualifiedCount}/${topRisk.minimumRequired}.`
+    : `${summary.name} has no priority coverage exceptions in the current Skills Matrix dataset. The capability score and status are calculated from the live selected-scope competency, experience, SME-resilience and validation records.`;
+
+  const metrics = [
+    {
+      label: "Highest-risk capability",
+      value: topRisk?.skillName ?? "No current exception",
+    },
+    {
+      label: "Current cover",
+      value: topRisk ? `${topRisk.qualifiedCount}/${topRisk.minimumRequired}` : "Covered",
+    },
+    {
+      label: "Assets affected",
+      value: String(assetCount),
+    },
+    {
+      label: "Recorded action gain",
+      value: topRisk ? `+${topRisk.projectedScoreGain} pts` : "No action required",
+    },
+  ];
+
+  return (
+    <div className="p-5 lg:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 max-w-4xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="rounded border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+              style={{
+                borderColor: `${visual.border}55`,
+                backgroundColor: visual.background,
+                color: visual.border,
+              }}
+            >
+              Capability intelligence
+            </span>
+            <span className={`rounded border px-2 py-1 text-[10px] font-semibold ${statusClass(summary.status)}`}>
+              {summary.status}
+            </span>
+          </div>
+          <h2 className="mt-3 text-lg font-semibold text-slate-50">
+            {summary.name} Capability Briefing
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{narrative}</p>
+          {topRisk && (
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              <span className="font-semibold text-slate-400">Recorded action:</span>{" "}
+              {topRisk.recommendedAction}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 text-left lg:text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Live capability score
+          </p>
+          <div className="mt-1 flex items-end gap-1 lg:justify-end">
+            <span className="text-3xl font-semibold tabular-nums" style={{ color: visual.border }}>
+              {summary.score}
+            </span>
+            <span className="pb-1 text-xs text-slate-600">/ 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 border-t border-white/10 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="min-w-0 rounded-lg border border-white/10 bg-black/10 px-4 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+              {metric.label}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-100" title={metric.value}>
+              {metric.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 text-[10px] text-slate-600">
+        Derived from the selected scope’s current equipment requirements, engineer capability evidence and ranked coverage records.
+      </p>
+    </div>
+  );
+}
+
 export const SkillsMatrixSection = (): JSX.Element => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [avatars, setAvatars] = useState<Map<string, string>>(new Map());
+  const [payload, setPayload] = useState<SkillsMatrixPayload | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState("Site Maintenance Capability");
+  const [selectedVisual, setSelectedVisual] = useState<TeamVisual>(
+    TEAM_VISUALS["Site Maintenance Capability"],
+  );
+  const [intelligenceHost, setIntelligenceHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const handlePayload = (event: Event): void => {
+      const nextPayload = (event as CustomEvent<SkillsMatrixPayload>).detail;
+      if (nextPayload) setPayload(nextPayload);
+    };
+    window.addEventListener(PAYLOAD_EVENT, handlePayload);
+    return () => window.removeEventListener(PAYLOAD_EVENT, handlePayload);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -280,7 +437,12 @@ export const SkillsMatrixSection = (): JSX.Element => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const selection = applyCardSelection(root);
-        refineSelectedHeader(root, selection);
+        const host = prepareIntelligenceHost(root, selection);
+        if (selection) {
+          setSelectedTitle((current) => current === selection.title ? current : selection.title);
+          setSelectedVisual((current) => current.border === selection.visual.border ? current : selection.visual);
+        }
+        setIntelligenceHost((current) => current === host ? current : host);
         const peopleCard = swapPeopleAndCoverage(root);
         applyProfileImages(peopleCard, avatars);
       });
@@ -301,6 +463,22 @@ export const SkillsMatrixSection = (): JSX.Element => {
     };
   }, [avatars]);
 
+  const intelligence = useMemo<CapabilityIntelligence | null>(() => {
+    const summary = scopeByTitle(payload, selectedTitle);
+    if (!summary) return null;
+    const detail = payload?.details[summary.id];
+    if (!detail) return null;
+    const risks = detail.priorityRisks ?? [];
+    return {
+      summary,
+      detail,
+      priorityCount: risks.length,
+      assetCount: new Set(risks.map((risk) => risk.equipmentId)).size || summary.affectedEquipment,
+      singlePointCount: risks.filter((risk) => risk.singlePoint).length,
+      topRisk: risks[0] ?? null,
+    };
+  }, [payload, selectedTitle]);
+
   return (
     <div
       ref={rootRef}
@@ -318,6 +496,15 @@ export const SkillsMatrixSection = (): JSX.Element => {
         }
       `}</style>
       <SkillsMatrixPolished />
+      {intelligenceHost && intelligence
+        ? createPortal(
+            <CapabilityIntelligencePanel
+              intelligence={intelligence}
+              visual={selectedVisual}
+            />,
+            intelligenceHost,
+          )
+        : null}
     </div>
   );
 };
