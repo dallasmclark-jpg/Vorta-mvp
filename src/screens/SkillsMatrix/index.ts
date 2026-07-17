@@ -1,1 +1,1 @@
-export { SkillsMatrixSection } from "./SkillsMatrixResolvedExperience";
+export { SkillsMatrixSection } from "./SkillsMatrixNative";
