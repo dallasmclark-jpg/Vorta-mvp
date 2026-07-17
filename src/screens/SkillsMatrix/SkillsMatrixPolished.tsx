@@ -94,27 +94,21 @@ function rebalanceOverallCapability(
   const criticalTeams = teams.filter(
     (team) => team.status === "Critical" || team.score < 55,
   );
-
-  const shiftResilience = average(shiftTeams.map((team) => team.score));
-  const specialistResilience = average(
-    specialistTeams.map((team) => team.score),
-  );
+  const criticalTeamShare =
+    criticalTeams.length / Math.max(1, teams.length);
 
   let score = Math.round(
-    payload.overall.skillsCoverage * 0.35 +
-      shiftResilience * 0.3 +
-      specialistResilience * 0.1 +
+    payload.overall.skillsCoverage * 0.3 +
+      average(shiftTeams.map((team) => team.score)) * 0.3 +
+      average(specialistTeams.map((team) => team.score)) * 0.15 +
       payload.overall.experienceDepth * 0.1 +
       payload.overall.smeResilience * 0.1 +
-      payload.overall.validationHealth * 0.05,
+      payload.overall.validationHealth * 0.05 -
+      criticalTeamShare * 12,
   );
 
-  if (criticalTeams.length >= 5) score = Math.min(score, 64);
-  else if (criticalTeams.length >= 3) score = Math.min(score, 69);
-  else if (criticalTeams.length >= 1) score = Math.min(score, 79);
-
   if (teams.some((team) => team.score < 30)) {
-    score = Math.min(score, 64);
+    score = Math.min(score, 59);
   }
 
   const overall = {
@@ -122,6 +116,7 @@ function rebalanceOverallCapability(
     score,
     status: overallStatus(score),
     criticalGaps: criticalTeams.length,
+    spofCount: teams.filter((team) => team.spofCount > 0).length,
   };
 
   return {
