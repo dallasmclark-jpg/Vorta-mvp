@@ -1,0 +1,36 @@
+name: Apply Skills Matrix data trust fix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/apply-skills-matrix-data-trust-fix.mjs
+      - .github/workflows/apply-skills-matrix-data-trust-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/apply-skills-matrix-data-trust-fix.mjs
+      - run: npm run check
+      - name: Commit patched source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixNative.tsx scripts/skills-matrix-contracts.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m "Use authoritative Skills Matrix payload"
+          git push origin HEAD:main
