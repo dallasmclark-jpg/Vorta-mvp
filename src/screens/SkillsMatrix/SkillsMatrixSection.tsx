@@ -35,7 +35,7 @@ import {
 } from "../../lib/supabaseClient";
 
 const SKILLS_MATRIX_FUNCTION = "skills-matrix-data";
-const SKILLS_MATRIX_OPTIONS = { body: { schemaVersion: "capability-v2" } };
+const SKILLS_MATRIX_OPTIONS = { body: { schemaVersion: "capability-v3" } };
 
 type ViewMode = "team" | "department";
 type ScopeStatus = "Strong" | "Moderate" | "At risk" | "Critical";
@@ -181,6 +181,73 @@ const TEAM_ICONS: Record<string, ElementType> = {
 
 function clamp(value: number): number {
   return Math.min(100, Math.max(0, Number(value) || 0));
+}
+
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function capabilityStatus(score: number): ScopeStatus {
+  if (score < 55) return "Critical";
+  if (score < 70) return "At risk";
+  if (score < 85) return "Moderate";
+  return "Strong";
+}
+
+function normaliseSkillsMatrixPayload(
+  payload: SkillsMatrixPayload,
+): SkillsMatrixPayload {
+  const teams = payload.teams.map((team) => ({
+    ...team,
+    name:
+      team.code === "CALIBRATION"
+        ? "Calibration Team"
+        : team.code === "OT"
+          ? "Operational Technology Team"
+          : team.name,
+  }));
+  const shiftTeams = teams.filter((team) =>
+    ["RED", "GREEN", "BLUE", "YELLOW", "DAYS"].includes(team.code),
+  );
+  const specialistTeams = teams.filter((team) =>
+    ["CALIBRATION", "OT"].includes(team.code),
+  );
+  const criticalTeams = teams.filter(
+    (team) => team.status === "Critical" || team.score < 55,
+  );
+  const shiftResilience = average(shiftTeams.map((team) => team.score));
+  const specialistResilience = average(
+    specialistTeams.map((team) => team.score),
+  );
+  const criticalTeamShare = criticalTeams.length / Math.max(1, teams.length);
+
+  let score = Math.round(
+    payload.overall.skillsCoverage * 0.3 +
+      shiftResilience * 0.3 +
+      specialistResilience * 0.15 +
+      payload.overall.experienceDepth * 0.1 +
+      payload.overall.smeResilience * 0.1 +
+      payload.overall.validationHealth * 0.05 -
+      criticalTeamShare * 12,
+  );
+
+  if (teams.some((team) => team.score < 30)) {
+    score = Math.min(score, 59);
+  }
+  score = Math.round(clamp(score));
+
+  return {
+    ...payload,
+    teams,
+    overall: {
+      ...payload.overall,
+      score,
+      status: capabilityStatus(score),
+      criticalGaps: criticalTeams.length,
+      spofCount: teams.filter((team) => team.spofCount > 0).length,
+    },
+  };
 }
 
 function statusBadgeClass(status: ScopeStatus): string {
@@ -520,9 +587,12 @@ export const SkillsMatrixSection = (): JSX.Element => {
       if (invokeError || !payload) {
         throw invokeError ?? new Error("Skills matrix data was empty");
       }
-      setData(payload as SkillsMatrixPayload);
+      const normalisedPayload = normaliseSkillsMatrixPayload(
+        payload as SkillsMatrixPayload,
+      );
+      setData(normalisedPayload);
       setSelectedScopeId((current) =>
-        (payload as SkillsMatrixPayload).details[current] ? current : "overall",
+        normalisedPayload.details[current] ? current : "overall",
       );
     } catch (loadError) {
       setError(
