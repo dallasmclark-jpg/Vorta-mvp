@@ -1,12 +1,20 @@
 import { supabase } from "./supabaseClient";
 
-const ROUTE_DATA_FUNCTION: Record<string, string> = {
-  "/ai-matching": "ai-matching-data",
-  "/skills-matrix": "skills-matrix-data",
-  "/engineers": "engineers-data",
-  "/requirements": "requirements-data",
-  "/training": "training-data",
-  "/training-providers": "training-providers-data",
+type RouteDataRequest = {
+  functionName: string;
+  options?: { body: Record<string, string> };
+};
+
+const ROUTE_DATA_REQUEST: Record<string, RouteDataRequest> = {
+  "/ai-matching": { functionName: "ai-matching-data" },
+  "/skills-matrix": {
+    functionName: "skills-matrix-data",
+    options: { body: { schemaVersion: "capability-v2" } },
+  },
+  "/engineers": { functionName: "engineers-data" },
+  "/requirements": { functionName: "requirements-data" },
+  "/training": { functionName: "training-data" },
+  "/training-providers": { functionName: "training-providers-data" },
 };
 
 function normalisePath(pathname: string): string {
@@ -17,10 +25,11 @@ function normalisePath(pathname: string): string {
 export function prefetchMaintenancePortalRoute(
   pathname: string,
 ): void {
-  const functionName =
-    ROUTE_DATA_FUNCTION[normalisePath(pathname)];
+  const request = ROUTE_DATA_REQUEST[normalisePath(pathname)];
+  if (!request) return;
 
-  if (!functionName) return;
-
-  void supabase.functions.invoke(functionName);
+  void supabase.functions.invoke(
+    request.functionName,
+    request.options,
+  );
 }
