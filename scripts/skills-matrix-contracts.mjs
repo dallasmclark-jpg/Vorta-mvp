@@ -9,6 +9,10 @@ const polish = await readFile(
   new URL("../src/screens/SkillsMatrix/SkillsMatrixPolished.tsx", import.meta.url),
   "utf8",
 );
+const selection = await readFile(
+  new URL("../src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx", import.meta.url),
+  "utf8",
+);
 const entry = await readFile(
   new URL("../src/screens/SkillsMatrix/index.ts", import.meta.url),
   "utf8",
@@ -60,16 +64,6 @@ assert.match(
 );
 assert.match(
   page,
-  /Calibration Team/,
-  "Calibration must be shown as a specialist team",
-);
-assert.match(
-  page,
-  /Operational Technology Team/,
-  "Operational Technology must be shown as a specialist team",
-);
-assert.match(
-  page,
   /clearMaintenancePortalDataCache\(SKILLS_MATRIX_FUNCTION\)/,
   "Manual refresh must bypass the cached Skills Matrix payload",
 );
@@ -101,8 +95,8 @@ assert.doesNotMatch(
 
 assert.match(
   entry,
-  /SkillsMatrixPolished/,
-  "Skills Matrix route must retain the visual polish experience",
+  /SkillsMatrixSelectionExperience/,
+  "Skills Matrix route must use the selected-team experience",
 );
 for (const requiredText of [
   "View all ${visibleRiskCount} weaknesses",
@@ -126,6 +120,35 @@ assert.match(
   polish,
   /Unverified.*No evidence/s,
   "Non-actionable validation markers must be suppressed from the matrix",
+);
+
+for (const requiredText of [
+  "Calibration Team",
+  "#c084fc",
+  "Selected",
+  "data-selected-team-header",
+  "data-skills-detail-grid",
+  "People & Experience",
+  "Priority Coverage Weaknesses",
+  "full_name,avatar_url",
+  "data-engineer-photo",
+  "repeatedMetrics.style.display = \"none\"",
+]) {
+  assert.match(
+    selection,
+    new RegExp(requiredText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Skills Matrix selection experience must retain ${requiredText}`,
+  );
+}
+assert.match(
+  selection,
+  /grid\.insertBefore\(peopleCard, riskCard\)/,
+  "People and Experience must appear before Priority Coverage Weaknesses",
+);
+assert.match(
+  selection,
+  /card\.style\.boxShadow = selected/,
+  "Selected team card must have an unmistakable selected state",
 );
 
 assert.match(
