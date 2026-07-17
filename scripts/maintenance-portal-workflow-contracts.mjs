@@ -5,25 +5,6 @@ const operations = await readFile(
   new URL("../src/screens/AiOperations/AiOperations.tsx", import.meta.url),
   "utf8",
 );
-const brief = await readFile(
-  new URL("../src/screens/AiOperations/MaintenanceOperationalBrief.tsx", import.meta.url),
-  "utf8",
-);
-
-for (const kind of [
-  "skills",
-  "engineers",
-  "matching",
-  "requirements",
-  "training",
-  "providers",
-]) {
-  assert.match(
-    operations,
-    new RegExp(`kind=\\"${kind}\\"`),
-    `${kind} route must use the maintenance operational brief`,
-  );
-}
 
 assert.match(
   operations,
@@ -40,35 +21,35 @@ assert.match(
   /path="training-providers"/,
   "Training providers must remain available as a contextual route",
 );
-assert.match(
-  brief,
-  /secondaryLabel: "Compare providers"/,
-  "The training plan must provide contextual access to providers",
+assert.doesNotMatch(
+  operations,
+  /MaintenanceOperationalBrief/,
+  "Maintenance side pages must retain their native page hierarchy without a generic top brief",
 );
 assert.match(
-  brief,
-  /data-maintenance-operational-brief=/,
-  "Operational briefs must expose a stable UI contract marker",
+  operations,
+  /path="skills-matrix" element={<SkillsMatrixSection \/>}/,
+  "Skills Matrix must render directly without an extra top wrapper",
 );
 assert.match(
-  brief,
-  /supabase\.functions\.invoke\(functionName\)/,
-  "Operational briefs must use the shared cached live page payload",
+  operations,
+  /path="engineers" element={<EngineersSection \/>}/,
+  "Engineers must render directly without an extra top wrapper",
 );
 assert.match(
-  brief,
-  /highest workforce exposure/,
-  "Skills workflow must identify the highest workforce exposure",
+  operations,
+  /path="requirements" element={<RequirementsSection \/>}/,
+  "Requirements must render directly without an extra top wrapper",
 );
 assert.match(
-  brief,
-  /strongest current match/,
-  "AI matching workflow must expose the strongest evidence-based match",
+  operations,
+  /path="training" element={<TrainingSection \/>}/,
+  "Training Plan must render directly without an extra top wrapper",
 );
 assert.match(
-  brief,
-  /Prioritise bookings by operational risk removed/,
-  "Training workflow must be framed around operational risk reduction",
+  operations,
+  /path="ai-matching" element={<AiMatchingSection \/>}/,
+  "AI Matching must render directly without an extra top wrapper",
 );
 
 console.log("Maintenance portal workflow contracts passed.");
