@@ -4,6 +4,8 @@ import { supabase } from "../../lib/supabaseClient";
 import { SkillsMatrixSection as SkillsMatrixPolished } from "./SkillsMatrixPolished";
 
 const PAYLOAD_EVENT = "vorta:skills-matrix-polished-payload";
+const PEOPLE_PREVIEW_COUNT = 7;
+const ALL_SITE = "All Site";
 
 type TeamVisual = {
   border: string;
@@ -43,12 +45,19 @@ type PriorityRisk = {
   projectedScoreGain: number;
 };
 
+type MatrixSkill = {
+  id: string;
+  name: string;
+};
+
 type ScopeDetail = {
   scopeId: string;
   priorityRisks: PriorityRisk[];
+  matrixSkills: MatrixSkill[];
 };
 
 type SkillsMatrixPayload = {
+  site: { id: string; name: string };
   overall: ScopeSummary;
   teams: ScopeSummary[];
   departments: ScopeSummary[];
@@ -62,6 +71,16 @@ type CapabilityIntelligence = {
   assetCount: number;
   singlePointCount: number;
   topRisk: PriorityRisk | null;
+};
+
+type PeoplePanelState = {
+  host: HTMLElement;
+  count: number;
+};
+
+type BuildingTab = {
+  name: string;
+  skillCount: number;
 };
 
 const TEAM_VISUALS: Record<string, TeamVisual> = {
@@ -140,6 +159,22 @@ function capabilityCards(root: HTMLElement): HTMLButtonElement[] {
 
 function cardTitle(card: HTMLButtonElement): string {
   return textOf(card.querySelector("p"));
+}
+
+function siteWideLabel(siteName: string): string {
+  const baseName = siteName.replace(/\s+Sterile Fill-Finish$/i, "").trim();
+  return `${baseName || siteName} · Site-wide Maintenance`;
+}
+
+function applySiteWideScope(
+  root: HTMLElement,
+  payload: SkillsMatrixPayload | null,
+): void {
+  if (!payload?.site.name) return;
+  const title = findHeading<HTMLHeadingElement>(root, "h1", "Skills Matrix");
+  const header = title?.closest("header");
+  const scopeLabel = header?.querySelector<HTMLParagraphElement>("p");
+  if (scopeLabel) scopeLabel.textContent = siteWideLabel(payload.site.name);
 }
 
 function applyCardSelection(root: HTMLElement): {
@@ -273,6 +308,55 @@ function applyProfileImages(
   }
 }
 
+function preparePeoplePanel(
+  peopleCard: HTMLElement | null,
+  showAll: boolean,
+): PeoplePanelState | null {
+  if (!peopleCard) return null;
+  peopleCard.style.alignSelf = "start";
+
+  const list = peopleCard.querySelector<HTMLElement>("div.overflow-y-auto");
+  if (!list) return null;
+
+  list.style.maxHeight = "none";
+  list.style.overflowY = "visible";
+  list.style.paddingRight = "0";
+  list.style.scrollbarWidth = "none";
+
+  const rows = Array.from(
+    list.querySelectorAll<HTMLElement>("div.flex.items-center.gap-3.py-3"),
+  );
+  rows.forEach((row, index) => {
+    row.style.display = showAll || index < PEOPLE_PREVIEW_COUNT ? "flex" : "none";
+  });
+
+  let host = peopleCard.querySelector<HTMLElement>("[data-people-expansion-host]");
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.peopleExpansionHost = "true";
+    peopleCard.firstElementChild?.appendChild(host);
+  }
+
+  return host ? { host, count: rows.length } : null;
+}
+
+function prepareBuildingTabsHost(root: HTMLElement): HTMLElement | null {
+  const heading = Array.from(root.querySelectorAll<HTMLHeadingElement>("h3"))
+    .find((candidate) => textOf(candidate).endsWith("Skills & Experience"));
+  const card = heading?.closest<HTMLElement>("[class*='rounded-xl']");
+  const table = card?.querySelector<HTMLTableElement>("table");
+  const tableFrame = table?.parentElement?.parentElement as HTMLElement | null;
+  if (!card || !tableFrame?.parentElement) return null;
+
+  let host = card.querySelector<HTMLElement>("[data-building-tabs-host]");
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.buildingTabsHost = "true";
+    tableFrame.parentElement.insertBefore(host, tableFrame);
+  }
+  return host;
+}
+
 function scopeByTitle(
   payload: SkillsMatrixPayload | null,
   title: string,
@@ -281,6 +365,56 @@ function scopeByTitle(
   return [payload.overall, ...payload.teams, ...payload.departments].find(
     (scope) => scope.name === title,
   ) ?? null;
+}
+
+function detailByTitle(
+  payload: SkillsMatrixPayload | null,
+  title: string,
+): ScopeDetail | null {
+  const summary = scopeByTitle(payload, title);
+  return summary ? payload?.details[summary.id] ?? null : null;
+}
+
+function applyBuildingFilter(
+  root: HTMLElement,
+  payload: SkillsMatrixPayload | null,
+  selectedTitle: string,
+  selectedBuilding: string,
+  buildingSkills: Map<string, Set<string>>,
+): void {
+  const detail = detailByTitle(payload, selectedTitle);
+  const heading = Array.from(root.querySelectorAll<HTMLHeadingElement>("h3"))
+    .find((candidate) => textOf(candidate).endsWith("Skills & Experience"));
+  const table = heading
+    ?.closest<HTMLElement>("[class*='rounded-xl']")
+    ?.querySelector<HTMLTableElement>("table");
+  if (!detail || !table) return;
+
+  const allowedSkillIds = selectedBuilding === ALL_SITE
+    ? null
+    : buildingSkills.get(selectedBuilding) ?? new Set<string>();
+  const allowedSkillNames = new Set(
+    detail.matrixSkills
+      .filter((skill) => !allowedSkillIds || allowedSkillIds.has(skill.id))
+      .map((skill) => skill.name),
+  );
+
+  const headerCells = Array.from(table.tHead?.rows[0]?.cells ?? []);
+  headerCells.forEach((cell, index) => {
+    if (index < 3) return;
+    const skillName = cell.querySelector("button")?.getAttribute("title") ?? textOf(cell);
+    const visible = selectedBuilding === ALL_SITE || allowedSkillNames.has(skillName);
+    (cell as HTMLElement).style.display = visible ? "" : "none";
+  });
+
+  Array.from(table.tBodies[0]?.rows ?? []).forEach((row) => {
+    Array.from(row.cells).forEach((cell, index) => {
+      if (index < 3) return;
+      const header = headerCells[index];
+      const visible = !header || (header as HTMLElement).style.display !== "none";
+      (cell as HTMLElement).style.display = visible ? "" : "none";
+    });
+  });
 }
 
 function statusClass(status: ScopeStatus): string {
@@ -298,9 +432,10 @@ function CapabilityIntelligencePanel({
   visual: TeamVisual;
 }): JSX.Element {
   const { summary, priorityCount, assetCount, singlePointCount, topRisk } = intelligence;
+  const briefingSubject = summary.name.replace(/\s+Capability$/i, "").trim();
   const narrative = topRisk
-    ? `${summary.name} is ${summary.status.toLowerCase()} at ${summary.score}/100. ${priorityCount} priority coverage ${priorityCount === 1 ? "record affects" : "records affect"} ${assetCount} ${assetCount === 1 ? "asset" : "assets"}, including ${singlePointCount} single-person ${singlePointCount === 1 ? "dependency" : "dependencies"}. The highest-ranked exposure is ${topRisk.skillName} on ${topRisk.equipmentName}, with current cover ${topRisk.qualifiedCount}/${topRisk.minimumRequired}.`
-    : `${summary.name} has no priority coverage exceptions in the current Skills Matrix dataset. The capability score and status are calculated from the live selected-scope competency, experience, SME-resilience and validation records.`;
+    ? `${briefingSubject} is ${summary.status.toLowerCase()} at ${summary.score}/100. ${priorityCount} priority coverage ${priorityCount === 1 ? "record affects" : "records affect"} ${assetCount} ${assetCount === 1 ? "asset" : "assets"}, including ${singlePointCount} single-person ${singlePointCount === 1 ? "dependency" : "dependencies"}. The highest-ranked exposure is ${topRisk.skillName} on ${topRisk.equipmentName}, with current cover ${topRisk.qualifiedCount}/${topRisk.minimumRequired}.`
+    : `${briefingSubject} has no priority coverage exceptions in the current Skills Matrix dataset. The capability score and status are calculated from the live selected-scope competency, experience, SME-resilience and validation records.`;
 
   const metrics = [
     {
@@ -341,7 +476,7 @@ function CapabilityIntelligencePanel({
             </span>
           </div>
           <h2 className="mt-3 text-lg font-semibold text-slate-50">
-            {summary.name} Capability Briefing
+            {briefingSubject} Briefing
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">{narrative}</p>
           {topRisk && (
@@ -384,6 +519,67 @@ function CapabilityIntelligencePanel({
   );
 }
 
+function PeopleExpansionControl({
+  count,
+  expanded,
+  onToggle,
+}: {
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+}): JSX.Element | null {
+  if (count <= PEOPLE_PREVIEW_COUNT) return null;
+  return (
+    <div className="border-t border-gray-800 pt-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold text-slate-400 transition-colors hover:border-blue-500/30 hover:bg-blue-500/5 hover:text-blue-300"
+      >
+        {expanded ? "Show first 7 engineers" : `View all ${count} engineers`}
+      </button>
+    </div>
+  );
+}
+
+function BuildingTabs({
+  tabs,
+  selected,
+  onSelect,
+}: {
+  tabs: BuildingTab[];
+  selected: string;
+  onSelect: (building: string) => void;
+}): JSX.Element {
+  return (
+    <div className="mb-4 flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {tabs.map((tab) => {
+        const active = tab.name === selected;
+        const disabled = tab.name !== ALL_SITE && tab.skillCount === 0;
+        return (
+          <button
+            key={tab.name}
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(tab.name)}
+            aria-pressed={active}
+            className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              active
+                ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
+                : disabled
+                  ? "cursor-not-allowed border-gray-900 text-slate-700"
+                  : "border-gray-800 text-slate-500 hover:border-gray-700 hover:text-slate-300"
+            }`}
+          >
+            {tab.name}
+            <span className="ml-1.5 text-[10px] font-medium opacity-70">{tab.skillCount}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export const SkillsMatrixSection = (): JSX.Element => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [avatars, setAvatars] = useState<Map<string, string>>(new Map());
@@ -393,6 +589,11 @@ export const SkillsMatrixSection = (): JSX.Element => {
     TEAM_VISUALS["Site Maintenance Capability"],
   );
   const [intelligenceHost, setIntelligenceHost] = useState<HTMLElement | null>(null);
+  const [peoplePanel, setPeoplePanel] = useState<PeoplePanelState | null>(null);
+  const [showAllPeople, setShowAllPeople] = useState(false);
+  const [buildingTabsHost, setBuildingTabsHost] = useState<HTMLElement | null>(null);
+  const [buildingSkills, setBuildingSkills] = useState<Map<string, Set<string>>>(new Map());
+  const [selectedBuilding, setSelectedBuilding] = useState(ALL_SITE);
 
   useEffect(() => {
     const handlePayload = (event: Event): void => {
@@ -429,6 +630,55 @@ export const SkillsMatrixSection = (): JSX.Element => {
   }, []);
 
   useEffect(() => {
+    const siteId = payload?.site.id;
+    if (!siteId) return;
+    let active = true;
+
+    void (async () => {
+      const { data: equipmentRows, error: equipmentError } = await supabase
+        .from("equipment_assets")
+        .select("id,area")
+        .eq("site_id", siteId)
+        .order("area");
+      if (!active || equipmentError) return;
+
+      const equipmentIds = (equipmentRows ?? []).map((row) => row.id);
+      if (equipmentIds.length === 0) {
+        setBuildingSkills(new Map());
+        return;
+      }
+
+      const { data: requirementRows, error: requirementError } = await supabase
+        .from("equipment_required_skills")
+        .select("equipment_id,skill_id")
+        .in("equipment_id", equipmentIds);
+      if (!active || requirementError) return;
+
+      const equipmentArea = new Map(
+        (equipmentRows ?? []).map((row) => [String(row.id), String(row.area ?? "Unassigned")]),
+      );
+      const nextMap = new Map<string, Set<string>>();
+      for (const row of requirementRows ?? []) {
+        const area = equipmentArea.get(String(row.equipment_id));
+        if (!area || !row.skill_id) continue;
+        const skillIds = nextMap.get(area) ?? new Set<string>();
+        skillIds.add(String(row.skill_id));
+        nextMap.set(area, skillIds);
+      }
+      setBuildingSkills(nextMap);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [payload?.site.id]);
+
+  useEffect(() => {
+    setShowAllPeople(false);
+    setSelectedBuilding(ALL_SITE);
+  }, [selectedTitle]);
+
+  useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
@@ -436,6 +686,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
     const enhance = (): void => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        applySiteWideScope(root, payload);
         const selection = applyCardSelection(root);
         const host = prepareIntelligenceHost(root, selection);
         if (selection) {
@@ -443,8 +694,19 @@ export const SkillsMatrixSection = (): JSX.Element => {
           setSelectedVisual((current) => current.border === selection.visual.border ? current : selection.visual);
         }
         setIntelligenceHost((current) => current === host ? current : host);
+
         const peopleCard = swapPeopleAndCoverage(root);
         applyProfileImages(peopleCard, avatars);
+        const nextPeoplePanel = preparePeoplePanel(peopleCard, showAllPeople);
+        setPeoplePanel((current) =>
+          current?.host === nextPeoplePanel?.host && current?.count === nextPeoplePanel?.count
+            ? current
+            : nextPeoplePanel,
+        );
+
+        const nextBuildingHost = prepareBuildingTabsHost(root);
+        setBuildingTabsHost((current) => current === nextBuildingHost ? current : nextBuildingHost);
+        applyBuildingFilter(root, payload, selectedTitle, selectedBuilding, buildingSkills);
       });
     };
 
@@ -461,7 +723,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [avatars]);
+  }, [avatars, buildingSkills, payload, selectedBuilding, selectedTitle, showAllPeople]);
 
   const intelligence = useMemo<CapabilityIntelligence | null>(() => {
     const summary = scopeByTitle(payload, selectedTitle);
@@ -479,6 +741,20 @@ export const SkillsMatrixSection = (): JSX.Element => {
     };
   }, [payload, selectedTitle]);
 
+  const buildingTabs = useMemo<BuildingTab[]>(() => {
+    const detail = detailByTitle(payload, selectedTitle);
+    const allSkills = detail?.matrixSkills ?? [];
+    return [
+      { name: ALL_SITE, skillCount: allSkills.length },
+      ...Array.from(buildingSkills.entries())
+        .map(([name, skillIds]) => ({
+          name,
+          skillCount: allSkills.filter((skill) => skillIds.has(skill.id)).length,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    ];
+  }, [buildingSkills, payload, selectedTitle]);
+
   return (
     <div
       ref={rootRef}
@@ -488,6 +764,10 @@ export const SkillsMatrixSection = (): JSX.Element => {
       <style>{`
         [data-skills-detail-grid="true"] {
           grid-template-columns: minmax(0, 1fr) !important;
+          align-items: start;
+        }
+        [data-people-expansion-host="true"] {
+          margin-top: 0.75rem;
         }
         @media (min-width: 1280px) {
           [data-skills-detail-grid="true"] {
@@ -503,6 +783,26 @@ export const SkillsMatrixSection = (): JSX.Element => {
               visual={selectedVisual}
             />,
             intelligenceHost,
+          )
+        : null}
+      {peoplePanel
+        ? createPortal(
+            <PeopleExpansionControl
+              count={peoplePanel.count}
+              expanded={showAllPeople}
+              onToggle={() => setShowAllPeople((current) => !current)}
+            />,
+            peoplePanel.host,
+          )
+        : null}
+      {buildingTabsHost
+        ? createPortal(
+            <BuildingTabs
+              tabs={buildingTabs}
+              selected={selectedBuilding}
+              onSelect={setSelectedBuilding}
+            />,
+            buildingTabsHost,
           )
         : null}
     </div>
