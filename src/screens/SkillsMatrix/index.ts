@@ -1,1 +1,1 @@
-export { SkillsMatrixSection } from "./SkillsMatrixSection";
+export { SkillsMatrixSection } from "./SkillsMatrixPolished";
