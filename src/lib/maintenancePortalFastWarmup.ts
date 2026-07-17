@@ -1,13 +1,21 @@
 import { supabase } from "./supabaseClient";
 
-const MAINTENANCE_PORTAL_FUNCTIONS = [
-  "skills-matrix-data",
-  "engineers-data",
-  "requirements-data",
-  "training-data",
-  "training-providers-data",
-  "ai-matching-data",
-] as const;
+type WarmupRequest = {
+  functionName: string;
+  options?: { body: Record<string, string> };
+};
+
+const MAINTENANCE_PORTAL_REQUESTS: WarmupRequest[] = [
+  {
+    functionName: "skills-matrix-data",
+    options: { body: { schemaVersion: "capability-v2" } },
+  },
+  { functionName: "engineers-data" },
+  { functionName: "requirements-data" },
+  { functionName: "training-data" },
+  { functionName: "training-providers-data" },
+  { functionName: "ai-matching-data" },
+];
 
 let warmupStarted = false;
 
@@ -17,8 +25,8 @@ export function warmMaintenancePortalDataFast(): void {
   warmupStarted = true;
 
   void Promise.allSettled(
-    MAINTENANCE_PORTAL_FUNCTIONS.map((functionName) =>
-      supabase.functions.invoke(functionName),
+    MAINTENANCE_PORTAL_REQUESTS.map(({ functionName, options }) =>
+      supabase.functions.invoke(functionName, options),
     ),
   );
 }
