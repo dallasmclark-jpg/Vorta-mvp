@@ -1,16 +1,8 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const page = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixSection.tsx", import.meta.url),
-  "utf8",
-);
-const polish = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixPolished.tsx", import.meta.url),
-  "utf8",
-);
-const selection = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx", import.meta.url),
+  new URL("../src/screens/SkillsMatrix/SkillsMatrixNative.tsx", import.meta.url),
   "utf8",
 );
 const entry = await readFile(
@@ -29,231 +21,81 @@ const prefetch = await readFile(
 for (const requiredText of [
   "By Team",
   "By Department",
-  "Calibration",
-  "Operational Technology",
+  "Calibration Team",
+  "Operational Technology Team",
+  "Capability intelligence",
   "Priority Coverage Weaknesses",
   "People &amp; Experience",
-  "Critical equipment competency, experience and SME resilience",
+  "Site-wide Maintenance",
+  "Highest-risk capability",
+  "Coverage status",
+  "Recorded action gain",
+  "equipment_assets",
+  "equipment_required_skills",
+  "All Site",
+  "full_name,avatar_url",
+  "skills-matrix-people-scroll",
+  "View all ${selectedDetail.priorityRisks.length} weaknesses",
 ]) {
   assert.match(
     page,
     new RegExp(requiredText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `Skills Matrix must retain ${requiredText}`,
+    `Native Skills Matrix must retain ${requiredText}`,
   );
 }
 
-assert.match(
-  page,
-  /schemaVersion: "capability-v3"/,
-  "Skills Matrix must bypass the superseded capability payload cache",
-);
-assert.match(
-  page,
-  /normaliseSkillsMatrixPayload/,
-  "Skills Matrix must correct the overall capability score in its own data path",
-);
-assert.match(
-  page,
-  /criticalTeamShare \* 12/,
-  "Overall capability must be penalised when teams remain critical",
-);
-assert.match(
-  page,
-  /score = Math\.min\(score, 59\)/,
-  "A severely weak team must cap the site capability score",
-);
-assert.match(
-  page,
-  /clearMaintenancePortalDataCache\(SKILLS_MATRIX_FUNCTION\)/,
-  "Manual refresh must bypass the cached Skills Matrix payload",
-);
-assert.match(
-  page,
-  /Skills capability data could not be loaded/,
-  "Skills Matrix must distinguish data failure from zero risk",
-);
+assert.match(page, /schemaVersion: "capability-v3"/);
+assert.match(page, /normaliseSkillsMatrixPayload/);
+assert.match(page, /criticalTeamShare \* 12/);
+assert.match(page, /score = Math\.min\(score, 59\)/);
+assert.match(page, /clearMaintenancePortalDataCache\(SKILLS_MATRIX_FUNCTION\)/);
+assert.match(page, /Skills capability data could not be loaded/);
+assert.match(page, /new Set\(risks\.map\(\(risk\) => risk\.equipmentId\)\)/);
+assert.match(page, /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/);
+assert.match(page, /selectedArea === ALL_SITE/);
+assert.match(page, /skillIds\.has\(skill\.id\)/);
+assert.match(page, /avatarUrls\.get\(engineer\.id\)/);
+assert.match(page, /priorityRisks\.slice\(0, 3\)/);
+assert.match(page, /\["pending", "rejected", "expired"\]/);
 assert.match(
   page,
   /navigate\(`\/equipment\/\$\{encodeURIComponent\(risk\.equipmentId\)\}\/skills`\)/,
-  "Coverage weaknesses must open the affected equipment skills record",
 );
-assert.doesNotMatch(
-  page,
-  />AI Insights</,
-  "Skills Matrix must not restore the duplicate AI Insights panel",
-);
-assert.doesNotMatch(
-  page,
-  />Engineer Detail</,
-  "Skills Matrix must not restore the duplicate engineer detail table",
-);
-assert.doesNotMatch(
-  page,
-  /Generate AI Report/,
-  "Skills Matrix must not show a non-functional AI report control",
-);
+assert.match(entry, /\.\/SkillsMatrixNative/);
+assert.match(warmup, /schemaVersion: "capability-v3"/);
+assert.match(prefetch, /schemaVersion: "capability-v3"/);
 
-assert.match(
-  entry,
-  /SkillsMatrixSelectionExperience/,
-  "Skills Matrix route must use the selected-team experience",
-);
-for (const requiredText of [
-  "View all ${visibleRiskCount} weaknesses",
-  "Avg experience",
-  "Critical SMEs",
-  "Training needs",
-  "suppressNonActionableMatrixMarkers",
-]) {
-  assert.match(
-    polish,
-    new RegExp(requiredText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `Skills Matrix polish must retain ${requiredText}`,
-  );
-}
-assert.match(
-  polish,
-  /index < 3/,
-  "Coverage weaknesses must default to the top three",
-);
-assert.match(
-  polish,
-  /Unverified.*No evidence/s,
-  "Non-actionable validation markers must be suppressed from the matrix",
-);
-
-for (const requiredText of [
-  "Calibration Team",
-  "#c084fc",
-  "data-selected-team-header",
-  "data-skills-detail-grid",
-  "People & Experience",
-  "Priority Coverage Weaknesses",
-  "full_name,avatar_url",
-  "data-engineer-photo",
-  "data-capability-intelligence-host",
-  "Capability intelligence",
-  "Highest-risk capability",
-  "Current cover",
-  "Assets affected",
-  "Recorded action gain",
-  "priorityRisks",
-  "qualifiedCount",
-  "minimumRequired",
-  "recommendedAction",
-  "projectedScoreGain",
+for (const forbidden of [
+  "MutationObserver",
+  "createPortal",
+  "scrollIntoView",
+  "window.scrollTo",
+  "__vortaSkillsMatrixPayload",
   "vorta:skills-matrix-polished-payload",
-  "Site-wide Maintenance",
-  "PEOPLE_PREVIEW_COUNT",
-  "View all ${count} engineers",
-  "data-building-tabs-host",
-  "equipment_assets",
-  "equipment_required_skills",
-  "All Site",
-  "applyBuildingFilter",
+  "SkillsMatrixSelectionExperience",
+  "SkillsMatrixPolished",
+  "SkillsMatrixResolvedExperience",
 ]) {
-  assert.match(
-    selection,
-    new RegExp(requiredText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `Skills Matrix selection experience must retain ${requiredText}`,
+  assert.doesNotMatch(
+    page + entry,
+    new RegExp(forbidden.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Native Skills Matrix must not use ${forbidden}`,
   );
 }
-assert.doesNotMatch(
-  selection,
-  /badge\.textContent = "Selected"/,
-  "Selected team cards must use colour and outline rather than a Selected label",
-);
-assert.doesNotMatch(
-  selection,
-  /\{summary\.name\} Capability Briefing/,
-  "Capability briefing title must not repeat Capability",
-);
-assert.match(
-  selection,
-  /summary\.name\.replace\(\/\\s\+Capability\$\/i, ""\)/,
-  "Capability briefing must derive a concise selected-scope title",
-);
-assert.match(
-  selection,
-  /grid\.insertBefore\(peopleCard, riskCard\)/,
-  "People and Experience must appear before Priority Coverage Weaknesses",
-);
-assert.match(
-  selection,
-  /list\.style\.overflowY = "visible"/,
-  "People and Experience must not retain an internal vertical scrollbar",
-);
-assert.match(
-  selection,
-  /row\.style\.display = showAll \|\| index < PEOPLE_PREVIEW_COUNT/,
-  "People and Experience must default to a concise engineer preview",
-);
-assert.match(
-  selection,
-  /card\.style\.boxShadow = selected/,
-  "Selected team card must have an unmistakable selected state",
-);
-assert.match(
-  selection,
-  /new Set\(risks\.map\(\(risk\) => risk\.equipmentId\)\)/,
-  "Affected asset count must be derived from real ranked coverage records",
-);
-assert.match(
-  selection,
-  /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/,
-  "Single-person dependency count must be derived from real ranked coverage records",
-);
-assert.match(
-  selection,
-  /\.eq\("site_id", siteId\)/,
-  "Building tabs must be scoped to the authenticated site",
-);
-assert.match(
-  selection,
-  /skillIds\.add\(String\(row\.skill_id\)\)/,
-  "Building filters must be derived from real equipment skill requirements",
-);
-assert.doesNotMatch(
-  selection,
-  /Math\.random|mock|placeholder insight/i,
-  "Capability intelligence must not generate synthetic or placeholder values",
-);
 
-assert.match(
-  warmup,
-  /schemaVersion: "capability-v3"/,
-  "Portal warmup must cache the corrected Skills Matrix payload",
-);
-assert.match(
-  prefetch,
-  /schemaVersion: "capability-v3"/,
-  "Navigation prefetch must reuse the corrected Skills Matrix payload",
-);
+for (const obsolete of [
+  "SkillsMatrixSection.tsx",
+  "SkillsMatrixResolvedExperience.tsx",
+  "SkillsMatrixStableBootstrap.tsx",
+  "SkillsMatrixSelectionExperience.tsx",
+  "SkillsMatrixPolished.tsx",
+  "SkillsMatrixIntelligenceBootstrap.tsx",
+]) {
+  await assert.rejects(
+    access(new URL(`../src/screens/SkillsMatrix/${obsolete}`, import.meta.url)),
+    undefined,
+    `${obsolete} must be removed after native consolidation`,
+  );
+}
 
-
-assert.doesNotMatch(
-  selection,
-  /MutationObserver/,
-  "Skills Matrix selection enhancements must not continuously observe and rewrite the page",
-);
-assert.doesNotMatch(
-  polish,
-  /MutationObserver/,
-  "Skills Matrix polish must use bounded event updates rather than a DOM observer loop",
-);
-const bootstrap = await readFile(
-  new URL("../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx", import.meta.url),
-  "utf8",
-);
-assert.doesNotMatch(
-  bootstrap,
-  /supabase\.functions\.invoke/,
-  "Skills Matrix must not issue a duplicate payload replay request",
-);
-assert.match(
-  selection,
-  /__vortaSkillsMatrixPayload/,
-  "Skills Matrix must reuse the latest mounted payload without refetching",
-);
-
-console.log("Skills Matrix contracts passed.");
+console.log("Skills Matrix native contracts passed.");
