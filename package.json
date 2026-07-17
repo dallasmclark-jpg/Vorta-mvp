@@ -10,8 +10,8 @@
     "pretest:contracts": "npm run prepare:skills-matrix",
     "test:contracts": "node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs",
     "prebuild": "npm run prepare:skills-matrix",
-    "build": "vite build",
-    "check": "npm run test:contracts && npm run build"
+    "build": "npm run test:contracts && vite build",
+    "check": "npm run build"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",
