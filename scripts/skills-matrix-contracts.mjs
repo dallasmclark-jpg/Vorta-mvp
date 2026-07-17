@@ -37,12 +37,14 @@ const functionAnalysis = await readFile(
   new URL("../supabase/functions/skills-matrix-data/transform-analysis.ts", import.meta.url),
   "utf8",
 );
+const functionScopes = await readFile(
+  new URL("../supabase/functions/skills-matrix-data/transform-scopes.ts", import.meta.url),
+  "utf8",
+);
 
 for (const requiredText of [
   "By Team",
   "By Department",
-  "Calibration Team",
-  "Operational Technology Team",
   "Capability intelligence",
   "Priority Coverage Weaknesses",
   "People &amp; Experience",
@@ -104,6 +106,11 @@ assert.match(functionTransform, /areaSkills/);
 assert.match(functionAnalysis, /criticalGaps = priorityRisks\.filter/);
 assert.match(functionAnalysis, /spofCount = priorityRisks\.filter/);
 assert.match(functionAnalysis, /avatarUrl: engineer\.avatar_url/);
+assert.match(functionScopes, /name: "Calibration Team"/);
+assert.match(functionScopes, /name: "Operational Technology Team"/);
+assert.match(functionScopes, /explicitSpecialists/);
+assert.match(functionScopes, /explicitMemberIds\(calibrationTeam\.id\)/);
+assert.match(functionScopes, /explicitMemberIds\(otTeam\.id\)/);
 
 assert.match(entry, /\.\/SkillsMatrixNative/);
 assert.match(compatibilityEntry, /\.\/SkillsMatrixNative/);
