@@ -1,0 +1,1 @@
+Quality-gate marker for the Equipment to People workflow.
