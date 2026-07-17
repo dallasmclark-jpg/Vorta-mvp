@@ -9,6 +9,10 @@ const entry = await readFile(
   new URL("../src/screens/SkillsMatrix/index.ts", import.meta.url),
   "utf8",
 );
+const compatibilityEntry = await readFile(
+  new URL("../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx", import.meta.url),
+  "utf8",
+);
 const warmup = await readFile(
   new URL("../src/lib/maintenancePortalFastWarmup.ts", import.meta.url),
   "utf8",
@@ -62,6 +66,7 @@ assert.match(
   /navigate\(`\/equipment\/\$\{encodeURIComponent\(risk\.equipmentId\)\}\/skills`\)/,
 );
 assert.match(entry, /\.\/SkillsMatrixNative/);
+assert.match(compatibilityEntry, /\.\/SkillsMatrixNative/);
 assert.match(warmup, /schemaVersion: "capability-v3"/);
 assert.match(prefetch, /schemaVersion: "capability-v3"/);
 
@@ -77,7 +82,7 @@ for (const forbidden of [
   "SkillsMatrixResolvedExperience",
 ]) {
   assert.doesNotMatch(
-    page + entry,
+    page + entry + compatibilityEntry,
     new RegExp(forbidden.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
     `Native Skills Matrix must not use ${forbidden}`,
   );
@@ -89,7 +94,6 @@ for (const obsolete of [
   "SkillsMatrixStableBootstrap.tsx",
   "SkillsMatrixSelectionExperience.tsx",
   "SkillsMatrixPolished.tsx",
-  "SkillsMatrixIntelligenceBootstrap.tsx",
 ]) {
   await assert.rejects(
     access(new URL(`../src/screens/SkillsMatrix/${obsolete}`, import.meta.url)),
