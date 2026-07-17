@@ -16,6 +16,11 @@ const actionMatcherIndex = lines.findIndex(
     line.includes('/<div className="flex items-center gap-2">\\n') &&
     line.includes("risk\\.projectedScoreGain"),
 );
+const engineerFilterMatcherIndex = lines.findIndex(
+  (line) =>
+    line.includes('/              <div className="flex flex-wrap items-center gap-2">\\n') &&
+    line.includes('min-w-\\[160px\\] flex-1'),
+);
 
 assert.notEqual(
   engineerMatcherIndex,
@@ -27,20 +32,29 @@ assert.notEqual(
   -1,
   "Skills Matrix action workflow matcher could not be located",
 );
+assert.notEqual(
+  engineerFilterMatcherIndex,
+  -1,
+  "Engineers skill-filter workflow matcher could not be located",
+);
 
 const robustEngineerMatcher =
   '      /<td className=\\{`sticky left-0 z-10 min-w-\\[190px\\] px-4 py-2\\.5 \\$\\{rowBg\\}`\\}>\\s*<p className="truncate font-medium text-slate-200">\\{engineer\\.name\\}<\\/p>\\s*<p className="mt-0\\.5 truncate text-\\[11px\\] text-slate-500">\\{engineer\\.discipline\\}<\\/p>\\s*<\\/td>/,';
 const robustActionMatcher =
   '      /<div className="flex items-center gap-2">\\s*<span className="rounded-md bg-blue-500\\/10 px-2 py-1 text-\\[11px\\] font-semibold text-blue-300">\\s*\\+\\{risk\\.projectedScoreGain\\} pts\\s*<\\/span>\\s*<button[\\s\\S]*?Equipment <ArrowRight className="h-3 w-3" \\/>\\s*<\\/button>\\s*<\\/div>/,';
+const robustEngineerFilterMatcher =
+  '      /<div className="flex flex-wrap items-center gap-2">\\s*<div className="relative min-w-\\[160px\\] flex-1">/,';
 
 let changed = false;
-if (lines[engineerMatcherIndex] !== robustEngineerMatcher) {
-  lines[engineerMatcherIndex] = robustEngineerMatcher;
-  changed = true;
-}
-if (lines[actionMatcherIndex] !== robustActionMatcher) {
-  lines[actionMatcherIndex] = robustActionMatcher;
-  changed = true;
+for (const [index, replacement] of [
+  [engineerMatcherIndex, robustEngineerMatcher],
+  [actionMatcherIndex, robustActionMatcher],
+  [engineerFilterMatcherIndex, robustEngineerFilterMatcher],
+]) {
+  if (lines[index] !== replacement) {
+    lines[index] = replacement;
+    changed = true;
+  }
 }
 
 if (changed) {
