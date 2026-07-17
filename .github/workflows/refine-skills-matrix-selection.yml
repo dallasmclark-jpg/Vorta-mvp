@@ -1,0 +1,280 @@
+name: Refine Skills Matrix selection workflow
+
+on:
+  push:
+    paths:
+      - .github/workflows/refine-skills-matrix-selection.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Refine Skills Matrix selection and people workflow
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/screens/SkillsMatrix/SkillsMatrixSection.tsx')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              if old not in text:
+                  raise SystemExit(f'Missing expected block: {label}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '  averageYearsExperience: number;\n  criticalKnowledgeHolder: boolean;',
+              '  averageYearsExperience: number;\n  avatarUrl: string | null;\n  criticalKnowledgeHolder: boolean;',
+              'avatar interface',
+          )
+
+          replace_once(
+              '  CALIBRATION: "border-t-amber-400",',
+              '  CALIBRATION: "border-t-purple-400",',
+              'calibration accent',
+          )
+
+          marker = '''const TEAM_ICONS: Record<string, ElementType> = {
+  OVERALL: Layers3,
+  RED: Users,
+  GREEN: Users,
+  BLUE: Users,
+  YELLOW: Users,
+  DAYS: Users,
+  CALIBRATION: Gauge,
+  OT: Cpu,
+};
+'''
+          replacement = marker + '''
+const TEAM_SELECTED_STYLES: Record<string, string> = {
+  OVERALL: "border-blue-400/70 bg-blue-500/10 ring-blue-400/30",
+  RED: "border-red-400/70 bg-red-500/10 ring-red-400/30",
+  GREEN: "border-emerald-400/70 bg-emerald-500/10 ring-emerald-400/30",
+  BLUE: "border-blue-400/70 bg-blue-500/10 ring-blue-400/30",
+  YELLOW: "border-yellow-300/70 bg-yellow-400/10 ring-yellow-300/30",
+  DAYS: "border-slate-300/70 bg-slate-300/10 ring-slate-300/30",
+  CALIBRATION: "border-purple-400/70 bg-purple-500/10 ring-purple-400/30",
+  OT: "border-cyan-400/70 bg-cyan-500/10 ring-cyan-400/30",
+};
+
+const TEAM_DETAIL_STYLES: Record<string, string> = {
+  OVERALL: "border-t-blue-400 bg-blue-500/5",
+  RED: "border-t-red-400 bg-red-500/5",
+  GREEN: "border-t-emerald-400 bg-emerald-500/5",
+  BLUE: "border-t-blue-400 bg-blue-500/5",
+  YELLOW: "border-t-yellow-300 bg-yellow-400/5",
+  DAYS: "border-t-slate-300 bg-slate-300/5",
+  CALIBRATION: "border-t-purple-400 bg-purple-500/5",
+  OT: "border-t-cyan-400 bg-cyan-500/5",
+};
+'''
+          replace_once(marker, replacement, 'team style maps')
+
+          replace_once(
+              '  const accent = TEAM_ACCENTS[scope.code] ?? "border-t-slate-500";\n',
+              '  const accent = TEAM_ACCENTS[scope.code] ?? "border-t-slate-500";\n  const selectedStyle = TEAM_SELECTED_STYLES[scope.code] ?? TEAM_SELECTED_STYLES.OVERALL;\n',
+              'selected style lookup',
+          )
+
+          replace_once(
+              '''        selected
+          ? "border-x-blue-500/50 border-b-blue-500/50 ring-1 ring-blue-500/20"
+          : "border-x-gray-800 border-b-gray-800 hover:border-x-gray-700 hover:border-b-gray-700 hover:bg-[#171c25]"
+''',
+              '''        selected
+          ? `${selectedStyle} ring-2`
+          : "border-x-gray-800 border-b-gray-800 hover:border-x-gray-700 hover:border-b-gray-700 hover:bg-[#171c25]"
+''',
+              'selected card classes',
+          )
+
+          replace_once(
+              '''        <div className="flex items-center gap-2">
+          <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(scope.status)}`}>
+            {scope.status}
+          </Badge>
+          <Icon className="h-4 w-4 shrink-0 text-slate-600" />
+        </div>
+''',
+              '''        <div className="flex flex-wrap items-center justify-end gap-2">
+          {selected && (
+            <span className="rounded border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-100">
+              Selected
+            </span>
+          )}
+          <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(scope.status)}`}>
+            {scope.status}
+          </Badge>
+          <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+        </div>
+''',
+              'selected badge',
+          )
+
+          old_load = '''      const { data: payload, error: invokeError } = await supabase.functions.invoke(
+        SKILLS_MATRIX_FUNCTION,
+        SKILLS_MATRIX_OPTIONS,
+      );
+      if (invokeError || !payload) {
+        throw invokeError ?? new Error("Skills matrix data was empty");
+      }
+      const normalisedPayload = normaliseSkillsMatrixPayload(
+        payload as SkillsMatrixPayload,
+      );
+'''
+          new_load = '''      const [
+        { data: payload, error: invokeError },
+        { data: avatarRows, error: avatarError },
+      ] = await Promise.all([
+        supabase.functions.invoke(SKILLS_MATRIX_FUNCTION, SKILLS_MATRIX_OPTIONS),
+        supabase.from("engineers").select("id,avatar_url"),
+      ]);
+      if (invokeError || !payload) {
+        throw invokeError ?? new Error("Skills matrix data was empty");
+      }
+      if (avatarError) {
+        console.warn("Engineer profile images could not be loaded:", avatarError.message);
+      }
+      const avatarMap = new Map(
+        (avatarRows ?? []).map((row) => [
+          String(row.id),
+          typeof row.avatar_url === "string" ? row.avatar_url : null,
+        ]),
+      );
+      const payloadWithAvatars = payload as SkillsMatrixPayload;
+      payloadWithAvatars.details = Object.fromEntries(
+        Object.entries(payloadWithAvatars.details).map(([scopeId, detail]) => [
+          scopeId,
+          {
+            ...detail,
+            engineers: detail.engineers.map((engineer) => ({
+              ...engineer,
+              avatarUrl: avatarMap.get(engineer.id) ?? null,
+            })),
+          },
+        ]),
+      );
+      const normalisedPayload = normaliseSkillsMatrixPayload(payloadWithAvatars);
+'''
+          replace_once(old_load, new_load, 'avatar data load')
+
+          start = text.index('              <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">')
+          end_marker = '              <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)]">'
+          end = text.index(end_marker, start)
+          new_header = '''              <Card className={`w-full rounded-xl border border-t-2 border-gray-800 shadow-none ${TEAM_DETAIL_STYLES[selectedSummary.code] ?? TEAM_DETAIL_STYLES.OVERALL}`}>
+                <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-semibold text-slate-50">{selectedSummary.name}</h2>
+                      <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] font-medium shadow-none ${statusBadgeClass(selectedSummary.status)}`}>
+                        {selectedSummary.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {selectedSummary.memberCount} member{selectedSummary.memberCount === 1 ? "" : "s"} · {selectedSummary.criticalGaps} critical gap{selectedSummary.criticalGaps === 1 ? "" : "s"} · {selectedSummary.spofCount} SPOF{selectedSummary.spofCount === 1 ? "" : "s"} · {selectedSummary.affectedEquipment} asset{selectedSummary.affectedEquipment === 1 ? "" : "s"} affected
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-end gap-2">
+                    <span className={`text-3xl font-semibold tabular-nums ${scoreClass(selectedSummary.score)}`}>
+                      {selectedSummary.score}
+                    </span>
+                    <span className="pb-1 text-xs text-slate-500">/ 100 capability</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+'''
+          text = text[:start] + new_header + text[end:]
+
+          replace_once(
+              '              <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)]">',
+              '              <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(300px,0.75fr)_minmax(0,1.55fr)]">',
+              'detail columns',
+          )
+          replace_once(
+              '                <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">\n                  <CardContent className="flex min-w-0 flex-col gap-4 p-5">\n                    <div className="flex items-center justify-between gap-3">',
+              '                <Card className="order-2 min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">\n                  <CardContent className="flex min-w-0 flex-col gap-4 p-5">\n                    <div className="flex items-center justify-between gap-3">',
+              'priority order',
+          )
+
+          people_marker = '''                <Card className="min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                  <CardContent className="flex min-w-0 flex-col gap-4 p-5">
+                    <div>
+                      <h3 className="font-semibold text-slate-50">People &amp; Experience</h3>
+'''
+          people_replacement = '''                <Card className="order-1 min-w-0 rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+                  <CardContent className="flex min-w-0 flex-col gap-4 p-5">
+                    <div>
+                      <h3 className="font-semibold text-slate-50">People &amp; Experience</h3>
+'''
+          replace_once(people_marker, people_replacement, 'people order')
+
+          old_avatar = '''                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0f1318] text-sm font-semibold text-slate-300">
+                            {engineer.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                          </div>
+'''
+          new_avatar = '''                          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-700 bg-[#0f1318] text-sm font-semibold text-slate-300">
+                            <span>{engineer.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
+                            {engineer.avatarUrl && (
+                              <img
+                                src={engineer.avatarUrl}
+                                alt={`${engineer.name} profile`}
+                                loading="lazy"
+                                className="absolute inset-0 h-full w-full object-cover"
+                                onError={(event) => event.currentTarget.remove()}
+                              />
+                            )}
+                          </div>
+'''
+          replace_once(old_avatar, new_avatar, 'engineer avatar')
+
+          path.write_text(text)
+
+          contract_path = Path('scripts/skills-matrix-contracts.mjs')
+          contract = contract_path.read_text()
+          insert_before = 'assert.match(\n  warmup,'
+          if insert_before not in contract:
+              raise SystemExit('Missing contract insertion point')
+          additions = '''for (const requiredText of [
+  "TEAM_SELECTED_STYLES",
+  "TEAM_DETAIL_STYLES",
+  "Calibration Team",
+  "border-t-purple-400",
+  "Selected",
+  "avatar_url",
+  "engineer.avatarUrl",
+  "order-1",
+  "order-2",
+  "/ 100 capability",
+]) {
+  assert.match(
+    page,
+    new RegExp(requiredText.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")),
+    `Skills Matrix must retain ${requiredText}`,
+  );
+}
+assert.doesNotMatch(
+  page,
+  /\{ label: "Critical skills".*\{ label: "Validation health"/s,
+  "Selected scope header must not repeat the four card metrics",
+);
+
+'''
+          contract = contract.replace(insert_before, additions + insert_before, 1)
+          contract_path.write_text(contract)
+          PY
+          npm run check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixSection.tsx scripts/skills-matrix-contracts.mjs
+          git commit -m "Refine Skills Matrix selected team workflow"
+          git push origin main
