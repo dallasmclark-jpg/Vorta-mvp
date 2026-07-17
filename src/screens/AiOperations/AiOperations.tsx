@@ -41,7 +41,6 @@ import { LabourRiskDetailPage } from "../LabourRisk";
 import { CareerSection } from "../Career";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
-import { MaintenanceOperationalBrief } from "./MaintenanceOperationalBrief";
 
 const nav: NavGroup[] = [
   {
@@ -98,73 +97,13 @@ export const AiOperations = (): JSX.Element => (
     <MaintenanceAiWorkOrderExperience>
       <Routes>
         <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
-        <Route
-          path="skills-matrix"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="skills-matrix-data"
-              kind="skills"
-            >
-              <SkillsMatrixSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
-        <Route
-          path="engineers"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="engineers-data"
-              kind="engineers"
-            >
-              <EngineersSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
+        <Route path="skills-matrix" element={<SkillsMatrixSection />} />
+        <Route path="engineers" element={<EngineersSection />} />
         <Route path="career" element={<CareerSection />} />
-        <Route
-          path="requirements"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="requirements-data"
-              kind="requirements"
-            >
-              <RequirementsSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
-        <Route
-          path="training"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="training-data"
-              kind="training"
-            >
-              <TrainingSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
-        <Route
-          path="training-providers"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="training-providers-data"
-              kind="providers"
-            >
-              <TrainingProvidersSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
-        <Route
-          path="ai-matching"
-          element={
-            <MaintenanceOperationalBrief
-              functionName="ai-matching-data"
-              kind="matching"
-            >
-              <AiMatchingSection />
-            </MaintenanceOperationalBrief>
-          }
-        />
+        <Route path="requirements" element={<RequirementsSection />} />
+        <Route path="training" element={<TrainingSection />} />
+        <Route path="training-providers" element={<TrainingProvidersSection />} />
+        <Route path="ai-matching" element={<AiMatchingSection />} />
         <Route path="settings/data-import" element={<SapDataImportSection />} />
         <Route path="settings" element={<SettingsSection />} />
         <Route path="equipment" element={<EquipmentSection />} />
