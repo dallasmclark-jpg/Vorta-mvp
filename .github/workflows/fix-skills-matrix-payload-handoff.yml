@@ -1,0 +1,93 @@
+name: Fix Skills Matrix payload handoff
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-skills-matrix-payload-handoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Restore bounded payload handoff
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx")
+          text = path.read_text()
+
+          old = '''  useEffect(() => {
+              const handlePayload = (event: Event): void => {
+                const nextPayload = (event as CustomEvent<SkillsMatrixPayload>).detail;
+                if (nextPayload) setPayload(nextPayload);
+              };
+              window.addEventListener(PAYLOAD_EVENT, handlePayload);
+              return () => window.removeEventListener(PAYLOAD_EVENT, handlePayload);
+            }, []);'''
+
+          new = '''  useEffect(() => {
+              const readLatestPayload = (): SkillsMatrixPayload | null =>
+                (
+                  window as unknown as {
+                    __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
+                  }
+                ).__vortaSkillsMatrixPayload ?? null;
+
+              const handlePayload = (event: Event): void => {
+                const nextPayload = (event as CustomEvent<SkillsMatrixPayload>).detail;
+                if (nextPayload) setPayload(nextPayload);
+              };
+
+              window.addEventListener(PAYLOAD_EVENT, handlePayload);
+
+              const mountedPayload = readLatestPayload();
+              if (mountedPayload) setPayload(mountedPayload);
+
+              const handoffRetry = window.setTimeout(() => {
+                const latestPayload = readLatestPayload();
+                if (latestPayload) setPayload(latestPayload);
+              }, 150);
+
+              return () => {
+                window.clearTimeout(handoffRetry);
+                window.removeEventListener(PAYLOAD_EVENT, handlePayload);
+              };
+            }, []);'''
+
+          if old not in text:
+              raise SystemExit("Skills Matrix payload listener block not found")
+
+          path.write_text(text.replace(old, new, 1))
+
+          contract_path = Path("scripts/skills-matrix-contracts.mjs")
+          contract = contract_path.read_text()
+          marker = 'console.log("Skills Matrix contracts passed.");'
+          assertion = '''assert.match(
+            selection,
+            /mountedPayload[\\s\\S]*handoffRetry/,
+            "Skills Matrix must recover the latest in-memory payload when the event fires before the experience listener mounts",
+          );
+
+'''
+          if assertion not in contract:
+              if marker not in contract:
+                  raise SystemExit("Skills Matrix contract marker not found")
+              contract = contract.replace(marker, assertion + marker, 1)
+              contract_path.write_text(contract)
+
+      - name: Commit payload handoff fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx scripts/skills-matrix-contracts.mjs
+          git commit -m "Fix Skills Matrix payload handoff"
+          git push origin main
