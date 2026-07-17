@@ -133,7 +133,7 @@ jobs:
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "4189824+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx
           git commit -m "Stop Skills Matrix building tabs moving the page"
           git push origin main
