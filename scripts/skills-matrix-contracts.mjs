@@ -143,6 +143,14 @@ for (const requiredText of [
   "recommendedAction",
   "projectedScoreGain",
   "vorta:skills-matrix-polished-payload",
+  "Site-wide Maintenance",
+  "PEOPLE_PREVIEW_COUNT",
+  "View all ${count} engineers",
+  "data-building-tabs-host",
+  "equipment_assets",
+  "equipment_required_skills",
+  "All Site",
+  "applyBuildingFilter",
 ]) {
   assert.match(
     selection,
@@ -155,10 +163,30 @@ assert.doesNotMatch(
   /badge\.textContent = "Selected"/,
   "Selected team cards must use colour and outline rather than a Selected label",
 );
+assert.doesNotMatch(
+  selection,
+  /\{summary\.name\} Capability Briefing/,
+  "Capability briefing title must not repeat Capability",
+);
+assert.match(
+  selection,
+  /summary\.name\.replace\(\/\\s\+Capability\$\/i, ""\)/,
+  "Capability briefing must derive a concise selected-scope title",
+);
 assert.match(
   selection,
   /grid\.insertBefore\(peopleCard, riskCard\)/,
   "People and Experience must appear before Priority Coverage Weaknesses",
+);
+assert.match(
+  selection,
+  /list\.style\.overflowY = "visible"/,
+  "People and Experience must not retain an internal vertical scrollbar",
+);
+assert.match(
+  selection,
+  /row\.style\.display = showAll \|\| index < PEOPLE_PREVIEW_COUNT/,
+  "People and Experience must default to a concise engineer preview",
 );
 assert.match(
   selection,
@@ -174,6 +202,16 @@ assert.match(
   selection,
   /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/,
   "Single-person dependency count must be derived from real ranked coverage records",
+);
+assert.match(
+  selection,
+  /\.eq\("site_id", siteId\)/,
+  "Building tabs must be scoped to the authenticated site",
+);
+assert.match(
+  selection,
+  /skillIds\.add\(String\(row\.skill_id\)\)/,
+  "Building filters must be derived from real equipment skill requirements",
 );
 assert.doesNotMatch(
   selection,
