@@ -1,0 +1,173 @@
+name: Stabilize Skills Matrix runtime
+
+on:
+  push:
+    paths:
+      - .github/workflows/stabilize-skills-matrix-runtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Remove observer loops and duplicate payload request
+        shell: python
+        run: |
+          from pathlib import Path
+
+          selection_path = Path("src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx")
+          selection = selection_path.read_text()
+          old_selection_tail = '''    enhance();
+              const observer = new MutationObserver(enhance);
+              observer.observe(root, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["aria-pressed"],
+              });
+
+              return () => {
+                cancelAnimationFrame(frame);
+                observer.disconnect();
+              };
+          '''
+          new_selection_tail = '''    let followUp = 0;
+              const scheduleEnhance = (): void => {
+                enhance();
+                window.clearTimeout(followUp);
+                followUp = window.setTimeout(enhance, 80);
+              };
+
+              scheduleEnhance();
+              root.addEventListener("click", scheduleEnhance, true);
+
+              return () => {
+                cancelAnimationFrame(frame);
+                window.clearTimeout(followUp);
+                root.removeEventListener("click", scheduleEnhance, true);
+              };
+          '''
+          if old_selection_tail not in selection:
+              raise SystemExit("Selection observer block not found")
+          selection = selection.replace(old_selection_tail, new_selection_tail, 1)
+
+          old_payload_state = '''  const [payload, setPayload] = useState<SkillsMatrixPayload | null>(null);'''
+          new_payload_state = '''  const [payload, setPayload] = useState<SkillsMatrixPayload | null>(() => {
+              if (typeof window === "undefined") return null;
+              return (
+                window as unknown as {
+                  __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
+                }
+              ).__vortaSkillsMatrixPayload ?? null;
+            });'''
+          if old_payload_state not in selection:
+              raise SystemExit("Selection payload state not found")
+          selection = selection.replace(old_payload_state, new_payload_state, 1)
+          selection_path.write_text(selection)
+
+          polish_path = Path("src/screens/SkillsMatrix/SkillsMatrixPolished.tsx")
+          polish = polish_path.read_text()
+          old_publish = '''  latestPayload = payload;
+            if (typeof window === "undefined") return;
+
+            window.setTimeout(() => {'''
+          new_publish = '''  latestPayload = payload;
+            if (typeof window === "undefined") return;
+            (
+              window as unknown as {
+                __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
+              }
+            ).__vortaSkillsMatrixPayload = payload;
+
+            window.setTimeout(() => {'''
+          if old_publish not in polish:
+              raise SystemExit("Payload publisher not found")
+          polish = polish.replace(old_publish, new_publish, 1)
+
+          old_polish_tail = '''    enhance();
+              const observer = new MutationObserver(enhance);
+              observer.observe(root, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["aria-pressed"],
+              });
+
+              return () => observer.disconnect();
+          '''
+          new_polish_tail = '''    let followUp = 0;
+              const scheduleEnhance = (): void => {
+                enhance();
+                window.clearTimeout(followUp);
+                followUp = window.setTimeout(enhance, 80);
+              };
+
+              scheduleEnhance();
+              root.addEventListener("click", scheduleEnhance, true);
+
+              return () => {
+                window.clearTimeout(followUp);
+                root.removeEventListener("click", scheduleEnhance, true);
+              };
+          '''
+          if old_polish_tail not in polish:
+              raise SystemExit("Polish observer block not found")
+          polish = polish.replace(old_polish_tail, new_polish_tail, 1)
+          polish_path.write_text(polish)
+
+          bootstrap_path = Path("src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx")
+          bootstrap_path.write_text(
+              'export { SkillsMatrixSection } from "./SkillsMatrixSelectionExperience";\n'
+          )
+
+          contract_path = Path("scripts/skills-matrix-contracts.mjs")
+          contract = contract_path.read_text()
+          insertion = '''
+          assert.doesNotMatch(
+            selection,
+            /MutationObserver/,
+            "Skills Matrix selection enhancements must not continuously observe and rewrite the page",
+          );
+          assert.doesNotMatch(
+            polish,
+            /MutationObserver/,
+            "Skills Matrix polish must use bounded event updates rather than a DOM observer loop",
+          );
+          const bootstrap = await readFile(
+            new URL("../src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx", import.meta.url),
+            "utf8",
+          );
+          assert.doesNotMatch(
+            bootstrap,
+            /supabase\.functions\.invoke/,
+            "Skills Matrix must not issue a duplicate payload replay request",
+          );
+          assert.match(
+            selection,
+            /__vortaSkillsMatrixPayload/,
+            "Skills Matrix must reuse the latest mounted payload without refetching",
+          );
+          '''
+          marker = 'console.log("Skills Matrix contracts passed.");'
+          if marker not in contract:
+              raise SystemExit("Contract marker not found")
+          contract = contract.replace(marker, insertion + "\n" + marker, 1)
+          contract_path.write_text(contract)
+
+      - name: Commit stabilized runtime
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixSelectionExperience.tsx \
+                  src/screens/SkillsMatrix/SkillsMatrixPolished.tsx \
+                  src/screens/SkillsMatrix/SkillsMatrixIntelligenceBootstrap.tsx \
+                  scripts/skills-matrix-contracts.mjs
+          git commit -m "Stabilize Skills Matrix runtime" || exit 0
+          git push origin main
