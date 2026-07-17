@@ -92,7 +92,7 @@ assert.match(page, /new Set\(risks\.map\(\(risk\) => risk\.equipmentId\)\)/);
 assert.match(page, /risks\.filter\(\(risk\) => risk\.singlePoint\)\.length/);
 assert.match(page, /selectedArea === ALL_SITE/);
 assert.match(page, /skillIds\.has\(skill\.id\)/);
-assert.match(page, /priorityRisks\.slice\(0, 3\)/);
+assert.match(page, /equipmentPriorityRisks\.slice\(0, 3\)/);
 assert.match(page, /\["pending", "rejected", "expired"\]/);
 assert.match(page, /searchParams\.get\("view"\)/);
 assert.match(page, /searchParams\.get\("scope"\)/);
