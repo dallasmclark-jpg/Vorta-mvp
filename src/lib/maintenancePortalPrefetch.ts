@@ -9,7 +9,7 @@ const ROUTE_DATA_REQUEST: Record<string, RouteDataRequest> = {
   "/ai-matching": { functionName: "ai-matching-data" },
   "/skills-matrix": {
     functionName: "skills-matrix-data",
-    options: { body: { schemaVersion: "capability-v2" } },
+    options: { body: { schemaVersion: "capability-v3" } },
   },
   "/engineers": { functionName: "engineers-data" },
   "/requirements": { functionName: "requirements-data" },
