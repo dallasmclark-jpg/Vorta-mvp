@@ -83,6 +83,65 @@ type BuildingTab = {
   skillCount: number;
 };
 
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function capabilityStatus(score: number): ScopeStatus {
+  if (score < 55) return "Critical";
+  if (score < 70) return "At risk";
+  if (score < 85) return "Moderate";
+  return "Strong";
+}
+
+function normalisePayload(payload: SkillsMatrixPayload): SkillsMatrixPayload {
+  const teams = payload.teams.map((team) => ({
+    ...team,
+    name:
+      team.code === "CALIBRATION"
+        ? "Calibration Team"
+        : team.code === "OT"
+          ? "Operational Technology Team"
+          : team.name,
+  }));
+  const shiftTeams = teams.filter((team) =>
+    ["RED", "GREEN", "BLUE", "YELLOW", "DAYS"].includes(team.code),
+  );
+  const specialistTeams = teams.filter((team) =>
+    ["CALIBRATION", "OT"].includes(team.code),
+  );
+  const criticalTeams = teams.filter(
+    (team) => team.status === "Critical" || team.score < 55,
+  );
+  const criticalTeamShare =
+    criticalTeams.length / Math.max(1, teams.length);
+
+  let score = Math.round(
+    payload.overall.skillsCoverage * 0.3 +
+      average(shiftTeams.map((team) => team.score)) * 0.3 +
+      average(specialistTeams.map((team) => team.score)) * 0.15 +
+      payload.overall.experienceDepth * 0.1 +
+      payload.overall.smeResilience * 0.1 +
+      payload.overall.validationHealth * 0.05 -
+      criticalTeamShare * 12,
+  );
+  if (teams.some((team) => team.score < 30)) score = Math.min(score, 59);
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    ...payload,
+    teams,
+    overall: {
+      ...payload.overall,
+      score,
+      status: capabilityStatus(score),
+      criticalGaps: criticalTeams.length,
+      spofCount: teams.filter((team) => team.spofCount > 0).length,
+    },
+  };
+}
+
 const TEAM_VISUALS: Record<string, TeamVisual> = {
   "Site Maintenance Capability": {
     border: "#60a5fa",
@@ -220,7 +279,15 @@ function prepareIntelligenceHost(
   if (!selection) return null;
 
   const headings = Array.from(root.querySelectorAll<HTMLHeadingElement>("h2"));
-  const heading = headings.find((candidate) => textOf(candidate) === selection.title);
+  const heading = headings.find((candidate) => {
+    const headingText = textOf(candidate);
+    return (
+      headingText === selection.title ||
+      (selection.title === "Calibration Team" && headingText === "Calibration") ||
+      (selection.title === "Operational Technology Team" &&
+        headingText === "Operational Technology")
+    );
+  });
   if (!heading) return null;
 
   const card = heading.closest<HTMLElement>("[class*='rounded-xl']");
@@ -363,7 +430,13 @@ function scopeByTitle(
 ): ScopeSummary | null {
   if (!payload) return null;
   return [payload.overall, ...payload.teams, ...payload.departments].find(
-    (scope) => scope.name === title,
+    (scope) =>
+      scope.name === title ||
+      (scope.code === "CALIBRATION" &&
+        (title === "Calibration" || title === "Calibration Team")) ||
+      (scope.code === "OT" &&
+        (title === "Operational Technology" ||
+          title === "Operational Technology Team")),
   ) ?? null;
 }
 
@@ -443,8 +516,12 @@ function CapabilityIntelligencePanel({
       value: topRisk?.skillName ?? "No current exception",
     },
     {
-      label: "Current cover",
-      value: topRisk ? `${topRisk.qualifiedCount}/${topRisk.minimumRequired}` : "Covered",
+      label: "Coverage status",
+      value: topRisk
+        ? topRisk.qualifiedCount >= topRisk.minimumRequired && topRisk.singlePoint
+          ? `${topRisk.qualifiedCount}/${topRisk.minimumRequired} · resilience risk`
+          : `${topRisk.qualifiedCount}/${topRisk.minimumRequired}`
+        : "Covered",
     },
     {
       label: "Assets affected",
@@ -561,7 +638,17 @@ function BuildingTabs({
             key={tab.name}
             type="button"
             disabled={disabled}
-            onClick={() => onSelect(tab.name)}
+            onClick={(event) => {
+                event.stopPropagation();
+                const scrollTop = window.scrollY;
+                onSelect(tab.name);
+                window.requestAnimationFrame(() => {
+                  window.scrollTo({ top: scrollTop, behavior: "auto" });
+                });
+                window.setTimeout(() => {
+                  window.scrollTo({ top: scrollTop, behavior: "auto" });
+                }, 100);
+              }}
             aria-pressed={active}
             className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
               active
@@ -585,11 +672,12 @@ export const SkillsMatrixSection = (): JSX.Element => {
   const [avatars, setAvatars] = useState<Map<string, string>>(new Map());
   const [payload, setPayload] = useState<SkillsMatrixPayload | null>(() => {
     if (typeof window === "undefined") return null;
-    return (
+    const mounted = (
       window as unknown as {
         __vortaSkillsMatrixPayload?: SkillsMatrixPayload;
       }
-    ).__vortaSkillsMatrixPayload ?? null;
+    ).__vortaSkillsMatrixPayload;
+    return mounted ? normalisePayload(mounted) : null;
   });
   const [selectedTitle, setSelectedTitle] = useState("Site Maintenance Capability");
   const [selectedVisual, setSelectedVisual] = useState<TeamVisual>(
@@ -605,7 +693,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
   useEffect(() => {
     const handlePayload = (event: Event): void => {
       const nextPayload = (event as CustomEvent<SkillsMatrixPayload>).detail;
-      if (nextPayload) setPayload(nextPayload);
+      if (nextPayload) setPayload(normalisePayload(nextPayload));
     };
     window.addEventListener(PAYLOAD_EVENT, handlePayload);
     return () => window.removeEventListener(PAYLOAD_EVENT, handlePayload);
@@ -725,12 +813,12 @@ export const SkillsMatrixSection = (): JSX.Element => {
     };
 
     scheduleEnhance();
-    root.addEventListener("click", scheduleEnhance, true);
+    root.addEventListener("click", scheduleEnhance);
 
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(followUp);
-      root.removeEventListener("click", scheduleEnhance, true);
+      root.removeEventListener("click", scheduleEnhance);
     };
   }, [avatars, buildingSkills, payload, selectedBuilding, selectedTitle, showAllPeople]);
 
