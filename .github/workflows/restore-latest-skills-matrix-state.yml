@@ -1,0 +1,93 @@
+name: Restore latest Skills Matrix state
+
+on:
+  push:
+    paths:
+      - .github/workflows/restore-latest-skills-matrix-state.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Restore corrected scoring without duplicate requests
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("src/screens/SkillsMatrix/SkillsMatrixPolished.tsx")
+          text = path.read_text()
+
+          replacement = r'''function rebalanceOverallCapability(
+            payload: SkillsMatrixPayload,
+          ): SkillsMatrixPayload {
+            const teams = payload.teams.map((team) => ({
+              ...team,
+              name: displayName(team),
+            }));
+            const shiftTeams = teams.filter((team) =>
+              ["RED", "GREEN", "BLUE", "YELLOW", "DAYS"].includes(team.code),
+            );
+            const specialistTeams = teams.filter((team) =>
+              ["CALIBRATION", "OT"].includes(team.code),
+            );
+            const criticalTeams = teams.filter(
+              (team) => team.status === "Critical" || team.score < 55,
+            );
+            const criticalTeamShare =
+              criticalTeams.length / Math.max(1, teams.length);
+
+            let score = Math.round(
+              payload.overall.skillsCoverage * 0.3 +
+                average(shiftTeams.map((team) => team.score)) * 0.3 +
+                average(specialistTeams.map((team) => team.score)) * 0.15 +
+                payload.overall.experienceDepth * 0.1 +
+                payload.overall.smeResilience * 0.1 +
+                payload.overall.validationHealth * 0.05 -
+                criticalTeamShare * 12,
+            );
+
+            if (teams.some((team) => team.score < 30)) {
+              score = Math.min(score, 59);
+            }
+
+            const overall = {
+              ...payload.overall,
+              score,
+              status: overallStatus(score),
+              criticalGaps: criticalTeams.length,
+              spofCount: teams.filter((team) => team.spofCount > 0).length,
+            };
+
+            return {
+              ...payload,
+              overall,
+              teams,
+            };
+          }
+
+          function publishPayload'''
+
+          pattern = re.compile(
+              r"function rebalanceOverallCapability\([\s\S]*?\n}\n\nfunction publishPayload"
+          )
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit("Could not locate Skills Matrix scoring function")
+
+          path.write_text(updated)
+
+      - name: Commit restored latest state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/SkillsMatrix/SkillsMatrixPolished.tsx
+          git commit -m "Restore latest stable Skills Matrix state"
+          git push origin main
