@@ -1,5 +1,0 @@
-Already current src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
-Already current src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx
-Already current src/components/PortalShell.tsx
-Already current src/screens/PilotSetup/PilotSetupSection.tsx
-Exit code: 0
