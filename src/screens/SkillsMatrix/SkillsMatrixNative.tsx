@@ -32,6 +32,7 @@ import {
   clearMaintenancePortalDataCache,
   supabase,
 } from "../../lib/supabaseClient";
+import { validateSkillsMatrixPayload } from "../../lib/runtimeContracts";
 
 const SKILLS_MATRIX_FUNCTION = "skills-matrix-data";
 const SKILLS_MATRIX_OPTIONS = { body: { schemaVersion: "capability-v3" } };
@@ -253,9 +254,9 @@ function capabilityStatus(score: number): ScopeStatus {
 }
 
 function normaliseSkillsMatrixPayload(
-  payload: SkillsMatrixPayload,
+  payload: unknown,
 ): SkillsMatrixPayload {
-  return payload;
+  return validateSkillsMatrixPayload(payload) as unknown as SkillsMatrixPayload;
 }
 
 function statusBadgeClass(status: ScopeStatus): string {
@@ -624,9 +625,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
       if (invokeError || !payload) {
         throw invokeError ?? new Error("Skills matrix data was empty");
       }
-      const resolved = normaliseSkillsMatrixPayload(
-        payload as SkillsMatrixPayload,
-      );
+      const resolved = normaliseSkillsMatrixPayload(payload);
       setData(resolved);
       setSelectedScopeId((current) =>
         resolved.details[current] ? current : "overall",
@@ -712,6 +711,33 @@ export const SkillsMatrixSection = (): JSX.Element => {
   const selectedDetail = selectedSummary
     ? data?.details[selectedSummary.id] ?? null
     : null;
+
+  const activeContext = useMemo(() => {
+    const values: string[] = [];
+    if (selectedSummary) values.push(selectedSummary.name);
+    if (selectedArea !== ALL_SITE) values.push(selectedArea);
+    if (equipmentFilterId) {
+      const equipment = selectedDetail?.priorityRisks.find(
+        (risk) => risk.equipmentId === equipmentFilterId,
+      );
+      values.push(equipment ? `${equipment.equipmentName} (${equipment.equipmentCode})` : "Equipment filter");
+    }
+    if (priorityOnly) values.push("Priority gaps only");
+    if (search.trim()) values.push(`Search: ${search.trim()}`);
+    return values;
+  }, [equipmentFilterId, priorityOnly, search, selectedArea, selectedDetail, selectedSummary]);
+
+  const clearOperationalFilters = (): void => {
+    setSelectedArea(ALL_SITE);
+    setSearch("");
+    setPriorityOnly(false);
+    setSelectedSkillId(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      ["area", "q", "priority", "skill", "equipment"].forEach((key) => next.delete(key));
+      return next;
+    }, { replace: true });
+  };
 
   const prioritySkillIds = useMemo(
     () => new Set(selectedDetail?.priorityRisks.map((row) => row.skillId) ?? []),
@@ -929,7 +955,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
             variant="outline"
             onClick={exportSelectedScope}
             disabled={!selectedDetail || loading}
-            className="h-9 gap-2 border-[#ffffff20] bg-[#ffffff0d] px-3 text-xs font-semibold text-slate-200 hover:bg-[#ffffff16] hover:text-slate-50"
+            className="min-h-10 gap-2 border-[#ffffff20] bg-[#ffffff0d] px-3 text-xs font-semibold text-slate-200 hover:bg-[#ffffff16] hover:text-slate-50"
           >
             <Download className="h-4 w-4" /> Export selected
           </Button>
@@ -938,12 +964,28 @@ export const SkillsMatrixSection = (): JSX.Element => {
             onClick={() => void loadData(true)}
             disabled={loading || refreshing}
             aria-label="Refresh skills matrix"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff10] hover:text-slate-200 disabled:opacity-50"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-800 text-slate-400 transition-colors hover:bg-[#ffffff10] hover:text-slate-200 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
       </header>
+
+      {activeContext.length > 0 ? (
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-4 py-3">
+          <p className="text-sm text-slate-300">
+            <span className="font-semibold text-blue-300">Showing:</span>{" "}
+            {activeContext.join(" · ")}
+          </p>
+          <button
+            type="button"
+            onClick={clearOperationalFilters}
+            className="inline-flex min-h-10 items-center rounded-lg border border-blue-500/25 px-3 text-xs font-semibold text-blue-300 hover:bg-blue-500/10"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : null}
 
       {error && !data ? (
         <Card className="w-full rounded-xl border border-red-500/30 bg-red-500/5 shadow-none">

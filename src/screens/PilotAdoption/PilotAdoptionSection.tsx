@@ -16,6 +16,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../lib/auth";
 import { trackPilotUsageEvent } from "../../lib/pilotUsage";
 import { supabase } from "../../lib/supabaseClient";
+import { validatePilotAdoptionReport } from "../../lib/runtimeContracts";
 
 interface AdoptionReport {
   status: string;
@@ -279,7 +280,7 @@ export const PilotAdoptionSection = (): JSX.Element => {
       return;
     }
 
-    const nextReport = data as AdoptionReport;
+    const nextReport = validatePilotAdoptionReport(data) as unknown as AdoptionReport;
     setReport(nextReport);
     setAppliedPreset(range.preset);
     setLoading(false);

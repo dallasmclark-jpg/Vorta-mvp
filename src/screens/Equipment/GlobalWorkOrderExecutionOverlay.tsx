@@ -15,17 +15,16 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
+import {
+  VORTA_WORK_ORDER_DETAIL_EVENT,
+  type WorkOrderDetailSelection,
+} from "../../lib/maintenanceActions";
+export { VORTA_WORK_ORDER_DETAIL_EVENT } from "../../lib/maintenanceActions";
 import {
   getWorkOrderExecutionDetail,
   type WorkOrderExecutionDetail,
 } from "./workOrderExecutionService";
-
-export const VORTA_WORK_ORDER_DETAIL_EVENT = "vorta-work-order-detail";
-
-interface WorkOrderDetailEvent {
-  equipmentId?: string;
-  workOrderNumber?: string;
-}
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -85,7 +84,7 @@ function statusTone(value: string): string {
 }
 
 export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
-  const [selection, setSelection] = useState<WorkOrderDetailEvent | null>(null);
+  const [selection, setSelection] = useState<WorkOrderDetailSelection | null>(null);
   const [detail, setDetail] = useState<WorkOrderExecutionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +99,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
-      const next = (event as CustomEvent<WorkOrderDetailEvent>).detail;
+      const next = (event as CustomEvent<WorkOrderDetailSelection>).detail;
       const equipmentId = next?.equipmentId?.trim();
       const workOrderNumber = next?.workOrderNumber?.trim();
       if (!equipmentId || !workOrderNumber) return;
@@ -147,16 +146,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
     };
   }, [selection, retryCount]);
 
-  useEffect(() => {
-    if (!selection) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [close, selection]);
+  const drawerRef = useModalFocusTrap<HTMLElement>(Boolean(selection), close);
 
   if (!selection) return null;
 
@@ -174,14 +164,16 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
       />
 
       <aside
+        ref={drawerRef}
         className="absolute inset-y-0 right-0 flex w-full max-w-[620px] flex-col border-l border-gray-800 bg-[#10151f] shadow-2xl shadow-black/70"
         aria-label="Work order information"
         aria-modal="true"
         role="dialog"
+        tabIndex={-1}
       >
         <header className="flex min-h-[64px] items-center justify-between gap-3 border-b border-gray-800 px-4 sm:px-5">
           <div className="min-w-0">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-400/80">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-400/80">
               SAP execution record
             </p>
             <h2 className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">
@@ -191,7 +183,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
           <button
             type="button"
             onClick={close}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-gray-800 hover:text-slate-200"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-gray-800 hover:text-slate-200"
             aria-label="Close work order information"
           >
             <X className="h-4 w-4" />
@@ -241,16 +233,16 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="h-auto rounded border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-[9px] font-semibold text-blue-300 shadow-none">
+                      <Badge className="h-auto rounded border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-[11px] font-semibold text-blue-300 shadow-none">
                         {detail.header.priority}
                       </Badge>
                       <Badge
-                        className={`h-auto rounded border px-2 py-1 text-[9px] font-semibold shadow-none ${statusTone(detail.header.status)}`}
+                        className={`h-auto rounded border px-2 py-1 text-[11px] font-semibold shadow-none ${statusTone(detail.header.status)}`}
                       >
                         {formatStatus(detail.header.status)}
                       </Badge>
                       {detail.header.orderTypeCode ? (
-                        <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-2 py-1 text-[9px] font-medium text-slate-400 shadow-none">
+                        <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-2 py-1 text-[11px] font-medium text-slate-400 shadow-none">
                           {detail.header.orderTypeCode}
                         </Badge>
                       ) : null}
@@ -320,10 +312,10 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                       Engineer confirmations
                     </p>
-                    <p className="mt-0.5 text-[10px] text-slate-600">
+                    <p className="mt-0.5 text-xs text-slate-600">
                       Work completion text and actual effort recorded against the SAP order.
                     </p>
                   </div>
@@ -337,7 +329,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-300/80">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-300/80">
                             {confirmation.confirmationNumber
                               ? `Confirmation ${confirmation.confirmationNumber}`
                               : "SAP confirmation"}
@@ -354,13 +346,13 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                           </p>
                         </div>
                         {confirmation.finalConfirmation ? (
-                          <Badge className="h-auto rounded border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[9px] font-semibold text-emerald-300 shadow-none">
+                          <Badge className="h-auto rounded border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300 shadow-none">
                             Final confirmation
                           </Badge>
                         ) : null}
                       </div>
                       <div className="mt-3 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] px-3 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                           Engineer confirmation text
                         </p>
                         <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">
@@ -368,7 +360,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                             "No confirmation text was supplied in the imported SAP record."}
                         </p>
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-slate-500">
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
                         <span>
                           Actual work: {formatQuantity(
                             confirmation.actualWork,
@@ -391,7 +383,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                     <p className="mt-2 text-xs font-medium text-slate-300">
                       No SAP confirmation imported
                     </p>
-                    <p className="mt-1 text-[10px] leading-4 text-slate-600">
+                    <p className="mt-1 text-xs leading-4 text-slate-600">
                       Confirmation text will appear once SAP supplies the record.
                     </p>
                   </div>
@@ -401,10 +393,10 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                       Reserved materials
                     </p>
-                    <p className="mt-0.5 text-[10px] text-slate-600">
+                    <p className="mt-0.5 text-xs text-slate-600">
                       Required, reserved and withdrawn quantities linked to this order.
                     </p>
                   </div>
@@ -425,7 +417,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                             {reservation.materialDescription ??
                               "Material description not supplied"}
                           </p>
-                          <p className="mt-1 text-[9px] text-slate-500">
+                          <p className="mt-1 text-[11px] text-slate-500">
                             Reservation {reservation.reservationNumber ?? "—"}
                             {reservation.reservationItem
                               ? ` · item ${reservation.reservationItem}`
@@ -433,7 +425,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                           </p>
                         </div>
                         <Badge
-                          className={`h-auto rounded border px-2 py-1 text-[9px] font-semibold shadow-none ${statusTone(reservation.reservationStatus)}`}
+                          className={`h-auto rounded border px-2 py-1 text-[11px] font-semibold shadow-none ${statusTone(reservation.reservationStatus)}`}
                         >
                           {formatStatus(reservation.reservationStatus)}
                         </Badge>
@@ -472,10 +464,10 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                       Goods movements
                     </p>
-                    <p className="mt-0.5 text-[10px] text-slate-600">
+                    <p className="mt-0.5 text-xs text-slate-600">
                       Material issues, returns and reversals recorded against the order.
                     </p>
                   </div>
@@ -501,7 +493,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                               ? ` · ${movement.materialDescription}`
                               : ""}
                           </p>
-                          <p className="mt-1 text-[9px] text-slate-500">
+                          <p className="mt-1 text-[11px] text-slate-500">
                             Posted {formatDate(movement.postingDate)}
                             {movement.enteredBy ? ` · ${movement.enteredBy}` : ""}
                           </p>
@@ -524,7 +516,7 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                 )}
               </section>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[9px] text-slate-600">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[11px] text-slate-600">
                 <span className="inline-flex items-center gap-1.5">
                   <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                   Read-only SAP source records

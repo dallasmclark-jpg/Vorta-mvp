@@ -21,6 +21,8 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
+import { trackPilotUsageEvent } from "../../lib/pilotUsage";
+import { validatePilotImpactReport } from "../../lib/runtimeContracts";
 
 interface RiskMetric {
   baseline: number | null;
@@ -489,8 +491,20 @@ export const PilotImpactSection = (): JSX.Element => {
       return;
     }
 
-    setReport(data as PilotValueReport);
+    const nextReport = validatePilotImpactReport(data) as unknown as PilotValueReport;
+    setReport(nextReport);
     setAppliedPreset(range.preset);
+
+    if (!initial) {
+      void trackPilotUsageEvent({
+        siteId: siteContext.siteId,
+        eventType: "pilot_report_range_applied",
+        pathname: "/pilot-impact",
+        entityType: "report",
+        entityId: "pilot-impact",
+        metadata: { preset: range.preset, surface: "impact" },
+      });
+    }
     setLoading(false);
     setRefreshing(false);
   }, [siteContext?.siteId]);
@@ -545,6 +559,15 @@ export const PilotImpactSection = (): JSX.Element => {
 
   const downloadPilotReport = (): void => {
     if (!report) return;
+
+    void trackPilotUsageEvent({
+      siteId: siteContext?.siteId,
+      eventType: "pilot_report_downloaded",
+      pathname: "/pilot-impact",
+      entityType: "report",
+      entityId: "pilot-impact",
+      metadata: { format: "print_pdf" },
+    });
 
     const originalTitle = document.title;
     const siteName = report.site?.name ?? "Active maintenance site";

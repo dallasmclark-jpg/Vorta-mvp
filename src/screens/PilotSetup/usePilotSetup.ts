@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
+import { validatePilotSetupReport } from "../../lib/runtimeContracts";
 import {
   type AttemptDraft,
   type ConfigurationDraft,
@@ -110,7 +111,8 @@ export function usePilotSetup() {
       return;
     }
 
-    initialiseForms(data as PilotSetupReport);
+    const validated = validatePilotSetupReport(data) as unknown as PilotSetupReport;
+    initialiseForms(validated);
     setLoading(false);
   }, [initialiseForms, siteContext?.siteId]);
 
@@ -158,7 +160,7 @@ export function usePilotSetup() {
         return null;
       }
 
-      const nextReport = data as PilotSetupReport;
+      const nextReport = validatePilotSetupReport(data) as unknown as PilotSetupReport;
       setReport(nextReport);
       setNotice({ kind: "success", text: successText });
       return nextReport;
