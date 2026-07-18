@@ -56,7 +56,7 @@ type Accent = keyof typeof accentMap;
 
 const labelBase = "text-sm font-medium leading-none tracking-tight";
 const itemBase  = (hover: string) =>
-  `flex w-full items-center gap-3 rounded-lg py-2.5 px-2 text-sm transition-colors ${hover} justify-center xl:justify-start xl:px-3`;
+  `flex w-full items-center gap-3 rounded-lg py-2.5 px-2 text-sm transition-colors ${hover} justify-center 2xl:justify-start 2xl:px-3`;
 
 interface SidebarTooltipPosition {
   top: number;
@@ -106,7 +106,7 @@ function useCompactSidebarTooltip(
     if (
       !enabled ||
       window.matchMedia(
-        "(min-width: 1280px)",
+        "(min-width: 1536px)",
       ).matches
     ) {
       return;
@@ -180,7 +180,7 @@ function useCompactSidebarTooltip(
               top: position.top,
               left: position.left,
             }}
-            className="pointer-events-none fixed z-[200] -translate-y-1/2 animate-in whitespace-nowrap rounded-md border border-slate-700/80 bg-[#141820] px-2.5 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.45)] fade-in-0 zoom-in-95 duration-150 xl:hidden"
+            className="pointer-events-none fixed z-[200] -translate-y-1/2 animate-in whitespace-nowrap rounded-md border border-slate-700/80 bg-[#141820] px-2.5 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.45)] fade-in-0 zoom-in-95 duration-150 2xl:hidden"
           >
             <span
               aria-hidden="true"
@@ -304,7 +304,7 @@ function NavItemRow({
         className={() =>
           `${itemBase(hover)} ${
             indent
-              ? "pl-7 xl:pl-8"
+              ? "pl-7 2xl:pl-8"
               : ""
           } ${
             isItemActive
@@ -314,7 +314,7 @@ function NavItemRow({
         }
       >
         <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-        <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
+        <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
           {item.label}
         </span>
       </NavLink>
@@ -355,7 +355,7 @@ function NavGroups({ groups, accent, labelVisible }: NavGroupsProps) {
     <div className="flex flex-col gap-4">
       {groups.map(({ groupLabel, items }) => (
         <div key={groupLabel} className="flex flex-col gap-0.5">
-          <p className={`px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600 ${labelVisible ? "block" : "hidden xl:block"}`}>
+          <p className={`px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600 ${labelVisible ? "block" : "hidden 2xl:block"}`}>
             {groupLabel}
           </p>
           {items.map((item) => (
@@ -395,7 +395,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   };
 
   return (
-    <aside className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 xl:px-4 overflow-hidden">
+    <aside className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
       {/* Close button (mobile overlay only) */}
       {onClose && (
         <button
@@ -409,13 +409,13 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
       )}
 
       {/* Logo */}
-      <header className={`flex h-10 items-center mb-4 ${forceLabels ? "px-2" : "justify-center px-0 xl:justify-start xl:px-2"}`}>
+      <header className={`flex h-10 items-center mb-4 ${forceLabels ? "px-2" : "justify-center px-0 2xl:justify-start 2xl:px-2"}`}>
         <NavLink to={homeRoute} aria-label="Vorta home" onClick={onClose} className="inline-flex items-center overflow-hidden">
-          <span className={forceLabels ? "block" : "hidden xl:block"}>
+          <span className={forceLabels ? "block" : "hidden 2xl:block"}>
             <VortaLogo />
           </span>
           {!forceLabels && (
-            <span className="block xl:hidden">
+            <span className="block 2xl:hidden">
               <VortaIcon />
             </span>
           )}
@@ -474,7 +474,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
             className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
           >
             <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className={`${labelBase} ${labelVisible ? "block" : "hidden xl:block"}`}>
+            <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
               Log out
             </span>
           </button>
@@ -525,7 +525,7 @@ export const PortalShell = ({
     <main className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
-      <div className="hidden shrink-0 md:flex md:w-14 xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
+      <div className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
         <Sidebar
           homeRoute={homeRoute}
           nav={nav}

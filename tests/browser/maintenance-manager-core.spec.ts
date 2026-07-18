@@ -62,18 +62,50 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
   await expectNoPageOverflow(page);
 
-  const riskScopeTabs = page.getByRole("tablist", {
-    name: "Risk intelligence scope",
-  });
-  await expect(riskScopeTabs).toBeVisible();
-  const areaTab = riskScopeTabs
-    .getByRole("tab")
-    .filter({ hasNotText: /^\s*Site Risk/i })
-    .first();
-  await expect(areaTab).toBeVisible();
-  await expectOperationalTouchTarget(areaTab);
-  await areaTab.click();
-  await expect(areaTab).toHaveAttribute("aria-selected", "true");
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  if (viewportWidth <= 420) {
+    const riskScopeSelect = page.getByLabel("Risk scope", { exact: true });
+    await expect(riskScopeSelect).toBeVisible();
+    const areaOption = riskScopeSelect.locator('option:not([value="site"])').first();
+    const areaValue = await areaOption.getAttribute("value");
+    expect(areaValue).not.toBeNull();
+    await riskScopeSelect.selectOption(areaValue ?? "");
+    await expect(riskScopeSelect).toHaveValue(areaValue ?? "");
+  } else {
+    const riskScopeTabs = page.getByRole("tablist", {
+      name: "Risk intelligence scope",
+    });
+    await expect(riskScopeTabs).toBeVisible();
+    const areaTab = riskScopeTabs
+      .getByRole("tab")
+      .filter({ hasNotText: /^\s*Site Risk/i })
+      .first();
+    await expect(areaTab).toBeVisible();
+    await expectOperationalTouchTarget(areaTab);
+    await areaTab.click();
+    await expect(areaTab).toHaveAttribute("aria-selected", "true");
+  }
+
+  const shiftCoverCard = page
+    .getByRole("heading", { name: "Shift Cover", exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')][1]");
+  await expect(shiftCoverCard).toBeVisible();
+  await shiftCoverCard.click();
+  await page.waitForURL(/\/maintenance\/labour-risk\/shift-cover(?:\?.*)?$/);
+  await expect(
+    page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
+  ).toBeVisible();
+  await expectNoPageOverflow(page);
+
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
+  ).toBeHidden();
 
   const openMenu = page.getByRole("button", { name: "Open menu", exact: true });
   if (await openMenu.isVisible()) {
@@ -118,6 +150,9 @@ test("authenticated Maintenance Manager core workflow remains in context", async
     page.getByRole("heading", { name: "Complete equipment work history" }),
   ).toBeVisible();
   await expectNoPageOverflow(page);
+  await expect(
+    page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
+  ).toBeHidden();
 
   const firstWorkOrderButton = page
     .locator('#work-order-register tbody button')

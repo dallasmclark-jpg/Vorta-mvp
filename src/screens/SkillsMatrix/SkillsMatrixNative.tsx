@@ -727,10 +727,20 @@ export const SkillsMatrixSection = (): JSX.Element => {
       );
       values.push(equipment ? `${equipment.equipmentName} (${equipment.equipmentCode})` : "Equipment filter");
     }
+    if (selectedSkillId) {
+      const selectedContextSkill = selectedDetail?.matrixSkills.find(
+        (skill) => skill.id === selectedSkillId,
+      );
+      values.push(
+        selectedContextSkill
+          ? `Skill: ${selectedContextSkill.name}`
+          : "Selected skill",
+      );
+    }
     if (priorityOnly) values.push("Priority gaps only");
     if (search.trim()) values.push(`Search: ${search.trim()}`);
     return values;
-  }, [equipmentFilterId, priorityOnly, search, selectedArea, selectedDetail, selectedSummary]);
+  }, [equipmentFilterId, priorityOnly, search, selectedArea, selectedDetail, selectedSkillId, selectedSummary]);
 
   const clearOperationalFilters = (): void => {
     setSelectedArea(ALL_SITE);

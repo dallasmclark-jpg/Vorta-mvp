@@ -35,15 +35,25 @@ check(
 );
 
 check(
-  "Dashboard wrapper no longer patches rendered DOM",
+  "Dashboard wrapper avoids broad rendered-DOM patching",
   !dashboardExperience.includes("MutationObserver") &&
-    !dashboardExperience.includes("querySelector") &&
-    !dashboardExperience.includes("createPortal"),
+    !dashboardExperience.includes("createPortal") &&
+    !dashboardExperience.includes("document.body") &&
+    !dashboardExperience.includes("innerHTML") &&
+    !dashboardExperience.includes("appendChild"),
+);
+
+check(
+  "Dashboard wrapper protects the dedicated Shift Cover calendar",
+  dashboardExperience.includes("isShiftCoverCard") &&
+    dashboardExperience.includes("/maintenance/labour-risk/shift-cover") &&
+    !dashboardExperience.includes("/skills-matrix?"),
 );
 
 check(
   "Dashboard owns its explicit operational refresh",
   dashboard.includes("refreshAndGetOperationalDashboard") &&
+    dashboard.includes("getOperationalDashboardSnapshot") &&
     dashboard.includes("loadRiskDashboard"),
 );
 

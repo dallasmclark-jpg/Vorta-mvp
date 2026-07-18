@@ -1,54 +1,63 @@
 import {
   useCallback,
-  useLayoutEffect,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import {
-  installMaintenanceDashboardSnapshotGuard,
-  markExplicitRiskIntelligenceRefresh,
-} from "../../lib/maintenanceDashboardSnapshotGuard";
+import { useNavigate } from "react-router-dom";
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 
-const REFRESH_CONTROL_LABEL = "refresh risk intelligence";
+const SHIFT_COVER_LABEL = "shift cover";
+
+function selectedAreaScope(): string | null {
+  const selectedTab = document.querySelector<HTMLElement>(
+    '[aria-label="Risk intelligence scope"] [role="tab"][aria-selected="true"]',
+  );
+  if (!selectedTab) return null;
+
+  const labelSpans = selectedTab.querySelectorAll<HTMLElement>("span");
+  const label = labelSpans.item(1)?.textContent?.trim() ?? "";
+  return label && label.toLowerCase() !== "site risk" ? label : null;
+}
+
+function isShiftCoverCard(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+
+  const card = target.closest<HTMLElement>(".cursor-pointer");
+  const heading = card?.querySelector<HTMLElement>("h3")?.textContent?.trim();
+  return heading?.toLowerCase() === SHIFT_COVER_LABEL;
+}
 
 export function MaintenanceDashboardExperience(): JSX.Element {
-  useLayoutEffect(
-    () => installMaintenanceDashboardSnapshotGuard(),
-    [],
-  );
+  const navigate = useNavigate();
 
-  const captureExplicitRefresh = useCallback(
+  const captureDashboardWorkflow = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>): void => {
-      if (!(event.target instanceof Element)) return;
+      if (!isShiftCoverCard(event.target)) return;
 
-      const button = event.target.closest<HTMLButtonElement>("button");
-      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
 
-      const accessibleLabel = [
-        button.getAttribute("aria-label"),
-        button.textContent,
-        button.getAttribute("title"),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim()
-        .toLowerCase();
-
-      if (accessibleLabel.includes(REFRESH_CONTROL_LABEL)) {
-        markExplicitRiskIntelligenceRefresh();
-      }
+      const area = selectedAreaScope();
+      const query = area
+        ? `?scope=area&area=${encodeURIComponent(area)}`
+        : "";
+      navigate(`/maintenance/labour-risk/shift-cover${query}`);
     },
-    [],
+    [navigate],
   );
 
   return (
     <div
       data-vorta-dashboard-root="true"
-      onClickCapture={captureExplicitRefresh}
+      onClickCapture={captureDashboardWorkflow}
     >
       <style>{`
         [data-vorta-dashboard-root="true"] [role="tab"] {
           min-height: 2.5rem;
+        }
+
+        [data-vorta-maintenance-portal="true"]:has([data-vorta-dashboard-root="true"])
+          > button.fixed.bottom-4.right-4 {
+          display: none !important;
         }
 
         @media (min-width: 1280px) {
