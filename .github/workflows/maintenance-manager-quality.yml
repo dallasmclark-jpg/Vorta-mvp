@@ -97,4 +97,25 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run authenticated Maintenance Manager browser regression
-        run: npm run test:browser
+        id: maintenance-browser-regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:browser 2>&1 | tee maintenance-browser-regression.log
+
+      - name: Preserve browser regression evidence
+        if: steps.maintenance-browser-regression.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-browser-regression-evidence
+          path: |
+            maintenance-browser-regression.log
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Enforce browser regression result
+        if: steps.maintenance-browser-regression.outcome == 'failure'
+        run: exit 1
