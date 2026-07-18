@@ -1014,7 +1014,7 @@ export const TrainingSection = (): JSX.Element => {
                                         </Badge>
                                       )}
                                       {row.is_critical && (
-                                        <Shield className="h-3 w-3 shrink-0 text-blue-400" title="Critical skill" />
+                                        <Shield className="h-3 w-3 shrink-0 text-blue-400" aria-label="Critical skill" />
                                       )}
                                     </div>
                                     <span className="text-[11px] text-slate-500">{row.category}</span>

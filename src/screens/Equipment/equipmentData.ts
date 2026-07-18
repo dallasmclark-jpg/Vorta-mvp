@@ -2,6 +2,11 @@
 // All equipment detail pages import from here. Do NOT add page-specific data.
 
 import { EQUIPMENT_IMAGES } from "./equipmentImages";
+import type {
+  EquipmentRiskBreakdown,
+  EquipmentRiskLevel,
+  EquipmentStatus,
+} from "./equipmentTypes";
 
 export interface EquipmentBase {
   id: string;
@@ -15,12 +20,12 @@ export interface EquipmentBase {
   installDate: string;
   warranty: string;
   criticality: string;
-  status: string;
+  status: EquipmentStatus;
   statusNote: string;
   image: string;
   riskScore: number;
-  riskLevel: string;
-  riskBreakdown: { label: string; pct: number; color: string; dotClass: string }[];
+  riskLevel: EquipmentRiskLevel;
+  riskBreakdown: EquipmentRiskBreakdown[];
 }
 
 const EQUIPMENT_MAP: Record<string, EquipmentBase> = {
@@ -77,7 +82,7 @@ const EQUIPMENT_MAP: Record<string, EquipmentBase> = {
 export const DEFAULT_EQUIPMENT_ID = "pl-02";
 
 export function getEquipmentById(id: string | undefined): EquipmentBase {
-  return (id && EQUIPMENT_MAP[id]) ?? EQUIPMENT_MAP[DEFAULT_EQUIPMENT_ID];
+  return (id ? EQUIPMENT_MAP[id] : undefined) ?? EQUIPMENT_MAP[DEFAULT_EQUIPMENT_ID];
 }
 
 export function getAllEquipment(): EquipmentBase[] {

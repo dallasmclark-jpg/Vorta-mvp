@@ -287,9 +287,6 @@ export function canAccessPath(
     case "reliability_engineer":
       return !isSpecialistPortalPath;
 
-    case "vorta_admin":
-      return true;
-
     default:
       return assertNever(role);
   }
@@ -566,12 +563,23 @@ export function AuthProvider({
           );
         }
 
+        const accessData = accessResult.data as unknown as {
+          site_id: string;
+          organisation_id: string;
+          app_role: unknown;
+          is_default: boolean;
+        } | null;
+        const profileData = profileResult.data as unknown as {
+          role: unknown;
+          organisation_id: string | null;
+        } | null;
+
         const accessRole = normalisePilotRole(
-          accessResult.data?.app_role,
+          accessData?.app_role,
         );
 
         const profileRole = normalisePilotRole(
-          profileResult.data?.role,
+          profileData?.role,
         );
 
         const effectiveRole =
@@ -582,16 +590,16 @@ export function AuthProvider({
         setRole(effectiveRole);
 
         if (
-          accessResult.data &&
+          accessData &&
           effectiveRole
         ) {
           setSiteContext({
-            siteId: accessResult.data.site_id,
+            siteId: accessData.site_id,
             organisationId:
-              accessResult.data.organisation_id,
+              accessData.organisation_id,
             role: effectiveRole,
             isDefault:
-              accessResult.data.is_default,
+              accessData.is_default,
           });
         } else {
           setSiteContext(null);

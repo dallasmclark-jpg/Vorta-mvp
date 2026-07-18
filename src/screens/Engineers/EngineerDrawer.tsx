@@ -270,8 +270,8 @@ export function EngineerDrawer({ engineer, assignments, trainingBookings, skillG
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base font-semibold text-slate-50">{engineer?.full_name ?? "—"}</h2>
-            {engineer?.verified && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" title="Verified" />}
-            {engineer?.critical_knowledge_holder && <Shield className="h-4 w-4 text-blue-400 shrink-0" title="Critical knowledge holder" />}
+            {engineer?.verified && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" aria-label="Verified" />}
+            {engineer?.critical_knowledge_holder && <Shield className="h-4 w-4 text-blue-400 shrink-0" aria-label="Critical knowledge holder" />}
           </div>
           <p className="mt-0.5 text-sm text-slate-400">{engineer?.discipline ?? "—"}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">

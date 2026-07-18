@@ -1,0 +1,100 @@
+name: Maintenance Manager quality gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/screens/AiOperations/**"
+      - "src/screens/Equipment/**"
+      - "src/screens/SkillsMatrix/**"
+      - "src/screens/Training/**"
+      - "src/screens/Requirements/**"
+      - "src/components/**"
+      - "src/hooks/**"
+      - "src/lib/**"
+      - "scripts/**"
+      - "tests/browser/**"
+      - "playwright.config.ts"
+      - "tsconfig.maintenance.json"
+      - "package.json"
+      - ".github/workflows/maintenance-manager-quality.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintenance-manager-quality-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Maintenance Manager release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci --silent
+
+      - name: Run Maintenance Manager TypeScript check
+        id: maintenance-typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck -- --pretty false 2>&1 | tee maintenance-typecheck.log
+
+      - name: Preserve TypeScript failure report
+        if: steps.maintenance-typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-typecheck-report
+          path: maintenance-typecheck.log
+          retention-days: 7
+
+      - name: Enforce TypeScript result
+        if: steps.maintenance-typecheck.outcome == 'failure'
+        run: exit 1
+
+      - name: Run contract tests
+        run: npm run test:contracts
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Create production build
+        run: npx vite build
+
+      - name: Verify authenticated browser-test secret
+        shell: bash
+        run: |
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured for the authenticated browser gate." >&2
+            exit 1
+          }
+
+      - name: Install browser-test runner without changing the lockfile
+        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated Maintenance Manager browser regression
+        run: npm run test:browser

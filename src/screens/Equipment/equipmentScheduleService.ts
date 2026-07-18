@@ -102,10 +102,11 @@ export async function getEquipmentMaintenanceSchedules(
       return [];
     }
 
-    const sourceRows = (Array.isArray(data) ? data : []).filter(
-      (row): row is Record<string, unknown> =>
-        typeof row === "object" && row !== null,
-    );
+    const sourceRows: Record<string, unknown>[] = (
+      Array.isArray(data) ? data : []
+    )
+      .filter((row) => typeof row === "object" && row !== null)
+      .map((row) => row as unknown as Record<string, unknown>);
     const rows = sourceRows.filter((row) => {
       const type = String(row.pm_type ?? "").toUpperCase();
       const isCalibration = type.includes("CALIBRAT");

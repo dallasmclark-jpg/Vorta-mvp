@@ -7,6 +7,8 @@ import {
   type PropsWithChildren,
 } from "react";
 import { useLocation } from "react-router-dom";
+import { MaintenanceActionEvidenceHardening } from "../../components/MaintenanceActionEvidenceHardening";
+import { MaintenancePortalHardening } from "../../components/MaintenancePortalHardening";
 import { useAuth } from "../../lib/auth";
 import { warmMaintenancePortalDataFast } from "../../lib/maintenancePortalFastWarmup";
 import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefetch";
@@ -167,6 +169,7 @@ export function MaintenanceAiWorkOrderExperience({
   return (
     <div
       className="contents"
+      data-vorta-maintenance-portal="true"
       onPointerOverCapture={handleNavigationIntent}
       onPointerDownCapture={handleNavigationIntent}
       onFocusCapture={handleNavigationIntent}
@@ -175,6 +178,8 @@ export function MaintenanceAiWorkOrderExperience({
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
       <MaintenanceWorkOrderExecutionOverlay />
+      <MaintenancePortalHardening />
+      <MaintenanceActionEvidenceHardening />
     </div>
   );
 }

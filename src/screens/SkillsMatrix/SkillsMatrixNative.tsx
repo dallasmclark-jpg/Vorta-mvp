@@ -687,6 +687,11 @@ export const SkillsMatrixSection = (): JSX.Element => {
     ];
   }, [data, viewMode]);
 
+  const visibleScopes: Array<ScopeSummary | null> =
+    loading && !data
+      ? Array.from({ length: 8 }, () => null)
+      : scopes;
+
   const buildingSkills = useMemo(
     () =>
       new Map(
@@ -1024,7 +1029,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
           </div>
 
           <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {(loading && !data ? Array.from({ length: 8 }) : scopes).map((scope, index) =>
+            {visibleScopes.map((scope, index) =>
               scope ? (
                 <CapabilityCard
                   key={scope.id}
