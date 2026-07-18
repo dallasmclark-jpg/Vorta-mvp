@@ -1,20 +1,12 @@
-Updated src/screens/SkillsMatrix/SkillsMatrixNative.tsx
-Updated src/screens/PilotSetup/usePilotSetup.ts
-Updated src/screens/PilotImpact/PilotImpactSection.tsx
-Updated src/screens/PilotAdoption/PilotAdoptionSection.tsx
-Updated src/screens/Equipment/workOrderExecutionService.ts
-Updated src/screens/Equipment/equipmentService.ts
-Updated src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx
-Updated src/screens/Equipment/EquipmentWorkOrders.tsx
-file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:15
-    throw new Error(`Ambiguous ${label}`);
-          ^
+file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:13
+  if (index < 0) throw new Error(`Missing ${label}`);
+                       ^
 
-Error: Ambiguous AI history button close
-    at replaceOnce (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:15:11)
-    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:249:10
+Error: Missing skills matrix normaliser
+    at replaceOnce (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:13:24)
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:33:10
     at edit (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:5:16)
-    at async file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:236:1
+    at async file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:26:1
 
 Node.js v22.23.1
 Exit code: 1
