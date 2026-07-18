@@ -47,6 +47,10 @@ export function MaintenanceDashboardExperience(): JSX.Element {
       onClickCapture={captureExplicitRefresh}
     >
       <style>{`
+        [data-vorta-dashboard-root="true"] [role="tab"] {
+          min-height: 2.5rem;
+        }
+
         @media (min-width: 1280px) {
           [data-vorta-dashboard-root="true"] [aria-label="Risk reduction KPI cards"] {
             display: grid !important;
