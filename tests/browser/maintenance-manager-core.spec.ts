@@ -54,7 +54,7 @@ test("authenticated Maintenance Manager core workflow remains in context", async
 
   await page.goto("/");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await page.waitForURL(/\/dashboard(?:\?.*)?$/);
