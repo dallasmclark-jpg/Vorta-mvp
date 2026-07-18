@@ -166,15 +166,13 @@ export function MaintenanceAiWorkOrderExperience({
       return;
     }
 
-    if (location.pathname === "/pilot-impact" || location.pathname === "/pilot-adoption") {
+    if (location.pathname === "/pilot-impact") {
       void trackPilotUsageEvent({
         siteId,
         eventType: "pilot_impact_review",
         pathname: location.pathname,
         entityType: "route",
-        metadata: {
-          page: location.pathname === "/pilot-adoption" ? "adoption" : "impact",
-        },
+        metadata: { page: "impact" },
       });
       return;
     }
