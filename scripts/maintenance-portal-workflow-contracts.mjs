@@ -5,8 +5,20 @@ const operations = await readFile(
   new URL("../src/screens/AiOperations/AiOperations.tsx", import.meta.url),
   "utf8",
 );
+const maintenanceExperience = await readFile(
+  new URL("../src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx", import.meta.url),
+  "utf8",
+);
 const pilotImpact = await readFile(
   new URL("../src/screens/PilotImpact/PilotImpactSection.tsx", import.meta.url),
+  "utf8",
+);
+const pilotAdoption = await readFile(
+  new URL("../src/screens/PilotAdoption/PilotAdoptionSection.tsx", import.meta.url),
+  "utf8",
+);
+const pilotUsage = await readFile(
+  new URL("../src/lib/pilotUsage.ts", import.meta.url),
   "utf8",
 );
 
@@ -64,6 +76,16 @@ assert.match(
   operations,
   /path="pilot-impact" element={<PilotImpactSection \/>}/,
   "Pilot Impact must render as a native Maintenance Manager route",
+);
+assert.match(
+  operations,
+  /label: "Pilot Adoption"/,
+  "Maintenance navigation must expose pilot adoption evidence",
+);
+assert.match(
+  operations,
+  /path="pilot-adoption" element={<PilotAdoptionSection \/>}/,
+  "Pilot Adoption must render as a native Maintenance Manager route",
 );
 assert.equal(
   [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
@@ -139,6 +161,98 @@ assert.doesNotMatch(
   pilotImpact,
   /11000000-0000-0000-0000-000000000001/,
   "Pilot Impact must not hardcode the Wrexham pilot site",
+);
+
+assert.equal(
+  [...pilotAdoption.matchAll(/vorta_get_pilot_adoption_report/g)].length,
+  1,
+  "Pilot Adoption must use one manager-scoped adoption RPC",
+);
+assert.match(
+  pilotAdoption,
+  /p_site_id: siteId/,
+  "Pilot Adoption must use the authenticated site context",
+);
+assert.match(
+  pilotAdoption,
+  /p_start_date: range\.startDate/,
+  "Pilot Adoption must pass the selected start date to the backend",
+);
+assert.match(
+  pilotAdoption,
+  /p_end_date: range\.endDate/,
+  "Pilot Adoption must pass the selected end date to the backend",
+);
+assert.match(
+  pilotAdoption,
+  /Ask Vorta queries/,
+  "Pilot Adoption must expose Ask Vorta engagement",
+);
+assert.match(
+  pilotAdoption,
+  /Follow-through actions/,
+  "Pilot Adoption must distinguish meaningful follow-through from page views",
+);
+assert.match(
+  pilotAdoption,
+  /Prompt text is never stored/,
+  "Pilot Adoption must state the prompt privacy boundary",
+);
+assert.doesNotMatch(
+  pilotAdoption,
+  /11000000-0000-0000-0000-000000000001/,
+  "Pilot Adoption must not hardcode the Wrexham pilot site",
+);
+
+assert.match(
+  pilotUsage,
+  /vorta_track_pilot_usage_event/,
+  "Pilot usage must use the controlled tracking RPC",
+);
+assert.match(
+  pilotUsage,
+  /window\.sessionStorage/,
+  "Pilot usage must group events into browser sessions",
+);
+assert.doesNotMatch(
+  pilotUsage,
+  /service_role/,
+  "Pilot usage tracking must never expose a service-role credential",
+);
+assert.match(
+  maintenanceExperience,
+  /eventType: "equipment_view"/,
+  "Equipment route reviews must be captured",
+);
+assert.match(
+  maintenanceExperience,
+  /eventType: "work_order_view"/,
+  "Work-order overlay reviews must be captured",
+);
+assert.match(
+  maintenanceExperience,
+  /eventType: "ask_vorta_query"/,
+  "Ask Vorta submissions must be captured without prompt text",
+);
+assert.match(
+  maintenanceExperience,
+  /questionLength: question\.length/,
+  "Ask Vorta usage may retain question length for quality analysis",
+);
+assert.doesNotMatch(
+  maintenanceExperience,
+  /metadata:\s*\{\s*question\s*:/,
+  "Ask Vorta prompt text must not be sent to usage tracking",
+);
+assert.match(
+  maintenanceExperience,
+  /eventType: "recommendation_opened"/,
+  "AI recommendation follow-through must be captured",
+);
+assert.match(
+  maintenanceExperience,
+  /eventType: "pilot_report_downloaded"/,
+  "Pilot report downloads must be captured",
 );
 
 console.log("Maintenance portal workflow contracts passed.");
