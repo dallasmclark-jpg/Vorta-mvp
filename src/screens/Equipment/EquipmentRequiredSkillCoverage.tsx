@@ -54,6 +54,27 @@ function trainingPriority(criticality?: string | null): string {
   }
 }
 
+function evidenceLabel(
+  person: EquipmentSkillEngineerEvidence,
+  requiredLevel: number,
+): string {
+  const levelGap = Math.max(0, requiredLevel - person.rating);
+
+  switch (person.qualificationState) {
+    case "QUALIFIED_VALIDATED":
+      return words(person.capabilityRole ?? person.validationStatus);
+    case "EXPIRED":
+      return "Expired skill or equipment evidence";
+    case "SKILL_VERIFIED_EQUIPMENT_AUTHORISATION_MISSING":
+      return "Skill verified · equipment authorisation missing";
+    case "EQUIPMENT_EXPERIENCE_SKILL_LEVEL_BELOW_REQUIREMENT":
+      return `Equipment experienced · ${levelGap} level gap`;
+    case "DEVELOPING":
+    default:
+      return `Developing · ${levelGap} level gap`;
+  }
+}
+
 function PersonEvidence({
   person,
   label,
@@ -227,7 +248,7 @@ export function EquipmentRequiredSkillCoverage({
               <PersonEvidence
                 key={person.engineerId}
                 person={person}
-                label={words(person.capabilityRole ?? person.validationStatus)}
+                label={evidenceLabel(person, skill.requiredLevel)}
                 equipmentId={equipmentId}
                 skillId={skill.skillId}
                 skillName={skill.name}
@@ -247,7 +268,7 @@ export function EquipmentRequiredSkillCoverage({
               <div className="rounded-lg border border-red-500/20 bg-red-500/[0.05] px-3 py-3 text-xs leading-5 text-red-200 sm:col-span-2">
                 No validated engineer meets Level {skill.requiredLevel} for this equipment.
                 {nearestCandidate
-                  ? ` ${nearestCandidate.engineerName} is the closest recorded candidate at Level ${nearestCandidate.rating}.`
+                  ? ` ${nearestCandidate.engineerName} is the closest recorded candidate at Level ${nearestCandidate.rating}: ${evidenceLabel(nearestCandidate, skill.requiredLevel)}.`
                   : " No developing capability evidence is currently recorded."}
               </div>
             ) : null}
@@ -266,7 +287,7 @@ export function EquipmentRequiredSkillCoverage({
               <PersonEvidence
                 key={person.engineerId}
                 person={person}
-                label={`Developing · ${Math.max(0, skill.requiredLevel - person.rating)} level gap`}
+                label={evidenceLabel(person, skill.requiredLevel)}
                 equipmentId={equipmentId}
                 skillId={skill.skillId}
                 skillName={skill.name}
