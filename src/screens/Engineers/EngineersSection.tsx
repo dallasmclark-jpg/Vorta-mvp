@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Brain,
@@ -268,6 +269,7 @@ const MM_CALENDAR_EVENTS: ShiftEvent[] = [
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const EngineersSection = (): JSX.Element => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [engineers,        setEngineers]        = useState<DrawerEngineer[]>([]);
   const [assignments,      setAssignments]      = useState<EnrichedAssignment[]>([]);
   const [trainingBookings, setTrainingBookings] = useState<TrainingBooking[]>([]);
@@ -283,8 +285,10 @@ export const EngineersSection = (): JSX.Element => {
   const [tick,      setTick]      = useState(0);
 
   const [selectedEngineer, setSelectedEngineer] = useState<DrawerEngineer | null>(null);
+  const skillFilterId = searchParams.get("skill") ?? "";
+  const skillFilterName = searchParams.get("skillName") ?? "Selected skill";
 
-  const [search,               setSearch]               = useState("");
+  const [search,               setSearch]               = useState(() => searchParams.get("q") ?? "");
   const [filterDept,           setFilterDept]           = useState("all");
   const [filterSite,           setFilterSite]           = useState("all");
   const [filterAvailability,   setFilterAvailability]   = useState("all");
@@ -311,10 +315,33 @@ export const EngineersSection = (): JSX.Element => {
     return () => { cancelled = true; };
   }, [tick]);
 
+  useEffect(() => {
+    const requestedEngineerId = searchParams.get("engineer");
+    if (!requestedEngineerId || engineers.length === 0) return;
+    const match = engineers.find((engineer) => engineer.id === requestedEngineerId);
+    if (match) setSelectedEngineer(match);
+  }, [engineers, searchParams]);
+
+  const closeEngineer = () => {
+    setSelectedEngineer(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("engineer");
+      return next;
+    }, { replace: true });
+  };
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const filteredEngineers = useMemo(() => {
     const lc = search.toLowerCase();
+    const skillEngineerIds = skillFilterId
+      ? new Set(
+          assignments
+            .filter((assignment) => assignment.skill_id === skillFilterId)
+            .map((assignment) => assignment.engineer_id),
+        )
+      : null;
     return engineers
       .filter((eng) => {
         if (search && !eng.full_name.toLowerCase().includes(lc) && !(eng.discipline ?? "").toLowerCase().includes(lc)) return false;
@@ -322,17 +349,43 @@ export const EngineersSection = (): JSX.Element => {
         if (filterSite !== "all"          && eng.site_name !== filterSite)                   return false;
         if (filterAvailability !== "all"  && eng.availability_status !== filterAvailability) return false;
         if (filterRisk !== "all"          && eng.risk_level !== filterRisk)                  return false;
+        if (skillEngineerIds && !skillEngineerIds.has(eng.id)) return false;
         return true;
       })
       .sort((a, b) => (RISK_ORDER[a.risk_level] ?? 9) - (RISK_ORDER[b.risk_level] ?? 9) || a.full_name.localeCompare(b.full_name));
-  }, [engineers, search, filterDept, filterSite, filterAvailability, filterRisk]);
+  }, [
+    assignments,
+    engineers,
+    filterAvailability,
+    filterDept,
+    filterRisk,
+    filterSite,
+    search,
+    skillFilterId,
+  ]);
 
-  const hasActiveFilters = !!(search || filterDept !== "all" || filterSite !== "all" || filterAvailability !== "all" || filterRisk !== "all");
+  const hasActiveFilters = !!(
+    search ||
+    skillFilterId ||
+    filterDept !== "all" ||
+    filterSite !== "all" ||
+    filterAvailability !== "all" ||
+    filterRisk !== "all"
+  );
 
   const resetFilters = () => {
     setSearch(""); setFilterDept("all"); setFilterSite("all");
     setFilterAvailability("all"); setFilterRisk("all");
     setTablePage(0);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("engineer");
+      next.delete("skill");
+      next.delete("skillName");
+      next.delete("q");
+      next.delete("from");
+      return next;
+    }, { replace: true });
   };
 
   const totalTablePages = Math.ceil(filteredEngineers.length / TABLE_PAGE_SIZE);
@@ -424,7 +477,7 @@ export const EngineersSection = (): JSX.Element => {
         assignments={assignments}
         trainingBookings={trainingBookings}
         skillGaps={skillGaps}
-        onClose={() => setSelectedEngineer(null)}
+        onClose={closeEngineer}
       />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -557,8 +610,24 @@ export const EngineersSection = (): JSX.Element => {
               </div>
 
               {/* Filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[160px] flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                 {skillFilterId ? (
+                   <button
+                     type="button"
+                     onClick={() => {
+                       setSearchParams((current) => {
+                         const next = new URLSearchParams(current);
+                         next.delete("skill");
+                         next.delete("skillName");
+                         return next;
+                       }, { replace: true });
+                     }}
+                     className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 text-xs font-semibold text-blue-300"
+                   >
+                     Skill: {skillFilterName} <X className="h-3 w-3" />
+                   </button>
+                 ) : null}
+                 <div className="relative min-w-[160px] flex-1">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                   <input type="text" placeholder="Search engineers…" value={search}
                     onChange={(e) => { setSearch(e.target.value); setTablePage(0); }}

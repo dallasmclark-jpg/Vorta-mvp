@@ -445,7 +445,7 @@ const getRiskPlanActionRoute = (
     normalizedDriver.includes("labour") ||
     normalizedDriver.includes("coverage")
   ) {
-    return `/equipment/${equipmentId}/skills`;
+    return `/equipment/${equipmentId}/skills?from=dashboard&returnTo=%2Fdashboard`;
   }
 
   /*
@@ -482,6 +482,34 @@ const getRiskPlanActionRoute = (
    * still open the correct equipment.
    */
   return `/equipment/${equipmentId}/overview`;
+};
+
+const getLabourRiskWorkflowRoute = (
+  item: RiskDashboardLabourCard,
+  activeScopeArea: string | null,
+): string => {
+  const scopedParams = new URLSearchParams({ from: "dashboard" });
+  if (activeScopeArea) scopedParams.set("area", activeScopeArea);
+
+  if (item.slug === "shift-cover" || item.slug === "single-point-failure") {
+    scopedParams.set("view", "priority");
+    scopedParams.set("priority", "1");
+    scopedParams.set("risk", item.slug);
+    return `/skills-matrix?${scopedParams.toString()}`;
+  }
+
+  if (item.slug === "training-expiring") {
+    scopedParams.set("priority", "High");
+    return `/training?${scopedParams.toString()}`;
+  }
+
+  const detailParams = new URLSearchParams();
+  if (activeScopeArea) {
+    detailParams.set("scope", "area");
+    detailParams.set("area", activeScopeArea);
+  }
+  const query = detailParams.toString();
+  return `/maintenance/labour-risk/${item.slug}${query ? `?${query}` : ""}`;
 };
 
 const RISK_KPI_FIXED_DISPLAY_ORDER = [
@@ -2907,26 +2935,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
             <Card
               key={item.title}
               onClick={() => {
-                const basePath =
-                  `/maintenance/labour-risk/${item.slug}`;
-
-                if (
-                  !isSiteRiskScope &&
-                  activeScopeArea
-                ) {
-                  const query =
-                    new URLSearchParams({
-                      scope: "area",
-                      area: activeScopeArea,
-                    });
-
-                  navigate(
-                    `${basePath}?${query.toString()}`,
-                  );
-                  return;
-                }
-
-                navigate(basePath);
+                navigate(
+                  getLabourRiskWorkflowRoute(
+                    item,
+                    isSiteRiskScope ? null : activeScopeArea,
+                  ),
+                );
               }}
               className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
             >

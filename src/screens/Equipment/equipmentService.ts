@@ -3643,11 +3643,23 @@ export async function getRiskDashboardScopeKpis():
 
 // ─── Consolidated equipment skills showcase ───────────────────────────────────
 
+export interface EquipmentSkillEngineerEvidence {
+  engineerId: string; engineerName: string; avatarUrl: string | null;
+  discipline: string | null; shiftPattern: string | null;
+  availabilityStatus: string | null; rating: number; yearsExperience: number;
+  validationStatus: string | null; capabilityRole: string | null;
+  qualificationState: string | null; capabilityValidUntil: string | null;
+  skillExpiryDate: string | null;
+}
+
 export interface EquipmentRequiredSkill {
   id: string; skillId: string; name: string; category: string | null;
   requiredLevel: number; minimumQualifiedEngineers: number;
   criticality: string | null; executionAuthority: string | null;
   validationRequired: boolean; qualifiedEngineerCount: number;
+  validationGap: number; singlePointOfFailure: boolean;
+  qualifiedEngineers: EquipmentSkillEngineerEvidence[];
+  nearestEngineers: EquipmentSkillEngineerEvidence[];
 }
 
 export interface EquipmentEngineerCapability {
@@ -3703,6 +3715,38 @@ export async function getEquipmentSkillsShowcase(equipmentId: string): Promise<E
     criticality: skill.criticality ?? null, executionAuthority: skill.execution_authority ?? null,
     validationRequired: Boolean(skill.validation_required),
     qualifiedEngineerCount: Number(skill.qualified_engineer_count ?? 0),
+    validationGap: Number(skill.validation_gap ?? 0),
+    singlePointOfFailure: Boolean(skill.single_point_of_failure),
+    qualifiedEngineers: (Array.isArray(skill.qualified_engineers) ? skill.qualified_engineers : []).map((engineer: any) => ({
+      engineerId: engineer.engineer_id ?? "",
+      engineerName: engineer.engineer_name ?? "Unknown engineer",
+      avatarUrl: engineer.avatar_url ?? null,
+      discipline: engineer.discipline ?? null,
+      shiftPattern: engineer.shift_pattern ?? null,
+      availabilityStatus: engineer.availability_status ?? null,
+      rating: Number(engineer.rating ?? 0),
+      yearsExperience: Number(engineer.years_experience ?? 0),
+      validationStatus: engineer.validation_status ?? null,
+      capabilityRole: engineer.capability_role ?? null,
+      qualificationState: engineer.qualification_state ?? null,
+      capabilityValidUntil: engineer.capability_valid_until ?? null,
+      skillExpiryDate: engineer.skill_expiry_date ?? null,
+    })),
+    nearestEngineers: (Array.isArray(skill.nearest_engineers) ? skill.nearest_engineers : []).map((engineer: any) => ({
+      engineerId: engineer.engineer_id ?? "",
+      engineerName: engineer.engineer_name ?? "Unknown engineer",
+      avatarUrl: engineer.avatar_url ?? null,
+      discipline: engineer.discipline ?? null,
+      shiftPattern: engineer.shift_pattern ?? null,
+      availabilityStatus: engineer.availability_status ?? null,
+      rating: Number(engineer.rating ?? 0),
+      yearsExperience: Number(engineer.years_experience ?? 0),
+      validationStatus: engineer.validation_status ?? null,
+      capabilityRole: engineer.capability_role ?? null,
+      qualificationState: engineer.qualification_state ?? null,
+      capabilityValidUntil: engineer.capability_valid_until ?? null,
+      skillExpiryDate: engineer.skill_expiry_date ?? null,
+    })),
   }));
   const engineers: EquipmentEngineerCapability[] = (Array.isArray(row.engineers) ? row.engineers : []).map((engineer: any) => ({
     capabilityId: engineer.capability_id ?? "", engineerId: engineer.engineer_id ?? "",

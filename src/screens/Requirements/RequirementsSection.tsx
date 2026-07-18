@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -358,6 +358,7 @@ function RequirementDrawer({ req, onClose }: { req: Requirement | null; onClose:
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const RequirementsSection = (): JSX.Element => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requirements,    setRequirements]    = useState<Requirement[]>([]);
   const [coverageByGroup, setCoverageByGroup] = useState<CoverageGroup[]>([]);
   const [actionRows,      setActionRows]      = useState<ActionRow[]>([]);
@@ -370,7 +371,7 @@ export const RequirementsSection = (): JSX.Element => {
   const [selectedReq, setSelectedReq] = useState<Requirement | null>(null);
 
   // Filters
-  const [search,         setSearch]         = useState("");
+  const [search,         setSearch]         = useState(() => searchParams.get("skill") ?? "");
   const [filterDept,     setFilterDept]     = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterStatus,   setFilterStatus]   = useState("all");
@@ -395,6 +396,25 @@ export const RequirementsSection = (): JSX.Element => {
     });
     return () => { cancelled = true; };
   }, [tick]);
+
+  useEffect(() => {
+    const requestedSkill = searchParams.get("skill")?.trim().toLowerCase();
+    if (!requestedSkill || requirements.length === 0) return;
+    const match = requirements.find(
+      (requirement) => requirement.title.trim().toLowerCase() === requestedSkill,
+    );
+    if (match) setSelectedReq(match);
+  }, [requirements, searchParams]);
+
+  const closeRequirement = () => {
+    setSelectedReq(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("skill");
+      next.delete("from");
+      return next;
+    }, { replace: true });
+  };
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
@@ -425,6 +445,12 @@ export const RequirementsSection = (): JSX.Element => {
   const resetFilters = () => {
     setSearch(""); setFilterDept("all"); setFilterPriority("all");
     setFilterStatus("all"); setFilterCategory("all"); setTablePage(0);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("skill");
+      next.delete("from");
+      return next;
+    }, { replace: true });
   };
 
   const totalTablePages = Math.ceil(filteredRequirements.length / TABLE_PAGE_SIZE);
@@ -474,7 +500,7 @@ export const RequirementsSection = (): JSX.Element => {
   return (
     <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col items-start gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
 
-      <RequirementDrawer req={selectedReq} onClose={() => setSelectedReq(null)} />
+      <RequirementDrawer req={selectedReq} onClose={closeRequirement} />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">

@@ -5,7 +5,7 @@ import {
   useState,
   type ElementType,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
@@ -121,6 +121,7 @@ type RatingCell = {
 type ScopeEngineer = {
   id: string;
   name: string;
+  avatarUrl: string | null;
   discipline: string;
   departmentName: string | null;
   shiftNames: string[];
@@ -143,10 +144,12 @@ type ScopeDetail = {
 
 type SkillsMatrixPayload = {
   generatedAt: string;
+  sourceUpdatedAt: string;
   site: { id: string; name: string };
   overall: ScopeSummary;
   teams: ScopeSummary[];
   departments: ScopeSummary[];
+  areaSkills: Record<string, string[]>;
   details: Record<string, ScopeDetail>;
 };
 
@@ -252,49 +255,7 @@ function capabilityStatus(score: number): ScopeStatus {
 function normaliseSkillsMatrixPayload(
   payload: SkillsMatrixPayload,
 ): SkillsMatrixPayload {
-  const teams = payload.teams.map((team) => ({
-    ...team,
-    name:
-      team.code === "CALIBRATION"
-        ? "Calibration Team"
-        : team.code === "OT"
-          ? "Operational Technology Team"
-          : team.name,
-  }));
-  const shiftTeams = teams.filter((team) =>
-    ["RED", "GREEN", "BLUE", "YELLOW", "DAYS"].includes(team.code),
-  );
-  const specialistTeams = teams.filter((team) =>
-    ["CALIBRATION", "OT"].includes(team.code),
-  );
-  const criticalTeams = teams.filter(
-    (team) => team.status === "Critical" || team.score < 55,
-  );
-  const criticalTeamShare = criticalTeams.length / Math.max(1, teams.length);
-
-  let score = Math.round(
-    payload.overall.skillsCoverage * 0.3 +
-      average(shiftTeams.map((team) => team.score)) * 0.3 +
-      average(specialistTeams.map((team) => team.score)) * 0.15 +
-      payload.overall.experienceDepth * 0.1 +
-      payload.overall.smeResilience * 0.1 +
-      payload.overall.validationHealth * 0.05 -
-      criticalTeamShare * 12,
-  );
-  if (teams.some((team) => team.score < 30)) score = Math.min(score, 59);
-  score = Math.round(clamp(score));
-
-  return {
-    ...payload,
-    teams,
-    overall: {
-      ...payload.overall,
-      score,
-      status: capabilityStatus(score),
-      criticalGaps: criticalTeams.length,
-      spofCount: teams.filter((team) => team.spofCount > 0).length,
-    },
-  };
+  return payload;
 }
 
 function statusBadgeClass(status: ScopeStatus): string {
@@ -623,19 +584,29 @@ function SkillDrawer({
 
 export const SkillsMatrixSection = (): JSX.Element => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<SkillsMatrixPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("team");
-  const [selectedScopeId, setSelectedScopeId] = useState("overall");
-  const [selectedArea, setSelectedArea] = useState(ALL_SITE);
-  const [search, setSearch] = useState("");
-  const [priorityOnly, setPriorityOnly] = useState(false);
-  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    searchParams.get("view") === "department" ? "department" : "team",
+  );
+  const [selectedScopeId, setSelectedScopeId] = useState(
+    () => searchParams.get("scope") || "overall",
+  );
+  const [selectedArea, setSelectedArea] = useState(
+    () => searchParams.get("area") || ALL_SITE,
+  );
+  const [search, setSearch] = useState(() => searchParams.get("q") || "");
+  const [priorityOnly, setPriorityOnly] = useState(
+    () => searchParams.get("priority") === "1",
+  );
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(
+    () => searchParams.get("skill"),
+  );
   const [showAllWeaknesses, setShowAllWeaknesses] = useState(false);
-  const [avatarUrls, setAvatarUrls] = useState<Map<string, string>>(new Map());
-  const [buildingSkills, setBuildingSkills] = useState<Map<string, Set<string>>>(new Map());
+  const equipmentFilterId = searchParams.get("equipment");
 
   const loadData = useCallback(async (force = false): Promise<void> => {
     if (force) {
@@ -653,10 +624,12 @@ export const SkillsMatrixSection = (): JSX.Element => {
       if (invokeError || !payload) {
         throw invokeError ?? new Error("Skills matrix data was empty");
       }
-      const normalised = normaliseSkillsMatrixPayload(payload as SkillsMatrixPayload);
-      setData(normalised);
+      const resolved = normaliseSkillsMatrixPayload(
+        payload as SkillsMatrixPayload,
+      );
+      setData(resolved);
       setSelectedScopeId((current) =>
-        normalised.details[current] ? current : "overall",
+        resolved.details[current] ? current : "overall",
       );
     } catch (loadError) {
       setError(
@@ -675,67 +648,35 @@ export const SkillsMatrixSection = (): JSX.Element => {
   }, [loadData]);
 
   useEffect(() => {
-    let active = true;
-    void supabase
-      .from("engineers")
-      .select("id,full_name,avatar_url")
-      .then(({ data: rows, error: avatarError }) => {
-        if (!active || avatarError) return;
-        const next = new Map<string, string>();
-        for (const row of rows ?? []) {
-          if (typeof row.avatar_url !== "string" || row.avatar_url.length === 0) {
-            continue;
-          }
-          next.set(String(row.id), row.avatar_url);
-          if (typeof row.full_name === "string") next.set(row.full_name, row.avatar_url);
-        }
-        setAvatarUrls(next);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      const setOrDelete = (key: string, value: string, defaultValue = "") => {
+        if (!value || value === defaultValue) next.delete(key);
+        else next.set(key, value);
+      };
+      setOrDelete("view", viewMode, "team");
+      setOrDelete("scope", selectedScopeId, "overall");
+      setOrDelete("area", selectedArea, ALL_SITE);
+      setOrDelete("q", search.trim());
+      if (priorityOnly) next.set("priority", "1");
+      else next.delete("priority");
+      setOrDelete("skill", selectedSkillId ?? "");
+      return next;
+    }, { replace: true });
+  }, [
+    priorityOnly,
+    search,
+    selectedArea,
+    selectedScopeId,
+    selectedSkillId,
+    setSearchParams,
+    viewMode,
+  ]);
+
+
 
   useEffect(() => {
-    const siteId = data?.site.id;
-    if (!siteId) return;
-    let active = true;
-    void (async () => {
-      const { data: equipmentRows, error: equipmentError } = await supabase
-        .from("equipment_assets")
-        .select("id,area")
-        .eq("site_id", siteId)
-        .order("area");
-      if (!active || equipmentError || !equipmentRows?.length) return;
-      const equipmentIds = equipmentRows.map((row) => row.id);
-      const { data: requirementRows, error: requirementError } = await supabase
-        .from("equipment_required_skills")
-        .select("equipment_id,skill_id")
-        .in("equipment_id", equipmentIds);
-      if (!active || requirementError) return;
-      const areaByEquipment = new Map(
-        equipmentRows.map((row) => [String(row.id), String(row.area ?? "Unassigned")]),
-      );
-      const next = new Map<string, Set<string>>();
-      for (const row of requirementRows ?? []) {
-        const area = areaByEquipment.get(String(row.equipment_id));
-        if (!area || !row.skill_id) continue;
-        const skillIds = next.get(area) ?? new Set<string>();
-        skillIds.add(String(row.skill_id));
-        next.set(area, skillIds);
-      }
-      setBuildingSkills(next);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [data?.site.id]);
 
-  useEffect(() => {
-    setSearch("");
-    setPriorityOnly(false);
-    setSelectedSkillId(null);
-    setSelectedArea(ALL_SITE);
     setShowAllWeaknesses(false);
   }, [selectedScopeId]);
 
@@ -746,6 +687,17 @@ export const SkillsMatrixSection = (): JSX.Element => {
       ...(viewMode === "team" ? data.teams : data.departments),
     ];
   }, [data, viewMode]);
+
+  const buildingSkills = useMemo(
+    () =>
+      new Map(
+        Object.entries(data?.areaSkills ?? {}).map(([area, skillIds]) => [
+          area,
+          new Set(skillIds),
+        ]),
+      ),
+    [data?.areaSkills],
+  );
 
   useEffect(() => {
     if (!scopes.some((scope) => scope.id === selectedScopeId)) {
@@ -786,8 +738,17 @@ export const SkillsMatrixSection = (): JSX.Element => {
       selectedArea === ALL_SITE
         ? null
         : buildingSkills.get(selectedArea) ?? new Set<string>();
+    const equipmentSkillIds = equipmentFilterId
+      ? new Set(
+          selectedDetail.priorityRisks
+            .filter((risk) => risk.equipmentId === equipmentFilterId)
+            .map((risk) => risk.skillId),
+        )
+      : null;
     let skills = selectedDetail.matrixSkills.filter(
-      (skill) => !areaSkillIds || areaSkillIds.has(skill.id),
+      (skill) =>
+        (!areaSkillIds || areaSkillIds.has(skill.id)) &&
+        (!equipmentSkillIds || equipmentSkillIds.has(skill.id)),
     );
     if (priorityOnly) {
       skills = skills.filter((skill) => prioritySkillIds.has(skill.id));
@@ -807,7 +768,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
       }
     }
     return skills;
-  }, [buildingSkills, priorityOnly, prioritySkillIds, search, selectedArea, selectedDetail]);
+  }, [buildingSkills, equipmentFilterId, priorityOnly, prioritySkillIds, search, selectedArea, selectedDetail]);
 
   const filteredEngineers = useMemo(() => {
     if (!selectedDetail) return [];
@@ -833,9 +794,20 @@ export const SkillsMatrixSection = (): JSX.Element => {
     [selectedDetail, selectedSkillId],
   );
 
+  const equipmentPriorityRisks = useMemo(
+    () =>
+      selectedDetail?.priorityRisks.filter(
+        (risk) => !equipmentFilterId || risk.equipmentId === equipmentFilterId,
+      ) ?? [],
+    [equipmentFilterId, selectedDetail],
+  );
+
+  const equipmentFocusName =
+    equipmentPriorityRisks[0]?.equipmentName ?? null;
+
   const intelligence = useMemo(() => {
     if (!selectedSummary || !selectedDetail) return null;
-    const risks = selectedDetail.priorityRisks;
+    const risks = equipmentPriorityRisks;
     return {
       topRisk: risks[0] ?? null,
       priorityCount: risks.length,
@@ -844,11 +816,11 @@ export const SkillsMatrixSection = (): JSX.Element => {
         selectedSummary.affectedEquipment,
       singlePointCount: risks.filter((risk) => risk.singlePoint).length,
     };
-  }, [selectedDetail, selectedSummary]);
+  }, [equipmentPriorityRisks, selectedDetail, selectedSummary]);
 
   const visiblePriorityRisks = showAllWeaknesses
-    ? selectedDetail?.priorityRisks ?? []
-    : selectedDetail?.priorityRisks.slice(0, 3) ?? [];
+    ? equipmentPriorityRisks
+    : equipmentPriorityRisks.slice(0, 3);
 
   const exportSelectedScope = (): void => {
     if (!selectedSummary || !selectedDetail) return;
@@ -947,7 +919,7 @@ export const SkillsMatrixSection = (): JSX.Element => {
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Clock3 className="h-3.5 w-3.5" />
             {data
-              ? freshnessLabel(data.generatedAt)
+              ? freshnessLabel(data.sourceUpdatedAt)
               : loading
                 ? "Loading capability data"
                 : "Data unavailable"}
@@ -1143,9 +1115,18 @@ export const SkillsMatrixSection = (): JSX.Element => {
                     </div>
                     <div className="skills-matrix-people-scroll flex max-h-[560px] flex-col divide-y divide-gray-800/70 overflow-y-auto pr-1">
                       {selectedDetail.engineers.map((engineer) => {
-                        const avatarUrl = avatarUrls.get(engineer.id) ?? avatarUrls.get(engineer.name);
+                        const avatarUrl = engineer.avatarUrl;
                         return (
-                          <div key={engineer.id} className="flex items-center gap-3 py-3">
+                          <button
+                            key={engineer.id}
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/engineers?engineer=${encodeURIComponent(engineer.id)}&from=skills-matrix`,
+                              )
+                            }
+                            className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-white/[0.025] focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                          >
                             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-700 bg-[#0f1318] text-sm font-semibold text-slate-300">
                               {avatarUrl ? (
                                 <img
@@ -1178,7 +1159,8 @@ export const SkillsMatrixSection = (): JSX.Element => {
                                 {engineer.trainingNeeds} training need{engineer.trainingNeeds === 1 ? "" : "s"}
                               </p>
                             </div>
-                          </div>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" />
+                          </button>
                         );
                       })}
                     </div>
@@ -1256,18 +1238,51 @@ export const SkillsMatrixSection = (): JSX.Element => {
                                       : "No existing capability evidence found"}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[11px] font-semibold text-blue-300">
-                                  +{risk.projectedScoreGain} pts
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/equipment/${encodeURIComponent(risk.equipmentId)}/skills`)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
-                                >
-                                  Equipment <ArrowRight className="h-3 w-3" />
-                                </button>
-                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                 <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[11px] font-semibold text-blue-300">
+                                   +{risk.projectedScoreGain} pts
+                                 </span>
+                                 <button
+                                   type="button"
+                                   onClick={() =>
+                                     navigate(
+                                       `/engineers?skill=${encodeURIComponent(risk.skillId)}&skillName=${encodeURIComponent(risk.skillName)}&from=skills-matrix`,
+                                     )
+                                   }
+                                   className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                                 >
+                                   Find engineer <Users className="h-3 w-3" />
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() =>
+                                     navigate(
+                                       `/requirements?skill=${encodeURIComponent(risk.skillName)}&from=skills-matrix`,
+                                     )
+                                   }
+                                   className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                                 >
+                                   View requirement <Award className="h-3 w-3" />
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() =>
+                                     navigate(
+                                       `/training?skill=${encodeURIComponent(risk.skillName)}&priority=${risk.isCritical ? "Critical" : "High"}&from=skills-matrix`,
+                                     )
+                                   }
+                                   className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                                 >
+                                   Open training plan <Wrench className="h-3 w-3" />
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() => navigate(`/equipment/${encodeURIComponent(risk.equipmentId)}/skills`)}
+                                   className="inline-flex items-center gap-1 rounded-md border border-gray-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-300"
+                                 >
+                                   Equipment <ArrowRight className="h-3 w-3" />
+                                 </button>
+                               </div>
                             </div>
                           </div>
                         ))}
@@ -1312,6 +1327,21 @@ export const SkillsMatrixSection = (): JSX.Element => {
                           className="h-9 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-8 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                         />
                       </div>
+                      {equipmentFilterId ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSearchParams((current) => {
+                              const next = new URLSearchParams(current);
+                              next.delete("equipment");
+                              return next;
+                            })
+                          }
+                          className="h-9 rounded-lg border border-blue-500/30 bg-blue-500/[0.07] px-3 text-xs font-semibold text-blue-300 transition-colors hover:border-blue-400/50"
+                        >
+                          {equipmentFocusName ? `Equipment: ${equipmentFocusName}` : "Equipment focus"} · Clear
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => setPriorityOnly((current) => !current)}
@@ -1387,9 +1417,19 @@ export const SkillsMatrixSection = (): JSX.Element => {
                               return (
                                 <tr key={engineer.id} className={`border-b border-gray-800/50 ${rowBg}`}>
                                   <td className={`sticky left-0 z-10 min-w-[190px] px-4 py-2.5 ${rowBg}`}>
-                                    <p className="truncate font-medium text-slate-200">{engineer.name}</p>
-                                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{engineer.discipline}</p>
-                                  </td>
+                                     <button
+                                       type="button"
+                                       onClick={() =>
+                                         navigate(
+                                           `/engineers?engineer=${encodeURIComponent(engineer.id)}&from=skills-matrix`,
+                                         )
+                                       }
+                                       className="w-full rounded text-left transition-colors hover:text-blue-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50"
+                                     >
+                                       <p className="truncate font-medium text-slate-200">{engineer.name}</p>
+                                       <p className="mt-0.5 truncate text-[11px] text-slate-500">{engineer.discipline}</p>
+                                     </button>
+                                   </td>
                                   <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums text-slate-300">
                                     {engineer.averageYearsExperience.toFixed(1)}y
                                   </td>

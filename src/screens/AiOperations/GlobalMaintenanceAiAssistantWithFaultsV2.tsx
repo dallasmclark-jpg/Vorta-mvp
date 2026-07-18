@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   ChevronDown,
@@ -240,10 +241,15 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
 function EquipmentSmeSection({
   sme,
   equipmentName,
+  equipmentId,
 }: {
   sme: EquipmentSmeRecommendation | null;
   equipmentName: string;
+  equipmentId: string | null;
 }): JSX.Element {
+  const equipmentWorkflowRoute = equipmentId
+    ? `/skills-matrix?equipment=${encodeURIComponent(equipmentId)}&view=priority&priority=1&from=ai`
+    : "/skills-matrix?view=priority&priority=1&from=ai";
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -253,12 +259,12 @@ function EquipmentSmeSection({
           </h4>
           <p className="mt-0.5 text-[9px] text-slate-500">{equipmentName}</p>
         </div>
-        <a
-          href="/engineers"
+        <Link
+          to={sme ? `/engineers?engineer=${encodeURIComponent(sme.id)}&from=ai` : equipmentWorkflowRoute}
           className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
         >
-          Open engineer record →
-        </a>
+          {sme ? "Open engineer record →" : "Open capability risk →"}
+        </Link>
       </div>
 
       {sme ? (
@@ -372,13 +378,18 @@ function EngineerSection({
   shiftLabel,
   shiftWindow,
   shiftBasis,
+  equipmentId,
 }: {
   engineers: FaultEngineerRecommendationWithIdentity[];
   shiftLabel: string;
   shiftWindow: string;
   shiftBasis: string;
+  equipmentId: string | null;
 }): JSX.Element {
   const primary = engineers[0];
+  const equipmentWorkflowRoute = equipmentId
+    ? `/skills-matrix?equipment=${encodeURIComponent(equipmentId)}&q=${encodeURIComponent(primary?.primarySkill ?? "")}&view=priority&priority=1&from=ai`
+    : "/skills-matrix?view=priority&priority=1&from=ai";
   const secondary = engineers.slice(1, 5);
 
   return (
@@ -392,12 +403,12 @@ function EngineerSection({
             {shiftLabel} · {shiftWindow}
           </p>
         </div>
-        <a
-          href="/engineers"
+        <Link
+          to={equipmentWorkflowRoute}
           className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
         >
-          Open skills →
-        </a>
+          Open capability risk →
+        </Link>
       </div>
 
       <p className="rounded-md border border-gray-800 bg-[#0d131b] px-2.5 py-2 text-[9px] leading-relaxed text-slate-500">
@@ -863,6 +874,7 @@ function FaultIntelligenceDrawer({
                     shiftLabel={result.shiftLabel}
                     shiftWindow={result.shiftWindow}
                     shiftBasis={result.shiftBasis}
+                    equipmentId={result.primaryEquipment?.id ?? null}
                   />
                   <DocumentSection
                     documents={result.documents}

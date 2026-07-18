@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -431,6 +431,8 @@ function SkeletonLine({ w = "w-24", h = "h-4" }: { w?: string; h?: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const TrainingSection = (): JSX.Element => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusedSkill = searchParams.get("skill") ?? "";
   const [stats,              setStats]              = useState<TrainingStats>({ totalBookings: 0, completed: 0, activeBookings: 0, totalSpendGBP: 0, compliancePct: 0, expiringIn30Days: 0, expiringIn90Days: 0, engineersNeedingTraining: 0, criticalGaps: 0 });
   const [spendByMonth,       setSpendByMonth]       = useState<SpendMonth[]>([]);
   const [bookingsByDept,     setBookingsByDept]     = useState<DeptBooking[]>([]);
@@ -449,9 +451,27 @@ export const TrainingSection = (): JSX.Element => {
   const [localStatuses,      setLocalStatuses]      = useState<Record<string, string>>({});
 
   // Priority table filters
-  const [prioritySearch,  setPrioritySearch]  = useState("");
-  const [filterPriority,  setFilterPriority]  = useState("all");
+  const [prioritySearch,  setPrioritySearch]  = useState(() => focusedSkill);
+  const [filterPriority,  setFilterPriority]  = useState(() => {
+    const value = searchParams.get("priority");
+    return value && ["Critical", "High", "Medium", "Low"].includes(value)
+      ? value
+      : "all";
+  });
   const [priorityPage,    setPriorityPage]    = useState(0);
+
+  const clearTrainingFocus = () => {
+    setPrioritySearch("");
+    setFilterPriority("all");
+    setPriorityPage(0);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("skill");
+      next.delete("priority");
+      next.delete("from");
+      return next;
+    }, { replace: true });
+  };
 
   const handleStatusChange = (id: string, status: string) => {
     setLocalStatuses((prev) => ({ ...prev, [id]: status }));
@@ -588,6 +608,27 @@ export const TrainingSection = (): JSX.Element => {
           </button>
         </div>
       </header>
+
+      {focusedSkill ? (
+        <div className="flex w-full flex-col gap-3 rounded-xl border border-blue-500/25 bg-blue-500/[0.07] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
+              Training plan focus
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">{focusedSkill}</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Priority gaps and recommendations are filtered to this capability.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearTrainingFocus}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/10"
+          >
+            Clear focus <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : null}
 
       {/* ── Sync + AI actions ────────────────────────────────────────────── */}
       <div className="flex w-full flex-col gap-4">
@@ -876,7 +917,7 @@ export const TrainingSection = (): JSX.Element => {
                   </div>
                   <div className="flex items-center gap-2">
                     {(prioritySearch || filterPriority !== "all") && (
-                      <button type="button" onClick={() => { setPrioritySearch(""); setFilterPriority("all"); setPriorityPage(0); }}
+                      <button type="button" onClick={clearTrainingFocus}
                         className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-200">
                         <X className="h-3 w-3" /> Clear
                       </button>
