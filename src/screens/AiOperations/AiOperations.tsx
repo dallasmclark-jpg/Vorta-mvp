@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup } from "../../components/PortalShell";
 import {
+  Activity,
   BarChart3,
   ClipboardList,
   Cog,
@@ -40,6 +41,7 @@ import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
 import { CareerSection } from "../Career";
+import { PilotAdoptionSection } from "../PilotAdoption/PilotAdoptionSection";
 import { PilotImpactSection } from "../PilotImpact/PilotImpactSection";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
@@ -50,6 +52,7 @@ const nav: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
+      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "AI Matching", icon: Sparkles, to: "/ai-matching" },
     ],
@@ -101,6 +104,7 @@ export const AiOperations = (): JSX.Element => (
       <Routes>
         <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
         <Route path="pilot-impact" element={<PilotImpactSection />} />
+        <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
         <Route path="skills-matrix" element={<SkillsMatrixSection />} />
         <Route path="engineers" element={<EngineersSection />} />
         <Route path="career" element={<CareerSection />} />
