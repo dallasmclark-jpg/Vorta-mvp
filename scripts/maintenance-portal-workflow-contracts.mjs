@@ -254,5 +254,10 @@ assert.match(
   /eventType: "pilot_report_downloaded"/,
   "Pilot report downloads must be captured",
 );
+assert.doesNotMatch(
+  maintenanceExperience,
+  /location\.pathname === "\/pilot-adoption"/,
+  "The adoption analytics page must not inflate its own usage score",
+);
 
 console.log("Maintenance portal workflow contracts passed.");
