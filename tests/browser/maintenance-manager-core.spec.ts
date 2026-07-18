@@ -27,10 +27,6 @@ async function expectOperationalTouchTarget(locator: Locator): Promise<void> {
   expect(box?.height ?? 0, "Operational control must be at least 40px high").toBeGreaterThanOrEqual(39.5);
 }
 
-function workOrderNumberFromText(value: string): string {
-  return value.match(/\bWO-[A-Z0-9-]+\b/i)?.[0] ?? "";
-}
-
 async function openFirstDifferentAiWorkOrder(
   historyButtons: Locator,
   currentWorkOrder: string,
@@ -40,9 +36,9 @@ async function openFirstDifferentAiWorkOrder(
 
   for (let index = 0; index < count; index += 1) {
     const candidate = historyButtons.nth(index);
-    const text = (await candidate.textContent())?.trim() ?? "";
-    const workOrderNumber = workOrderNumberFromText(text);
-    if (workOrderNumber && workOrderNumber !== currentWorkOrder) {
+    const workOrderNumber =
+      (await candidate.locator("span").first().textContent())?.trim() ?? "";
+    if (/^WO-/i.test(workOrderNumber) && workOrderNumber !== currentWorkOrder) {
       await candidate.click();
       return workOrderNumber;
     }
