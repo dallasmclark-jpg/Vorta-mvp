@@ -86,6 +86,23 @@ test("authenticated Maintenance Manager core workflow remains in context", async
     await expect(areaTab).toHaveAttribute("aria-selected", "true");
   }
 
+  const shiftCoverCard = page
+    .getByRole("heading", { name: "Shift Cover", exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'cursor-pointer')][1]");
+  await expect(shiftCoverCard).toBeVisible();
+  await shiftCoverCard.click();
+  await page.waitForURL(/\/maintenance\/labour-risk\/shift-cover(?:\?.*)?$/);
+  await expect(
+    page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
+  ).toBeVisible();
+  await expectNoPageOverflow(page);
+
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
+
   await expect(
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
   ).toBeHidden();
