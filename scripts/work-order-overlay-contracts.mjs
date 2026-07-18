@@ -1,7 +1,4 @@
-import {
-  existsSync,
-  readFileSync,
-} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const readSource = (path) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
@@ -15,8 +12,23 @@ const bridgeSource = readSource(
 const enhancedOverlaySource = readSource(
   "../src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx",
 );
+const globalOverlaySource = readSource(
+  "../src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx",
+);
+const workOrderPageSource = readSource(
+  "../src/screens/Equipment/EquipmentWorkOrders.tsx",
+);
 const workOrderRegisterBridgeSource = readSource(
   "../src/screens/Equipment/EquipmentWorkOrdersWithExecution.tsx",
+);
+const aiNavigationSource = readSource(
+  "../src/screens/Equipment/EquipmentWorkOrdersWithAiNavigation.tsx",
+);
+const aiAssistantSource = readSource(
+  "../src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx",
+);
+const maintenanceActionsSource = readSource(
+  "../src/lib/maintenanceActions.ts",
 );
 const documentInterceptorSource = readSource(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
@@ -31,7 +43,6 @@ const retiredEvidenceControlUrl = new URL(
 );
 
 const failures = [];
-
 const check = (name, condition) => {
   if (condition) {
     console.log(`✓ ${name}`);
@@ -48,63 +59,44 @@ check(
     aiOperationsSource.includes("</MaintenanceAiWorkOrderExperience>"),
 );
 check(
-  "React bridge owns work order click capture",
-  bridgeSource.includes("onClickCapture={handleWorkOrderClick}"),
+  "Portal bridge no longer captures arbitrary work order clicks",
+  !bridgeSource.includes("handleWorkOrderClick") &&
+    !bridgeSource.includes("WORK_ORDER_NUMBER") &&
+    !bridgeSource.includes("stopImmediatePropagation"),
 );
 check(
-  "React bridge covers linked work order buttons and anchors",
-  bridgeSource.includes('closest<HTMLElement>("a[href],button")'),
-);
-check(
-  "React bridge resolves equipment from the active equipment route",
-  bridgeSource.includes("equipmentIdFromPath(window.location.pathname)"),
-);
-check(
-  "React bridge opens the shared execution overlay event",
-  bridgeSource.includes("VORTA_WORK_ORDER_DETAIL_EVENT"),
-);
-check(
-  "React bridge closes the fault assistant before opening work order detail",
-  bridgeSource.includes('button[data-vorta-fault-close="true"]'),
-);
-check(
-  "React bridge ignores clicks inside the work order overlay",
-  bridgeSource.includes('data-global-work-order-overlay="true"'),
-);
-check(
-  "Work order register buttons retain their native controls",
-  bridgeSource.includes('interactiveElement.closest("#work-order-register")'),
+  "Shared maintenance action opens the execution overlay",
+  maintenanceActionsSource.includes("openWorkOrderDetail") &&
+    maintenanceActionsSource.includes("VORTA_WORK_ORDER_DETAIL_EVENT"),
 );
 check(
   "Maintenance portal mounts the enhanced execution overlay",
   bridgeSource.includes("<MaintenanceWorkOrderExecutionOverlay />"),
 );
 check(
-  "Work order register rows dispatch the shared overlay event",
-  workOrderRegisterBridgeSource.includes(
-    "new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT",
-  ) &&
-    workOrderRegisterBridgeSource.includes(
-      '"#work-order-register tbody tr"',
-    ),
+  "Work order page opens records explicitly",
+  workOrderPageSource.includes("openWorkOrderDetail"),
 );
 check(
-  "Work order register ignores native row controls",
-  workOrderRegisterBridgeSource.includes(
-    'target.closest("button,a,input,select,textarea")',
-  ),
+  "AI fault history opens records explicitly",
+  aiAssistantSource.includes("openWorkOrderDetail"),
 );
 check(
-  "Work order page preserves the shared equipment header hierarchy",
+  "Query-linked work orders open without DOM polling",
+  aiNavigationSource.includes("openWorkOrderDetail") &&
+    !aiNavigationSource.includes("setInterval") &&
+    !aiNavigationSource.includes("querySelector"),
+);
+check(
+  "Legacy row interception wrapper is retired",
   workOrderRegisterBridgeSource.includes("<EquipmentWorkOrdersBase />") &&
-    !workOrderRegisterBridgeSource.includes("WorkOrderEvidenceControl"),
+    !workOrderRegisterBridgeSource.includes("onClickCapture") &&
+    !workOrderRegisterBridgeSource.includes("HTMLTableRowElement"),
 );
 check(
-  "Work order register no longer contains a duplicate execution drawer",
-  !workOrderRegisterBridgeSource.includes("ExecutionDrawer") &&
-    !workOrderRegisterBridgeSource.includes(
-      'data-work-order-execution-drawer="true"',
-    ),
+  "Global overlay traps focus through the shared accessibility hook",
+  globalOverlaySource.includes("useModalFocusTrap") &&
+    globalOverlaySource.includes("tabIndex={-1}"),
 );
 check(
   "Execution overlay presents a manager verdict",
@@ -121,11 +113,6 @@ check(
   "Execution overlay summarises 261 material issues",
   enhancedOverlaySource.includes('movement.movementType === "261"') &&
     enhancedOverlaySource.includes("261 goods issues"),
-);
-check(
-  "Execution overlay prevents background scrolling and restores focus",
-  enhancedOverlaySource.includes('document.body.style.overflow = "hidden"') &&
-    enhancedOverlaySource.includes("previousFocusRef.current?.focus()"),
 );
 check(
   "Document navigation no longer imports the global work order interceptor",

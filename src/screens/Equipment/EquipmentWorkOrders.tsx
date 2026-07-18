@@ -29,6 +29,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { openWorkOrderDetail } from "../../lib/maintenanceActions";
 import {
   DEFAULT_EQUIPMENT_ID,
   type EquipmentBase,
@@ -569,16 +570,9 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       }
 
       if (action.workOrderNumber) {
-        setRegisterView("OPEN");
-        setSearch(action.workOrderNumber);
-        setSearchParams(
-          { workOrder: action.workOrderNumber },
-          { replace: true },
-        );
-        requestAnimationFrame(() => {
-          document
-            .getElementById("work-order-register")
-            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        openWorkOrderDetail({
+          equipmentId: equipment.id,
+          workOrderNumber: action.workOrderNumber,
         });
         return;
       }
@@ -718,7 +712,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               onClick={() => void loadWorkOrderIntelligence()}
               disabled={loading}
               aria-label="Refresh work-order intelligence"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200 disabled:opacity-50"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200 disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -728,7 +722,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               type="button"
               onClick={() => navigate(`/equipment/${equipment.id}/notifications`)}
               aria-label="Equipment notifications"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
             >
               <Bell className="h-4 w-4" />
             </button>
@@ -736,7 +730,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               type="button"
               onClick={() => navigate("/settings")}
               aria-label="Profile settings"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
             >
               <UserCircle className="h-7 w-7" />
             </button>
@@ -1064,17 +1058,9 @@ export const EquipmentWorkOrders = (): JSX.Element => {
               records={pmSchedules}
               loading={loading}
               onOpenWorkOrder={(workOrderNumber) => {
-                setRegisterView("OPEN");
-                setFilter("PREVENTIVE");
-                setSearch(workOrderNumber);
-                setSearchParams(
-                  { workOrder: workOrderNumber },
-                  { replace: true },
-                );
-                requestAnimationFrame(() => {
-                  document
-                    .getElementById("work-order-register")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                openWorkOrderDetail({
+                  equipmentId: equipment.id,
+                  workOrderNumber,
                 });
               }}
             />
@@ -1124,7 +1110,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-300">
+                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-300">
                           {action.priority}
                         </span>
                         <div className="min-w-0">
@@ -1571,7 +1557,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                         }
                       }}
                       placeholder="Search WO, issue, engineer or type"
-                      className="h-9 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-72"
+                      className="min-h-10 w-full rounded-lg border border-gray-700 bg-[#0b0e14] pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-72"
                     />
                   </div>
 
@@ -1601,7 +1587,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                     type="button"
                     variant="outline"
                     onClick={exportWorkOrders}
-                    className="h-9 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
+                    className="min-h-10 gap-2 border-gray-700 bg-transparent px-3 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Export
@@ -1669,9 +1655,12 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                             <button
                               type="button"
                               onClick={() =>
-                                void copyValue(workOrder.id, workOrder.id)
+                                openWorkOrderDetail({
+                                  equipmentId: equipment.id,
+                                  workOrderNumber: workOrder.id,
+                                })
                               }
-                              className="font-mono text-xs font-semibold text-blue-300 hover:text-blue-200"
+                              className="min-h-10 font-mono text-xs font-semibold text-blue-300 hover:text-blue-200"
                             >
                               {workOrder.id}
                             </button>
@@ -1783,8 +1772,19 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                         key={workOrder.id}
                         className="border-b border-gray-800/70 transition-colors last:border-b-0 hover:bg-white/[0.015]"
                       >
-                        <td className="px-4 py-4 align-top font-mono text-xs font-semibold text-blue-300">
-                          {workOrder.id}
+                        <td className="px-4 py-4 align-top">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openWorkOrderDetail({
+                                equipmentId: equipment.id,
+                                workOrderNumber: workOrder.id,
+                              })
+                            }
+                            className="min-h-10 font-mono text-xs font-semibold text-blue-300 hover:text-blue-200"
+                          >
+                            {workOrder.id}
+                          </button>
                         </td>
                         <td className="max-w-lg px-4 py-4 align-top text-xs leading-5 text-slate-200">
                           {workOrder.description}

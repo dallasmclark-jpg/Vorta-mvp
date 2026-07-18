@@ -18,6 +18,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { VortaIcon, VortaLogo } from "./VortaLogo";
 import { supabase } from "../lib/supabaseClient";
 import { PageTransition } from "./PageTransition";
+import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -400,7 +401,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+          className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
           aria-label="Close sidebar"
         >
           <X className="h-4 w-4" />
@@ -504,6 +505,10 @@ export const PortalShell = ({
 }: PortalShellProps): JSX.Element => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileDrawerRef = useModalFocusTrap<HTMLDivElement>(
+    mobileOpen,
+    () => setMobileOpen(false),
+  );
   const location  = useLocation();
 
   // Scroll to top on route change
@@ -539,7 +544,14 @@ export const PortalShell = ({
             aria-hidden="true"
           />
           {/* Drawer */}
-          <div className="relative z-50 flex w-64 shrink-0 flex-col">
+          <div
+            ref={mobileDrawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Portal navigation"
+            tabIndex={-1}
+            className="relative z-50 flex w-64 shrink-0 flex-col"
+          >
             <Sidebar
               homeRoute={homeRoute}
               nav={nav}
@@ -559,7 +571,7 @@ export const PortalShell = ({
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />

@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 interface DetailDrawerProps {
   open: boolean;
@@ -11,20 +11,18 @@ interface DetailDrawerProps {
 
 /**
  * Shared slide-over drawer shell for the Maintenance Manager portal.
- * Handles backdrop, slide animation, Escape key and close button.
- * Drop your drawer header + body content as children.
+ * Handles backdrop, body scroll, focus containment, Escape and focus restoration.
  */
-export function DetailDrawer({ open, onClose, children, maxWidth = "max-w-md" }: DetailDrawerProps) {
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+export function DetailDrawer({
+  open,
+  onClose,
+  children,
+  maxWidth = "max-w-md",
+}: DetailDrawerProps) {
+  const drawerRef = useModalFocusTrap<HTMLElement>(open, onClose);
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
@@ -33,10 +31,12 @@ export function DetailDrawer({ open, onClose, children, maxWidth = "max-w-md" }:
         aria-hidden="true"
       />
 
-      {/* Panel */}
       <aside
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
+        aria-label="Detail panel"
+        tabIndex={-1}
         className={`fixed inset-y-0 right-0 z-50 flex w-full ${maxWidth} flex-col border-l border-gray-800 bg-[#0d1117] shadow-2xl transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
@@ -47,16 +47,13 @@ export function DetailDrawer({ open, onClose, children, maxWidth = "max-w-md" }:
   );
 }
 
-/**
- * Standardised close button for use in drawer headers.
- */
 export function DrawerCloseButton({ onClose }: { onClose: () => void }) {
   return (
     <button
       type="button"
       onClick={onClose}
       aria-label="Close"
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-[#ffffff10] hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
     >
       <X className="h-4 w-4" />
     </button>

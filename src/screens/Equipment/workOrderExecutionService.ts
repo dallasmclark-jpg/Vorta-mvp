@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/supabaseClient";
 import { getEquipmentIdentityById } from "./equipmentService";
+import { validateWorkOrderRow } from "../../lib/runtimeContracts";
 
 export interface WorkOrderExecutionHeader {
   id: string;
@@ -181,7 +182,7 @@ export async function getWorkOrderExecutionDetail(
     throw new Error(`Work order ${workOrderNumber} is not available for this equipment.`);
   }
 
-  const workOrder = workOrderData as WorkOrderRow;
+  const workOrder = validateWorkOrderRow(workOrderData) as unknown as WorkOrderRow;
 
   const [confirmationResult, reservationResult, movementResult] = await Promise.all([
     supabase

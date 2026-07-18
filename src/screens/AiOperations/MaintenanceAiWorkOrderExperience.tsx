@@ -11,15 +11,11 @@ import { useAuth } from "../../lib/auth";
 import { warmMaintenancePortalDataFast } from "../../lib/maintenancePortalFastWarmup";
 import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefetch";
 import { trackPilotUsageEvent } from "../../lib/pilotUsage";
-import { supabase } from "../../lib/supabaseClient";
-import { VORTA_WORK_ORDER_DETAIL_EVENT } from "../Equipment/GlobalWorkOrderExecutionOverlay";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
-const WORK_ORDER_NUMBER = /\b(?:WO-\d+|\d{8,14})\b/i;
-const PM_REFERENCE = /\bPM-\d+\b/i;
 
 interface GlobalAiPromptEventDetail {
   question?: string;
@@ -39,39 +35,6 @@ function equipmentIdFromPath(pathname: string): string | null {
   return routeMatch ? decodeEquipmentId(routeMatch[1]) : null;
 }
 
-function getWorkOrderNumber(element: HTMLElement): string | null {
-  const firstLabel = element.querySelector("span")?.textContent?.trim() ?? "";
-  const firstMatch = firstLabel.match(WORK_ORDER_NUMBER)?.[0];
-  if (firstMatch) return firstMatch;
-
-  return element.textContent?.match(WORK_ORDER_NUMBER)?.[0] ?? null;
-}
-
-function getEquipmentId(element: HTMLElement): string | null {
-  if (element instanceof HTMLAnchorElement) {
-    const href = element.getAttribute("href")?.trim();
-    if (href) {
-      const url = new URL(href, window.location.origin);
-      if (url.origin === window.location.origin) {
-        const routeEquipmentId = equipmentIdFromPath(url.pathname);
-        if (routeEquipmentId) return routeEquipmentId;
-      }
-    }
-  }
-
-  return equipmentIdFromPath(window.location.pathname);
-}
-
-function isScheduleAction(element: HTMLElement): boolean {
-  const text = element.textContent?.toLowerCase() ?? "";
-  return (
-    PM_REFERENCE.test(element.textContent ?? "") ||
-    text.includes("calibration") ||
-    text.includes("pm backlog") ||
-    text.includes("preventive maintenance")
-  );
-}
-
 function routeUrlFromTarget(target: EventTarget | null): URL | null {
   if (!(target instanceof Element)) return null;
 
@@ -85,47 +48,6 @@ function routeUrlFromTarget(target: EventTarget | null): URL | null {
 
 function routePathFromTarget(target: EventTarget | null): string | null {
   return routeUrlFromTarget(target)?.pathname ?? null;
-}
-
-function validPilotImpactRange(element: HTMLElement): {
-  preset: string;
-  startDate: string | null;
-  endDate: string | null;
-} | null {
-  const surface = element.closest<HTMLElement>("section");
-  const selected = surface?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
-  const preset = selected?.textContent?.trim() ?? "Pilot to date";
-
-  if (preset !== "Custom range") {
-    return { preset, startDate: null, endDate: null };
-  }
-
-  const inputs = surface?.querySelectorAll<HTMLInputElement>('input[type="date"]');
-  const startDate = inputs?.[0]?.value ?? "";
-  const endDate = inputs?.[1]?.value ?? "";
-  const today = new Date().toISOString().slice(0, 10);
-
-  if (!startDate || !endDate || startDate > endDate || endDate > today) return null;
-  return { preset, startDate, endDate };
-}
-
-async function getEquipmentIdForWorkOrder(
-  workOrderNumber: string,
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("work_orders")
-    .select("equipment_id")
-    .eq("wo_number", workOrderNumber)
-    .maybeSingle();
-
-  if (error) {
-    console.warn("Work order equipment lookup failed:", error.message);
-    return null;
-  }
-
-  return typeof data?.equipment_id === "string"
-    ? data.equipment_id
-    : null;
 }
 
 export function MaintenanceAiWorkOrderExperience({
@@ -219,130 +141,25 @@ export function MaintenanceAiWorkOrderExperience({
         | ReactFocusEvent<HTMLDivElement>,
     ): void => {
       const pathname = routePathFromTarget(event.target);
-      if (!pathname) return;
-
-      prefetchMaintenancePortalRoute(pathname);
+      if (pathname) prefetchMaintenancePortalRoute(pathname);
     },
     [],
   );
 
-  const handleWorkOrderClick = useCallback(
-    async (event: ReactMouseEvent<HTMLDivElement>): Promise<void> => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest('[data-global-work-order-overlay="true"]')) return;
-
-      const interactiveElement = target.closest<HTMLElement>("a[href],button");
-      if (!interactiveElement) return;
-
-      const actionText = interactiveElement.textContent?.trim().toLowerCase() ?? "";
+  const trackRecommendationFollowThrough = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>): void => {
+      const routeUrl = routeUrlFromTarget(event.target);
       const siteId = siteContext?.siteId;
-      if (siteId && window.location.pathname === "/pilot-impact") {
-        if (actionText.includes("download pilot report")) {
-          void trackPilotUsageEvent({
-            siteId,
-            eventType: "pilot_report_downloaded",
-            pathname: window.location.pathname,
-            entityType: "report",
-            entityId: "pilot-impact",
-            metadata: { format: "print_pdf" },
-          });
-        } else if (actionText === "apply range") {
-          const range = validPilotImpactRange(interactiveElement);
-          if (range) {
-            void trackPilotUsageEvent({
-              siteId,
-              eventType: "pilot_report_range_applied",
-              pathname: window.location.pathname,
-              entityType: "report",
-              entityId: "pilot-impact",
-              metadata: {
-                preset: range.preset,
-                startDate: range.startDate,
-                endDate: range.endDate,
-                surface: "impact",
-              },
-            });
-          }
-        }
-      }
+      if (!routeUrl || !siteId || routeUrl.searchParams.get("from") !== "ai") return;
 
-      const routeUrl = routeUrlFromTarget(interactiveElement);
-      if (routeUrl?.searchParams.get("from") === "ai" && siteId) {
-        void trackPilotUsageEvent({
-          siteId,
-          eventType: "recommendation_opened",
-          pathname: window.location.pathname,
-          entityType: "route",
-          entityId: routeUrl.pathname,
-          metadata: { destination: routeUrl.pathname },
-        });
-      }
-
-      if (
-        interactiveElement instanceof HTMLButtonElement &&
-        interactiveElement.closest("#work-order-register")
-      ) {
-        return;
-      }
-
-      const workOrderNumber = getWorkOrderNumber(interactiveElement);
-      if (!workOrderNumber) return;
-
-      const directEquipmentId = getEquipmentId(interactiveElement);
-      if (!directEquipmentId && isScheduleAction(interactiveElement)) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      event.nativeEvent.stopImmediatePropagation();
-
-      const equipmentId =
-        directEquipmentId ??
-        (await getEquipmentIdForWorkOrder(workOrderNumber));
-      if (!equipmentId) return;
-
-      if (siteId) {
-        void trackPilotUsageEvent({
-          siteId,
-          eventType: "work_order_view",
-          pathname: window.location.pathname,
-          entityType: "work_order",
-          entityId: workOrderNumber,
-          metadata: { equipmentId },
-        });
-      }
-
-      const faultPanel = interactiveElement.closest<HTMLElement>(
-        '[data-vorta-fault-panel="true"]',
-      );
-
-      faultPanel
-        ?.querySelector<HTMLButtonElement>(
-          'button[data-vorta-fault-close="true"]',
-        )
-        ?.click();
-
-      window.dispatchEvent(
-        new CustomEvent(VORTA_WORK_ORDER_DETAIL_EVENT, {
-          detail: {
-            equipmentId,
-            workOrderNumber,
-          },
-        }),
-      );
+      void trackPilotUsageEvent({
+        siteId,
+        eventType: "recommendation_opened",
+        pathname: window.location.pathname,
+        entityType: "route",
+        entityId: routeUrl.pathname,
+        metadata: { destination: routeUrl.pathname },
+      });
     },
     [siteContext?.siteId],
   );
@@ -353,7 +170,7 @@ export function MaintenanceAiWorkOrderExperience({
       onPointerOverCapture={handleNavigationIntent}
       onPointerDownCapture={handleNavigationIntent}
       onFocusCapture={handleNavigationIntent}
-      onClickCapture={handleWorkOrderClick}
+      onClickCapture={trackRecommendationFollowThrough}
     >
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />

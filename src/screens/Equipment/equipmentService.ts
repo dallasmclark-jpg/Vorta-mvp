@@ -18,6 +18,11 @@ import {
 } from "./equipmentTypes";
 import { getEquipmentById as getEquipmentByIdFallback, DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import { EQUIPMENT_IMAGES, resolveEquipmentImage } from "./equipmentImages";
+import {
+  parseDashboardFreshness,
+  validateOperationalDashboardPayload,
+  type DashboardFreshness,
+} from "../../lib/runtimeContracts";
 
 // ─── Mock equipment data ──────────────────────────────────────────────────────
 
@@ -3219,6 +3224,7 @@ export interface OperationalRiskDashboardPayload {
   areaProfiles: AreaRiskProfile[];
   siteRisk: SiteRiskProfile | null;
   scopes: RiskDashboardScope[];
+  freshness: DashboardFreshness | null;
 }
 
 export async function refreshAndGetOperationalDashboard():
@@ -3238,20 +3244,7 @@ export async function refreshAndGetOperationalDashboard():
       return null;
     }
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
-      console.warn(
-        "vorta_refresh_and_get_operational_dashboard returned an invalid payload.",
-      );
-
-      return null;
-    }
-
-    const payload =
-      data as Record<string, unknown>;
+    const payload = validateOperationalDashboardPayload(data);
 
     const areaProfiles =
       Array.isArray(
@@ -3290,6 +3283,7 @@ export async function refreshAndGetOperationalDashboard():
       areaProfiles,
       siteRisk,
       scopes,
+      freshness: parseDashboardFreshness(payload.freshness),
     };
   } catch (error) {
     console.warn(

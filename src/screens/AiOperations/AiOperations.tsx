@@ -3,6 +3,10 @@ import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup } from "../../components/PortalShell";
 import { useAuth } from "../../lib/auth";
 import {
+  canAdministerPilot,
+  canImportSapData,
+} from "../../lib/accessControl";
+import {
   Activity,
   BarChart3,
   ClipboardCheck,
@@ -51,11 +55,9 @@ import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience
 
 const nav: NavGroup[] = [
   {
-    groupLabel: "Overview",
+    groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
-      { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
-      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "AI Matching", icon: Sparkles, to: "/ai-matching" },
     ],
@@ -75,12 +77,19 @@ const nav: NavGroup[] = [
       { label: "Training Plan", icon: GraduationCap, to: "/training" },
     ],
   },
+  {
+    groupLabel: "Pilot evidence",
+    items: [
+      { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
+      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
+    ],
+  },
 ];
 
 export const AiOperations = (): JSX.Element => {
   const { role, isDemoAdmin } = useAuth();
-  const canAdministerPilot =
-    isDemoAdmin || role === "vorta_admin" || role === "site_admin";
+  const mayAdministerPilot = canAdministerPilot(role, isDemoAdmin);
+  const mayImportSapData = canImportSapData(role, isDemoAdmin);
 
   const secondaryNav = [
     {
@@ -88,7 +97,7 @@ export const AiOperations = (): JSX.Element => {
       icon: Headphones,
       to: "/support",
     },
-    ...(canAdministerPilot
+    ...(mayAdministerPilot
       ? [
           {
             label: "Pilot Setup",
@@ -97,11 +106,15 @@ export const AiOperations = (): JSX.Element => {
           },
         ]
       : []),
-    {
-      label: "Data Import",
-      icon: UploadCloud,
-      to: "/settings/data-import",
-    },
+    ...(mayImportSapData
+      ? [
+          {
+            label: "Data Import",
+            icon: UploadCloud,
+            to: "/settings/data-import",
+          },
+        ]
+      : []),
     {
       label: "Settings",
       icon: Cog,
@@ -132,14 +145,23 @@ export const AiOperations = (): JSX.Element => {
           <Route
             path="settings/pilot-setup"
             element={
-              canAdministerPilot ? (
+              mayAdministerPilot ? (
                 <PilotSetupSection />
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             }
           />
-          <Route path="settings/data-import" element={<SapDataImportSection />} />
+          <Route
+            path="settings/data-import"
+            element={
+              mayImportSapData ? (
+                <SapDataImportSection />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
           <Route path="settings" element={<SettingsSection />} />
           <Route path="equipment" element={<EquipmentSection />} />
           <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />

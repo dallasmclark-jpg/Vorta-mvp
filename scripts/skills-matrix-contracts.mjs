@@ -75,6 +75,8 @@ for (const requiredText of [
   "View requirement",
   "Open training plan",
   "useSearchParams",
+  "Showing:",
+  "Clear filters",
 ]) {
   assert.match(
     page,
@@ -85,7 +87,8 @@ for (const requiredText of [
 
 assert.match(page, /schemaVersion: "capability-v3"/);
 assert.match(page, /normaliseSkillsMatrixPayload/);
-assert.match(page, /return payload;/);
+assert.match(page, /validateSkillsMatrixPayload\(payload\)/);
+assert.doesNotMatch(page, /return payload;/);
 assert.match(page, /clearMaintenancePortalDataCache\(SKILLS_MATRIX_FUNCTION\)/);
 assert.match(page, /Skills capability data could not be loaded/);
 assert.match(page, /new Set\(risks\.map\(\(risk\) => risk\.equipmentId\)\)/);
@@ -146,15 +149,9 @@ assert.match(functionIndex, /avatar_url/);
 assert.match(functionIndex, /organisationId/);
 assert.match(functionIndex, /import \{ context, preflight, response \}/);
 assert.match(functionAuth, /vorta_get_function_context/);
-assert.doesNotMatch(
-  functionIndex + functionAuth,
-  /SUPABASE_SERVICE_ROLE_KEY/,
-);
+assert.doesNotMatch(functionIndex + functionAuth, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(functionTransform, /criticalTeamShare \* 12/);
-assert.match(
-  functionTransform,
-  /overallScore = Math\.min\(overallScore, 59\)/,
-);
+assert.match(functionTransform, /overallScore = Math\.min\(overallScore, 59\)/);
 assert.match(functionTransform, /sourceUpdatedAt/);
 assert.match(functionTransform, /areaSkills/);
 assert.match(functionAnalysis, /criticalGaps = priorityRisks\.filter/);
