@@ -1343,7 +1343,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           ...item,
           level:
             presentation.level,
-          score:
+          displayScore:
             formatSiteRisk(
               item.score,
             ),
@@ -2997,7 +2997,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 <p className="text-xs text-slate-400">{item.description}</p>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-xs text-slate-400">Overall risk score</p>
-                  <p className="text-xl font-semibold text-slate-50">{item.score}</p>
+                  <p className="text-xl font-semibold text-slate-50">{item.displayScore}</p>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-slate-400">{item.metricLabel}</span>
@@ -3012,7 +3012,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
   value={item.progress}
   fillClassName={item.progressClassName}
   animate={index === 0}
-  ariaLabel={`${item.title} risk score ${item.score}`}
+  ariaLabel={`${item.title} risk score ${item.displayScore}`}
 />
                   <p className="text-xs text-slate-400">{item.label}</p>
                 </div>

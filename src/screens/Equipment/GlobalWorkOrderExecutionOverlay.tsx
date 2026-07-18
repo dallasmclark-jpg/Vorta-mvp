@@ -12,6 +12,7 @@ import {
   RefreshCw,
   UserRound,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -288,11 +289,11 @@ export function GlobalWorkOrderExecutionOverlay(): JSX.Element | null {
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[
-                    ["Confirmation text", confirmationTextCount, ClipboardCheck],
-                    ["Reserved parts", detail.reservations.length, PackageCheck],
-                    ["Goods movements", detail.goodsMovements.length, ArrowLeftRight],
-                  ].map(([label, value, Icon]) => (
+                  {([
+                    { label: "Confirmation text", value: confirmationTextCount, Icon: ClipboardCheck },
+                    { label: "Reserved parts", value: detail.reservations.length, Icon: PackageCheck },
+                    { label: "Goods movements", value: detail.goodsMovements.length, Icon: ArrowLeftRight },
+                  ] satisfies Array<{ label: string; value: number; Icon: LucideIcon }>).map(({ label, value, Icon }) => (
                     <div
                       key={String(label)}
                       className="rounded-lg border border-gray-800 bg-[#0a0f16] px-2.5 py-2.5 text-center"

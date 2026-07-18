@@ -847,7 +847,7 @@ export const RequirementsSection = (): JSX.Element => {
                                       </Badge>
                                     )}
                                     {req.certification_required && (
-                                      <Shield className="h-3 w-3 shrink-0 text-blue-400" title="Certification required" />
+                                      <Shield className="h-3 w-3 shrink-0 text-blue-400" aria-label="Certification required" />
                                     )}
                                   </div>
                                   <span className="text-[11px] text-slate-500">{req.skill_category}</span>

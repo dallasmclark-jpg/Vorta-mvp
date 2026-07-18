@@ -872,6 +872,7 @@ function FaultIntelligenceDrawer({
                     equipmentName={
                       result.primaryEquipment?.name ?? "No matched equipment"
                     }
+                    equipmentId={result.primaryEquipment?.id ?? null}
                   />
                   <HistorySection records={result.history} />
                   <EngineerSection

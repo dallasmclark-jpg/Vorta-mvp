@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
-const FOCUSABLE_SELECTOR = [
+export const MODAL_FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
   "input:not([disabled])",
@@ -8,6 +8,14 @@ const FOCUSABLE_SELECTOR = [
   "textarea:not([disabled])",
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
+
+function isFocusableElementVisible(element: HTMLElement): boolean {
+  return (
+    element.getAttribute("aria-hidden") !== "true" &&
+    element.getAttribute("hidden") === null &&
+    element.offsetParent !== null
+  );
+}
 
 export function useModalFocusTrap<T extends HTMLElement>(
   active: boolean,
@@ -20,7 +28,7 @@ export function useModalFocusTrap<T extends HTMLElement>(
     escapeHandlerRef.current = onEscape;
   }, [onEscape]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return undefined;
 
     const container = containerRef.current;
@@ -28,22 +36,26 @@ export function useModalFocusTrap<T extends HTMLElement>(
 
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
+    container.dataset.vortaFocusTrap = "managed";
     document.body.style.overflow = "hidden";
 
     const focusableElements = (): HTMLElement[] =>
-      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-        (element) => element.getAttribute("aria-hidden") !== "true",
-      );
+      Array.from(
+        container.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR),
+      ).filter(isFocusableElementVisible);
 
-    window.requestAnimationFrame(() => {
+    const focusFrame = window.requestAnimationFrame(() => {
       const first = focusableElements()[0];
       (first ?? container).focus();
     });
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        event.preventDefault();
-        escapeHandlerRef.current?.();
+        if (escapeHandlerRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          escapeHandlerRef.current();
+        }
         return;
       }
 
@@ -67,11 +79,16 @@ export function useModalFocusTrap<T extends HTMLElement>(
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      delete container.dataset.vortaFocusTrap;
       document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
+
+      if (previousFocus?.isConnected) {
+        previousFocus.focus();
+      }
     };
   }, [active]);
 

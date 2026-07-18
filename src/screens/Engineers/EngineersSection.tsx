@@ -805,7 +805,7 @@ export const EngineersSection = (): JSX.Element => {
                               </td>
                               <td className="px-4 py-2.5 text-center">
                                 {eng.critical_knowledge_holder
-                                  ? <Shield className="mx-auto h-4 w-4 text-blue-400" title="Critical knowledge holder" />
+                                  ? <Shield className="mx-auto h-4 w-4 text-blue-400" aria-label="Critical knowledge holder" />
                                   : <span className="text-slate-700">—</span>}
                               </td>
                               <td className="px-4 py-2.5">

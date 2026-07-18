@@ -562,13 +562,13 @@ export async function getEquipmentRecommendedWorkQueue(
       : null;
   };
 
-  const rawActions = Array.isArray(row.actions)
+  const rawActions: any[] = Array.isArray(row.actions)
     ? row.actions
     : [];
 
   const actions: EquipmentRecommendedWorkAction[] =
     rawActions
-      .map((action: any) => ({
+      .map((action: any): EquipmentRecommendedWorkAction => ({
         priority: Number(action.priority ?? 0),
         driver: String(action.driver ?? ""),
         action: String(action.action ?? ""),
@@ -1109,6 +1109,7 @@ export interface EquipmentListItem {
   labourShiftDate?: string | null;
   labourShiftType?: string | null;
   noEngineerOverride?: boolean;
+  status?: string;
   oem: string;
   criticality: string;
   overduePmCount: number;
@@ -1127,7 +1128,7 @@ const MOCK_LIST: EquipmentListItem[] = [
   { id: "pm-01",  name: "Press Line Motor",     assetNumber: "PM-01",  type: "PROCESSING",   area: "Processing", riskScore: 52, riskLevel: "Medium",   breakdown: riskBreakdownFor("Medium",   "Press Line Motor",     "PROCESSING",   "PM-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
   { id: "ac-01",  name: "Air Compressor 1",     assetNumber: "AC-01",  type: "COMPRESSOR",   area: "Building 2", riskScore: 33, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Air Compressor 1",     "COMPRESSOR",   "AC-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
   { id: "wf-03",  name: "Warehouse Forklift 3", assetNumber: "WF-03",  type: "WAREHOUSE",    area: "Warehouse",  riskScore: 28, riskLevel: "Low",      breakdown: riskBreakdownFor("Low",      "Warehouse Forklift 3", "WAREHOUSE",    "WF-03"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
-  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Minimal",  "Lighting System",      "FACILITIES",   "LT-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
+  { id: "lt-01",  name: "Lighting System",      assetNumber: "LT-01",  type: "FACILITIES",   area: "Building 2", riskScore: 12, riskLevel: "Minimal",  breakdown: riskBreakdownFor("Low",      "Lighting System",      "FACILITIES",   "LT-01"),  oem: "—", criticality: "Unknown", overduePmCount: 0, openWorkOrderCount: 0, calibrationOverdueCount: 0 },
 ];
 
 function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
@@ -1143,6 +1144,12 @@ function rowToListItem(row: EquipmentAssetRow): EquipmentListItem {
     area:        row.area ?? "—",
     riskScore,
     riskLevel,
+    status:      row.status ?? undefined,
+    oem:         row.oem ?? "—",
+    criticality: row.criticality ?? "Unknown",
+    overduePmCount: profile?.overdue_pm_count ?? 0,
+    openWorkOrderCount: profile?.open_work_order_count ?? 0,
+    calibrationOverdueCount: profile?.calibration_overdue_count ?? 0,
     breakdown: profile
       ? riskBreakdownFromProfile(profile)
       : riskBreakdownFor(riskLevel, row.name, row.equipment_type, row.equipment_code),
@@ -1313,6 +1320,7 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
           row.labour_shift_type ?? null,
         noEngineerOverride:
           row.no_engineer_override ?? false,
+        status:       row.status ?? undefined,
         oem:          row.oem ?? "—",
         criticality:  row.criticality ?? "Unknown",
         overduePmCount: Number(row.overdue_pm_count ?? 0),
@@ -1323,7 +1331,12 @@ export async function getEquipmentList(): Promise<EquipmentListItem[]> {
         breakdown:
           breakdown.length > 0
             ? breakdown
-            : riskBreakdownFor(riskLevel, row.equipment_name, row.equipment_type, row.equipment_code),
+            : riskBreakdownFor(
+                riskLevel === "Minimal" ? "Low" : riskLevel,
+                row.equipment_name,
+                row.equipment_type,
+                row.equipment_code,
+              ),
       };
     });
   } catch (error) {
@@ -2004,10 +2017,10 @@ export async function getEquipmentRiskTrendSeries(
             );
           }
 
-          const points = (
-            data ?? []
+          const points: EquipmentRiskTrendPoint[] = (
+            Array.isArray(data) ? data : []
           )
-            .map((row: any) =>
+            .map((row: any): EquipmentRiskTrendPoint =>
               mapEquipmentRiskTrendPoint(
                 row,
                 period,

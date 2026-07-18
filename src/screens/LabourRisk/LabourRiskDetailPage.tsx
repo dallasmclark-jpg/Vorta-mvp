@@ -55,6 +55,7 @@ interface MonthDayDetail {
 }
 
 interface ShiftCellDetail {
+  teamLabel: string;
   day: string;
   shiftType: "Day" | "Night";
   coverage: string;

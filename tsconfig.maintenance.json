@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2021",
-    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -9,12 +9,33 @@
     "noEmit": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "jsx": "react-jsx",
     "types": ["vite/client"]
   },
   "include": [
+    "src/screens/AiOperations/AiOperations.tsx",
+    "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
+    "src/screens/AiOperations/MaintenanceDashboardExperience.tsx",
+    "src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx",
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    "src/screens/Equipment/EquipmentWorkOrders.tsx",
+    "src/screens/Equipment/EquipmentWorkOrdersWithAiNavigation.tsx",
+    "src/screens/Equipment/EquipmentWorkOrdersWithExecution.tsx",
+    "src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx",
+    "src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx",
+    "src/screens/Equipment/equipmentService.ts",
+    "src/screens/Equipment/workOrderExecutionService.ts",
+    "src/screens/SkillsMatrix/SkillsMatrixNative.tsx",
+    "src/screens/Training/TrainingSection.tsx",
+    "src/screens/Requirements/RequirementsSection.tsx",
+    "src/components/DetailDrawer.tsx",
+    "src/components/MaintenancePortalHardening.tsx",
+    "src/components/MaintenanceActionEvidenceHardening.tsx",
+    "src/components/PortalShell.tsx",
     "src/lib/accessControl.ts",
     "src/lib/runtimeContracts.ts",
     "src/lib/maintenanceActions.ts",
+    "src/lib/maintenanceDashboardSnapshotGuard.ts",
     "src/hooks/useModalFocusTrap.ts"
   ]
 }
