@@ -4,6 +4,7 @@ import type { NavGroup } from "../../components/PortalShell";
 import {
   Activity,
   BarChart3,
+  ClipboardCheck,
   ClipboardList,
   Cog,
   GraduationCap,
@@ -43,6 +44,7 @@ import { LabourRiskDetailPage } from "../LabourRisk";
 import { CareerSection } from "../Career";
 import { PilotAdoptionSection } from "../PilotAdoption/PilotAdoptionSection";
 import { PilotImpactSection } from "../PilotImpact/PilotImpactSection";
+import { PilotSetupSection } from "../PilotSetup/PilotSetupSection";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
 
@@ -81,6 +83,11 @@ const secondaryNav = [
     to: "/support",
   },
   {
+    label: "Pilot Setup",
+    icon: ClipboardCheck,
+    to: "/settings/pilot-setup",
+  },
+  {
     label: "Data Import",
     icon: UploadCloud,
     to: "/settings/data-import",
@@ -112,6 +119,7 @@ export const AiOperations = (): JSX.Element => (
         <Route path="training" element={<TrainingSection />} />
         <Route path="training-providers" element={<TrainingProvidersSection />} />
         <Route path="ai-matching" element={<AiMatchingSection />} />
+        <Route path="settings/pilot-setup" element={<PilotSetupSection />} />
         <Route path="settings/data-import" element={<SapDataImportSection />} />
         <Route path="settings" element={<SettingsSection />} />
         <Route path="equipment" element={<EquipmentSection />} />
