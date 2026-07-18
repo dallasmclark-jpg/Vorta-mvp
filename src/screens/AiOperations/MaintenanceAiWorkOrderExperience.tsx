@@ -176,7 +176,8 @@ export function MaintenanceAiWorkOrderExperience({
       onClickCapture={trackRecommendationFollowThrough}
     >
       <style>{`
-        [data-vorta-maintenance-portal="true"] div[role="button"][aria-expanded] button:first-of-type {
+        [data-vorta-maintenance-portal="true"] div[role="button"][aria-expanded] button:first-of-type,
+        [data-vorta-maintenance-portal="true"] [aria-label="Equipment sections"] button {
           min-height: 2.5rem;
           display: flex;
           align-items: center;
