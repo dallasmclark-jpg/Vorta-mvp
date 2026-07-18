@@ -35,17 +35,22 @@ jobs:
           node-version: 22
 
       - name: Apply focused code transformations
-        run: node scripts/apply-maintenance-hardening-batch.mjs
-
-      - name: Remove one-time migration machinery
         run: |
-          rm scripts/apply-maintenance-hardening-batch.mjs
-          rm .github/workflows/apply-maintenance-hardening.yml
+          set +e
+          node scripts/apply-maintenance-hardening-batch.mjs > hardening-codemod-report.txt 2>&1
+          code=$?
+          echo "Exit code: $code" >> hardening-codemod-report.txt
+          cat hardening-codemod-report.txt
+          exit 0
 
-      - name: Commit hardening batch
+      - name: Commit transformed files and diagnostics
         run: |
           git config user.name "Vorta Hardening Bot"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "Apply maintenance hardening batch"
-          git push origin HEAD:agent/maintenance-hardening-batch
+          if git diff --cached --quiet; then
+            echo "No codemod changes to commit"
+          else
+            git commit -m "Apply maintenance hardening codemod diagnostics"
+            git push origin HEAD:agent/maintenance-hardening-batch
+          fi
