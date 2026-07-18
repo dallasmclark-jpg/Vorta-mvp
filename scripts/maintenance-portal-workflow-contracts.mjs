@@ -21,10 +21,43 @@ const pilotSetup = await readFile(
   new URL("../src/screens/PilotSetup/PilotSetupSection.tsx", import.meta.url),
   "utf8",
 );
+const pilotSetupHook = await readFile(
+  new URL("../src/screens/PilotSetup/usePilotSetup.ts", import.meta.url),
+  "utf8",
+);
+const pilotSetupModel = await readFile(
+  new URL("../src/screens/PilotSetup/pilotSetupModel.ts", import.meta.url),
+  "utf8",
+);
+const pilotSetupData = await readFile(
+  new URL("../src/screens/PilotSetup/PilotSetupDataStage.tsx", import.meta.url),
+  "utf8",
+);
+const pilotSetupPeople = await readFile(
+  new URL("../src/screens/PilotSetup/PilotSetupPeopleStage.tsx", import.meta.url),
+  "utf8",
+);
+const pilotSetupRehearsal = await readFile(
+  new URL("../src/screens/PilotSetup/PilotSetupRehearsalStage.tsx", import.meta.url),
+  "utf8",
+);
+const pilotSetupLaunch = await readFile(
+  new URL("../src/screens/PilotSetup/PilotSetupLaunchStage.tsx", import.meta.url),
+  "utf8",
+);
 const pilotUsage = await readFile(
   new URL("../src/lib/pilotUsage.ts", import.meta.url),
   "utf8",
 );
+const combinedPilotSetup = [
+  pilotSetup,
+  pilotSetupHook,
+  pilotSetupModel,
+  pilotSetupData,
+  pilotSetupPeople,
+  pilotSetupRehearsal,
+  pilotSetupLaunch,
+].join("\n");
 
 assert.match(
   operations,
@@ -93,14 +126,35 @@ assert.match(
 );
 assert.match(
   operations,
-  /label: "Pilot Setup"/,
-  "Maintenance secondary navigation must expose internal pilot setup",
+  /const canAdministerPilot/,
+  "Pilot Setup visibility must be controlled by an explicit administrator capability",
 );
 assert.match(
   operations,
-  /path="settings\/pilot-setup" element={<PilotSetupSection \/>}/,
-  "Pilot Setup must render as a site-scoped Settings route",
+  /isDemoAdmin[\s\S]*role === "vorta_admin"[\s\S]*role === "site_admin"/,
+  "Only Vorta or site administrators may expose Pilot Setup",
 );
+assert.match(
+  operations,
+  /label: "Pilot Setup"/,
+  "Administrator navigation must expose Pilot Setup",
+);
+assert.match(
+  operations,
+  /path="settings\/pilot-setup"/,
+  "Pilot Setup must remain a site-scoped Settings route",
+);
+assert.match(
+  operations,
+  /canAdministerPilot \?/,
+  "Pilot Setup route rendering must use the administrator capability",
+);
+assert.match(
+  operations,
+  /<Navigate to="\/dashboard" replace \/>/,
+  "Unauthorised Pilot Setup routes must redirect to the dashboard",
+);
+
 assert.equal(
   [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
   1,
@@ -219,62 +273,132 @@ assert.doesNotMatch(
 );
 
 assert.equal(
-  [...pilotSetup.matchAll(/vorta_get_pilot_setup/g)].length,
+  [...pilotSetupHook.matchAll(/vorta_get_pilot_setup/g)].length,
   1,
-  "Pilot Setup must load through one manager-scoped setup RPC",
+  "Pilot Setup must load through one administrator-scoped setup RPC",
 );
 assert.match(
-  pilotSetup,
-  /p_site_id: siteId/,
+  pilotSetupHook,
+  /const siteId = siteContext\?\.siteId/,
   "Pilot Setup must use authenticated site context for every workflow update",
 );
 assert.match(
-  pilotSetup,
+  pilotSetupHook,
   /vorta_update_pilot_configuration/,
   "Pilot Setup must persist objective, dates and limitations through the controlled RPC",
 );
 assert.match(
-  pilotSetup,
-  /vorta_update_pilot_manual_check/,
-  "Pilot Setup must persist manager-confirmed readiness evidence",
+  pilotSetupHook,
+  /vorta_update_pilot_participants/,
+  "Pilot Setup must explicitly persist pilot ownership and the manager contact",
 );
 assert.match(
-  pilotSetup,
+  pilotSetupHook,
+  /vorta_update_pilot_success_criteria/,
+  "Pilot Setup success criteria must be editable rather than decorative",
+);
+assert.match(
+  pilotSetupHook,
+  /vorta_update_pilot_manual_check/,
+  "Pilot Setup must persist evidence-backed manual readiness",
+);
+assert.match(
+  pilotSetupHook,
   /vorta_record_pilot_rehearsal_attempt/,
   "Pilot Setup must append rehearsal evidence rather than overwrite history",
 );
 assert.match(
-  pilotSetup,
+  pilotSetupHook,
   /vorta_upsert_pilot_weekly_review/,
   "Pilot Setup must support structured weekly pilot reviews",
 );
 assert.match(
-  pilotSetup,
+  pilotSetupHook,
   /vorta_launch_pilot/,
   "Pilot Setup must launch through the backend readiness gate",
 );
 assert.match(
-  pilotSetup,
-  /disabled={!report\.readiness\.launchEligible/,
-  "Pilot launch must remain disabled until the backend marks the site eligible",
+  pilotSetupHook,
+  /window\.addEventListener\("beforeunload"/,
+  "Pilot Setup must protect unsaved configuration from accidental navigation",
 );
 assert.match(
-  pilotSetup,
-  /two successful passes without intervention/i,
-  "Every rehearsal scenario must require two clean passes",
+  pilotSetupHook,
+  /configurationDirty \|\| criteriaDirty \|\| participantsDirty/,
+  "Pilot Setup must track dirty state independently across setup forms",
 );
 assert.match(
-  pilotSetup,
+  pilotSetupHook,
+  /draft\.notes\.trim\(\)\.length < 8/,
+  "Passing rehearsals must require meaningful notes",
+);
+assert.match(
+  pilotSetupHook,
+  /draft\.evidence\.trim\(\)\.length < 8/,
+  "Passing rehearsals must require meaningful evidence",
+);
+assert.match(
+  pilotSetupHook,
+  /A completed review needs value, accuracy, summary and next actions/,
+  "Completed weekly reviews must contain decision-grade evidence",
+);
+assert.match(
+  pilotSetupModel,
+  /result: ""/,
+  "Rehearsal drafts must not default to pass",
+);
+assert.match(
+  pilotSetupRehearsal,
+  /<option value="">Choose result<\/option>/,
+  "Rehearsal result selection must require an explicit choice",
+);
+assert.match(
+  pilotSetupRehearsal,
+  /consecutive clean passes/i,
+  "Rehearsal UI must explain that failures reset the pass streak",
+);
+assert.match(
+  pilotSetupPeople,
+  /At least 8 characters required/,
+  "Manual passes must remain unavailable until evidence is present",
+);
+assert.match(
+  pilotSetupData,
   /These cannot be manually overridden/,
   "Automated readiness evidence must not be manually overridable",
 );
 assert.match(
+  pilotSetupLaunch,
+  /Edit review/,
+  "Existing weekly reviews must be reloadable for editing",
+);
+assert.match(
   pilotSetup,
-  /SAP remains read-only/,
-  "Pilot Setup must preserve Vorta's read-only SAP boundary",
+  /aria-label="Pilot setup stages"/,
+  "Pilot Setup must use a compact five-stage workflow instead of one long form",
+);
+assert.match(
+  pilotSetup,
+  /Unsaved changes/,
+  "Pilot Setup must visibly indicate unsaved work",
+);
+assert.match(
+  pilotSetup,
+  /Confirm pilot launch/,
+  "Pilot launch must require an explicit confirmation dialog",
+);
+assert.match(
+  pilotSetup,
+  /disabled={[\s\S]*!report\.readiness\.launchEligible/,
+  "Pilot launch must remain disabled until the backend marks the site eligible",
+);
+assert.match(
+  combinedPilotSetup,
+  /Administrator-only workflow · SAP remains read-only/,
+  "Pilot Setup must preserve the administrator and read-only SAP boundaries",
 );
 assert.doesNotMatch(
-  pilotSetup,
+  combinedPilotSetup,
   /11000000-0000-0000-0000-000000000001/,
   "Pilot Setup must not hardcode the Wrexham pilot site",
 );
