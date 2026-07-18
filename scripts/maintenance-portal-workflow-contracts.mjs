@@ -17,6 +17,10 @@ const pilotAdoption = await readFile(
   new URL("../src/screens/PilotAdoption/PilotAdoptionSection.tsx", import.meta.url),
   "utf8",
 );
+const pilotSetup = await readFile(
+  new URL("../src/screens/PilotSetup/PilotSetupSection.tsx", import.meta.url),
+  "utf8",
+);
 const pilotUsage = await readFile(
   new URL("../src/lib/pilotUsage.ts", import.meta.url),
   "utf8",
@@ -86,6 +90,16 @@ assert.match(
   operations,
   /path="pilot-adoption" element={<PilotAdoptionSection \/>}/,
   "Pilot Adoption must render as a native Maintenance Manager route",
+);
+assert.match(
+  operations,
+  /label: "Pilot Setup"/,
+  "Maintenance secondary navigation must expose internal pilot setup",
+);
+assert.match(
+  operations,
+  /path="settings\/pilot-setup" element={<PilotSetupSection \/>}/,
+  "Pilot Setup must render as a site-scoped Settings route",
 );
 assert.equal(
   [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
@@ -202,6 +216,67 @@ assert.doesNotMatch(
   pilotAdoption,
   /11000000-0000-0000-0000-000000000001/,
   "Pilot Adoption must not hardcode the Wrexham pilot site",
+);
+
+assert.equal(
+  [...pilotSetup.matchAll(/vorta_get_pilot_setup/g)].length,
+  1,
+  "Pilot Setup must load through one manager-scoped setup RPC",
+);
+assert.match(
+  pilotSetup,
+  /p_site_id: siteId/,
+  "Pilot Setup must use authenticated site context for every workflow update",
+);
+assert.match(
+  pilotSetup,
+  /vorta_update_pilot_configuration/,
+  "Pilot Setup must persist objective, dates and limitations through the controlled RPC",
+);
+assert.match(
+  pilotSetup,
+  /vorta_update_pilot_manual_check/,
+  "Pilot Setup must persist manager-confirmed readiness evidence",
+);
+assert.match(
+  pilotSetup,
+  /vorta_record_pilot_rehearsal_attempt/,
+  "Pilot Setup must append rehearsal evidence rather than overwrite history",
+);
+assert.match(
+  pilotSetup,
+  /vorta_upsert_pilot_weekly_review/,
+  "Pilot Setup must support structured weekly pilot reviews",
+);
+assert.match(
+  pilotSetup,
+  /vorta_launch_pilot/,
+  "Pilot Setup must launch through the backend readiness gate",
+);
+assert.match(
+  pilotSetup,
+  /disabled={!report\.readiness\.launchEligible/,
+  "Pilot launch must remain disabled until the backend marks the site eligible",
+);
+assert.match(
+  pilotSetup,
+  /two successful passes without intervention/i,
+  "Every rehearsal scenario must require two clean passes",
+);
+assert.match(
+  pilotSetup,
+  /These cannot be manually overridden/,
+  "Automated readiness evidence must not be manually overridable",
+);
+assert.match(
+  pilotSetup,
+  /SAP remains read-only/,
+  "Pilot Setup must preserve Vorta's read-only SAP boundary",
+);
+assert.doesNotMatch(
+  pilotSetup,
+  /11000000-0000-0000-0000-000000000001/,
+  "Pilot Setup must not hardcode the Wrexham pilot site",
 );
 
 assert.match(
