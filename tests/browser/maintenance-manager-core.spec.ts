@@ -61,7 +61,11 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
   await expectNoPageOverflow(page);
 
-  const areaTab = page
+  const riskScopeTabs = page.getByRole("tablist", {
+    name: "Risk intelligence scope",
+  });
+  await expect(riskScopeTabs).toBeVisible();
+  const areaTab = riskScopeTabs
     .getByRole("tab")
     .filter({ hasNotText: /^\s*Site Risk/i })
     .first();
