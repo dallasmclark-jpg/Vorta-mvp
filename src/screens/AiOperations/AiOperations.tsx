@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup } from "../../components/PortalShell";
+import { useAuth } from "../../lib/auth";
 import {
   Activity,
   BarChart3,
@@ -76,86 +77,105 @@ const nav: NavGroup[] = [
   },
 ];
 
-const secondaryNav = [
-  {
-    label: "Support",
-    icon: Headphones,
-    to: "/support",
-  },
-  {
-    label: "Pilot Setup",
-    icon: ClipboardCheck,
-    to: "/settings/pilot-setup",
-  },
-  {
-    label: "Data Import",
-    icon: UploadCloud,
-    to: "/settings/data-import",
-  },
-  {
-    label: "Settings",
-    icon: Cog,
-    to: "/settings",
-    end: true,
-  },
-];
+export const AiOperations = (): JSX.Element => {
+  const { role, isDemoAdmin } = useAuth();
+  const canAdministerPilot =
+    isDemoAdmin || role === "vorta_admin" || role === "site_admin";
 
-export const AiOperations = (): JSX.Element => (
-  <PortalShell
-    homeRoute="/dashboard"
-    nav={nav}
-    secondaryNav={secondaryNav}
-    accentColor="blue"
-  >
-    <MaintenanceAiWorkOrderExperience>
-      <Routes>
-        <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
-        <Route path="pilot-impact" element={<PilotImpactSection />} />
-        <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
-        <Route path="skills-matrix" element={<SkillsMatrixSection />} />
-        <Route path="engineers" element={<EngineersSection />} />
-        <Route path="career" element={<CareerSection />} />
-        <Route path="requirements" element={<RequirementsSection />} />
-        <Route path="training" element={<TrainingSection />} />
-        <Route path="training-providers" element={<TrainingProvidersSection />} />
-        <Route path="ai-matching" element={<AiMatchingSection />} />
-        <Route path="settings/pilot-setup" element={<PilotSetupSection />} />
-        <Route path="settings/data-import" element={<SapDataImportSection />} />
-        <Route path="settings" element={<SettingsSection />} />
-        <Route path="equipment" element={<EquipmentSection />} />
-        <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
-        <Route
-          path="equipment/:equipmentId/notifications"
-          element={<EquipmentNotifications />}
-        />
-        <Route
-          path="equipment/:equipmentId/work-orders"
-          element={<EquipmentWorkOrders />}
-        />
-        <Route path="equipment/:equipmentId/pms" element={<EquipmentPMs />} />
-        <Route path="equipment/:equipmentId/history" element={<EquipmentHistory />} />
-        <Route path="equipment/:equipmentId/skills" element={<EquipmentSkills />} />
-        <Route path="equipment/:equipmentId/spares" element={<EquipmentSpares />} />
-        <Route
-          path="equipment/:equipmentId/documents/:documentId"
-          element={<EquipmentDocumentViewer />}
-        />
-        <Route
-          path="equipment/:equipmentId/documents"
-          element={<EquipmentDocuments />}
-        />
-        <Route
-          path="equipment/:equipmentId/ai-insights"
-          element={<EquipmentAiInsights />}
-        />
-        <Route path="support" element={<SupportSection />} />
-        <Route path="design-system" element={<DesignSystemSection />} />
-        <Route
-          path="maintenance/labour-risk/:riskType"
-          element={<LabourRiskDetailPage />}
-        />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </MaintenanceAiWorkOrderExperience>
-  </PortalShell>
-);
+  const secondaryNav = [
+    {
+      label: "Support",
+      icon: Headphones,
+      to: "/support",
+    },
+    ...(canAdministerPilot
+      ? [
+          {
+            label: "Pilot Setup",
+            icon: ClipboardCheck,
+            to: "/settings/pilot-setup",
+          },
+        ]
+      : []),
+    {
+      label: "Data Import",
+      icon: UploadCloud,
+      to: "/settings/data-import",
+    },
+    {
+      label: "Settings",
+      icon: Cog,
+      to: "/settings",
+      end: true,
+    },
+  ];
+
+  return (
+    <PortalShell
+      homeRoute="/dashboard"
+      nav={nav}
+      secondaryNav={secondaryNav}
+      accentColor="blue"
+    >
+      <MaintenanceAiWorkOrderExperience>
+        <Routes>
+          <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
+          <Route path="pilot-impact" element={<PilotImpactSection />} />
+          <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
+          <Route path="skills-matrix" element={<SkillsMatrixSection />} />
+          <Route path="engineers" element={<EngineersSection />} />
+          <Route path="career" element={<CareerSection />} />
+          <Route path="requirements" element={<RequirementsSection />} />
+          <Route path="training" element={<TrainingSection />} />
+          <Route path="training-providers" element={<TrainingProvidersSection />} />
+          <Route path="ai-matching" element={<AiMatchingSection />} />
+          <Route
+            path="settings/pilot-setup"
+            element={
+              canAdministerPilot ? (
+                <PilotSetupSection />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route path="settings/data-import" element={<SapDataImportSection />} />
+          <Route path="settings" element={<SettingsSection />} />
+          <Route path="equipment" element={<EquipmentSection />} />
+          <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
+          <Route
+            path="equipment/:equipmentId/notifications"
+            element={<EquipmentNotifications />}
+          />
+          <Route
+            path="equipment/:equipmentId/work-orders"
+            element={<EquipmentWorkOrders />}
+          />
+          <Route path="equipment/:equipmentId/pms" element={<EquipmentPMs />} />
+          <Route path="equipment/:equipmentId/history" element={<EquipmentHistory />} />
+          <Route path="equipment/:equipmentId/skills" element={<EquipmentSkills />} />
+          <Route path="equipment/:equipmentId/spares" element={<EquipmentSpares />} />
+          <Route
+            path="equipment/:equipmentId/documents/:documentId"
+            element={<EquipmentDocumentViewer />}
+          />
+          <Route
+            path="equipment/:equipmentId/documents"
+            element={<EquipmentDocuments />}
+          />
+          <Route
+            path="equipment/:equipmentId/ai-insights"
+            element={<EquipmentAiInsights />}
+          />
+          <Route path="support" element={<SupportSection />} />
+          <Route path="design-system" element={<DesignSystemSection />} />
+          <Route
+            path="maintenance/labour-risk/:riskType"
+            element={<LabourRiskDetailPage />}
+          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </MaintenanceAiWorkOrderExperience>
+    </PortalShell>
+  );
+};
