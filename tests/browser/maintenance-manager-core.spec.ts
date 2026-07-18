@@ -30,7 +30,7 @@ async function expectOperationalTouchTarget(locator: Locator): Promise<void> {
 async function openFirstDifferentAiWorkOrder(
   historyButtons: Locator,
   currentWorkOrder: string,
-): Promise<void> {
+): Promise<string> {
   const count = await historyButtons.count();
   expect(count, "Ask Vorta must return at least one linked work order").toBeGreaterThan(0);
 
@@ -39,11 +39,14 @@ async function openFirstDifferentAiWorkOrder(
     const text = (await candidate.textContent())?.trim() ?? "";
     if (!text.includes(currentWorkOrder)) {
       await candidate.click();
-      return;
+      return text;
     }
   }
 
-  await historyButtons.first().click();
+  const fallback = historyButtons.first();
+  const fallbackText = (await fallback.textContent())?.trim() ?? "";
+  await fallback.click();
+  return fallbackText;
 }
 
 test("authenticated Maintenance Manager core workflow remains in context", async ({ page }) => {
@@ -117,15 +120,21 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   const workOrdersUrl = page.url();
   await firstWorkOrderButton.click();
 
-  const executionDialog = page
-    .getByRole("dialog")
-    .filter({ hasText: /Confirmation text/i })
-    .last();
+  const executionDialog = page.getByRole("dialog", {
+    name: firstWorkOrder,
+    exact: true,
+  });
   await expect(executionDialog).toBeVisible();
-  await expect(executionDialog.getByText(/Confirmation text/i).first()).toBeVisible();
-  await expect(executionDialog.getByText(/Goods movements/i).first()).toBeVisible();
+  await expect(
+    executionDialog.getByText("Engineer confirmations", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    executionDialog.getByText("Goods movements", { exact: true }),
+  ).toBeVisible();
 
-  const closeWorkOrder = executionDialog.getByRole("button", { name: /^Close/i }).first();
+  const closeWorkOrder = executionDialog
+    .getByRole("button", { name: "Close work order information", exact: true })
+    .last();
   await expectOperationalTouchTarget(closeWorkOrder);
   await closeWorkOrder.click();
   await expect(executionDialog).toBeHidden();
@@ -145,15 +154,24 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   });
   await expect(historyHeading).toBeVisible({ timeout: 30_000 });
   const historySection = historyHeading.locator("xpath=ancestor::section[1]");
-  const historyButtons = historySection.locator("button");
-  await openFirstDifferentAiWorkOrder(historyButtons, firstWorkOrder);
+  const historyButtons = historySection.getByRole("button", { name: /^WO-/ });
+  const secondWorkOrder = await openFirstDifferentAiWorkOrder(
+    historyButtons,
+    firstWorkOrder,
+  );
+  expect(secondWorkOrder).not.toBe("");
 
-  const secondExecutionDialog = page
-    .getByRole("dialog")
-    .filter({ hasText: /Confirmation text/i })
-    .last();
+  const secondExecutionDialog = page.getByRole("dialog", {
+    name: secondWorkOrder,
+    exact: true,
+  });
   await expect(secondExecutionDialog).toBeVisible();
-  await expect(secondExecutionDialog.getByText(/Goods movements/i).first()).toBeVisible();
+  await expect(
+    secondExecutionDialog.getByText("Engineer confirmations", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    secondExecutionDialog.getByText("Goods movements", { exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveURL(workOrdersUrl);
   await expectNoPageOverflow(page);
 });
