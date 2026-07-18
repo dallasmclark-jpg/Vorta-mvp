@@ -1,0 +1,165 @@
+
+> vorta-mvp@1.0.0 check
+> npm run build
+
+
+> vorta-mvp@1.0.0 build
+> npm run typecheck && npm run test:contracts && npm run test:smoke && vite build
+
+
+> vorta-mvp@1.0.0 typecheck
+> tsc -b
+
+src/index.tsx(9,8): error TS2307: Cannot find module '../tailwind.css' or its corresponding type declarations.
+src/lib/accessControl.ts(146,10): error TS2678: Type '"vorta_admin"' is not comparable to type '"site_admin" | "maintenance_manager" | "maintenance_planner" | "reliability_engineer" | "engineer" | "production_manager" | "operator" | "contractor_admin" | "contractor_engineer"'.
+src/lib/auth.tsx(290,10): error TS2678: Type '"vorta_admin"' is not comparable to type '"site_admin" | "maintenance_manager" | "maintenance_planner" | "reliability_engineer" | "engineer" | "production_manager" | "operator" | "contractor_admin" | "contractor_engineer"'.
+src/lib/auth.tsx(570,30): error TS2339: Property 'app_role' does not exist on type 'GenericStringError'.
+src/lib/auth.tsx(589,39): error TS2339: Property 'site_id' does not exist on type 'GenericStringError'.
+src/lib/auth.tsx(591,33): error TS2339: Property 'organisation_id' does not exist on type 'GenericStringError'.
+src/lib/auth.tsx(594,33): error TS2339: Property 'is_default' does not exist on type 'GenericStringError'.
+src/lib/supabaseClient.ts(4,22): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/supabaseClient.ts(7,19): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/supabaseClient.ts(11,22): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/supabaseClient.ts(14,19): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/screens/AiInsights/AiInsightsSection.tsx(131,10): error TS6133: 'expiries' is declared but its value is never read.
+src/screens/AiInsights/AiInsightsSection.tsx(386,76): error TS2322: Type '{ key: number; className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx(1152,31): error TS2339: Property 'status' does not exist on type 'EquipmentListItem'.
+src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx(1152,82): error TS2339: Property 'status' does not exist on type 'EquipmentListItem'.
+src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx(870,20): error TS2741: Property 'equipmentId' is missing in type '{ sme: EquipmentSmeRecommendation | null; equipmentName: string; }' but required in type '{ sme: EquipmentSmeRecommendation | null; equipmentName: string; equipmentId: string | null; }'.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(19,29): error TS6133: 'CardHeader' is declared but its value is never read.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(19,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(77,7): error TS6133: 'formatCalendarDate' is declared but its value is never read.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(730,5): error TS6133: 'operationalRiskLoading' is declared but its value is never read.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(735,5): error TS6133: 'secondaryRiskLoading' is declared but its value is never read.
+src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx(2980,21): error TS2345: Argument of type '{ level: string; score: string; progress: number; label: string; badgeClassName: string; progressClassName: string; title: string; slug: string; description: string; metricLabel: string; metricValue: string; extraLabel: string; extraValue: string; statusLabel: string; }' is not assignable to parameter of type 'RiskDashboardLabourCard'.
+  Types of property 'score' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+src/screens/AiReports/AiReportsSection.tsx(23,1): error TS6133: 'Progress' is declared but its value is never read.
+src/screens/AiReports/AiReportsSection.tsx(133,10): error TS6133: 'coverageBarClass' is declared but its value is never read.
+src/screens/AiReports/AiReportsSection.tsx(181,49): error TS6133: 'trainingStats' is declared but its value is never read.
+src/screens/AiReports/AiReportsSection.tsx(232,9): error TS6133: 'in30' is declared but its value is never read.
+src/screens/AiReports/AiReportsSection.tsx(308,9): error TS6133: 'windows' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorAiRecommendationsSection.tsx(8,3): error TS6133: 'Clock' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorAvailabilitySection.tsx(164,7): error TS6133: 'readinessBar' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorAvailabilitySection.tsx(185,75): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/ContractorPortal/ContractorComplianceSection.tsx(8,3): error TS6133: 'MapPin' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorDashboardSection.tsx(9,3): error TS6133: 'Sparkles' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorEngineersSection.tsx(53,317): error TS2353: Object literal may only specify known properties, and 'aiplatform' does not exist in type 'Engineer'.
+src/screens/ContractorPortal/ContractorJobReportsSection.tsx(12,3): error TS6133: 'RefreshCw' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorJobReportsSection.tsx(14,3): error TS6133: 'ShieldCheck' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorJobReportsSection.tsx(15,3): error TS6133: 'Zap' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorOpportunitiesSection.tsx(226,7): error TS6133: 'STATUSES' is declared but its value is never read.
+src/screens/ContractorPortal/ContractorTimesheetsSection.tsx(12,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/screens/DataImport/sapImportService.ts(226,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/screens/DataImport/sapImportService.ts(245,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/screens/DesignSystem/DesignSystemSection.tsx(5,3): error TS6133: 'BookOpen' is declared but its value is never read.
+src/screens/DesignSystem/DesignSystemSection.tsx(7,3): error TS6133: 'Check' is declared but its value is never read.
+src/screens/EngineerDashboard/EngineerDashboardSection.tsx(18,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/screens/EngineerDashboard/EngineerDashboardSection.tsx(21,3): error TS6133: 'Wrench' is declared but its value is never read.
+src/screens/EngineerDashboard/EngineerDashboardSection.tsx(898,46): error TS2322: Type '{ direction: "up"; value: string; }' is not assignable to type 'IntrinsicAttributes & TrendIndicatorProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & TrendIndicatorProps'.
+src/screens/EngineerPortal/AiRecommendationsSection.tsx(8,3): error TS6133: 'Clock' is declared but its value is never read.
+src/screens/EngineerPortal/AiRecommendationsSection.tsx(292,9): error TS6133: 'highRecs' is declared but its value is never read.
+src/screens/EngineerPortal/CareerPathSection.tsx(4,3): error TS6133: 'BookOpen' is declared but its value is never read.
+src/screens/EngineerPortal/CareerPathSection.tsx(10,3): error TS6133: 'RefreshCw' is declared but its value is never read.
+src/screens/EngineerPortal/EngineerPortal.tsx(42,10): error TS6133: 'Placeholder' is declared but its value is never read.
+src/screens/EngineerPortal/MyCertificationsSection.tsx(5,3): error TS6133: 'BookOpen' is declared but its value is never read.
+src/screens/EngineerPortal/MySkillsSection.tsx(236,9): error TS6133: 'expired' is declared but its value is never read.
+src/screens/EngineerPortal/MySkillsSection.tsx(246,9): error TS6133: 'categories' is declared but its value is never read.
+src/screens/EngineerPortal/ProfileSettingsSection.tsx(5,3): error TS6133: 'BookOpen' is declared but its value is never read.
+src/screens/EngineerPortal/ProfileSettingsSection.tsx(10,3): error TS6133: 'Mail' is declared but its value is never read.
+src/screens/EngineerPortal/ProfileSettingsSection.tsx(11,3): error TS6133: 'MapPin' is declared but its value is never read.
+src/screens/Engineers/EngineerDrawer.tsx(16,3): error TS6133: 'X' is declared but its value is never read.
+src/screens/Engineers/EngineerDrawer.tsx(189,75): error TS6133: 'skillGaps' is declared but its value is never read.
+src/screens/Engineers/EngineerDrawer.tsx(273,96): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/Engineers/EngineerDrawer.tsx(274,104): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/Engineers/EngineersSection.tsx(99,10): error TS6133: 'formatDate' is declared but its value is never read.
+src/screens/Engineers/EngineersSection.tsx(278,10): error TS6133: 'sites' is declared but its value is never read.
+src/screens/Engineers/EngineersSection.tsx(808,87): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/Equipment/EquipmentNotifications.tsx(740,43): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/EquipmentOverview.tsx(15,3): error TS6133: 'Clock' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(19,3): error TS6133: 'FileText' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(20,3): error TS6133: 'Gauge' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(21,3): error TS6133: 'History' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(24,3): error TS6133: 'Search' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(28,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/screens/Equipment/EquipmentOverview.tsx(32,3): error TS6133: 'Zap' is declared but its value is never read.
+src/screens/Equipment/EquipmentPMs.tsx(574,43): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/EquipmentRequiredSkillCoverage.tsx(28,10): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/EquipmentRequiredSkillCoverage.tsx(30,28): error TS7006: Parameter 'letter' implicitly has an 'any' type.
+src/screens/Equipment/EquipmentScheduleTimeline.tsx(603,19): error TS6133: 'futureBucket' is declared but its value is never read.
+src/screens/Equipment/EquipmentSection.tsx(849,9): error TS6133: 'equipmentId' is declared but its value is never read.
+src/screens/Equipment/EquipmentSkillsIntelligence.tsx(29,17): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/EquipmentSkillsIntelligence.tsx(29,70): error TS7006: Parameter 'letter' implicitly has an 'any' type.
+src/screens/Equipment/EquipmentSpares.tsx(410,9): error TS6133: 'inventoryValue' is declared but its value is never read.
+src/screens/Equipment/EquipmentSpares.tsx(637,43): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/EquipmentWorkOrders.tsx(638,43): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx(63,6): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx(65,24): error TS7006: Parameter 'letter' implicitly has an 'any' type.
+src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx(300,24): error TS2604: JSX element type 'Icon' does not have any construct or call signatures.
+src/screens/Equipment/GlobalWorkOrderExecutionOverlay.tsx(300,24): error TS2786: 'Icon' cannot be used as a JSX component.
+  Its type 'string | number | ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not a valid JSX element type.
+    Type 'number' is not assignable to type 'ElementType'.
+src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx(65,6): error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/screens/Equipment/MaintenanceWorkOrderExecutionOverlay.tsx(67,24): error TS7006: Parameter 'letter' implicitly has an 'any' type.
+src/screens/Equipment/equipmentData.ts(80,3): error TS2322: Type '"" | EquipmentBase' is not assignable to type 'EquipmentBase'.
+  Type 'string' is not assignable to type 'EquipmentBase'.
+src/screens/Equipment/equipmentScheduleService.ts(106,21): error TS2677: A type predicate's type must be assignable to its parameter's type.
+  Type 'Record<string, unknown>' is missing the following properties from type '{ id: any; pm_number: any; title: any; frequency: any; frequency_unit: any; pm_type: any; last_completed_date: any; next_due_date: any; status: any; criticality: any; assigned_engineer: any; procedure_ref: any; ... 4 more ...; certificate_reference: any; }': id, pm_number, title, frequency, and 13 more.
+src/screens/Equipment/equipmentService.ts(72,7): error TS6133: 'MOCK_WORK_ORDERS' is declared but its value is never read.
+src/screens/Equipment/equipmentService.ts(83,7): error TS6133: 'MOCK_COMPLETED_WORK_ORDERS' is declared but its value is never read.
+src/screens/Equipment/equipmentService.ts(92,7): error TS6133: 'MOCK_PMS' is declared but its value is never read.
+src/screens/Equipment/equipmentService.ts(644,10): error TS7006: Parameter 'left' implicitly has an 'any' type.
+src/screens/Equipment/equipmentService.ts(644,16): error TS7006: Parameter 'right' implicitly has an 'any' type.
+src/screens/Equipment/equipmentService.ts(1120,7): error TS6133: 'MOCK_LIST' is declared but its value is never read.
+src/screens/Equipment/equipmentService.ts(1130,180): error TS2345: Argument of type '"Minimal"' is not assignable to parameter of type 'EquipmentRiskLevel'.
+src/screens/Equipment/equipmentService.ts(1133,10): error TS6133: 'rowToListItem' is declared but its value is never read.
+src/screens/Equipment/equipmentService.ts(1138,3): error TS2739: Type '{ id: string; name: string; assetNumber: string; type: string; area: string; riskScore: number; riskLevel: EquipmentRiskLevel; breakdown: EquipmentRiskBreakdown[]; }' is missing the following properties from type 'EquipmentListItem': oem, criticality, overduePmCount, openWorkOrderCount, calibrationOverdueCount
+src/screens/Equipment/equipmentService.ts(1261,3): error TS2322: Type 'EquipmentBase' is not assignable to type 'Equipment'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'EquipmentStatus'.
+src/screens/Equipment/equipmentService.ts(1262,3): error TS2322: Type 'EquipmentBase' is not assignable to type 'Equipment'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type 'EquipmentStatus'.
+src/screens/Equipment/equipmentService.ts(1326,32): error TS2345: Argument of type '"Critical" | "High" | "Medium" | "Low" | "Minimal"' is not assignable to parameter of type 'EquipmentRiskLevel'.
+  Type '"Minimal"' is not assignable to type 'EquipmentRiskLevel'.
+src/screens/Equipment/equipmentService.ts(2017,16): error TS7006: Parameter 'left' implicitly has an 'any' type.
+src/screens/Equipment/equipmentService.ts(2017,22): error TS7006: Parameter 'right' implicitly has an 'any' type.
+src/screens/Equipment/equipmentService.ts(2032,16): error TS7006: Parameter 'point' implicitly has an 'any' type.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(15,1): error TS6133: 'Progress' is declared but its value is never read.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(193,5): error TS2353: Object literal may only specify known properties, and 'teamLabel' does not exist in type 'ShiftCellDetail'.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(203,5): error TS2353: Object literal may only specify known properties, and 'teamLabel' does not exist in type 'ShiftCellDetail'.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(213,5): error TS2353: Object literal may only specify known properties, and 'teamLabel' does not exist in type 'ShiftCellDetail'.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(496,17): error TS2339: Property 'teamLabel' does not exist on type 'ShiftCellDetail'.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(515,72): error TS2339: Property 'teamLabel' does not exist on type 'ShiftCellDetail'.
+src/screens/LabourRisk/LabourRiskDetailPage.tsx(839,11): error TS2353: Object literal may only specify known properties, and 'teamLabel' does not exist in type 'ShiftCellDetail | ((prevState: ShiftCellDetail | null) => ShiftCellDetail | null)'.
+src/screens/MaintenancePlanner/PlannerDashboardSection.tsx(305,31): error TS6133: 'i' is declared but its value is never read.
+src/screens/OperatorPortal/OperatorDashboardSection.tsx(12,3): error TS6133: 'User' is declared but its value is never read.
+src/screens/OperatorPortal/OperatorDashboardSection.tsx(13,3): error TS6133: 'Wrench' is declared but its value is never read.
+src/screens/ProductionManager/ProductionManagerDashboard.tsx(16,3): error TS6133: 'Zap' is declared but its value is never read.
+src/screens/ProductionManager/ProductionManagerDashboard.tsx(24,1): error TS6133: 'Badge' is declared but its value is never read.
+src/screens/ProductionManager/ProductionShiftCoverageSection.tsx(6,3): error TS6133: 'GraduationCap' is declared but its value is never read.
+src/screens/ProductionManager/ProductionShiftCoverageSection.tsx(15,1): error TS6133: 'AnimatedProgress' is declared but its value is never read.
+src/screens/ProductionManager/ProductionSkillsMatrixSection.tsx(9,3): error TS6133: 'Sparkles' is declared but its value is never read.
+src/screens/ProductionManager/ProductionTrainingSection.tsx(8,3): error TS6133: 'Sparkles' is declared but its value is never read.
+src/screens/Requirements/RequirementsSection.tsx(90,7): error TS6133: 'PRIORITY_ORDER' is declared but its value is never read.
+src/screens/Requirements/RequirementsSection.tsx(850,90): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/Settings/SettingsSection.tsx(15,3): error TS6133: 'LogOut' is declared but its value is never read.
+src/screens/SkillsMatrix/SkillsMatrixNative.tsx(249,10): error TS6133: 'capabilityStatus' is declared but its value is never read.
+src/screens/SkillsMatrix/SkillsMatrixNative.tsx(1030,30): error TS2339: Property 'id' does not exist on type '{}'.
+src/screens/SkillsMatrix/SkillsMatrixNative.tsx(1031,19): error TS2740: Type '{}' is missing the following properties from type 'ScopeSummary': id, code, name, scopeType, and 11 more.
+src/screens/SkillsMatrix/SkillsMatrixNative.tsx(1032,35): error TS2339: Property 'id' does not exist on type '{}'.
+src/screens/SkillsMatrix/SkillsMatrixNative.tsx(1033,60): error TS2339: Property 'id' does not exist on type '{}'.
+src/screens/Support/SupportSection.tsx(223,62): error TS6133: 'msg' is declared but its value is never read.
+src/screens/Support/SupportSection.tsx(239,21): error TS6133: 'ticketId' is declared but its value is never read.
+src/screens/Training/TrainingSection.tsx(1017,92): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/screens/TrainingProviders/TrainingProvidersSection.tsx(7,3): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/screens/TrainingProviders/TrainingProvidersSection.tsx(22,3): error TS6133: 'Zap' is declared but its value is never read.
+Exit code: 2
