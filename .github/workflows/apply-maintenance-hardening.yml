@@ -1,0 +1,48 @@
+name: Apply maintenance hardening batch
+
+on:
+  push:
+    branches:
+      - agent/maintenance-hardening-batch
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-maintenance-hardening
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout hardening branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/maintenance-hardening-batch
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply focused code transformations
+        run: node scripts/apply-maintenance-hardening-batch.mjs
+
+      - name: Remove one-time migration machinery
+        run: |
+          rm scripts/apply-maintenance-hardening-batch.mjs
+          rm .github/workflows/apply-maintenance-hardening.yml
+
+      - name: Commit hardening batch
+        run: |
+          git config user.name "Vorta Hardening Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply maintenance hardening batch"
+          git push origin HEAD:agent/maintenance-hardening-batch
