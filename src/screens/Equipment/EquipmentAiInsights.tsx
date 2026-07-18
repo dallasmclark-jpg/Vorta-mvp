@@ -431,7 +431,7 @@ export const EquipmentAiInsights = (): JSX.Element => {
         <div className="mx-4 mt-4 rounded-xl border border-red-500/25 bg-red-500/[0.06] px-4 py-3 text-xs text-red-200 md:mx-6">{loadError}</div>
       ) : null}
 
-      <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+      <div className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
         <div className="mb-4 flex items-center justify-between gap-4">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
             <button type="button" onClick={() => navigate("/equipment")} className="hover:text-slate-300">Equipment</button>

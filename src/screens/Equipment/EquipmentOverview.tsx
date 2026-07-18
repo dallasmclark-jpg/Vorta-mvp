@@ -460,7 +460,7 @@ export const EquipmentOverview = (): JSX.Element => {
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-      <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+      <div className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
         <div className="mb-4 flex items-center justify-between gap-4">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
             <button type="button" onClick={() => navigate("/equipment")} className="transition-colors hover:text-slate-300">Equipment</button>

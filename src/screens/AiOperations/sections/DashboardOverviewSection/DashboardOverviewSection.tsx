@@ -25,6 +25,7 @@ import {
   getAreaInterventionPlans,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
+  getOperationalDashboardSnapshot,
   refreshAndGetOperationalDashboard,
   refreshRiskWorkPlan,
   getRiskDashboardScopePlans,
@@ -1008,6 +1009,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     async (
       period: RiskKpiPeriodKey,
       scopeKey: string,
+      recalculate = false,
     ) => {
       setDashboardRefreshing(true);
       setOperationalRiskLoading(true);
@@ -1017,8 +1019,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
       setDashboardLoadError(null);
 
       try {
-        const operationalDashboard =
-          await refreshAndGetOperationalDashboard();
+        const operationalDashboard = recalculate
+          ? await refreshAndGetOperationalDashboard()
+          : await getOperationalDashboardSnapshot();
 
         if (!operationalDashboard) {
           throw new Error(
@@ -1064,8 +1067,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
         setOperationalRiskLoading(false);
 
         try {
-          const workPlanRefreshSucceeded =
-            await refreshRiskWorkPlan();
+          const workPlanRefreshSucceeded = recalculate
+              ? await refreshRiskWorkPlan()
+              : true;
 
           if (!workPlanRefreshSucceeded) {
             throw new Error(
@@ -1475,7 +1479,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
+            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey, true)}
             disabled={dashboardRefreshing}
             className="min-h-10 border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
@@ -1512,7 +1516,29 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <CardContent className="p-5">
           <div className="flex flex-col gap-5">
 
-            <div className="overflow-x-auto border-b border-gray-800 pb-4">
+            <div className="sm:hidden">
+              <label
+                htmlFor="risk-scope-select"
+                className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
+                Risk scope
+              </label>
+              <select
+                id="risk-scope-select"
+                aria-label="Risk scope"
+                value={selectedRiskScopeKey}
+                onChange={(event) => handleRiskScopeChange(event.target.value)}
+                className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                {riskScopes.map((scope) => (
+                  <option key={scope.scopeKey} value={scope.scopeKey}>
+                    {scope.scopeLabel} · {formatSiteRisk(scope.riskScore)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="hidden overflow-x-auto border-b border-gray-800 pb-4 sm:block">
               <div
                 role="tablist"
                 aria-label="Risk intelligence scope"
@@ -1602,7 +1628,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 </h2>
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0" data-vorta-embedded-ai="true">
                 <VortaAiCommandBar
                   role="maintenance-manager"
                   embedded
@@ -1734,7 +1760,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
                     hasOpenedRiskPlan
                       ? "border-blue-400/20 bg-blue-500/5 text-blue-400 shadow-none hover:border-blue-400/30 hover:bg-blue-500/10"
-                      : "animate-pulse border-cyan-300/80 bg-cyan-400/20 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.30)] hover:bg-cyan-400/30 hover:shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+                      : "border-cyan-300/70 bg-cyan-400/15 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.20)] hover:bg-cyan-400/25 hover:shadow-[0_0_20px_rgba(34,211,238,0.32)]"
                   }`}
                 >
                   {isRiskDetailOpen

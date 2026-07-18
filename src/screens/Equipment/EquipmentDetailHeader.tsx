@@ -40,7 +40,7 @@ export function EquipmentDetailHeader({ eq, activeTab, onTabClick }: Props): JSX
   const riskTotal = eq.riskBreakdown.reduce((s, b) => s + b.pct, 0) || 1;
 
   return (
-    <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+    <div className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
 
       {/* Top bar */}
       <div className="mb-4 flex items-center justify-between gap-4">

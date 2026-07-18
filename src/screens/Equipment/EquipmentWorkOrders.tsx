@@ -30,6 +30,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { openWorkOrderDetail } from "../../lib/maintenanceActions";
+import { openMaintenanceAiAssistant } from "../../lib/maintenanceAiAssistant";
 import {
   DEFAULT_EQUIPMENT_ID,
   type EquipmentBase,
@@ -551,13 +552,11 @@ export const EquipmentWorkOrders = (): JSX.Element => {
         question.trim() ||
         `Explain the work-order execution risk for ${equipment.name} and rank the highest-value next actions.`;
 
-      navigate(
-        `/equipment/${equipment.id}/ai-insights?prompt=${encodeURIComponent(
-          resolvedPrompt,
-        )}`,
-      );
+      openMaintenanceAiAssistant({
+        question: `${resolvedPrompt} Equipment: ${equipment.name} (${equipment.assetNumber}).`,
+      });
     },
-    [equipment, navigate, question],
+    [equipment, question],
   );
 
   const openRiskAction = useCallback(
@@ -674,7 +673,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
         </div>
       ) : null}
 
-      <div className="sticky top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
+      <div className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
         <div className="mb-4 flex items-center justify-between gap-4">
           <nav
             aria-label="Breadcrumb"

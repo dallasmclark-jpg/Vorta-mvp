@@ -3240,55 +3240,35 @@ export interface OperationalRiskDashboardPayload {
   freshness: DashboardFreshness | null;
 }
 
-export async function refreshAndGetOperationalDashboard():
-  Promise<OperationalRiskDashboardPayload | null> {
+async function getOperationalDashboardFromRpc(
+  rpcName:
+    | "vorta_get_operational_dashboard_snapshot"
+    | "vorta_refresh_and_get_operational_dashboard",
+): Promise<OperationalRiskDashboardPayload | null> {
   try {
-    const { data, error } =
-      await supabase.rpc(
-        "vorta_refresh_and_get_operational_dashboard",
-      );
+    const { data, error } = await supabase.rpc(rpcName);
 
     if (error) {
-      console.warn(
-        "vorta_refresh_and_get_operational_dashboard failed:",
-        error.message,
-      );
-
+      console.warn(`${rpcName} failed:`, error.message);
       return null;
     }
 
     const payload = validateOperationalDashboardPayload(data);
-
-    const areaProfiles =
-      Array.isArray(
-        payload.areaProfiles,
-      )
-        ? payload.areaProfiles as AreaRiskProfile[]
-        : [];
-
-    const scopes =
-      Array.isArray(payload.scopes)
-        ? payload.scopes as RiskDashboardScope[]
-        : [];
-
+    const areaProfiles = Array.isArray(payload.areaProfiles)
+      ? payload.areaProfiles as AreaRiskProfile[]
+      : [];
+    const scopes = Array.isArray(payload.scopes)
+      ? payload.scopes as RiskDashboardScope[]
+      : [];
     const siteRisk =
       payload.siteRisk &&
       typeof payload.siteRisk === "object" &&
-      !Array.isArray(
-        payload.siteRisk,
-      )
+      !Array.isArray(payload.siteRisk)
         ? payload.siteRisk as SiteRiskProfile
         : null;
 
-    if (
-      areaProfiles.length === 0 ||
-      scopes.length === 0 ||
-      !siteRisk
-    ) {
-      console.warn(
-        "vorta_refresh_and_get_operational_dashboard returned incomplete operational data.",
-      );
-
+    if (areaProfiles.length === 0 || scopes.length === 0 || !siteRisk) {
+      console.warn(`${rpcName} returned incomplete operational data.`);
       return null;
     }
 
@@ -3299,13 +3279,23 @@ export async function refreshAndGetOperationalDashboard():
       freshness: parseDashboardFreshness(payload.freshness),
     };
   } catch (error) {
-    console.warn(
-      "vorta_refresh_and_get_operational_dashboard threw:",
-      error,
-    );
-
+    console.warn(`${rpcName} threw:`, error);
     return null;
   }
+}
+
+export async function getOperationalDashboardSnapshot():
+  Promise<OperationalRiskDashboardPayload | null> {
+  return getOperationalDashboardFromRpc(
+    "vorta_get_operational_dashboard_snapshot",
+  );
+}
+
+export async function refreshAndGetOperationalDashboard():
+  Promise<OperationalRiskDashboardPayload | null> {
+  return getOperationalDashboardFromRpc(
+    "vorta_refresh_and_get_operational_dashboard",
+  );
 }
 
 export async function refreshOperationalRisk(): Promise<boolean> {

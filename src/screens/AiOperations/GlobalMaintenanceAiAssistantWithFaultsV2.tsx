@@ -110,7 +110,7 @@ function EngineerAvatar({
     size === "lg"
       ? "h-12 w-12 text-sm"
       : size === "sm"
-        ? "h-8 w-8 text-[10px]"
+        ? "h-8 w-8 text-xs"
         : "h-10 w-10 text-xs";
 
   return (
@@ -170,10 +170,10 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
   if (records.length === 0) {
     return (
       <section className="space-y-2">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
           Recent matching history
         </h4>
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-[10px] leading-relaxed text-yellow-100/75">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-yellow-100/75">
           No matching work-order description or fault code was returned from the
           last 12 months. No prior fault has been invented.
         </div>
@@ -184,10 +184,10 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
           Recent matching history
         </h4>
-        <span className="text-[11px] text-slate-500">Live work_orders data</span>
+        <span className="text-xs text-slate-500">Live work_orders data</span>
       </div>
 
       <div className="space-y-2">
@@ -204,14 +204,14 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-slate-100">
+                  <span className="text-xs font-semibold text-slate-100">
                     {record.workOrderNumber}
                   </span>
-                  <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-[10px] font-semibold text-slate-300 shadow-none">
+                  <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-xs font-semibold text-slate-300 shadow-none">
                     {record.priority}
                   </Badge>
                   <Badge
-                    className={`h-auto rounded px-1.5 py-0 text-[10px] font-semibold shadow-none ${
+                    className={`h-auto rounded px-1.5 py-0 text-xs font-semibold shadow-none ${
                       record.unresolved
                         ? "border border-orange-500/25 bg-orange-500/10 text-orange-300"
                         : "border border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
@@ -220,10 +220,10 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
                     {formatStatus(record.status)}
                   </Badge>
                 </div>
-                <p className="mt-1 text-[10px] leading-relaxed text-slate-300">
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">
                   {record.description}
                 </p>
-                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                   <span>
                     {record.equipmentName} · {record.equipmentCode}
                   </span>
@@ -259,14 +259,14 @@ function EquipmentSmeSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Equipment SME
           </h4>
-          <p className="mt-0.5 text-[11px] text-slate-500">{equipmentName}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{equipmentName}</p>
         </div>
         <Link
           to={sme ? `/engineers?engineer=${encodeURIComponent(sme.id)}&from=ai` : equipmentWorkflowRoute}
-          className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
+          className="text-xs font-semibold text-blue-400 hover:text-blue-300"
         >
           {sme ? "Open engineer record →" : "Open capability risk →"}
         </Link>
@@ -281,20 +281,20 @@ function EquipmentSmeSection({
                 <span className="text-[12px] font-semibold text-slate-100">
                   {sme.name}
                 </span>
-                <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[10px] font-bold text-violet-200 shadow-none">
+                <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-xs font-bold text-violet-200 shadow-none">
                   {capabilityLabel(sme.capabilityRole)}
                 </Badge>
                 <Badge
-                  className={`h-auto rounded border px-1.5 py-0 text-[10px] font-semibold shadow-none ${shiftStateClass(sme)}`}
+                  className={`h-auto rounded border px-1.5 py-0 text-xs font-semibold shadow-none ${shiftStateClass(sme)}`}
                 >
                   {shiftStateLabel(sme)}
                 </Badge>
               </div>
-              <p className="mt-0.5 text-[11px] text-slate-400">{sme.discipline}</p>
-              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300">
+              <p className="mt-0.5 text-xs text-slate-400">{sme.discipline}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
                 {sme.specialism}
               </p>
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[8.5px] text-slate-500">
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                 <span>Competency level {sme.competencyLevel}/5</span>
                 <span>{capabilityLabel(sme.practiceAuthority)}</span>
                 <span>{capabilityLabel(sme.validationStatus)}</span>
@@ -305,7 +305,7 @@ function EquipmentSmeSection({
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-[10px] leading-relaxed text-yellow-100/75">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-yellow-100/75">
           No active equipment SME capability record was returned. Vorta has not
           assigned an SME from skill ratings alone.
         </div>
@@ -333,23 +333,23 @@ function PrimaryEngineerCard({
               {engineer.name}
             </span>
             <Badge
-              className={`h-auto rounded border px-1.5 py-0 text-[10px] font-semibold shadow-none ${shiftStateClass(engineer)}`}
+              className={`h-auto rounded border px-1.5 py-0 text-xs font-semibold shadow-none ${shiftStateClass(engineer)}`}
             >
               {shiftStateLabel(engineer)}
             </Badge>
             {engineer.isEquipmentSme && (
-              <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[10px] font-bold text-violet-200 shadow-none">
+              <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-xs font-bold text-violet-200 shadow-none">
                 {capabilityLabel(engineer.capabilityRole ?? "SME")}
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-400">
             {engineer.discipline}
           </p>
-          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300">
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
             {engineer.relevantSkills.join(" · ")}
           </p>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[8.5px] text-slate-500">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
             <span>{engineer.rating}/5 {engineer.ratingSource} rating</span>
             {engineer.assetMatchPercent > 0 && (
               <span>{engineer.assetMatchPercent}% equipment-skill match</span>
@@ -369,7 +369,7 @@ function PrimaryEngineerCard({
           <p className="text-lg font-semibold text-blue-300">
             {engineer.rating}/5
           </p>
-          <p className="max-w-24 text-[8.5px] leading-3 text-slate-400">
+          <p className="max-w-24 text-xs leading-3 text-slate-400">
             {engineer.primarySkill}
           </p>
         </div>
@@ -401,22 +401,22 @@ function EngineerSection({
     <section className="space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Recommended engineers
           </h4>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500">
             {shiftLabel} · {shiftWindow}
           </p>
         </div>
         <Link
           to={equipmentWorkflowRoute}
-          className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
+          className="text-xs font-semibold text-blue-400 hover:text-blue-300"
         >
           Open capability risk →
         </Link>
       </div>
 
-      <p className="rounded-md border border-gray-800 bg-[#0d131b] px-2.5 py-2 text-[11px] leading-relaxed text-slate-500">
+      <p className="rounded-md border border-gray-800 bg-[#0d131b] px-2.5 py-2 text-xs leading-relaxed text-slate-500">
         {shiftBasis}
       </p>
 
@@ -438,29 +438,29 @@ function EngineerSection({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-semibold text-slate-100">
+                      <span className="text-xs font-semibold text-slate-100">
                         {engineer.name}
                       </span>
                       <Badge
-                        className={`h-auto rounded border px-1.5 py-0 text-[7.5px] font-semibold shadow-none ${shiftStateClass(engineer)}`}
+                        className={`h-auto rounded border px-1.5 py-0 text-xs font-semibold shadow-none ${shiftStateClass(engineer)}`}
                       >
                         {shiftStateLabel(engineer)}
                       </Badge>
                       {engineer.isEquipmentSme && (
-                        <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[7.5px] font-bold text-violet-200 shadow-none">
+                        <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-xs font-bold text-violet-200 shadow-none">
                           SME
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-[8.5px] text-slate-500">
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
                       {engineer.discipline} · {engineer.primarySkill}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-[11px] font-semibold text-blue-300">
+                    <p className="text-xs font-semibold text-blue-300">
                       {engineer.rating}/5
                     </p>
-                    <p className="text-[7.5px] uppercase tracking-wide text-slate-600">
+                    <p className="text-xs uppercase tracking-wide text-slate-600">
                       {engineer.ratingSource}
                     </p>
                   </div>
@@ -470,7 +470,7 @@ function EngineerSection({
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-[10px] leading-relaxed text-yellow-100/75">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-yellow-100/75">
           No relevant engineer rating and shift record was returned. Attendance
           and competence must be confirmed manually.
         </div>
@@ -489,13 +489,13 @@ function DocumentSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
           Corresponding documentation
         </h4>
         {equipmentId && (
           <a
             href={`/equipment/${encodeURIComponent(equipmentId)}/documents`}
-            className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
+            className="text-xs font-semibold text-blue-400 hover:text-blue-300"
           >
             Open documents →
           </a>
@@ -528,23 +528,23 @@ function DocumentSection({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[10px] font-bold text-blue-300 shadow-none">
+                      <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
                         {document.sourceSystem}
                       </Badge>
-                      <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[10px] font-medium text-slate-400 shadow-none">
+                      <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-xs font-medium text-slate-400 shadow-none">
                         {document.documentType}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-[10px] font-semibold text-blue-100">
+                    <p className="mt-1 text-xs font-semibold text-blue-100">
                       {document.title}
                       {document.revision ? ` ${document.revision}` : ""}
                     </p>
                     {location && (
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         {location}
                       </p>
                     )}
-                    <p className="mt-1.5 text-[9.5px] leading-relaxed text-slate-400">
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
                       {document.chunkText.slice(0, 260)}
                       {document.chunkText.length > 260 ? "…" : ""}
                     </p>
@@ -556,7 +556,7 @@ function DocumentSection({
           })}
         </div>
       ) : (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-[10px] leading-relaxed text-yellow-100/75">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-yellow-100/75">
           No indexed manual, drawing or procedure section matched the fault
           terms. Vorta has not substituted a generic document.
         </div>
@@ -706,7 +706,7 @@ function FaultIntelligenceDrawer({
               <h3 className="truncate text-sm font-semibold text-slate-100">
                 Vorta AI
               </h3>
-              <p className="truncate text-[11px] text-slate-500">
+              <p className="truncate text-xs text-slate-500">
                 Live fault history, engineer identity and equipment SME
               </p>
             </div>
@@ -764,14 +764,14 @@ function FaultIntelligenceDrawer({
                   key={label}
                   type="button"
                   onClick={() => submitFollowUp(prompt)}
-                  className="rounded-full border border-gray-700 bg-[#0d131b] px-2.5 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-200"
+                  className="rounded-full border border-gray-700 bg-[#0d131b] px-2.5 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-200"
                 >
                   {label}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-2 text-[11px] text-slate-500">
+            <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-2 text-xs text-slate-500">
               <ShieldCheck className="h-3 w-3 text-emerald-400" />
               Live work orders, indexed documents, recorded SME capabilities,
               profile images, skill ratings and shift status only.
@@ -780,7 +780,7 @@ function FaultIntelligenceDrawer({
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               {question && (
                 <div className="mb-3 flex justify-end">
-                  <div className="max-w-[82%] rounded-lg bg-blue-600 px-3 py-2 text-[10px] leading-relaxed text-white">
+                  <div className="max-w-[82%] rounded-lg bg-blue-600 px-3 py-2 text-xs leading-relaxed text-white">
                     {question}
                   </div>
                 </div>
@@ -793,7 +793,7 @@ function FaultIntelligenceDrawer({
                     <p className="text-xs font-medium text-slate-300">
                       Checking live Vorta records
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       Work orders · documents · SME · profile images · skills ·
                       shift status
                     </p>
@@ -809,13 +809,13 @@ function FaultIntelligenceDrawer({
                       <p className="text-xs font-semibold text-red-200">
                         Fault intelligence could not load
                       </p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-red-100/70">
+                      <p className="mt-1 text-xs leading-relaxed text-red-100/70">
                         {error}
                       </p>
                       <Button
                         type="button"
                         onClick={() => void runQuestion(question)}
-                        className="mt-3 h-auto bg-red-500/15 px-3 py-1.5 text-[10px] font-semibold text-red-100 hover:bg-red-500/25"
+                        className="mt-3 h-auto bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/25"
                       >
                         Retry live data
                       </Button>
@@ -829,34 +829,34 @@ function FaultIntelligenceDrawer({
                   <section className="rounded-xl border border-gray-800 bg-gray-900/70 p-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[10px] font-bold text-blue-300 shadow-none">
+                        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
                           Maintenance Manager response
                         </Badge>
-                        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[10px] font-medium text-slate-400 shadow-none">
+                        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-xs font-medium text-slate-400 shadow-none">
                           Real records only
                         </Badge>
                       </div>
-                      <span className="text-[11px] font-semibold text-blue-400">
+                      <span className="text-xs font-semibold text-blue-400">
                         {result.confidence}% source coverage
                       </span>
                     </div>
-                    <h4 className="mt-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <h4 className="mt-3 text-xs font-bold uppercase tracking-wider text-slate-500">
                       Answer
                     </h4>
-                    <p className="mt-1.5 text-[11px] leading-[1.65] text-slate-200">
+                    <p className="mt-1.5 text-xs leading-[1.65] text-slate-200">
                       {buildAnswerWithSme(result)}
                     </p>
 
                     {actions.length > 0 && (
                       <div className="mt-3">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                           Recommended action
                         </h4>
                         <ul className="mt-1.5 space-y-1.5">
                           {actions.map((action) => (
                             <li
                               key={action}
-                              className="flex gap-2 text-[10px] leading-relaxed text-slate-300"
+                              className="flex gap-2 text-xs leading-relaxed text-slate-300"
                             >
                               <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
                               {action}
@@ -889,14 +889,14 @@ function FaultIntelligenceDrawer({
 
                   {result.sourceErrors.length > 0 && (
                     <section className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] px-3 py-2.5">
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-yellow-200/70">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-yellow-200/70">
                         Missing source data
                       </h4>
                       <ul className="mt-1.5 space-y-1">
                         {result.sourceErrors.map((item) => (
                           <li
                             key={item}
-                            className="text-[9.5px] leading-relaxed text-yellow-100/65"
+                            className="text-xs leading-relaxed text-yellow-100/65"
                           >
                             {item}
                           </li>
@@ -905,7 +905,7 @@ function FaultIntelligenceDrawer({
                     </section>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[11px] text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-xs text-slate-500">
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck className="h-3 w-3 text-emerald-400" />
                       No synthetic work orders, documents, people, profile images,
@@ -935,13 +935,13 @@ function FaultIntelligenceDrawer({
                     setInput(event.target.value)
                   }
                   placeholder="Ask a follow-up about this fault..."
-                  className="min-w-0 flex-1 bg-transparent text-[10px] text-slate-200 outline-none placeholder:text-slate-600"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-slate-200 outline-none placeholder:text-slate-600"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="h-auto gap-1.5 bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-auto gap-1.5 bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" />
                 Send
