@@ -77,6 +77,61 @@ assert.match(
 );
 assert.match(
   pilotImpact,
+  /p_start_date: range\.startDate/,
+  "Pilot Impact must pass the selected report start date to the backend",
+);
+assert.match(
+  pilotImpact,
+  /p_end_date: range\.endDate/,
+  "Pilot Impact must pass the selected report end date to the backend",
+);
+assert.match(
+  pilotImpact,
+  /Pilot to date/,
+  "Pilot Impact must provide a pilot-to-date range",
+);
+assert.match(
+  pilotImpact,
+  /Last 30 days/,
+  "Pilot Impact must provide a rolling 30-day range",
+);
+assert.match(
+  pilotImpact,
+  /Custom range/,
+  "Pilot Impact must provide a custom date range",
+);
+assert.match(
+  pilotImpact,
+  /const maintenance = report\.maintenanceData\.periodActivity/,
+  "Pilot report maintenance evidence must follow the selected period",
+);
+assert.match(
+  pilotImpact,
+  /report\.site\?\.name/,
+  "Pilot reports must display authorised site metadata from the consolidated RPC",
+);
+assert.match(
+  pilotImpact,
+  /Download Pilot Report/,
+  "Pilot Impact must expose the report download action",
+);
+assert.match(
+  pilotImpact,
+  /window\.print\(\)/,
+  "Pilot report download must use the browser print-to-PDF workflow",
+);
+assert.match(
+  pilotImpact,
+  /@media print/,
+  "Pilot Impact must include a dedicated print layout",
+);
+assert.match(
+  pilotImpact,
+  /data-pilot-impact-report="true"/,
+  "Pilot Impact must isolate printable evidence from portal navigation",
+);
+assert.match(
+  pilotImpact,
   /Risk reductions and closed-gap claims remain deliberately suppressed/,
   "Pilot Impact must explain why baseline-only data is not a reduction claim",
 );
