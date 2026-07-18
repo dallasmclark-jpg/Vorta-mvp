@@ -1,12 +1,2 @@
-file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:13
-  if (index < 0) throw new Error(`Missing ${label}`);
-                       ^
-
-Error: Missing skills matrix normaliser
-    at replaceOnce (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:13:24)
-    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:33:10
-    at edit (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:5:16)
-    at async file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:26:1
-
-Node.js v22.23.1
-Exit code: 1
+Updated src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
+Exit code: 0

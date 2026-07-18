@@ -17,6 +17,9 @@ import {
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { useModalFocusTrap } from "../../../../hooks/useModalFocusTrap";
+import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
+import type { DashboardFreshness } from "../../../../lib/runtimeContracts";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
 import {
   getAreaInterventionPlans,
@@ -41,6 +44,23 @@ import {
 
 const formatSiteRisk = (value: number): string =>
   Number(value).toFixed(1);
+
+const formatFreshness = (value: string | null): string => {
+  if (!value) return "unavailable";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "unavailable";
+  const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+};
 
 const parseDateOnly = (value: string): Date => {
   const [year, month, day] = value
@@ -694,7 +714,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
   ] = useState(false);
   const [interventionPlans, setInterventionPlans] = useState<AreaInterventionPlan[]>([]);
   const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);
-
+  const [freshness, setFreshness] = useState<DashboardFreshness | null>(null);
+  const interventionDialogRef = useModalFocusTrap<HTMLDivElement>(
+    Boolean(selectedInterventionPlan),
+    () => setSelectedInterventionPlan(null),
+  );
 
   const [riskReductionPlan, setRiskReductionPlan] =
     useState<SiteRiskReductionPlan | null>(null);
@@ -1006,9 +1030,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
           areaProfiles,
           siteRisk: siteProfile,
           scopes,
+          freshness: nextFreshness,
         } = operationalDashboard;
 
         setAreaRiskCards(areaProfiles);
+        setFreshness(nextFreshness);
         setSiteRisk(siteProfile);
         setRiskScopes(scopes);
 
@@ -1451,23 +1477,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
             variant="secondary"
             onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
             disabled={dashboardRefreshing}
-            className="h-auto border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
+            className="min-h-10 border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-50 shadow-none hover:bg-white/15 hover:text-slate-50"
           >
-            Run Risk Analysis
+            <RefreshCw className={`mr-2 h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`} />
+            {dashboardRefreshing ? "Refreshing…" : "Refresh risk intelligence"}
           </Button>
           <button
             type="button"
-            onClick={() => void loadRiskDashboard(selectedKpiPeriod, selectedRiskScopeKey)}
-            disabled={dashboardRefreshing}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-            aria-label="Refresh"
-          >
-            <RefreshCw className={`h-4 w-4 ${dashboardRefreshing ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            type="button"
             onClick={() => navigate("/settings")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
             aria-label="User profile"
           >
             <UserCircle className="h-8 w-8" />
@@ -1532,7 +1550,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             scope.scopeKey,
                           )
                         }
-                        className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
                           isSelected
                             ? "border-blue-500/40 bg-blue-600 text-white"
                             : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
@@ -1592,12 +1610,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
 
               <div className="flex flex-col gap-0.5 text-left lg:items-end lg:text-right">
-                <p className="text-xs text-slate-400">
-                  Based on latest import
+                <p className={`text-xs font-medium ${
+                  freshness?.riskCalculatedAt ? "text-emerald-400" : "text-amber-300"
+                }`}>
+                  Risk calculated {formatFreshness(freshness?.riskCalculatedAt ?? null)}
                 </p>
 
                 <p className="text-xs text-slate-500">
-                  SAP / Skills / Training data refreshed 2h ago
+                  Maintenance {formatFreshness(freshness?.maintenanceDataAt ?? null)}
+                  {" · Workforce "}
+                  {formatFreshness(freshness?.workforceDataAt ?? null)}
                 </p>
               </div>
             </header>
@@ -1682,7 +1704,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Priority action summary */}
             <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-col gap-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
                   {isSiteRiskScope
                     ? "TODAY'S SITE RISK REDUCTION PLAN"
                     : "TODAY'S AREA RISK REDUCTION PLAN"}
@@ -1808,7 +1830,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <p className="text-xs uppercase tracking-wider text-slate-500">
                           {isSiteRiskScope
                             ? "Plan area"
                             : "Plan equipment"}
@@ -1821,7 +1843,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <p className="text-xs uppercase tracking-wider text-slate-500">
                           Area risk
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -1834,7 +1856,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <p className="text-xs uppercase tracking-wider text-slate-500">
                           Site risk
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -1854,7 +1876,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <p className="text-xs uppercase tracking-wider text-slate-500">
                           Active work duration
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -1872,7 +1894,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         }`}
                       >
                         <p
-                          className={`text-[10px] uppercase tracking-wider ${
+                          className={`text-xs uppercase tracking-wider ${
                             siteRiskReduction > 0
                               ? "text-emerald-400/70"
                               : "text-slate-500"
@@ -1934,14 +1956,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               <button
                                 key={`${action.priority}-${action.action}`}
                                 type="button"
-                                onClick={() =>
+                                onClick={() => {
+                                  if (workOrder) {
+                                    openWorkOrderDetail({
+                                      equipmentId: riskReductionPlan.equipmentId,
+                                      workOrderNumber: workOrder,
+                                    });
+                                    return;
+                                  }
                                   navigate(
                                     getRiskPlanActionRoute(
                                       riskReductionPlan.equipmentId,
                                       action,
                                     ),
-                                  )
-                                }
+                                  );
+                                }}
                                 className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26]"
                               >
                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
@@ -1954,26 +1983,26 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                       {action.action}
                                     </p>
 
-                                    <Badge className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400 shadow-none">
+                                    <Badge className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-400 shadow-none">
                                       {action.driver}
                                     </Badge>
                                   </div>
 
                                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                                     {workOrder && (
-                                      <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                                      <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-300">
                                         {workOrder}
                                       </span>
                                     )}
 
                                     {reference && (
-                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-xs font-medium text-slate-300">
                                         {reference}
                                       </span>
                                     )}
 
                                     {durationMinutes > 0 && (
-                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                      <span className="rounded border border-slate-700 bg-slate-800/70 px-1.5 py-0.5 text-xs font-medium text-slate-400">
                                         {durationMinutes >= 60
                                           ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
                                           : `${durationMinutes}m`}
@@ -1981,7 +2010,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     )}
 
                                     {procurementLeadDays > 0 && (
-                                      <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300">
+                                      <span className="rounded border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 text-xs font-medium text-orange-300">
                                         Lead time {procurementLeadDays}d
                                       </span>
                                     )}
@@ -1989,13 +2018,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 </div>
 
                                 <div className="text-right">
-                                  <p className="text-[9px] font-medium uppercase tracking-wider text-slate-500">
+                                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                                     Asset risk
                                   </p>
                                   <p className="text-sm font-semibold text-emerald-400">
                                     −{action.calculatedReduction}
                                   </p>
-                                  <p className="text-[10px] text-slate-500">
+                                  <p className="text-xs text-slate-500">
                                     to {action.projectedScore}
                                   </p>
                                 </div>
@@ -2007,7 +2036,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           PM backlog
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -2026,14 +2055,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </p>
                         {riskReductionPlan.projectedPmBacklog ===
                           riskReductionPlan.currentPmBacklog && (
-                          <p className="mt-0.5 text-[9px] text-slate-600">
+                          <p className="mt-0.5 text-[11px] text-slate-600">
                             No PM action selected
                           </p>
                         )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           Calibration backlog
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -2052,14 +2081,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </p>
                         {riskReductionPlan.projectedCalibrationBacklog ===
                           riskReductionPlan.currentCalibrationBacklog && (
-                          <p className="mt-0.5 text-[9px] text-slate-600">
+                          <p className="mt-0.5 text-[11px] text-slate-600">
                             No calibration action selected
                           </p>
                         )}
                       </div>
 
                       <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           Out-of-stock parts
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -2078,7 +2107,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </p>
                         {riskReductionPlan.projectedStockouts ===
                           riskReductionPlan.currentStockouts && (
-                          <p className="mt-0.5 text-[9px] text-slate-600">
+                          <p className="mt-0.5 text-[11px] text-slate-600">
                             No stockout action selected
                           </p>
                         )}
@@ -2095,7 +2124,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <div className="min-w-0">
                           {riskReductionPlan.nextArea ? (
                             <>
-                              <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                              <p className="text-xs uppercase tracking-wider text-blue-400">
                                 Next recommended area
                               </p>
 
@@ -2110,7 +2139,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             </>
                           ) : (
                             <>
-                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                              <p className="text-xs uppercase tracking-wider text-slate-500">
                                 Area review
                               </p>
 
@@ -2176,7 +2205,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               {riskReductionPlan.nextEquipmentId &&
                               riskReductionPlan.nextEquipmentName ? (
                                 <>
-                                  <p className="text-[10px] uppercase tracking-wider text-blue-400">
+                                  <p className="text-xs uppercase tracking-wider text-blue-400">
                                     Next recommended equipment
                                   </p>
                                   <p className="mt-1 truncate text-sm font-semibold text-slate-100">
@@ -2211,7 +2240,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 </>
                               ) : (
                                 <>
-                                  <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                  <p className="text-xs uppercase tracking-wider text-slate-500">
                                     Equipment review
                                   </p>
                                   <p className="mt-1 text-sm font-semibold text-slate-300">
@@ -2503,12 +2532,18 @@ export const DashboardOverviewSection = (): JSX.Element => {
               return (
                 <Card
                   key={equipment.id}
-                  onClick={() =>
-                    handleAssetClick(
-                      equipment.id,
-                    )
-                  }
-                  className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`View ${equipment.label}`}
+                  onClick={() => handleAssetClick(equipment.id)}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleAssetClick(equipment.id);
+                    }
+                  }}
+                  className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                 >
                   <CardContent className="flex h-full flex-col items-start gap-3 p-4">
                     <div className="flex w-full items-start justify-between gap-3">
@@ -2517,7 +2552,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           {equipment.label}
                         </h3>
 
-                        <p className="mt-1 text-[10px] text-slate-500">
+                        <p className="mt-1 text-xs text-slate-500">
                           {equipment.code}
                           {equipment.code &&
                           equipment.equipmentType
@@ -2650,19 +2685,24 @@ export const DashboardOverviewSection = (): JSX.Element => {
             onClick={() => setSelectedInterventionPlan(null)}
           >
             <div
+              ref={interventionDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Recommended maintenance intervention"
+              tabIndex={-1}
               className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-700 bg-[#141820] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal header */}
               <div className="flex items-start justify-between gap-4 border-b border-gray-800 px-6 py-5">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recommended Maintenance Intervention</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recommended Maintenance Intervention</p>
                   <h2 className="mt-0.5 text-base font-semibold text-slate-50">{selectedInterventionPlan.area}</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedInterventionPlan(null)}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-800 hover:text-slate-200"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
@@ -2676,7 +2716,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Hero comparison */}
                   <div className="flex flex-wrap items-center gap-6 rounded-lg border border-gray-800 bg-[#0d1117] px-5 py-4">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Current Risk</span>
+                      <span className="text-xs text-slate-500">Current Risk</span>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-bold text-slate-50">{selectedInterventionPlan.currentRiskScore}</span>
                         <span className="text-sm font-semibold text-orange-400">{selectedInterventionPlan.currentRiskLevel}</span>
@@ -2685,14 +2725,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-slate-600">→</span>
-                      <span className="rounded bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                      <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-400">
                         {selectedInterventionPlan.recommendedOption}
                       </span>
                       <span className="text-slate-600">→</span>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Predicted Risk</span>
+                      <span className="text-xs text-slate-500">Predicted Risk</span>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-bold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskScore}</span>
                         <span className="text-sm font-semibold text-emerald-400">{selectedInterventionPlan.recommendedPredictedRiskLevel}</span>
@@ -2700,12 +2740,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Reduction</span>
+                      <span className="text-xs text-slate-500">Reduction</span>
                       <span className="text-3xl font-bold text-emerald-400">▼{selectedInterventionPlan.recommendedReduction}</span>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500">Efficiency</span>
+                      <span className="text-xs text-slate-500">Efficiency</span>
                       <span className="text-lg font-semibold text-slate-200">{selectedInterventionPlan.recommendedEfficiency} risk pts/hr</span>
                     </div>
                   </div>
@@ -2717,7 +2757,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Options table */}
                   {selectedInterventionPlan.options.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Intervention Options</h3>
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Intervention Options</h3>
                       <div className="overflow-x-auto rounded-lg border border-gray-800">
                         <table className="w-full min-w-[560px] border-collapse text-xs">
                           <thead>
@@ -2739,7 +2779,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   <div className="flex items-center gap-2">
                                     <span className={opt.recommended ? "font-semibold text-slate-50" : "text-slate-300"}>{opt.option}</span>
                                     {opt.recommended && (
-                                      <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-400">Recommended</span>
+                                      <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-400">Recommended</span>
                                     )}
                                   </div>
                                 </td>
@@ -2763,7 +2803,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Target work package */}
                   {Object.keys(selectedInterventionPlan.targetWorkPackage).length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work Package</h3>
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Target Work Package</h3>
                       <div className="flex flex-wrap gap-3">
                         {[
                           { key: "targetAssets",       label: "Target assets" },
@@ -2777,7 +2817,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             <span className="text-xl font-bold text-slate-50">
                               {(selectedInterventionPlan.targetWorkPackage as Record<string, number>)[key]}
                             </span>
-                            <span className="text-[10px] text-slate-500">{label}</span>
+                            <span className="text-xs text-slate-500">{label}</span>
                           </div>
                         ))}
                       </div>
@@ -2787,7 +2827,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Target work list */}
                   <div>
                     <div className="mb-3">
-                      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Target Work List</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Target Work List</h3>
                       <p className="mt-0.5 text-[11px] text-slate-600">Priority work included in the recommended intervention.</p>
                     </div>
                     {selectedInterventionPlan.workItems.length > 0 ? (
@@ -2797,12 +2837,12 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex min-w-0 flex-1 flex-col gap-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-xs font-semibold text-slate-400">
                                     {item.priority}
                                   </span>
                                   <span className="text-xs font-semibold text-slate-100">{item.asset}</span>
                                   {item.assetCode && (
-                                    <span className="text-[10px] text-slate-500">{item.assetCode}</span>
+                                    <span className="text-xs text-slate-500">{item.assetCode}</span>
                                   )}
                                 </div>
                                 <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5">
@@ -2820,7 +2860,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               </div>
                               <div className="shrink-0 flex flex-col items-end gap-0.5">
                                 <span className="text-sm font-bold text-emerald-400">▼{item.estimatedReduction}</span>
-                                <span className="text-[10px] text-slate-500">{item.estimatedHours} hrs</span>
+                                <span className="text-xs text-slate-500">{item.estimatedHours} hrs</span>
                               </div>
                             </div>
                           </div>
@@ -2838,13 +2878,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             const reductionValue = reductionMatch ? reductionMatch[1] : null;
                             return (
                               <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[10px] font-semibold text-slate-400">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-xs font-semibold text-slate-400">
                                   {i + 1}
                                 </span>
                                 <span className="min-w-0 flex-1 text-xs text-slate-300 leading-snug">{item}</span>
                                 {reductionValue && (
                                   <div className="shrink-0 flex flex-col items-end gap-0">
-                                    <span className="text-[10px] text-slate-500">Risk reduction</span>
+                                    <span className="text-xs text-slate-500">Risk reduction</span>
                                     <span className="text-sm font-bold text-emerald-400">▼{reductionValue}</span>
                                   </div>
                                 )}
@@ -2862,7 +2902,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   {/* Required resources */}
                   {selectedInterventionPlan.resourceRequirements.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Required Resources</h3>
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Required Resources</h3>
                       <div className="flex flex-col gap-2">
                         {selectedInterventionPlan.resourceRequirements.map((req, i) => (
                           <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3">
@@ -3212,7 +3252,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
 
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold ${presentation.badgeClassName}`}
+                          className={`inline-flex shrink-0 items-center gap-1.5 rounded border px-2 py-1 text-xs font-semibold ${presentation.badgeClassName}`}
                         >
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${presentation.dotClassName}`}
@@ -3268,7 +3308,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             )}
                           </p>
 
-                          <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                          <p className="mt-2 text-xs font-medium uppercase tracking-wider text-slate-600">
                             {formatKpiTarget(
                               kpi.target,
                             )}
@@ -3290,7 +3330,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
 
                       <div className="flex h-7 items-center gap-3 border-t border-gray-800 pt-2">
-                        <span className="truncate text-[10px] text-slate-500">
+                        <span className="truncate text-xs text-slate-500">
                           {kpi.noData
                             ? "No eligible records"
                             : `${kpi.numerator} of ${kpi.denominator}`}
@@ -3314,7 +3354,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
                             KPI explanation
                           </p>
 
@@ -3345,7 +3385,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                       <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                             What it means
                           </p>
 
@@ -3355,7 +3395,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
 
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                             How it is calculated
                           </p>
 
@@ -3365,7 +3405,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
 
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Why it matters
                           </p>
 
@@ -3375,7 +3415,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
 
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Data sources
                           </p>
 
@@ -3385,7 +3425,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </div>
                       </div>
 
-                      <div className="mt-3 border-t border-gray-800 pt-2 text-[10px] text-slate-500">
+                      <div className="mt-3 border-t border-gray-800 pt-2 text-xs text-slate-500">
                         {riskKpiDashboard.periodLabel}
                         {" · "}
                         {formatKpiPeriodRange(
