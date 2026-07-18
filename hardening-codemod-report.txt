@@ -2,9 +2,9 @@ file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening
   if (index < 0) throw new Error(`Missing ${label}`);
                        ^
 
-Error: Missing dashboard freshness and dialog state
+Error: Missing dashboard freshness load
     at replaceOnce (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:8:24)
-    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:24:1
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:30:1
 
 Node.js v22.23.1
 Exit code: 1
