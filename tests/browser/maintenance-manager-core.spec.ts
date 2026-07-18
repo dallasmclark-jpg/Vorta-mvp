@@ -92,7 +92,14 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   const equipmentId = equipmentRouteMatch?.[1] ?? "";
   await expectNoPageOverflow(page);
 
-  await page.locator(`a[href="/equipment/${equipmentId}/work-orders"]`).click();
+  const equipmentSections = page.locator('[aria-label="Equipment sections"]');
+  const workOrdersTab = equipmentSections.getByRole("button", {
+    name: "Work Orders",
+    exact: true,
+  });
+  await expect(workOrdersTab).toBeVisible();
+  await expectOperationalTouchTarget(workOrdersTab);
+  await workOrdersTab.click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders(?:\\?.*)?$`));
   await expect(
     page.getByRole("heading", { name: "Complete equipment work history" }),
