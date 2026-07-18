@@ -87,6 +87,28 @@ function routePathFromTarget(target: EventTarget | null): string | null {
   return routeUrlFromTarget(target)?.pathname ?? null;
 }
 
+function validPilotImpactRange(element: HTMLElement): {
+  preset: string;
+  startDate: string | null;
+  endDate: string | null;
+} | null {
+  const surface = element.closest<HTMLElement>("section");
+  const selected = surface?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+  const preset = selected?.textContent?.trim() ?? "Pilot to date";
+
+  if (preset !== "Custom range") {
+    return { preset, startDate: null, endDate: null };
+  }
+
+  const inputs = surface?.querySelectorAll<HTMLInputElement>('input[type="date"]');
+  const startDate = inputs?.[0]?.value ?? "";
+  const endDate = inputs?.[1]?.value ?? "";
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (!startDate || !endDate || startDate > endDate || endDate > today) return null;
+  return { preset, startDate, endDate };
+}
+
 async function getEquipmentIdForWorkOrder(
   workOrderNumber: string,
 ): Promise<string | null> {
@@ -122,13 +144,14 @@ export function MaintenanceAiWorkOrderExperience({
 
     const equipmentId = equipmentIdFromPath(location.pathname);
     if (equipmentId) {
+      const pathSegments = location.pathname.split("/");
       void trackPilotUsageEvent({
         siteId,
         eventType: "equipment_view",
         pathname: location.pathname,
         entityType: "equipment",
         entityId: equipmentId,
-        metadata: { section: location.pathname.split("/").at(-1) ?? "overview" },
+        metadata: { section: pathSegments[pathSegments.length - 1] || "overview" },
       });
       return;
     }
@@ -225,10 +248,42 @@ export function MaintenanceAiWorkOrderExperience({
       const interactiveElement = target.closest<HTMLElement>("a[href],button");
       if (!interactiveElement) return;
 
+      const actionText = interactiveElement.textContent?.trim().toLowerCase() ?? "";
+      const siteId = siteContext?.siteId;
+      if (siteId && window.location.pathname === "/pilot-impact") {
+        if (actionText.includes("download pilot report")) {
+          void trackPilotUsageEvent({
+            siteId,
+            eventType: "pilot_report_downloaded",
+            pathname: window.location.pathname,
+            entityType: "report",
+            entityId: "pilot-impact",
+            metadata: { format: "print_pdf" },
+          });
+        } else if (actionText === "apply range") {
+          const range = validPilotImpactRange(interactiveElement);
+          if (range) {
+            void trackPilotUsageEvent({
+              siteId,
+              eventType: "pilot_report_range_applied",
+              pathname: window.location.pathname,
+              entityType: "report",
+              entityId: "pilot-impact",
+              metadata: {
+                preset: range.preset,
+                startDate: range.startDate,
+                endDate: range.endDate,
+                surface: "impact",
+              },
+            });
+          }
+        }
+      }
+
       const routeUrl = routeUrlFromTarget(interactiveElement);
-      if (routeUrl?.searchParams.get("from") === "ai" && siteContext?.siteId) {
+      if (routeUrl?.searchParams.get("from") === "ai" && siteId) {
         void trackPilotUsageEvent({
-          siteId: siteContext.siteId,
+          siteId,
           eventType: "recommendation_opened",
           pathname: window.location.pathname,
           entityType: "route",
@@ -261,9 +316,9 @@ export function MaintenanceAiWorkOrderExperience({
         (await getEquipmentIdForWorkOrder(workOrderNumber));
       if (!equipmentId) return;
 
-      if (siteContext?.siteId) {
+      if (siteId) {
         void trackPilotUsageEvent({
-          siteId: siteContext.siteId,
+          siteId,
           eventType: "work_order_view",
           pathname: window.location.pathname,
           entityType: "work_order",
