@@ -1,0 +1,1 @@
+Validation marker for the final engineer workflow, evidence-state UI, deterministic RPC migration and non-mutating production build.
