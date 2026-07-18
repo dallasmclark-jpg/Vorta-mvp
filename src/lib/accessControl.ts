@@ -143,8 +143,6 @@ export function canAccessPath(
     case "site_admin":
     case "reliability_engineer":
       return !isSpecialistPortalPath;
-    case "vorta_admin":
-      return true;
     default:
       return assertNever(role);
   }
