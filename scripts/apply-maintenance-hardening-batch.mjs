@@ -22,8 +22,8 @@ replaceOnce(
 );
 
 replaceOnce(
-  '  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);\n\n\n  const [riskReductionPlan, setRiskReductionPlan] =\n',
-  '  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);\n  const [freshness, setFreshness] = useState<DashboardFreshness | null>(null);\n  const interventionDialogRef = useModalFocusTrap<HTMLDivElement>(\n    Boolean(selectedInterventionPlan),\n    () => setSelectedInterventionPlan(null),\n  );\n\n  const [riskReductionPlan, setRiskReductionPlan] =\n',
+  '  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);',
+  '  const [selectedInterventionPlan, setSelectedInterventionPlan] = useState<AreaInterventionPlan | null>(null);\n  const [freshness, setFreshness] = useState<DashboardFreshness | null>(null);\n  const interventionDialogRef = useModalFocusTrap<HTMLDivElement>(\n    Boolean(selectedInterventionPlan),\n    () => setSelectedInterventionPlan(null),\n  );',
   "dashboard freshness and dialog state",
 );
 
