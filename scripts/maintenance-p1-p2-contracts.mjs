@@ -146,7 +146,7 @@ for (const workflowStep of [
   "aria-selected",
   "Equipment",
   "work-orders",
-  "Confirmation text",
+  "Engineer confirmations",
   "Goods movements",
   "toHaveURL(workOrdersUrl)",
   "Ask Vorta",
