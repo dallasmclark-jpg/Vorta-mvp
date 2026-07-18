@@ -5,6 +5,10 @@ const operations = await readFile(
   new URL("../src/screens/AiOperations/AiOperations.tsx", import.meta.url),
   "utf8",
 );
+const pilotImpact = await readFile(
+  new URL("../src/screens/PilotImpact/PilotImpactSection.tsx", import.meta.url),
+  "utf8",
+);
 
 assert.match(
   operations,
@@ -50,6 +54,36 @@ assert.match(
   operations,
   /path="ai-matching" element={<AiMatchingSection \/>}/,
   "AI Matching must render directly without an extra top wrapper",
+);
+assert.match(
+  operations,
+  /label: "Pilot Impact"/,
+  "Maintenance navigation must expose the pilot evidence page",
+);
+assert.match(
+  operations,
+  /path="pilot-impact" element={<PilotImpactSection \/>}/,
+  "Pilot Impact must render as a native Maintenance Manager route",
+);
+assert.equal(
+  [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
+  1,
+  "Pilot Impact must use one consolidated pilot value RPC",
+);
+assert.match(
+  pilotImpact,
+  /p_site_id: siteContext\.siteId/,
+  "Pilot Impact must use the authenticated site context",
+);
+assert.match(
+  pilotImpact,
+  /Risk reductions and closed-gap claims remain deliberately suppressed/,
+  "Pilot Impact must explain why baseline-only data is not a reduction claim",
+);
+assert.doesNotMatch(
+  pilotImpact,
+  /11000000-0000-0000-0000-000000000001/,
+  "Pilot Impact must not hardcode the Wrexham pilot site",
 );
 
 console.log("Maintenance portal workflow contracts passed.");
