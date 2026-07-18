@@ -27,6 +27,10 @@ async function expectOperationalTouchTarget(locator: Locator): Promise<void> {
   expect(box?.height ?? 0, "Operational control must be at least 40px high").toBeGreaterThanOrEqual(39.5);
 }
 
+function workOrderNumberFromText(value: string): string {
+  return value.match(/\bWO-[A-Z0-9-]+\b/i)?.[0] ?? "";
+}
+
 async function openFirstDifferentAiWorkOrder(
   historyButtons: Locator,
   currentWorkOrder: string,
@@ -37,16 +41,14 @@ async function openFirstDifferentAiWorkOrder(
   for (let index = 0; index < count; index += 1) {
     const candidate = historyButtons.nth(index);
     const text = (await candidate.textContent())?.trim() ?? "";
-    if (!text.includes(currentWorkOrder)) {
+    const workOrderNumber = workOrderNumberFromText(text);
+    if (workOrderNumber && workOrderNumber !== currentWorkOrder) {
       await candidate.click();
-      return text;
+      return workOrderNumber;
     }
   }
 
-  const fallback = historyButtons.first();
-  const fallbackText = (await fallback.textContent())?.trim() ?? "";
-  await fallback.click();
-  return fallbackText;
+  throw new Error("Ask Vorta did not return a different linked work order.");
 }
 
 test("authenticated Maintenance Manager core workflow remains in context", async ({ page }) => {
@@ -159,7 +161,6 @@ test("authenticated Maintenance Manager core workflow remains in context", async
     historyButtons,
     firstWorkOrder,
   );
-  expect(secondWorkOrder).not.toBe("");
 
   const secondExecutionDialog = page.getByRole("dialog", {
     name: secondWorkOrder,
