@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -27,6 +26,7 @@ import {
   scoreClass,
 } from "./pilotSetupModel";
 import { usePilotSetup } from "./usePilotSetup";
+import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
 
 const STAGES: Array<{
   key: SetupStage;
@@ -77,20 +77,7 @@ function LaunchDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }): JSX.Element {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape" && !busy) onCancel();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [busy, onCancel]);
+  const dialogRef = useModalFocusTrap<HTMLElement>(true, busy ? undefined : onCancel);
 
   return (
     <div
@@ -101,9 +88,11 @@ function LaunchDialog({
       }}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="pilot-launch-title"
+        tabIndex={-1}
         className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/25 bg-[#121821] shadow-2xl shadow-black/50"
       >
         <header className="flex items-start justify-between gap-4 border-b border-gray-800 px-5 py-5 md:px-6">
@@ -125,7 +114,7 @@ function LaunchDialog({
             onClick={onCancel}
             disabled={busy}
             aria-label="Close launch confirmation"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-white/5 hover:text-slate-100 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-white/5 hover:text-slate-100 disabled:opacity-40"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

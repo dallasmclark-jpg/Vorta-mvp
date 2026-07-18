@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { openWorkOrderDetail } from "../../lib/maintenanceActions";
 import type { EquipmentKnowledgeChunk } from "../Equipment/equipmentService";
 import {
   buildDirectAnswer,
@@ -186,15 +187,19 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Recent matching history
         </h4>
-        <span className="text-[9px] text-slate-500">Live work_orders data</span>
+        <span className="text-[11px] text-slate-500">Live work_orders data</span>
       </div>
 
       <div className="space-y-2">
         {records.slice(0, 6).map((record) => (
-          <a
+          <button
             key={record.id}
-            href={`/equipment/${encodeURIComponent(record.equipmentId)}/history`}
-            className="block rounded-lg border border-gray-800 bg-[#0d131b] px-3 py-2.5 transition-colors hover:border-blue-500/40 hover:bg-blue-500/[0.05]"
+            type="button"
+            onClick={() => openWorkOrderDetail({
+              equipmentId: record.equipmentId,
+              workOrderNumber: record.workOrderNumber,
+            })}
+            className="block min-h-11 w-full rounded-lg border border-gray-800 bg-[#0d131b] px-3 py-2.5 text-left transition-colors hover:border-blue-500/40 hover:bg-blue-500/[0.05]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -202,11 +207,11 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
                   <span className="text-[11px] font-semibold text-slate-100">
                     {record.workOrderNumber}
                   </span>
-                  <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-[8px] font-semibold text-slate-300 shadow-none">
+                  <Badge className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-[10px] font-semibold text-slate-300 shadow-none">
                     {record.priority}
                   </Badge>
                   <Badge
-                    className={`h-auto rounded px-1.5 py-0 text-[8px] font-semibold shadow-none ${
+                    className={`h-auto rounded px-1.5 py-0 text-[10px] font-semibold shadow-none ${
                       record.unresolved
                         ? "border border-orange-500/25 bg-orange-500/10 text-orange-300"
                         : "border border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
@@ -218,7 +223,7 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
                 <p className="mt-1 text-[10px] leading-relaxed text-slate-300">
                   {record.description}
                 </p>
-                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
                   <span>
                     {record.equipmentName} · {record.equipmentCode}
                   </span>
@@ -231,7 +236,7 @@ function HistorySection({ records }: { records: FaultHistoryRecord[] }): JSX.Ele
               </div>
               <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-400" />
             </div>
-          </a>
+          </button>
         ))}
       </div>
     </section>
@@ -257,11 +262,11 @@ function EquipmentSmeSection({
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Equipment SME
           </h4>
-          <p className="mt-0.5 text-[9px] text-slate-500">{equipmentName}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">{equipmentName}</p>
         </div>
         <Link
           to={sme ? `/engineers?engineer=${encodeURIComponent(sme.id)}&from=ai` : equipmentWorkflowRoute}
-          className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
+          className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
         >
           {sme ? "Open engineer record →" : "Open capability risk →"}
         </Link>
@@ -276,16 +281,16 @@ function EquipmentSmeSection({
                 <span className="text-[12px] font-semibold text-slate-100">
                   {sme.name}
                 </span>
-                <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[8px] font-bold text-violet-200 shadow-none">
+                <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[10px] font-bold text-violet-200 shadow-none">
                   {capabilityLabel(sme.capabilityRole)}
                 </Badge>
                 <Badge
-                  className={`h-auto rounded border px-1.5 py-0 text-[8px] font-semibold shadow-none ${shiftStateClass(sme)}`}
+                  className={`h-auto rounded border px-1.5 py-0 text-[10px] font-semibold shadow-none ${shiftStateClass(sme)}`}
                 >
                   {shiftStateLabel(sme)}
                 </Badge>
               </div>
-              <p className="mt-0.5 text-[9px] text-slate-400">{sme.discipline}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{sme.discipline}</p>
               <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300">
                 {sme.specialism}
               </p>
@@ -328,17 +333,17 @@ function PrimaryEngineerCard({
               {engineer.name}
             </span>
             <Badge
-              className={`h-auto rounded border px-1.5 py-0 text-[8px] font-semibold shadow-none ${shiftStateClass(engineer)}`}
+              className={`h-auto rounded border px-1.5 py-0 text-[10px] font-semibold shadow-none ${shiftStateClass(engineer)}`}
             >
               {shiftStateLabel(engineer)}
             </Badge>
             {engineer.isEquipmentSme && (
-              <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[8px] font-bold text-violet-200 shadow-none">
+              <Badge className="h-auto rounded border border-violet-400/25 bg-violet-400/10 px-1.5 py-0 text-[10px] font-bold text-violet-200 shadow-none">
                 {capabilityLabel(engineer.capabilityRole ?? "SME")}
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 text-[9px] text-slate-400">
+          <p className="mt-0.5 text-[11px] text-slate-400">
             {engineer.discipline}
           </p>
           <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300">
@@ -399,19 +404,19 @@ function EngineerSection({
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Recommended engineers
           </h4>
-          <p className="mt-0.5 text-[9px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-slate-500">
             {shiftLabel} · {shiftWindow}
           </p>
         </div>
         <Link
           to={equipmentWorkflowRoute}
-          className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
+          className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
         >
           Open capability risk →
         </Link>
       </div>
 
-      <p className="rounded-md border border-gray-800 bg-[#0d131b] px-2.5 py-2 text-[9px] leading-relaxed text-slate-500">
+      <p className="rounded-md border border-gray-800 bg-[#0d131b] px-2.5 py-2 text-[11px] leading-relaxed text-slate-500">
         {shiftBasis}
       </p>
 
@@ -490,7 +495,7 @@ function DocumentSection({
         {equipmentId && (
           <a
             href={`/equipment/${encodeURIComponent(equipmentId)}/documents`}
-            className="text-[9px] font-semibold text-blue-400 hover:text-blue-300"
+            className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
           >
             Open documents →
           </a>
@@ -523,10 +528,10 @@ function DocumentSection({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[8px] font-bold text-blue-300 shadow-none">
+                      <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[10px] font-bold text-blue-300 shadow-none">
                         {document.sourceSystem}
                       </Badge>
-                      <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[8px] font-medium text-slate-400 shadow-none">
+                      <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[10px] font-medium text-slate-400 shadow-none">
                         {document.documentType}
                       </Badge>
                     </div>
@@ -535,7 +540,7 @@ function DocumentSection({
                       {document.revision ? ` ${document.revision}` : ""}
                     </p>
                     {location && (
-                      <p className="mt-0.5 text-[9px] text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-slate-500">
                         {location}
                       </p>
                     )}
@@ -701,7 +706,7 @@ function FaultIntelligenceDrawer({
               <h3 className="truncate text-sm font-semibold text-slate-100">
                 Vorta AI
               </h3>
-              <p className="truncate text-[9px] text-slate-500">
+              <p className="truncate text-[11px] text-slate-500">
                 Live fault history, engineer identity and equipment SME
               </p>
             </div>
@@ -759,14 +764,14 @@ function FaultIntelligenceDrawer({
                   key={label}
                   type="button"
                   onClick={() => submitFollowUp(prompt)}
-                  className="rounded-full border border-gray-700 bg-[#0d131b] px-2.5 py-1 text-[9px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-200"
+                  className="rounded-full border border-gray-700 bg-[#0d131b] px-2.5 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-200"
                 >
                   {label}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-2 text-[9px] text-slate-500">
+            <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-2 text-[11px] text-slate-500">
               <ShieldCheck className="h-3 w-3 text-emerald-400" />
               Live work orders, indexed documents, recorded SME capabilities,
               profile images, skill ratings and shift status only.
@@ -788,7 +793,7 @@ function FaultIntelligenceDrawer({
                     <p className="text-xs font-medium text-slate-300">
                       Checking live Vorta records
                     </p>
-                    <p className="mt-1 text-[9px] text-slate-500">
+                    <p className="mt-1 text-[11px] text-slate-500">
                       Work orders · documents · SME · profile images · skills ·
                       shift status
                     </p>
@@ -824,14 +829,14 @@ function FaultIntelligenceDrawer({
                   <section className="rounded-xl border border-gray-800 bg-gray-900/70 p-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[8px] font-bold text-blue-300 shadow-none">
+                        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-[10px] font-bold text-blue-300 shadow-none">
                           Maintenance Manager response
                         </Badge>
-                        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[8px] font-medium text-slate-400 shadow-none">
+                        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-[10px] font-medium text-slate-400 shadow-none">
                           Real records only
                         </Badge>
                       </div>
-                      <span className="text-[9px] font-semibold text-blue-400">
+                      <span className="text-[11px] font-semibold text-blue-400">
                         {result.confidence}% source coverage
                       </span>
                     </div>
@@ -899,7 +904,7 @@ function FaultIntelligenceDrawer({
                     </section>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[9px] text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-3 text-[11px] text-slate-500">
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck className="h-3 w-3 text-emerald-400" />
                       No synthetic work orders, documents, people, profile images,
