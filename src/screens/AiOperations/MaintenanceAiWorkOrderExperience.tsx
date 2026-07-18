@@ -175,6 +175,13 @@ export function MaintenanceAiWorkOrderExperience({
       onFocusCapture={handleNavigationIntent}
       onClickCapture={trackRecommendationFollowThrough}
     >
+      <style>{`
+        [data-vorta-maintenance-portal="true"] div[role="button"][aria-expanded] button:first-of-type {
+          min-height: 2.5rem;
+          display: flex;
+          align-items: center;
+        }
+      `}</style>
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
       <MaintenanceWorkOrderExecutionOverlay />
