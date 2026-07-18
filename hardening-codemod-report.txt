@@ -1,2 +1,10 @@
-Updated src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
-Exit code: 0
+file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:8
+  if (index < 0) throw new Error(`Missing ${label}`);
+                       ^
+
+Error: Missing dashboard freshness and dialog state
+    at replaceOnce (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:8:24)
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-maintenance-hardening-batch.mjs:24:1
+
+Node.js v22.23.1
+Exit code: 1
