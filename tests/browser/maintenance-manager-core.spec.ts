@@ -75,7 +75,19 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   await areaTab.click();
   await expect(areaTab).toHaveAttribute("aria-selected", "true");
 
-  await page.locator('a[href="/equipment"]').first().click();
+  const openMenu = page.getByRole("button", { name: "Open menu", exact: true });
+  if (await openMenu.isVisible()) {
+    await expectOperationalTouchTarget(openMenu);
+    await openMenu.click();
+  }
+
+  const equipmentNavigation = page.getByRole("link", {
+    name: "Equipment",
+    exact: true,
+  });
+  await expect(equipmentNavigation).toBeVisible();
+  await expectOperationalTouchTarget(equipmentNavigation);
+  await equipmentNavigation.click();
   await page.waitForURL(/\/equipment(?:\?.*)?$/);
   await expect(page.getByRole("heading", { name: "Equipment", exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
