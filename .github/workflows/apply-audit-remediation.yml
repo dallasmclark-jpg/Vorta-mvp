@@ -1,0 +1,53 @@
+name: Apply audit remediation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-audit-remediation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalise-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Materialise approved workflow source
+        run: |
+          node scripts/apply-skills-matrix-data-trust-fix.mjs
+          node scripts/repair-skills-matrix-workflow-codemod.mjs
+          node scripts/apply-skills-matrix-workflow-fix.mjs
+          node scripts/apply-equipment-people-workflow-fix.mjs
+          node scripts/finalise-audit-remediation.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run contracts and production build
+        run: npm run check
+
+      - name: Commit validated source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json src scripts
+          if git diff --cached --quiet; then
+            echo "No source changes were required."
+            exit 0
+          fi
+          git commit -m "Materialise audited equipment workflow source"
+          git push origin HEAD:main
