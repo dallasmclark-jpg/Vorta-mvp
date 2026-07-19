@@ -295,9 +295,14 @@ $function$;
 
 -- Run the hourly refresh immediately after the date changes so stored source
 -- labels are aligned before normal portal use begins.
-update cron.job
-set schedule = '1 * * * *'
-where jobname = 'vorta-risk-refresh-hourly';
+select cron.alter_job(
+  job_id := (
+    select jobid
+    from cron.job
+    where jobname = 'vorta-risk-refresh-hourly'
+  ),
+  schedule := '1 * * * *'
+);
 
 comment on function private.vorta_normalise_due_states(uuid, date) is
   'Aligns stored work-order overdue flags and PM schedule labels to an explicit anchor date.';
