@@ -49,8 +49,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: maintenance-manager-quality-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: maintenance-manager-quality-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   quality:
@@ -60,6 +60,7 @@ jobs:
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
@@ -149,7 +150,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm run test:browser 2>&1 | tee maintenance-browser-regression.log
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            npm run test:browser -- --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
+          else
+            npm run test:browser 2>&1 | tee maintenance-browser-regression.log
+          fi
 
       - name: Preserve browser regression evidence
         if: steps.maintenance-browser-regression.outcome == 'failure'
