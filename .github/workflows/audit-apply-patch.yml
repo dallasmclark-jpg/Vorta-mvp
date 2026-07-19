@@ -1,0 +1,55 @@
+name: Apply audit remediation patch
+
+on:
+  push:
+    branches:
+      - agent/audit-remediation-p1-p2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out remediation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/audit-remediation-p1-p2
+          fetch-depth: 0
+
+      - name: Apply prepared remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker=.github/audit-patch.ready
+          if [ ! -f "$marker" ]; then
+            echo "No prepared audit patch marker is present."
+            exit 0
+          fi
+
+          cat .github/audit-patch-chunk-* | base64 --decode | gzip --decompress > /tmp/audit-remediation.patch
+          echo "fd3f23c0acbfc06ea317a15046636ec573fb4e319550798b4e7191a746305ba8  /tmp/audit-remediation.patch" | sha256sum --check
+          git apply --index --whitespace=error-all /tmp/audit-remediation.patch
+
+          rm -f \
+            .github/audit-patch-chunk-* \
+            "$marker" \
+            src/lib/equipmentDocumentNavigationInterceptor.ts \
+            src/lib/vortaAiFaultIntelligence.ts \
+            src/lib/vortaAiGenericFaultBridge.ts \
+            src/lib/vortaAiLauncherEnhancement.ts \
+            src/lib/vortaAiPanelEnhancement.ts \
+            src/lib/vortaAiPanelFinalCleanup.ts \
+            src/lib/vortaAiPanelMinimiseFix.ts \
+            src/lib/workforceProfilePhotos.ts \
+            src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaults.tsx \
+            src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV3.tsx
+
+          git add -A
+          git diff --cached --check
+          git config user.name "vorta-audit-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "Implement Maintenance Manager audit remediation"
+          git push origin HEAD:agent/audit-remediation-p1-p2
