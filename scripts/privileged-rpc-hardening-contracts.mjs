@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const migration = readFileSync(
-  new URL(
-    "../supabase/migrations/20260719235900_harden_privileged_rpcs.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const migration = [
+  "../supabase/migrations/20260719235900_harden_privileged_rpcs.sql",
+  "../supabase/migrations/20260719235901_attach_rpc_security_to_health.sql",
+]
+  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+  .join("\n");
 
 for (const helper of [
   "vorta_can_administer_pilot(uuid)",
@@ -31,8 +30,9 @@ for (const expected of [
   "Requires auth.uid(), site access and vorta_can_administer_pilot inside the wrapper.",
   "work_order_goods_movements_component_id_idx",
   "vorta_recovery_manifests_latest_health_run_id_idx",
-  "unreviewedAuthenticatedMutationRpcCount",
   "reviewedAuthenticatedMutationRpcCount",
+  "unreviewed_authenticated_mutation_rpcs",
+  "v_report -> 'integrity'",
 ]) {
   assert.ok(migration.includes(expected), `Missing privileged RPC contract: ${expected}`);
 }
@@ -43,6 +43,7 @@ assert.match(
 );
 assert.match(migration, /and allowlist\.rpc_identity is null/);
 assert.match(migration, /if v_unreviewed is not null then/);
+assert.match(migration, /jsonb_set\([\s\S]*'\{integrity\}'/);
 assert.doesNotMatch(
   migration,
   /revoke execute on function public\.vorta_get_demo_backend_health/,
