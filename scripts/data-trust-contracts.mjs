@@ -87,8 +87,9 @@ assert.match(equipmentEntry, /getConfiguredDataMode\(\) === "demo"/);
 assert.match(equipmentEntry, /EquipmentOverviewLive/);
 assert.match(trustedEntries, /LIVE EVIDENCE UNAVAILABLE/);
 assert.match(trustedEntries, /legacy demonstration records/);
+assert.match(liveRoutes, /EquipmentSectionEntry/);
+assert.match(equipmentIndex, /EquipmentLiveListEntry as EquipmentSection/);
 for (const routeEntry of [
-  "EquipmentSectionEntry",
   "EquipmentOverviewTrustedEntry",
   "EquipmentNotificationsTrustedEntry",
   "EquipmentWorkOrdersTrustedEntry",
