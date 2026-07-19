@@ -37,6 +37,11 @@ export interface ShiftCoverCompleteness {
   activeMemberCount: number;
   engineerCount: number;
   skillRecordCount: number;
+  expectedShiftCount: number;
+  assignedShiftCount: number;
+  staffedShiftCount: number;
+  completeShiftCount: number;
+  completenessPercent: number;
 }
 
 export interface ShiftCoverSnapshot {
@@ -48,6 +53,8 @@ export interface ShiftCoverSnapshot {
   teams: ShiftCoverTeamSummary[];
   completeness: ShiftCoverCompleteness;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -78,7 +85,6 @@ const toShiftType = (value: unknown): ShiftType =>
 
 const toCoverageStatus = (value: unknown): ShiftCoverageStatus => {
   const status = String(value).toLowerCase();
-
   if (
     status === "covered" ||
     status === "reduced" ||
@@ -88,50 +94,31 @@ const toCoverageStatus = (value: unknown): ShiftCoverageStatus => {
   ) {
     return status;
   }
-
   return "gap";
 };
 
 function parseCalendarItem(value: unknown): ShiftCoverCalendarItem {
   const record = toRecord(value);
-
   return {
     shiftDate: String(read(record, "shiftDate", "shift_date") ?? ""),
     shiftType: toShiftType(read(record, "shiftType", "shift_type")),
     teamNames: toStringArray(read(record, "teamNames", "team_names")),
-    engineerNames: toStringArray(
-      read(record, "engineerNames", "engineer_names"),
-    ),
+    engineerNames: toStringArray(read(record, "engineerNames", "engineer_names")),
     scheduledEngineerCount: toNumber(
-      read(
-        record,
-        "scheduledEngineerCount",
-        "scheduled_engineer_count",
-      ),
+      read(record, "scheduledEngineerCount", "scheduled_engineer_count"),
     ),
     contractorEngineerCount: toNumber(
-      read(
-        record,
-        "contractorEngineerCount",
-        "contractor_engineer_count",
-      ),
+      read(record, "contractorEngineerCount", "contractor_engineer_count"),
     ),
-    labourRiskScore: toNumber(
-      read(record, "labourRiskScore", "labour_risk_score"),
-    ),
+    labourRiskScore: toNumber(read(record, "labourRiskScore", "labour_risk_score")),
     labourRiskLevel: String(
-      read(record, "labourRiskLevel", "labour_risk_level") ??
-        "Unavailable",
+      read(record, "labourRiskLevel", "labour_risk_level") ?? "Unavailable",
     ),
     coverageStatus: toCoverageStatus(
       read(record, "coverageStatus", "coverage_status"),
     ),
     equipmentWithMissingCover: toNumber(
-      read(
-        record,
-        "equipmentWithMissingCover",
-        "equipment_with_missing_cover",
-      ),
+      read(record, "equipmentWithMissingCover", "equipment_with_missing_cover"),
     ),
     missingSkillCount: toNumber(
       read(record, "missingSkillCount", "missing_skill_count"),
@@ -141,16 +128,53 @@ function parseCalendarItem(value: unknown): ShiftCoverCalendarItem {
 
 function parseTeam(value: unknown): ShiftCoverTeamSummary {
   const record = toRecord(value);
-
   return {
     id: String(record.id ?? ""),
     code: String(record.code ?? ""),
     name: String(record.name ?? "Unnamed team"),
-    patternType: String(
-      read(record, "patternType", "pattern_type") ?? "unknown",
-    ),
+    patternType: String(read(record, "patternType", "pattern_type") ?? "unknown"),
     cycleOffset: toNumber(read(record, "cycleOffset", "cycle_offset")),
     memberCount: toNumber(read(record, "memberCount", "member_count")),
+  };
+}
+
+function expectedShiftCount(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00Z`).getTime();
+  const end = new Date(`${endDate}T00:00:00Z`).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+  return (Math.floor((end - start) / DAY_MS) + 1) * 2;
+}
+
+function calculateCompleteness(
+  calendar: ShiftCoverCalendarItem[],
+  startDate: string,
+  endDate: string,
+): Pick<
+  ShiftCoverCompleteness,
+  | "expectedShiftCount"
+  | "assignedShiftCount"
+  | "staffedShiftCount"
+  | "completeShiftCount"
+  | "completenessPercent"
+> {
+  const expected = expectedShiftCount(startDate, endDate);
+  const assigned = calendar.filter((item) => item.teamNames.length > 0).length;
+  const staffed = calendar.filter(
+    (item) => item.scheduledEngineerCount + item.contractorEngineerCount > 0,
+  ).length;
+  const complete = calendar.filter(
+    (item) =>
+      item.teamNames.length > 0 &&
+      item.scheduledEngineerCount + item.contractorEngineerCount > 0,
+  ).length;
+
+  return {
+    expectedShiftCount: expected,
+    assignedShiftCount: Math.min(assigned, expected),
+    staffedShiftCount: Math.min(staffed, expected),
+    completeShiftCount: Math.min(complete, expected),
+    completenessPercent:
+      expected > 0 ? Math.round((Math.min(complete, expected) / expected) * 100) : 0,
   };
 }
 
@@ -159,14 +183,11 @@ export async function getShiftCoverSnapshot(
   startDate: string,
   endDate: string,
 ): Promise<ShiftCoverSnapshot> {
-  const { data, error } = await supabase.rpc(
-    "vorta_get_shift_cover_snapshot",
-    {
-      p_site_id: siteId,
-      p_start_date: startDate,
-      p_end_date: endDate,
-    },
-  );
+  const { data, error } = await supabase.rpc("vorta_get_shift_cover_snapshot", {
+    p_site_id: siteId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
 
   if (error) {
     throw new VortaDataUnavailableError(
@@ -188,6 +209,7 @@ export async function getShiftCoverSnapshot(
     ? payload.teams.map(parseTeam)
     : [];
   const rawCompleteness = toRecord(payload.completeness);
+  const calculatedCompleteness = calculateCompleteness(calendar, startDate, endDate);
 
   return {
     mode: "live",
@@ -203,20 +225,18 @@ export async function getShiftCoverSnapshot(
     teams,
     completeness: {
       activeTeamCount: toNumber(
-        rawCompleteness.activeTeamCount ??
-          rawCompleteness.active_team_count,
+        rawCompleteness.activeTeamCount ?? rawCompleteness.active_team_count,
       ),
       activeMemberCount: toNumber(
-        rawCompleteness.activeMemberCount ??
-          rawCompleteness.active_member_count,
+        rawCompleteness.activeMemberCount ?? rawCompleteness.active_member_count,
       ),
       engineerCount: toNumber(
         rawCompleteness.engineerCount ?? rawCompleteness.engineer_count,
       ),
       skillRecordCount: toNumber(
-        rawCompleteness.skillRecordCount ??
-          rawCompleteness.skill_record_count,
+        rawCompleteness.skillRecordCount ?? rawCompleteness.skill_record_count,
       ),
+      ...calculatedCompleteness,
     },
   };
 }
