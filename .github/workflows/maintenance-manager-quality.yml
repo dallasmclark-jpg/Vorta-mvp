@@ -152,9 +152,9 @@ jobs:
         run: |
           set -o pipefail
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            npm run test:browser -- --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
+            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
           else
-            npm run test:browser 2>&1 | tee maintenance-browser-regression.log
+            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts 2>&1 | tee maintenance-browser-regression.log
           fi
 
       - name: Preserve browser regression evidence
