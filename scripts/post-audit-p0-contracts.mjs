@@ -134,6 +134,7 @@ assert.doesNotMatch(
   "Live responsive tests must run against every configured viewport project.",
 );
 
+assert.doesNotMatch(netlify, /netlify-release-gate/);
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(validateMode, /context !== "production"/);
 assert.match(validateMode, /Missing configuration is not treated as live/);

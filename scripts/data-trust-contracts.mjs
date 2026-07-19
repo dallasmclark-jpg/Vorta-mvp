@@ -130,7 +130,7 @@ assert.match(liveBrowserTest, /another site fails closed/);
 assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
 assert.match(liveBrowserTest, /data-vorta-mobile-rota/);
 
-assert.match(netlify, /ignore = "node scripts\/netlify-release-gate\.mjs"/);
+assert.doesNotMatch(netlify, /netlify-release-gate/);
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(netlify, /VITE_VORTA_DATA_MODE = "demo"/);
 assert.match(releaseGate, /maintenance-manager-quality\.yml/);
