@@ -1,0 +1,488 @@
+or structural selectors.",
++);
++check(
++  shiftCoverService.includes("snapshot.siteId does not match") &&
++    shiftCoverService.includes("dateOnlyTimestamp") &&
++    shiftCoverService.includes("labourRiskScore") &&
++    shiftCoverService.includes("duplicate day or night shifts"),
++  "Shift Cover must reject malformed or cross-site live evidence.",
++);
++check(
++  service.includes("RiskActionTarget") &&
++    service.includes("resolveRiskActionTarget") &&
++    riskActionRouting.includes("action.target"),
++  "Dashboard action routing must use a typed target contract.",
++);
++check(
++  dashboard.includes("Promise.allSettled") &&
++    dashboard.includes('setSnapshotEvidenceState(hasPreviousSnapshot ? "stale" : "unavailable")') &&
++    dashboard.includes("riskActionsDisabled"),
++  "Dashboard must preserve verified evidence and disable projections after partial or refresh failure.",
++);
+ 
+ console.log("Maintenance Manager audit hardening contracts passed.");
+diff --git a/scripts/post-audit-p0-contracts.mjs b/scripts/post-audit-p0-contracts.mjs
+index 0ce7c18..6947af3 100644
+--- a/scripts/post-audit-p0-contracts.mjs
++++ b/scripts/post-audit-p0-contracts.mjs
+@@ -109,6 +109,9 @@ assert.match(shiftService, /completeShiftCount/);
+ assert.match(shiftService, /expectedShiftCount/);
+ assert.match(shiftService, /assignedShiftCount/);
+ assert.match(shiftService, /staffedShiftCount/);
++assert.match(shiftService, /snapshot.siteId does not match/);
++assert.match(shiftService, /labourRiskScore/);
++assert.match(shiftService, /duplicate day or night shifts/);
+ 
+ assert.match(maintenanceHardening, /min-width: 1360px/);
+ assert.doesNotMatch(maintenanceHardening, /text-\[7\.5px\]|text-\[8px\]|text-\[9px\]/);
+@@ -118,6 +121,7 @@ assert.doesNotMatch(dashboardExperience, /querySelector|onClickCapture|cursor-po
+ assert.match(skillsRoute, /risk === "shift-cover"/);
+ assert.match(skillsRoute, /maintenance\/labour-risk\/shift-cover/);
+ assert.match(aiOperations, /<SkillsMatrixRouteEntry \/>/);
++assert.match(aiOperations, /import\("\.\/SkillsMatrixRouteEntry"\)/);
+ 
+ assert.match(liveBrowserTest, /data-vorta-live-equipment-list/);
+ assert.match(liveBrowserTest, /another site fails closed/);
+@@ -128,6 +132,7 @@ assert.match(liveBrowserTest, /toBeDisabled/);
+ assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
+ assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
+ assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
++assert.match(qualityWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
+ assert.doesNotMatch(
+   qualityWorkflow,
+   /maintenance-manager-live\.spec\.ts[^\n]*--project=/,
+diff --git a/scripts/work-order-overlay-contracts.mjs b/scripts/work-order-overlay-contracts.mjs
+index 30a748c..264653c 100644
+--- a/scripts/work-order-overlay-contracts.mjs
++++ b/scripts/work-order-overlay-contracts.mjs
+@@ -30,8 +30,9 @@ const aiAssistantSource = readSource(
+ const maintenanceActionsSource = readSource(
+   "../src/lib/maintenanceActions.ts",
+ );
+-const documentInterceptorSource = readSource(
++const retiredDocumentInterceptorUrl = new URL(
+   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
++  import.meta.url,
+ );
+ const retiredInterceptorUrl = new URL(
+   "../src/lib/vortaAiWorkOrderNavigationFix.ts",
+@@ -115,8 +116,8 @@ check(
+     enhancedOverlaySource.includes("261 goods issues"),
+ );
+ check(
+-  "Document navigation no longer imports the global work order interceptor",
+-  !documentInterceptorSource.includes("vortaAiWorkOrderNavigationFix"),
++  "Document navigation is owned by React rather than a document-wide interceptor",
++  !existsSync(retiredDocumentInterceptorUrl),
+ );
+ check(
+   "Obsolete document-wide work order interceptor has been removed",
+diff --git a/src/components/MaintenancePortalHardening.tsx b/src/components/MaintenancePortalHardening.tsx
+index 4ed18a9..e334c64 100644
+--- a/src/components/MaintenancePortalHardening.tsx
++++ b/src/components/MaintenancePortalHardening.tsx
+@@ -5,16 +5,8 @@ export function MaintenancePortalHardening(): JSX.Element {
+         min-width: 0;
+       }
+ 
+-      [data-vorta-maintenance-portal="true"] *,
+-      [data-vorta-maintenance-portal="true"] *::before,
+-      [data-vorta-maintenance-portal="true"] *::after {
+-        min-width: 0;
+-      }
+-
+       [data-vorta-maintenance-portal="true"] button,
+-      [data-vorta-maintenance-portal="true"] [role="button"],
+-      [data-vorta-maintenance-portal="true"] [role="dialog"] button,
+-      [data-vorta-maintenance-portal="true"] [role="dialog"] [role="button"] {
++      [data-vorta-maintenance-portal="true"] [role="button"] {
+         min-height: 2.5rem;
+       }
+ 
+@@ -29,56 +21,30 @@ export function MaintenancePortalHardening(): JSX.Element {
+       }
+ 
+       @media (min-width: 1360px) and (max-width: 1535px) {
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"][class*="2xl:w-56"] {
++        [data-vorta-portal-shell="true"] [data-vorta-desktop-sidebar="true"] {
+           width: 14rem !important;
+         }
+ 
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside {
++        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar="true"] {
+           padding-left: 1rem !important;
+           padding-right: 1rem !important;
+         }
+ 
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside
+-          [class~="hidden"][class*="2xl:block"] {
++        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-label="true"],
++        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-logo-full="true"] {
+           display: block !important;
+         }
+ 
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside
+-          [class~="block"][class*="2xl:hidden"] {
++        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-logo-icon="true"],
++        [data-vorta-sidebar-tooltip="true"] {
+           display: none !important;
+         }
+ 
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside
+-          a,
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside
+-          button {
++        [data-vorta-desktop-sidebar="true"] [data-vorta-nav-item="true"] {
+           justify-content: flex-start !important;
+           padding-left: 0.75rem !important;
+           padding-right: 0.75rem !important;
+         }
+-
+-        body main:has([data-vorta-maintenance-portal="true"])
+-          > div[class*="md:w-14"]
+-          aside
+-          header {
+-          justify-content: flex-start !important;
+-          padding-left: 0.5rem !important;
+-        }
+-
+-        body:has([data-vorta-maintenance-portal="true"]) > [role="tooltip"] {
+-          display: none !important;
+-        }
+       }
+ 
+       @media (max-width: 420px) {
+@@ -91,10 +57,6 @@ export function MaintenancePortalHardening(): JSX.Element {
+           max-width: calc(100vw - 0.75rem) !important;
+           margin-inline: auto;
+         }
+-
+-        [data-vorta-maintenance-portal="true"] [class*="overflow-x-auto"] table {
+-          min-width: 42rem;
+-        }
+       }
+ 
+       @media (min-width: 600px) and (max-width: 1024px) {
+diff --git a/src/components/PortalShell.tsx b/src/components/PortalShell.tsx
+index 000bfa0..f70cbf2 100644
+--- a/src/components/PortalShell.tsx
++++ b/src/components/PortalShell.tsx
+@@ -176,6 +176,7 @@ function useCompactSidebarTooltip(
+       ? createPortal(
+           <div
+             role="tooltip"
++            data-vorta-sidebar-tooltip="true"
+             style={{
+               top: position.top,
+               left: position.left,
+@@ -272,6 +273,7 @@ function NavItemRow({
+   return (
+     <>
+       <NavLink
++        data-vorta-nav-item="true"
+         to={item.to}
+         end={item.end}
+         aria-label={item.label}
+@@ -314,7 +316,7 @@ function NavItemRow({
+         }
+       >
+         <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+-        <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
++        <span data-vorta-sidebar-label="true" className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
+           {item.label}
+         </span>
+       </NavLink>
+@@ -395,7 +397,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
+   };
+ 
+   return (
+-    <aside className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
++    <aside data-vorta-sidebar="true" className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
+       {/* Close button (mobile overlay only) */}
+       {onClose && (
+         <button
+@@ -411,11 +413,11 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
+       {/* Logo */}
+       <header className={`flex h-10 items-center mb-4 ${forceLabels ? "px-2" : "justify-center px-0 2xl:justify-start 2xl:px-2"}`}>
+         <NavLink to={homeRoute} aria-label="Vorta home" onClick={onClose} className="inline-flex items-center overflow-hidden">
+-          <span className={forceLabels ? "block" : "hidden 2xl:block"}>
++          <span data-vorta-sidebar-logo-full="true" className={forceLabels ? "block" : "hidden 2xl:block"}>
+             <VortaLogo />
+           </span>
+           {!forceLabels && (
+-            <span className="block 2xl:hidden">
++            <span data-vorta-sidebar-logo-icon="true" className="block 2xl:hidden">
+               <VortaIcon />
+             </span>
+           )}
+@@ -442,6 +444,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
+ 
+         <div className="border-t border-gray-800 pt-4">
+           <button
++            data-vorta-nav-item="true"
+             type="button"
+             aria-label="Log out"
+             onMouseEnter={(event) =>
+@@ -474,7 +477,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
+             className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
+           >
+             <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+-            <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
++            <span data-vorta-sidebar-label="true" className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
+               Log out
+             </span>
+           </button>
+@@ -522,10 +525,10 @@ export const PortalShell = ({
+   }, [location.pathname]);
+ 
+   return (
+-    <main className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
++    <main data-vorta-portal-shell="true" className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
+       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
+       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
+-      <div className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
++      <div data-vorta-desktop-sidebar="true" className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
+         <Sidebar
+           homeRoute={homeRoute}
+           nav={nav}
+diff --git a/src/screens/AiOperations/AiOperations.tsx b/src/screens/AiOperations/AiOperations.tsx
+index d0471f3..8b3ea43 100644
+--- a/src/screens/AiOperations/AiOperations.tsx
++++ b/src/screens/AiOperations/AiOperations.tsx
+@@ -1,3 +1,4 @@
++import { lazy, Suspense } from "react";
+ import { Navigate, Route, Routes } from "react-router-dom";
+ import { PortalShell } from "../../components/PortalShell";
+ import type { NavGroup } from "../../components/PortalShell";
+@@ -16,43 +17,125 @@ import {
+   Headphones,
+   LayoutDashboard,
+   Network,
++  RefreshCw,
+   Sparkles,
+   TrendingUp,
+   UploadCloud,
+   Users,
+   Wrench,
+ } from "lucide-react";
+-import { EngineersSection } from "../Engineers";
+-import { RequirementsSection } from "../Requirements";
+-import { TrainingSection } from "../Training";
+-import { TrainingProvidersSection } from "../TrainingProviders";
+-import { AiMatchingSection } from "../AiMatching";
+-import { SettingsSection } from "../Settings";
+-import {
+-  EquipmentSection,
+-  EquipmentOverview,
+-  EquipmentNotifications,
+-  EquipmentWorkOrders,
+-  EquipmentPMs,
+-  EquipmentHistory,
+-  EquipmentSkills,
+-  EquipmentSpares,
+-  EquipmentDocuments,
+-  EquipmentDocumentViewer,
+-  EquipmentAiInsights,
+-} from "../Equipment";
+-import { SupportSection } from "../Support";
+-import { SapDataImportSection } from "../DataImport";
+-import { DesignSystemSection } from "../DesignSystem";
+-import { LabourRiskDetailPage } from "../LabourRisk";
+-import { ShiftCoverPageEntry } from "../LabourRisk/ShiftCoverPageEntry";
+-import { CareerSection } from "../Career";
+-import { PilotAdoptionSection } from "../PilotAdoption/PilotAdoptionSection";
+-import { PilotImpactSection } from "../PilotImpact/PilotImpactSection";
+-import { PilotSetupSection } from "../PilotSetup/PilotSetupSection";
+ import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
+ import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
+-import { SkillsMatrixRouteEntry } from "./SkillsMatrixRouteEntry";
++
++const EngineersSection = lazy(() =>
++  import("../Engineers").then((module) => ({ default: module.EngineersSection })),
++);
++const RequirementsSection = lazy(() =>
++  import("../Requirements").then((module) => ({ default: module.RequirementsSection })),
++);
++const TrainingSection = lazy(() =>
++  import("../Training").then((module) => ({ default: module.TrainingSection })),
++);
++const TrainingProvidersSection = lazy(() =>
++  import("../TrainingProviders").then((module) => ({
++    default: module.TrainingProvidersSection,
++  })),
++);
++const AiMatchingSection = lazy(() =>
++  import("../AiMatching").then((module) => ({ default: module.AiMatchingSection })),
++);
++const SettingsSection = lazy(() =>
++  import("../Settings").then((module) => ({ default: module.SettingsSection })),
++);
++const SupportSection = lazy(() =>
++  import("../Support").then((module) => ({ default: module.SupportSection })),
++);
++const SapDataImportSection = lazy(() =>
++  import("../DataImport").then((module) => ({ default: module.SapDataImportSection })),
++);
++const DesignSystemSection = lazy(() =>
++  import("../DesignSystem").then((module) => ({ default: module.DesignSystemSection })),
++);
++const CareerSection = lazy(() =>
++  import("../Career").then((module) => ({ default: module.CareerSection })),
++);
++const PilotAdoptionSection = lazy(() =>
++  import("../PilotAdoption/PilotAdoptionSection").then((module) => ({
++    default: module.PilotAdoptionSection,
++  })),
++);
++const PilotImpactSection = lazy(() =>
++  import("../PilotImpact/PilotImpactSection").then((module) => ({
++    default: module.PilotImpactSection,
++  })),
++);
++const PilotSetupSection = lazy(() =>
++  import("../PilotSetup/PilotSetupSection").then((module) => ({
++    default: module.PilotSetupSection,
++  })),
++);
++const SkillsMatrixRouteEntry = lazy(() =>
++  import("./SkillsMatrixRouteEntry").then((module) => ({
++    default: module.SkillsMatrixRouteEntry,
++  })),
++);
++const ShiftCoverPageEntry = lazy(() =>
++  import("../LabourRisk/ShiftCoverPageEntry").then((module) => ({
++    default: module.ShiftCoverPageEntry,
++  })),
++);
++const LabourRiskDetailPage = lazy(() =>
++  import("../LabourRisk").then((module) => ({ default: module.LabourRiskDetailPage })),
++);
++
++const EquipmentSection = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentSection })),
++);
++const EquipmentOverview = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentOverview })),
++);
++const EquipmentNotifications = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentNotifications })),
++);
++const EquipmentWorkOrders = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentWorkOrders })),
++);
++const EquipmentPMs = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentPMs })),
++);
++const EquipmentHistory = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentHistory })),
++);
++const EquipmentSkills = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentSkills })),
++);
++const EquipmentSpares = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentSpares })),
++);
++const EquipmentDocuments = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentDocuments })),
++);
++const EquipmentDocumentViewer = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentDocumentViewer })),
++);
++const EquipmentAiInsights = lazy(() =>
++  import("../Equipment").then((module) => ({ default: module.EquipmentAiInsights })),
++);
++
++function RouteLoader(): JSX.Element {
++  return (
++    <section
++      className="flex min-h-[50vh] items-center justify-center"
++      role="status"
++      aria-live="polite"
++    >
++      <span className="inline-flex items-center gap-2 text-sm text-slate-400">
++        <RefreshCw className="h-4 w-4 animate-spin text-blue-400" aria-hidden="true" />
++        Loading Maintenance Manager workspace…
++      </span>
++    </section>
++  );
++}
+ 
+ const nav: NavGroup[] = [
+   {
+@@ -74,9 +157,7 @@ const nav: NavGroup[] = [
+   },
+   {
+     groupLabel: "Training",
+-    items: [
+-      { label: "Training Plan", icon: GraduationCap, to: "/training" },
+-    ],
++    items: [{ label: "Training Plan", icon: GraduationCap, to: "/training" }],
+   },
+   {
+     groupLabel: "Pilot evidence",
+@@ -93,35 +174,14 @@ export const AiOperations = (): JSX.Element => {
+   const mayImportSapData = canImportSapData(role, isDemoAdmin);
+ 
+   const secondaryNav = [
+-    {
+-      label: "Support",
+-      icon: Headphones,
+-      to: "/support",
+-    },
++    { label: "Support", icon: Headphones, to: "/support" },
+     ...(mayAdministerPilot
+-      ? [
+-          {
+-            label: "Pilot Setup",
+-            icon: ClipboardCheck,
+-            to: "/settings/pilot-setup",
+-          },
+-        ]
++      ? [{ label: "Pilot Setup", icon: ClipboardCheck, to: "/settings/pilot-setup" }]
+       : []),
+     ...(mayImportSapData
+-      ? [
+-          {
+-            label: "Data Import",
+-            icon: UploadCloud,
+-            to: "/settings/data-import",
+-          },
+-        ]
++      ? [{ label: "Data Import", icon: UploadCloud, to: "/settings/data-import" }]
+       : []),
+-    {
+-      label: "Settings",
+-      icon: Cog,
+-      to: "/settings",
+-      end: true,
+-    },
++    { label: "Settings", icon: Cog, to: "/settings", end: true },
+   ];
+ 
+   return (
+@@ -132,76 +192,78 @@ export const AiOperations = (): JSX.Element => {
+       accentColor="blue"
+     >
+       <MaintenanceAiWorkOrderExperience>
+-        <Routes>
+-          <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
+-          <Route path="pilot-impact" element={<PilotImpactSection />} />
+-          <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
+-          <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
+-          <Route path="engineers" element={<EngineersSection />} />
+-          <Route path="career" element={<CareerSection />} />
+-          <Route path="requirements" element={<RequirementsSection />} />
+-          <Route path="training" element={<TrainingSection />} />
+-          <Route path="training-providers" element={<TrainingProvidersSection />} />
+-          <Route path="ai-matching" element={<AiM
