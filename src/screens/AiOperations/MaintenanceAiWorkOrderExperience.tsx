@@ -7,6 +7,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { useLocation } from "react-router-dom";
+import { DataTrustBanner } from "../../components/DataTrustBanner";
 import { MaintenanceActionEvidenceHardening } from "../../components/MaintenanceActionEvidenceHardening";
 import { MaintenancePortalHardening } from "../../components/MaintenancePortalHardening";
 import { useAuth } from "../../lib/auth";
@@ -191,6 +192,7 @@ export function MaintenanceAiWorkOrderExperience({
           display: none !important;
         }
       `}</style>
+      <DataTrustBanner />
       {children}
       <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
       <MaintenanceWorkOrderExecutionOverlay />
