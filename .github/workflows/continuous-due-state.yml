@@ -1,0 +1,28 @@
+name: Continuous due-state truth
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/continuous-due-state-contracts.mjs"
+      - ".github/workflows/continuous-due-state.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  due-state-contracts:
+    name: Continuous due-state contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify due-state truth contracts
+        run: node scripts/continuous-due-state-contracts.mjs
