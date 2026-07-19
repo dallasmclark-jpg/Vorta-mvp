@@ -34,7 +34,7 @@ jobs:
             echo "No prepared audit patch marker is present."
           fi
 
-      - name: Reconstruct and verify patch
+      - name: Reconstruct and verify source patch
         if: steps.prepared.outputs.available == 'true'
         shell: bash
         run: |
@@ -45,14 +45,16 @@ jobs:
             cat .github/audit-patch-part-0[1-7]
           } > /tmp/audit-remediation.patch
           echo "846bc1c7844a0466742ad3ef952ed59635801a398a758d519fa7b8da8e85d8a1  /tmp/audit-remediation.patch" | sha256sum --check
-          git apply --check --whitespace=fix /tmp/audit-remediation.patch
+          sed -n '/^diff --git a\/index.html/,$p' /tmp/audit-remediation.patch > /tmp/audit-source.patch
+          echo "ce7cf9083fea3428f088621d86a6e1e9415643c7efd4354cc712c30ff6b66f5b  /tmp/audit-source.patch" | sha256sum --check
+          git apply --check --whitespace=fix /tmp/audit-source.patch
 
       - name: Apply source changes
         if: steps.prepared.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          git apply --index --whitespace=fix /tmp/audit-remediation.patch
+          git apply --index --whitespace=fix /tmp/audit-source.patch
           rm -f \
             .github/audit-patch-part-* \
             .github/audit-patch.ready \
@@ -69,7 +71,7 @@ jobs:
           git add -A
           git diff --cached --check
 
-      - name: Commit source changes
+      - name: Commit and publish source changes
         if: steps.prepared.outputs.available == 'true'
         shell: bash
         run: |
@@ -77,25 +79,4 @@ jobs:
           git config user.name "vorta-audit-bot"
           git config user.email "actions@users.noreply.github.com"
           git commit -m "Implement Maintenance Manager audit remediation"
-
-      - name: Publish source changes
-        id: publish
-        if: steps.prepared.outputs.available == 'true'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          git push origin HEAD:agent/audit-remediation-p1-p2 2>&1 | tee /tmp/audit-push.log
-
-      - name: Preserve push rejection
-        if: steps.publish.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: audit-push-rejection
-          path: /tmp/audit-push.log
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Enforce publication result
-        if: steps.publish.outcome == 'failure'
-        run: exit 1
+          git push origin HEAD:agent/audit-remediation-p1-p2
