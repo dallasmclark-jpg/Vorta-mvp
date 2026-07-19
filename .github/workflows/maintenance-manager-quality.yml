@@ -136,6 +136,14 @@ jobs:
       - name: Create production build
         run: npx vite build
 
+      - name: Preserve tested production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vorta-production-dist-${{ github.sha }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Verify authenticated browser-test secret
         shell: bash
         run: |
