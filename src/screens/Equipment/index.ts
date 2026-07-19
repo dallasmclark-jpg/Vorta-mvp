@@ -1,5 +1,5 @@
 export { EquipmentSection } from "./EquipmentSection";
-export { EquipmentOverview } from "./EquipmentOverview";
+export { EquipmentOverviewEntry as EquipmentOverview } from "./EquipmentOverviewEntry";
 export { EquipmentNotifications } from "./EquipmentNotifications";
 export { EquipmentWorkOrdersWithAiNavigation as EquipmentWorkOrders } from "./EquipmentWorkOrdersWithAiNavigation";
 export { EquipmentPMs } from "./EquipmentPMs";
