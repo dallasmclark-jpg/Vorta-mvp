@@ -46,7 +46,7 @@ import { SupportSection } from "../Support";
 import { SapDataImportSection } from "../DataImport";
 import { DesignSystemSection } from "../DesignSystem";
 import { LabourRiskDetailPage } from "../LabourRisk";
-import { LiveShiftCoverPage } from "../LabourRisk/LiveShiftCoverPage";
+import { ShiftCoverPageEntry } from "../LabourRisk/ShiftCoverPageEntry";
 import { CareerSection } from "../Career";
 import { PilotAdoptionSection } from "../PilotAdoption/PilotAdoptionSection";
 import { PilotImpactSection } from "../PilotImpact/PilotImpactSection";
@@ -194,7 +194,7 @@ export const AiOperations = (): JSX.Element => {
           <Route path="design-system" element={<DesignSystemSection />} />
           <Route
             path="maintenance/labour-risk/shift-cover"
-            element={<LiveShiftCoverPage />}
+            element={<ShiftCoverPageEntry />}
           />
           <Route
             path="maintenance/labour-risk/:riskType"

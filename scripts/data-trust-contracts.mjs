@@ -10,6 +10,7 @@ const [
   portal,
   routes,
   shiftPage,
+  shiftEntry,
   shiftService,
   equipmentData,
   equipmentEntry,
@@ -27,6 +28,7 @@ const [
   read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx"),
   read("src/screens/AiOperations/AiOperations.tsx"),
   read("src/screens/LabourRisk/LiveShiftCoverPage.tsx"),
+  read("src/screens/LabourRisk/ShiftCoverPageEntry.tsx"),
   read("src/screens/LabourRisk/shiftCoverService.ts"),
   read("src/screens/Equipment/equipmentData.ts"),
   read("src/screens/Equipment/EquipmentOverviewEntry.tsx"),
@@ -53,7 +55,7 @@ assert.match(portal, /<DataTrustBanner \/>/);
 
 assert.match(
   routes,
-  /path="maintenance\/labour-risk\/shift-cover"[\s\S]*<LiveShiftCoverPage \/>/,
+  /path="maintenance\/labour-risk\/shift-cover"[\s\S]*<ShiftCoverPageEntry \/>/,
 );
 assert.match(shiftPage, /Operational Rota Risk Map/);
 assert.match(
@@ -61,6 +63,10 @@ assert.match(
   /No static roster or fabricated recommendation has been substituted/,
 );
 assert.doesNotMatch(shiftPage, /SC_ENGINEERS|TEAM_CONFIGS|ROTA_OVERLAYS/);
+assert.match(shiftEntry, /getEffectiveDataMode/);
+assert.match(shiftEntry, /DEMO ROTA/);
+assert.match(shiftEntry, /demonstration site database/);
+assert.match(shiftEntry, /data-vorta-shift-cover-mode/);
 assert.match(shiftService, /vorta_get_shift_cover_snapshot/);
 assert.match(shiftService, /"shiftDate", "shift_date"/);
 assert.match(shiftService, /"coverageStatus", "coverage_status"/);
@@ -100,6 +106,8 @@ assert.match(browserTest, /verifyCrossSiteIsolation/);
 assert.match(browserTest, /VORTA_E2E_DENIED_SITE_ID/);
 assert.match(browserTest, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\)/);
 assert.match(browserTest, /data-vorta-data-mode/);
+assert.match(browserTest, /data-vorta-shift-cover-mode/);
+assert.match(browserTest, /DEMO ROTA/);
 
 assert.match(netlify, /ignore = "node scripts\/netlify-release-gate\.mjs"/);
 assert.match(netlify, /VITE_VORTA_DATA_MODE = "demo"/);
