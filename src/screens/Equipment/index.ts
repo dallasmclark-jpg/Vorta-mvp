@@ -3,11 +3,11 @@ export { EquipmentOverviewEntry as EquipmentOverview } from "./EquipmentOverview
 export { EquipmentNotifications } from "./EquipmentNotifications";
 export { EquipmentWorkOrdersWithAiNavigation as EquipmentWorkOrders } from "./EquipmentWorkOrdersWithAiNavigation";
 export { EquipmentPMs } from "./EquipmentPMs";
-export { EquipmentHistory } from "./EquipmentHistory";
+export { EquipmentHistoryEntry as EquipmentHistory } from "./EquipmentTrustedEntries";
 export { EquipmentSkills } from "./EquipmentSkills";
 export { EquipmentSpares } from "./EquipmentSpares";
-export { EquipmentDocuments } from "./EquipmentDocuments";
+export { EquipmentDocumentsEntry as EquipmentDocuments } from "./EquipmentTrustedEntries";
 export { EquipmentDocumentViewer } from "./EquipmentDocumentViewer";
-export { EquipmentAiInsights } from "./EquipmentAiInsights";
+export { EquipmentAiInsightsEntry as EquipmentAiInsights } from "./EquipmentTrustedEntries";
 export * from "./equipmentTypes";
 export * from "./equipmentService";
