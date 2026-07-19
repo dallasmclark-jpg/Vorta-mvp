@@ -759,7 +759,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
         } = operationalDashboard;
 
         const successfulSnapshotAt =
-          nextFreshness.riskCalculatedAt ?? new Date().toISOString();
+          nextFreshness?.riskCalculatedAt ?? new Date().toISOString();
         hasOperationalSnapshotRef.current = true;
         lastSuccessfulSnapshotAtRef.current = successfulSnapshotAt;
         setLastSuccessfulSnapshotAt(successfulSnapshotAt);
