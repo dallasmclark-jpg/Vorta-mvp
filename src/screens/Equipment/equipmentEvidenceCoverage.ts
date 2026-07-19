@@ -11,12 +11,16 @@ export interface EquipmentEvidenceCoverage {
   complete: boolean;
 }
 
-type EvidenceCounterKey =
-  | "componentCount"
-  | "documentCount"
-  | "faultCodeCount"
-  | "workOrderCount"
-  | "maintenanceScheduleCount";
+interface EquipmentEvidenceCoverageRow {
+  equipment_id: string;
+  component_count: number | string | null;
+  document_count: number | string | null;
+  fault_code_count: number | string | null;
+  work_order_count: number | string | null;
+  maintenance_schedule_count: number | string | null;
+  evidence_score: number | string | null;
+  evidence_complete: boolean | null;
+}
 
 const emptyCoverage = (equipmentId: string): EquipmentEvidenceCoverage => ({
   equipmentId,
@@ -29,15 +33,10 @@ const emptyCoverage = (equipmentId: string): EquipmentEvidenceCoverage => ({
   complete: false,
 });
 
-function increment(
-  coverage: Map<string, EquipmentEvidenceCoverage>,
-  equipmentId: unknown,
-  key: EvidenceCounterKey,
-): void {
-  if (typeof equipmentId !== "string" || !coverage.has(equipmentId)) return;
-  const current = coverage.get(equipmentId) ?? emptyCoverage(equipmentId);
-  coverage.set(equipmentId, { ...current, [key]: current[key] + 1 });
-}
+const countValue = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0;
+};
 
 export async function loadEquipmentEvidenceCoverage(
   equipmentIds: string[],
@@ -49,67 +48,30 @@ export async function loadEquipmentEvidenceCoverage(
 
   if (uniqueIds.length === 0) return coverage;
 
-  const [components, documents, faultCodes, workOrders, schedules] =
-    await Promise.all([
-      supabase
-        .from("equipment_components")
-        .select("equipment_id")
-        .in("equipment_id", uniqueIds),
-      supabase
-        .from("knowledge_documents")
-        .select("equipment_id")
-        .in("equipment_id", uniqueIds)
-        .eq("is_current", true),
-      supabase
-        .from("equipment_fault_codes")
-        .select("equipment_id")
-        .in("equipment_id", uniqueIds)
-        .eq("is_active", true),
-      supabase
-        .from("work_orders")
-        .select("equipment_id")
-        .in("equipment_id", uniqueIds),
-      supabase
-        .from("preventive_maintenance")
-        .select("equipment_id")
-        .in("equipment_id", uniqueIds),
-    ]);
-
-  const failed = [components, documents, faultCodes, workOrders, schedules].find(
-    (result) => result.error,
+  const { data, error } = await supabase.rpc(
+    "vorta_get_equipment_evidence_coverage",
+    { p_equipment_ids: uniqueIds },
   );
-  if (failed?.error) {
-    throw new Error(`Equipment evidence coverage could not be loaded: ${failed.error.message}`);
+
+  if (error) {
+    throw new Error(
+      `Equipment evidence coverage could not be loaded: ${error.message}`,
+    );
   }
 
-  for (const row of components.data ?? []) {
-    increment(coverage, row.equipment_id, "componentCount");
-  }
-  for (const row of documents.data ?? []) {
-    increment(coverage, row.equipment_id, "documentCount");
-  }
-  for (const row of faultCodes.data ?? []) {
-    increment(coverage, row.equipment_id, "faultCodeCount");
-  }
-  for (const row of workOrders.data ?? []) {
-    increment(coverage, row.equipment_id, "workOrderCount");
-  }
-  for (const row of schedules.data ?? []) {
-    increment(coverage, row.equipment_id, "maintenanceScheduleCount");
-  }
+  for (const row of (data ?? []) as EquipmentEvidenceCoverageRow[]) {
+    if (!row.equipment_id || !coverage.has(row.equipment_id)) continue;
 
-  for (const [equipmentId, current] of coverage) {
-    const score = [
-      current.componentCount > 0,
-      current.documentCount > 0,
-      current.faultCodeCount > 0,
-      current.workOrderCount > 0,
-      current.maintenanceScheduleCount > 0,
-    ].filter(Boolean).length;
-    coverage.set(equipmentId, {
-      ...current,
+    const score = Math.min(5, countValue(row.evidence_score));
+    coverage.set(row.equipment_id, {
+      equipmentId: row.equipment_id,
+      componentCount: countValue(row.component_count),
+      documentCount: countValue(row.document_count),
+      faultCodeCount: countValue(row.fault_code_count),
+      workOrderCount: countValue(row.work_order_count),
+      maintenanceScheduleCount: countValue(row.maintenance_schedule_count),
       score,
-      complete: score === 5,
+      complete: row.evidence_complete === true && score === 5,
     });
   }
 
