@@ -29,12 +29,12 @@ jobs:
             exit 0
           fi
 
-          cat .github/audit-patch-chunk-* | base64 --decode | gzip --decompress > /tmp/audit-remediation.patch
-          echo "fd3f23c0acbfc06ea317a15046636ec573fb4e319550798b4e7191a746305ba8  /tmp/audit-remediation.patch" | sha256sum --check
+          cat .github/audit-patch-part-* > /tmp/audit-remediation.patch
+          echo "846bc1c7844a0466742ad3ef952ed59635801a398a758d519fa7b8da8e85d8a1  /tmp/audit-remediation.patch" | sha256sum --check
           git apply --index --whitespace=error-all /tmp/audit-remediation.patch
 
           rm -f \
-            .github/audit-patch-chunk-* \
+            .github/audit-patch-part-* \
             "$marker" \
             src/lib/equipmentDocumentNavigationInterceptor.ts \
             src/lib/vortaAiFaultIntelligence.ts \
