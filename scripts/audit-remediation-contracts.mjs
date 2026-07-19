@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
+// Keep the audit's architectural safeguards executable, not merely documented.
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const indexHtml = read("index.html");
