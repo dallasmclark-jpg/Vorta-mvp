@@ -1,0 +1,670 @@
+ctionObserver(
++      ([entry]) => {
++        if (!entry?.isIntersecting) {
++          return;
++        }
++
++        setHasEnteredView(true);
++        observer.disconnect();
++      },
++      {
++        threshold,
++      },
++    );
++
++    observer.observe(element);
++
++    return () => {
++      observer.disconnect();
++    };
++  }, [threshold]);
++
++  return {
++    elementRef,
++    hasEnteredView,
++  };
++};
++
++// ─── RiskMeter ────────────────────────────────────────────────────────────────
++
++export const RiskMeter = ({
++  value,
++  fillClassName,
++  animate = false,
++  ariaLabel = "Risk score",
++}: {
++  value: number;
++  fillClassName: string;
++  animate?: boolean;
++  ariaLabel?: string;
++}) => {
++  const {
++    elementRef,
++    hasEnteredView,
++  } = useInViewOnce<HTMLDivElement>();
++
++  const [
++    isEmphasising,
++    setIsEmphasising,
++  ] = useState(false);
++
++  const clampedValue = Math.max(
++    0,
++    Math.min(100, value),
++  );
++
++  const displayedValue =
++    animate && !hasEnteredView
++      ? 0
++      : clampedValue;
++
++  useEffect(() => {
++    if (
++      !animate ||
++      !hasEnteredView ||
++      window.matchMedia(
++        "(prefers-reduced-motion: reduce)",
++      ).matches
++    ) {
++      return;
++    }
++
++    setIsEmphasising(true);
++
++    const timeoutId = window.setTimeout(
++      () => {
++        setIsEmphasising(false);
++      },
++      850,
++    );
++
++    return () => {
++      window.clearTimeout(timeoutId);
++    };
++  }, [animate, hasEnteredView]);
++
++  return (
++    <div
++      ref={elementRef}
++      role="progressbar"
++      aria-label={ariaLabel}
++      aria-valuemin={0}
++      aria-valuemax={100}
++      aria-valuenow={clampedValue}
++      className={`relative h-3 w-full overflow-visible rounded-lg bg-[#050914] ring-1 ring-inset ring-slate-600/45 transition-shadow duration-300 ${
++        isEmphasising
++          ? "shadow-[0_0_10px_rgba(255,255,255,0.10)]"
++          : ""
++      }`}
++    >
++      <div
++        className={`h-full rounded-lg opacity-80 ${
++          animate
++            ? "motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
++            : ""
++        } ${fillClassName}`}
++        style={{
++          width: `${displayedValue}%`,
++        }}
++      />
++
++      <span
++        className={`absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-white/75 shadow-[0_0_4px_rgba(255,255,255,0.22)] ${
++          animate
++            ? "motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
++            : ""
++        }`}
++        style={{
++          left:
++            displayedValue <= 0
++              ? "0"
++              : `calc(${displayedValue}% - 1px)`,
++        }}
++        aria-hidden="true"
++      />
++    </div>
++  );
++};
++
+diff --git a/src/screens/Equipment/equipmentService.ts b/src/screens/Equipment/equipmentService.ts
+index edd1663..52afe36 100644
+--- a/src/screens/Equipment/equipmentService.ts
++++ b/src/screens/Equipment/equipmentService.ts
+@@ -2547,54 +2547,54 @@ export interface AreaInterventionPlan {
+   dateNote: string;
+ }
+ 
+-export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
+-  const { data, error } = await supabase
+-    .from("area_intervention_plans")
+-    .select(`
+-      area,
+-      current_risk_score,
+-      current_risk_level,
+-      recommended_option,
+-      recommended_duration_hours,
+-      recommended_predicted_risk_score,
+-      recommended_predicted_risk_level,
+-      recommended_reduction,
+-      recommended_efficiency,
+-      justification,
+-      options,
+-      target_work_package,
+-      resource_requirements,
+-      date_note,
+-      target_work_list,
+-      work_items
+-    `)
+-    .order("current_risk_score", { ascending: false });
+-
+-  if (error || !data) {
+-    if (error) console.warn("area_intervention_plans fetch failed:", error.message);
+-    return [];
+-  }
+-
+-  return data.map((row) => ({
+-    area:                          row.area,
+-    currentRiskScore:              row.current_risk_score ?? 0,
+-    currentRiskLevel:              row.current_risk_level ?? "Unknown",
+-    recommendedOption:             row.recommended_option ?? "Review intervention",
+-    recommendedDurationHours:      Number(row.recommended_duration_hours ?? 0),
++const AREA_INTERVENTION_PLAN_SELECT = `
++  area,
++  current_risk_score,
++  current_risk_level,
++  recommended_option,
++  recommended_duration_hours,
++  recommended_predicted_risk_score,
++  recommended_predicted_risk_level,
++  recommended_reduction,
++  recommended_efficiency,
++  justification,
++  options,
++  target_work_package,
++  resource_requirements,
++  date_note,
++  target_work_list,
++  work_items
++`;
++
++function mapAreaInterventionPlanRow(row: any): AreaInterventionPlan {
++  return {
++    area: row.area,
++    currentRiskScore: row.current_risk_score ?? 0,
++    currentRiskLevel: row.current_risk_level ?? "Unknown",
++    recommendedOption: row.recommended_option ?? "Review intervention",
++    recommendedDurationHours: Number(row.recommended_duration_hours ?? 0),
+     recommendedPredictedRiskScore: row.recommended_predicted_risk_score ?? 0,
+     recommendedPredictedRiskLevel: row.recommended_predicted_risk_level ?? "Unknown",
+-    recommendedReduction:          row.recommended_reduction ?? 0,
+-    recommendedEfficiency:         Number(row.recommended_efficiency ?? 0),
+-    justification:                 row.justification ?? null,
+-    options:                       Array.isArray(row.options) ? row.options : [],
++    recommendedReduction: row.recommended_reduction ?? 0,
++    recommendedEfficiency: Number(row.recommended_efficiency ?? 0),
++    justification: row.justification ?? null,
++    options: Array.isArray(row.options) ? row.options : [],
+     targetWorkPackage:
+       row.target_work_package && typeof row.target_work_package === "object"
+         ? row.target_work_package
+         : {},
+     recommendedActions: (() => {
+       const pkg = row.target_work_package;
+-      if (pkg && typeof pkg === "object" && Array.isArray((pkg as Record<string, unknown>).workItems)) {
+-        return (pkg as Record<string, unknown>).workItems as Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
++      if (
++        pkg &&
++        typeof pkg === "object" &&
++        Array.isArray((pkg as Record<string, unknown>).workItems)
++      ) {
++        return (pkg as Record<string, unknown>).workItems as Array<{
++          asset?: string;
++          action?: string;
++          estimatedReduction?: number;
++        }>;
+       }
+       return [];
+     })(),
+@@ -2603,8 +2603,48 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
+       : [],
+     workItems: Array.isArray(row.work_items) ? row.work_items : [],
+     targetWorkList: row.target_work_list ?? "",
+-    dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
+-  }));
++    dateNote:
++      row.date_note ??
++      "Select proposed intervention date to check engineer availability.",
++  };
++}
++
++async function fetchAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
++  const { data, error } = await supabase
++    .from("area_intervention_plans")
++    .select(AREA_INTERVENTION_PLAN_SELECT)
++    .order("current_risk_score", { ascending: false });
++
++  if (error) {
++    throw new Error(`Area intervention plans could not be loaded: ${error.message}`);
++  }
++
++  if (!Array.isArray(data)) {
++    throw new Error("Area intervention plans returned an invalid payload.");
++  }
++
++  return data.map(mapAreaInterventionPlanRow);
++}
++
++/**
++ * Compatibility reader for secondary portals that deliberately treat an absent
++ * intervention plan as an empty optional section.
++ */
++export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
++  try {
++    return await fetchAreaInterventionPlans();
++  } catch (error) {
++    console.warn("area_intervention_plans fetch failed:", error);
++    return [];
++  }
++}
++
++/**
++ * Strict reader used by the Maintenance Manager dashboard. Failures must reject
++ * so the dashboard can retain the last verified evidence and mark it stale.
++ */
++export async function getAreaInterventionPlansStrict(): Promise<AreaInterventionPlan[]> {
++  return fetchAreaInterventionPlans();
+ }
+ 
+ // ─── Area equipment risk ──────────────────────────────────────────────────────
+@@ -2883,8 +2923,16 @@ export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
+ 
+ // ─── Site risk reduction plan ─────────────────────────────────────────────────
+ 
++export type RiskActionTarget =
++  | "spares"
++  | "skills"
++  | "calibrations"
++  | "work-orders"
++  | "overview";
++
+ export interface SiteRiskReductionAction {
+   priority: number;
++  target: RiskActionTarget;
+   driver: string;
+   action: string;
+   detail: string;
+@@ -2899,6 +2947,48 @@ export interface SiteRiskReductionAction {
+   rankingReason: string;
+ }
+ 
++
++const RISK_ACTION_TARGETS = new Set<RiskActionTarget>([
++  "spares",
++  "skills",
++  "calibrations",
++  "work-orders",
++  "overview",
++]);
++
++function resolveRiskActionTarget(action: Record<string, unknown>): RiskActionTarget {
++  const suppliedTarget = String(
++    action.target ?? action.actionTarget ?? action.action_target ?? "",
++  ) as RiskActionTarget;
++  if (RISK_ACTION_TARGETS.has(suppliedTarget)) return suppliedTarget;
++
++  if (Array.isArray(action.sparePartNumbers) && action.sparePartNumbers.length > 0) {
++    return "spares";
++  }
++  if (Array.isArray(action.pmNumbers) && action.pmNumbers.length > 0) {
++    return "calibrations";
++  }
++  if (Array.isArray(action.workOrderNumbers) && action.workOrderNumbers.length > 0) {
++    return "work-orders";
++  }
++
++  // Backwards compatibility for existing RPC payloads. New payloads should
++  // provide actionTarget explicitly so copy changes cannot alter navigation.
++  const legacyDriver = String(action.driver ?? "").trim().toLowerCase();
++  if (legacyDriver.includes("spare") || legacyDriver.includes("stock")) return "spares";
++  if (
++    legacyDriver.includes("skill") ||
++    legacyDriver.includes("labour") ||
++    legacyDriver.includes("coverage")
++  ) {
++    return "skills";
++  }
++  if (legacyDriver.includes("calibration") || legacyDriver.includes("pm")) {
++    return "calibrations";
++  }
++  return "overview";
++}
++
+ export interface SiteRiskReductionPlan {
+   currentSiteRisk: number;
+   currentSiteLevel: string;
+@@ -3047,6 +3137,7 @@ function mapSiteRiskReductionPlanRow(
+             priority: Number(
+               action.priority ?? 0,
+             ),
++            target: resolveRiskActionTarget(action),
+             driver:
+               action.driver ?? "",
+             action:
+@@ -3184,51 +3275,32 @@ export type RiskDashboardScopePlanCache =
+ 
+ export async function getRiskDashboardScopePlans():
+   Promise<RiskDashboardScopePlanCache> {
+-  try {
+-    const { data, error } = await supabase.rpc(
+-      "vorta_get_risk_dashboard_scope_plans",
++  const { data, error } = await supabase.rpc(
++    "vorta_get_risk_dashboard_scope_plans",
++  );
++
++  if (error) {
++    throw new Error(
++      `Risk dashboard scope plans could not be loaded: ${error.message}`,
+     );
++  }
+ 
+-    if (error) {
+-      console.warn(
+-        "vorta_get_risk_dashboard_scope_plans failed:",
+-        error.message,
+-      );
+-      return {};
+-    }
++  if (!Array.isArray(data)) {
++    throw new Error("Risk dashboard scope plans returned an invalid payload.");
++  }
+ 
+-    if (!Array.isArray(data)) {
+-      return {};
+-    }
++  return data.reduce<RiskDashboardScopePlanCache>(
++    (cache, row: any) => {
++      const scopeKey = row.scope_key ?? "";
+ 
+-    return data.reduce<
+-      RiskDashboardScopePlanCache
+-    >(
+-      (
+-        cache,
+-        row: any,
+-      ) => {
+-        const scopeKey =
+-          row.scope_key ?? "";
+-
+-        if (scopeKey) {
+-          cache[scopeKey] =
+-            mapSiteRiskReductionPlanRow(
+-              row,
+-            );
+-        }
++      if (scopeKey) {
++        cache[scopeKey] = mapSiteRiskReductionPlanRow(row);
++      }
+ 
+-        return cache;
+-      },
+-      {},
+-    );
+-  } catch (error) {
+-    console.warn(
+-      "vorta_get_risk_dashboard_scope_plans threw:",
+-      error,
+-    );
+-    return {};
+-  }
++      return cache;
++    },
++    {},
++  );
+ }
+ 
+ // ─── Current-risk refresh ─────────────────────────────────────────────────────
+@@ -3578,64 +3650,42 @@ export type RiskDashboardScopeKpiCache =
+ 
+ export async function getRiskDashboardScopeKpis():
+   Promise<RiskDashboardScopeKpiCache> {
+-  try {
+-    const { data, error } = await supabase.rpc(
+-      "vorta_get_risk_dashboard_scope_kpis",
+-      {
+-        p_anchor_date: null,
+-      },
+-    );
+-
+-    if (error) {
+-      console.warn(
+-        "vorta_get_risk_dashboard_scope_kpis failed:",
+-        error.message,
+-      );
+-      return {};
+-    }
++  const { data, error } = await supabase.rpc(
++    "vorta_get_risk_dashboard_scope_kpis",
++    {
++      p_anchor_date: null,
++    },
++  );
+ 
+-    if (!Array.isArray(data)) {
+-      return {};
+-    }
++  if (error) {
++    throw new Error(
++      `Risk dashboard scope KPIs could not be loaded: ${error.message}`,
++    );
++  }
+ 
+-    return data.reduce<
+-      RiskDashboardScopeKpiCache
+-    >(
+-      (
+-        cache,
+-        row: any,
+-      ) => {
+-        const scopeKey =
+-          row.scope_key ?? "";
++  if (!Array.isArray(data)) {
++    throw new Error("Risk dashboard scope KPIs returned an invalid payload.");
++  }
+ 
+-        if (!scopeKey) {
+-          return cache;
+-        }
++  return data.reduce<RiskDashboardScopeKpiCache>(
++    (cache, row: any) => {
++      const scopeKey = row.scope_key ?? "";
+ 
+-        const dashboard =
+-          mapRiskReductionKpiDashboardRow(
+-            row,
+-          );
++      if (!scopeKey) {
++        return cache;
++      }
+ 
+-        if (!cache[scopeKey]) {
+-          cache[scopeKey] = {};
+-        }
++      const dashboard = mapRiskReductionKpiDashboardRow(row);
+ 
+-        cache[scopeKey][
+-          dashboard.periodKey
+-        ] = dashboard;
++      if (!cache[scopeKey]) {
++        cache[scopeKey] = {};
++      }
+ 
+-        return cache;
+-      },
+-      {},
+-    );
+-  } catch (error) {
+-    console.warn(
+-      "vorta_get_risk_dashboard_scope_kpis threw:",
+-      error,
+-    );
+-    return {};
+-  }
++      cache[scopeKey][dashboard.periodKey] = dashboard;
++      return cache;
++    },
++    {},
++  );
+ }
+ 
+ // ─── Consolidated equipment skills showcase ───────────────────────────────────
+diff --git a/src/screens/LabourRisk/shiftCoverService.ts b/src/screens/LabourRisk/shiftCoverService.ts
+index e3c3580..e131c8c 100644
+--- a/src/screens/LabourRisk/shiftCoverService.ts
++++ b/src/screens/LabourRisk/shiftCoverService.ts
+@@ -55,100 +55,213 @@ export interface ShiftCoverSnapshot {
+ }
+ 
+ const DAY_MS = 24 * 60 * 60 * 1000;
++const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
++const COVERAGE_STATUSES = new Set<ShiftCoverageStatus>([
++  "covered",
++  "reduced",
++  "partial",
++  "gap",
++  "contractor",
++]);
+ 
+-const toRecord = (value: unknown): Record<string, unknown> =>
+-  value && typeof value === "object" && !Array.isArray(value)
+-    ? (value as Record<string, unknown>)
+-    : {};
++function unavailable(message: string): never {
++  throw new VortaDataUnavailableError(`Shift Cover evidence is invalid: ${message}`);
++}
++
++function toRecord(value: unknown, label: string): Record<string, unknown> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) {
++    return unavailable(`${label} must be an object.`);
++  }
++  return value as Record<string, unknown>;
++}
+ 
+-const read = (
++function read(
+   record: Record<string, unknown>,
+   camelCaseKey: string,
+   snakeCaseKey: string,
+-): unknown => record[camelCaseKey] ?? record[snakeCaseKey];
++): unknown {
++  return record[camelCaseKey] ?? record[snakeCaseKey];
++}
++
++function requiredString(value: unknown, label: string): string {
++  if (typeof value !== "string" || !value.trim()) {
++    return unavailable(`${label} is missing.`);
++  }
++  return value.trim();
++}
++
++function stringArray(value: unknown, label: string): string[] {
++  if (!Array.isArray(value)) {
++    return unavailable(`${label} must be an array.`);
++  }
++
++  const values = value.map((item, index) =>
++    requiredString(item, `${label}[${index}]`),
++  );
++  return [...new Set(values)];
++}
+ 
+-const toStringArray = (value: unknown): string[] =>
+-  Array.isArray(value)
+-    ? value
+-        .filter((item): item is string => typeof item === "string")
+-        .map((item) => item.trim())
+-        .filter(Boolean)
+-    : [];
++function finiteNumber(
++  value: unknown,
++  label: string,
++  options: {
++    minimum?: number;
++    maximum?: number;
++    integer?: boolean;
++  } = {},
++): number {
++  if (typeof value !== "number" && typeof value !== "string") {
++    return unavailable(`${label} must be numeric.`);
++  }
+ 
+-const toNumber = (value: unknown): number => {
+   const numeric = Number(value);
+-  return Number.isFinite(numeric) ? numeric : 0;
+-};
++  if (!Number.isFinite(numeric)) {
++    return unavailable(`${label} must be finite.`);
++  }
++  if (options.integer && !Number.isInteger(numeric)) {
++    return unavailable(`${label} must be a whole number.`);
++  }
++  if (options.minimum !== undefined && numeric < options.minimum) {
++    return unavailable(`${label} cannot be below ${options.minimum}.`);
++  }
++  if (options.maximum !== undefined && numeric > options.maximum) {
++    return unavailable(`${label} cannot exceed ${options.maximum}.`);
++  }
++  return numeric;
++}
+ 
+-const toShiftType = (value: unknown): ShiftType =>
+-  String(value).toLowerCase() === "night" ? "night" : "day";
++function dateOnlyTimestamp(value: string, label: string): number {
++  if (!DATE_ONLY_PATTERN.test(value)) {
++    return unavailable(`${label} must use YYYY-MM-DD format.`);
++  }
+ 
+-const toCoverageStatus = (value: unknown): ShiftCoverageStatus => {
+-  const status = String(value).toLowerCase();
++  const [year, month, day] = value.split("-").map(Number);
++  const timestamp = Date.UTC(year, month - 1, day);
++  const parsed = new Date(timestamp);
+   if (
+-    status === "covered" ||
+-    status === "reduced" ||
+-    status === "partial" ||
+-    status === "gap" ||
+-    status === "contractor"
++    parsed.getUTCFullYear() !== year ||
++    parsed.getUTCMonth() !== month - 1 ||
++    parsed.getUTCDate() !== day
+   ) {
+-    return status;
++    return unavailable(`${label} is not a real calendar date.`);
++  }
++  return timestamp;
++}
++
++function timestampString(value: unknown, label: string): string {
++  const timestamp = requiredString(value, label);
++  if (!Number.isFinite(new Date(timestamp).getTime())) {
++    return unavailable(`${label} is not a valid timestamp.`);
++  }
++  return timestamp;
++}
++
++function nullableTimestamp(value: unknown, label: string): string | null {
++  if (value === null || value === undefined || value === "") return null;
++  return timestampString(value, label);
++}
++
++function shiftType(value: unknown, label: string): ShiftType {
++  if (value === "day" || value === "night") return value;
++  return unavailable(`${label} must be day or night.`);
++}
++
++function coverageStatus(value: unknown, label: string): ShiftCoverageStatus {
++  if (typeof value === "string" && COVERAGE_STATUSES.has(value as ShiftCoverageStatus)) {
++    return value as ShiftCoverageStatus;
++  }
++  return unavailable(`${label} is not a supported coverage state.`);
++}
