@@ -1464,11 +1464,15 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
 
 interface GlobalMaintenanceAiAssistantProps {
   role?: VortaAiRole;
+  showLauncher?: boolean;
+  shouldHandlePrompt?: (question: string) => boolean;
 }
 
 export function GlobalMaintenanceAiAssistant({
   role = "maintenance-manager",
-}: GlobalMaintenanceAiAssistantProps): JSX.Element {
+  showLauncher = true,
+  shouldHandlePrompt,
+}: GlobalMaintenanceAiAssistantProps): JSX.Element | null {
   const roleProfile = getRoleProfile(role);
 
   const [open, setOpen] = useState(false);
@@ -2124,6 +2128,10 @@ export function GlobalMaintenanceAiAssistant({
       const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
       const question = detail?.question?.trim() ?? "";
 
+      if (question && shouldHandlePrompt && !shouldHandlePrompt(question)) {
+        return;
+      }
+
       setOpen(true);
       setMinimised(false);
 
@@ -2147,7 +2155,7 @@ export function GlobalMaintenanceAiAssistant({
     return () => {
       window.removeEventListener("vorta-global-ai-prompt", handlePromptEvent);
     };
-  }, []);
+  }, [roleProfile.role, shouldHandlePrompt]);
 
   useEffect(() => {
     if (!open || !contextReady || !pendingPrompt) return;
@@ -2159,9 +2167,12 @@ export function GlobalMaintenanceAiAssistant({
   }, [open, contextReady, pendingPrompt]);
 
   if (!open) {
+    if (!showLauncher) return null;
+
     return (
       <button
         type="button"
+        aria-label="Ask Vorta AI"
         onClick={() => {
           setOpen(true);
           setMinimised(false);

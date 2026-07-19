@@ -18,6 +18,7 @@ const [
   liveTrust,
   equipmentIndex,
   browserTest,
+  browserHelpers,
   liveBrowserTest,
   migration,
   netlify,
@@ -39,6 +40,7 @@ const [
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
   read("src/screens/Equipment/index.ts"),
   read("tests/browser/maintenance-manager-core.spec.ts"),
+  read("tests/browser/maintenance-manager-test-helpers.ts"),
   read("tests/browser/maintenance-manager-live.spec.ts"),
   read("supabase/migrations/20260719070448_p0_pilot_trust_hardening.sql"),
   read("netlify.toml"),
@@ -121,8 +123,8 @@ assert.match(migration, /deniedShiftCalendarRows/);
 assert.match(migration, /from public, anon, authenticated/);
 
 assert.match(browserTest, /verifyCrossSiteIsolation/);
-assert.match(browserTest, /VORTA_E2E_DENIED_SITE_ID/);
-assert.match(browserTest, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\)/);
+assert.match(browserHelpers, /VORTA_E2E_DENIED_SITE_ID/);
+assert.match(browserHelpers, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\)/);
 assert.match(browserTest, /data-vorta-data-mode/);
 assert.match(browserTest, /data-vorta-shift-cover-mode/);
 assert.match(browserTest, /DEMO ROTA/);

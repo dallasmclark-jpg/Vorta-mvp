@@ -59,6 +59,9 @@ export function MaintenanceAiWorkOrderExperience({
 }: PropsWithChildren): JSX.Element {
   const { siteContext } = useAuth();
   const location = useLocation();
+  const showAssistantLauncher =
+    location.pathname !== "/dashboard" &&
+    !/^\/equipment\/[^/]+(?:\/|$)/.test(location.pathname);
 
   useEffect(() => {
     warmMaintenancePortalDataFast();
@@ -177,24 +180,12 @@ export function MaintenanceAiWorkOrderExperience({
       onFocusCapture={handleNavigationIntent}
       onClickCapture={trackRecommendationFollowThrough}
     >
-      <style>{`
-        [data-vorta-maintenance-portal="true"] div[role="button"][aria-expanded] button:first-of-type,
-        [data-vorta-maintenance-portal="true"] [aria-label="Equipment sections"] button {
-          min-height: 2.5rem;
-          display: flex;
-          align-items: center;
-        }
-
-        [data-vorta-maintenance-portal="true"]:has([data-vorta-embedded-ai="true"])
-          > button.fixed.bottom-4.right-4,
-        [data-vorta-maintenance-portal="true"]:has(input[placeholder^="Ask Vorta about"])
-          > button.fixed.bottom-4.right-4 {
-          display: none !important;
-        }
-      `}</style>
       <DataTrustBanner />
       {children}
-      <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
+      <GlobalMaintenanceAiAssistantWithFaultsV2
+        role="maintenance-manager"
+        showLauncher={showAssistantLauncher}
+      />
       <MaintenanceWorkOrderExecutionOverlay />
       <MaintenancePortalHardening />
       <MaintenanceActionEvidenceHardening />

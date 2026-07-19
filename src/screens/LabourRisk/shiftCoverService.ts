@@ -55,100 +55,213 @@ export interface ShiftCoverSnapshot {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const COVERAGE_STATUSES = new Set<ShiftCoverageStatus>([
+  "covered",
+  "reduced",
+  "partial",
+  "gap",
+  "contractor",
+]);
 
-const toRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+function unavailable(message: string): never {
+  throw new VortaDataUnavailableError(`Shift Cover evidence is invalid: ${message}`);
+}
 
-const read = (
+function toRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return unavailable(`${label} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function read(
   record: Record<string, unknown>,
   camelCaseKey: string,
   snakeCaseKey: string,
-): unknown => record[camelCaseKey] ?? record[snakeCaseKey];
+): unknown {
+  return record[camelCaseKey] ?? record[snakeCaseKey];
+}
 
-const toStringArray = (value: unknown): string[] =>
-  Array.isArray(value)
-    ? value
-        .filter((item): item is string => typeof item === "string")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : [];
-
-const toNumber = (value: unknown): number => {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
-};
-
-const toShiftType = (value: unknown): ShiftType =>
-  String(value).toLowerCase() === "night" ? "night" : "day";
-
-const toCoverageStatus = (value: unknown): ShiftCoverageStatus => {
-  const status = String(value).toLowerCase();
-  if (
-    status === "covered" ||
-    status === "reduced" ||
-    status === "partial" ||
-    status === "gap" ||
-    status === "contractor"
-  ) {
-    return status;
+function requiredString(value: unknown, label: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return unavailable(`${label} is missing.`);
   }
-  return "gap";
-};
+  return value.trim();
+}
 
-function parseCalendarItem(value: unknown): ShiftCoverCalendarItem {
-  const record = toRecord(value);
+function stringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) {
+    return unavailable(`${label} must be an array.`);
+  }
+
+  const values = value.map((item, index) =>
+    requiredString(item, `${label}[${index}]`),
+  );
+  return [...new Set(values)];
+}
+
+function finiteNumber(
+  value: unknown,
+  label: string,
+  options: {
+    minimum?: number;
+    maximum?: number;
+    integer?: boolean;
+  } = {},
+): number {
+  if (typeof value !== "number" && typeof value !== "string") {
+    return unavailable(`${label} must be numeric.`);
+  }
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return unavailable(`${label} must be finite.`);
+  }
+  if (options.integer && !Number.isInteger(numeric)) {
+    return unavailable(`${label} must be a whole number.`);
+  }
+  if (options.minimum !== undefined && numeric < options.minimum) {
+    return unavailable(`${label} cannot be below ${options.minimum}.`);
+  }
+  if (options.maximum !== undefined && numeric > options.maximum) {
+    return unavailable(`${label} cannot exceed ${options.maximum}.`);
+  }
+  return numeric;
+}
+
+function dateOnlyTimestamp(value: string, label: string): number {
+  if (!DATE_ONLY_PATTERN.test(value)) {
+    return unavailable(`${label} must use YYYY-MM-DD format.`);
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const timestamp = Date.UTC(year, month - 1, day);
+  const parsed = new Date(timestamp);
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return unavailable(`${label} is not a real calendar date.`);
+  }
+  return timestamp;
+}
+
+function timestampString(value: unknown, label: string): string {
+  const timestamp = requiredString(value, label);
+  if (!Number.isFinite(new Date(timestamp).getTime())) {
+    return unavailable(`${label} is not a valid timestamp.`);
+  }
+  return timestamp;
+}
+
+function nullableTimestamp(value: unknown, label: string): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return timestampString(value, label);
+}
+
+function shiftType(value: unknown, label: string): ShiftType {
+  if (value === "day" || value === "night") return value;
+  return unavailable(`${label} must be day or night.`);
+}
+
+function coverageStatus(value: unknown, label: string): ShiftCoverageStatus {
+  if (typeof value === "string" && COVERAGE_STATUSES.has(value as ShiftCoverageStatus)) {
+    return value as ShiftCoverageStatus;
+  }
+  return unavailable(`${label} is not a supported coverage state.`);
+}
+
+function parseCalendarItem(
+  value: unknown,
+  index: number,
+  startTimestamp: number,
+  endTimestamp: number,
+): ShiftCoverCalendarItem {
+  const label = `calendar[${index}]`;
+  const record = toRecord(value, label);
+  const shiftDate = requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`);
+  const shiftTimestamp = dateOnlyTimestamp(shiftDate, `${label}.shiftDate`);
+  if (shiftTimestamp < startTimestamp || shiftTimestamp > endTimestamp) {
+    return unavailable(`${label}.shiftDate falls outside the requested week.`);
+  }
+
   return {
-    shiftDate: String(read(record, "shiftDate", "shift_date") ?? ""),
-    shiftType: toShiftType(read(record, "shiftType", "shift_type")),
-    teamNames: toStringArray(read(record, "teamNames", "team_names")),
-    engineerNames: toStringArray(read(record, "engineerNames", "engineer_names")),
-    scheduledEngineerCount: toNumber(
+    shiftDate,
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    teamNames: stringArray(read(record, "teamNames", "team_names"), `${label}.teamNames`),
+    engineerNames: stringArray(
+      read(record, "engineerNames", "engineer_names"),
+      `${label}.engineerNames`,
+    ),
+    scheduledEngineerCount: finiteNumber(
       read(record, "scheduledEngineerCount", "scheduled_engineer_count"),
+      `${label}.scheduledEngineerCount`,
+      { minimum: 0, integer: true },
     ),
-    contractorEngineerCount: toNumber(
+    contractorEngineerCount: finiteNumber(
       read(record, "contractorEngineerCount", "contractor_engineer_count"),
+      `${label}.contractorEngineerCount`,
+      { minimum: 0, integer: true },
     ),
-    labourRiskScore: toNumber(read(record, "labourRiskScore", "labour_risk_score")),
-    labourRiskLevel: String(
-      read(record, "labourRiskLevel", "labour_risk_level") ?? "Unavailable",
+    labourRiskScore: finiteNumber(
+      read(record, "labourRiskScore", "labour_risk_score"),
+      `${label}.labourRiskScore`,
+      { minimum: 0, maximum: 100 },
     ),
-    coverageStatus: toCoverageStatus(
+    labourRiskLevel: requiredString(
+      read(record, "labourRiskLevel", "labour_risk_level"),
+      `${label}.labourRiskLevel`,
+    ),
+    coverageStatus: coverageStatus(
       read(record, "coverageStatus", "coverage_status"),
+      `${label}.coverageStatus`,
     ),
-    equipmentWithMissingCover: toNumber(
+    equipmentWithMissingCover: finiteNumber(
       read(record, "equipmentWithMissingCover", "equipment_with_missing_cover"),
+      `${label}.equipmentWithMissingCover`,
+      { minimum: 0, integer: true },
     ),
-    missingSkillCount: toNumber(
+    missingSkillCount: finiteNumber(
       read(record, "missingSkillCount", "missing_skill_count"),
+      `${label}.missingSkillCount`,
+      { minimum: 0, integer: true },
     ),
   };
 }
 
-function parseTeam(value: unknown): ShiftCoverTeamSummary {
-  const record = toRecord(value);
+function parseTeam(value: unknown, index: number): ShiftCoverTeamSummary {
+  const label = `teams[${index}]`;
+  const record = toRecord(value, label);
   return {
-    id: String(record.id ?? ""),
-    code: String(record.code ?? ""),
-    name: String(record.name ?? "Unnamed team"),
-    patternType: String(read(record, "patternType", "pattern_type") ?? "unknown"),
-    cycleOffset: toNumber(read(record, "cycleOffset", "cycle_offset")),
-    memberCount: toNumber(read(record, "memberCount", "member_count")),
+    id: requiredString(record.id, `${label}.id`),
+    code: requiredString(record.code, `${label}.code`),
+    name: requiredString(record.name, `${label}.name`),
+    patternType: requiredString(
+      read(record, "patternType", "pattern_type"),
+      `${label}.patternType`,
+    ),
+    cycleOffset: finiteNumber(
+      read(record, "cycleOffset", "cycle_offset"),
+      `${label}.cycleOffset`,
+      { integer: true },
+    ),
+    memberCount: finiteNumber(
+      read(record, "memberCount", "member_count"),
+      `${label}.memberCount`,
+      { minimum: 0, integer: true },
+    ),
   };
 }
 
-function expectedShiftCount(startDate: string, endDate: string): number {
-  const start = new Date(`${startDate}T00:00:00Z`).getTime();
-  const end = new Date(`${endDate}T00:00:00Z`).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
-  return (Math.floor((end - start) / DAY_MS) + 1) * 2;
+function expectedShiftCount(startTimestamp: number, endTimestamp: number): number {
+  return (Math.floor((endTimestamp - startTimestamp) / DAY_MS) + 1) * 2;
 }
 
 function calculateCompleteness(
   calendar: ShiftCoverCalendarItem[],
-  startDate: string,
-  endDate: string,
+  expected: number,
 ): Pick<
   ShiftCoverCompleteness,
   | "expectedShiftCount"
@@ -157,7 +270,6 @@ function calculateCompleteness(
   | "completeShiftCount"
   | "completenessPercent"
 > {
-  const expected = expectedShiftCount(startDate, endDate);
   const assigned = calendar.filter((item) => item.teamNames.length > 0).length;
   const staffed = calendar.filter(
     (item) => item.scheduledEngineerCount + item.contractorEngineerCount > 0,
@@ -178,13 +290,100 @@ function calculateCompleteness(
   };
 }
 
+function parseSnapshot(
+  value: unknown,
+  requestedSiteId: string,
+  startDate: string,
+  endDate: string,
+): ShiftCoverSnapshot {
+  const payload = toRecord(value, "snapshot");
+  if (payload.mode !== "live") {
+    return unavailable("snapshot.mode must be live.");
+  }
+
+  const siteId = requiredString(payload.siteId ?? payload.site_id, "snapshot.siteId");
+  if (siteId !== requestedSiteId) {
+    return unavailable("snapshot.siteId does not match the authorised active site.");
+  }
+
+  const startTimestamp = dateOnlyTimestamp(startDate, "requested start date");
+  const endTimestamp = dateOnlyTimestamp(endDate, "requested end date");
+  if (endTimestamp < startTimestamp) {
+    return unavailable("requested end date is before the start date.");
+  }
+
+  if (!Array.isArray(payload.calendar)) {
+    return unavailable("snapshot.calendar must be an array.");
+  }
+  if (!Array.isArray(payload.teams)) {
+    return unavailable("snapshot.teams must be an array.");
+  }
+
+  const calendar = payload.calendar.map((item, index) =>
+    parseCalendarItem(item, index, startTimestamp, endTimestamp),
+  );
+  const uniqueShifts = new Set(calendar.map((item) => `${item.shiftDate}:${item.shiftType}`));
+  if (uniqueShifts.size !== calendar.length) {
+    return unavailable("snapshot.calendar contains duplicate day or night shifts.");
+  }
+
+  const teams = payload.teams.map(parseTeam);
+  const rawCompleteness = toRecord(payload.completeness, "snapshot.completeness");
+  const expected = expectedShiftCount(startTimestamp, endTimestamp);
+
+  return {
+    mode: "live",
+    siteId,
+    generatedAt: timestampString(
+      payload.generatedAt ?? payload.generated_at,
+      "snapshot.generatedAt",
+    ),
+    sourceUpdatedAt: nullableTimestamp(
+      payload.sourceUpdatedAt ?? payload.source_updated_at,
+      "snapshot.sourceUpdatedAt",
+    ),
+    calendar,
+    teams,
+    completeness: {
+      activeTeamCount: finiteNumber(
+        rawCompleteness.activeTeamCount ?? rawCompleteness.active_team_count,
+        "snapshot.completeness.activeTeamCount",
+        { minimum: 0, integer: true },
+      ),
+      activeMemberCount: finiteNumber(
+        rawCompleteness.activeMemberCount ?? rawCompleteness.active_member_count,
+        "snapshot.completeness.activeMemberCount",
+        { minimum: 0, integer: true },
+      ),
+      engineerCount: finiteNumber(
+        rawCompleteness.engineerCount ?? rawCompleteness.engineer_count,
+        "snapshot.completeness.engineerCount",
+        { minimum: 0, integer: true },
+      ),
+      skillRecordCount: finiteNumber(
+        rawCompleteness.skillRecordCount ?? rawCompleteness.skill_record_count,
+        "snapshot.completeness.skillRecordCount",
+        { minimum: 0, integer: true },
+      ),
+      ...calculateCompleteness(calendar, expected),
+    },
+  };
+}
+
 export async function getShiftCoverSnapshot(
   siteId: string,
   startDate: string,
   endDate: string,
 ): Promise<ShiftCoverSnapshot> {
+  const requestedSiteId = siteId.trim();
+  if (!requestedSiteId) {
+    throw new VortaDataUnavailableError(
+      "Shift Cover is unavailable because no authorised active site was supplied.",
+    );
+  }
+
   const { data, error } = await supabase.rpc("vorta_get_shift_cover_snapshot", {
-    p_site_id: siteId,
+    p_site_id: requestedSiteId,
     p_start_date: startDate,
     p_end_date: endDate,
   });
@@ -195,48 +394,11 @@ export async function getShiftCoverSnapshot(
     );
   }
 
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
+  if (data === null || data === undefined) {
     throw new VortaDataUnavailableError(
       "Shift Cover returned no authorised site snapshot.",
     );
   }
 
-  const payload = data as Record<string, unknown>;
-  const calendar = Array.isArray(payload.calendar)
-    ? payload.calendar.map(parseCalendarItem)
-    : [];
-  const teams = Array.isArray(payload.teams)
-    ? payload.teams.map(parseTeam)
-    : [];
-  const rawCompleteness = toRecord(payload.completeness);
-  const calculatedCompleteness = calculateCompleteness(calendar, startDate, endDate);
-
-  return {
-    mode: "live",
-    siteId: String(payload.siteId ?? payload.site_id ?? siteId),
-    generatedAt: String(
-      payload.generatedAt ?? payload.generated_at ?? new Date().toISOString(),
-    ),
-    sourceUpdatedAt:
-      typeof (payload.sourceUpdatedAt ?? payload.source_updated_at) === "string"
-        ? String(payload.sourceUpdatedAt ?? payload.source_updated_at)
-        : null,
-    calendar,
-    teams,
-    completeness: {
-      activeTeamCount: toNumber(
-        rawCompleteness.activeTeamCount ?? rawCompleteness.active_team_count,
-      ),
-      activeMemberCount: toNumber(
-        rawCompleteness.activeMemberCount ?? rawCompleteness.active_member_count,
-      ),
-      engineerCount: toNumber(
-        rawCompleteness.engineerCount ?? rawCompleteness.engineer_count,
-      ),
-      skillRecordCount: toNumber(
-        rawCompleteness.skillRecordCount ?? rawCompleteness.skill_record_count,
-      ),
-      ...calculatedCompleteness,
-    },
-  };
+  return parseSnapshot(data, requestedSiteId, startDate, endDate);
 }

@@ -7,6 +7,8 @@ const [
   equipment,
   evidence,
   dashboard,
+  labourRiskSection,
+  riskRouting,
   assistant,
   skills,
   packageText,
@@ -16,6 +18,8 @@ const [
   read("src/screens/Equipment/EquipmentSkillsIntelligence.tsx"),
   read("src/screens/Equipment/EquipmentRequiredSkillCoverage.tsx"),
   read("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx"),
+  read("src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx"),
+  read("src/screens/AiOperations/riskActionRouting.ts"),
   read("src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx"),
   read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx"),
   read("package.json"),
@@ -57,11 +61,11 @@ assert.match(evidence, /skill: skill\.skillId/);
 assert.match(evidence, /min-h-10/);
 assert.match(evidence, /text-xs/);
 
-assert.match(dashboard, /getLabourRiskWorkflowRoute/);
-assert.match(dashboard, /single-point-failure/);
-assert.match(dashboard, /\/skills-matrix\?/);
-assert.match(dashboard, /\/training\?/);
-assert.match(dashboard, /from=dashboard/);
+assert.match(labourRiskSection, /getLabourRiskWorkflowRoute/);
+assert.match(labourRiskSection, /single-point-failure/);
+assert.match(labourRiskSection, /\/skills-matrix\?/);
+assert.match(labourRiskSection, /\/training\?/);
+assert.match(labourRiskSection + riskRouting, /from=dashboard/);
 
 assert.match(assistant, /equipmentWorkflowRoute/);
 assert.match(assistant, /Open capability risk/);

@@ -8,11 +8,6 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           min-height: 2.5rem;
         }
 
-        [data-vorta-maintenance-portal="true"]:has([data-vorta-dashboard-root="true"])
-          > button.fixed.bottom-4.right-4 {
-          display: none !important;
-        }
-
         @media (min-width: 1280px) {
           [data-vorta-dashboard-root="true"] [aria-label="Risk reduction KPI cards"] {
             display: grid !important;
