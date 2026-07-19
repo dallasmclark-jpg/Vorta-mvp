@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  ignore = "node scripts/netlify-release-gate.mjs"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[context.production.environment]
+  # The current public site uses demonstration records. Change this to "live"
+  # only when the selected site has verified pilot data and live fallbacks are disabled.
+  VITE_VORTA_DATA_MODE = "demo"
+
+[[headers]]
+  for = "/vorta-build.json"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"

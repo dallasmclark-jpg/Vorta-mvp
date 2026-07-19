@@ -1,0 +1,70 @@
+name: Maintenance Manager production verification
+
+on:
+  workflow_run:
+    workflows:
+      - Maintenance Manager quality gate
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintenance-manager-production-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  production:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    name: Verify exact production commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
+      VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+
+    steps:
+      - name: Check out deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci --silent
+
+      - name: Verify Netlify serves the exact tested commit
+        run: node scripts/verify-production-commit.mjs
+
+      - name: Verify authenticated browser-test secret
+        shell: bash
+        run: |
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured for production verification." >&2
+            exit 1
+          }
+
+      - name: Install browser-test runner without changing the lockfile
+        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated production regression
+        run: npm run test:browser

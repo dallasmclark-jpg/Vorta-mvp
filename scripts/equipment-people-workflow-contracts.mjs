@@ -88,12 +88,13 @@ assert.doesNotMatch(hardenedMigration, /function_definition := replace/);
 const packageJson = JSON.parse(packageText);
 assert.equal(
   packageJson.scripts.build,
-  "npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
+  "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
 );
 assert.equal(packageJson.scripts.check, "npm run build");
 assert.equal(packageJson.scripts.prebuild, undefined);
 assert.equal(packageJson.scripts["pretest:contracts"], undefined);
 assert.equal(packageJson.scripts["prepare:skills-matrix"], undefined);
+assert.match(packageJson.scripts["build:metadata"], /write-build-metadata/);
 assert.match(packageJson.scripts["repair:legacy-workflows"], /apply-equipment-people-workflow-fix/);
 
 console.log("Equipment → people → training workflow contracts passed.");

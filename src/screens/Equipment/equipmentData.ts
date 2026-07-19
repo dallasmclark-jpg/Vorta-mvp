@@ -1,6 +1,10 @@
 // ─── Shared equipment identity data ──────────────────────────────────────────
 // All equipment detail pages import from here. Do NOT add page-specific data.
 
+import {
+  demoFallbacksAllowed,
+  VortaDataUnavailableError,
+} from "../../lib/dataTrust";
 import { EQUIPMENT_IMAGES } from "./equipmentImages";
 import type {
   EquipmentRiskBreakdown,
@@ -82,9 +86,15 @@ const EQUIPMENT_MAP: Record<string, EquipmentBase> = {
 export const DEFAULT_EQUIPMENT_ID = "pl-02";
 
 export function getEquipmentById(id: string | undefined): EquipmentBase {
+  if (!demoFallbacksAllowed()) {
+    throw new VortaDataUnavailableError(
+      `Live equipment identity${id ? ` for ${id}` : ""} could not be loaded. No local demo profile was substituted.`,
+    );
+  }
+
   return (id ? EQUIPMENT_MAP[id] : undefined) ?? EQUIPMENT_MAP[DEFAULT_EQUIPMENT_ID];
 }
 
 export function getAllEquipment(): EquipmentBase[] {
-  return Object.values(EQUIPMENT_MAP);
+  return demoFallbacksAllowed() ? Object.values(EQUIPMENT_MAP) : [];
 }
