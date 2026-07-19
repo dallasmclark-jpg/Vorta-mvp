@@ -1,15 +1,15 @@
 export {
   EquipmentSectionEntry as EquipmentSection,
   EquipmentOverviewTrustedEntry as EquipmentOverview,
+  EquipmentNotificationsTrustedEntry as EquipmentNotifications,
+  EquipmentWorkOrdersTrustedEntry as EquipmentWorkOrders,
+  EquipmentCalibrationsTrustedEntry as EquipmentPMs,
+  EquipmentHistoryTrustedEntry as EquipmentHistory,
+  EquipmentSkillsTrustedEntry as EquipmentSkills,
   EquipmentSparesEntry as EquipmentSpares,
+  EquipmentDocumentsTrustedEntry as EquipmentDocuments,
+  EquipmentDocumentViewerTrustedEntry as EquipmentDocumentViewer,
   EquipmentAiInsightsTrustedEntry as EquipmentAiInsights,
 } from "./EquipmentLiveRoutes";
-export { EquipmentNotifications } from "./EquipmentNotifications";
-export { EquipmentWorkOrdersWithAiNavigation as EquipmentWorkOrders } from "./EquipmentWorkOrdersWithAiNavigation";
-export { EquipmentPMs } from "./EquipmentPMs";
-export { EquipmentHistoryEntry as EquipmentHistory } from "./EquipmentTrustedEntries";
-export { EquipmentSkills } from "./EquipmentSkills";
-export { EquipmentDocumentsEntry as EquipmentDocuments } from "./EquipmentTrustedEntries";
-export { EquipmentDocumentViewer } from "./EquipmentDocumentViewer";
 export * from "./equipmentTypes";
 export * from "./equipmentService";
