@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const read = (path) =>
-  readFile(new URL(`../${path}`, import.meta.url), "utf8");
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 const [
   dataTrust,
@@ -19,6 +18,7 @@ const [
   liveTrust,
   equipmentIndex,
   browserTest,
+  liveBrowserTest,
   migration,
   netlify,
   releaseGate,
@@ -39,6 +39,7 @@ const [
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
   read("src/screens/Equipment/index.ts"),
   read("tests/browser/maintenance-manager-core.spec.ts"),
+  read("tests/browser/maintenance-manager-live.spec.ts"),
   read("supabase/migrations/20260719070448_p0_pilot_trust_hardening.sql"),
   read("netlify.toml"),
   read("scripts/netlify-release-gate.mjs"),
@@ -80,22 +81,28 @@ assert.match(equipmentData, /if \(!demoFallbacksAllowed\(\)\)/);
 assert.match(equipmentData, /No local demo profile was substituted/);
 assert.match(equipmentEntry, /getConfiguredDataMode\(\) === "demo"/);
 assert.match(equipmentEntry, /EquipmentOverviewLive/);
-for (const routeEntry of ["EquipmentHistoryEntry", "EquipmentDocumentsEntry"]) {
-  assert.match(trustedEntries, new RegExp(routeEntry));
-  assert.match(equipmentIndex, new RegExp(routeEntry));
-}
+assert.match(trustedEntries, /LIVE EVIDENCE UNAVAILABLE/);
+assert.match(trustedEntries, /legacy demonstration records/);
 for (const routeEntry of [
   "EquipmentSectionEntry",
   "EquipmentOverviewTrustedEntry",
+  "EquipmentNotificationsTrustedEntry",
+  "EquipmentWorkOrdersTrustedEntry",
+  "EquipmentCalibrationsTrustedEntry",
+  "EquipmentHistoryTrustedEntry",
+  "EquipmentSkillsTrustedEntry",
   "EquipmentSparesEntry",
+  "EquipmentDocumentsTrustedEntry",
+  "EquipmentDocumentViewerTrustedEntry",
   "EquipmentAiInsightsTrustedEntry",
 ]) {
   assert.match(liveRoutes, new RegExp(routeEntry));
   assert.match(equipmentIndex, new RegExp(routeEntry));
 }
-assert.match(trustedEntries, /LIVE EVIDENCE UNAVAILABLE/);
-assert.match(trustedEntries, /legacy demonstration records/);
+assert.match(liveRoutes, /EquipmentDetailBoundary/);
 assert.match(liveTrust, /Stock resilience is unavailable, not 100%/);
+assert.match(liveTrust, /\.eq\("site_id", siteId\)/);
+assert.match(liveTrust, /MAX_RISK_PROFILE_AGE_MS/);
 assert.doesNotMatch(liveTrust, /vorta_get_demo_equipment_risk_list/);
 
 for (const functionName of [
@@ -107,10 +114,7 @@ for (const functionName of [
 ]) {
   assert.match(migration, new RegExp(functionName));
 }
-assert.doesNotMatch(
-  migration,
-  /vorta_has_site_access\(p_site_id, true\)/,
-);
+assert.doesNotMatch(migration, /vorta_has_site_access\(p_site_id, true\)/);
 assert.match(migration, /deniedShiftCalendarRows/);
 assert.match(migration, /from public, anon, authenticated/);
 
@@ -120,6 +124,8 @@ assert.match(browserTest, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\
 assert.match(browserTest, /data-vorta-data-mode/);
 assert.match(browserTest, /data-vorta-shift-cover-mode/);
 assert.match(browserTest, /DEMO ROTA/);
+assert.match(liveBrowserTest, /another site fails closed/);
+assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
 
 assert.match(netlify, /ignore = "node scripts\/netlify-release-gate\.mjs"/);
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
@@ -131,6 +137,7 @@ assert.match(qualityWorkflow, /push:/);
 assert.match(qualityWorkflow, /workflow_dispatch:/);
 assert.match(qualityWorkflow, /supabase\/migrations\/\*\*/);
 assert.match(qualityWorkflow, /--project=desktop-1920/);
+assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(productionWorkflow, /Verify exact production commit/);
 assert.match(productionWorkflow, /verify-production-commit\.mjs/);
 assert.match(productionWorkflow, /VORTA_E2E_BASE_URL/);
