@@ -1,0 +1,426 @@
+diff --git a/.github/workflows/maintenance-manager-quality.yml b/.github/workflows/maintenance-manager-quality.yml
+index 3353825..c0bb6d8 100644
+--- a/.github/workflows/maintenance-manager-quality.yml
++++ b/.github/workflows/maintenance-manager-quality.yml
+@@ -165,9 +165,17 @@ jobs:
+         run: |
+           set -o pipefail
+           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+-            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
++            npm run test:browser -- \
++              tests/browser/maintenance-manager-core.spec.ts \
++              tests/browser/maintenance-manager-work-orders.spec.ts \
++              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
++              --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
+           else
+-            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts 2>&1 | tee maintenance-browser-regression.log
++            npm run test:browser -- \
++              tests/browser/maintenance-manager-core.spec.ts \
++              tests/browser/maintenance-manager-work-orders.spec.ts \
++              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
++              2>&1 | tee maintenance-browser-regression.log
+           fi
+ 
+       - name: Preserve browser regression evidence
+@@ -186,6 +194,30 @@ jobs:
+         if: steps.maintenance-browser-regression.outcome == 'failure'
+         run: exit 1
+ 
++      - name: Run Maintenance Manager visual regression
++        id: maintenance-visual-regression
++        continue-on-error: true
++        shell: bash
++        run: |
++          set -o pipefail
++          npx playwright test tests/browser/maintenance-manager-visual.spec.ts --config=playwright.config.ts 2>&1 | tee maintenance-visual-regression.log
++
++      - name: Preserve visual regression evidence
++        if: steps.maintenance-visual-regression.outcome == 'failure'
++        uses: actions/upload-artifact@v4
++        with:
++          name: maintenance-visual-regression-evidence
++          path: |
++            maintenance-visual-regression.log
++            playwright-report
++            test-results
++          if-no-files-found: warn
++          retention-days: 7
++
++      - name: Enforce visual regression result
++        if: steps.maintenance-visual-regression.outcome == 'failure'
++        run: exit 1
++
+       - name: Run live responsive Equipment and Shift Cover regression
+         id: live-equipment-browser-regression
+         continue-on-error: true
+diff --git a/index.html b/index.html
+index 03b2e65..9d03195 100644
+--- a/index.html
++++ b/index.html
+@@ -1,89 +1,15 @@
+ <!DOCTYPE html>
+ <html lang="en" style="background:#0b0e14;color-scheme:dark">
+ <head>
+-<meta charset="utf-8" />
+-<title>Vorta | Maintenance Intelligence</title>
+-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+-<meta name="viewport" content="width=device-width, initial-scale=1" />
+-<meta charset="utf-8"/>
+-<meta content="width=device-width, initial-scale=1" name="viewport"/>
+-<style>
+-@import url("https://fonts.googleapis.com/css?family=Inter:var(--text-sm-medium-font-weight),var(--text-sm-semibold-font-weight),var(--text-xs-regular-font-weight),var(--text-sm-regular-font-weight),var(--text-xl-semibold-font-weight),var(--text-xs-semibold-font-weight),var(--text-xs-medium-font-weight),var(--text-md-semibold-font-weight)");
+-
+-/* Keep every equipment page header aligned to the Documents page metadata set. */
+-section > div.sticky
+-  .flex.flex-wrap.gap-x-4.gap-y-1.text-xs.text-slate-400:has(> :nth-child(9))
+-  > :is(:nth-child(6), :nth-child(7), :nth-child(8)) {
+-  display: none;
+-}
+-
+-/* Remove low-value guidance and legend items from the shift-cover map. */
+-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-    > div:nth-child(3) > div.ml-auto
+-  )
+-  > p,
+-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-    > div:nth-child(3) > div.ml-auto
+-  )
+-  > div:first-child
+-  > div:nth-child(2)
+-  > div:nth-child(3),
+-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-    > div:nth-child(3) > div.ml-auto
+-  )
+-  > div:first-child
+-  > div:nth-child(2)
+-  > div:first-child
+-  > div
+-  > div:last-child {
+-  display: none !important;
+-}
+-
+-@media (min-width: 1280px) {
+-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-      > div:nth-child(3) > div.ml-auto
+-    ) {
+-    grid-template-areas:
+-      "title legends"
+-      "filters legends"
+-      "navigation ." !important;
+-    margin-bottom: 1.25rem !important;
+-  }
+-
+-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-      > div:nth-child(3) > div.ml-auto
+-    )
+-    > div:first-child
+-    > div:nth-child(2) {
+-    grid-template-areas:
+-      "status"
+-      "risk" !important;
+-    grid-template-columns: minmax(0, 1fr) !important;
+-  }
+-
+-  /* Keep Today, date navigation and Week/Month together at the far left. */
+-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-      > div:nth-child(3) > div.ml-auto
+-    )
+-    > div:nth-child(3) {
+-    width: max-content !important;
+-    max-width: 100%;
+-    margin-left: 0 !important;
+-    justify-self: start !important;
+-    justify-content: flex-start !important;
+-  }
+-
+-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
+-      > div:nth-child(3) > div.ml-auto
+-    )
+-    > div:nth-child(3)
+-    > div.ml-auto {
+-    margin-left: 0.25rem !important;
+-  }
+-}
+-    </style>
+-<link href="tailwind.css" rel="stylesheet"/>
+-<link href="tailwind.css" rel="stylesheet" />
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="theme-color" content="#0b0e14" />
++  <title>Vorta | Maintenance Intelligence</title>
++  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
++  <link href="tailwind.css" rel="stylesheet" />
+ </head>
+ <body style="background:#0b0e14;margin:0">
+ <style>
+@@ -155,8 +81,6 @@ section > div.sticky
+     });
+   })();
+ </script>
+-<script type="module" src="./src/lib/workforceProfilePhotos.ts"></script>
+-<script type="module" src="./src/lib/equipmentDocumentNavigationInterceptor.ts"></script>
+ <script type="module" src="./src/index.tsx"></script>
+ </body>
+ </html>
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index 453fae5..a808fdf 100644
+--- a/package.json
++++ b/package.json
+@@ -8,7 +8,7 @@
+     "dev": "vite",
+     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
+     "typecheck": "tsc -p tsconfig.maintenance.json",
+-    "test:contracts": "node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs && node scripts/equipment-people-workflow-contracts.mjs && node scripts/maintenance-p1-p2-contracts.mjs && node scripts/data-trust-contracts.mjs && node scripts/post-audit-p0-contracts.mjs",
++    "test:contracts": "node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs && node scripts/equipment-people-workflow-contracts.mjs && node scripts/maintenance-p1-p2-contracts.mjs && node scripts/data-trust-contracts.mjs && node scripts/post-audit-p0-contracts.mjs && node scripts/audit-remediation-contracts.mjs",
+     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
+     "test:browser": "playwright test --config=playwright.config.ts",
+     "build:metadata": "node scripts/write-build-metadata.mjs",
+diff --git a/scripts/audit-remediation-contracts.mjs b/scripts/audit-remediation-contracts.mjs
+new file mode 100644
+index 0000000..d6e45c4
+--- /dev/null
++++ b/scripts/audit-remediation-contracts.mjs
+@@ -0,0 +1,75 @@
++import assert from "node:assert/strict";
++import { existsSync, readFileSync } from "node:fs";
++
++const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
++
++const indexHtml = read("index.html");
++const portalHardening = read("src/components/MaintenancePortalHardening.tsx");
++const portalShell = read("src/components/PortalShell.tsx");
++const dashboard = read(
++  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
++);
++const dashboardNotice = read(
++  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardEvidenceNotice.tsx",
++);
++const riskMeter = read(
++  "src/screens/AiOperations/sections/DashboardOverviewSection/RiskMeter.tsx",
++);
++const labourRiskSection = read(
++  "src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx",
++);
++const equipmentService = read("src/screens/Equipment/equipmentService.ts");
++const riskRouting = read("src/screens/AiOperations/riskActionRouting.ts");
++const shiftService = read("src/screens/LabourRisk/shiftCoverService.ts");
++const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
++const assistant = read(
++  "src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx",
++);
++const browserWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
++
++for (const retired of [
++  "src/lib/equipmentDocumentNavigationInterceptor.ts",
++  "src/lib/workforceProfilePhotos.ts",
++  "src/lib/vortaAiLauncherEnhancement.ts",
++  "src/lib/vortaAiPanelEnhancement.ts",
++  "src/lib/vortaAiPanelMinimiseFix.ts",
++  "src/lib/vortaAiPanelFinalCleanup.ts",
++  "src/lib/vortaAiGenericFaultBridge.ts",
++  "src/lib/vortaAiFaultIntelligence.ts",
++]) {
++  assert.equal(existsSync(new URL(`../${retired}`, import.meta.url)), false, `${retired} must be retired`);
++}
++
++assert.doesNotMatch(indexHtml, /:has\(|nth-child|equipmentDocumentNavigationInterceptor|workforceProfilePhotos/);
++assert.doesNotMatch(portalHardening, /:has\(|nth-child|\[class\*=/);
++assert.match(portalHardening, /data-vorta-desktop-sidebar/);
++assert.match(portalShell, /data-vorta-sidebar-label/);
++
++assert.match(shiftService, /snapshot.siteId does not match/);
++assert.match(shiftService, /dateOnlyTimestamp/);
++assert.match(shiftService, /finiteNumber/);
++assert.match(shiftService, /labourRiskScore/);
++assert.match(shiftService, /duplicate day or night shifts/);
++
++assert.match(dashboard, /Promise\.allSettled/);
++assert.match(dashboard, /lastSuccessfulSnapshotAt/);
++assert.match(dashboard, /riskActionsDisabled/);
++assert.match(dashboardNotice, /data-vorta-dashboard-evidence-state/);
++assert.match(riskMeter, /prefers-reduced-motion/);
++assert.match(dashboard, /<LabourRiskSection/);
++assert.match(labourRiskSection, /data-vorta-labour-risk-card/);
++assert.match(equipmentService, /RiskActionTarget/);
++assert.match(equipmentService, /getAreaInterventionPlansStrict/);
++assert.match(riskRouting, /action\.target/);
++assert.doesNotMatch(riskRouting, /includes\("skill"\)|includes\("spare"\)/);
++
++assert.match(aiOperations, /const SkillsMatrixRouteEntry = lazy/);
++assert.match(aiOperations, /const EquipmentWorkOrders = lazy/);
++assert.match(aiOperations, /<Suspense fallback=\{<RouteLoader \/>\}>/);
++assert.doesNotMatch(assistant, /MutationObserver|stopImmediatePropagation|document\.querySelector/);
++
++assert.match(browserWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
++assert.match(browserWorkflow, /maintenance-manager-dashboard-resilience\.spec\.ts/);
++assert.match(browserWorkflow, /maintenance-manager-visual\.spec\.ts/);
++
++console.log("Audit remediation contracts passed.");
+diff --git a/scripts/data-trust-contracts.mjs b/scripts/data-trust-contracts.mjs
+index 831e1b8..b7a6d54 100644
+--- a/scripts/data-trust-contracts.mjs
++++ b/scripts/data-trust-contracts.mjs
+@@ -18,6 +18,7 @@ const [
+   liveTrust,
+   equipmentIndex,
+   browserTest,
++  browserHelpers,
+   liveBrowserTest,
+   migration,
+   netlify,
+@@ -39,6 +40,7 @@ const [
+   read("src/screens/Equipment/equipmentLiveTrust.ts"),
+   read("src/screens/Equipment/index.ts"),
+   read("tests/browser/maintenance-manager-core.spec.ts"),
++  read("tests/browser/maintenance-manager-test-helpers.ts"),
+   read("tests/browser/maintenance-manager-live.spec.ts"),
+   read("supabase/migrations/20260719070448_p0_pilot_trust_hardening.sql"),
+   read("netlify.toml"),
+@@ -121,8 +123,8 @@ assert.match(migration, /deniedShiftCalendarRows/);
+ assert.match(migration, /from public, anon, authenticated/);
+ 
+ assert.match(browserTest, /verifyCrossSiteIsolation/);
+-assert.match(browserTest, /VORTA_E2E_DENIED_SITE_ID/);
+-assert.match(browserTest, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\)/);
++assert.match(browserHelpers, /VORTA_E2E_DENIED_SITE_ID/);
++assert.match(browserHelpers, /expect\(await deniedResponse\.json\(\)\)\.toBeNull\(\)/);
+ assert.match(browserTest, /data-vorta-data-mode/);
+ assert.match(browserTest, /data-vorta-shift-cover-mode/);
+ assert.match(browserTest, /DEMO ROTA/);
+diff --git a/scripts/equipment-people-workflow-contracts.mjs b/scripts/equipment-people-workflow-contracts.mjs
+index 2a1c939..38812fe 100644
+--- a/scripts/equipment-people-workflow-contracts.mjs
++++ b/scripts/equipment-people-workflow-contracts.mjs
+@@ -7,6 +7,8 @@ const [
+   equipment,
+   evidence,
+   dashboard,
++  labourRiskSection,
++  riskRouting,
+   assistant,
+   skills,
+   packageText,
+@@ -16,6 +18,8 @@ const [
+   read("src/screens/Equipment/EquipmentSkillsIntelligence.tsx"),
+   read("src/screens/Equipment/EquipmentRequiredSkillCoverage.tsx"),
+   read("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx"),
++  read("src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx"),
++  read("src/screens/AiOperations/riskActionRouting.ts"),
+   read("src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx"),
+   read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx"),
+   read("package.json"),
+@@ -57,11 +61,11 @@ assert.match(evidence, /skill: skill\.skillId/);
+ assert.match(evidence, /min-h-10/);
+ assert.match(evidence, /text-xs/);
+ 
+-assert.match(dashboard, /getLabourRiskWorkflowRoute/);
+-assert.match(dashboard, /single-point-failure/);
+-assert.match(dashboard, /\/skills-matrix\?/);
+-assert.match(dashboard, /\/training\?/);
+-assert.match(dashboard, /from=dashboard/);
++assert.match(labourRiskSection, /getLabourRiskWorkflowRoute/);
++assert.match(labourRiskSection, /single-point-failure/);
++assert.match(labourRiskSection, /\/skills-matrix\?/);
++assert.match(labourRiskSection, /\/training\?/);
++assert.match(labourRiskSection + riskRouting, /from=dashboard/);
+ 
+ assert.match(assistant, /equipmentWorkflowRoute/);
+ assert.match(assistant, /Open capability risk/);
+diff --git a/scripts/maintenance-dashboard-contracts.mjs b/scripts/maintenance-dashboard-contracts.mjs
+index 8e8a474..b2e26c5 100644
+--- a/scripts/maintenance-dashboard-contracts.mjs
++++ b/scripts/maintenance-dashboard-contracts.mjs
+@@ -39,6 +39,7 @@ check(
+ check(
+   "Router protects the dedicated Shift Cover calendar",
+   aiOperations.includes("<SkillsMatrixRouteEntry />") &&
++    aiOperations.includes('import("./SkillsMatrixRouteEntry")') &&
+     skillsMatrixRoute.includes('risk === "shift-cover"') &&
+     skillsMatrixRoute.includes("/maintenance/labour-risk/shift-cover") &&
+     !dashboardExperience.includes("isShiftCoverCard")
+diff --git a/scripts/maintenance-p1-p2-contracts.mjs b/scripts/maintenance-p1-p2-contracts.mjs
+index e30f2d9..fe8d67a 100644
+--- a/scripts/maintenance-p1-p2-contracts.mjs
++++ b/scripts/maintenance-p1-p2-contracts.mjs
+@@ -34,7 +34,11 @@ const evidenceHardening = read(
+ const skillsMatrix = read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx");
+ const portalShell = read("src/components/PortalShell.tsx");
+ const browserTest = read("tests/browser/maintenance-manager-core.spec.ts");
++const workOrderBrowserTest = read("tests/browser/maintenance-manager-work-orders.spec.ts");
+ const liveBrowserTest = read("tests/browser/maintenance-manager-live.spec.ts");
++const indexHtml = read("index.html");
++const shiftCoverService = read("src/screens/LabourRisk/shiftCoverService.ts");
++const riskActionRouting = read("src/screens/AiOperations/riskActionRouting.ts");
+ 
+ check(
+   service.includes("getOperationalDashboardSnapshot") &&
+@@ -87,32 +91,34 @@ check(
+ );
+ check(
+   dashboard.includes('aria-label="Risk scope"') &&
+-    portalWrapper.includes('[data-vorta-embedded-ai="true"]') &&
+-    portalWrapper.includes('placeholder^="Ask Vorta about"'),
++    portalWrapper.includes("showAssistantLauncher") &&
++    portalWrapper.includes('location.pathname !== "/dashboard"'),
+   "Mobile risk scope and duplicate assistant controls must be handled explicitly.",
+ );
+ check(
+   portalShell.includes("2xl:w-56") &&
+-    portalShell.includes("min-width: 1536px"),
+-  "Shared portals must retain their compact tablet-landscape sidebar.",
++    portalShell.includes("data-vorta-desktop-sidebar"),
++  "Shared portals must retain a stable compact desktop sidebar contract.",
+ );
+ check(
+-  hardening.includes('main:has([data-vorta-maintenance-portal="true"])') &&
++  hardening.includes('[data-vorta-desktop-sidebar="true"]') &&
+     hardening.includes("min-width: 1360px") &&
+-    !hardening.includes('[class*="text-[7.5px]"]') &&
+-    !hardening.includes('[class*="grid-cols-2"]'),
+-  "Maintenance laptop navigation must use one scoped sibling selector without broad typography or grid rewriting.",
++    !hardening.includes(":has(") &&
++    !hardening.includes("nth-child") &&
++    !hardening.includes('[class*='),
++  "Maintenance laptop navigation must use stable component data attributes rather than rendered Tailwind structure.",
+ );
+ 
+ check(
+   aiOperations.includes("<SkillsMatrixRouteEntry />") &&
++    aiOperations.includes('import("./SkillsMatrixRouteEntry")') &&
+     skillsMatrixRoute.includes('risk === "shift-cover"') &&
+     skillsMatrixRoute.includes("/maintenance/labour-risk/shift-cover") &&
+     !dashboardWrapper.includes("isShiftCoverCard"),
+   "The Dashboard Shift Cover workflow must resolve to the dedicated calendar route.",
+ );
+ check(
+-  browserTest.includes('name: "Shift Cover"') &&
++  browserTest.includes('data-vorta-labour-risk-card="shift-cover"') &&
+     browserTest.includes('name: "Shift Cover Risk"') &&
+     browserTest.includes('name: "Operational Rota Risk Map"') &&
+     browserTest.includes("/maintenance\\/labour-risk\\/shift-cover"),
+@@ -121,8 +127,9 @@ check(
+ check(
+   browserTest.includes('getByLabel("Risk scope"') &&
+     browserTest.includes('name: "Ask Vorta AI"') &&
+-    browserTest.includes("toBeHidden"),
+-  "Browser regression must cover mobile risk scope and duplicate assistant controls.",
++    browserTest.includes("toBeHidden") &&
++    workOrderBrowserTest.includes("originating page"),
++  "Browser regressions must cover mobile risk scope, duplicate assistant controls and same-page work orders.",
+ );
+ check(
+   liveBrowserTest.includes("data-vorta-mobile-rota") &&
+@@ -130,5 +137,31 @@ check(
+     liveBrowserTest.includes("toBeDisabled"),
+   "Live browser regression must cover responsive Shift Cover and mode-aware Equipment navigation.",
+ );
++check(
++  !indexHtml.includes("equipmentDocumentNavigationInterceptor") &&
++    !indexHtml.includes("workforceProfilePhotos") &&
++    !indexHtml.includes(":has(") &&
++    !indexHtml.includes("nth-child"),
++  "The document shell must not patch React output with global interceptors
