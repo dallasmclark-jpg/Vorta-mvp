@@ -22,16 +22,22 @@ jobs:
           ref: agent/audit-remediation-p1-p2
           fetch-depth: 0
 
-      - name: Apply prepared remediation
+      - name: Detect prepared remediation
+        id: prepared
+        shell: bash
+        run: |
+          if [ -f .github/audit-patch.ready ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No prepared audit patch marker is present."
+          fi
+
+      - name: Reconstruct and verify patch
+        if: steps.prepared.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          marker=.github/audit-patch.ready
-          if [ ! -f "$marker" ]; then
-            echo "No prepared audit patch marker is present."
-            exit 0
-          fi
-
           {
             cat .github/audit-patch-part-00
             printf ' '
@@ -39,11 +45,16 @@ jobs:
           } > /tmp/audit-remediation.patch
           echo "846bc1c7844a0466742ad3ef952ed59635801a398a758d519fa7b8da8e85d8a1  /tmp/audit-remediation.patch" | sha256sum --check
           git apply --check --whitespace=fix /tmp/audit-remediation.patch
-          git apply --index --whitespace=fix /tmp/audit-remediation.patch
 
+      - name: Apply source changes
+        if: steps.prepared.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --index --whitespace=fix /tmp/audit-remediation.patch
           rm -f \
             .github/audit-patch-part-* \
-            "$marker" \
+            .github/audit-patch.ready \
             src/lib/equipmentDocumentNavigationInterceptor.ts \
             src/lib/vortaAiFaultIntelligence.ts \
             src/lib/vortaAiGenericFaultBridge.ts \
@@ -54,10 +65,19 @@ jobs:
             src/lib/workforceProfilePhotos.ts \
             src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaults.tsx \
             src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV3.tsx
-
           git add -A
           git diff --cached --check
+
+      - name: Commit source changes
+        if: steps.prepared.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name "vorta-audit-bot"
           git config user.email "actions@users.noreply.github.com"
           git commit -m "Implement Maintenance Manager audit remediation"
-          git push origin HEAD:agent/audit-remediation-p1-p2
+
+      - name: Publish source changes
+        if: steps.prepared.outputs.available == 'true'
+        shell: bash
+        run: git push origin HEAD:agent/audit-remediation-p1-p2
