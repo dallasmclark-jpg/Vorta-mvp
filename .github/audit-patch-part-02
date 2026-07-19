@@ -1,0 +1,523 @@
+atchingSection />} />
+-          <Route
+-            path="settings/pilot-setup"
+-            element={
+-              mayAdministerPilot ? (
+-                <PilotSetupSection />
+-              ) : (
+-                <Navigate to="/dashboard" replace />
+-              )
+-            }
+-          />
+-          <Route
+-            path="settings/data-import"
+-            element={
+-              mayImportSapData ? (
+-                <SapDataImportSection />
+-              ) : (
+-                <Navigate to="/dashboard" replace />
+-              )
+-            }
+-          />
+-          <Route path="settings" element={<SettingsSection />} />
+-          <Route path="equipment" element={<EquipmentSection />} />
+-          <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
+-          <Route
+-            path="equipment/:equipmentId/notifications"
+-            element={<EquipmentNotifications />}
+-          />
+-          <Route
+-            path="equipment/:equipmentId/work-orders"
+-            element={<EquipmentWorkOrders />}
+-          />
+-          <Route path="equipment/:equipmentId/pms" element={<EquipmentPMs />} />
+-          <Route path="equipment/:equipmentId/history" element={<EquipmentHistory />} />
+-          <Route path="equipment/:equipmentId/skills" element={<EquipmentSkills />} />
+-          <Route path="equipment/:equipmentId/spares" element={<EquipmentSpares />} />
+-          <Route
+-            path="equipment/:equipmentId/documents/:documentId"
+-            element={<EquipmentDocumentViewer />}
+-          />
+-          <Route
+-            path="equipment/:equipmentId/documents"
+-            element={<EquipmentDocuments />}
+-          />
+-          <Route
+-            path="equipment/:equipmentId/ai-insights"
+-            element={<EquipmentAiInsights />}
+-          />
+-          <Route path="support" element={<SupportSection />} />
+-          <Route path="design-system" element={<DesignSystemSection />} />
+-          <Route
+-            path="maintenance/labour-risk/shift-cover"
+-            element={<ShiftCoverPageEntry />}
+-          />
+-          <Route
+-            path="maintenance/labour-risk/:riskType"
+-            element={<LabourRiskDetailPage />}
+-          />
+-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+-        </Routes>
++        <Suspense fallback={<RouteLoader />}>
++          <Routes>
++            <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
++            <Route path="pilot-impact" element={<PilotImpactSection />} />
++            <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
++            <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
++            <Route path="engineers" element={<EngineersSection />} />
++            <Route path="career" element={<CareerSection />} />
++            <Route path="requirements" element={<RequirementsSection />} />
++            <Route path="training" element={<TrainingSection />} />
++            <Route path="training-providers" element={<TrainingProvidersSection />} />
++            <Route path="ai-matching" element={<AiMatchingSection />} />
++            <Route
++              path="settings/pilot-setup"
++              element={
++                mayAdministerPilot ? (
++                  <PilotSetupSection />
++                ) : (
++                  <Navigate to="/dashboard" replace />
++                )
++              }
++            />
++            <Route
++              path="settings/data-import"
++              element={
++                mayImportSapData ? (
++                  <SapDataImportSection />
++                ) : (
++                  <Navigate to="/dashboard" replace />
++                )
++              }
++            />
++            <Route path="settings" element={<SettingsSection />} />
++            <Route path="equipment" element={<EquipmentSection />} />
++            <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
++            <Route
++              path="equipment/:equipmentId/notifications"
++              element={<EquipmentNotifications />}
++            />
++            <Route
++              path="equipment/:equipmentId/work-orders"
++              element={<EquipmentWorkOrders />}
++            />
++            <Route path="equipment/:equipmentId/pms" element={<EquipmentPMs />} />
++            <Route path="equipment/:equipmentId/history" element={<EquipmentHistory />} />
++            <Route path="equipment/:equipmentId/skills" element={<EquipmentSkills />} />
++            <Route path="equipment/:equipmentId/spares" element={<EquipmentSpares />} />
++            <Route
++              path="equipment/:equipmentId/documents/:documentId"
++              element={<EquipmentDocumentViewer />}
++            />
++            <Route
++              path="equipment/:equipmentId/documents"
++              element={<EquipmentDocuments />}
++            />
++            <Route
++              path="equipment/:equipmentId/ai-insights"
++              element={<EquipmentAiInsights />}
++            />
++            <Route path="support" element={<SupportSection />} />
++            <Route path="design-system" element={<DesignSystemSection />} />
++            <Route
++              path="maintenance/labour-risk/shift-cover"
++              element={<ShiftCoverPageEntry />}
++            />
++            <Route
++              path="maintenance/labour-risk/:riskType"
++              element={<LabourRiskDetailPage />}
++            />
++            <Route path="*" element={<Navigate to="/dashboard" replace />} />
++          </Routes>
++        </Suspense>
+       </MaintenanceAiWorkOrderExperience>
+     </PortalShell>
+   );
+diff --git a/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx b/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
+index 3c954be..f405496 100644
+--- a/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
++++ b/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
+@@ -1464,11 +1464,15 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
+ 
+ interface GlobalMaintenanceAiAssistantProps {
+   role?: VortaAiRole;
++  showLauncher?: boolean;
++  shouldHandlePrompt?: (question: string) => boolean;
+ }
+ 
+ export function GlobalMaintenanceAiAssistant({
+   role = "maintenance-manager",
+-}: GlobalMaintenanceAiAssistantProps): JSX.Element {
++  showLauncher = true,
++  shouldHandlePrompt,
++}: GlobalMaintenanceAiAssistantProps): JSX.Element | null {
+   const roleProfile = getRoleProfile(role);
+ 
+   const [open, setOpen] = useState(false);
+@@ -2124,6 +2128,10 @@ export function GlobalMaintenanceAiAssistant({
+       const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
+       const question = detail?.question?.trim() ?? "";
+ 
++      if (question && shouldHandlePrompt && !shouldHandlePrompt(question)) {
++        return;
++      }
++
+       setOpen(true);
+       setMinimised(false);
+ 
+@@ -2147,7 +2155,7 @@ export function GlobalMaintenanceAiAssistant({
+     return () => {
+       window.removeEventListener("vorta-global-ai-prompt", handlePromptEvent);
+     };
+-  }, []);
++  }, [roleProfile.role, shouldHandlePrompt]);
+ 
+   useEffect(() => {
+     if (!open || !contextReady || !pendingPrompt) return;
+@@ -2159,9 +2167,12 @@ export function GlobalMaintenanceAiAssistant({
+   }, [open, contextReady, pendingPrompt]);
+ 
+   if (!open) {
++    if (!showLauncher) return null;
++
+     return (
+       <button
+         type="button"
++        aria-label="Ask Vorta AI"
+         onClick={() => {
+           setOpen(true);
+           setMinimised(false);
+diff --git a/src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx b/src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx
+index 8818890..b57b38a 100644
+--- a/src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx
++++ b/src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx
+@@ -54,40 +54,10 @@ interface GlobalAiPromptEventDetail {
+   role?: VortaAiRole;
+ }
+ 
+-const FAULT_PROMPT_EVENT = "vorta-global-ai-fault-prompt-v2";
+-const ROUTER_MARKER = "vortaFaultPromptRouterV2";
+-
+-function installFaultPromptRouter(): void {
+-  if (typeof window === "undefined") return;
+-
+-  const root = document.documentElement;
+-  if (root.dataset[ROUTER_MARKER] === "true") return;
+-  root.dataset[ROUTER_MARKER] = "true";
+-
+-  window.addEventListener(
+-    "vorta-global-ai-prompt",
+-    (event) => {
+-      const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
+-      const question = detail?.question?.trim() ?? "";
+-      if (!detail?.submit || !question || !isFaultQuestion(question)) return;
+-
+-      event.stopImmediatePropagation();
+-      document
+-        .querySelector<HTMLButtonElement>(
+-          'button[aria-label="Close global assistant"]:not([data-vorta-fault-close="true"])',
+-        )
+-        ?.click();
+-
+-      window.queueMicrotask(() => {
+-        window.dispatchEvent(new CustomEvent(FAULT_PROMPT_EVENT, { detail }));
+-      });
+-    },
+-    true,
+-  );
++function shouldHandleGeneralPrompt(question: string): boolean {
++  return !isFaultQuestion(question);
+ }
+ 
+-installFaultPromptRouter();
+-
+ function initials(name: string): string {
+   return name
+     .split(/\s+/)
+@@ -626,7 +596,12 @@ function FaultIntelligenceDrawer({
+     const handleFaultPrompt = (event: Event) => {
+       const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
+       const nextQuestion = detail?.question?.trim() ?? "";
+-      if (!nextQuestion) return;
++      if (!detail?.submit || !nextQuestion) return;
++
++      if (!isFaultQuestion(nextQuestion)) {
++        setOpen(false);
++        return;
++      }
+ 
+       if (detail?.role && detail.role !== role) {
+         console.warn("Fault intelligence received a prompt for a different role.");
+@@ -638,23 +613,10 @@ function FaultIntelligenceDrawer({
+       void runQuestion(nextQuestion);
+     };
+ 
+-    window.addEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
+-    return () => window.removeEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
+-  }, [role, runQuestion]);
+-
+-  useEffect(() => {
+-    const closeForGeneralPrompt = (event: Event) => {
+-      const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
+-      const nextQuestion = detail?.question?.trim() ?? "";
+-      if (detail?.submit && nextQuestion && !isFaultQuestion(nextQuestion)) {
+-        setOpen(false);
+-      }
+-    };
+-
+-    window.addEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
++    window.addEventListener("vorta-global-ai-prompt", handleFaultPrompt);
+     return () =>
+-      window.removeEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
+-  }, []);
++      window.removeEventListener("vorta-global-ai-prompt", handleFaultPrompt);
++  }, [role, runQuestion]);
+ 
+   const actions = useMemo(() => {
+     if (!result) return [];
+@@ -956,14 +918,20 @@ function FaultIntelligenceDrawer({
+ 
+ interface GlobalMaintenanceAiAssistantWithFaultsV2Props {
+   role?: VortaAiRole;
++  showLauncher?: boolean;
+ }
+ 
+ export function GlobalMaintenanceAiAssistantWithFaultsV2({
+   role = "maintenance-manager",
++  showLauncher = true,
+ }: GlobalMaintenanceAiAssistantWithFaultsV2Props): JSX.Element {
+   return (
+     <>
+-      <GlobalMaintenanceAiAssistant role={role} />
++      <GlobalMaintenanceAiAssistant
++        role={role}
++        showLauncher={showLauncher}
++        shouldHandlePrompt={shouldHandleGeneralPrompt}
++      />
+       <FaultIntelligenceDrawer role={role} />
+     </>
+   );
+diff --git a/src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx b/src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx
+index c6c0208..0803f05 100644
+--- a/src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx
++++ b/src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx
+@@ -59,6 +59,9 @@ export function MaintenanceAiWorkOrderExperience({
+ }: PropsWithChildren): JSX.Element {
+   const { siteContext } = useAuth();
+   const location = useLocation();
++  const showAssistantLauncher =
++    location.pathname !== "/dashboard" &&
++    !/^\/equipment\/[^/]+(?:\/|$)/.test(location.pathname);
+ 
+   useEffect(() => {
+     warmMaintenancePortalDataFast();
+@@ -177,24 +180,12 @@ export function MaintenanceAiWorkOrderExperience({
+       onFocusCapture={handleNavigationIntent}
+       onClickCapture={trackRecommendationFollowThrough}
+     >
+-      <style>{`
+-        [data-vorta-maintenance-portal="true"] div[role="button"][aria-expanded] button:first-of-type,
+-        [data-vorta-maintenance-portal="true"] [aria-label="Equipment sections"] button {
+-          min-height: 2.5rem;
+-          display: flex;
+-          align-items: center;
+-        }
+-
+-        [data-vorta-maintenance-portal="true"]:has([data-vorta-embedded-ai="true"])
+-          > button.fixed.bottom-4.right-4,
+-        [data-vorta-maintenance-portal="true"]:has(input[placeholder^="Ask Vorta about"])
+-          > button.fixed.bottom-4.right-4 {
+-          display: none !important;
+-        }
+-      `}</style>
+       <DataTrustBanner />
+       {children}
+-      <GlobalMaintenanceAiAssistantWithFaultsV2 role="maintenance-manager" />
++      <GlobalMaintenanceAiAssistantWithFaultsV2
++        role="maintenance-manager"
++        showLauncher={showAssistantLauncher}
++      />
+       <MaintenanceWorkOrderExecutionOverlay />
+       <MaintenancePortalHardening />
+       <MaintenanceActionEvidenceHardening />
+diff --git a/src/screens/AiOperations/MaintenanceDashboardExperience.tsx b/src/screens/AiOperations/MaintenanceDashboardExperience.tsx
+index 5f0167d..7aa6c4b 100644
+--- a/src/screens/AiOperations/MaintenanceDashboardExperience.tsx
++++ b/src/screens/AiOperations/MaintenanceDashboardExperience.tsx
+@@ -8,11 +8,6 @@ export function MaintenanceDashboardExperience(): JSX.Element {
+           min-height: 2.5rem;
+         }
+ 
+-        [data-vorta-maintenance-portal="true"]:has([data-vorta-dashboard-root="true"])
+-          > button.fixed.bottom-4.right-4 {
+-          display: none !important;
+-        }
+-
+         @media (min-width: 1280px) {
+           [data-vorta-dashboard-root="true"] [aria-label="Risk reduction KPI cards"] {
+             display: grid !important;
+diff --git a/src/screens/AiOperations/riskActionRouting.ts b/src/screens/AiOperations/riskActionRouting.ts
+new file mode 100644
+index 0000000..673cd0d
+--- /dev/null
++++ b/src/screens/AiOperations/riskActionRouting.ts
+@@ -0,0 +1,23 @@
++import type {
++  RiskActionTarget,
++  SiteRiskReductionAction,
++} from "../Equipment/equipmentService";
++
++const TARGET_ROUTE: Record<RiskActionTarget, string> = {
++  spares: "spares",
++  skills: "skills",
++  calibrations: "pms",
++  "work-orders": "work-orders",
++  overview: "overview",
++};
++
++export function getRiskPlanActionRoute(
++  equipmentId: string,
++  action: Pick<SiteRiskReductionAction, "target">,
++): string {
++  const route = TARGET_ROUTE[action.target];
++  const base = `/equipment/${encodeURIComponent(equipmentId)}/${route}`;
++  return action.target === "skills"
++    ? `${base}?from=dashboard&returnTo=%2Fdashboard`
++    : base;
++}
+diff --git a/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardEvidenceNotice.tsx b/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardEvidenceNotice.tsx
+new file mode 100644
+index 0000000..cf0cd0b
+--- /dev/null
++++ b/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardEvidenceNotice.tsx
+@@ -0,0 +1,81 @@
++import { Info, X } from "lucide-react";
++
++export type DashboardEvidenceState =
++  | "loading"
++  | "current"
++  | "stale"
++  | "unavailable";
++
++interface DashboardEvidenceNoticeProps {
++  state: DashboardEvidenceState;
++  error: string | null;
++  warnings: string[];
++  lastSuccessfulSnapshotLabel: string | null;
++}
++
++export function DashboardEvidenceNotice({
++  state,
++  error,
++  warnings,
++  lastSuccessfulSnapshotLabel,
++}: DashboardEvidenceNoticeProps): JSX.Element | null {
++  if (!error && warnings.length === 0) return null;
++
++  return (
++    <div className="contents">
++      {error && (
++        <div
++          role="alert"
++          aria-live="assertive"
++          data-vorta-dashboard-evidence-state={state}
++          className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
++            state === "stale"
++              ? "border-amber-500/30 bg-amber-500/[0.07]"
++              : "border-red-500/25 bg-red-500/5"
++          }`}
++        >
++          <X
++            className={`mt-0.5 h-4 w-4 shrink-0 ${
++              state === "stale" ? "text-amber-300" : "text-red-400"
++            }`}
++            aria-hidden="true"
++          />
++          <div className="min-w-0">
++            <p
++              className={`text-sm font-semibold ${
++                state === "stale" ? "text-amber-200" : "text-red-300"
++              }`}
++            >
++              {error}
++            </p>
++            {lastSuccessfulSnapshotLabel && (
++              <p className="mt-1 text-xs text-slate-400">
++                Last successful operational snapshot: {lastSuccessfulSnapshotLabel}
++              </p>
++            )}
++          </div>
++        </div>
++      )}
++
++      {warnings.length > 0 && (
++        <div
++          role="status"
++          aria-live="polite"
++          className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.05] px-4 py-3"
++        >
++          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
++          <div>
++            <p className="text-sm font-semibold text-amber-200">
++              Some secondary intelligence is unavailable
++            </p>
++            <ul className="mt-1 space-y-1 text-xs leading-5 text-slate-400">
++              {warnings.map((warning) => (
++                <li key={warning}>• {warning}</li>
++              ))}
++            </ul>
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx b/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
+index 06dfdf2..f7f977c 100644
+--- a/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
++++ b/src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx
+@@ -22,7 +22,7 @@ import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
+ import type { DashboardFreshness } from "../../../../lib/runtimeContracts";
+ import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
+ import {
+-  getAreaInterventionPlans,
++  getAreaInterventionPlansStrict,
+   getSiteRiskReductionPlan,
+   getAreaEquipmentRiskReductionPlan,
+   getOperationalDashboardSnapshot,
+@@ -38,10 +38,16 @@ import {
+   type RiskReductionKpiDashboard,
+   type RiskKpiPeriodKey,
+   type RiskDashboardScope,
+-  type RiskDashboardLabourCard,
+   type RiskDashboardScopePlanCache,
+   type RiskDashboardScopeKpiCache,
+ } from "../../../Equipment/equipmentService";
++import { getRiskPlanActionRoute } from "../../riskActionRouting";
++import { RiskMeter } from "./RiskMeter";
++import { LabourRiskSection } from "./LabourRiskSection";
++import {
++  DashboardEvidenceNotice,
++  type DashboardEvidenceState,
++} from "./DashboardEvidenceNotice";
+ 
+ const formatSiteRisk = (value: number): string =>
+   Number(value).toFixed(1);
+@@ -63,6 +69,19 @@ const formatFreshness = (value: string | null): string => {
+   }).format(new Date(timestamp));
+ };
+ 
++const formatSnapshotTimestamp = (value: string | null): string => {
++  if (!value) return "No successful snapshot recorded";
++  const timestamp = new Date(value);
++  if (!Number.isFinite(timestamp.getTime())) return "Snapshot timestamp unavailable";
++  return new Intl.DateTimeFormat("en-GB", {
++    day: "numeric",
++    month: "short",
++    year: "numeric",
++    hour: "2-digit",
++    minute: "2-digit",
++  }).format(timestamp);
++};
++
+ const parseDateOnly = (value: string
