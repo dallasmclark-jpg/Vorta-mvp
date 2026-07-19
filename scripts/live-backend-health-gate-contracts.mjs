@@ -5,7 +5,7 @@ const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const gate = read("scripts/live-demo-backend-health.mjs");
-const workflow = read(".github/workflows/maintenance-manager-quality.yml");
+const packageJson = JSON.parse(read("package.json"));
 
 for (const expected of [
   "signInWithPassword",
@@ -25,21 +25,35 @@ for (const expected of [
 assert.doesNotMatch(gate, /supabase\s*\.\s*from\s*\(/);
 assert.doesNotMatch(gate, /vorta_(refresh|recalculate|sync)_/);
 assert.doesNotMatch(gate, /\.(insert|update|upsert|delete)\s*\(/);
-
-for (const expected of [
-  "Run authenticated live backend health gate",
-  "node scripts/live-demo-backend-health.mjs",
-  "live-backend-health.log",
-  "live-backend-health-report",
-  "Enforce live backend health result",
-]) {
-  assert.ok(workflow.includes(expected), `Release workflow is missing: ${expected}`);
-}
-
-const healthStep = workflow.indexOf("Run authenticated live backend health gate");
-const browserInstall = workflow.indexOf(
-  "Install browser-test runner without changing the lockfile",
+assert.ok(
+  packageJson.scripts["test:contracts"].includes(
+    "node scripts/live-backend-health-gate-contracts.mjs",
+  ),
+  "The protected contract gate must invoke live backend health contracts",
 );
-assert.ok(healthStep > 0 && healthStep < browserInstall);
 
-console.log("Live backend health gate contracts passed.");
+const hasMaintenanceTestContext = Boolean(
+  process.env.VORTA_E2E_EMAIL ||
+    process.env.VORTA_E2E_SITE_ID ||
+    process.env.VORTA_E2E_PASSWORD,
+);
+
+if (hasMaintenanceTestContext) {
+  for (const name of [
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
+    "VORTA_E2E_EMAIL",
+    "VORTA_E2E_PASSWORD",
+    "VORTA_E2E_SITE_ID",
+  ]) {
+    assert.ok(
+      String(process.env[name] ?? "").trim(),
+      `${name} is required when the authenticated Maintenance Manager test context is configured`,
+    );
+  }
+
+  await import("./live-demo-backend-health.mjs");
+  console.log("Authenticated live backend health gate passed.");
+} else {
+  console.log("Live backend health structure passed; authenticated check is reserved for the protected Maintenance Manager CI context.");
+}
