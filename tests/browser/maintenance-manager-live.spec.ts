@@ -53,8 +53,11 @@ test("live Equipment routes remain active-site scoped and preserve Ask Vorta", a
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Ask Vorta", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
+  const closeAssistant = page.getByRole("button", { name: "Close global assistant" });
+  await expect(closeAssistant).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/equipment/${equipmentId}/spares$`));
+  await closeAssistant.click();
+  await expect(closeAssistant).toBeHidden();
 
   await sections.getByRole("button", { name: "AI Insights", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
