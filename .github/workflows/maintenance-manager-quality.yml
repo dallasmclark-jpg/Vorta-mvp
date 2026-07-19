@@ -49,7 +49,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: maintenance-manager-quality-${{ github.event.pull_request.number || github.sha }}
+  group: maintenance-manager-quality-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
