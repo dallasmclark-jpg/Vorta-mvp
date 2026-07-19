@@ -95,12 +95,13 @@ assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
 assert.match(liveBrowserTest, /Close global assistant/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
+assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
 
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(validateMode, /context !== "production"/);
 assert.match(validateMode, /Missing configuration is not treated as live/);
 assert.match(releaseGate, /20 \* 60_000/);
-assert.match(qualityWorkflow, /github\.event\.pull_request\.number \|\| github\.sha/);
+assert.match(qualityWorkflow, /group: maintenance-manager-quality-\$\{\{ github\.sha \}\}/);
 assert.match(qualityWorkflow, /cancel-in-progress: false/);
 assert.match(qualityWorkflow, /--project=desktop-1920/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: demo/);
