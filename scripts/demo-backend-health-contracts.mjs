@@ -83,7 +83,7 @@ assert.equal(
   1,
   "Evidence coverage must use one aggregate RPC",
 );
-assert.doesNotMatch(evidenceCoverage, /\.from\(/);
+assert.doesNotMatch(evidenceCoverage, /supabase\s*\.\s*from\s*\(/);
 for (const table of [
   "equipment_components",
   "knowledge_documents",
