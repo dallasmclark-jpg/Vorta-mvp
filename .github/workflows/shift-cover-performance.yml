@@ -1,0 +1,28 @@
+name: Shift Cover performance
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/shift-cover-performance-contracts.mjs"
+      - ".github/workflows/shift-cover-performance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance-contracts:
+    name: Shift Cover performance contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify set-based Shift Cover query
+        run: node scripts/shift-cover-performance-contracts.mjs
