@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
+const VISUAL_EQUIPMENT_ID = "40000000-0000-0000-0000-000000000007";
+
 async function settleVisualPage(page: Page): Promise<void> {
   await page.addStyleTag({
     content: `
@@ -43,18 +45,12 @@ test("Maintenance Manager priority pages retain their approved responsive layout
   await expect(page.getByRole("heading", { name: /Skills Matrix/i }).first()).toBeVisible();
   await capture(page, "skills-matrix");
 
-  await page.goto("/equipment");
-  await expect(page.getByRole("heading", { name: "Equipment", exact: true })).toBeVisible();
-  const equipmentButton = page
-    .locator('div[role="button"][aria-expanded] button')
-    .first();
-  await expect(equipmentButton).toBeVisible();
-  await equipmentButton.click();
-  await page.waitForURL(/\/equipment\/[^/]+\/overview/);
+  // Visual baselines must target a named fixture, not whichever asset currently ranks first by risk.
+  await page.goto(`/equipment/${VISUAL_EQUIPMENT_ID}/overview`);
+  await page.waitForURL(`/equipment/${VISUAL_EQUIPMENT_ID}/overview`);
   await capture(page, "equipment-overview");
 
-  const equipmentId = page.url().match(/\/equipment\/([^/]+)\/overview/)?.[1] ?? "";
-  await page.goto(`/equipment/${equipmentId}/work-orders`);
+  await page.goto(`/equipment/${VISUAL_EQUIPMENT_ID}/work-orders`);
   await expect(
     page.getByRole("heading", { name: "Complete equipment work history" }),
   ).toBeVisible();
