@@ -49,28 +49,16 @@ export interface ShiftCoverSnapshot {
   completeness: ShiftCoverCompleteness;
 }
 
-interface RawShiftCoverCalendarItem {
-  shift_date?: unknown;
-  shift_type?: unknown;
-  team_names?: unknown;
-  engineer_names?: unknown;
-  scheduled_engineer_count?: unknown;
-  contractor_engineer_count?: unknown;
-  labour_risk_score?: unknown;
-  labour_risk_level?: unknown;
-  coverage_status?: unknown;
-  equipment_with_missing_cover?: unknown;
-  missing_skill_count?: unknown;
-}
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
-interface RawShiftCoverTeamSummary {
-  id?: unknown;
-  code?: unknown;
-  name?: unknown;
-  pattern_type?: unknown;
-  cycle_offset?: unknown;
-  member_count?: unknown;
-}
+const read = (
+  record: Record<string, unknown>,
+  camelCaseKey: string,
+  snakeCaseKey: string,
+): unknown => record[camelCaseKey] ?? record[snakeCaseKey];
 
 const toStringArray = (value: unknown): string[] =>
   Array.isArray(value)
@@ -104,34 +92,65 @@ const toCoverageStatus = (value: unknown): ShiftCoverageStatus => {
   return "gap";
 };
 
-function parseCalendarItem(
-  value: RawShiftCoverCalendarItem,
-): ShiftCoverCalendarItem {
+function parseCalendarItem(value: unknown): ShiftCoverCalendarItem {
+  const record = toRecord(value);
+
   return {
-    shiftDate: String(value.shift_date ?? ""),
-    shiftType: toShiftType(value.shift_type),
-    teamNames: toStringArray(value.team_names),
-    engineerNames: toStringArray(value.engineer_names),
-    scheduledEngineerCount: toNumber(value.scheduled_engineer_count),
-    contractorEngineerCount: toNumber(value.contractor_engineer_count),
-    labourRiskScore: toNumber(value.labour_risk_score),
-    labourRiskLevel: String(value.labour_risk_level ?? "Unavailable"),
-    coverageStatus: toCoverageStatus(value.coverage_status),
-    equipmentWithMissingCover: toNumber(value.equipment_with_missing_cover),
-    missingSkillCount: toNumber(value.missing_skill_count),
+    shiftDate: String(read(record, "shiftDate", "shift_date") ?? ""),
+    shiftType: toShiftType(read(record, "shiftType", "shift_type")),
+    teamNames: toStringArray(read(record, "teamNames", "team_names")),
+    engineerNames: toStringArray(
+      read(record, "engineerNames", "engineer_names"),
+    ),
+    scheduledEngineerCount: toNumber(
+      read(
+        record,
+        "scheduledEngineerCount",
+        "scheduled_engineer_count",
+      ),
+    ),
+    contractorEngineerCount: toNumber(
+      read(
+        record,
+        "contractorEngineerCount",
+        "contractor_engineer_count",
+      ),
+    ),
+    labourRiskScore: toNumber(
+      read(record, "labourRiskScore", "labour_risk_score"),
+    ),
+    labourRiskLevel: String(
+      read(record, "labourRiskLevel", "labour_risk_level") ??
+        "Unavailable",
+    ),
+    coverageStatus: toCoverageStatus(
+      read(record, "coverageStatus", "coverage_status"),
+    ),
+    equipmentWithMissingCover: toNumber(
+      read(
+        record,
+        "equipmentWithMissingCover",
+        "equipment_with_missing_cover",
+      ),
+    ),
+    missingSkillCount: toNumber(
+      read(record, "missingSkillCount", "missing_skill_count"),
+    ),
   };
 }
 
-function parseTeam(
-  value: RawShiftCoverTeamSummary,
-): ShiftCoverTeamSummary {
+function parseTeam(value: unknown): ShiftCoverTeamSummary {
+  const record = toRecord(value);
+
   return {
-    id: String(value.id ?? ""),
-    code: String(value.code ?? ""),
-    name: String(value.name ?? "Unnamed team"),
-    patternType: String(value.pattern_type ?? "unknown"),
-    cycleOffset: toNumber(value.cycle_offset),
-    memberCount: toNumber(value.member_count),
+    id: String(record.id ?? ""),
+    code: String(record.code ?? ""),
+    name: String(record.name ?? "Unnamed team"),
+    patternType: String(
+      read(record, "patternType", "pattern_type") ?? "unknown",
+    ),
+    cycleOffset: toNumber(read(record, "cycleOffset", "cycle_offset")),
+    memberCount: toNumber(read(record, "memberCount", "member_count")),
   };
 }
 
@@ -163,19 +182,12 @@ export async function getShiftCoverSnapshot(
 
   const payload = data as Record<string, unknown>;
   const calendar = Array.isArray(payload.calendar)
-    ? payload.calendar.map((item) =>
-        parseCalendarItem(item as RawShiftCoverCalendarItem),
-      )
+    ? payload.calendar.map(parseCalendarItem)
     : [];
   const teams = Array.isArray(payload.teams)
-    ? payload.teams.map((item) =>
-        parseTeam(item as RawShiftCoverTeamSummary),
-      )
+    ? payload.teams.map(parseTeam)
     : [];
-  const rawCompleteness =
-    payload.completeness && typeof payload.completeness === "object"
-      ? (payload.completeness as Record<string, unknown>)
-      : {};
+  const rawCompleteness = toRecord(payload.completeness);
 
   return {
     mode: "live",
