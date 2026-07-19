@@ -137,7 +137,10 @@ assert.doesNotMatch(
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(validateMode, /context !== "production"/);
 assert.match(validateMode, /Missing configuration is not treated as live/);
-assert.match(releaseGate, /20 \* 60_000/);
+assert.match(releaseGate, /pollIntervalMs = 60_000/);
+assert.match(releaseGate, /timeoutMs = 50 \* 60_000/);
+assert.match(releaseGate, /x-ratelimit-remaining/);
+assert.doesNotMatch(releaseGate, /pollIntervalMs = 10_000/);
 assert.match(qualityWorkflow, /group: maintenance-manager-quality-\$\{\{ github\.sha \}\}/);
 assert.match(qualityWorkflow, /cancel-in-progress: false/);
 assert.match(qualityWorkflow, /--project=desktop-1920/);
