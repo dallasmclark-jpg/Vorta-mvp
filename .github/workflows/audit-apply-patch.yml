@@ -21,6 +21,7 @@ jobs:
         with:
           ref: agent/audit-remediation-p1-p2
           fetch-depth: 0
+          show-progress: false
 
       - name: Detect prepared remediation
         id: prepared
@@ -78,6 +79,23 @@ jobs:
           git commit -m "Implement Maintenance Manager audit remediation"
 
       - name: Publish source changes
+        id: publish
         if: steps.prepared.outputs.available == 'true'
+        continue-on-error: true
         shell: bash
-        run: git push origin HEAD:agent/audit-remediation-p1-p2
+        run: |
+          set -o pipefail
+          git push origin HEAD:agent/audit-remediation-p1-p2 2>&1 | tee /tmp/audit-push.log
+
+      - name: Preserve push rejection
+        if: steps.publish.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-push-rejection
+          path: /tmp/audit-push.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce publication result
+        if: steps.publish.outcome == 'failure'
+        run: exit 1
