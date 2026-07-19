@@ -4,26 +4,68 @@ import {
   Database,
   RefreshCw,
   Search,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
+import { openMaintenanceAiAssistant } from "../../lib/maintenanceActions";
 import { EquipmentAiInsights } from "./EquipmentAiInsights";
+import { EquipmentDocumentViewer } from "./EquipmentDocumentViewer";
+import { EquipmentNotifications } from "./EquipmentNotifications";
 import { EquipmentOverview } from "./EquipmentOverview";
-import { EquipmentOverviewLive } from "./EquipmentOverviewLive";
+import { EquipmentPMs } from "./EquipmentPMs";
 import { EquipmentSection } from "./EquipmentSection";
+import { EquipmentSkills } from "./EquipmentSkills";
 import { EquipmentSpares } from "./EquipmentSpares";
-import type { EquipmentListItem } from "./equipmentService";
 import {
-  loadLiveEquipmentComponents,
+  EquipmentDocumentsEntry,
+  EquipmentHistoryEntry,
+} from "./EquipmentTrustedEntries";
+import { EquipmentWorkOrdersWithAiNavigation } from "./EquipmentWorkOrdersWithAiNavigation";
+import {
+  LiveEquipmentCalibrationsView,
+  LiveEquipmentNotificationsView,
+  LiveEquipmentOverviewView,
+  LiveEquipmentSkillsView,
+  LiveEquipmentSparesView,
+  LiveEquipmentUnavailableView,
+  LiveEquipmentWorkOrdersView,
+} from "./EquipmentLiveEvidenceViews";
+import {
   loadLiveEquipmentList,
-  loadLiveEquipmentRiskProfile,
+  loadLiveEquipmentRecord,
   type LiveDataState,
   type LiveEquipmentListPayload,
+  type LiveEquipmentRecord,
 } from "./equipmentLiveTrust";
+import type { EquipmentListItem } from "./equipmentService";
+
+interface RoutedMaintenanceAiPrompt {
+  commandId: string;
+  question: string;
+  submit: true;
+  role: "maintenance-manager";
+}
+
+interface EquipmentRouteState {
+  vortaMaintenanceAiPrompt?: RoutedMaintenanceAiPrompt;
+}
+
+const deliveredPromptCommands = new Set<string>();
 
 function riskTone(level: EquipmentListItem["riskLevel"]): string {
   if (level === "Critical") return "border-red-500/30 bg-red-500/10 text-red-300";
@@ -31,6 +73,29 @@ function riskTone(level: EquipmentListItem["riskLevel"]): string {
   if (level === "Medium") return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
   if (level === "Low") return "border-lime-500/30 bg-lime-500/10 text-lime-300";
   return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+}
+
+function createPromptCommandId(equipmentId: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${equipmentId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function RoutedPromptDelivery({ children }: { children: ReactNode }): JSX.Element {
+  const location = useLocation();
+  const routeState = location.state as EquipmentRouteState | null;
+  const prompt = routeState?.vortaMaintenanceAiPrompt;
+
+  useEffect(() => {
+    if (!prompt?.commandId || deliveredPromptCommands.has(prompt.commandId)) return;
+    deliveredPromptCommands.add(prompt.commandId);
+    window.queueMicrotask(() => {
+      openMaintenanceAiAssistant(prompt);
+    });
+  }, [prompt]);
+
+  return <>{children}</>;
 }
 
 function EvidenceState({
@@ -69,9 +134,7 @@ function EvidenceState({
             >
               {title}
             </h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-300">
-              {message}
-            </p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-300">{message}</p>
             <p className="mt-2 text-xs text-slate-500">
               No demonstration record, generated score or optimistic percentage has been substituted.
             </p>
@@ -92,7 +155,18 @@ function EvidenceState({
   );
 }
 
-function LiveEquipmentSection(): JSX.Element {
+function LoadingState({ label }: { label: string }): JSX.Element {
+  return (
+    <section className="flex min-h-[60vh] items-center justify-center">
+      <span className="inline-flex items-center gap-2 text-sm text-slate-400">
+        <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
+        {label}
+      </span>
+    </section>
+  );
+}
+
+function LiveEquipmentSection({ siteId }: { siteId: string }): JSX.Element {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -100,9 +174,9 @@ function LiveEquipmentSection(): JSX.Element {
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
-    setState(await loadLiveEquipmentList());
+    setState(await loadLiveEquipmentList(siteId));
     setLoading(false);
-  }, []);
+  }, [siteId]);
 
   useEffect(() => {
     void load();
@@ -121,14 +195,7 @@ function LiveEquipmentSection(): JSX.Element {
   }, [items, query]);
 
   if (loading && !state) {
-    return (
-      <section className="flex min-h-[60vh] items-center justify-center">
-        <span className="inline-flex items-center gap-2 text-sm text-slate-400">
-          <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
-          Loading verified equipment risk records…
-        </span>
-      </section>
-    );
+    return <LoadingState label="Loading active-site equipment risk records…" />;
   }
 
   if (state && state.status !== "ready") {
@@ -143,21 +210,27 @@ function LiveEquipmentSection(): JSX.Element {
   }
 
   return (
-    <section className="flex w-full flex-col gap-5 px-4 pb-12 pt-5 md:px-6 xl:px-8">
+    <section
+      className="flex w-full flex-col gap-5 px-4 pb-12 pt-5 md:px-6 xl:px-8"
+      data-vorta-live-equipment-list="true"
+      data-vorta-active-site={siteId}
+    >
       <header className="flex flex-col gap-4 border-b border-gray-800 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-slate-50">Equipment</h1>
             <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold tracking-[0.12em] text-emerald-300">
-              VERIFIED RISK RECORDS
+              ACTIVE-SITE VERIFIED
             </span>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Site-authorised assets with stored risk profiles. Equipment without calculated evidence is withheld.
+            Current equipment risk records explicitly scoped to the authorised active site.
           </p>
-          {state?.status === "ready" && state.data.excludedWithoutRiskProfile > 0 ? (
+          {state?.status === "ready" &&
+          (state.data.excludedWithoutRiskProfile > 0 ||
+            state.data.excludedInvalidRiskProfile > 0) ? (
             <p className="mt-2 text-xs text-amber-300">
-              {state.data.excludedWithoutRiskProfile} equipment record{state.data.excludedWithoutRiskProfile === 1 ? " is" : "s are"} awaiting a verified risk profile.
+              {state.data.excludedWithoutRiskProfile} awaiting a risk profile · {state.data.excludedInvalidRiskProfile} withheld because evidence is invalid or stale.
             </p>
           ) : null}
         </div>
@@ -186,53 +259,29 @@ function LiveEquipmentSection(): JSX.Element {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((item) => (
-          <article
-            key={item.id}
-            className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] p-5"
-          >
+          <article key={item.id} className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-slate-100">{item.name}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {item.assetNumber} · {item.area}
-                </p>
+                <p className="mt-1 text-xs text-slate-500">{item.assetNumber} · {item.area}</p>
               </div>
               <span className={`rounded-md border px-2 py-1 text-xs font-bold ${riskTone(item.riskLevel)}`}>
                 {item.riskScore.toFixed(1)}
               </span>
             </div>
-
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                <p className="text-lg font-bold text-slate-100">{item.openWorkOrderCount}</p>
-                <p className="text-[11px] text-slate-500">Open WOs</p>
-              </div>
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                <p className="text-lg font-bold text-orange-300">{item.overduePmCount}</p>
-                <p className="text-[11px] text-slate-500">Overdue PMs</p>
-              </div>
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                <p className="text-lg font-bold text-cyan-300">{item.calibrationOverdueCount}</p>
-                <p className="text-[11px] text-slate-500">Calibrations</p>
-              </div>
+              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2"><p className="text-lg font-bold text-slate-100">{item.openWorkOrderCount}</p><p className="text-[11px] text-slate-500">Open WOs</p></div>
+              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2"><p className="text-lg font-bold text-orange-300">{item.overduePmCount}</p><p className="text-[11px] text-slate-500">Overdue PMs</p></div>
+              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2"><p className="text-lg font-bold text-cyan-300">{item.calibrationOverdueCount}</p><p className="text-[11px] text-slate-500">Calibrations</p></div>
             </div>
-
-            <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Stored risk drivers</p>
-              {item.breakdown.length > 0 ? (
-                <div className="mt-2 space-y-2">
-                  {item.breakdown.slice(0, 3).map((driver) => (
-                    <div key={driver.label} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-slate-400">{driver.label}</span>
-                      <span className="font-semibold tabular-nums text-slate-200">{driver.pct.toFixed(1)}%</span>
-                    </div>
-                  ))}
+            <div className="mt-4 space-y-2">
+              {item.breakdown.slice(0, 3).map((driver) => (
+                <div key={driver.label} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-slate-400">{driver.label}</span>
+                  <span className="font-semibold tabular-nums text-slate-200">{driver.pct.toFixed(1)}%</span>
                 </div>
-              ) : (
-                <p className="mt-2 text-xs text-amber-300">Driver percentages are unavailable.</p>
-              )}
+              ))}
             </div>
-
             <button
               type="button"
               onClick={() => navigate(`/equipment/${item.id}/overview`)}
@@ -255,15 +304,33 @@ function LiveEquipmentSection(): JSX.Element {
   );
 }
 
-function useLiveRouteMode(): "live" | "demo" | "unavailable" {
+function EquipmentDetailBoundary({
+  demo,
+  renderLive,
+}: {
+  demo: ReactNode;
+  renderLive: (record: LiveEquipmentRecord) => ReactNode;
+}): JSX.Element {
   const { siteContext } = useAuth();
-  return getEffectiveDataMode(Boolean(siteContext?.siteId));
-}
+  const { equipmentId = "" } = useParams();
+  const mode = getEffectiveDataMode(Boolean(siteContext?.siteId));
+  const [loading, setLoading] = useState(mode === "live");
+  const [state, setState] = useState<LiveDataState<LiveEquipmentRecord> | null>(null);
 
-export function EquipmentSectionEntry(): JSX.Element {
-  const mode = useLiveRouteMode();
-  if (mode === "demo") return <EquipmentSection />;
-  if (mode === "unavailable") {
+  const load = useCallback(async (): Promise<void> => {
+    if (mode !== "live" || !siteContext?.siteId || !equipmentId) return;
+    setLoading(true);
+    setState(await loadLiveEquipmentRecord(siteContext.siteId, equipmentId));
+    setLoading(false);
+  }, [equipmentId, mode, siteContext?.siteId]);
+
+  useEffect(() => {
+    setState(null);
+    void load();
+  }, [load]);
+
+  if (mode === "demo") return <>{demo}</>;
+  if (mode === "unavailable" || !siteContext?.siteId) {
     return (
       <EvidenceState
         title="Equipment data unavailable"
@@ -272,97 +339,104 @@ export function EquipmentSectionEntry(): JSX.Element {
       />
     );
   }
-  return <LiveEquipmentSection />;
+  if (loading && !state) return <LoadingState label="Verifying active-site equipment evidence…" />;
+  if (state?.status !== "ready") {
+    return (
+      <EvidenceState
+        title={state?.status === "empty" ? "Equipment not available for this site" : "Equipment evidence unavailable"}
+        message={state?.message ?? "The equipment record could not be verified."}
+        unavailable={state?.status !== "empty"}
+        onRetry={() => void load()}
+      />
+    );
+  }
+  return <>{renderLive(state.data)}</>;
+}
+
+export function EquipmentSectionEntry(): JSX.Element {
+  const { siteContext } = useAuth();
+  const mode = getEffectiveDataMode(Boolean(siteContext?.siteId));
+  if (mode === "demo") return <EquipmentSection />;
+  if (mode === "unavailable" || !siteContext?.siteId) {
+    return <EvidenceState title="Equipment data unavailable" message="No authorised active-site context is available." unavailable />;
+  }
+  return <LiveEquipmentSection siteId={siteContext.siteId} />;
 }
 
 export function EquipmentOverviewTrustedEntry(): JSX.Element {
-  const mode = useLiveRouteMode();
-  const { equipmentId = "" } = useParams();
-  const [loading, setLoading] = useState(mode === "live");
-  const [state, setState] = useState<LiveDataState<{ equipmentId: string }> | null>(null);
+  return (
+    <EquipmentDetailBoundary
+      demo={<EquipmentOverview />}
+      renderLive={(record) => (
+        <RoutedPromptDelivery>
+          <LiveEquipmentOverviewView record={record} />
+        </RoutedPromptDelivery>
+      )}
+    />
+  );
+}
 
-  const load = useCallback(async (): Promise<void> => {
-    if (mode !== "live" || !equipmentId) return;
-    setLoading(true);
-    setState(await loadLiveEquipmentRiskProfile(equipmentId));
-    setLoading(false);
-  }, [equipmentId, mode]);
+export function EquipmentNotificationsTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentNotifications />} renderLive={(record) => <LiveEquipmentNotificationsView record={record} />} />;
+}
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+export function EquipmentWorkOrdersTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentWorkOrdersWithAiNavigation />} renderLive={(record) => <LiveEquipmentWorkOrdersView record={record} />} />;
+}
 
-  if (mode === "demo") return <EquipmentOverview />;
-  if (mode === "unavailable") {
-    return <EvidenceState title="Equipment data unavailable" message="No authorised active-site context is available." unavailable />;
-  }
-  if (loading && !state) {
-    return <section className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400"><RefreshCw className="mr-2 h-4 w-4 animate-spin text-blue-400" />Checking verified risk evidence…</section>;
-  }
-  if (state?.status !== "ready") {
-    return <EvidenceState title="Equipment risk unavailable" message={state?.message ?? "Verified equipment risk could not be loaded."} unavailable={state?.status === "unavailable"} onRetry={() => void load()} />;
-  }
-  return <EquipmentOverviewLive />;
+export function EquipmentCalibrationsTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentPMs />} renderLive={(record) => <LiveEquipmentCalibrationsView record={record} />} />;
+}
+
+export function EquipmentSkillsTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentSkills />} renderLive={(record) => <LiveEquipmentSkillsView record={record} />} />;
 }
 
 export function EquipmentSparesEntry(): JSX.Element {
-  const mode = useLiveRouteMode();
-  const { equipmentId = "" } = useParams();
-  const [loading, setLoading] = useState(mode === "live");
-  const [state, setState] = useState<LiveDataState<unknown> | null>(null);
-
-  const load = useCallback(async (): Promise<void> => {
-    if (mode !== "live" || !equipmentId) return;
-    setLoading(true);
-    setState(await loadLiveEquipmentComponents(equipmentId));
-    setLoading(false);
-  }, [equipmentId, mode]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (mode === "demo") return <EquipmentSpares />;
-  if (mode === "unavailable") {
-    return <EvidenceState title="Spares data unavailable" message="No authorised active-site context is available." unavailable />;
-  }
-  if (loading && !state) {
-    return <section className="flex min-h-[60vh] items-center justify-center text-sm text-slate-400"><RefreshCw className="mr-2 h-4 w-4 animate-spin text-blue-400" />Checking live component inventory…</section>;
-  }
-  if (state?.status !== "ready") {
-    return <EvidenceState title={state?.status === "empty" ? "Component inventory not configured" : "Spares data unavailable"} message={(state as LiveDataState<unknown> | null)?.status === "ready" ? "" : state?.message ?? "Live component inventory could not be loaded."} unavailable={state?.status === "unavailable"} onRetry={() => void load()} />;
-  }
-  return <EquipmentSpares />;
+  return <EquipmentDetailBoundary demo={<EquipmentSpares />} renderLive={(record) => <LiveEquipmentSparesView record={record} />} />;
 }
 
-function LiveEquipmentAssistantBridge(): JSX.Element {
+export function EquipmentHistoryTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentHistoryEntry />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="history" title="History" message="A site-scoped operational history contract has not yet been approved for live pilot use." />} />;
+}
+
+export function EquipmentDocumentsTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentDocumentsEntry />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="documents" title="Documents" message="Live document evidence remains withheld until the active-site document route is fully validated." />} />;
+}
+
+export function EquipmentDocumentViewerTrustedEntry(): JSX.Element {
+  return <EquipmentDetailBoundary demo={<EquipmentDocumentViewer />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="documents" title="Document viewer" message="The requested live document has not passed the active-site evidence boundary." />} />;
+}
+
+function LiveEquipmentAssistantBridge({ record }: { record: LiveEquipmentRecord }): JSX.Element {
   const navigate = useNavigate();
-  const { equipmentId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const dispatched = useRef(false);
-  const prompt = searchParams.get("prompt")?.trim() || `Explain the current verified risk, work, skills and spares evidence for equipment ${equipmentId}.`;
 
   useEffect(() => {
     if (dispatched.current) return;
     dispatched.current = true;
-    const returnToPreviousPage = Number(window.history.state?.idx ?? 0) > 0;
-    if (returnToPreviousPage) navigate(-1);
-    else navigate(`/equipment/${equipmentId}/overview`, { replace: true });
+    const requestedReturn = searchParams.get("returnTo")?.trim() ?? "";
+    const safePrefix = `/equipment/${record.id}/`;
+    const returnTo = requestedReturn.startsWith(safePrefix)
+      ? requestedReturn
+      : `/equipment/${record.id}/overview`;
+    const prompt =
+      searchParams.get("prompt")?.trim() ||
+      `Explain the current verified risk, work, skills and spares evidence for ${record.name} (${record.assetNumber}).`;
 
-    const timer = window.setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("vorta-global-ai-prompt", {
-          detail: {
-            question: prompt,
-            submit: true,
-            role: "maintenance-manager",
-          },
-        }),
-      );
-    }, 120);
-
-    return () => window.clearTimeout(timer);
-  }, [equipmentId, navigate, prompt]);
+    navigate(returnTo, {
+      replace: true,
+      state: {
+        vortaMaintenanceAiPrompt: {
+          commandId: createPromptCommandId(record.id),
+          question: prompt,
+          submit: true,
+          role: "maintenance-manager",
+        } satisfies RoutedMaintenanceAiPrompt,
+      } satisfies EquipmentRouteState,
+    });
+  }, [navigate, record.assetNumber, record.id, record.name, searchParams]);
 
   return (
     <section className="flex min-h-[60vh] items-center justify-center px-6">
@@ -370,7 +444,7 @@ function LiveEquipmentAssistantBridge(): JSX.Element {
         <Sparkles className="mx-auto h-6 w-6 text-blue-300" />
         <h1 className="mt-3 text-base font-semibold text-slate-100">Opening Ask Vorta</h1>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Returning to the equipment workflow and opening the same-page assistant with verified equipment context.
+          Returning to the verified equipment workflow with the assistant prompt preserved.
         </p>
       </div>
     </section>
@@ -378,10 +452,5 @@ function LiveEquipmentAssistantBridge(): JSX.Element {
 }
 
 export function EquipmentAiInsightsTrustedEntry(): JSX.Element {
-  const mode = useLiveRouteMode();
-  if (mode === "demo") return <EquipmentAiInsights />;
-  if (mode === "unavailable") {
-    return <EvidenceState title="Ask Vorta unavailable" message="No authorised active-site context is available." unavailable />;
-  }
-  return <LiveEquipmentAssistantBridge />;
+  return <EquipmentDetailBoundary demo={<EquipmentAiInsights />} renderLive={(record) => <LiveEquipmentAssistantBridge record={record} />} />;
 }
