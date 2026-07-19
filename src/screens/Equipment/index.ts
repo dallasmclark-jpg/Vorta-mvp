@@ -1,5 +1,5 @@
+export { EquipmentLiveListEntry as EquipmentSection } from "./EquipmentLiveListEntry";
 export {
-  EquipmentSectionEntry as EquipmentSection,
   EquipmentOverviewTrustedEntry as EquipmentOverview,
   EquipmentNotificationsTrustedEntry as EquipmentNotifications,
   EquipmentWorkOrdersTrustedEntry as EquipmentWorkOrders,
