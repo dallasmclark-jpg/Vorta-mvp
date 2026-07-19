@@ -165,9 +165,17 @@ jobs:
         run: |
           set -o pipefail
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
+            npm run test:browser -- \
+              tests/browser/maintenance-manager-core.spec.ts \
+              tests/browser/maintenance-manager-work-orders.spec.ts \
+              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
+              --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
           else
-            npm run test:browser -- tests/browser/maintenance-manager-core.spec.ts 2>&1 | tee maintenance-browser-regression.log
+            npm run test:browser -- \
+              tests/browser/maintenance-manager-core.spec.ts \
+              tests/browser/maintenance-manager-work-orders.spec.ts \
+              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
+              2>&1 | tee maintenance-browser-regression.log
           fi
 
       - name: Preserve browser regression evidence
@@ -184,6 +192,30 @@ jobs:
 
       - name: Enforce browser regression result
         if: steps.maintenance-browser-regression.outcome == 'failure'
+        run: exit 1
+
+      - name: Run Maintenance Manager visual regression
+        id: maintenance-visual-regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test tests/browser/maintenance-manager-visual.spec.ts --config=playwright.config.ts 2>&1 | tee maintenance-visual-regression.log
+
+      - name: Preserve visual regression evidence
+        if: steps.maintenance-visual-regression.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-visual-regression-evidence
+          path: |
+            maintenance-visual-regression.log
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Enforce visual regression result
+        if: steps.maintenance-visual-regression.outcome == 'failure'
         run: exit 1
 
       - name: Run live responsive Equipment and Shift Cover regression
