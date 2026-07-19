@@ -14,7 +14,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
 import { openMaintenanceAiAssistant } from "../../lib/maintenanceActions";
@@ -49,12 +54,48 @@ import {
 } from "./equipmentLiveTrust";
 import type { EquipmentListItem } from "./equipmentService";
 
+interface RoutedMaintenanceAiPrompt {
+  commandId: string;
+  question: string;
+  submit: true;
+  role: "maintenance-manager";
+}
+
+interface EquipmentRouteState {
+  vortaMaintenanceAiPrompt?: RoutedMaintenanceAiPrompt;
+}
+
+const deliveredPromptCommands = new Set<string>();
+
 function riskTone(level: EquipmentListItem["riskLevel"]): string {
   if (level === "Critical") return "border-red-500/30 bg-red-500/10 text-red-300";
   if (level === "High") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
   if (level === "Medium") return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
   if (level === "Low") return "border-lime-500/30 bg-lime-500/10 text-lime-300";
   return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+}
+
+function createPromptCommandId(equipmentId: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${equipmentId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function RoutedPromptDelivery({ children }: { children: ReactNode }): JSX.Element {
+  const location = useLocation();
+  const routeState = location.state as EquipmentRouteState | null;
+  const prompt = routeState?.vortaMaintenanceAiPrompt;
+
+  useEffect(() => {
+    if (!prompt?.commandId || deliveredPromptCommands.has(prompt.commandId)) return;
+    deliveredPromptCommands.add(prompt.commandId);
+    window.queueMicrotask(() => {
+      openMaintenanceAiAssistant(prompt);
+    });
+  }, [prompt]);
+
+  return <>{children}</>;
 }
 
 function EvidenceState({
@@ -323,7 +364,16 @@ export function EquipmentSectionEntry(): JSX.Element {
 }
 
 export function EquipmentOverviewTrustedEntry(): JSX.Element {
-  return <EquipmentDetailBoundary demo={<EquipmentOverview />} renderLive={(record) => <LiveEquipmentOverviewView record={record} />} />;
+  return (
+    <EquipmentDetailBoundary
+      demo={<EquipmentOverview />}
+      renderLive={(record) => (
+        <RoutedPromptDelivery>
+          <LiveEquipmentOverviewView record={record} />
+        </RoutedPromptDelivery>
+      )}
+    />
+  );
 }
 
 export function EquipmentNotificationsTrustedEntry(): JSX.Element {
@@ -375,8 +425,17 @@ function LiveEquipmentAssistantBridge({ record }: { record: LiveEquipmentRecord 
       searchParams.get("prompt")?.trim() ||
       `Explain the current verified risk, work, skills and spares evidence for ${record.name} (${record.assetNumber}).`;
 
-    openMaintenanceAiAssistant({ question: prompt });
-    navigate(returnTo, { replace: true });
+    navigate(returnTo, {
+      replace: true,
+      state: {
+        vortaMaintenanceAiPrompt: {
+          commandId: createPromptCommandId(record.id),
+          question: prompt,
+          submit: true,
+          role: "maintenance-manager",
+        } satisfies RoutedMaintenanceAiPrompt,
+      } satisfies EquipmentRouteState,
+    });
   }, [navigate, record.assetNumber, record.id, record.name, searchParams]);
 
   return (
