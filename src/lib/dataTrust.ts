@@ -17,7 +17,7 @@ export function getConfiguredDataMode(): VortaDataMode {
     return configured;
   }
 
-  return import.meta.env.PROD ? "live" : "demo";
+  return import.meta.env.PROD ? "unavailable" : "demo";
 }
 
 export function getEffectiveDataMode(
