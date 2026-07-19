@@ -7,24 +7,49 @@ on:
     paths:
       - "src/screens/AiOperations/**"
       - "src/screens/Equipment/**"
+      - "src/screens/LabourRisk/**"
       - "src/screens/SkillsMatrix/**"
       - "src/screens/Training/**"
       - "src/screens/Requirements/**"
       - "src/components/**"
       - "src/hooks/**"
       - "src/lib/**"
+      - "supabase/migrations/**"
       - "scripts/**"
       - "tests/browser/**"
       - "playwright.config.ts"
       - "tsconfig.maintenance.json"
       - "package.json"
+      - "netlify.toml"
       - ".github/workflows/maintenance-manager-quality.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/screens/AiOperations/**"
+      - "src/screens/Equipment/**"
+      - "src/screens/LabourRisk/**"
+      - "src/screens/SkillsMatrix/**"
+      - "src/screens/Training/**"
+      - "src/screens/Requirements/**"
+      - "src/components/**"
+      - "src/hooks/**"
+      - "src/lib/**"
+      - "supabase/migrations/**"
+      - "scripts/**"
+      - "tests/browser/**"
+      - "playwright.config.ts"
+      - "tsconfig.maintenance.json"
+      - "package.json"
+      - "netlify.toml"
+      - ".github/workflows/maintenance-manager-quality.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: maintenance-manager-quality-${{ github.event.pull_request.number }}
+  group: maintenance-manager-quality-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -37,9 +62,11 @@ jobs:
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
 
     steps:
-      - name: Check out pull request
+      - name: Check out tested commit
         uses: actions/checkout@v4
         with:
           show-progress: false
@@ -95,6 +122,9 @@ jobs:
 
       - name: Run route smoke tests
         run: npm run test:smoke
+
+      - name: Write exact build metadata
+        run: npm run build:metadata
 
       - name: Create production build
         run: npx vite build
