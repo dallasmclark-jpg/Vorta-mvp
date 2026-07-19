@@ -52,9 +52,11 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   const sections = page.locator('[aria-label="Equipment sections"]');
   await expect(sections.getByRole("button", { name: "History", exact: true })).toBeDisabled();
   await expect(sections.getByRole("button", { name: "Documents", exact: true })).toBeDisabled();
-  await expect(
-    sections.getByRole("button", { name: "Ask Vorta", exact: true }),
-  ).toBeVisible();
+  const navigationAskVorta = sections.getByRole("button", {
+    name: "Ask Vorta",
+    exact: true,
+  });
+  await expect(navigationAskVorta).toBeVisible();
 
   await sections.getByRole("button", { name: "Work Orders", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
@@ -69,8 +71,8 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
 
   const pageAskVorta = page
-    .locator("header")
-    .getByRole("button", { name: "Ask Vorta", exact: true });
+    .getByRole("button", { name: "Ask Vorta", exact: true })
+    .first();
   await pageAskVorta.click();
   const closeAssistant = page.getByRole("button", { name: "Close global assistant" });
   await expect(closeAssistant).toBeVisible();
@@ -78,7 +80,7 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   await closeAssistant.click();
   await expect(closeAssistant).toBeHidden();
 
-  await sections.getByRole("button", { name: "Ask Vorta", exact: true }).click();
+  await navigationAskVorta.click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
   await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
   await expectNoPageOverflow(page);
@@ -113,8 +115,7 @@ test("live Shift Cover adapts to the viewport and reports genuine completeness",
 
   if (viewportWidth >= 1360) {
     const equipmentLabel = page
-      .locator('aside[aria-label="Primary navigation"], aside')
-      .first()
+      .getByRole("navigation", { name: "Primary navigation" })
       .getByText("Equipment", { exact: true });
     await expect(equipmentLabel).toBeVisible();
   }
