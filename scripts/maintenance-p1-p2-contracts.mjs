@@ -34,6 +34,7 @@ const evidenceHardening = read(
 const skillsMatrix = read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx");
 const portalShell = read("src/components/PortalShell.tsx");
 const browserTest = read("tests/browser/maintenance-manager-core.spec.ts");
+const liveBrowserTest = read("tests/browser/maintenance-manager-live.spec.ts");
 
 check(
   service.includes("getOperationalDashboardSnapshot") &&
@@ -93,16 +94,14 @@ check(
 check(
   portalShell.includes("2xl:w-56") &&
     portalShell.includes("min-width: 1536px"),
-  "Tablet landscape must retain the compact sidebar.",
+  "Shared portals must retain their compact tablet-landscape sidebar.",
 );
 check(
-  hardening.includes(
-    '[data-vorta-maintenance-portal="true"] [class*="grid-cols-2"]',
-  ) &&
-    !hardening.includes(
-      '[data-vorta-maintenance-portal="true"] main [class*="grid-cols-2"]',
-    ),
-  "Responsive hardening selectors must target descendants of the portal root.",
+  hardening.includes('main:has([data-vorta-maintenance-portal="true"])') &&
+    hardening.includes("min-width: 1360px") &&
+    !hardening.includes('[class*="text-[7.5px]"]') &&
+    !hardening.includes('[class*="grid-cols-2"]'),
+  "Maintenance laptop navigation must use one scoped sibling selector without broad typography or grid rewriting.",
 );
 
 check(
@@ -124,6 +123,12 @@ check(
     browserTest.includes('name: "Ask Vorta AI"') &&
     browserTest.includes("toBeHidden"),
   "Browser regression must cover mobile risk scope and duplicate assistant controls.",
+);
+check(
+  liveBrowserTest.includes("data-vorta-mobile-rota") &&
+    liveBrowserTest.includes("Rota completeness") &&
+    liveBrowserTest.includes("toBeDisabled"),
+  "Live browser regression must cover responsive Shift Cover and mode-aware Equipment navigation.",
 );
 
 console.log("Maintenance Manager audit hardening contracts passed.");
