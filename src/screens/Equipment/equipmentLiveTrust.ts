@@ -165,7 +165,6 @@ export interface LiveNotification {
 
 const MAX_RISK_PROFILE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
-
 const riskSegments = [
   ["PM Backlog", "pm_backlog_pct", "#f97316", "bg-orange-500"],
   ["Asset Criticality", "asset_criticality_pct", "#dc2626", "bg-red-600"],
@@ -175,22 +174,26 @@ const riskSegments = [
   ["Notifications", "notification_pct", "#a855f7", "bg-purple-500"],
 ] as const;
 
-function asNumber(value: unknown): number | null {
+const numberValue = (value: unknown): number | null => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function asRows(value: unknown): Record<string, unknown>[] {
+};
+const stringValue = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+const asRows = (value: unknown): Record<string, unknown>[] => {
   if (Array.isArray(value)) {
     return value.filter(
       (row): row is Record<string, unknown> => typeof row === "object" && row !== null,
     );
   }
-  if (typeof value === "object" && value !== null) {
-    return [value as Record<string, unknown>];
-  }
-  return [];
-}
+  return typeof value === "object" && value !== null
+    ? [value as Record<string, unknown>]
+    : [];
+};
+const failure = <T>(error: unknown, fallback: string): LiveDataState<T> => ({
+  status: "unavailable",
+  message: error instanceof Error ? error.message : fallback,
+});
 
 function expectedRiskLevel(score: number): EquipmentListItem["riskLevel"] {
   if (score >= 85) return "Critical";
@@ -201,40 +204,22 @@ function expectedRiskLevel(score: number): EquipmentListItem["riskLevel"] {
 }
 
 function firstProfile(row: Record<string, unknown>): Record<string, unknown> | null {
-  const raw = row.equipment_risk_profiles;
-  if (Array.isArray(raw)) {
-    const profiles = raw
-      .filter(
-        (profile): profile is Record<string, unknown> =>
-          typeof profile === "object" && profile !== null,
-      )
-      .sort(
-        (left, right) =>
-          new Date(String(right.updated_at ?? 0)).getTime() -
-          new Date(String(left.updated_at ?? 0)).getTime(),
-      );
-    return profiles[0] ?? null;
-  }
-  return typeof raw === "object" && raw !== null
-    ? (raw as Record<string, unknown>)
-    : null;
+  const profiles = asRows(row.equipment_risk_profiles).sort(
+    (left, right) =>
+      new Date(String(right.updated_at ?? 0)).getTime() -
+      new Date(String(left.updated_at ?? 0)).getTime(),
+  );
+  return profiles[0] ?? null;
 }
 
 function validateRiskProfile(
   profile: Record<string, unknown> | null,
 ): LiveDataState<LiveRiskProfile> {
   if (!profile) {
-    return {
-      status: "empty",
-      message: "No stored equipment risk profile is available.",
-    };
+    return { status: "empty", message: "No stored equipment risk profile is available." };
   }
 
-  const score = asNumber(profile.risk_score);
-  const level = profile.risk_level;
-  const updatedAt = typeof profile.updated_at === "string" ? profile.updated_at : "";
-  const updatedTime = new Date(updatedAt).getTime();
-
+  const score = numberValue(profile.risk_score);
   if (score === null || score < 0 || score > 100) {
     return {
       status: "unavailable",
@@ -242,20 +227,22 @@ function validateRiskProfile(
     };
   }
 
-  if (level !== expectedRiskLevel(score)) {
+  const level = expectedRiskLevel(score);
+  if (profile.risk_level !== level) {
     return {
       status: "unavailable",
       message: `The stored risk level does not match the verified ${score.toFixed(1)} score band.`,
     };
   }
 
+  const updatedAt = stringValue(profile.updated_at) ?? "";
+  const updatedTime = new Date(updatedAt).getTime();
   if (!Number.isFinite(updatedTime)) {
     return {
       status: "unavailable",
       message: "The equipment risk profile has no valid calculation timestamp.",
     };
   }
-
   const age = Date.now() - updatedTime;
   if (age < -MAX_FUTURE_CLOCK_SKEW_MS) {
     return {
@@ -272,7 +259,7 @@ function validateRiskProfile(
 
   const breakdown = riskSegments.map(([label, key, color, dotClass]) => ({
     label,
-    pct: asNumber(profile[key]) ?? 0,
+    pct: numberValue(profile[key]) ?? 0,
     color,
     dotClass,
   }));
@@ -297,22 +284,19 @@ function validateRiskProfile(
       level,
       updatedAt,
       breakdown: breakdown.filter((segment) => segment.pct > 0),
-      operationalRiskScore: asNumber(profile.operational_risk_score) ?? 0,
-      labourRiskScore: asNumber(profile.labour_risk_score) ?? 0,
-      scheduledEngineerCount: asNumber(profile.scheduled_engineer_count) ?? 0,
-      qualifiedEngineerCount: asNumber(profile.qualified_engineer_count) ?? 0,
-      missingSkillCount: asNumber(profile.missing_skill_count) ?? 0,
-      labourShiftDate:
-        typeof profile.labour_shift_date === "string" ? profile.labour_shift_date : null,
-      labourShiftType:
-        typeof profile.labour_shift_type === "string" ? profile.labour_shift_type : null,
+      operationalRiskScore: numberValue(profile.operational_risk_score) ?? 0,
+      labourRiskScore: numberValue(profile.labour_risk_score) ?? 0,
+      scheduledEngineerCount: numberValue(profile.scheduled_engineer_count) ?? 0,
+      qualifiedEngineerCount: numberValue(profile.qualified_engineer_count) ?? 0,
+      missingSkillCount: numberValue(profile.missing_skill_count) ?? 0,
+      labourShiftDate: stringValue(profile.labour_shift_date),
+      labourShiftType: stringValue(profile.labour_shift_type),
       noEngineerOverride: profile.no_engineer_override === true,
-      overduePmCount: asNumber(profile.overdue_pm_count) ?? 0,
-      openWorkOrderCount: asNumber(profile.open_work_order_count) ?? 0,
-      calibrationOverdueCount: asNumber(profile.calibration_overdue_count) ?? 0,
-      riskSummary: typeof profile.risk_summary === "string" ? profile.risk_summary : null,
-      priorityAction:
-        typeof profile.priority_action === "string" ? profile.priority_action : null,
+      overduePmCount: numberValue(profile.overdue_pm_count) ?? 0,
+      openWorkOrderCount: numberValue(profile.open_work_order_count) ?? 0,
+      calibrationOverdueCount: numberValue(profile.calibration_overdue_count) ?? 0,
+      riskSummary: stringValue(profile.risk_summary),
+      priorityAction: stringValue(profile.priority_action),
     },
   };
 }
@@ -324,61 +308,32 @@ function mapEquipment(
   return {
     id: String(row.id),
     siteId: String(row.site_id),
-    name: typeof row.name === "string" ? row.name : "Unnamed equipment",
+    name: stringValue(row.name) ?? "Unnamed equipment",
     assetNumber:
-      typeof row.equipment_code === "string"
-        ? row.equipment_code
-        : String(row.id).slice(0, 8).toUpperCase(),
+      stringValue(row.equipment_code) ?? String(row.id).slice(0, 8).toUpperCase(),
     type: String(row.equipment_type ?? "Equipment").toUpperCase(),
-    area: typeof row.area === "string" ? row.area : "—",
-    oem: typeof row.oem === "string" ? row.oem : "—",
-    model: typeof row.model === "string" ? row.model : "—",
-    criticality: typeof row.criticality === "string" ? row.criticality : "Unknown",
-    status: typeof row.status === "string" ? row.status : "Unknown",
-    imageUrl: typeof row.image_url === "string" ? row.image_url : null,
-    sourceSystem: typeof row.source_system === "string" ? row.source_system : "Unknown",
-    sourceUpdatedAt:
-      typeof row.source_updated_at === "string" ? row.source_updated_at : null,
+    area: stringValue(row.area) ?? "—",
+    oem: stringValue(row.oem) ?? "—",
+    model: stringValue(row.model) ?? "—",
+    criticality: stringValue(row.criticality) ?? "Unknown",
+    status: stringValue(row.status) ?? "Unknown",
+    imageUrl: stringValue(row.image_url),
+    sourceSystem: stringValue(row.source_system) ?? "Unknown",
+    sourceUpdatedAt: stringValue(row.source_updated_at),
     risk,
   };
 }
 
 const EQUIPMENT_SELECT = `
-  id,
-  site_id,
-  equipment_code,
-  name,
-  equipment_type,
-  area,
-  oem,
-  model,
-  criticality,
-  status,
-  image_url,
-  source_system,
-  source_updated_at,
+  id, site_id, equipment_code, name, equipment_type, area, oem, model,
+  criticality, status, image_url, source_system, source_updated_at,
   equipment_risk_profiles (
-    risk_score,
-    risk_level,
-    pm_backlog_pct,
-    asset_criticality_pct,
-    calibration_pct,
-    skills_pct,
-    spares_pct,
-    notification_pct,
-    overdue_pm_count,
-    open_work_order_count,
-    calibration_overdue_count,
-    operational_risk_score,
-    labour_risk_score,
-    scheduled_engineer_count,
-    qualified_engineer_count,
-    missing_skill_count,
-    labour_shift_date,
-    labour_shift_type,
-    no_engineer_override,
-    risk_summary,
-    priority_action,
+    risk_score, risk_level, pm_backlog_pct, asset_criticality_pct,
+    calibration_pct, skills_pct, spares_pct, notification_pct,
+    overdue_pm_count, open_work_order_count, calibration_overdue_count,
+    operational_risk_score, labour_risk_score, scheduled_engineer_count,
+    qualified_engineer_count, missing_skill_count, labour_shift_date,
+    labour_shift_type, no_engineer_override, risk_summary, priority_action,
     updated_at
   )
 `;
@@ -386,55 +341,34 @@ const EQUIPMENT_SELECT = `
 export async function loadLiveEquipmentList(
   siteId: string,
 ): Promise<LiveDataState<LiveEquipmentListPayload>> {
-  if (!siteId) {
-    return { status: "unavailable", message: "No active site was supplied." };
-  }
-
+  if (!siteId) return { status: "unavailable", message: "No active site was supplied." };
   try {
     const { data, error } = await supabase
       .from("equipment_assets")
       .select(EQUIPMENT_SELECT)
       .eq("site_id", siteId)
       .order("name");
-
-    if (error) {
-      return {
-        status: "unavailable",
-        message: `Active-site equipment records could not be loaded: ${error.message}`,
-      };
-    }
-    if (!data || data.length === 0) {
-      return {
-        status: "empty",
-        message: "No equipment records are configured for the active site.",
-      };
+    if (error) throw new Error(`Active-site equipment records could not be loaded: ${error.message}`);
+    if (!data?.length) {
+      return { status: "empty", message: "No equipment records are configured for the active site." };
     }
 
     const records: LiveEquipmentRecord[] = [];
     let excludedWithoutRiskProfile = 0;
     let excludedInvalidRiskProfile = 0;
-
-    for (const raw of data as unknown as Record<string, unknown>[]) {
-      const riskState = validateRiskProfile(firstProfile(raw));
-      if (riskState.status === "empty") {
-        excludedWithoutRiskProfile += 1;
-        continue;
-      }
-      if (riskState.status === "unavailable") {
-        excludedInvalidRiskProfile += 1;
-        continue;
-      }
-      records.push(mapEquipment(raw, riskState.data));
+    for (const row of data as unknown as Record<string, unknown>[]) {
+      const riskState = validateRiskProfile(firstProfile(row));
+      if (riskState.status === "empty") excludedWithoutRiskProfile += 1;
+      else if (riskState.status === "unavailable") excludedInvalidRiskProfile += 1;
+      else records.push(mapEquipment(row, riskState.data));
     }
-
-    if (records.length === 0) {
+    if (!records.length) {
       return {
         status: "empty",
         message:
           "Equipment records exist for the active site, but none has a current valid risk profile.",
       };
     }
-
     records.sort((left, right) => right.risk.score - left.risk.score);
     return {
       status: "ready",
@@ -469,11 +403,7 @@ export async function loadLiveEquipmentList(
       },
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message:
-        error instanceof Error ? error.message : "Active-site equipment records could not be loaded.",
-    };
+    return failure(error, "Active-site equipment records could not be loaded.");
   }
 }
 
@@ -487,7 +417,6 @@ export async function loadLiveEquipmentRecord(
       message: "An active site and equipment identifier are required.",
     };
   }
-
   try {
     const { data, error } = await supabase
       .from("equipment_assets")
@@ -495,30 +424,20 @@ export async function loadLiveEquipmentRecord(
       .eq("site_id", siteId)
       .eq("id", equipmentId)
       .maybeSingle();
-
-    if (error) {
-      return {
-        status: "unavailable",
-        message: `The active-site equipment record could not be verified: ${error.message}`,
-      };
-    }
+    if (error) throw new Error(`The active-site equipment record could not be verified: ${error.message}`);
     if (!data) {
       return {
         status: "empty",
         message: "This equipment does not belong to the authorised active site.",
       };
     }
-
     const row = data as unknown as Record<string, unknown>;
     const riskState = validateRiskProfile(firstProfile(row));
-    if (riskState.status !== "ready") return riskState;
-    return { status: "ready", data: mapEquipment(row, riskState.data) };
+    return riskState.status === "ready"
+      ? { status: "ready", data: mapEquipment(row, riskState.data) }
+      : riskState;
   } catch (error) {
-    return {
-      status: "unavailable",
-      message:
-        error instanceof Error ? error.message : "The active-site equipment record could not be verified.",
-    };
+    return failure(error, "The active-site equipment record could not be verified.");
   }
 }
 
@@ -535,14 +454,8 @@ export async function loadLiveEquipmentComponents(
       .eq("site_id", siteId)
       .eq("equipment_id", equipmentId)
       .order("component_name");
-
-    if (error) {
-      return {
-        status: "unavailable",
-        message: `Live component inventory could not be loaded: ${error.message}`,
-      };
-    }
-    if (!data || data.length === 0) {
+    if (error) throw new Error(`Live component inventory could not be loaded: ${error.message}`);
+    if (!data?.length) {
       return {
         status: "empty",
         message:
@@ -551,9 +464,9 @@ export async function loadLiveEquipmentComponents(
     }
 
     const inventory: LiveComponent[] = data.map((row: Record<string, unknown>) => {
-      const stock = Math.max(0, asNumber(row.quantity_available) ?? 0);
-      const target = Math.max(0, asNumber(row.quantity_target) ?? 0);
-      const minimum = Math.max(0, asNumber(row.minimum_quantity) ?? 0);
+      const stock = Math.max(0, numberValue(row.quantity_available) ?? 0);
+      const target = Math.max(0, numberValue(row.quantity_target) ?? 0);
+      const minimum = Math.max(0, numberValue(row.minimum_quantity) ?? 0);
       const derivedStatus: LiveComponent["derivedStatus"] =
         stock <= 0
           ? "Out of stock"
@@ -563,29 +476,27 @@ export async function loadLiveEquipmentComponents(
               ? "Below target"
               : "Covered";
       return {
-        name: String(row.component_name ?? "Unnamed component"),
-        partNumber: String(row.component_code ?? "—"),
+        name: stringValue(row.component_name) ?? "Unnamed component",
+        partNumber: stringValue(row.component_code) ?? "—",
         stock,
         target,
         minimum,
-        importedStatus: String(row.availability_status ?? ""),
+        importedStatus: stringValue(row.availability_status) ?? "",
         derivedStatus,
-        supplier: String(row.vendor_name ?? "—"),
-        manufacturer: String(row.maker_name ?? "—"),
-        location: String(row.storage_location ?? "—"),
-        criticality: String(row.criticality ?? "Unknown"),
-        unitCost: Math.max(0, asNumber(row.unit_cost) ?? 0),
-        leadDays: Math.max(0, asNumber(row.lead_days) ?? 0),
-        updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+        supplier: stringValue(row.vendor_name) ?? "—",
+        manufacturer: stringValue(row.maker_name) ?? "—",
+        location: stringValue(row.storage_location) ?? "—",
+        criticality: stringValue(row.criticality) ?? "Unknown",
+        unitCost: Math.max(0, numberValue(row.unit_cost) ?? 0),
+        leadDays: Math.max(0, numberValue(row.lead_days) ?? 0),
+        updatedAt: stringValue(row.updated_at),
       };
     });
-
     const targetUnits = inventory.reduce((sum, item) => sum + item.target, 0);
     const coveredTargetUnits = inventory.reduce(
       (sum, item) => sum + Math.min(item.stock, item.target),
       0,
     );
-
     return {
       status: "ready",
       data: {
@@ -601,11 +512,7 @@ export async function loadLiveEquipmentComponents(
       },
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message:
-        error instanceof Error ? error.message : "Live component inventory could not be loaded.",
-    };
+    return failure(error, "Live component inventory could not be loaded.");
   }
 }
 
@@ -616,13 +523,9 @@ export async function loadLiveEquipmentWorkItems(
     const { data, error } = await supabase.rpc("vorta_get_equipment_work_items", {
       p_equipment_id: equipmentId,
     });
-    if (error) {
-      return { status: "unavailable", message: `Work items could not be loaded: ${error.message}` };
-    }
+    if (error) throw new Error(`Work items could not be loaded: ${error.message}`);
     const rows = asRows(data);
-    if (rows.length === 0) {
-      return { status: "empty", message: "No work orders are recorded for this equipment." };
-    }
+    if (!rows.length) return { status: "empty", message: "No work orders are recorded for this equipment." };
     return {
       status: "ready",
       data: rows.map((row) => ({
@@ -633,29 +536,24 @@ export async function loadLiveEquipmentWorkItems(
         workType: String(row.work_type ?? "Unknown"),
         status: String(row.status ?? "Unknown"),
         assignedEngineer: String(row.assigned_engineer ?? "Unassigned"),
-        requestedDate: typeof row.requested_date === "string" ? row.requested_date : null,
-        dueDate: typeof row.due_date === "string" ? row.due_date : null,
-        completedDate: typeof row.completed_date === "string" ? row.completed_date : null,
+        requestedDate: stringValue(row.requested_date),
+        dueDate: stringValue(row.due_date),
+        completedDate: stringValue(row.completed_date),
         ageLabel: String(row.age_label ?? "—"),
         overdue: row.is_overdue === true,
-        pmNumber: typeof row.pm_number === "string" ? row.pm_number : null,
-        pmTitle: typeof row.pm_title === "string" ? row.pm_title : null,
-        pmType: typeof row.pm_type === "string" ? row.pm_type : null,
-        pmStatus: typeof row.pm_status === "string" ? row.pm_status : null,
-        pmNextDueDate: typeof row.pm_next_due_date === "string" ? row.pm_next_due_date : null,
-        notificationNumber:
-          typeof row.notification_number === "string" ? row.notification_number : null,
-        orderTypeCode: typeof row.order_type_code === "string" ? row.order_type_code : null,
-        orderTypeDescription:
-          typeof row.order_type_description === "string" ? row.order_type_description : null,
-        orderOrigin: typeof row.order_origin === "string" ? row.order_origin : null,
+        pmNumber: stringValue(row.pm_number),
+        pmTitle: stringValue(row.pm_title),
+        pmType: stringValue(row.pm_type),
+        pmStatus: stringValue(row.pm_status),
+        pmNextDueDate: stringValue(row.pm_next_due_date),
+        notificationNumber: stringValue(row.notification_number),
+        orderTypeCode: stringValue(row.order_type_code),
+        orderTypeDescription: stringValue(row.order_type_description),
+        orderOrigin: stringValue(row.order_origin),
       })),
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message: error instanceof Error ? error.message : "Work items could not be loaded.",
-    };
+    return failure(error, "Work items could not be loaded.");
   }
 }
 
@@ -666,11 +564,9 @@ export async function loadLiveEquipmentCalibrations(
     const { data, error } = await supabase.rpc("vorta_get_equipment_calibrations", {
       p_equipment_id: equipmentId,
     });
-    if (error) {
-      return { status: "unavailable", message: `Calibrations could not be loaded: ${error.message}` };
-    }
+    if (error) throw new Error(`Calibrations could not be loaded: ${error.message}`);
     const rows = asRows(data);
-    if (rows.length === 0) {
+    if (!rows.length) {
       return { status: "empty", message: "No calibration records are configured for this equipment." };
     }
     return {
@@ -679,46 +575,26 @@ export async function loadLiveEquipmentCalibrations(
         id: String(row.calibration_id ?? row.calibration_number ?? ""),
         number: String(row.calibration_number ?? "—"),
         title: String(row.title ?? "Calibration"),
-        point: typeof row.calibration_point === "string" ? row.calibration_point : null,
-        tolerance:
-          typeof row.tolerance_specification === "string"
-            ? row.tolerance_specification
-            : null,
-        lastCompletedDate:
-          typeof row.last_completed_date === "string" ? row.last_completed_date : null,
-        nextDueDate: typeof row.next_due_date === "string" ? row.next_due_date : null,
+        point: stringValue(row.calibration_point),
+        tolerance: stringValue(row.tolerance_specification),
+        lastCompletedDate: stringValue(row.last_completed_date),
+        nextDueDate: stringValue(row.next_due_date),
         scheduleStatus: String(row.schedule_status ?? "Unknown"),
-        criticality: typeof row.criticality === "string" ? row.criticality : null,
-        assignedEngineer:
-          typeof row.assigned_engineer === "string" ? row.assigned_engineer : null,
-        procedureReference:
-          typeof row.procedure_reference === "string" ? row.procedure_reference : null,
-        checklistReference:
-          typeof row.checklist_reference === "string" ? row.checklist_reference : null,
-        lastResult: typeof row.last_result === "string" ? row.last_result : null,
-        resultAt: typeof row.result_at === "string" ? row.result_at : null,
-        certificateReference:
-          typeof row.certificate_reference === "string" ? row.certificate_reference : null,
-        linkedWorkOrderNumber:
-          typeof row.linked_work_order_number === "string"
-            ? row.linked_work_order_number
-            : null,
-        linkedWorkOrderStatus:
-          typeof row.linked_work_order_status === "string"
-            ? row.linked_work_order_status
-            : null,
-        linkedWorkOrderDueDate:
-          typeof row.linked_work_order_due_date === "string"
-            ? row.linked_work_order_due_date
-            : null,
-        riskState: typeof row.risk_state === "string" ? row.risk_state : null,
+        criticality: stringValue(row.criticality),
+        assignedEngineer: stringValue(row.assigned_engineer),
+        procedureReference: stringValue(row.procedure_reference),
+        checklistReference: stringValue(row.checklist_reference),
+        lastResult: stringValue(row.last_result),
+        resultAt: stringValue(row.result_at),
+        certificateReference: stringValue(row.certificate_reference),
+        linkedWorkOrderNumber: stringValue(row.linked_work_order_number),
+        linkedWorkOrderStatus: stringValue(row.linked_work_order_status),
+        linkedWorkOrderDueDate: stringValue(row.linked_work_order_due_date),
+        riskState: stringValue(row.risk_state),
       })),
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message: error instanceof Error ? error.message : "Calibrations could not be loaded.",
-    };
+    return failure(error, "Calibrations could not be loaded.");
   }
 }
 
@@ -729,21 +605,17 @@ export async function loadLiveEquipmentSkills(
     const { data, error } = await supabase.rpc("vorta_get_equipment_skills_showcase", {
       p_equipment_id: equipmentId,
     });
-    if (error) {
-      return { status: "unavailable", message: `Skills evidence could not be loaded: ${error.message}` };
-    }
+    if (error) throw new Error(`Skills evidence could not be loaded: ${error.message}`);
     const row = asRows(data)[0];
-    if (!row) {
-      return { status: "empty", message: "No skills evidence is configured for this equipment." };
-    }
+    if (!row) return { status: "empty", message: "No skills evidence is configured for this equipment." };
     return {
       status: "ready",
       data: {
-        requiredSkillCount: asNumber(row.required_skill_count) ?? 0,
-        primarySmeCount: asNumber(row.primary_sme_count) ?? 0,
-        backupSmeCount: asNumber(row.backup_sme_count) ?? 0,
-        developingBackupCount: asNumber(row.developing_backup_count) ?? 0,
-        peopleResilienceScore: asNumber(row.people_resilience_score) ?? 0,
+        requiredSkillCount: numberValue(row.required_skill_count) ?? 0,
+        primarySmeCount: numberValue(row.primary_sme_count) ?? 0,
+        backupSmeCount: numberValue(row.backup_sme_count) ?? 0,
+        developingBackupCount: numberValue(row.developing_backup_count) ?? 0,
+        peopleResilienceScore: numberValue(row.people_resilience_score) ?? 0,
         requiredSkills: asRows(row.required_skills),
         engineers: asRows(row.engineers),
         operators: asRows(row.operators),
@@ -752,10 +624,7 @@ export async function loadLiveEquipmentSkills(
       },
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message: error instanceof Error ? error.message : "Skills evidence could not be loaded.",
-    };
+    return failure(error, "Skills evidence could not be loaded.");
   }
 }
 
@@ -766,14 +635,9 @@ export async function loadLiveEquipmentNotifications(
     const { data, error } = await supabase.rpc("vorta_get_equipment_notifications", {
       p_equipment_id: equipmentId,
     });
-    if (error) {
-      return {
-        status: "unavailable",
-        message: `Maintenance notifications could not be loaded: ${error.message}`,
-      };
-    }
+    if (error) throw new Error(`Maintenance notifications could not be loaded: ${error.message}`);
     const rows = asRows(data);
-    if (rows.length === 0) {
+    if (!rows.length) {
       return {
         status: "empty",
         message: "No maintenance notifications are recorded for this equipment.",
@@ -784,53 +648,30 @@ export async function loadLiveEquipmentNotifications(
       data: rows.map((row) => ({
         id: String(row.notification_id ?? row.notification_number ?? ""),
         number: String(row.notification_number ?? "—"),
-        typeCode:
-          typeof row.notification_type_code === "string" ? row.notification_type_code : null,
-        typeDescription:
-          typeof row.notification_type_description === "string"
-            ? row.notification_type_description
-            : null,
+        typeCode: stringValue(row.notification_type_code),
+        typeDescription: stringValue(row.notification_type_description),
         shortText: String(row.short_text ?? "Maintenance notification"),
-        longText: typeof row.long_text === "string" ? row.long_text : null,
-        priorityCode: typeof row.priority_code === "string" ? row.priority_code : null,
-        priorityDescription:
-          typeof row.priority_description === "string" ? row.priority_description : null,
+        longText: stringValue(row.long_text),
+        priorityCode: stringValue(row.priority_code),
+        priorityDescription: stringValue(row.priority_description),
         sourceStatus: String(row.source_status ?? "Unknown"),
         workflowStatus: String(row.workflow_status ?? "Unknown"),
         breakdownIndicator: row.breakdown_indicator === true,
-        reportedBy: typeof row.reported_by === "string" ? row.reported_by : null,
-        requiredStartDate:
-          typeof row.required_start_date === "string" ? row.required_start_date : null,
-        requiredEndDate:
-          typeof row.required_end_date === "string" ? row.required_end_date : null,
-        reportedAt: typeof row.reported_at === "string" ? row.reported_at : null,
-        ageDays: asNumber(row.age_days) ?? 0,
-        riskPoints: asNumber(row.risk_points) ?? 0,
-        riskReason: typeof row.risk_reason === "string" ? row.risk_reason : null,
-        linkedWorkOrderNumber:
-          typeof row.linked_work_order_number === "string"
-            ? row.linked_work_order_number
-            : null,
-        linkedWorkOrderStatus:
-          typeof row.linked_work_order_status === "string"
-            ? row.linked_work_order_status
-            : null,
-        linkedWorkOrderPriority:
-          typeof row.linked_work_order_priority === "string"
-            ? row.linked_work_order_priority
-            : null,
-        linkedWorkOrderDueDate:
-          typeof row.linked_work_order_due_date === "string"
-            ? row.linked_work_order_due_date
-            : null,
+        reportedBy: stringValue(row.reported_by),
+        requiredStartDate: stringValue(row.required_start_date),
+        requiredEndDate: stringValue(row.required_end_date),
+        reportedAt: stringValue(row.reported_at),
+        ageDays: numberValue(row.age_days) ?? 0,
+        riskPoints: numberValue(row.risk_points) ?? 0,
+        riskReason: stringValue(row.risk_reason),
+        linkedWorkOrderNumber: stringValue(row.linked_work_order_number),
+        linkedWorkOrderStatus: stringValue(row.linked_work_order_status),
+        linkedWorkOrderPriority: stringValue(row.linked_work_order_priority),
+        linkedWorkOrderDueDate: stringValue(row.linked_work_order_due_date),
         linkedWorkOrderOverdue: row.linked_work_order_overdue === true,
       })),
     };
   } catch (error) {
-    return {
-      status: "unavailable",
-      message:
-        error instanceof Error ? error.message : "Maintenance notifications could not be loaded.",
-    };
+    return failure(error, "Maintenance notifications could not be loaded.");
   }
 }
