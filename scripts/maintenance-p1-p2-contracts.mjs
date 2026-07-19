@@ -15,6 +15,10 @@ const dashboard = read(
 const dashboardWrapper = read(
   "src/screens/AiOperations/MaintenanceDashboardExperience.tsx",
 );
+const skillsMatrixRoute = read(
+  "src/screens/AiOperations/SkillsMatrixRouteEntry.tsx",
+);
+const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
 const portalWrapper = read(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
 );
@@ -102,9 +106,11 @@ check(
 );
 
 check(
-  dashboardWrapper.includes("/maintenance/labour-risk/shift-cover") &&
-    !dashboardWrapper.includes("/skills-matrix?"),
-  "The Dashboard Shift Cover card must open the dedicated calendar workflow.",
+  aiOperations.includes("<SkillsMatrixRouteEntry />") &&
+    skillsMatrixRoute.includes('risk === "shift-cover"') &&
+    skillsMatrixRoute.includes("/maintenance/labour-risk/shift-cover") &&
+    !dashboardWrapper.includes("isShiftCoverCard"),
+  "The Dashboard Shift Cover workflow must resolve to the dedicated calendar route.",
 );
 check(
   browserTest.includes('name: "Shift Cover"') &&

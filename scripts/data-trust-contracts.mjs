@@ -15,6 +15,8 @@ const [
   equipmentData,
   equipmentEntry,
   trustedEntries,
+  liveRoutes,
+  liveTrust,
   equipmentIndex,
   browserTest,
   migration,
@@ -33,6 +35,8 @@ const [
   read("src/screens/Equipment/equipmentData.ts"),
   read("src/screens/Equipment/EquipmentOverviewEntry.tsx"),
   read("src/screens/Equipment/EquipmentTrustedEntries.tsx"),
+  read("src/screens/Equipment/EquipmentLiveRoutes.tsx"),
+  read("src/screens/Equipment/equipmentLiveTrust.ts"),
   read("src/screens/Equipment/index.ts"),
   read("tests/browser/maintenance-manager-core.spec.ts"),
   read("supabase/migrations/20260719070448_p0_pilot_trust_hardening.sql"),
@@ -47,6 +51,7 @@ for (const mode of ["live", "demo", "unavailable"]) {
 }
 assert.match(dataTrust, /VITE_VORTA_DATA_MODE/);
 assert.match(dataTrust, /demoFallbacksAllowed/);
+assert.match(dataTrust, /PROD \? "unavailable" : "demo"/);
 
 assert.match(banner, /LIVE SITE DATA/);
 assert.match(banner, /DEMO DATA/);
@@ -75,16 +80,23 @@ assert.match(equipmentData, /if \(!demoFallbacksAllowed\(\)\)/);
 assert.match(equipmentData, /No local demo profile was substituted/);
 assert.match(equipmentEntry, /getConfiguredDataMode\(\) === "demo"/);
 assert.match(equipmentEntry, /EquipmentOverviewLive/);
-for (const routeEntry of [
-  "EquipmentHistoryEntry",
-  "EquipmentDocumentsEntry",
-  "EquipmentAiInsightsEntry",
-]) {
+for (const routeEntry of ["EquipmentHistoryEntry", "EquipmentDocumentsEntry"]) {
   assert.match(trustedEntries, new RegExp(routeEntry));
+  assert.match(equipmentIndex, new RegExp(routeEntry));
+}
+for (const routeEntry of [
+  "EquipmentSectionEntry",
+  "EquipmentOverviewTrustedEntry",
+  "EquipmentSparesEntry",
+  "EquipmentAiInsightsTrustedEntry",
+]) {
+  assert.match(liveRoutes, new RegExp(routeEntry));
   assert.match(equipmentIndex, new RegExp(routeEntry));
 }
 assert.match(trustedEntries, /LIVE EVIDENCE UNAVAILABLE/);
 assert.match(trustedEntries, /legacy demonstration records/);
+assert.match(liveTrust, /Stock resilience is unavailable, not 100%/);
+assert.doesNotMatch(liveTrust, /vorta_get_demo_equipment_risk_list/);
 
 for (const functionName of [
   "vorta_get_shift_calendar",
@@ -110,13 +122,15 @@ assert.match(browserTest, /data-vorta-shift-cover-mode/);
 assert.match(browserTest, /DEMO ROTA/);
 
 assert.match(netlify, /ignore = "node scripts\/netlify-release-gate\.mjs"/);
+assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(netlify, /VITE_VORTA_DATA_MODE = "demo"/);
 assert.match(releaseGate, /maintenance-manager-quality\.yml/);
 assert.match(releaseGate, /run\.conclusion === "success"/);
-assert.match(releaseGate, /process\.exit\(0\)/);
+assert.match(releaseGate, /20 \* 60_000/);
 assert.match(qualityWorkflow, /push:/);
 assert.match(qualityWorkflow, /workflow_dispatch:/);
 assert.match(qualityWorkflow, /supabase\/migrations\/\*\*/);
+assert.match(qualityWorkflow, /--project=desktop-1920/);
 assert.match(productionWorkflow, /Verify exact production commit/);
 assert.match(productionWorkflow, /verify-production-commit\.mjs/);
 assert.match(productionWorkflow, /VORTA_E2E_BASE_URL/);

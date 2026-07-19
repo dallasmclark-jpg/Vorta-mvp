@@ -22,7 +22,6 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
-import { SkillsMatrixSection } from "../SkillsMatrix";
 import { EngineersSection } from "../Engineers";
 import { RequirementsSection } from "../Requirements";
 import { TrainingSection } from "../Training";
@@ -53,6 +52,7 @@ import { PilotImpactSection } from "../PilotImpact/PilotImpactSection";
 import { PilotSetupSection } from "../PilotSetup/PilotSetupSection";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
+import { SkillsMatrixRouteEntry } from "./SkillsMatrixRouteEntry";
 
 const nav: NavGroup[] = [
   {
@@ -136,7 +136,7 @@ export const AiOperations = (): JSX.Element => {
           <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
           <Route path="pilot-impact" element={<PilotImpactSection />} />
           <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
-          <Route path="skills-matrix" element={<SkillsMatrixSection />} />
+          <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
           <Route path="engineers" element={<EngineersSection />} />
           <Route path="career" element={<CareerSection />} />
           <Route path="requirements" element={<RequirementsSection />} />

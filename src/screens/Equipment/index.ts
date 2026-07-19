@@ -1,13 +1,15 @@
-export { EquipmentSection } from "./EquipmentSection";
-export { EquipmentOverviewEntry as EquipmentOverview } from "./EquipmentOverviewEntry";
+export {
+  EquipmentSectionEntry as EquipmentSection,
+  EquipmentOverviewTrustedEntry as EquipmentOverview,
+  EquipmentSparesEntry as EquipmentSpares,
+  EquipmentAiInsightsTrustedEntry as EquipmentAiInsights,
+} from "./EquipmentLiveRoutes";
 export { EquipmentNotifications } from "./EquipmentNotifications";
 export { EquipmentWorkOrdersWithAiNavigation as EquipmentWorkOrders } from "./EquipmentWorkOrdersWithAiNavigation";
 export { EquipmentPMs } from "./EquipmentPMs";
 export { EquipmentHistoryEntry as EquipmentHistory } from "./EquipmentTrustedEntries";
 export { EquipmentSkills } from "./EquipmentSkills";
-export { EquipmentSpares } from "./EquipmentSpares";
 export { EquipmentDocumentsEntry as EquipmentDocuments } from "./EquipmentTrustedEntries";
 export { EquipmentDocumentViewer } from "./EquipmentDocumentViewer";
-export { EquipmentAiInsightsEntry as EquipmentAiInsights } from "./EquipmentTrustedEntries";
 export * from "./equipmentTypes";
 export * from "./equipmentService";

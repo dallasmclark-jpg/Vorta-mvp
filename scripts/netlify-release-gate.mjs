@@ -2,8 +2,8 @@ const productionContext = process.env.CONTEXT === "production";
 const commitSha = process.env.COMMIT_REF?.trim() ?? "";
 const repository = "dallasmclark-jpg/Vorta-mvp";
 const workflowFile = "maintenance-manager-quality.yml";
-const pollIntervalMs = 15_000;
-const timeoutMs = 12 * 60_000;
+const pollIntervalMs = 10_000;
+const timeoutMs = 20 * 60_000;
 
 if (!productionContext) {
   console.log("Netlify preview build: production quality gate not required.");
@@ -82,6 +82,6 @@ while (Date.now() - startedAt < timeoutMs) {
 }
 
 console.error(
-  `Netlify production build cancelled: no successful quality result appeared for ${commitSha} within 12 minutes.`,
+  `Netlify production build cancelled: no successful quality result appeared for ${commitSha} within 20 minutes.`,
 );
 process.exit(0);
