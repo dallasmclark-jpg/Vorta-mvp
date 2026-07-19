@@ -7,7 +7,8 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
   await signInMaintenanceManager(page);
 
   const siteRiskHeading = page.getByRole("heading", {
-    name: /Site Risk Intelligence/i,
+    name: "Site Risk Briefing",
+    exact: true,
   });
   await expect(siteRiskHeading).toBeVisible();
 
