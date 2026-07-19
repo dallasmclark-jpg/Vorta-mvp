@@ -2547,54 +2547,54 @@ export interface AreaInterventionPlan {
   dateNote: string;
 }
 
-export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
-  const { data, error } = await supabase
-    .from("area_intervention_plans")
-    .select(`
-      area,
-      current_risk_score,
-      current_risk_level,
-      recommended_option,
-      recommended_duration_hours,
-      recommended_predicted_risk_score,
-      recommended_predicted_risk_level,
-      recommended_reduction,
-      recommended_efficiency,
-      justification,
-      options,
-      target_work_package,
-      resource_requirements,
-      date_note,
-      target_work_list,
-      work_items
-    `)
-    .order("current_risk_score", { ascending: false });
+const AREA_INTERVENTION_PLAN_SELECT = `
+  area,
+  current_risk_score,
+  current_risk_level,
+  recommended_option,
+  recommended_duration_hours,
+  recommended_predicted_risk_score,
+  recommended_predicted_risk_level,
+  recommended_reduction,
+  recommended_efficiency,
+  justification,
+  options,
+  target_work_package,
+  resource_requirements,
+  date_note,
+  target_work_list,
+  work_items
+`;
 
-  if (error || !data) {
-    if (error) console.warn("area_intervention_plans fetch failed:", error.message);
-    return [];
-  }
-
-  return data.map((row) => ({
-    area:                          row.area,
-    currentRiskScore:              row.current_risk_score ?? 0,
-    currentRiskLevel:              row.current_risk_level ?? "Unknown",
-    recommendedOption:             row.recommended_option ?? "Review intervention",
-    recommendedDurationHours:      Number(row.recommended_duration_hours ?? 0),
+function mapAreaInterventionPlanRow(row: any): AreaInterventionPlan {
+  return {
+    area: row.area,
+    currentRiskScore: row.current_risk_score ?? 0,
+    currentRiskLevel: row.current_risk_level ?? "Unknown",
+    recommendedOption: row.recommended_option ?? "Review intervention",
+    recommendedDurationHours: Number(row.recommended_duration_hours ?? 0),
     recommendedPredictedRiskScore: row.recommended_predicted_risk_score ?? 0,
     recommendedPredictedRiskLevel: row.recommended_predicted_risk_level ?? "Unknown",
-    recommendedReduction:          row.recommended_reduction ?? 0,
-    recommendedEfficiency:         Number(row.recommended_efficiency ?? 0),
-    justification:                 row.justification ?? null,
-    options:                       Array.isArray(row.options) ? row.options : [],
+    recommendedReduction: row.recommended_reduction ?? 0,
+    recommendedEfficiency: Number(row.recommended_efficiency ?? 0),
+    justification: row.justification ?? null,
+    options: Array.isArray(row.options) ? row.options : [],
     targetWorkPackage:
       row.target_work_package && typeof row.target_work_package === "object"
         ? row.target_work_package
         : {},
     recommendedActions: (() => {
       const pkg = row.target_work_package;
-      if (pkg && typeof pkg === "object" && Array.isArray((pkg as Record<string, unknown>).workItems)) {
-        return (pkg as Record<string, unknown>).workItems as Array<{ asset?: string; action?: string; estimatedReduction?: number }>;
+      if (
+        pkg &&
+        typeof pkg === "object" &&
+        Array.isArray((pkg as Record<string, unknown>).workItems)
+      ) {
+        return (pkg as Record<string, unknown>).workItems as Array<{
+          asset?: string;
+          action?: string;
+          estimatedReduction?: number;
+        }>;
       }
       return [];
     })(),
@@ -2603,8 +2603,48 @@ export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]
       : [],
     workItems: Array.isArray(row.work_items) ? row.work_items : [],
     targetWorkList: row.target_work_list ?? "",
-    dateNote: row.date_note ?? "Select proposed intervention date to check engineer availability.",
-  }));
+    dateNote:
+      row.date_note ??
+      "Select proposed intervention date to check engineer availability.",
+  };
+}
+
+async function fetchAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
+  const { data, error } = await supabase
+    .from("area_intervention_plans")
+    .select(AREA_INTERVENTION_PLAN_SELECT)
+    .order("current_risk_score", { ascending: false });
+
+  if (error) {
+    throw new Error(`Area intervention plans could not be loaded: ${error.message}`);
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Area intervention plans returned an invalid payload.");
+  }
+
+  return data.map(mapAreaInterventionPlanRow);
+}
+
+/**
+ * Compatibility reader for secondary portals that deliberately treat an absent
+ * intervention plan as an empty optional section.
+ */
+export async function getAreaInterventionPlans(): Promise<AreaInterventionPlan[]> {
+  try {
+    return await fetchAreaInterventionPlans();
+  } catch (error) {
+    console.warn("area_intervention_plans fetch failed:", error);
+    return [];
+  }
+}
+
+/**
+ * Strict reader used by the Maintenance Manager dashboard. Failures must reject
+ * so the dashboard can retain the last verified evidence and mark it stale.
+ */
+export async function getAreaInterventionPlansStrict(): Promise<AreaInterventionPlan[]> {
+  return fetchAreaInterventionPlans();
 }
 
 // ─── Area equipment risk ──────────────────────────────────────────────────────
@@ -2883,8 +2923,16 @@ export async function getBuildingGroupStats(): Promise<BuildingGroupStats[]> {
 
 // ─── Site risk reduction plan ─────────────────────────────────────────────────
 
+export type RiskActionTarget =
+  | "spares"
+  | "skills"
+  | "calibrations"
+  | "work-orders"
+  | "overview";
+
 export interface SiteRiskReductionAction {
   priority: number;
+  target: RiskActionTarget;
   driver: string;
   action: string;
   detail: string;
@@ -2897,6 +2945,48 @@ export interface SiteRiskReductionAction {
   estimatedDurationMinutes: number;
   procurementLeadDays: number;
   rankingReason: string;
+}
+
+
+const RISK_ACTION_TARGETS = new Set<RiskActionTarget>([
+  "spares",
+  "skills",
+  "calibrations",
+  "work-orders",
+  "overview",
+]);
+
+function resolveRiskActionTarget(action: Record<string, unknown>): RiskActionTarget {
+  const suppliedTarget = String(
+    action.target ?? action.actionTarget ?? action.action_target ?? "",
+  ) as RiskActionTarget;
+  if (RISK_ACTION_TARGETS.has(suppliedTarget)) return suppliedTarget;
+
+  if (Array.isArray(action.sparePartNumbers) && action.sparePartNumbers.length > 0) {
+    return "spares";
+  }
+  if (Array.isArray(action.pmNumbers) && action.pmNumbers.length > 0) {
+    return "calibrations";
+  }
+  if (Array.isArray(action.workOrderNumbers) && action.workOrderNumbers.length > 0) {
+    return "work-orders";
+  }
+
+  // Backwards compatibility for existing RPC payloads. New payloads should
+  // provide actionTarget explicitly so copy changes cannot alter navigation.
+  const legacyDriver = String(action.driver ?? "").trim().toLowerCase();
+  if (legacyDriver.includes("spare") || legacyDriver.includes("stock")) return "spares";
+  if (
+    legacyDriver.includes("skill") ||
+    legacyDriver.includes("labour") ||
+    legacyDriver.includes("coverage")
+  ) {
+    return "skills";
+  }
+  if (legacyDriver.includes("calibration") || legacyDriver.includes("pm")) {
+    return "calibrations";
+  }
+  return "overview";
 }
 
 export interface SiteRiskReductionPlan {
@@ -3047,6 +3137,7 @@ function mapSiteRiskReductionPlanRow(
             priority: Number(
               action.priority ?? 0,
             ),
+            target: resolveRiskActionTarget(action),
             driver:
               action.driver ?? "",
             action:
@@ -3184,51 +3275,32 @@ export type RiskDashboardScopePlanCache =
 
 export async function getRiskDashboardScopePlans():
   Promise<RiskDashboardScopePlanCache> {
-  try {
-    const { data, error } = await supabase.rpc(
-      "vorta_get_risk_dashboard_scope_plans",
+  const { data, error } = await supabase.rpc(
+    "vorta_get_risk_dashboard_scope_plans",
+  );
+
+  if (error) {
+    throw new Error(
+      `Risk dashboard scope plans could not be loaded: ${error.message}`,
     );
-
-    if (error) {
-      console.warn(
-        "vorta_get_risk_dashboard_scope_plans failed:",
-        error.message,
-      );
-      return {};
-    }
-
-    if (!Array.isArray(data)) {
-      return {};
-    }
-
-    return data.reduce<
-      RiskDashboardScopePlanCache
-    >(
-      (
-        cache,
-        row: any,
-      ) => {
-        const scopeKey =
-          row.scope_key ?? "";
-
-        if (scopeKey) {
-          cache[scopeKey] =
-            mapSiteRiskReductionPlanRow(
-              row,
-            );
-        }
-
-        return cache;
-      },
-      {},
-    );
-  } catch (error) {
-    console.warn(
-      "vorta_get_risk_dashboard_scope_plans threw:",
-      error,
-    );
-    return {};
   }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Risk dashboard scope plans returned an invalid payload.");
+  }
+
+  return data.reduce<RiskDashboardScopePlanCache>(
+    (cache, row: any) => {
+      const scopeKey = row.scope_key ?? "";
+
+      if (scopeKey) {
+        cache[scopeKey] = mapSiteRiskReductionPlanRow(row);
+      }
+
+      return cache;
+    },
+    {},
+  );
 }
 
 // ─── Current-risk refresh ─────────────────────────────────────────────────────
@@ -3578,64 +3650,42 @@ export type RiskDashboardScopeKpiCache =
 
 export async function getRiskDashboardScopeKpis():
   Promise<RiskDashboardScopeKpiCache> {
-  try {
-    const { data, error } = await supabase.rpc(
-      "vorta_get_risk_dashboard_scope_kpis",
-      {
-        p_anchor_date: null,
-      },
+  const { data, error } = await supabase.rpc(
+    "vorta_get_risk_dashboard_scope_kpis",
+    {
+      p_anchor_date: null,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Risk dashboard scope KPIs could not be loaded: ${error.message}`,
     );
-
-    if (error) {
-      console.warn(
-        "vorta_get_risk_dashboard_scope_kpis failed:",
-        error.message,
-      );
-      return {};
-    }
-
-    if (!Array.isArray(data)) {
-      return {};
-    }
-
-    return data.reduce<
-      RiskDashboardScopeKpiCache
-    >(
-      (
-        cache,
-        row: any,
-      ) => {
-        const scopeKey =
-          row.scope_key ?? "";
-
-        if (!scopeKey) {
-          return cache;
-        }
-
-        const dashboard =
-          mapRiskReductionKpiDashboardRow(
-            row,
-          );
-
-        if (!cache[scopeKey]) {
-          cache[scopeKey] = {};
-        }
-
-        cache[scopeKey][
-          dashboard.periodKey
-        ] = dashboard;
-
-        return cache;
-      },
-      {},
-    );
-  } catch (error) {
-    console.warn(
-      "vorta_get_risk_dashboard_scope_kpis threw:",
-      error,
-    );
-    return {};
   }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Risk dashboard scope KPIs returned an invalid payload.");
+  }
+
+  return data.reduce<RiskDashboardScopeKpiCache>(
+    (cache, row: any) => {
+      const scopeKey = row.scope_key ?? "";
+
+      if (!scopeKey) {
+        return cache;
+      }
+
+      const dashboard = mapRiskReductionKpiDashboardRow(row);
+
+      if (!cache[scopeKey]) {
+        cache[scopeKey] = {};
+      }
+
+      cache[scopeKey][dashboard.periodKey] = dashboard;
+      return cache;
+    },
+    {},
+  );
 }
 
 // ─── Consolidated equipment skills showcase ───────────────────────────────────

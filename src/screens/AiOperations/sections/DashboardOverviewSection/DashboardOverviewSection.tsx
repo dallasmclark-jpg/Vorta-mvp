@@ -22,7 +22,7 @@ import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
 import type { DashboardFreshness } from "../../../../lib/runtimeContracts";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
 import {
-  getAreaInterventionPlans,
+  getAreaInterventionPlansStrict,
   getSiteRiskReductionPlan,
   getAreaEquipmentRiskReductionPlan,
   getOperationalDashboardSnapshot,
@@ -38,10 +38,16 @@ import {
   type RiskReductionKpiDashboard,
   type RiskKpiPeriodKey,
   type RiskDashboardScope,
-  type RiskDashboardLabourCard,
   type RiskDashboardScopePlanCache,
   type RiskDashboardScopeKpiCache,
 } from "../../../Equipment/equipmentService";
+import { getRiskPlanActionRoute } from "../../riskActionRouting";
+import { RiskMeter } from "./RiskMeter";
+import { LabourRiskSection } from "./LabourRiskSection";
+import {
+  DashboardEvidenceNotice,
+  type DashboardEvidenceState,
+} from "./DashboardEvidenceNotice";
 
 const formatSiteRisk = (value: number): string =>
   Number(value).toFixed(1);
@@ -61,6 +67,19 @@ const formatFreshness = (value: string | null): string => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(timestamp));
+};
+
+const formatSnapshotTimestamp = (value: string | null): string => {
+  if (!value) return "No successful snapshot recorded";
+  const timestamp = new Date(value);
+  if (!Number.isFinite(timestamp.getTime())) return "Snapshot timestamp unavailable";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(timestamp);
 };
 
 const parseDateOnly = (value: string): Date => {
@@ -88,216 +107,6 @@ const formatCalendarDate = (
       day: "numeric",
       month: "short",
     },
-  );
-};
-
-const getLabourRiskPresentation = (
-  score: number,
-  noEngineerOverride: boolean,
-) => {
-  if (noEngineerOverride || score >= 85) {
-    return {
-      level: "Critical",
-      badgeClassName:
-        "bg-[#ef444420] text-red-500 hover:bg-[#ef444420]",
-      progressClassName: "bg-red-500",
-      label: noEngineerOverride
-        ? "Critical no-cover override"
-        : "Critical labour exposure",
-    };
-  }
-
-  if (score >= 65) {
-    return {
-      level: "High",
-      badgeClassName:
-        "bg-orange-500/20 text-orange-400 hover:bg-orange-500/20",
-      progressClassName: "bg-orange-500",
-      label: "High labour exposure",
-    };
-  }
-
-  if (score >= 40) {
-    return {
-      level: "Medium",
-      badgeClassName:
-        "bg-[#facc1520] text-yellow-400 hover:bg-[#facc1520]",
-      progressClassName: "bg-yellow-400",
-      label: "Reduced labour resilience",
-    };
-  }
-
-  if (score >= 20) {
-    return {
-      level: "Low",
-      badgeClassName:
-        "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20",
-      progressClassName: "bg-emerald-500",
-      label: "Low labour exposure",
-    };
-  }
-
-  return {
-    level: "Minimal",
-    badgeClassName:
-      "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20",
-    progressClassName: "bg-cyan-400",
-    label: "Labour coverage stable",
-  };
-};
-
-const useInViewOnce = <T extends HTMLElement,>(
-  threshold = 0.25,
-) => {
-  const elementRef = useRef<T>(null);
-  const [hasEnteredView, setHasEnteredView] =
-    useState(false);
-
-  useEffect(() => {
-    const element = elementRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const prefersReducedMotion =
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-    if (
-      prefersReducedMotion ||
-      !("IntersectionObserver" in window)
-    ) {
-      setHasEnteredView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) {
-          return;
-        }
-
-        setHasEnteredView(true);
-        observer.disconnect();
-      },
-      {
-        threshold,
-      },
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [threshold]);
-
-  return {
-    elementRef,
-    hasEnteredView,
-  };
-};
-
-// ─── RiskMeter ────────────────────────────────────────────────────────────────
-
-const RiskMeter = ({
-  value,
-  fillClassName,
-  animate = false,
-  ariaLabel = "Risk score",
-}: {
-  value: number;
-  fillClassName: string;
-  animate?: boolean;
-  ariaLabel?: string;
-}) => {
-  const {
-    elementRef,
-    hasEnteredView,
-  } = useInViewOnce<HTMLDivElement>();
-
-  const [
-    isEmphasising,
-    setIsEmphasising,
-  ] = useState(false);
-
-  const clampedValue = Math.max(
-    0,
-    Math.min(100, value),
-  );
-
-  const displayedValue =
-    animate && !hasEnteredView
-      ? 0
-      : clampedValue;
-
-  useEffect(() => {
-    if (
-      !animate ||
-      !hasEnteredView ||
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches
-    ) {
-      return;
-    }
-
-    setIsEmphasising(true);
-
-    const timeoutId = window.setTimeout(
-      () => {
-        setIsEmphasising(false);
-      },
-      850,
-    );
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [animate, hasEnteredView]);
-
-  return (
-    <div
-      ref={elementRef}
-      role="progressbar"
-      aria-label={ariaLabel}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={clampedValue}
-      className={`relative h-3 w-full overflow-visible rounded-lg bg-[#050914] ring-1 ring-inset ring-slate-600/45 transition-shadow duration-300 ${
-        isEmphasising
-          ? "shadow-[0_0_10px_rgba(255,255,255,0.10)]"
-          : ""
-      }`}
-    >
-      <div
-        className={`h-full rounded-lg opacity-80 ${
-          animate
-            ? "motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
-            : ""
-        } ${fillClassName}`}
-        style={{
-          width: `${displayedValue}%`,
-        }}
-      />
-
-      <span
-        className={`absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-white/75 shadow-[0_0_4px_rgba(255,255,255,0.22)] ${
-          animate
-            ? "motion-safe:transition-[left] motion-safe:duration-700 motion-safe:ease-out"
-            : ""
-        }`}
-        style={{
-          left:
-            displayedValue <= 0
-              ? "0"
-              : `calc(${displayedValue}% - 1px)`,
-        }}
-        aria-hidden="true"
-      />
-    </div>
   );
 };
 
@@ -432,106 +241,6 @@ interface RiskEquipmentPlanHistoryItem {
   equipmentId: string;
   equipmentName: string;
 }
-
-type RiskPlanAction =
-  SiteRiskReductionPlan["actions"][number];
-
-const getRiskPlanActionRoute = (
-  equipmentId: string,
-  action: RiskPlanAction,
-): string => {
-  const normalizedDriver =
-    action.driver
-      .trim()
-      .toLowerCase();
-
-  /*
-   * Spare and stock availability actions
-   * belong on the equipment Spares page.
-   */
-  if (
-    action.sparePartNumbers.length > 0 ||
-    normalizedDriver.includes("spare") ||
-    normalizedDriver.includes("stock")
-  ) {
-    return `/equipment/${equipmentId}/spares`;
-  }
-
-  /*
-   * Skills and labour coverage actions
-   * belong on the equipment Skills page.
-   */
-  if (
-    normalizedDriver.includes("skill") ||
-    normalizedDriver.includes("labour") ||
-    normalizedDriver.includes("coverage")
-  ) {
-    return `/equipment/${equipmentId}/skills?from=dashboard&returnTo=%2Fdashboard`;
-  }
-
-  /*
-   * PM backlog and calibration actions
-   * belong on the equipment PMs page.
-   *
-   * This must take priority over a linked
-   * work-order number because an overdue PM
-   * may also have a generated work order.
-   */
-  if (
-    normalizedDriver.includes(
-      "calibration",
-    ) ||
-    normalizedDriver.includes("pm") ||
-    action.pmNumbers.length > 0
-  ) {
-    return `/equipment/${equipmentId}/pms`;
-  }
-
-  /*
-   * Corrective or inspection actions that
-   * only reference a work order belong on
-   * the Work Orders page.
-   */
-  if (
-    action.workOrderNumbers.length > 0
-  ) {
-    return `/equipment/${equipmentId}/work-orders`;
-  }
-
-  /*
-   * Unknown future action types should
-   * still open the correct equipment.
-   */
-  return `/equipment/${equipmentId}/overview`;
-};
-
-const getLabourRiskWorkflowRoute = (
-  item: RiskDashboardLabourCard,
-  activeScopeArea: string | null,
-): string => {
-  const scopedParams = new URLSearchParams({ from: "dashboard" });
-  if (activeScopeArea) scopedParams.set("area", activeScopeArea);
-
-  if (item.slug === "shift-cover" || item.slug === "single-point-failure") {
-    scopedParams.set("view", "priority");
-    scopedParams.set("priority", "1");
-    scopedParams.set("risk", item.slug);
-    return `/skills-matrix?${scopedParams.toString()}`;
-  }
-
-  if (item.slug === "training-expiring") {
-    scopedParams.set("priority", "High");
-    return `/training?${scopedParams.toString()}`;
-  }
-
-  const detailParams = new URLSearchParams();
-  if (activeScopeArea) {
-    detailParams.set("scope", "area");
-    detailParams.set("area", activeScopeArea);
-  }
-  const query = detailParams.toString();
-  return `/maintenance/labour-risk/${item.slug}${query ? `?${query}` : ""}`;
-};
 
 const RISK_KPI_FIXED_DISPLAY_ORDER = [
   "Risk Reduction Achieved",
@@ -741,6 +450,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
     dashboardLoadError,
     setDashboardLoadError,
   ] = useState<string | null>(null);
+  const [dashboardWarnings, setDashboardWarnings] = useState<string[]>([]);
+  const [snapshotEvidenceState, setSnapshotEvidenceState] =
+    useState<DashboardEvidenceState>("loading");
+  const [planEvidenceState, setPlanEvidenceState] =
+    useState<DashboardEvidenceState>("loading");
+  const [lastSuccessfulSnapshotAt, setLastSuccessfulSnapshotAt] =
+    useState<string | null>(null);
+  const hasOperationalSnapshotRef = useRef(false);
+  const hasPlanEvidenceRef = useRef(false);
+  const lastSuccessfulSnapshotAtRef = useRef<string | null>(null);
 
   const [
     selectedKpiPeriod,
@@ -858,6 +577,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
         ) / 10,
       )
     : 0;
+
+  const riskActionsDisabled =
+    snapshotEvidenceState !== "current" ||
+    planEvidenceState !== "current";
 
   useEffect(() => {
     if (
@@ -1017,6 +740,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
       setRiskReductionPlanLoading(true);
       setRiskKpiLoading(true);
       setDashboardLoadError(null);
+      setDashboardWarnings([]);
 
       try {
         const operationalDashboard = recalculate
@@ -1024,9 +748,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
           : await getOperationalDashboardSnapshot();
 
         if (!operationalDashboard) {
-          throw new Error(
-            "Current operational risk could not be recalculated.",
-          );
+          throw new Error("Current operational risk snapshot was not returned.");
         }
 
         const {
@@ -1036,110 +758,115 @@ export const DashboardOverviewSection = (): JSX.Element => {
           freshness: nextFreshness,
         } = operationalDashboard;
 
+        const successfulSnapshotAt =
+          nextFreshness?.riskCalculatedAt ?? new Date().toISOString();
+        hasOperationalSnapshotRef.current = true;
+        lastSuccessfulSnapshotAtRef.current = successfulSnapshotAt;
+        setLastSuccessfulSnapshotAt(successfulSnapshotAt);
+        setSnapshotEvidenceState("current");
         setAreaRiskCards(areaProfiles);
         setFreshness(nextFreshness);
         setSiteRisk(siteProfile);
         setRiskScopes(scopes);
 
-        const validScopeKey =
-          scopes.some(
-            (scope) =>
-              scope.scopeKey === scopeKey,
-          )
-            ? scopeKey
-            : "site";
+        const validScopeKey = scopes.some((scope) => scope.scopeKey === scopeKey)
+          ? scopeKey
+          : "site";
 
-        setSelectedRiskScopeKey(
-          validScopeKey,
-        );
-
+        setSelectedRiskScopeKey(validScopeKey);
         setRiskPlanHistory([]);
         setRiskEquipmentPlanHistory([]);
         setSelectedInterventionPlan(null);
-
-        /*
-         * This state update must happen before the
-         * work-plan refresh begins.
-         *
-         * React can now render the freshly recalculated
-         * site, area, equipment and labour risk data.
-         */
         setOperationalRiskLoading(false);
 
-        try {
-          const workPlanRefreshSucceeded = recalculate
-              ? await refreshRiskWorkPlan()
-              : true;
+        const warnings: string[] = [];
+        let workPlanRefreshSucceeded = true;
 
-          if (!workPlanRefreshSucceeded) {
-            throw new Error(
-              "The maintenance work plan could not be rebuilt.",
+        if (recalculate) {
+          try {
+            workPlanRefreshSucceeded = await refreshRiskWorkPlan();
+            if (!workPlanRefreshSucceeded) {
+              warnings.push(
+                "The operational snapshot refreshed, but the maintenance work plan could not be rebuilt.",
+              );
+            }
+          } catch (error) {
+            workPlanRefreshSucceeded = false;
+            console.warn("Risk work-plan refresh failed:", error);
+            warnings.push(
+              "The operational snapshot refreshed, but the maintenance work plan could not be rebuilt.",
             );
           }
+        }
 
-          const [
-            areaPlans,
-            planCache,
-            scopeKpiCache,
-          ] = await Promise.all([
-            getAreaInterventionPlans(),
+        const [areaPlansResult, planCacheResult, scopeKpiResult] =
+          await Promise.allSettled([
+            getAreaInterventionPlansStrict(),
             getRiskDashboardScopePlans(),
             getRiskDashboardScopeKpis(),
           ]);
 
-          setInterventionPlans(areaPlans);
+        if (areaPlansResult.status === "fulfilled") {
+          setInterventionPlans(areaPlansResult.value);
+        } else {
+          console.warn("Area intervention plans failed:", areaPlansResult.reason);
+          warnings.push("Area intervention plans are temporarily unavailable.");
+        }
+
+        if (planCacheResult.status === "fulfilled") {
+          const planCache = planCacheResult.value;
           setRiskScopePlanCache(planCache);
-          setRiskScopeKpiCache(
-            scopeKpiCache,
+          const requestedPlan = planCache[validScopeKey] ?? planCache.site ?? null;
+          setRiskReductionPlan(requestedPlan);
+
+          if (requestedPlan) {
+            hasPlanEvidenceRef.current = true;
+            setPlanEvidenceState(workPlanRefreshSucceeded ? "current" : "stale");
+          } else {
+            setPlanEvidenceState("unavailable");
+            warnings.push("No verified risk-reduction plan was returned for this scope.");
+          }
+        } else {
+          console.warn("Risk plan cache failed:", planCacheResult.reason);
+          setPlanEvidenceState(
+            hasPlanEvidenceRef.current ? "stale" : "unavailable",
           );
-
-          const requestedPlan =
-            planCache[validScopeKey] ??
-            planCache.site ??
-            null;
-
-          setRiskReductionPlan(
-            requestedPlan,
-          );
-
-          const requestedKpis =
-            scopeKpiCache[
-              validScopeKey
-            ]?.[period] ??
-            scopeKpiCache.site?.[
-              period
-            ] ??
-            scopeKpiCache.site
-              ?.daily ??
-            null;
-
-          setRiskKpiDashboard(
-            requestedKpis,
-          );
-        } catch (error) {
-          console.warn(
-            "Secondary dashboard intelligence failed:",
-            error,
-          );
-
-          setInterventionPlans([]);
-          setRiskScopePlanCache({});
-          setRiskScopeKpiCache({});
-          setRiskReductionPlan(null);
-          setRiskKpiDashboard(null);
-
-          setDashboardLoadError(
-            "Current site risk is ready, but the work plan and performance indicators could not be generated.",
+          warnings.push(
+            "The current risk-reduction plan could not be verified. Existing projected actions are disabled.",
           );
         }
-      } catch (error) {
-        console.warn(
-          "Operational dashboard risk refresh failed:",
-          error,
-        );
 
+        if (scopeKpiResult.status === "fulfilled") {
+          const scopeKpiCache = scopeKpiResult.value;
+          setRiskScopeKpiCache(scopeKpiCache);
+          const requestedKpis =
+            scopeKpiCache[validScopeKey]?.[period] ??
+            scopeKpiCache.site?.[period] ??
+            scopeKpiCache.site?.daily ??
+            null;
+          setRiskKpiDashboard(requestedKpis);
+          if (!requestedKpis) {
+            warnings.push("Performance indicators are not available for this scope and period.");
+          }
+        } else {
+          console.warn("Risk KPI cache failed:", scopeKpiResult.reason);
+          warnings.push("Performance indicators could not be refreshed.");
+        }
+
+        setDashboardWarnings([...new Set(warnings)]);
+      } catch (error) {
+        console.warn("Operational dashboard risk refresh failed:", error);
+        const hasPreviousSnapshot = hasOperationalSnapshotRef.current;
+        setSnapshotEvidenceState(hasPreviousSnapshot ? "stale" : "unavailable");
+        setPlanEvidenceState(
+          hasPlanEvidenceRef.current ? "stale" : "unavailable",
+        );
         setDashboardLoadError(
-          "Current site risk could not be calculated. Run the analysis again.",
+          hasPreviousSnapshot
+            ? `Refresh failed. Vorta is showing the last successful snapshot from ${formatSnapshotTimestamp(
+                lastSuccessfulSnapshotAtRef.current,
+              )}. Projected actions are disabled until verification succeeds.`
+            : "Current site risk could not be verified. No operational snapshot is being presented as current.",
         );
       } finally {
         setOperationalRiskLoading(false);
@@ -1163,7 +890,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     area?: string,
     navigationMode: "forward" | "back" | "reset" = "forward",
   ) => {
-    if (riskReductionPlanLoading) {
+    if (riskReductionPlanLoading || riskActionsDisabled) {
       return;
     }
 
@@ -1219,6 +946,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
     ) => {
       if (
         riskReductionPlanLoading ||
+        riskActionsDisabled ||
         isSiteRiskScope ||
         !activeScopeArea
       ) {
@@ -1313,61 +1041,6 @@ export const DashboardOverviewSection = (): JSX.Element => {
       `/equipment?area=${encodeURIComponent(trimmedArea)}`,
     );
   };
-
-  const activeLabourRiskItems =
-    (
-      activeRiskScope?.labourCards ??
-      []
-    )
-      .slice()
-      .sort(
-        (a, b) =>
-          b.score - a.score,
-      )
-      .map(
-      (
-        item:
-          RiskDashboardLabourCard,
-      ) => {
-        const isShiftCover =
-          item.slug ===
-          "shift-cover";
-
-        const presentation =
-          getLabourRiskPresentation(
-            item.score,
-            isShiftCover &&
-              Boolean(
-                activeRiskScope
-                  ?.noEngineerOverride,
-              ),
-          );
-
-        return {
-          ...item,
-          level:
-            presentation.level,
-          displayScore:
-            formatSiteRisk(
-              item.score,
-            ),
-          progress: Math.max(
-            0,
-            Math.min(
-              100,
-              item.score,
-            ),
-          ),
-          label:
-            item.statusLabel ||
-            presentation.label,
-          badgeClassName:
-            presentation.badgeClassName,
-          progressClassName:
-            presentation.progressClassName,
-        };
-      },
-    );
 
   const handleRiskScopeChange = (
     scopeKey: string,
@@ -1497,19 +1170,16 @@ export const DashboardOverviewSection = (): JSX.Element => {
         </div>
       </header>
 
-      {dashboardLoadError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/5 px-4 py-3"
-        >
-          <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-
-          <p className="text-sm font-semibold text-red-300">
-            {dashboardLoadError}
-          </p>
-        </div>
-      )}
+      <DashboardEvidenceNotice
+        state={snapshotEvidenceState}
+        error={dashboardLoadError}
+        warnings={dashboardWarnings}
+        lastSuccessfulSnapshotLabel={
+          lastSuccessfulSnapshotAt
+            ? formatSnapshotTimestamp(lastSuccessfulSnapshotAt)
+            : null
+        }
+      />
 
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
@@ -1636,10 +1306,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
               </div>
 
               <div className="flex flex-col gap-0.5 text-left lg:items-end lg:text-right">
-                <p className={`text-xs font-medium ${
-                  freshness?.riskCalculatedAt ? "text-emerald-400" : "text-amber-300"
-                }`}>
-                  Risk calculated {formatFreshness(freshness?.riskCalculatedAt ?? null)}
+                <p
+                  className={`text-xs font-medium ${
+                    snapshotEvidenceState === "current"
+                      ? "text-emerald-400"
+                      : snapshotEvidenceState === "stale"
+                        ? "text-amber-300"
+                        : "text-red-300"
+                  }`}
+                >
+                  {snapshotEvidenceState === "current"
+                    ? "Verified snapshot"
+                    : snapshotEvidenceState === "stale"
+                      ? "Stale snapshot"
+                      : "Snapshot unavailable"}
+                  {" · "}
+                  {formatFreshness(freshness?.riskCalculatedAt ?? null)}
                 </p>
 
                 <p className="text-xs text-slate-500">
@@ -1750,14 +1432,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
               <div className="flex shrink-0 items-center">
                 <button
                   type="button"
+                  disabled={riskActionsDisabled}
+                  title={
+                    riskActionsDisabled
+                      ? "Projected actions are disabled until the operational snapshot and work plan are verified."
+                      : undefined
+                  }
                   onClick={() => {
+                    if (riskActionsDisabled) return;
                     setHasOpenedRiskPlan(true);
                     setIsRiskDetailOpen(
                       (open) => !open,
                     );
                   }}
                   aria-expanded={isRiskDetailOpen}
-                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] ${
+                  className={`inline-flex min-w-[180px] items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141820] disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800/40 disabled:text-slate-500 disabled:shadow-none ${
                     hasOpenedRiskPlan
                       ? "border-blue-400/20 bg-blue-500/5 text-blue-400 shadow-none hover:border-blue-400/30 hover:bg-blue-500/10"
                       : "border-cyan-300/70 bg-cyan-400/15 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.20)] hover:bg-cyan-400/25 hover:shadow-[0_0_20px_rgba(34,211,238,0.32)]"
@@ -1803,7 +1492,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           previousRiskPlanArea !== siteRisk.highestArea && (
                             <button
                               type="button"
-                              disabled={riskReductionPlanLoading}
+                              disabled={riskReductionPlanLoading || riskActionsDisabled}
                               onClick={() =>
                                 void handleLoadRiskReductionPlan(
                                   undefined,
@@ -1982,7 +1671,14 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               <button
                                 key={`${action.priority}-${action.action}`}
                                 type="button"
+                                disabled={riskActionsDisabled}
+                                title={
+                                  riskActionsDisabled
+                                    ? "Projected actions are disabled until the operational snapshot and work plan are verified."
+                                    : undefined
+                                }
                                 onClick={() => {
+                                  if (riskActionsDisabled) return;
                                   if (workOrder) {
                                     openWorkOrderDetail({
                                       equipmentId: riskReductionPlan.equipmentId,
@@ -1997,7 +1693,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     ),
                                   );
                                 }}
-                                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26]"
+                                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-gray-800 disabled:hover:bg-[#0d1117]"
                               >
                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
                                   {index + 1}
@@ -2180,7 +1876,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           {previousRiskPlanArea && (
                             <button
                               type="button"
-                              disabled={riskReductionPlanLoading}
+                              disabled={riskReductionPlanLoading || riskActionsDisabled}
                               onClick={handleLoadPreviousRiskArea}
                               title={`Return to ${previousRiskPlanArea}`}
                               aria-label={`Return to previous area: ${previousRiskPlanArea}`}
@@ -2193,7 +1889,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           {riskReductionPlan.nextArea && (
                             <button
                               type="button"
-                              disabled={riskReductionPlanLoading}
+                              disabled={riskReductionPlanLoading || riskActionsDisabled}
                               onClick={() => {
                                 setHasUsedNextArea(true);
                                 void handleLoadRiskReductionPlan(
@@ -2973,81 +2669,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
         )}
       </section>
 
-      {/* ── Labour Risk ─────────────────────────────────────────────── */}
-      <section className="flex w-full flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-50">{isSiteRiskScope
-            ? "Labour Risk"
-            : `${activeScopeLabel} Labour Risk`}</h2>
-          <button
-            type="button"
-            onClick={() =>
-              isSiteRiskScope
-                ? navigate("/maintenance/labour-risk/shift-cover")
-                : navigate(
-                    `/maintenance/labour-risk/shift-cover?scope=area&area=${encodeURIComponent(
-                      activeScopeArea ?? "",
-                    )}`,
-                  )
-            }
-            className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
-          >
-            View all labour risks →
-          </button>
-        </div>
-        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {activeLabourRiskItems.map(
-  (item, index) => (
-            <Card
-              key={item.title}
-              onClick={() => {
-                navigate(
-                  getLabourRiskWorkflowRoute(
-                    item,
-                    isSiteRiskScope ? null : activeScopeArea,
-                  ),
-                );
-              }}
-              className="cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a]"
-            >
-              <CardContent className="flex h-full flex-col gap-3 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="flex-1 text-sm font-semibold text-slate-50">{item.title}</h3>
-                  <Badge
-                    variant="secondary"
-                    className={`rounded px-2 py-1 text-xs font-medium shadow-none ${item.badgeClassName}`}
-                  >
-                    {item.level}
-                  </Badge>
-                </div>
-                <p className="text-xs text-slate-400">{item.description}</p>
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-xs text-slate-400">Overall risk score</p>
-                  <p className="text-xl font-semibold text-slate-50">{item.displayScore}</p>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-slate-400">{item.metricLabel}</span>
-                  <span className="text-xs font-semibold text-slate-50">{item.metricValue}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-slate-400">{item.extraLabel}</span>
-                  <span className="text-xs font-semibold text-slate-50">{item.extraValue}</span>
-                </div>
-                <div className="mt-auto flex flex-col gap-1.5 pt-1">
-                  <RiskMeter
-  value={item.progress}
-  fillClassName={item.progressClassName}
-  animate={index === 0}
-  ariaLabel={`${item.title} risk score ${item.displayScore}`}
-/>
-                  <p className="text-xs text-slate-400">{item.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ),
-)}
-        </div>
-      </section>
+      <LabourRiskSection
+        scope={activeRiskScope}
+        isSiteRiskScope={isSiteRiskScope}
+        activeScopeLabel={activeScopeLabel}
+        activeScopeArea={activeScopeArea}
+        onNavigate={navigate}
+      />
 
       {/* ── Risk Reduction Performance KPIs ─────────────────────────── */}
       <section

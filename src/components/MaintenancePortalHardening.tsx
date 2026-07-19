@@ -5,16 +5,8 @@ export function MaintenancePortalHardening(): JSX.Element {
         min-width: 0;
       }
 
-      [data-vorta-maintenance-portal="true"] *,
-      [data-vorta-maintenance-portal="true"] *::before,
-      [data-vorta-maintenance-portal="true"] *::after {
-        min-width: 0;
-      }
-
       [data-vorta-maintenance-portal="true"] button,
-      [data-vorta-maintenance-portal="true"] [role="button"],
-      [data-vorta-maintenance-portal="true"] [role="dialog"] button,
-      [data-vorta-maintenance-portal="true"] [role="dialog"] [role="button"] {
+      [data-vorta-maintenance-portal="true"] [role="button"] {
         min-height: 2.5rem;
       }
 
@@ -29,55 +21,29 @@ export function MaintenancePortalHardening(): JSX.Element {
       }
 
       @media (min-width: 1360px) and (max-width: 1535px) {
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"][class*="2xl:w-56"] {
+        [data-vorta-portal-shell="true"] [data-vorta-desktop-sidebar="true"] {
           width: 14rem !important;
         }
 
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside {
+        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar="true"] {
           padding-left: 1rem !important;
           padding-right: 1rem !important;
         }
 
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside
-          [class~="hidden"][class*="2xl:block"] {
+        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-label="true"],
+        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-logo-full="true"] {
           display: block !important;
         }
 
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside
-          [class~="block"][class*="2xl:hidden"] {
+        [data-vorta-desktop-sidebar="true"] [data-vorta-sidebar-logo-icon="true"],
+        [data-vorta-sidebar-tooltip="true"] {
           display: none !important;
         }
 
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside
-          a,
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside
-          button {
+        [data-vorta-desktop-sidebar="true"] [data-vorta-nav-item="true"] {
           justify-content: flex-start !important;
           padding-left: 0.75rem !important;
           padding-right: 0.75rem !important;
-        }
-
-        body main:has([data-vorta-maintenance-portal="true"])
-          > div[class*="md:w-14"]
-          aside
-          header {
-          justify-content: flex-start !important;
-          padding-left: 0.5rem !important;
-        }
-
-        body:has([data-vorta-maintenance-portal="true"]) > [role="tooltip"] {
-          display: none !important;
         }
       }
 
@@ -90,10 +56,6 @@ export function MaintenancePortalHardening(): JSX.Element {
           width: calc(100vw - 0.75rem) !important;
           max-width: calc(100vw - 0.75rem) !important;
           margin-inline: auto;
-        }
-
-        [data-vorta-maintenance-portal="true"] [class*="overflow-x-auto"] table {
-          min-width: 42rem;
         }
       }
 

@@ -123,6 +123,65 @@ test("live Shift Cover adapts to the viewport and reports genuine completeness",
   await expectNoPageOverflow(page);
 });
 
+
+test("malformed live Shift Cover evidence fails closed instead of becoming zero risk", async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await page.route(
+    /\/rest\/v1\/rpc\/vorta_get_shift_cover_snapshot/,
+    async (route) => {
+      const today = new Date();
+      const day = today.getUTCDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      today.setUTCDate(today.getUTCDate() + mondayOffset);
+      const shiftDate = today.toISOString().slice(0, 10);
+      const timestamp = new Date().toISOString();
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          mode: "live",
+          siteId: allowedSiteId,
+          generatedAt: timestamp,
+          sourceUpdatedAt: timestamp,
+          calendar: [
+            {
+              shiftDate,
+              shiftType: "day",
+              teamNames: ["Shift A"],
+              engineerNames: ["Test Engineer"],
+              scheduledEngineerCount: 1,
+              contractorEngineerCount: 0,
+              labourRiskScore: "not-a-number",
+              labourRiskLevel: "Low",
+              coverageStatus: "covered",
+              equipmentWithMissingCover: 0,
+              missingSkillCount: 0,
+            },
+          ],
+          teams: [],
+          completeness: {
+            activeTeamCount: 1,
+            activeMemberCount: 1,
+            engineerCount: 1,
+            skillRecordCount: 1,
+          },
+        }),
+      });
+    },
+  );
+
+  await page.goto("/maintenance/labour-risk/shift-cover");
+  await expect(
+    page.getByText("Verified Shift Cover data is unavailable", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/labourRiskScore must be finite/i)).toBeVisible();
+  await expect(page.getByText("0.0", { exact: true })).toHaveCount(0);
+});
+
 test("a direct Equipment URL for another site fails closed", async ({ page }) => {
   await signIn(page);
   await page.goto(`/equipment/${deniedEquipmentId}/overview`);

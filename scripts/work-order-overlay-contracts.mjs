@@ -30,8 +30,9 @@ const aiAssistantSource = readSource(
 const maintenanceActionsSource = readSource(
   "../src/lib/maintenanceActions.ts",
 );
-const documentInterceptorSource = readSource(
+const retiredDocumentInterceptorUrl = new URL(
   "../src/lib/equipmentDocumentNavigationInterceptor.ts",
+  import.meta.url,
 );
 const retiredInterceptorUrl = new URL(
   "../src/lib/vortaAiWorkOrderNavigationFix.ts",
@@ -115,8 +116,8 @@ check(
     enhancedOverlaySource.includes("261 goods issues"),
 );
 check(
-  "Document navigation no longer imports the global work order interceptor",
-  !documentInterceptorSource.includes("vortaAiWorkOrderNavigationFix"),
+  "Document navigation is owned by React rather than a document-wide interceptor",
+  !existsSync(retiredDocumentInterceptorUrl),
 );
 check(
   "Obsolete document-wide work order interceptor has been removed",

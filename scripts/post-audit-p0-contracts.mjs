@@ -109,6 +109,9 @@ assert.match(shiftService, /completeShiftCount/);
 assert.match(shiftService, /expectedShiftCount/);
 assert.match(shiftService, /assignedShiftCount/);
 assert.match(shiftService, /staffedShiftCount/);
+assert.match(shiftService, /snapshot.siteId does not match/);
+assert.match(shiftService, /labourRiskScore/);
+assert.match(shiftService, /duplicate day or night shifts/);
 
 assert.match(maintenanceHardening, /min-width: 1360px/);
 assert.doesNotMatch(maintenanceHardening, /text-\[7\.5px\]|text-\[8px\]|text-\[9px\]/);
@@ -118,6 +121,7 @@ assert.doesNotMatch(dashboardExperience, /querySelector|onClickCapture|cursor-po
 assert.match(skillsRoute, /risk === "shift-cover"/);
 assert.match(skillsRoute, /maintenance\/labour-risk\/shift-cover/);
 assert.match(aiOperations, /<SkillsMatrixRouteEntry \/>/);
+assert.match(aiOperations, /import\("\.\/SkillsMatrixRouteEntry"\)/);
 
 assert.match(liveBrowserTest, /data-vorta-live-equipment-list/);
 assert.match(liveBrowserTest, /another site fails closed/);
@@ -128,6 +132,7 @@ assert.match(liveBrowserTest, /toBeDisabled/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
+assert.match(qualityWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
 assert.doesNotMatch(
   qualityWorkflow,
   /maintenance-manager-live\.spec\.ts[^\n]*--project=/,

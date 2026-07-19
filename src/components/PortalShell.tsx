@@ -176,6 +176,7 @@ function useCompactSidebarTooltip(
       ? createPortal(
           <div
             role="tooltip"
+            data-vorta-sidebar-tooltip="true"
             style={{
               top: position.top,
               left: position.left,
@@ -272,6 +273,7 @@ function NavItemRow({
   return (
     <>
       <NavLink
+        data-vorta-nav-item="true"
         to={item.to}
         end={item.end}
         aria-label={item.label}
@@ -314,7 +316,7 @@ function NavItemRow({
         }
       >
         <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-        <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
+        <span data-vorta-sidebar-label="true" className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
           {item.label}
         </span>
       </NavLink>
@@ -395,7 +397,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   };
 
   return (
-    <aside className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
+    <aside data-vorta-sidebar="true" className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
       {/* Close button (mobile overlay only) */}
       {onClose && (
         <button
@@ -411,11 +413,11 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
       {/* Logo */}
       <header className={`flex h-10 items-center mb-4 ${forceLabels ? "px-2" : "justify-center px-0 2xl:justify-start 2xl:px-2"}`}>
         <NavLink to={homeRoute} aria-label="Vorta home" onClick={onClose} className="inline-flex items-center overflow-hidden">
-          <span className={forceLabels ? "block" : "hidden 2xl:block"}>
+          <span data-vorta-sidebar-logo-full="true" className={forceLabels ? "block" : "hidden 2xl:block"}>
             <VortaLogo />
           </span>
           {!forceLabels && (
-            <span className="block 2xl:hidden">
+            <span data-vorta-sidebar-logo-icon="true" className="block 2xl:hidden">
               <VortaIcon />
             </span>
           )}
@@ -442,6 +444,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
 
         <div className="border-t border-gray-800 pt-4">
           <button
+            data-vorta-nav-item="true"
             type="button"
             aria-label="Log out"
             onMouseEnter={(event) =>
@@ -474,7 +477,7 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
             className={`${itemBase("hover:bg-red-500/10")} text-slate-500 hover:text-red-400`}
           >
             <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
+            <span data-vorta-sidebar-label="true" className={`${labelBase} ${labelVisible ? "block" : "hidden 2xl:block"}`}>
               Log out
             </span>
           </button>
@@ -522,10 +525,10 @@ export const PortalShell = ({
   }, [location.pathname]);
 
   return (
-    <main className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
+    <main data-vorta-portal-shell="true" className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
-      <div className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
+      <div data-vorta-desktop-sidebar="true" className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
         <Sidebar
           homeRoute={homeRoute}
           nav={nav}

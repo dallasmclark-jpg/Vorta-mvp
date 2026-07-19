@@ -54,39 +54,9 @@ interface GlobalAiPromptEventDetail {
   role?: VortaAiRole;
 }
 
-const FAULT_PROMPT_EVENT = "vorta-global-ai-fault-prompt-v2";
-const ROUTER_MARKER = "vortaFaultPromptRouterV2";
-
-function installFaultPromptRouter(): void {
-  if (typeof window === "undefined") return;
-
-  const root = document.documentElement;
-  if (root.dataset[ROUTER_MARKER] === "true") return;
-  root.dataset[ROUTER_MARKER] = "true";
-
-  window.addEventListener(
-    "vorta-global-ai-prompt",
-    (event) => {
-      const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
-      const question = detail?.question?.trim() ?? "";
-      if (!detail?.submit || !question || !isFaultQuestion(question)) return;
-
-      event.stopImmediatePropagation();
-      document
-        .querySelector<HTMLButtonElement>(
-          'button[aria-label="Close global assistant"]:not([data-vorta-fault-close="true"])',
-        )
-        ?.click();
-
-      window.queueMicrotask(() => {
-        window.dispatchEvent(new CustomEvent(FAULT_PROMPT_EVENT, { detail }));
-      });
-    },
-    true,
-  );
+function shouldHandleGeneralPrompt(question: string): boolean {
+  return !isFaultQuestion(question);
 }
-
-installFaultPromptRouter();
 
 function initials(name: string): string {
   return name
@@ -626,7 +596,12 @@ function FaultIntelligenceDrawer({
     const handleFaultPrompt = (event: Event) => {
       const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
       const nextQuestion = detail?.question?.trim() ?? "";
-      if (!nextQuestion) return;
+      if (!detail?.submit || !nextQuestion) return;
+
+      if (!isFaultQuestion(nextQuestion)) {
+        setOpen(false);
+        return;
+      }
 
       if (detail?.role && detail.role !== role) {
         console.warn("Fault intelligence received a prompt for a different role.");
@@ -638,23 +613,10 @@ function FaultIntelligenceDrawer({
       void runQuestion(nextQuestion);
     };
 
-    window.addEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
-    return () => window.removeEventListener(FAULT_PROMPT_EVENT, handleFaultPrompt);
-  }, [role, runQuestion]);
-
-  useEffect(() => {
-    const closeForGeneralPrompt = (event: Event) => {
-      const detail = (event as CustomEvent<GlobalAiPromptEventDetail>).detail;
-      const nextQuestion = detail?.question?.trim() ?? "";
-      if (detail?.submit && nextQuestion && !isFaultQuestion(nextQuestion)) {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
+    window.addEventListener("vorta-global-ai-prompt", handleFaultPrompt);
     return () =>
-      window.removeEventListener("vorta-global-ai-prompt", closeForGeneralPrompt);
-  }, []);
+      window.removeEventListener("vorta-global-ai-prompt", handleFaultPrompt);
+  }, [role, runQuestion]);
 
   const actions = useMemo(() => {
     if (!result) return [];
@@ -956,14 +918,20 @@ function FaultIntelligenceDrawer({
 
 interface GlobalMaintenanceAiAssistantWithFaultsV2Props {
   role?: VortaAiRole;
+  showLauncher?: boolean;
 }
 
 export function GlobalMaintenanceAiAssistantWithFaultsV2({
   role = "maintenance-manager",
+  showLauncher = true,
 }: GlobalMaintenanceAiAssistantWithFaultsV2Props): JSX.Element {
   return (
     <>
-      <GlobalMaintenanceAiAssistant role={role} />
+      <GlobalMaintenanceAiAssistant
+        role={role}
+        showLauncher={showLauncher}
+        shouldHandlePrompt={shouldHandleGeneralPrompt}
+      />
       <FaultIntelligenceDrawer role={role} />
     </>
   );

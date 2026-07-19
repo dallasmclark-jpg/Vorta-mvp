@@ -39,6 +39,7 @@ check(
 check(
   "Router protects the dedicated Shift Cover calendar",
   aiOperations.includes("<SkillsMatrixRouteEntry />") &&
+    aiOperations.includes('import("./SkillsMatrixRouteEntry")') &&
     skillsMatrixRoute.includes('risk === "shift-cover"') &&
     skillsMatrixRoute.includes("/maintenance/labour-risk/shift-cover") &&
     !dashboardExperience.includes("isShiftCoverCard")

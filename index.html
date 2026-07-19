@@ -1,89 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" style="background:#0b0e14;color-scheme:dark">
 <head>
-<meta charset="utf-8" />
-<title>Vorta | Maintenance Intelligence</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<style>
-@import url("https://fonts.googleapis.com/css?family=Inter:var(--text-sm-medium-font-weight),var(--text-sm-semibold-font-weight),var(--text-xs-regular-font-weight),var(--text-sm-regular-font-weight),var(--text-xl-semibold-font-weight),var(--text-xs-semibold-font-weight),var(--text-xs-medium-font-weight),var(--text-md-semibold-font-weight)");
-
-/* Keep every equipment page header aligned to the Documents page metadata set. */
-section > div.sticky
-  .flex.flex-wrap.gap-x-4.gap-y-1.text-xs.text-slate-400:has(> :nth-child(9))
-  > :is(:nth-child(6), :nth-child(7), :nth-child(8)) {
-  display: none;
-}
-
-/* Remove low-value guidance and legend items from the shift-cover map. */
-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-    > div:nth-child(3) > div.ml-auto
-  )
-  > p,
-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-    > div:nth-child(3) > div.ml-auto
-  )
-  > div:first-child
-  > div:nth-child(2)
-  > div:nth-child(3),
-.mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-    > div:nth-child(3) > div.ml-auto
-  )
-  > div:first-child
-  > div:nth-child(2)
-  > div:first-child
-  > div
-  > div:last-child {
-  display: none !important;
-}
-
-@media (min-width: 1280px) {
-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-      > div:nth-child(3) > div.ml-auto
-    ) {
-    grid-template-areas:
-      "title legends"
-      "filters legends"
-      "navigation ." !important;
-    margin-bottom: 1.25rem !important;
-  }
-
-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-      > div:nth-child(3) > div.ml-auto
-    )
-    > div:first-child
-    > div:nth-child(2) {
-    grid-template-areas:
-      "status"
-      "risk" !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  /* Keep Today, date navigation and Week/Month together at the far left. */
-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-      > div:nth-child(3) > div.ml-auto
-    )
-    > div:nth-child(3) {
-    width: max-content !important;
-    max-width: 100%;
-    margin-left: 0 !important;
-    justify-self: start !important;
-    justify-content: flex-start !important;
-  }
-
-  .mb-4.flex.flex-col.gap-3:has(> div:nth-child(2) > button.rounded-full):has(
-      > div:nth-child(3) > div.ml-auto
-    )
-    > div:nth-child(3)
-    > div.ml-auto {
-    margin-left: 0.25rem !important;
-  }
-}
-    </style>
-<link href="tailwind.css" rel="stylesheet"/>
-<link href="tailwind.css" rel="stylesheet" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0e14" />
+  <title>Vorta | Maintenance Intelligence</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="tailwind.css" rel="stylesheet" />
 </head>
 <body style="background:#0b0e14;margin:0">
 <style>
@@ -155,8 +81,6 @@ section > div.sticky
     });
   })();
 </script>
-<script type="module" src="./src/lib/workforceProfilePhotos.ts"></script>
-<script type="module" src="./src/lib/equipmentDocumentNavigationInterceptor.ts"></script>
 <script type="module" src="./src/index.tsx"></script>
 </body>
 </html>
