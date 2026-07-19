@@ -62,8 +62,9 @@ assert.match(liveTrust, /derivedStatus/);
 assert.doesNotMatch(liveTrust, /vorta_get_demo_equipment_risk_list/);
 assert.doesNotMatch(liveTrust, /riskBreakdownFor/);
 
+assert.match(liveRoutes, /EquipmentSectionEntry/);
+assert.match(equipmentIndex, /EquipmentLiveListEntry as EquipmentSection/);
 for (const entry of [
-  "EquipmentSectionEntry",
   "EquipmentOverviewTrustedEntry",
   "EquipmentNotificationsTrustedEntry",
   "EquipmentWorkOrdersTrustedEntry",
