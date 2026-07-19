@@ -32,8 +32,12 @@ jobs:
             exit 0
           fi
 
-          cat .github/audit-patch-part-* > /tmp/audit-remediation.patch
-          echo "Staged patch SHA: $(sha256sum /tmp/audit-remediation.patch | cut -d' ' -f1)"
+          {
+            cat .github/audit-patch-part-00
+            printf ' '
+            cat .github/audit-patch-part-0[1-7]
+          } > /tmp/audit-remediation.patch
+          echo "846bc1c7844a0466742ad3ef952ed59635801a398a758d519fa7b8da8e85d8a1  /tmp/audit-remediation.patch" | sha256sum --check
           git apply --check --whitespace=error-all /tmp/audit-remediation.patch
           git apply --index --whitespace=error-all /tmp/audit-remediation.patch
 
