@@ -200,7 +200,18 @@ test("authenticated Maintenance Manager core workflow remains in context", async
   await expect(
     page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("LIVE ROTA", { exact: true })).toBeVisible();
+
+  const shiftCoverMode = page.locator("[data-vorta-shift-cover-mode]");
+  const resolvedShiftCoverMode = await shiftCoverMode.getAttribute(
+    "data-vorta-shift-cover-mode",
+  );
+  expect(["demo", "live"]).toContain(resolvedShiftCoverMode);
+  await expect(
+    page.getByText(
+      resolvedShiftCoverMode === "live" ? "LIVE ROTA" : "DEMO ROTA",
+      { exact: true },
+    ),
+  ).toBeVisible();
   await expectNoPageOverflow(page);
 
   await page.goto("/dashboard");
