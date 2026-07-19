@@ -64,18 +64,20 @@ assert.match(
   /path="maintenance\/labour-risk\/shift-cover"[\s\S]*<ShiftCoverPageEntry \/>/,
 );
 assert.match(shiftPage, /Operational Rota Risk Map/);
-assert.match(
-  shiftPage,
-  /No static roster or fabricated recommendation has been substituted/,
-);
+assert.match(shiftPage, /No static roster or fabricated recommendation has been substituted/);
 assert.doesNotMatch(shiftPage, /SC_ENGINEERS|TEAM_CONFIGS|ROTA_OVERLAYS/);
+assert.match(shiftPage, /LIVE ROTA/);
+assert.match(shiftPage, /DEMO ROTA/);
+assert.match(shiftPage, /DATA UNAVAILABLE/);
+assert.match(shiftPage, /data-vorta-mobile-rota/);
 assert.match(shiftEntry, /getEffectiveDataMode/);
-assert.match(shiftEntry, /DEMO ROTA/);
-assert.match(shiftEntry, /demonstration site database/);
 assert.match(shiftEntry, /data-vorta-shift-cover-mode/);
+assert.match(shiftEntry, /<LiveShiftCoverPage dataMode=\{dataMode\} \/>/);
+assert.doesNotMatch(shiftEntry, /display:\s*none|demonstration site database/);
 assert.match(shiftService, /vorta_get_shift_cover_snapshot/);
 assert.match(shiftService, /"shiftDate", "shift_date"/);
 assert.match(shiftService, /"coverageStatus", "coverage_status"/);
+assert.match(shiftService, /completenessPercent/);
 
 assert.match(equipmentData, /if \(!demoFallbacksAllowed\(\)\)/);
 assert.match(equipmentData, /No local demo profile was substituted/);
@@ -126,6 +128,7 @@ assert.match(browserTest, /data-vorta-shift-cover-mode/);
 assert.match(browserTest, /DEMO ROTA/);
 assert.match(liveBrowserTest, /another site fails closed/);
 assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
+assert.match(liveBrowserTest, /data-vorta-mobile-rota/);
 
 assert.match(netlify, /ignore = "node scripts\/netlify-release-gate\.mjs"/);
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
