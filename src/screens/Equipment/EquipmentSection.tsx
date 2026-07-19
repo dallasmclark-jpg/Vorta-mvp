@@ -26,6 +26,10 @@ import type {
   EquipmentRiskTrendRange,
   EquipmentRiskTrendSeries,
 } from "./equipmentService";
+import {
+  loadEquipmentEvidenceCoverage,
+  type EquipmentEvidenceCoverage,
+} from "./equipmentEvidenceCoverage";
 
 // ─── Local display-only constants ────────────────────────────────────────────
 
@@ -33,13 +37,17 @@ type EquipmentFilterChip =
   | "Area"
   | "At Risk"
   | "Overdue PMs"
-  | "Calibration Due";
+  | "Calibration Due"
+  | "Evidence Gaps";
+
+type EquipmentSortKey = "risk" | "name" | "backlog" | "evidence";
 
 const FILTER_CHIPS: readonly EquipmentFilterChip[] = [
   "Area",
   "At Risk",
   "Overdue PMs",
   "Calibration Due",
+  "Evidence Gaps",
 ];
 
 const RISK_LEGEND = [
@@ -859,6 +867,13 @@ export const EquipmentSection = (): JSX.Element => {
   const [overduePmOnly, setOverduePmOnly] = useState(false);
   const [calibrationDueOnly, setCalibrationDueOnly] =
     useState(false);
+  const [evidenceGapsOnly, setEvidenceGapsOnly] = useState(false);
+  const [sortKey, setSortKey] = useState<EquipmentSortKey>("risk");
+  const [evidenceCoverage, setEvidenceCoverage] = useState<
+    Map<string, EquipmentEvidenceCoverage>
+  >(new Map());
+  const [evidenceLoading, setEvidenceLoading] = useState(true);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [expandedId, setExpandedId] = useState<string>("");
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
@@ -879,6 +894,8 @@ export const EquipmentSection = (): JSX.Element => {
 
     setLoading(true);
     setLoadError(null);
+    setEvidenceLoading(true);
+    setEvidenceError(null);
 
     getEquipmentList()
       .then((items) => {
@@ -891,12 +908,32 @@ export const EquipmentSection = (): JSX.Element => {
         } else {
           setExpandedId("");
         }
+
+        void loadEquipmentEvidenceCoverage(items.map((item) => item.id))
+          .then((coverage) => {
+            if (!cancelled) setEvidenceCoverage(coverage);
+          })
+          .catch((error: unknown) => {
+            if (cancelled) return;
+            console.warn("Equipment evidence coverage could not be loaded:", error);
+            setEvidenceCoverage(new Map());
+            setEvidenceError(
+              error instanceof Error
+                ? error.message
+                : "Equipment evidence coverage could not be loaded.",
+            );
+          })
+          .finally(() => {
+            if (!cancelled) setEvidenceLoading(false);
+          });
       })
       .catch((error) => {
         if (cancelled) return;
         console.error("Equipment list load failed:", error);
         setEquipmentList([]);
         setExpandedId("");
+        setEvidenceCoverage(new Map());
+        setEvidenceLoading(false);
         setLoadError("Equipment data could not be loaded. Refresh the page or try again.");
       })
       .finally(() => {
@@ -907,8 +944,7 @@ export const EquipmentSection = (): JSX.Element => {
   }, [reloadKey]);
 
   const filtered = useMemo(() => {
-    const items = [...equipmentList].sort((a, b) => b.riskScore - a.riskScore);
-    return items.filter((e) => {
+    const result = equipmentList.filter((e) => {
       if (activeArea) {
         const resolved = resolveBuilding(activeArea);
 
@@ -946,6 +982,12 @@ export const EquipmentSection = (): JSX.Element => {
       ) {
         return false;
       }
+      if (
+        evidenceGapsOnly &&
+        evidenceCoverage.get(e.id)?.complete !== false
+      ) {
+        return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -959,6 +1001,29 @@ export const EquipmentSection = (): JSX.Element => {
       }
       return true;
     });
+
+    return result.sort((left, right) => {
+      if (sortKey === "name") {
+        return left.name.localeCompare(right.name);
+      }
+      if (sortKey === "backlog") {
+        const leftBacklog =
+          left.openWorkOrderCount +
+          left.overduePmCount +
+          left.calibrationOverdueCount;
+        const rightBacklog =
+          right.openWorkOrderCount +
+          right.overduePmCount +
+          right.calibrationOverdueCount;
+        return rightBacklog - leftBacklog || right.riskScore - left.riskScore;
+      }
+      if (sortKey === "evidence") {
+        const leftScore = evidenceCoverage.get(left.id)?.score ?? 6;
+        const rightScore = evidenceCoverage.get(right.id)?.score ?? 6;
+        return leftScore - rightScore || right.riskScore - left.riskScore;
+      }
+      return right.riskScore - left.riskScore || left.name.localeCompare(right.name);
+    });
   }, [
     equipmentList,
     activeArea,
@@ -966,6 +1031,9 @@ export const EquipmentSection = (): JSX.Element => {
     atRiskOnly,
     overduePmOnly,
     calibrationDueOnly,
+    evidenceGapsOnly,
+    evidenceCoverage,
+    sortKey,
   ]);
 
   const riskDriverLegend = useMemo(() => {
@@ -1042,6 +1110,13 @@ export const EquipmentSection = (): JSX.Element => {
     0,
   );
 
+  const evidenceGapCount =
+    evidenceLoading || evidenceError
+      ? null
+      : filtered.filter(
+          (item) => evidenceCoverage.get(item.id)?.complete === false,
+        ).length;
+
   const refreshEquipment = () => {
     setExpandedId("");
     setReloadKey((value) => value + 1);
@@ -1052,7 +1127,8 @@ export const EquipmentSection = (): JSX.Element => {
     Boolean(search) ||
     atRiskOnly ||
     overduePmOnly ||
-    calibrationDueOnly;
+    calibrationDueOnly ||
+    evidenceGapsOnly;
 
   const handleChipClick = (
     chip: EquipmentFilterChip,
@@ -1078,6 +1154,12 @@ export const EquipmentSection = (): JSX.Element => {
           (current) => !current,
         );
         break;
+
+      case "Evidence Gaps":
+        if (!evidenceLoading && !evidenceError) {
+          setEvidenceGapsOnly((current) => !current);
+        }
+        break;
     }
   };
 
@@ -1090,7 +1172,10 @@ export const EquipmentSection = (): JSX.Element => {
   };
 
   return (
-    <section className="flex w-full flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-4 md:px-6 xl:px-8">
+    <section
+      className="flex w-full flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-4 md:px-6 xl:px-8"
+      data-vorta-production-equipment-list="true"
+    >
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 md:flex-row md:items-start">
@@ -1131,7 +1216,7 @@ export const EquipmentSection = (): JSX.Element => {
       </header>
 
       {/* ── KPI Bar ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
         <KpiCard label="Total Assets" value={String(totalAssets)} />
         <KpiCard
           label="Critical Assets"
@@ -1159,18 +1244,55 @@ export const EquipmentSection = (): JSX.Element => {
           barValue={averageRisk}
         />
         <KpiCard label="Calibration Due" value={String(calibrationDue)} />
+        <KpiCard
+          label="Evidence Gaps"
+          value={
+            evidenceLoading
+              ? "…"
+              : evidenceError
+                ? "—"
+                : String(evidenceGapCount ?? 0)
+          }
+          badgeLabel={
+            evidenceGapCount !== null && evidenceGapCount > 0
+              ? "ACTION"
+              : undefined
+          }
+          badgeClass="bg-[#f59e0b20] text-amber-400"
+        />
       </div>
 
-      {/* ── Search ──────────────────────────────────────────────────────── */}
-      <div className="relative w-full">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search equipment, asset number, area, manufacturer or production line..."
-          className="w-full rounded-xl border border-gray-800 bg-[#141820] py-3 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20"
-        />
+      {/* ── Search and sort ─────────────────────────────────────────────── */}
+      <div className="flex w-full flex-col gap-3 lg:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search equipment, asset number, area, manufacturer or production line..."
+            className="w-full rounded-xl border border-gray-800 bg-[#141820] py-3 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20"
+          />
+        </div>
+        <label className="flex min-w-[190px] items-center gap-3 rounded-xl border border-gray-800 bg-[#141820] px-3">
+          <span className="whitespace-nowrap text-xs font-medium text-slate-500">
+            Sort by
+          </span>
+          <select
+            value={sortKey}
+            onChange={(event) =>
+              setSortKey(event.target.value as EquipmentSortKey)
+            }
+            data-vorta-equipment-sort="true"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-200 outline-none"
+            aria-label="Sort equipment"
+          >
+            <option value="risk">Highest risk</option>
+            <option value="backlog">Largest backlog</option>
+            <option value="name">Equipment name</option>
+            <option value="evidence">Evidence gaps</option>
+          </select>
+        </label>
       </div>
 
       {/* ── Filter Chips ────────────────────────────────────────────────── */}
@@ -1183,7 +1305,9 @@ export const EquipmentSection = (): JSX.Element => {
                 ? atRiskOnly
                 : chip === "Overdue PMs"
                   ? overduePmOnly
-                  : calibrationDueOnly;
+                  : chip === "Calibration Due"
+                    ? calibrationDueOnly
+                    : evidenceGapsOnly;
 
           return (
             <button
@@ -1191,6 +1315,10 @@ export const EquipmentSection = (): JSX.Element => {
               type="button"
               onClick={() =>
                 handleChipClick(chip)
+              }
+              disabled={
+                chip === "Evidence Gaps" &&
+                (evidenceLoading || Boolean(evidenceError))
               }
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 isActive
@@ -1215,6 +1343,7 @@ export const EquipmentSection = (): JSX.Element => {
               setAtRiskOnly(false);
               setOverduePmOnly(false);
               setCalibrationDueOnly(false);
+              setEvidenceGapsOnly(false);
               navigate(
                 "/equipment",
                 { replace: true },
@@ -1226,6 +1355,22 @@ export const EquipmentSection = (): JSX.Element => {
           </button>
         )}
       </div>
+
+      {evidenceError ? (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-200"
+        >
+          Evidence coverage is unavailable. Risk and backlog records remain available.
+        </div>
+      ) : evidenceGapCount !== null && evidenceGapCount > 0 ? (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-200"
+        >
+          {evidenceGapCount} {evidenceGapCount === 1 ? "asset has" : "assets have"} incomplete maintenance evidence.
+        </div>
+      ) : null}
 
       {/* ── Equipment Table ─────────────────────────────────────────────── */}
       <div className="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
@@ -1293,6 +1438,7 @@ export const EquipmentSection = (): JSX.Element => {
             const isExpanded = expandedId === item.id;
             const isLast = index === filtered.length - 1;
             const badge = riskBadgeClass(item.riskLevel);
+            const itemEvidence = evidenceCoverage.get(item.id);
             return (
               <div key={item.id} className={!isLast || isExpanded ? "border-b border-gray-800" : ""}>
 
@@ -1330,6 +1476,17 @@ export const EquipmentSection = (): JSX.Element => {
                     <span className="mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">
                       {item.type}
                     </span>
+                    {!evidenceLoading &&
+                      !evidenceError &&
+                      itemEvidence &&
+                      !itemEvidence.complete && (
+                        <span
+                          className="inline-flex w-fit rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300"
+                          title={`${itemEvidence.componentCount} components · ${itemEvidence.documentCount} documents · ${itemEvidence.faultCodeCount} fault codes · ${itemEvidence.workOrderCount} work orders · ${itemEvidence.maintenanceScheduleCount} maintenance schedules`}
+                        >
+                          Evidence {itemEvidence.score}/5
+                        </span>
+                      )}
                   </div>
 
                   <RiskBreakdownBar segments={item.breakdown} />
