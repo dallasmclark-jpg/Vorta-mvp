@@ -35,49 +35,38 @@ async function expectOperationalTouchTarget(locator: Locator): Promise<void> {
   expect(box?.height ?? 0, "Operational control must be at least 40px high").toBeGreaterThanOrEqual(39.5);
 }
 
-async function readSupabaseAccessToken(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const accessTokenFromValue = (value: unknown): string => {
-      if (!value || typeof value !== "object") return "";
-
-      const record = value as Record<string, unknown>;
-      if (typeof record.access_token === "string") {
-        return record.access_token;
-      }
-
-      for (const nestedKey of ["session", "currentSession", "data"]) {
-        const nested = record[nestedKey];
-        const token = accessTokenFromValue(nested);
-        if (token) return token;
-      }
-
-      return "";
-    };
-
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index);
-      if (!key?.startsWith("sb-") || !key.endsWith("-auth-token")) {
-        continue;
-      }
-
-      const stored = window.localStorage.getItem(key);
-      if (!stored) continue;
-
-      try {
-        let parsed: unknown = JSON.parse(stored);
-        if (typeof parsed === "string") {
-          parsed = JSON.parse(parsed);
-        }
-
-        const token = accessTokenFromValue(parsed);
-        if (token) return token;
-      } catch {
-        continue;
-      }
-    }
-
-    return "";
+async function authenticateSupabaseTestUser(page: Page): Promise<string> {
+  const authEndpoint = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=password`;
+  const authResponse = await page.request.post(authEndpoint, {
+    headers: {
+      apikey: supabaseAnonKey,
+      "Content-Type": "application/json",
+    },
+    data: {
+      email,
+      password,
+    },
   });
+
+  expect(
+    authResponse.ok(),
+    `Supabase test-user authentication failed: ${await authResponse.text()}`,
+  ).toBe(true);
+
+  const payload = (await authResponse.json()) as {
+    access_token?: unknown;
+  };
+  const accessToken =
+    typeof payload.access_token === "string"
+      ? payload.access_token
+      : "";
+
+  expect(
+    accessToken,
+    "Authenticated Supabase access token must be available",
+  ).not.toBe("");
+
+  return accessToken;
 }
 
 async function verifyCrossSiteIsolation(page: Page): Promise<void> {
@@ -87,12 +76,7 @@ async function verifyCrossSiteIsolation(page: Page): Promise<void> {
     "VITE_SUPABASE_ANON_KEY must be configured",
   ).not.toBe("");
 
-  const accessToken = await readSupabaseAccessToken(page);
-  expect(
-    accessToken,
-    "Authenticated Supabase access token must be available",
-  ).not.toBe("");
-
+  const accessToken = await authenticateSupabaseTestUser(page);
   const today = new Date();
   const end = new Date(today);
   end.setUTCDate(end.getUTCDate() + 6);
