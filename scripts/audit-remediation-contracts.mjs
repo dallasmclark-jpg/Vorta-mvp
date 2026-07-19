@@ -29,6 +29,8 @@ const assistant = read(
 const browserWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
 
 for (const retired of [
+  ".github/workflows/audit-apply-patch.yml",
+  ".github/workflows/audit-source-export.yml",
   "src/lib/equipmentDocumentNavigationInterceptor.ts",
   "src/lib/workforceProfilePhotos.ts",
   "src/lib/vortaAiLauncherEnhancement.ts",
