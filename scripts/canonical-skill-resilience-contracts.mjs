@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const migration = readFileSync(
-  new URL(
-    "../supabase/migrations/20260719234500_canonicalise_equipment_skill_resilience.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const migrationPaths = [
+  "../supabase/migrations/20260719234490_align_wrexham_skill_evidence.sql",
+  "../supabase/migrations/20260719234491_add_equipment_skill_resilience.sql",
+  "../supabase/migrations/20260719234492_canonicalise_equipment_people_resilience.sql",
+  "../supabase/migrations/20260719234493_apply_canonical_skill_risk.sql",
+];
+const migration = migrationPaths
+  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+  .join("\n");
 
 function authoritySatisfies(actual, required) {
   const current = String(actual ?? "").toLowerCase();
@@ -124,9 +126,17 @@ assert.match(migration, /ranked_backups\.backup_rank = 1/);
 assert.match(migration, /on conflict\(engineer_id, skill_id\) do update/);
 assert.match(migration, /v_missing_assets <> 0/);
 assert.match(migration, /v_gap_assets <= 0 or v_gap_assets >= v_asset_count/);
+assert.match(
+  migration,
+  /returns table\([\s\S]*active_am_operator_count integer,[\s\S]*rotating_shift_coverage_count integer,[\s\S]*days_coverage_count integer,[\s\S]*sme_resilience_score numeric,[\s\S]*am_coverage_score numeric,[\s\S]*people_resilience_score numeric/,
+);
 assert.doesNotMatch(
   migration,
   /single_point_skill_gap = lr\.single_point_skill_count > 0/,
+);
+assert.doesNotMatch(
+  migration,
+  /am_authorised_operator_names text\[\]/,
 );
 
 console.log("Canonical skill resilience contracts passed.");
