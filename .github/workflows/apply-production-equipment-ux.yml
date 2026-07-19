@@ -1,0 +1,45 @@
+name: Apply production Equipment UX
+
+on:
+  push:
+    branches:
+      - agent/production-equipment-ux
+    paths:
+      - scripts/apply-production-equipment-ux.mjs
+      - .github/workflows/apply-production-equipment-ux.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/production-equipment-ux
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate codemod syntax
+        run: node --check scripts/apply-production-equipment-ux.mjs
+
+      - name: Apply focused Equipment changes
+        run: node scripts/apply-production-equipment-ux.mjs
+
+      - name: Remove one-time scaffolding
+        run: |
+          rm scripts/apply-production-equipment-ux.mjs
+          rm .github/workflows/apply-production-equipment-ux.yml
+
+      - name: Commit targeted result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/Equipment/EquipmentSection.tsx scripts/apply-production-equipment-ux.mjs .github/workflows/apply-production-equipment-ux.yml
+          git commit -m "Expose production Equipment sorting and evidence gaps"
+          git push origin HEAD:agent/production-equipment-ux
