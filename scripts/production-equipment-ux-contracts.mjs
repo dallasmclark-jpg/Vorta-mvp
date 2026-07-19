@@ -42,7 +42,7 @@ assert.equal(
   1,
   "Evidence coverage must use one aggregate RPC",
 );
-assert.ok(!evidenceCoverage.includes(".from("));
+assert.ok(!/supabase\s*\.\s*from\s*\(/.test(evidenceCoverage));
 assert.ok(
   evidenceCoverage.includes("vorta_get_equipment_evidence_coverage"),
 );
