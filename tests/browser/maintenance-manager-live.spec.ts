@@ -18,6 +18,13 @@ async function signIn(page: Page): Promise<void> {
   await page.waitForURL(/\/dashboard(?:\?.*)?$/);
 }
 
+async function expectNoPageOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow, "The live portal must not overflow the viewport").toBeLessThanOrEqual(2);
+}
+
 async function openLiveEquipment(page: Page): Promise<string> {
   await page.goto("/equipment");
   const liveList = page.locator('[data-vorta-live-equipment-list="true"]');
@@ -33,7 +40,9 @@ async function openLiveEquipment(page: Page): Promise<string> {
   return match?.[1] ?? "";
 }
 
-test("live Equipment routes remain active-site scoped and preserve Ask Vorta", async ({ page }) => {
+test("live Equipment routes remain active-site scoped and expose mode-aware navigation", async ({
+  page,
+}) => {
   await signIn(page);
   const equipmentId = await openLiveEquipment(page);
 
@@ -41,6 +50,14 @@ test("live Equipment routes remain active-site scoped and preserve Ask Vorta", a
   await expect(page.getByText(/No demonstration values|No legacy demonstration record/)).toHaveCount(0);
 
   const sections = page.locator('[aria-label="Equipment sections"]');
+  await expect(sections.getByRole("button", { name: "History", exact: true })).toBeDisabled();
+  await expect(sections.getByRole("button", { name: "Documents", exact: true })).toBeDisabled();
+  const navigationAskVorta = sections.getByRole("button", {
+    name: "Ask Vorta",
+    exact: true,
+  });
+  await expect(navigationAskVorta).toBeVisible();
+
   await sections.getByRole("button", { name: "Work Orders", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
   await expect(page.getByRole("heading", { name: "Work Orders", exact: true })).toBeVisible();
@@ -52,16 +69,58 @@ test("live Equipment routes remain active-site scoped and preserve Ask Vorta", a
   await sections.getByRole("button", { name: "Spares", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Ask Vorta", exact: true }).click();
+
+  const pageAskVorta = page
+    .getByRole("button", { name: "Ask Vorta", exact: true })
+    .first();
+  await pageAskVorta.click();
   const closeAssistant = page.getByRole("button", { name: "Close global assistant" });
   await expect(closeAssistant).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await closeAssistant.click();
   await expect(closeAssistant).toBeHidden();
 
-  await sections.getByRole("button", { name: "AI Insights", exact: true }).click();
+  await navigationAskVorta.click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
   await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
+test("live Shift Cover adapts to the viewport and reports genuine completeness", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/maintenance/labour-risk/shift-cover");
+
+  await expect(page.getByRole("heading", { name: "Shift Cover Risk", exact: true })).toBeVisible();
+  await expect(page.getByText("LIVE ROTA", { exact: true })).toBeVisible();
+
+  const completenessCard = page
+    .getByText("Rota completeness", { exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+  await expect(completenessCard).toContainText(/\d+%/);
+  await expect(completenessCard).toContainText(/\d+\/\d+ shifts assigned and staffed/);
+
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  if (viewportWidth < 1024) {
+    await expect(page.locator('[data-vorta-mobile-rota="true"]')).toBeVisible();
+    await expect(page.locator('[data-vorta-desktop-rota="true"]')).toBeHidden();
+    const nextDay = page.getByRole("button", { name: "Next day", exact: true });
+    await expect(nextDay).toBeVisible();
+    if (await nextDay.isEnabled()) await nextDay.click();
+  } else {
+    await expect(page.locator('[data-vorta-desktop-rota="true"]')).toBeVisible();
+    await expect(page.locator('[data-vorta-mobile-rota="true"]')).toBeHidden();
+  }
+
+  if (viewportWidth >= 1360) {
+    const equipmentLabel = page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByText("Equipment", { exact: true });
+    await expect(equipmentLabel).toBeVisible();
+  }
+
+  await expectNoPageOverflow(page);
 });
 
 test("a direct Equipment URL for another site fails closed", async ({ page }) => {
@@ -74,7 +133,9 @@ test("a direct Equipment URL for another site fails closed", async ({ page }) =>
   await expect(page.getByText("LIVE SITE EVIDENCE", { exact: true })).toHaveCount(0);
 });
 
-test("live Spares distinguishes empty inventory and service failure from 100 percent", async ({ page }) => {
+test("live Spares distinguishes empty inventory and service failure from 100 percent", async ({
+  page,
+}) => {
   await signIn(page);
   const equipmentId = await openLiveEquipment(page);
   const componentsPattern = /\/rest\/v1\/equipment_components\?/;

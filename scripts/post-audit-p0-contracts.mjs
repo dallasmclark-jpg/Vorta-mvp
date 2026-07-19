@@ -9,10 +9,15 @@ const [
   liveRoutes,
   liveViews,
   equipmentIndex,
+  equipmentTabs,
   maintenanceActions,
+  maintenanceHardening,
   dashboardExperience,
   skillsRoute,
   aiOperations,
+  shiftEntry,
+  shiftPage,
+  shiftService,
   liveBrowserTest,
   netlify,
   validateMode,
@@ -24,10 +29,15 @@ const [
   read("src/screens/Equipment/EquipmentLiveRoutes.tsx"),
   read("src/screens/Equipment/EquipmentLiveEvidenceViews.tsx"),
   read("src/screens/Equipment/index.ts"),
+  read("src/screens/Equipment/EquipmentTabNavigation.tsx"),
   read("src/lib/maintenanceActions.ts"),
+  read("src/components/MaintenancePortalHardening.tsx"),
   read("src/screens/AiOperations/MaintenanceDashboardExperience.tsx"),
   read("src/screens/AiOperations/SkillsMatrixRouteEntry.tsx"),
   read("src/screens/AiOperations/AiOperations.tsx"),
+  read("src/screens/LabourRisk/ShiftCoverPageEntry.tsx"),
+  read("src/screens/LabourRisk/LiveShiftCoverPage.tsx"),
+  read("src/screens/LabourRisk/shiftCoverService.ts"),
   read("tests/browser/maintenance-manager-live.spec.ts"),
   read("netlify.toml"),
   read("scripts/validate-data-mode.mjs"),
@@ -81,8 +91,28 @@ assert.doesNotMatch(liveViews, /<EquipmentSpares/);
 assert.match(liveViews, /rows\.length > 0/);
 assert.match(liveViews, /Evidence completeness/);
 
+assert.match(equipmentTabs, /unavailableInLive/);
+assert.match(equipmentTabs, /aria-describedby/);
+assert.match(equipmentTabs, /Ask Vorta/);
+assert.match(equipmentTabs, /data-vorta-equipment-action/);
+
 assert.match(maintenanceActions, /openMaintenanceAiAssistant/);
 assert.match(maintenanceActions, /vorta-global-ai-prompt/);
+
+assert.match(shiftEntry, /<LiveShiftCoverPage dataMode=\{dataMode\} \/>/);
+assert.doesNotMatch(shiftEntry, /h1\s*\+\s*span|display:\s*none|FlaskConical/);
+assert.match(shiftPage, /data-vorta-mobile-rota/);
+assert.match(shiftPage, /data-vorta-desktop-rota/);
+assert.match(shiftPage, /Rota completeness/);
+assert.match(shiftPage, /completenessPercent/);
+assert.match(shiftService, /completeShiftCount/);
+assert.match(shiftService, /expectedShiftCount/);
+assert.match(shiftService, /assignedShiftCount/);
+assert.match(shiftService, /staffedShiftCount/);
+
+assert.match(maintenanceHardening, /min-width: 1360px/);
+assert.doesNotMatch(maintenanceHardening, /text-\[7\.5px\]|text-\[8px\]|text-\[9px\]/);
+assert.doesNotMatch(maintenanceHardening, /grid-cols-2|grid-cols-3|grid-cols-4|grid-cols-5|grid-cols-6/);
 
 assert.doesNotMatch(dashboardExperience, /querySelector|onClickCapture|cursor-pointer/);
 assert.match(skillsRoute, /risk === "shift-cover"/);
@@ -92,10 +122,17 @@ assert.match(aiOperations, /<SkillsMatrixRouteEntry \/>/);
 assert.match(liveBrowserTest, /data-vorta-live-equipment-list/);
 assert.match(liveBrowserTest, /another site fails closed/);
 assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
-assert.match(liveBrowserTest, /Close global assistant/);
+assert.match(liveBrowserTest, /data-vorta-mobile-rota/);
+assert.match(liveBrowserTest, /Rota completeness/);
+assert.match(liveBrowserTest, /toBeDisabled/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
+assert.doesNotMatch(
+  qualityWorkflow,
+  /maintenance-manager-live\.spec\.ts[^\n]*--project=/,
+  "Live responsive tests must run against every configured viewport project.",
+);
 
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
 assert.match(validateMode, /context !== "production"/);
@@ -106,4 +143,4 @@ assert.match(qualityWorkflow, /cancel-in-progress: false/);
 assert.match(qualityWorkflow, /--project=desktop-1920/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: demo/);
 
-console.log("Post-audit P0 contracts passed.");
+console.log("Post-audit responsive UX contracts passed.");

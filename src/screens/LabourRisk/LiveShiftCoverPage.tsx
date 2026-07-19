@@ -10,17 +10,10 @@ import {
   ShieldAlert,
   Users,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
+import type { VortaDataMode } from "../../lib/dataTrust";
 import {
   getShiftCoverSnapshot,
   type ShiftCoverCalendarItem,
@@ -31,11 +24,7 @@ import {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function startOfWeek(value: Date): Date {
-  const date = new Date(
-    value.getFullYear(),
-    value.getMonth(),
-    value.getDate(),
-  );
+  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
   const day = date.getDay();
   date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
   return date;
@@ -72,13 +61,7 @@ function formatTimestamp(value: string | null): string {
 
 const STATUS_PRESENTATION: Record<
   ShiftCoverageStatus,
-  {
-    label: string;
-    border: string;
-    background: string;
-    text: string;
-    dot: string;
-  }
+  { label: string; border: string; background: string; text: string; dot: string }
 > = {
   covered: {
     label: "Fully covered",
@@ -117,6 +100,27 @@ const STATUS_PRESENTATION: Record<
   },
 };
 
+const MODE_PRESENTATION: Record<
+  VortaDataMode,
+  { label: string; className: string; description: string }
+> = {
+  live: {
+    label: "LIVE ROTA",
+    className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    description: "Verified shift teams, engineer availability and required-skill exposure.",
+  },
+  demo: {
+    label: "DEMO ROTA",
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+    description: "Demonstration rota, staffing and skill exposure for workflow evaluation.",
+  },
+  unavailable: {
+    label: "DATA UNAVAILABLE",
+    className: "border-red-500/30 bg-red-500/10 text-red-200",
+    description: "Shift evidence is withheld until an authorised active site is restored.",
+  },
+};
+
 function ShiftCard({
   item,
   selected,
@@ -127,16 +131,13 @@ function ShiftCard({
   onSelect: () => void;
 }): JSX.Element {
   const presentation = STATUS_PRESENTATION[item.coverageStatus];
-
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
       className={`flex min-h-[132px] w-full flex-col rounded-xl border p-3 text-left transition-colors ${presentation.border} ${presentation.background} ${
-        selected
-          ? "ring-2 ring-blue-500/60"
-          : "hover:border-blue-500/35 hover:bg-white/[0.04]"
+        selected ? "ring-2 ring-blue-500/60" : "hover:border-blue-500/35 hover:bg-white/[0.04]"
       }`}
     >
       <div className="flex w-full items-center justify-between gap-2">
@@ -146,20 +147,15 @@ function ShiftCard({
         </span>
         <span className={`h-2 w-2 rounded-full ${presentation.dot}`} />
       </div>
-
-      <p className={`mt-3 text-sm font-bold ${presentation.text}`}>
-        {presentation.label}
-      </p>
+      <p className={`mt-3 text-sm font-bold ${presentation.text}`}>{presentation.label}</p>
       <p className="mt-1 text-xs text-slate-400">
-        {item.scheduledEngineerCount} engineer
-        {item.scheduledEngineerCount === 1 ? "" : "s"}
+        {item.scheduledEngineerCount} engineer{item.scheduledEngineerCount === 1 ? "" : "s"}
         {item.contractorEngineerCount > 0
           ? ` · ${item.contractorEngineerCount} contractor`
           : ""}
       </p>
-
       <div className="mt-auto flex w-full items-end justify-between gap-3 pt-3">
-        <span className="truncate text-[11px] text-slate-500">
+        <span className="truncate text-xs text-slate-500">
           {item.teamNames.join(" · ") || "No scheduled team"}
         </span>
         <span className={`text-lg font-bold tabular-nums ${presentation.text}`}>
@@ -170,19 +166,44 @@ function ShiftCard({
   );
 }
 
-export function LiveShiftCoverPage(): JSX.Element {
+function MetricCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone = "text-slate-50",
+  frame = "border-gray-800 bg-[#141820]",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof ShieldAlert;
+  tone?: string;
+  frame?: string;
+}): JSX.Element {
+  return (
+    <div className={`rounded-xl border p-4 ${frame}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+        <Icon className={`h-4 w-4 ${tone}`} aria-hidden="true" />
+      </div>
+      <p className={`mt-3 text-2xl font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+export function LiveShiftCoverPage({ dataMode }: { dataMode: VortaDataMode }): JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { siteContext } = useAuth();
   const selectedArea = searchParams.get("area")?.trim() ?? "";
+  const modePresentation = MODE_PRESENTATION[dataMode];
 
-  const [weekStart, setWeekStart] = useState(() =>
-    startOfWeek(new Date()),
-  );
-  const [snapshot, setSnapshot] =
-    useState<ShiftCoverSnapshot | null>(null);
-  const [selectedShift, setSelectedShift] =
-    useState<ShiftCoverCalendarItem | null>(null);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [snapshot, setSnapshot] = useState<ShiftCoverSnapshot | null>(null);
+  const [selectedShift, setSelectedShift] = useState<ShiftCoverCalendarItem | null>(null);
+  const [mobileDayIndex, setMobileDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,42 +215,34 @@ export function LiveShiftCoverPage(): JSX.Element {
     if (!siteId) {
       setSnapshot(null);
       setSelectedShift(null);
-      setError(
-        "Shift Cover is unavailable because no authorised active site was resolved.",
-      );
+      setError("Shift Cover is unavailable because no authorised active site was resolved.");
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-
     try {
-      const nextSnapshot = await getShiftCoverSnapshot(
-        siteId,
-        startDate,
-        endDate,
-      );
+      const nextSnapshot = await getShiftCoverSnapshot(siteId, startDate, endDate);
       setSnapshot(nextSnapshot);
       setSelectedShift((current) => {
         const currentMatch = current
           ? nextSnapshot.calendar.find(
               (item) =>
-                item.shiftDate === current.shiftDate &&
-                item.shiftType === current.shiftType,
+                item.shiftDate === current.shiftDate && item.shiftType === current.shiftType,
             )
           : null;
-
-        return (
+        const chosen =
           currentMatch ??
-          nextSnapshot.calendar
-            .slice()
-            .sort(
-              (a, b) =>
-                b.labourRiskScore - a.labourRiskScore,
-            )[0] ??
-          null
-        );
+          nextSnapshot.calendar.slice().sort((a, b) => b.labourRiskScore - a.labourRiskScore)[0] ??
+          null;
+        if (chosen) {
+          const offset = Math.round(
+            (parseDateOnly(chosen.shiftDate).getTime() - weekStart.getTime()) / DAY_MS,
+          );
+          setMobileDayIndex(Math.max(0, Math.min(6, offset)));
+        }
+        return chosen;
       });
     } catch (loadError) {
       setSnapshot(null);
@@ -242,11 +255,21 @@ export function LiveShiftCoverPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [endDate, siteContext?.siteId, startDate]);
+  }, [endDate, siteContext?.siteId, startDate, weekStart]);
 
   useEffect(() => {
     void loadSnapshot();
   }, [loadSnapshot]);
+
+  useEffect(() => {
+    const today = new Date();
+    const offset = Math.floor(
+      (new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() -
+        weekStart.getTime()) /
+        DAY_MS,
+    );
+    setMobileDayIndex(offset >= 0 && offset <= 6 ? offset : 0);
+  }, [weekStart]);
 
   const days = useMemo(
     () =>
@@ -257,31 +280,35 @@ export function LiveShiftCoverPage(): JSX.Element {
           date,
           dateKey,
           day: snapshot?.calendar.find(
-            (item) =>
-              item.shiftDate === dateKey && item.shiftType === "day",
+            (item) => item.shiftDate === dateKey && item.shiftType === "day",
           ),
           night: snapshot?.calendar.find(
-            (item) =>
-              item.shiftDate === dateKey && item.shiftType === "night",
+            (item) => item.shiftDate === dateKey && item.shiftType === "night",
           ),
         };
       }),
     [snapshot?.calendar, weekStart],
   );
 
+  const selectMobileDay = (index: number): void => {
+    const nextIndex = Math.max(0, Math.min(6, index));
+    setMobileDayIndex(nextIndex);
+    const selectedDay = days[nextIndex];
+    const highestRisk = [selectedDay?.day, selectedDay?.night]
+      .filter((item): item is ShiftCoverCalendarItem => Boolean(item))
+      .sort((a, b) => b.labourRiskScore - a.labourRiskScore)[0];
+    if (highestRisk) setSelectedShift(highestRisk);
+  };
+
   const criticalGapCount =
-    snapshot?.calendar.filter((item) => item.coverageStatus === "gap")
-      .length ?? 0;
+    snapshot?.calendar.filter((item) => item.coverageStatus === "gap").length ?? 0;
   const contractorShiftCount =
-    snapshot?.calendar.filter(
-      (item) => item.contractorEngineerCount > 0,
-    ).length ?? 0;
+    snapshot?.calendar.filter((item) => item.contractorEngineerCount > 0).length ?? 0;
   const averageRisk = snapshot?.calendar.length
-    ? snapshot.calendar.reduce(
-        (sum, item) => sum + item.labourRiskScore,
-        0,
-      ) / snapshot.calendar.length
+    ? snapshot.calendar.reduce((sum, item) => sum + item.labourRiskScore, 0) /
+      snapshot.calendar.length
     : 0;
+  const mobileDay = days[mobileDayIndex] ?? days[0];
 
   return (
     <section className="flex w-full flex-col gap-6 px-4 pb-12 pt-4 md:px-6 xl:px-8">
@@ -295,18 +322,15 @@ export function LiveShiftCoverPage(): JSX.Element {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to Operations Overview
           </button>
-
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight text-slate-50">
-              Shift Cover Risk
-            </h1>
-            <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold tracking-[0.12em] text-emerald-300">
-              LIVE ROTA
+            <h1 className="text-xl font-semibold tracking-tight text-slate-50">Shift Cover Risk</h1>
+            <span
+              className={`rounded-md border px-2 py-1 text-xs font-bold tracking-[0.12em] ${modePresentation.className}`}
+            >
+              {modePresentation.label}
             </span>
           </div>
-          <p className="mt-1 text-sm text-slate-400">
-            Verified shift teams, engineer availability and required-skill exposure.
-          </p>
+          <p className="mt-1 text-sm text-slate-400">{modePresentation.description}</p>
           {selectedArea ? (
             <p className="mt-2 text-xs text-blue-300">
               Dashboard context: {selectedArea}. Calendar coverage remains site-wide so cross-area support is visible.
@@ -344,9 +368,7 @@ export function LiveShiftCoverPage(): JSX.Element {
             disabled={loading}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
@@ -359,12 +381,8 @@ export function LiveShiftCoverPage(): JSX.Element {
         >
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
           <div>
-            <p className="text-sm font-semibold text-red-200">
-              Verified Shift Cover data is unavailable
-            </p>
-            <p className="mt-1 text-xs leading-5 text-red-100/75">
-              {error}
-            </p>
+            <p className="text-sm font-semibold text-red-200">Verified Shift Cover data is unavailable</p>
+            <p className="mt-1 text-xs leading-5 text-red-100/75">{error}</p>
             <p className="mt-2 text-xs text-slate-500">
               No static roster or fabricated recommendation has been substituted.
             </p>
@@ -372,77 +390,51 @@ export function LiveShiftCoverPage(): JSX.Element {
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-gray-800 bg-[#141820] p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Average labour risk
-            </span>
-            <ShieldAlert className="h-4 w-4 text-orange-400" />
-          </div>
-          <p className="mt-3 text-2xl font-bold tabular-nums text-slate-50">
-            {snapshot ? averageRisk.toFixed(1) : "—"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">14 day/night shifts</p>
-        </div>
-
-        <div className="rounded-xl border border-red-500/25 bg-red-500/[0.04] p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Critical gaps
-            </span>
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-          </div>
-          <p className="mt-3 text-2xl font-bold tabular-nums text-red-300">
-            {snapshot ? criticalGapCount : "—"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Zero-cover shifts</p>
-        </div>
-
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Contractor shifts
-            </span>
-            <Users className="h-4 w-4 text-blue-400" />
-          </div>
-          <p className="mt-3 text-2xl font-bold tabular-nums text-blue-300">
-            {snapshot ? contractorShiftCount : "—"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">External cover included</p>
-        </div>
-
-        <div className="rounded-xl border border-gray-800 bg-[#141820] p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Rota completeness
-            </span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          </div>
-          <p className="mt-3 text-2xl font-bold tabular-nums text-slate-50">
-            {snapshot
-              ? `${snapshot.completeness.activeMemberCount}`
-              : "—"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {snapshot
-              ? `${snapshot.completeness.activeTeamCount} teams · ${snapshot.completeness.engineerCount} engineers`
-              : "Awaiting verified data"}
-          </p>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-vorta-responsive-grid="metrics">
+        <MetricCard
+          label="Average labour risk"
+          value={snapshot ? averageRisk.toFixed(1) : "—"}
+          detail={`${snapshot?.calendar.length ?? 0} returned day/night shifts`}
+          icon={ShieldAlert}
+          tone="text-orange-300"
+        />
+        <MetricCard
+          label="Critical gaps"
+          value={snapshot ? String(criticalGapCount) : "—"}
+          detail="Zero-cover shifts"
+          icon={AlertTriangle}
+          tone="text-red-300"
+          frame="border-red-500/25 bg-red-500/[0.04]"
+        />
+        <MetricCard
+          label="Contractor shifts"
+          value={snapshot ? String(contractorShiftCount) : "—"}
+          detail="External cover included"
+          icon={Users}
+          tone="text-blue-300"
+          frame="border-blue-500/20 bg-blue-500/[0.04]"
+        />
+        <MetricCard
+          label="Rota completeness"
+          value={snapshot ? `${snapshot.completeness.completenessPercent}%` : "—"}
+          detail={
+            snapshot
+              ? `${snapshot.completeness.completeShiftCount}/${snapshot.completeness.expectedShiftCount} shifts assigned and staffed`
+              : "Awaiting verified data"
+          }
+          icon={CheckCircle2}
+          tone="text-emerald-300"
+        />
       </div>
 
       <div className="rounded-xl border border-gray-800 bg-[#141820] p-4 md:p-5">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-50">
-              Operational Rota Risk Map
-            </h2>
+            <h2 className="text-base font-semibold text-slate-50">Operational Rota Risk Map</h2>
             <p className="mt-1 text-xs text-slate-500">
-              {new Intl.DateTimeFormat("en-GB", {
-                day: "numeric",
-                month: "short",
-              }).format(weekStart)}
+              {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
+                weekStart,
+              )}
               {" – "}
               {new Intl.DateTimeFormat("en-GB", {
                 day: "numeric",
@@ -464,49 +456,110 @@ export function LiveShiftCoverPage(): JSX.Element {
             </span>
           </div>
         ) : snapshot && snapshot.calendar.length > 0 ? (
-          <div className="overflow-x-auto pb-2">
-            <div className="grid min-w-[980px] grid-cols-7 gap-3">
-              {days.map(({ date, dateKey, day, night }) => (
-                <div key={dateKey} className="min-w-0">
-                  <div className="mb-2 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2 text-center">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      {new Intl.DateTimeFormat("en-GB", {
-                        weekday: "short",
-                      }).format(date)}
-                    </p>
-                    <p className="mt-0.5 text-sm font-bold text-slate-200">
-                      {new Intl.DateTimeFormat("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                      }).format(date)}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {day ? (
-                      <ShiftCard
-                        item={day}
-                        selected={
-                          selectedShift?.shiftDate === day.shiftDate &&
-                          selectedShift.shiftType === day.shiftType
-                        }
-                        onSelect={() => setSelectedShift(day)}
-                      />
-                    ) : null}
-                    {night ? (
-                      <ShiftCard
-                        item={night}
-                        selected={
-                          selectedShift?.shiftDate === night.shiftDate &&
-                          selectedShift.shiftType === night.shiftType
-                        }
-                        onSelect={() => setSelectedShift(night)}
-                      />
-                    ) : null}
-                  </div>
+          <>
+            <div className="lg:hidden" data-vorta-mobile-rota="true">
+              <div
+                className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-[#0d1117] p-2"
+                aria-label="Mobile rota date navigation"
+              >
+                <button
+                  type="button"
+                  onClick={() => selectMobileDay(mobileDayIndex - 1)}
+                  disabled={mobileDayIndex === 0}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-300 hover:bg-gray-800 disabled:opacity-30"
+                  aria-label="Previous day"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div className="min-w-0 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(
+                      mobileDay.date,
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold text-slate-200">
+                    {new Intl.DateTimeFormat("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                    }).format(mobileDay.date)}
+                  </p>
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => selectMobileDay(mobileDayIndex + 1)}
+                  disabled={mobileDayIndex === 6}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-300 hover:bg-gray-800 disabled:opacity-30"
+                  aria-label="Next day"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {mobileDay.day ? (
+                  <ShiftCard
+                    item={mobileDay.day}
+                    selected={
+                      selectedShift?.shiftDate === mobileDay.day.shiftDate &&
+                      selectedShift.shiftType === mobileDay.day.shiftType
+                    }
+                    onSelect={() => setSelectedShift(mobileDay.day ?? null)}
+                  />
+                ) : null}
+                {mobileDay.night ? (
+                  <ShiftCard
+                    item={mobileDay.night}
+                    selected={
+                      selectedShift?.shiftDate === mobileDay.night.shiftDate &&
+                      selectedShift.shiftType === mobileDay.night.shiftType
+                    }
+                    onSelect={() => setSelectedShift(mobileDay.night ?? null)}
+                  />
+                ) : null}
+              </div>
             </div>
-          </div>
+
+            <div className="hidden overflow-x-auto pb-2 lg:block" data-vorta-desktop-rota="true">
+              <div className="grid min-w-[980px] grid-cols-7 gap-3">
+                {days.map(({ date, dateKey, day, night }) => (
+                  <div key={dateKey} className="min-w-0">
+                    <div className="mb-2 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        {new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(date)}
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-slate-200">
+                        {new Intl.DateTimeFormat("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        }).format(date)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {day ? (
+                        <ShiftCard
+                          item={day}
+                          selected={
+                            selectedShift?.shiftDate === day.shiftDate &&
+                            selectedShift.shiftType === day.shiftType
+                          }
+                          onSelect={() => setSelectedShift(day)}
+                        />
+                      ) : null}
+                      {night ? (
+                        <ShiftCard
+                          item={night}
+                          selected={
+                            selectedShift?.shiftDate === night.shiftDate &&
+                            selectedShift.shiftType === night.shiftType
+                          }
+                          onSelect={() => setSelectedShift(night)}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-gray-800 bg-[#0d1117] px-6 text-center">
             <CalendarDays className="h-8 w-8 text-slate-600" />
@@ -549,37 +602,23 @@ export function LiveShiftCoverPage(): JSX.Element {
               </span>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                <p className="text-xs text-slate-500">Labour risk</p>
-                <p className="mt-1 text-lg font-bold text-slate-100">
-                  {selectedShift.labourRiskScore.toFixed(1)}
-                </p>
-                <p className="text-xs text-orange-300">
-                  {selectedShift.labourRiskLevel}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                <p className="text-xs text-slate-500">Engineers</p>
-                <p className="mt-1 text-lg font-bold text-slate-100">
-                  {selectedShift.scheduledEngineerCount}
-                </p>
-                <p className="text-xs text-slate-500">Available on roster</p>
-              </div>
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                <p className="text-xs text-slate-500">Missing skills</p>
-                <p className="mt-1 text-lg font-bold text-slate-100">
-                  {selectedShift.missingSkillCount}
-                </p>
-                <p className="text-xs text-red-300">Required skill gaps</p>
-              </div>
-              <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-                <p className="text-xs text-slate-500">Assets exposed</p>
-                <p className="mt-1 text-lg font-bold text-slate-100">
-                  {selectedShift.equipmentWithMissingCover}
-                </p>
-                <p className="text-xs text-slate-500">Missing qualified cover</p>
-              </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-vorta-responsive-grid="shift-detail">
+              {[
+                ["Labour risk", selectedShift.labourRiskScore.toFixed(1), selectedShift.labourRiskLevel],
+                ["Engineers", String(selectedShift.scheduledEngineerCount), "Available on roster"],
+                ["Missing skills", String(selectedShift.missingSkillCount), "Required skill gaps"],
+                [
+                  "Assets exposed",
+                  String(selectedShift.equipmentWithMissingCover),
+                  "Missing qualified cover",
+                ],
+              ].map(([label, value, detail]) => (
+                <div key={label} className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-100">{value}</p>
+                  <p className="text-xs text-slate-500">{detail}</p>
+                </div>
+              ))}
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -602,7 +641,6 @@ export function LiveShiftCoverPage(): JSX.Element {
                   )}
                 </div>
               </div>
-
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Available engineers
@@ -618,24 +656,27 @@ export function LiveShiftCoverPage(): JSX.Element {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs font-semibold text-red-300">
-                      No available engineers
-                    </span>
+                    <span className="text-xs font-semibold text-red-300">No available engineers</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          <aside className="rounded-xl border border-gray-800 bg-[#141820] p-5">
-            <h2 className="text-sm font-semibold text-slate-100">
-              Data completeness
-            </h2>
+          <aside className="rounded-xl border border-gray-800 bg-[#141820] p-5" data-vorta-action-evidence>
+            <h2 className="text-sm font-semibold text-slate-100">Data completeness</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              These counts come from the active site configuration used to calculate this calendar.
+              Counts and coverage come from the active site configuration used to calculate this calendar.
             </p>
             <dl className="mt-4 space-y-3">
               {[
+                ["Rota completeness", `${snapshot?.completeness.completenessPercent ?? 0}%`],
+                [
+                  "Assigned and staffed shifts",
+                  `${snapshot?.completeness.completeShiftCount ?? 0}/${
+                    snapshot?.completeness.expectedShiftCount ?? 0
+                  }`,
+                ],
                 ["Active shift teams", snapshot?.completeness.activeTeamCount],
                 ["Active team members", snapshot?.completeness.activeMemberCount],
                 ["Site engineers", snapshot?.completeness.engineerCount],
@@ -646,9 +687,7 @@ export function LiveShiftCoverPage(): JSX.Element {
                   className="flex items-center justify-between gap-4 border-b border-gray-800 pb-3 last:border-0 last:pb-0"
                 >
                   <dt className="text-xs text-slate-500">{label}</dt>
-                  <dd className="text-sm font-semibold tabular-nums text-slate-200">
-                    {value ?? "—"}
-                  </dd>
+                  <dd className="text-sm font-semibold tabular-nums text-slate-200">{value ?? "—"}</dd>
                 </div>
               ))}
             </dl>
