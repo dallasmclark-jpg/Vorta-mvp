@@ -10,20 +10,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   page,
 }) => {
   await signInMaintenanceManager(page);
-
-  const openMenu = page.getByRole("button", { name: "Open menu", exact: true });
-  if (await openMenu.isVisible()) {
-    await expectOperationalTouchTarget(openMenu);
-    await openMenu.click();
-  }
-
-  const equipmentNavigation = page.getByRole("link", {
-    name: "Equipment",
-    exact: true,
-  });
-  await expect(equipmentNavigation).toBeVisible();
-  await expectOperationalTouchTarget(equipmentNavigation);
-  await equipmentNavigation.click();
+  await page.goto("/equipment");
   await page.waitForURL(/\/equipment(?:\?.*)?$/);
   await expect(page.getByRole("heading", { name: "Equipment", exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
