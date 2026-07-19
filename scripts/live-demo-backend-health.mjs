@@ -1,0 +1,71 @@
+import assert from "node:assert/strict";
+import { createClient } from "@supabase/supabase-js";
+
+const required = (name) => {
+  const value = String(process.env[name] ?? "").trim();
+  assert.ok(value, `${name} is required for the live backend health gate`);
+  return value;
+};
+
+const supabaseUrl = required("VITE_SUPABASE_URL");
+const supabaseKey = required("VITE_SUPABASE_ANON_KEY");
+const email = required("VORTA_E2E_EMAIL");
+const password = required("VORTA_E2E_PASSWORD");
+const expectedSiteId = required("VORTA_E2E_SITE_ID");
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
+
+const { data: signIn, error: signInError } =
+  await supabase.auth.signInWithPassword({ email, password });
+assert.ifError(signInError);
+assert.ok(signIn.user, "Authenticated health gate did not receive a user");
+
+try {
+  const { data, error } = await supabase.rpc("vorta_get_demo_backend_health");
+  assert.ifError(error);
+  assert.ok(data && typeof data === "object", "Health RPC returned no report");
+
+  assert.equal(data.siteId, expectedSiteId, "Health report returned the wrong site");
+  assert.equal(data.healthy, true, "Live demo backend health is not green");
+  assert.ok(Number(data.assetCount) > 0, "Health report contains no equipment assets");
+
+  for (const [key, value] of Object.entries(data.coverage ?? {})) {
+    assert.equal(Number(value), 0, `Coverage health failed: ${key}=${value}`);
+  }
+  for (const [key, value] of Object.entries(data.integrity ?? {})) {
+    assert.equal(Number(value), 0, `Integrity health failed: ${key}=${value}`);
+  }
+  for (const [key, value] of Object.entries(data.maintenanceTruth ?? {})) {
+    assert.equal(Number(value), 0, `Maintenance truth failed: ${key}=${value}`);
+  }
+
+  assert.ok(
+    Number(data.realism?.largestIdenticalSignatureGroup ?? 0) <= 1,
+    "Demo work histories have collapsed into repeated identical signatures",
+  );
+
+  console.log(
+    JSON.stringify(
+      {
+        healthy: data.healthy,
+        siteId: data.siteId,
+        assetCount: data.assetCount,
+        checkedAt: data.checkedAt,
+        coverage: data.coverage,
+        integrity: data.integrity,
+        maintenanceTruth: data.maintenanceTruth,
+        realism: data.realism,
+      },
+      null,
+      2,
+    ),
+  );
+} finally {
+  await supabase.auth.signOut();
+}
