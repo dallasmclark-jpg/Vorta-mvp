@@ -112,17 +112,9 @@ replaceOnce(
 );
 
 replaceOnce(
-  `              onClick={() =>\n                handleChipClick(chip)\n              }\n              className={`,
-  `              onClick={() =>\n                handleChipClick(chip)\n              }\n              disabled={\n                chip === "Evidence Gaps" &&\n                (evidenceLoading || Boolean(evidenceError))\n              }\n              className={`,
+  `              onClick={() =>\n                handleChipClick(chip)\n              }\n              className={` + "`" + `rounded-full border px-3 py-1 text-xs font-medium transition-colors \${`,
+  `              onClick={() =>\n                handleChipClick(chip)\n              }\n              disabled={\n                chip === "Evidence Gaps" &&\n                (evidenceLoading || Boolean(evidenceError))\n              }\n              className={` + "`" + `rounded-full border px-3 py-1 text-xs font-medium transition-colors \${`,
   "filter disabled state",
-);
-
-replaceOnce(
-  `                   : "border-gray-700 bg-[#141820] text-slate-400 hover:border-gray-600 hover:text-slate-200"\n              }`}
-`,
-  `                   : "border-gray-700 bg-[#141820] text-slate-400 hover:border-gray-600 hover:text-slate-200"\n              } disabled:cursor-not-allowed disabled:opacity-50`}
-`,
-  "filter disabled styling",
 );
 
 replaceOnce(
@@ -145,7 +137,7 @@ replaceOnce(
 
 replaceOnce(
   `                    <span className="mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">\n                      {item.type}\n                    </span>\n                  </div>`,
-  `                    <span className="mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">\n                      {item.type}\n                    </span>\n                    {!evidenceLoading &&\n                      !evidenceError &&\n                      itemEvidence &&\n                      !itemEvidence.complete && (\n                        <span\n                          className="inline-flex w-fit rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300"\n                          title={`${itemEvidence.componentCount} components · ${itemEvidence.documentCount} documents · ${itemEvidence.faultCodeCount} fault codes · ${itemEvidence.workOrderCount} work orders · ${itemEvidence.maintenanceScheduleCount} maintenance schedules`}\n                        >\n                          Evidence {itemEvidence.score}/5\n                        </span>\n                      )}\n                  </div>`,
+  `                    <span className="mt-0.5 inline-flex w-fit rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-slate-400">\n                      {item.type}\n                    </span>\n                    {!evidenceLoading &&\n                      !evidenceError &&\n                      itemEvidence &&\n                      !itemEvidence.complete && (\n                        <span\n                          className="inline-flex w-fit rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300"\n                          title={\`\${itemEvidence.componentCount} components · \${itemEvidence.documentCount} documents · \${itemEvidence.faultCodeCount} fault codes · \${itemEvidence.workOrderCount} work orders · \${itemEvidence.maintenanceScheduleCount} maintenance schedules\`}\n                        >\n                          Evidence {itemEvidence.score}/5\n                        </span>\n                      )}\n                  </div>`,
   "row evidence badge",
 );
 
