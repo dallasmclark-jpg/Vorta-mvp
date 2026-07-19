@@ -30,6 +30,9 @@ const thinRealismEvidence = read(
 const backendHealth = read(
   "supabase/migrations/20260719213500_add_demo_backend_health_contract.sql",
 );
+const evidenceAggregation = read(
+  "supabase/migrations/20260719233000_add_equipment_evidence_coverage_rpc.sql",
+);
 const evidenceCoverage = read(
   "src/screens/Equipment/equipmentEvidenceCoverage.ts",
 );
@@ -74,6 +77,13 @@ assert.match(realismEvidence, /AWAITING_WORK_ORDER/);
 assert.match(thinRealismWork, /demo_wrexham_thin_realism_seed/);
 assert.match(thinRealismEvidence, /Equipment Performance Review/);
 
+assert.match(evidenceCoverage, /vorta_get_equipment_evidence_coverage/);
+assert.equal(
+  evidenceCoverage.match(/\.rpc\(/g)?.length ?? 0,
+  1,
+  "Evidence coverage must use one aggregate RPC",
+);
+assert.doesNotMatch(evidenceCoverage, /supabase\s*\.\s*from\s*\(/);
 for (const table of [
   "equipment_components",
   "knowledge_documents",
@@ -81,9 +91,9 @@ for (const table of [
   "work_orders",
   "preventive_maintenance",
 ]) {
-  assert.match(evidenceCoverage, new RegExp(`from\\(\\"${table}\\"\\)`));
+  assert.match(evidenceAggregation, new RegExp(`public\\.${table}`));
 }
-assert.match(evidenceCoverage, /Promise\.all/);
+assert.match(evidenceAggregation, /vorta_has_site_access/);
 assert.match(equipmentList, /type SortKey = "risk" \| "name" \| "backlog" \| "evidence"/);
 assert.match(equipmentList, /type RiskFilter = "all" \| "high" \| "overdue" \| "evidence-gaps"/);
 assert.match(equipmentList, /Evidence unavailable/);
