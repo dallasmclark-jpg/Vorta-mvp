@@ -51,12 +51,67 @@ jobs:
               raise SystemExit(f"Expected 2 parseDate template matches, found {parse_count}")
           source = source.replace(parse_before, parse_after)
 
-          schedule_before = '`               loading={loading}`'
-          schedule_after = '`              loading={loading}`'
-          schedule_count = source.count(schedule_before)
-          if schedule_count != 1:
-              raise SystemExit(f"Expected 1 schedule-loading match, found {schedule_count}")
-          source = source.replace(schedule_before, schedule_after)
+          old_helpers = '''function replaceRequired(source, before, after, label) {
+            const occurrences = source.split(before).length - 1;
+            if (occurrences !== 1) {
+              throw new Error(`${label}: expected exactly one match, found ${occurrences}`);
+            }
+            return source.replace(before, after);
+          }
+
+          function replaceAllRequired(source, before, after, minimum, label) {
+            const occurrences = source.split(before).length - 1;
+            if (occurrences < minimum) {
+              throw new Error(`${label}: expected at least ${minimum} matches, found ${occurrences}`);
+            }
+            return source.split(before).join(after);
+          }'''.replace('          ', '')
+
+          new_helpers = r'''function escapeRegExp(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          }
+
+          function whitespaceFlexiblePattern(value) {
+            return value
+              .split("\n")
+              .map((line) => {
+                const trimmed = line.trimStart();
+                return (line.length === trimmed.length ? "" : "[\\t ]*") + escapeRegExp(trimmed);
+              })
+              .join("\\n");
+          }
+
+          function replaceRequired(source, before, after, label) {
+            const occurrences = source.split(before).length - 1;
+            if (occurrences === 1) return source.replace(before, after);
+            if (occurrences > 1) {
+              throw new Error(label + ": expected exactly one match, found " + occurrences);
+            }
+            const pattern = whitespaceFlexiblePattern(before);
+            const expression = new RegExp(pattern, "g");
+            const matches = source.match(expression) ?? [];
+            if (matches.length !== 1) {
+              throw new Error(label + ": expected exactly one structural match, found " + matches.length);
+            }
+            return source.replace(new RegExp(pattern), after);
+          }
+
+          function replaceAllRequired(source, before, after, minimum, label) {
+            const occurrences = source.split(before).length - 1;
+            if (occurrences >= minimum) return source.split(before).join(after);
+            const pattern = whitespaceFlexiblePattern(before);
+            const expression = new RegExp(pattern, "g");
+            const matches = source.match(expression) ?? [];
+            if (matches.length < minimum) {
+              throw new Error(label + ": expected at least " + minimum + " structural matches, found " + matches.length);
+            }
+            return source.replace(expression, after);
+          }'''.replace('          ', '')
+
+          helper_count = source.count(old_helpers)
+          if helper_count != 1:
+              raise SystemExit(f"Expected one codemod helper block, found {helper_count}")
+          source = source.replace(old_helpers, new_helpers)
 
           path.write_text(source)
           PY
