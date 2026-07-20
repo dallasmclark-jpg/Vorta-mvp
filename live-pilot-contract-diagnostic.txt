@@ -1,0 +1,87 @@
+
+> vorta-mvp@1.0.0 test:contracts
+> node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs && node scripts/equipment-people-workflow-contracts.mjs && node scripts/maintenance-p1-p2-contracts.mjs && node scripts/data-trust-contracts.mjs && node scripts/post-audit-p0-contracts.mjs && node scripts/audit-remediation-contracts.mjs && node scripts/demo-backend-health-contracts.mjs && node scripts/live-backend-health-gate-contracts.mjs
+
+✓ PilotRole contains vorta_admin
+✓ PilotRole contains site_admin
+✓ PilotRole contains maintenance_manager
+✓ PilotRole contains maintenance_planner
+✓ PilotRole contains reliability_engineer
+✓ PilotRole contains engineer
+✓ PilotRole contains production_manager
+✓ PilotRole contains operator
+✓ PilotRole contains contractor_admin
+✓ PilotRole contains contractor_engineer
+✓ Global administrator bypass is preserved
+✓ Ordinary users require an active site context
+✓ Missing site assignment has an explicit error
+✓ Unsupported roles have an explicit error
+✓ Access decision uses global admin or allowed roles
+✓ engineer home path remains /engineer/dashboard
+✓ contractor_admin home path remains /contractor/dashboard
+✓ contractor_engineer home path remains /contractor/dashboard
+✓ production_manager home path remains /production/dashboard
+✓ operator home path remains /operator/dashboard
+✓ maintenance_planner home path remains /planner/planner-dashboard
+✓ Route exists: /engineer/*
+✓ Route exists: /contractor/*
+✓ Route exists: /production/*
+✓ Route exists: /operator/*
+✓ Route exists: /planner/*
+✓ Route exists: /*
+✓ Engineer portal requires engineer role
+✓ Contractor portal accepts both contractor roles
+✓ Production portal requires production manager
+✓ Operator portal requires operator
+✓ Planner portal requires maintenance planner
+✓ Maintenance portal accepts the approved manager roles
+✓ Generic RequireAuth route guards are not used
+✓ Every protected portal has a route error boundary
+✓ Application root error boundary remains present
+✓ Legacy engineer redirect remains intact
+✓ Legacy contractor redirect remains intact
+
+All Vorta auth and routing contracts passed.
+✓ Maintenance routes are wrapped by the React work order experience
+✓ Portal bridge no longer captures arbitrary work order clicks
+✓ Shared maintenance action opens the execution overlay
+✓ Maintenance portal mounts the enhanced execution overlay
+✓ Work order page opens records explicitly
+✓ AI fault history opens records explicitly
+✓ Query-linked work orders open without DOM polling
+✓ Legacy row interception wrapper is retired
+✓ Global overlay traps focus through the shared accessibility hook
+✓ Execution overlay presents a manager verdict
+✓ Execution overlay distinguishes final and interim confirmations
+✓ Execution overlay summarises 261 material issues
+✓ Document navigation is owned by React rather than a document-wide interceptor
+✓ Obsolete document-wide work order interceptor has been removed
+✓ Duplicate equipment-level evidence control has been removed
+
+Work order overlay contracts passed.
+✓ Maintenance dashboard route uses the scoped dashboard experience
+✓ Dashboard wrapper avoids broad rendered-DOM patching
+✓ Router protects the dedicated Shift Cover calendar
+✓ Dashboard owns its explicit operational refresh
+✓ Desktop KPI cards render as a comparison grid
+✓ Portal bridge no longer parses arbitrary work order clicks
+✓ Maintenance actions expose an explicit work order command
+✓ Dashboard uses the explicit work order action
+✓ Temporary dashboard patch workflows are absent
+
+Maintenance dashboard contracts passed.
+Maintenance portal workflow contracts passed.
+Skills Matrix native and workflow contracts passed.
+Equipment → people → training workflow contracts passed.
+file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/maintenance-p1-p2-contracts.mjs:8
+  if (!condition) throw new Error(message);
+                        ^
+
+Error: Live browser regression must cover responsive Shift Cover and mode-aware Equipment navigation.
+    at check (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/maintenance-p1-p2-contracts.mjs:8:25)
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/maintenance-p1-p2-contracts.mjs:134:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.20.2
