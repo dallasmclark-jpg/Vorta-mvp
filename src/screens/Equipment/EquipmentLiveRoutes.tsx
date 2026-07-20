@@ -42,9 +42,13 @@ import {
   LiveEquipmentOverviewView,
   LiveEquipmentSkillsView,
   LiveEquipmentSparesView,
-  LiveEquipmentUnavailableView,
-  LiveEquipmentWorkOrdersView,
 } from "./EquipmentLiveEvidenceViews";
+import {
+  LiveEquipmentDocumentViewerView,
+  LiveEquipmentDocumentsView,
+  LiveEquipmentHistoryView,
+  LiveEquipmentWorkOrdersPilotView,
+} from "./EquipmentPilotEvidenceViews";
 import {
   loadLiveEquipmentList,
   loadLiveEquipmentRecord,
@@ -320,8 +324,19 @@ function EquipmentDetailBoundary({
   const load = useCallback(async (): Promise<void> => {
     if (mode !== "live" || !siteContext?.siteId || !equipmentId) return;
     setLoading(true);
-    setState(await loadLiveEquipmentRecord(siteContext.siteId, equipmentId));
-    setLoading(false);
+    try {
+      setState(await loadLiveEquipmentRecord(siteContext.siteId, equipmentId));
+    } catch (error) {
+      setState({
+        status: "unavailable",
+        message:
+          error instanceof Error
+            ? error.message
+            : "The active-site equipment record request failed.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [equipmentId, mode, siteContext?.siteId]);
 
   useEffect(() => {
@@ -381,7 +396,7 @@ export function EquipmentNotificationsTrustedEntry(): JSX.Element {
 }
 
 export function EquipmentWorkOrdersTrustedEntry(): JSX.Element {
-  return <EquipmentDetailBoundary demo={<EquipmentWorkOrdersWithAiNavigation />} renderLive={(record) => <LiveEquipmentWorkOrdersView record={record} />} />;
+  return <EquipmentDetailBoundary demo={<EquipmentWorkOrdersWithAiNavigation />} renderLive={(record) => <LiveEquipmentWorkOrdersPilotView record={record} />} />;
 }
 
 export function EquipmentCalibrationsTrustedEntry(): JSX.Element {
@@ -397,15 +412,15 @@ export function EquipmentSparesEntry(): JSX.Element {
 }
 
 export function EquipmentHistoryTrustedEntry(): JSX.Element {
-  return <EquipmentDetailBoundary demo={<EquipmentHistoryEntry />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="history" title="History" message="A site-scoped operational history contract has not yet been approved for live pilot use." />} />;
+  return <EquipmentDetailBoundary demo={<EquipmentHistoryEntry />} renderLive={(record) => <LiveEquipmentHistoryView record={record} />} />;
 }
 
 export function EquipmentDocumentsTrustedEntry(): JSX.Element {
-  return <EquipmentDetailBoundary demo={<EquipmentDocumentsEntry />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="documents" title="Documents" message="Live document evidence remains withheld until the active-site document route is fully validated." />} />;
+  return <EquipmentDetailBoundary demo={<EquipmentDocumentsEntry />} renderLive={(record) => <LiveEquipmentDocumentsView record={record} />} />;
 }
 
 export function EquipmentDocumentViewerTrustedEntry(): JSX.Element {
-  return <EquipmentDetailBoundary demo={<EquipmentDocumentViewer />} renderLive={(record) => <LiveEquipmentUnavailableView record={record} activeTab="documents" title="Document viewer" message="The requested live document has not passed the active-site evidence boundary." />} />;
+  return <EquipmentDetailBoundary demo={<EquipmentDocumentViewer />} renderLive={(record) => <LiveEquipmentDocumentViewerView record={record} />} />;
 }
 
 function LiveEquipmentAssistantBridge({ record }: { record: LiveEquipmentRecord }): JSX.Element {

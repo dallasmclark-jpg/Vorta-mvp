@@ -134,8 +134,11 @@ check(
 check(
   liveBrowserTest.includes("data-vorta-mobile-rota") &&
     liveBrowserTest.includes("Rota completeness") &&
-    liveBrowserTest.includes("toBeDisabled"),
-  "Live browser regression must cover responsive Shift Cover and mode-aware Equipment navigation.",
+    liveBrowserTest.includes("Open controlled document") &&
+    liveBrowserTest.includes("simulated work-order reader failure") &&
+    liveBrowserTest.includes("simulated history reader failure") &&
+    !liveBrowserTest.includes("toBeDisabled"),
+  "Live browser regression must cover responsive Shift Cover, verified History and Documents, and truth-safe evidence failures.",
 );
 check(
   !indexHtml.includes("equipmentDocumentNavigationInterceptor") &&

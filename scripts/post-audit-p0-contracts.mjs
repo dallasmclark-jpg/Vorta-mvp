@@ -8,6 +8,8 @@ const [
   liveTrust,
   liveRoutes,
   liveViews,
+  pilotEvidenceViews,
+  pilotEvidenceService,
   equipmentIndex,
   equipmentTabs,
   maintenanceActions,
@@ -28,6 +30,8 @@ const [
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
   read("src/screens/Equipment/EquipmentLiveRoutes.tsx"),
   read("src/screens/Equipment/EquipmentLiveEvidenceViews.tsx"),
+  read("src/screens/Equipment/EquipmentPilotEvidenceViews.tsx"),
+  read("src/screens/Equipment/equipmentPilotEvidence.ts"),
   read("src/screens/Equipment/index.ts"),
   read("src/screens/Equipment/EquipmentTabNavigation.tsx"),
   read("src/lib/maintenanceActions.ts"),
@@ -82,6 +86,12 @@ for (const entry of [
 assert.match(liveRoutes, /EquipmentDetailBoundary/);
 assert.match(liveRoutes, /loadLiveEquipmentRecord\(siteContext\.siteId, equipmentId\)/);
 assert.match(liveRoutes, /openMaintenanceAiAssistant/);
+assert.match(liveRoutes, /LiveEquipmentWorkOrdersPilotView/);
+assert.match(liveRoutes, /LiveEquipmentHistoryView/);
+assert.match(liveRoutes, /LiveEquipmentDocumentsView/);
+assert.match(liveRoutes, /LiveEquipmentDocumentViewerView/);
+assert.doesNotMatch(liveRoutes, /History.*not yet been approved for live pilot use/);
+assert.doesNotMatch(liveRoutes, /Live document evidence remains withheld/);
 assert.doesNotMatch(liveRoutes, /navigate\(-1\)/);
 assert.doesNotMatch(liveRoutes, /setTimeout/);
 
@@ -91,11 +101,38 @@ assert.match(liveViews, /stockResilience === null/);
 assert.doesNotMatch(liveViews, /<EquipmentSpares/);
 assert.match(liveViews, /rows\.length > 0/);
 assert.match(liveViews, /Evidence completeness/);
+assert.match(liveViews, /requestVersion/);
+assert.match(liveViews, /finally/);
 
-assert.match(equipmentTabs, /unavailableInLive/);
-assert.match(equipmentTabs, /aria-describedby/);
+assert.match(pilotEvidenceViews, /usePilotEvidence/);
+assert.match(pilotEvidenceViews, /requestVersion/);
+assert.match(pilotEvidenceViews, /catch \(error\)/);
+assert.match(pilotEvidenceViews, /finally/);
+assert.match(pilotEvidenceViews, /LiveEquipmentWorkOrdersPilotView/);
+assert.match(pilotEvidenceViews, /LiveEquipmentHistoryView/);
+assert.match(pilotEvidenceViews, /LiveEquipmentDocumentsView/);
+assert.match(pilotEvidenceViews, /LiveEquipmentDocumentViewerView/);
+assert.match(pilotEvidenceViews, /executionReadiness === null/);
+assert.match(pilotEvidenceViews, /No demonstration values, optimistic percentages or cross-site records were substituted/);
+assert.match(pilotEvidenceViews, /buildWorkEvidenceCitation/);
+assert.match(pilotEvidenceViews, /buildDocumentCitation/);
+
+assert.match(pilotEvidenceService, /vorta_get_equipment_history/);
+assert.match(pilotEvidenceService, /vorta_get_equipment_documents/);
+assert.match(pilotEvidenceService, /vorta_get_equipment_document/);
+assert.match(pilotEvidenceService, /isLiveWorkItemOverdue/);
+assert.match(pilotEvidenceService, /isLiveWorkItemCompleted/);
+assert.match(pilotEvidenceService, /buildWorkEvidenceCitation/);
+assert.match(pilotEvidenceService, /buildDocumentCitation/);
+
+assert.doesNotMatch(equipmentTabs, /unavailableInLive/);
+assert.doesNotMatch(equipmentTabs, /aria-describedby/);
+assert.match(equipmentTabs, /aria-label="Equipment sections"/);
+assert.match(equipmentTabs, /aria-current=\{active \? "page" : undefined\}/);
 assert.match(equipmentTabs, /Ask Vorta/);
 assert.match(equipmentTabs, /data-vorta-equipment-action/);
+assert.match(equipmentTabs, /label: "History"/);
+assert.match(equipmentTabs, /label: "Documents"/);
 
 assert.match(maintenanceActions, /openMaintenanceAiAssistant/);
 assert.match(maintenanceActions, /vorta-global-ai-prompt/);
@@ -129,7 +166,10 @@ assert.match(liveBrowserTest, /another site fails closed/);
 assert.match(liveBrowserTest, /Stock resilience is unavailable, not 100%/);
 assert.match(liveBrowserTest, /data-vorta-mobile-rota/);
 assert.match(liveBrowserTest, /Rota completeness/);
-assert.match(liveBrowserTest, /toBeDisabled/);
+assert.doesNotMatch(liveBrowserTest, /toBeDisabled/);
+assert.match(liveBrowserTest, /Open controlled document/);
+assert.match(liveBrowserTest, /simulated work-order reader failure/);
+assert.match(liveBrowserTest, /simulated history reader failure/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
@@ -153,4 +193,4 @@ assert.match(qualityWorkflow, /cancel-in-progress: false/);
 assert.match(qualityWorkflow, /--project=desktop-1920/);
 assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: demo/);
 
-console.log("Post-audit responsive UX contracts passed.");
+console.log("Post-audit responsive UX and live pilot evidence contracts passed.");
