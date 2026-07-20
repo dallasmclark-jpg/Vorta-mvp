@@ -98,10 +98,10 @@ assert.doesNotMatch(
   /public\.vorta_get_scope_labour_cards\s*\(/,
   "Dashboard page reads must not rebuild labour cards",
 );
-assert.doesNotMatch(
-  readerBody,
-  /public\.vorta_get_risk_dashboard_scopes_internal\s*\(/,
-  "The cached reader must not recurse",
+assert.equal(
+  (readerBody.match(/public\.vorta_get_risk_dashboard_scopes_internal\s*\(/g) ?? []).length,
+  1,
+  "The cached reader must contain only its declaration and no recursive call",
 );
 
 const refreshStart = migration.indexOf(
