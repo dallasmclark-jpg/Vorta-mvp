@@ -10,6 +10,36 @@ export function MaintenancePortalHardening(): JSX.Element {
         min-height: 2.5rem;
       }
 
+      [data-vorta-maintenance-portal="true"] :where(
+        a[href],
+        button:not(:disabled),
+        input:not(:disabled),
+        select:not(:disabled),
+        textarea:not(:disabled),
+        [role="button"][tabindex]:not([tabindex="-1"]),
+        [role="tab"][tabindex]:not([tabindex="-1"])
+      ):focus-visible {
+        outline: 2px solid #93c5fd;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+      }
+
+      [data-vorta-maintenance-portal="true"] [data-vorta-nav-item="true"][aria-current="page"] {
+        box-shadow: inset 3px 0 0 currentColor;
+        font-weight: 650;
+      }
+
+      [data-vorta-maintenance-portal="true"] [role="tab"][aria-selected="true"] {
+        text-decoration-thickness: 0.125rem;
+        text-underline-offset: 0.35rem;
+      }
+
+      [data-vorta-maintenance-portal="true"] [aria-pressed="true"] {
+        box-shadow:
+          inset 0 0 0 1px rgba(147, 197, 253, 0.7),
+          0 0 0 2px rgba(59, 130, 246, 0.16);
+      }
+
       [data-vorta-maintenance-portal="true"] td,
       [data-vorta-maintenance-portal="true"] th,
       [data-vorta-maintenance-portal="true"] [role="dialog"] {
@@ -18,6 +48,26 @@ export function MaintenancePortalHardening(): JSX.Element {
 
       [data-vorta-maintenance-portal="true"] [role="dialog"] {
         max-height: calc(100dvh - 1rem);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        [data-vorta-maintenance-portal="true"] *,
+        [data-vorta-maintenance-portal="true"] *::before,
+        [data-vorta-maintenance-portal="true"] *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      @media (forced-colors: active) {
+        [data-vorta-maintenance-portal="true"] [data-vorta-nav-item="true"][aria-current="page"],
+        [data-vorta-maintenance-portal="true"] [role="tab"][aria-selected="true"],
+        [data-vorta-maintenance-portal="true"] [aria-pressed="true"] {
+          outline: 2px solid Highlight;
+          outline-offset: -2px;
+        }
       }
 
       @media (min-width: 1360px) and (max-width: 1535px) {
