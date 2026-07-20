@@ -11,7 +11,7 @@ const equipmentTabs = read(
 const portalShell = read("src/components/PortalShell.tsx");
 const shiftCover = read("src/screens/LabourRisk/LiveShiftCoverPage.tsx");
 const qualityWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
-const packageJson = JSON.parse(read("package.json"));
+const contractRunner = read("scripts/run-contract-suite.mjs");
 
 for (const expected of [
   ":focus-visible",
@@ -88,10 +88,10 @@ assert.ok(
 );
 
 assert.ok(
-  packageJson.scripts["test:contracts"].includes(
-    "node scripts/accessibility-navigation-contracts.mjs",
+  contractRunner.includes(
+    '"scripts/accessibility-navigation-contracts.mjs"',
   ),
-  "The production contract suite must enforce accessibility navigation contracts",
+  "The production contract manifest must enforce accessibility navigation contracts",
 );
 
 console.log("Accessibility and navigation contracts passed.");
