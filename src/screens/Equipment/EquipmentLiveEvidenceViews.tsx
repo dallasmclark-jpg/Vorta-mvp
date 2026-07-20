@@ -13,7 +13,7 @@ import {
   Sparkles,
   Wrench,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { openMaintenanceAiAssistant } from "../../lib/maintenanceActions";
 import { EquipmentTabNavigation, type EquipmentTabRoute } from "./EquipmentTabNavigation";
@@ -167,16 +167,37 @@ function useEvidence<T>(loader: () => Promise<LiveDataState<T>>): {
   loading: boolean;
   reload: () => void;
 } {
+  const requestVersion = useRef(0);
   const [state, setState] = useState<LiveDataState<T> | null>(null);
   const [loading, setLoading] = useState(true);
   const reload = useCallback(() => {
+    const request = ++requestVersion.current;
     setLoading(true);
-    void loader().then((next) => {
-      setState(next);
-      setLoading(false);
-    });
+    void (async () => {
+      try {
+        const next = await loader();
+        if (request === requestVersion.current) setState(next);
+      } catch (error) {
+        if (request === requestVersion.current) {
+          setState({
+            status: "unavailable",
+            message:
+              error instanceof Error
+                ? error.message
+                : "The verified evidence request failed.",
+          });
+        }
+      } finally {
+        if (request === requestVersion.current) setLoading(false);
+      }
+    })();
   }, [loader]);
-  useEffect(() => reload(), [reload]);
+  useEffect(() => {
+    reload();
+    return () => {
+      requestVersion.current += 1;
+    };
+  }, [reload]);
   return { state, loading, reload };
 }
 

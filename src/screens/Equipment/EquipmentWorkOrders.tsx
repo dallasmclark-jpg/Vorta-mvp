@@ -54,6 +54,13 @@ import {
 type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type WoStatus = "OPEN" | "IN PROGRESS" | "ON HOLD" | "WAITING PARTS";
 type RegisterView = "OPEN" | "COMPLETED";
+type EvidenceSourceStatus = "loading" | "available" | "unavailable";
+interface WorkOrderSourceState {
+  identity: EvidenceSourceStatus;
+  workOrders: EvidenceSourceStatus;
+  riskQueue: EvidenceSourceStatus;
+  schedules: EvidenceSourceStatus;
+}
 type WorkFilter =
   | "ALL"
   | "OVERDUE"
@@ -165,6 +172,16 @@ function parseDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isWorkOrderCompleted(workOrder: WorkOrder): boolean {
+  return /completed|closed|cancelled|canceled/i.test(workOrder.status);
+}
+
+function isWorkOrderOverdue(workOrder: WorkOrder, today: Date): boolean {
+  if (isWorkOrderCompleted(workOrder)) return false;
+  const dueDate = parseDate(workOrder.dueDate);
+  return Boolean(dueDate && dueDate < today);
+}
+
 function formatDate(value: string): string {
   const date = parseDate(value);
   if (!date) return value || "—";
@@ -235,31 +252,70 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [sourceState, setSourceState] = useState<WorkOrderSourceState>({
+    identity: "loading",
+    workOrders: "loading",
+    riskQueue: "loading",
+    schedules: "loading",
+  });
 
   const loadWorkOrderIntelligence = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setSourceState({
+      identity: "loading",
+      workOrders: "loading",
+      riskQueue: "loading",
+      schedules: "loading",
+    });
 
     try {
-      const [identity, workOrders, queue, schedules] = await Promise.all([
-        getEquipmentIdentityById(resolvedId),
-        getEquipmentWorkOrders(resolvedId),
-        getEquipmentRecommendedWorkQueue(resolvedId),
-        getEquipmentMaintenanceSchedules(resolvedId, "pm"),
-      ]);
+      const [identityResult, workOrdersResult, queueResult, schedulesResult] =
+        await Promise.allSettled([
+          getEquipmentIdentityById(resolvedId),
+          getEquipmentWorkOrders(resolvedId),
+          getEquipmentRecommendedWorkQueue(resolvedId),
+          getEquipmentMaintenanceSchedules(resolvedId, "pm"),
+        ]);
 
-      setEquipment(identity);
-      setOpenWorkOrders(workOrders.open as WorkOrder[]);
-      setCompletedWorkOrders(workOrders.completed as CompletedWorkOrder[]);
-      setRiskQueue(queue);
-      setPmSchedules(schedules);
-      setLastUpdated(new Date());
+      const failures: string[] = [];
+      const nextSourceState: WorkOrderSourceState = {
+        identity: identityResult.status === "fulfilled" ? "available" : "unavailable",
+        workOrders: workOrdersResult.status === "fulfilled" ? "available" : "unavailable",
+        riskQueue: queueResult.status === "fulfilled" ? "available" : "unavailable",
+        schedules: schedulesResult.status === "fulfilled" ? "available" : "unavailable",
+      };
+
+      if (identityResult.status === "fulfilled") setEquipment(identityResult.value);
+      else failures.push("equipment identity");
+
+      if (workOrdersResult.status === "fulfilled") {
+        setOpenWorkOrders(workOrdersResult.value.open as WorkOrder[]);
+        setCompletedWorkOrders(workOrdersResult.value.completed as CompletedWorkOrder[]);
+        setLastUpdated(new Date());
+      } else failures.push("work orders");
+
+      if (queueResult.status === "fulfilled") setRiskQueue(queueResult.value);
+      else failures.push("risk-reduction queue");
+
+      if (schedulesResult.status === "fulfilled") setPmSchedules(schedulesResult.value);
+      else failures.push("PM schedules");
+
+      setSourceState(nextSourceState);
+      if (failures.length) {
+        setLoadError(
+          `Some evidence is unavailable: ${failures.join(", ")}. Successfully loaded evidence remains visible and unavailable metrics are not scored.`,
+        );
+      }
     } catch (error) {
-      console.error("Failed to load equipment work-order intelligence", error);
-      setPmSchedules([]);
-      setLoadError(
-        "Work-order intelligence could not be refreshed. Showing the latest available equipment data.",
-      );
+      console.error("Failed to coordinate equipment work-order intelligence", error);
+      setSourceState({
+        identity: "unavailable",
+        workOrders: "unavailable",
+        riskQueue: "unavailable",
+        schedules: "unavailable",
+      });
+      setLoadError("Work-order evidence could not be verified. Existing values have been retained but are not scored as current.");
     } finally {
       setLoading(false);
     }
@@ -297,8 +353,8 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   }, [today]);
 
   const overdueWorkOrders = useMemo(
-    () => openWorkOrders.filter((workOrder) => workOrder.overdue),
-    [openWorkOrders],
+    () => openWorkOrders.filter((workOrder) => isWorkOrderOverdue(workOrder, today)),
+    [openWorkOrders, today],
   );
 
   const waitingPartsWorkOrders = useMemo(
@@ -334,14 +390,14 @@ export const EquipmentWorkOrders = (): JSX.Element => {
       [...openWorkOrders].sort((left, right) => {
         const score = (workOrder: WorkOrder) =>
           priorityRank(workOrder.priority) * 20 +
-          Number(Boolean(workOrder.overdue)) * 28 +
+          Number(isWorkOrderOverdue(workOrder, today)) * 28 +
           Number(workOrder.status === "WAITING PARTS") * 20 +
           Number(workOrder.status === "ON HOLD") * 10 +
           Number(!workOrder.engineer || workOrder.engineer === "—") * 8;
 
         return score(right) - score(left);
       })[0] ?? null,
-    [openWorkOrders],
+    [openWorkOrders, today],
   );
 
   const priorityCounts = useMemo(
@@ -428,32 +484,33 @@ export const EquipmentWorkOrders = (): JSX.Element => {
     );
   }, [completedWorkOrders]);
 
+  const workOrdersAvailable = sourceState.workOrders === "available";
   const assignmentReadiness =
-    openWorkOrders.length > 0
+    workOrdersAvailable && openWorkOrders.length > 0
       ? Math.round(
           ((openWorkOrders.length - unassignedWorkOrders.length) /
             openWorkOrders.length) *
             100,
         )
-      : 100;
+      : null;
   const partsReadiness =
-    openWorkOrders.length > 0
+    workOrdersAvailable && openWorkOrders.length > 0
       ? Math.round(
           ((openWorkOrders.length - waitingPartsWorkOrders.length) /
             openWorkOrders.length) *
             100,
         )
-      : 100;
+      : null;
   const scheduleReadiness =
-    openWorkOrders.length > 0
+    workOrdersAvailable && openWorkOrders.length > 0
       ? Math.round(
           ((openWorkOrders.length - overdueWorkOrders.length) /
             openWorkOrders.length) *
             100,
         )
-      : 100;
+      : null;
   const evidenceReadiness =
-    openWorkOrders.length > 0
+    workOrdersAvailable && openWorkOrders.length > 0
       ? Math.round(
           (openWorkOrders.filter(
             (workOrder) =>
@@ -462,36 +519,44 @@ export const EquipmentWorkOrders = (): JSX.Element => {
             openWorkOrders.length) *
             100,
         )
-      : 100;
-  const executionReadiness = Math.round(
-    (assignmentReadiness +
-      partsReadiness +
-      scheduleReadiness +
-      evidenceReadiness) /
-      4,
-  );
+      : null;
+  const executionReadiness =
+    assignmentReadiness === null ||
+    partsReadiness === null ||
+    scheduleReadiness === null ||
+    evidenceReadiness === null
+      ? null
+      : Math.round(
+          (assignmentReadiness +
+            partsReadiness +
+            scheduleReadiness +
+            evidenceReadiness) /
+            4,
+        );
 
   const currentRisk = riskQueue?.currentRiskScore ?? equipment?.riskScore ?? 0;
   const projectedRisk =
     riskQueue?.projectedRiskScore ?? Math.max(0, currentRisk - 4);
 
-  const briefing = highestExecutionExposure
-    ? `${equipment?.name ?? "This equipment"} has ${openWorkOrders.length} open SAP work order${
-        openWorkOrders.length === 1 ? "" : "s"
-      }, including ${overdueWorkOrders.length} overdue and ${waitingPartsWorkOrders.length} waiting for parts. ${
-        highestExecutionExposure.id
-      } creates the highest current execution exposure because it is ${
-        highestExecutionExposure.priority.toLowerCase()
-      } priority, ${
-        highestExecutionExposure.overdue
-          ? "overdue"
-          : highestExecutionExposure.status.toLowerCase()
-      } and is assigned to ${
-        highestExecutionExposure.engineer === "—"
-          ? "no engineer"
-          : highestExecutionExposure.engineer
-      }.`
-    : `${equipment?.name ?? "This equipment"} has no open SAP work orders. Vorta is continuing to monitor imported maintenance demand, completion outcomes and emerging repeat-failure evidence.`;
+  const briefing = !workOrdersAvailable
+    ? `Work-order evidence for ${equipment?.name ?? "this equipment"} is unavailable. Vorta has retained any successfully loaded equipment, schedule and risk evidence but will not infer backlog readiness.`
+    : highestExecutionExposure
+      ? `${equipment?.name ?? "This equipment"} has ${openWorkOrders.length} open SAP work order${
+          openWorkOrders.length === 1 ? "" : "s"
+        }, including ${overdueWorkOrders.length} overdue and ${waitingPartsWorkOrders.length} waiting for parts. ${
+          highestExecutionExposure.id
+        } creates the highest current execution exposure because it is ${
+          highestExecutionExposure.priority.toLowerCase()
+        } priority, ${
+          isWorkOrderOverdue(highestExecutionExposure, today)
+            ? "overdue"
+            : highestExecutionExposure.status.toLowerCase()
+        } and is assigned to ${
+          highestExecutionExposure.engineer === "—"
+            ? "no engineer"
+            : highestExecutionExposure.engineer
+        }.`
+      : `${equipment?.name ?? "This equipment"} has no open SAP work orders in the verified source. Vorta is continuing to monitor imported maintenance demand, completion outcomes and emerging repeat-failure evidence.`;
 
   const filteredOpenWorkOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -507,7 +572,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
 
       const matchesFilter =
         filter === "ALL" ||
-        (filter === "OVERDUE" && Boolean(workOrder.overdue)) ||
+        (filter === "OVERDUE" && isWorkOrderOverdue(workOrder, today)) ||
         (filter === "WAITING PARTS" &&
           workOrder.status === "WAITING PARTS") ||
         (filter === "PREVENTIVE" &&
@@ -517,7 +582,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
 
       return matchesSearch && matchesFilter;
     });
-  }, [filter, openWorkOrders, search]);
+  }, [filter, openWorkOrders, search, today]);
 
   const filteredCompletedWorkOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -874,13 +939,13 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <Metric
                     label="Open work orders"
-                    value={openWorkOrders.length}
-                    detail={`${priorityCounts.CRITICAL} critical · ${priorityCounts.HIGH} high`}
+                    value={workOrdersAvailable ? openWorkOrders.length : "—"}
+                    detail={workOrdersAvailable ? `${priorityCounts.CRITICAL} critical · ${priorityCounts.HIGH} high` : "Work-order source unavailable"}
                   />
                   <Metric
                     label="Overdue"
-                    value={overdueWorkOrders.length}
-                    detail={`${dueThisWeek.length} due within seven days`}
+                    value={workOrdersAvailable ? overdueWorkOrders.length : "—"}
+                    detail={workOrdersAvailable ? `${dueThisWeek.length} due within seven days` : "Due-date evidence unavailable"}
                     tone={
                       overdueWorkOrders.length > 0
                         ? "text-red-300"
@@ -889,20 +954,28 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                   />
                   <Metric
                     label="Execution readiness"
-                    value={`${executionReadiness}%`}
-                    detail={`${unassignedWorkOrders.length} unassigned · ${waitingPartsWorkOrders.length} waiting parts`}
+                    value={executionReadiness === null ? "—" : `${executionReadiness}%`}
+                    detail={
+                      executionReadiness === null
+                        ? workOrdersAvailable
+                          ? "No open backlog to score"
+                          : "Readiness evidence unavailable"
+                        : `${unassignedWorkOrders.length} unassigned · ${waitingPartsWorkOrders.length} waiting parts`
+                    }
                     tone={
-                      executionReadiness >= 85
-                        ? "text-emerald-300"
-                        : executionReadiness >= 65
-                          ? "text-yellow-300"
-                          : "text-red-300"
+                      executionReadiness === null
+                        ? "text-slate-500"
+                        : executionReadiness >= 85
+                          ? "text-emerald-300"
+                          : executionReadiness >= 65
+                            ? "text-yellow-300"
+                            : "text-red-300"
                     }
                   />
                   <Metric
                     label="Available risk reduction"
-                    value={`${riskQueue?.totalCalculatedReduction ?? 0} pts`}
-                    detail={`${currentRisk}% to ${projectedRisk}% projected risk`}
+                    value={sourceState.riskQueue === "available" ? `${riskQueue?.totalCalculatedReduction ?? 0} pts` : "—"}
+                    detail={sourceState.riskQueue === "available" ? `${currentRisk}% to ${projectedRisk}% projected risk` : "Risk-reduction evidence unavailable"}
                     tone="text-emerald-300"
                   />
                 </div>
@@ -953,7 +1026,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                       >
                         {highestExecutionExposure.status}
                       </Badge>
-                      {highestExecutionExposure.overdue ? (
+                      {isWorkOrderOverdue(highestExecutionExposure, today) ? (
                         <Badge className="h-auto rounded border border-red-500/25 bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-300 shadow-none">
                           Overdue
                         </Badge>
@@ -1002,7 +1075,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                         value={formatDate(highestExecutionExposure.dueDate)}
                         detail={`Age ${highestExecutionExposure.age}`}
                         tone={
-                          highestExecutionExposure.overdue
+                          isWorkOrderOverdue(highestExecutionExposure, today)
                             ? "text-red-300"
                             : "text-slate-100"
                         }
@@ -1037,11 +1110,12 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                   <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
                     <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     <p className="mt-3 text-sm font-semibold text-emerald-200">
-                      No open execution exposure
+                       {workOrdersAvailable ? "No open execution exposure" : "Execution exposure unavailable"}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-emerald-100/60">
-                      No open SAP work orders are currently linked to this
-                      equipment.
+                       {workOrdersAvailable
+                         ? "No open SAP work orders are currently linked to this equipment."
+                         : "The work-order source could not be verified, so Vorta cannot determine the current execution exposure."}
                     </p>
                   </div>
                 )}
@@ -1055,7 +1129,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
             <EquipmentScheduleTimeline
               mode="pm"
               records={pmSchedules}
-              loading={loading}
+               loading={sourceState.schedules === "loading"}
               onOpenWorkOrder={(workOrderNumber) => {
                 openWorkOrderDetail({
                   equipmentId: equipment.id,
@@ -1192,9 +1266,11 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                 <div className="col-span-full rounded-xl border border-gray-800 bg-[#0d1219] px-4 py-10 text-center">
                   <Gauge className="mx-auto h-6 w-6 text-slate-700" />
                   <p className="mt-3 text-sm font-medium text-slate-300">
-                    {loading
-                      ? "Calculating risk-reducing work"
-                      : "No immediate risk-reduction work identified"}
+                     {sourceState.riskQueue === "loading"
+                       ? "Calculating risk-reducing work"
+                       : sourceState.riskQueue === "unavailable"
+                         ? "Risk-reduction evidence unavailable"
+                         : "No immediate risk-reduction work identified"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     Vorta will populate this queue when the risk engine identifies
@@ -1221,14 +1297,16 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                 <div className="text-right">
                   <p
                     className={`text-3xl font-semibold ${
-                      executionReadiness >= 85
-                        ? "text-emerald-300"
-                        : executionReadiness >= 65
-                          ? "text-yellow-300"
-                          : "text-red-300"
+                      executionReadiness === null
+                        ? "text-slate-500"
+                        : executionReadiness >= 85
+                          ? "text-emerald-300"
+                          : executionReadiness >= 65
+                            ? "text-yellow-300"
+                            : "text-red-300"
                     }`}
                   >
-                    {executionReadiness}%
+                    {executionReadiness === null ? "—" : `${executionReadiness}%`}
                   </p>
                   <p className="text-[10px] text-slate-500">overall readiness</p>
                 </div>
@@ -1275,13 +1353,13 @@ export const EquipmentWorkOrders = (): JSX.Element => {
                         </div>
                       </div>
                       <span className="text-xs font-semibold text-slate-200">
-                        {value}%
+                         {value === null ? "Unavailable" : `${value}%`}
                       </span>
                     </div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-800">
                       <div
                         className="h-full rounded-full bg-blue-500"
-                        style={{ width: `${value}%` }}
+                         style={{ width: `${value ?? 0}%` }}
                       />
                     </div>
                   </div>
