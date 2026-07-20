@@ -43,12 +43,10 @@ import {
   LiveEquipmentSkillsView,
   LiveEquipmentSparesView,
 } from "./EquipmentLiveEvidenceViews";
-import {
-  LiveEquipmentDocumentViewerView,
-  LiveEquipmentDocumentsView,
-  LiveEquipmentHistoryView,
-  LiveEquipmentWorkOrdersPilotView,
-} from "./EquipmentPilotEvidenceViews";
+import { LiveEquipmentDocumentViewerView } from "./LiveEquipmentDocumentViewerView";
+import { LiveEquipmentDocumentsView } from "./LiveEquipmentDocumentsView";
+import { LiveEquipmentHistoryView } from "./LiveEquipmentHistoryView";
+import { LiveEquipmentWorkOrdersPilotView } from "./LiveEquipmentWorkOrdersPilotView";
 import {
   loadLiveEquipmentList,
   loadLiveEquipmentRecord,
