@@ -8,6 +8,7 @@ on:
       - "scripts/audit-equipment-live-service.mjs"
       - ".github/workflows/run-equipment-live-service-audit.yml"
       - "docs/audits/.equipment-live-service-audit-trigger"
+      - "scripts/post-audit-p0-contracts.mjs"
 
 permissions:
   contents: write
@@ -36,11 +37,14 @@ jobs:
       - name: Apply focused patch
         run: node scripts/audit-equipment-live-service.mjs
 
-      - name: Verify TypeScript and contracts
-        run: |
-          npm run typecheck -- --pretty false
-          npm run test:contracts
-          npm run test:smoke
+      - name: Verify TypeScript
+        run: npm run typecheck -- --pretty false
+
+      - name: Verify contracts
+        run: npm run test:contracts
+
+      - name: Verify route smoke
+        run: npm run test:smoke
 
       - name: Commit permanent changes
         shell: bash
