@@ -1,0 +1,87 @@
+name: Bug report
+description: Report a reproducible Vorta workflow, data-trust or interface defect
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: portal
+    attributes:
+      label: Portal or area
+      options:
+        - Maintenance Manager Dashboard
+        - Equipment
+        - Shift Cover / Labour Risk
+        - Skills Matrix / Training
+        - Ask Vorta
+        - Authentication / Access
+        - Backend / Supabase
+        - Deployment / CI
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: data_mode
+    attributes:
+      label: Data mode
+      options:
+        - Demo
+        - Live
+        - Unavailable
+        - Unknown
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 - blocks access or exposes incorrect site data
+        - P1 - blocks a pilot workflow or presents misleading evidence
+        - P2 - degraded workflow with a usable workaround
+        - P3 - visual, copy or low-risk defect
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: State the visible defect and the affected user role.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Sign in as...
+        2. Open...
+        3. Select...
+        4. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add screenshots, route, equipment or site identifiers, browser details and relevant console or network errors. Remove sensitive credentials.
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression scope
+      description: Identify pages or workflows that must remain unchanged while fixing this issue.
+  - type: checkboxes
+    id: trust
+    attributes:
+      label: Data-trust checks
+      options:
+        - label: I have stated whether the issue affects demo or live data.
+          required: true
+        - label: I have removed sensitive credentials from the report.
+          required: true
