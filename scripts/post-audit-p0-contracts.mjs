@@ -108,8 +108,8 @@ assert.match(liveViews, /stockResilience === null/);
 assert.doesNotMatch(liveViews, /<EquipmentSpares/);
 assert.match(liveViews, /rows\.length > 0/);
 assert.match(liveViews, /Evidence completeness/);
-assert.match(liveViews, /requestVersion/);
-assert.match(liveViews, /finally/);
+assert.match(liveViews, /EquipmentPilotEvidenceShared/);
+assert.doesNotMatch(liveViews, /function useEvidence/);
 
 assert.match(pilotEvidenceViews, /usePilotEvidence/);
 assert.match(pilotEvidenceViews, /requestVersion/);

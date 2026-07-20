@@ -1,7 +1,8 @@
-// ─── Equipment Service ────────────────────────────────────────────────────────
-// All data access for the Equipment section goes through this file.
-// Currently returns mock data for detail pages; equipment list fetches from
-// Supabase. Replace other function bodies with Supabase queries when ready.
+// ─── Equipment compatibility and operational service ─────────────────────────
+// This public module currently bridges legacy/demo route adapters and operational
+// Supabase readers. Live pilot routes use equipmentLiveTrust and
+// equipmentPilotEvidence. Add new domain readers to focused modules rather than
+// expanding this compatibility surface.
 
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -1423,9 +1424,9 @@ export async function getEquipmentWorkOrders(equipmentId: string): Promise<{
         completed: rows.filter((r) => r.status?.toUpperCase() === "COMPLETED").map(rowToCompletedWorkOrder),
       };
     }
-    if (error) console.warn("getEquipmentWorkOrders Supabase error, using mock:", error.message);
+    if (error) console.warn("getEquipmentWorkOrders Supabase error; returning no verified rows:", error.message);
   } catch (e) {
-    console.warn("getEquipmentWorkOrders threw, using mock:", e);
+    console.warn("getEquipmentWorkOrders threw; returning no verified rows:", e);
   }
   return {
     open: [],
@@ -1454,9 +1455,9 @@ export async function getEquipmentPMs(equipmentId: string): Promise<PreventiveMa
         compliance:    row.completion_percentage ?? 0,
       }));
     }
-    if (error) console.warn("getEquipmentPMs Supabase error, using mock:", error.message);
+    if (error) console.warn("getEquipmentPMs Supabase error; returning no verified rows:", error.message);
   } catch (e) {
-    console.warn("getEquipmentPMs threw, using mock:", e);
+    console.warn("getEquipmentPMs threw; returning no verified rows:", e);
   }
   return [];
 }
@@ -1612,7 +1613,7 @@ export async function getEquipmentSkills(equipmentId: string): Promise<{
 
     return { skills, engineers, coverageSummary: { covered, atRisk, missing, coveragePercent }, legacySkills, legacyEngineers };
   } catch (e: any) {
-    if (e?.message !== "no rows") console.warn("getEquipmentSkills Supabase error, using mock:", e?.message ?? e);
+    if (e?.message !== "no rows") console.warn("getEquipmentSkills Supabase error; returning legacy compatibility data:", e?.message ?? e);
     const mockResult = {
       skills:    MOCK_SKILLS.filter((s) => s.equipmentId === equipmentId),
       engineers: MOCK_ENGINEERS,

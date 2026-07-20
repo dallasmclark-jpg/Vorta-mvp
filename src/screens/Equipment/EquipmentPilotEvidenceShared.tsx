@@ -115,6 +115,7 @@ export function riskTone(level: string): string {
   if (level === "Critical") return "border-red-500/30 bg-red-500/10 text-red-300";
   if (level === "High") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
   if (level === "Medium") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+  if (level === "Low") return "border-lime-500/30 bg-lime-500/10 text-lime-300";
   return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
 }
 
