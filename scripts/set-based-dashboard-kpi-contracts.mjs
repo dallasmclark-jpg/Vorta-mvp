@@ -49,6 +49,13 @@ assert.doesNotMatch(
   /cross join lateral public\.vorta_get_/,
   "The batch path must aggregate shared facts instead of invoking RPCs per row",
 );
+assert.doesNotMatch(
+  candidateBody,
+  /from windows window\b|\bwindow\./,
+  "Reserved WINDOW syntax must not be used as an unquoted SQL alias",
+);
+assert.match(candidateBody, /from windows period_window/);
+assert.match(candidateBody, /period_window\.scope_key/);
 assert.match(candidateBody, /period_definitions\(period_key, display_order\)/);
 assert.match(candidateBody, /\('daily'::text, 1\)/);
 assert.match(candidateBody, /\('weekly'::text, 2\)/);
