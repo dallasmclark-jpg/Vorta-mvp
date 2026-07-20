@@ -7,12 +7,20 @@ on:
     paths:
       - scripts/apply-live-pilot-batches.mjs
       - .github/workflows/apply-live-pilot-batches.yml
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      - scripts/apply-live-pilot-batches.mjs
+      - .github/workflows/apply-live-pilot-batches.yml
 
 permissions:
   contents: write
 
 jobs:
   apply-and-verify:
+    if: github.head_ref == 'agent/live-equipment-pilot-readiness' || github.ref_name == 'agent/live-equipment-pilot-readiness'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
