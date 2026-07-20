@@ -1,0 +1,28 @@
+name: Set-based dashboard KPIs
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/set-based-dashboard-kpi-contracts.mjs"
+      - ".github/workflows/set-based-dashboard-kpis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  set-based-kpi-contracts:
+    name: Set-based dashboard KPI contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify set-based dashboard KPI contracts
+        run: node scripts/set-based-dashboard-kpi-contracts.mjs
