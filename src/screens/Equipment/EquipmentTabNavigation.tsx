@@ -23,6 +23,7 @@ const EQUIPMENT_TABS = [
 export type EquipmentTabRoute = (typeof EQUIPMENT_TABS)[number]["route"];
 
 const scrollPositionByEquipment = new Map<string, number>();
+const pendingKeyboardFocusByEquipment = new Map<string, EquipmentTabRoute>();
 
 interface EquipmentTabNavigationProps {
   equipmentId: string;
@@ -59,7 +60,12 @@ export function EquipmentTabNavigation({
     } else if (buttonEnd > visibleEnd) {
       navigation.scrollLeft = buttonEnd - navigation.clientWidth;
     }
-  }, [activeIndex, equipmentId]);
+
+    if (pendingKeyboardFocusByEquipment.get(equipmentId) === activeTab) {
+      pendingKeyboardFocusByEquipment.delete(equipmentId);
+      activeButton.focus({ preventScroll: true });
+    }
+  }, [activeIndex, activeTab, equipmentId]);
 
   const rememberScrollPosition = (): void => {
     const navigation = navigationRef.current;
@@ -68,10 +74,16 @@ export function EquipmentTabNavigation({
     }
   };
 
-  const moveTabFocus = (
+  const handleTabKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
     currentIndex: number,
+    route: EquipmentTabRoute,
   ): void => {
+    if (event.key === "Enter" || event.key === " ") {
+      pendingKeyboardFocusByEquipment.set(equipmentId, route);
+      return;
+    }
+
     let nextIndex: number | null = null;
 
     if (event.key === "ArrowRight") {
@@ -119,7 +131,7 @@ export function EquipmentTabNavigation({
             tabIndex={active ? 0 : -1}
             data-vorta-equipment-tab={tab.route}
             data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}
-            onKeyDown={(event) => moveTabFocus(event, index)}
+            onKeyDown={(event) => handleTabKeyDown(event, index, tab.route)}
             onClick={() => {
               rememberScrollPosition();
               navigate(`/equipment/${equipmentId}/${tab.route}`);
