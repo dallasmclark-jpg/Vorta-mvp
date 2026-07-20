@@ -1,0 +1,28 @@
+name: Dashboard scope-plan cache
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/dashboard-scope-plan-cache-contracts.mjs"
+      - ".github/workflows/dashboard-scope-plan-cache.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cache-contracts:
+    name: Dashboard scope-plan cache contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify dashboard scope-plan cache contracts
+        run: node scripts/dashboard-scope-plan-cache-contracts.mjs
