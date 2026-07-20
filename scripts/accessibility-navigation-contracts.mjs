@@ -1,0 +1,85 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const read = (path) =>
+  readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+const hardening = read("src/components/MaintenancePortalHardening.tsx");
+const equipmentTabs = read(
+  "src/screens/Equipment/EquipmentTabNavigation.tsx",
+);
+const portalShell = read("src/components/PortalShell.tsx");
+const shiftCover = read("src/screens/LabourRisk/LiveShiftCoverPage.tsx");
+const packageJson = JSON.parse(read("package.json"));
+
+for (const expected of [
+  ":focus-visible",
+  "outline: 2px solid #93c5fd",
+  '[aria-current="page"]',
+  '[role="tab"][aria-selected="true"]',
+  '[aria-pressed="true"]',
+  "prefers-reduced-motion: reduce",
+  "forced-colors: active",
+]) {
+  assert.ok(
+    hardening.includes(expected),
+    `Missing Maintenance Manager accessibility treatment: ${expected}`,
+  );
+}
+
+for (const expected of [
+  'role="tablist"',
+  'role="tab"',
+  "aria-selected={active}",
+  "tabIndex={active ? 0 : -1}",
+  'event.key === "ArrowRight"',
+  'event.key === "ArrowLeft"',
+  'event.key === "Home"',
+  'event.key === "End"',
+  "tabRefs.current[nextIndex]?.focus()",
+  'aria-orientation="horizontal"',
+  'data-vorta-equipment-tablist="true"',
+]) {
+  assert.ok(
+    equipmentTabs.includes(expected),
+    `Missing Equipment keyboard-navigation contract: ${expected}`,
+  );
+}
+
+assert.doesNotMatch(equipmentTabs, /document\.|MutationObserver/);
+assert.doesNotMatch(hardening, /document\.|MutationObserver/);
+
+for (const expected of [
+  'aria-label="Primary navigation"',
+  'aria-label="Secondary navigation"',
+  'aria-label="Portal navigation"',
+  'aria-label="Open menu"',
+  'aria-label="Close sidebar"',
+]) {
+  assert.ok(
+    portalShell.includes(expected),
+    `Missing portal navigation label: ${expected}`,
+  );
+}
+
+for (const expected of [
+  "aria-pressed={selected}",
+  'aria-label="Previous week"',
+  'aria-label="Next week"',
+  'aria-label="Previous day"',
+  'aria-label="Next day"',
+]) {
+  assert.ok(
+    shiftCover.includes(expected),
+    `Missing Shift Cover keyboard contract: ${expected}`,
+  );
+}
+
+assert.ok(
+  packageJson.scripts["test:contracts"].includes(
+    "node scripts/accessibility-navigation-contracts.mjs",
+  ),
+  "The production contract suite must enforce accessibility navigation contracts",
+);
+
+console.log("Accessibility and navigation contracts passed.");
