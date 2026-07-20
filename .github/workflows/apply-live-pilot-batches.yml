@@ -160,17 +160,31 @@ jobs:
         run: npm run typecheck
 
       - name: Run contract gates
+        id: contracts
         if: steps.codemod.outcome == 'success'
-        run: npm run test:contracts
+        continue-on-error: true
+        run: npm run test:contracts > contract-error.txt 2>&1
+
+      - name: Publish contract diagnostic
+        if: steps.contracts.outcome == 'failure'
+        run: |
+          cat contract-error.txt
+          git config user.name "vorta-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add contract-error.txt
+          git commit -m "Record live pilot contract diagnostic [skip ci]"
+          git push origin HEAD:agent/live-equipment-pilot-readiness
+          exit 1
 
       - name: Commit verified changes
-        if: steps.codemod.outcome == 'success'
+        if: steps.codemod.outcome == 'success' && steps.contracts.outcome == 'success'
         run: |
           rm scripts/apply-live-pilot-batches.mjs
           rm .github/workflows/apply-live-pilot-batches.yml
           rm codemod-error.txt
+          rm -f contract-error.txt
           git config user.name "vorta-release-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add src/screens/Equipment scripts .github/workflows codemod-error.txt
+          git add src/screens/Equipment scripts .github/workflows codemod-error.txt contract-error.txt
           git commit -m "Harden live Equipment pilot evidence [skip ci]"
           git push origin HEAD:agent/live-equipment-pilot-readiness
