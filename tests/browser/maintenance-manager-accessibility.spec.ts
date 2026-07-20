@@ -13,11 +13,16 @@ test("Maintenance Manager navigation supports keyboard focus and selected-state 
   await page.goto("/equipment");
 
   const openEquipment = page
-    .getByRole("button", { name: /Open (verified )?equipment/i })
+    .getByRole("button", { name: /View full asset intelligence/i })
     .first();
   await expect(openEquipment).toBeVisible();
   await openEquipment.click();
   await page.waitForURL(/\/equipment\/[^/]+\/overview$/);
+
+  const primaryNavigation = page.getByRole("navigation", {
+    name: "Primary navigation",
+  });
+  await expect(primaryNavigation.locator('[aria-current="page"]')).toHaveCount(1);
 
   const equipmentTabs = page.getByRole("tablist", {
     name: "Equipment sections",
@@ -53,6 +58,7 @@ test("Maintenance Manager navigation supports keyboard focus and selected-state 
   await page.waitForURL(/\/equipment\/[^/]+\/notifications$/);
   await expect(notifications).toHaveAttribute("aria-selected", "true");
   await expect(notifications).toHaveAttribute("tabindex", "0");
+  await expect(notifications).toBeFocused();
 
   const focusedOutline = await notifications.evaluate((element) => {
     const style = window.getComputedStyle(element);
@@ -68,11 +74,6 @@ test("Maintenance Manager navigation supports keyboard focus and selected-state 
   await expect(
     page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
   ).toBeVisible();
-
-  const primaryNavigation = page.getByRole("navigation", {
-    name: "Primary navigation",
-  });
-  await expect(primaryNavigation.locator('[aria-current="page"]')).toHaveCount(1);
 
   const shiftButtons = page.locator('button[aria-pressed]');
   await expect(shiftButtons.first()).toBeVisible();
