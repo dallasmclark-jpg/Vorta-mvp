@@ -1,0 +1,45 @@
+name: Run Equipment live service audit
+
+on:
+  push:
+    branches:
+      - agent/equipment-live-service-audit
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: ${{ !contains(github.event.head_commit.message, '[equipment-audit-report]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/equipment-live-service-audit
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Generate structural audit
+        run: node scripts/audit-equipment-live-service.mjs
+
+      - name: Commit audit report
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/audits/equipment-live-service-audit.md; then
+            echo "Audit report is unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/audits/equipment-live-service-audit.md
+          git commit -m "Record Equipment live service audit [equipment-audit-report]"
+          git push origin HEAD:agent/equipment-live-service-audit
