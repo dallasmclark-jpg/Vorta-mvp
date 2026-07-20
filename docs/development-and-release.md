@@ -21,7 +21,7 @@ Node.js 22 is the supported local and CI runtime.
 
 ### Live
 
-`VITE_VORTA_DATA_MODE=live` requires authorised, site-scoped evidence. Readers must not replace unavailable live evidence with optimistic percentages, records from another site or legacy demo rows.
+`VITE_VORTA_DATA_MODE=live` requires authorised, site-scoped evidence. Live readers must fail closed when evidence is unavailable and must not substitute optimistic percentages, records from another site or legacy demo rows.
 
 ### Unavailable
 
