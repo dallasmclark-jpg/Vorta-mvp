@@ -278,49 +278,49 @@ as $function$
   ),
   plan_aggregates as materialized (
     select
-      window.scope_key,
-      window.period_key,
-      window.window_kind,
+      period_window.scope_key,
+      period_window.period_key,
+      period_window.window_kind,
       coalesce(sum(plan.actual_risk_reduction) filter (
-        where plan.completion_date <= window.window_end
+        where plan.completion_date <= period_window.window_end
       ), 0)::numeric as actual_risk_reduction,
       coalesce(sum(plan.planned_risk_reduction), 0)::numeric as planned_risk_reduction,
       count(plan.id) filter (
         where plan.completion_date <= plan.planned_date
       )::numeric as actions_completed_on_time,
       count(plan.id)::numeric as actions_total
-    from windows window
+    from windows period_window
     left join plan_facts plan
-      on plan.planned_date between window.window_start and window.window_end
-     and (window.area is null or plan.area = window.area)
-    group by window.scope_key, window.period_key, window.window_kind
+      on plan.planned_date between period_window.window_start and period_window.window_end
+     and (period_window.area is null or plan.area = period_window.area)
+    group by period_window.scope_key, period_window.period_key, period_window.window_kind
   ),
   transition_per_equipment as materialized (
     select
-      window.scope_key,
-      window.period_key,
-      window.window_kind,
+      period_window.scope_key,
+      period_window.period_key,
+      period_window.window_kind,
       plan.equipment_id,
       max(plan.before_rank)::integer as before_rank,
       min(plan.after_rank)::integer as after_rank
-    from windows window
+    from windows period_window
     join plan_facts plan
-      on plan.planned_date between window.window_start and window.window_end
-     and plan.completion_date <= window.window_end
+      on plan.planned_date between period_window.window_start and period_window.window_end
+     and plan.completion_date <= period_window.window_end
      and plan.risk_level_before is not null
      and plan.risk_level_after is not null
-     and (window.area is null or plan.area = window.area)
+     and (period_window.area is null or plan.area = period_window.area)
     group by
-      window.scope_key,
-      window.period_key,
-      window.window_kind,
+      period_window.scope_key,
+      period_window.period_key,
+      period_window.window_kind,
       plan.equipment_id
   ),
   transition_aggregates as materialized (
     select
-      window.scope_key,
-      window.period_key,
-      window.window_kind,
+      period_window.scope_key,
+      period_window.period_key,
+      period_window.window_kind,
       count(transition.equipment_id) filter (
         where transition.before_rank >= 3
           and transition.after_rank < transition.before_rank
@@ -328,12 +328,12 @@ as $function$
       count(transition.equipment_id) filter (
         where transition.before_rank >= 3
       )::numeric as risks_assessed
-    from windows window
+    from windows period_window
     left join transition_per_equipment transition
-      on transition.scope_key = window.scope_key
-     and transition.period_key = window.period_key
-     and transition.window_kind = window.window_kind
-    group by window.scope_key, window.period_key, window.window_kind
+      on transition.scope_key = period_window.scope_key
+     and transition.period_key = period_window.period_key
+     and transition.window_kind = period_window.window_kind
+    group by period_window.scope_key, period_window.period_key, period_window.window_kind
   ),
   skill_event_facts as materialized (
     select
@@ -348,24 +348,24 @@ as $function$
   ),
   skill_event_aggregates as materialized (
     select
-      window.scope_key,
-      window.period_key,
-      window.window_kind,
+      period_window.scope_key,
+      period_window.period_key,
+      period_window.window_kind,
       count(event.id) filter (
         where event.risk_change_points > 0
       )::integer as positive_events,
       count(event.id) filter (
         where event.risk_change_points < 0
       )::integer as negative_events
-    from windows window
+    from windows period_window
     left join skill_event_facts event
-      on event.occurred_date between window.window_start and window.window_end
-     and (window.area is null or event.area = window.area)
-    group by window.scope_key, window.period_key, window.window_kind
+      on event.occurred_date between period_window.window_start and period_window.window_end
+     and (period_window.area is null or event.area = period_window.area)
+    group by period_window.scope_key, period_window.period_key, period_window.window_kind
   ),
   window_evidence as materialized (
     select
-      window.*,
+      period_window.*,
       open_snapshot.risk_score as open_skill_risk,
       close_snapshot.risk_score as close_skill_risk,
       parts_snapshot.snapshot_date as parts_snapshot_date,
@@ -376,14 +376,14 @@ as $function$
       parts_snapshot.reserved_part_lines,
       parts_snapshot.work_orders_fully_reserved,
       parts_snapshot.work_orders_requiring_parts
-    from windows window
+    from windows period_window
     cross join site_context context
     left join lateral (
       select snapshot.risk_score
       from public.maintenance_skill_risk_snapshots snapshot
       where snapshot.site_id = context.site_id
-        and snapshot.area is not distinct from window.area
-        and snapshot.snapshot_date <= window.window_start - 1
+        and snapshot.area is not distinct from period_window.area
+        and snapshot.snapshot_date <= period_window.window_start - 1
       order by snapshot.snapshot_date desc
       limit 1
     ) open_snapshot on true
@@ -391,8 +391,8 @@ as $function$
       select snapshot.risk_score
       from public.maintenance_skill_risk_snapshots snapshot
       where snapshot.site_id = context.site_id
-        and snapshot.area is not distinct from window.area
-        and snapshot.snapshot_date <= window.window_end
+        and snapshot.area is not distinct from period_window.area
+        and snapshot.snapshot_date <= period_window.window_end
       order by snapshot.snapshot_date desc
       limit 1
     ) close_snapshot on true
@@ -408,8 +408,8 @@ as $function$
         snapshot.work_orders_requiring_parts
       from public.maintenance_parts_readiness_snapshots snapshot
       where snapshot.site_id = context.site_id
-        and snapshot.area is not distinct from window.area
-        and snapshot.snapshot_date <= window.window_end
+        and snapshot.area is not distinct from period_window.area
+        and snapshot.snapshot_date <= period_window.window_end
       order by snapshot.snapshot_date desc
       limit 1
     ) parts_snapshot on true
