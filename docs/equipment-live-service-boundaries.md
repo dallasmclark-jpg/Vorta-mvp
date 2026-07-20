@@ -10,7 +10,7 @@ The unused `LiveEquipmentWorkOrdersView` implementation was removed. The live Wo
 
 `equipmentService.ts` remains a compatibility surface for this batch. It mixes legacy/demo adapters, operational dashboard readers, risk planning, knowledge search and older Equipment tabs, so splitting it by line count would create broad import churn without improving pilot behaviour.
 
-New readers must not be added there by default. Prefer focused service modules such as `equipmentLiveTrust.ts` and `equipmentPilotEvidence.ts`. A future service extraction should be domain-led and preserve the existing public exports until consumers move deliberately.
+New readers must not be added there by default. Prefer focused service modules such as `equipmentLiveTrust.ts` and `equipmentPilotEvidence.ts`. A future service extraction should be domain-led and preserve the existing public exports until consumers move deliberately. Extraction should begin only when a complete domain can move with its types, mappings and consumers under one focused contract.
 
 ## Fallback language
 
