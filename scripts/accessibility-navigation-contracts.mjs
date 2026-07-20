@@ -10,6 +10,7 @@ const equipmentTabs = read(
 );
 const portalShell = read("src/components/PortalShell.tsx");
 const shiftCover = read("src/screens/LabourRisk/LiveShiftCoverPage.tsx");
+const qualityWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
 const packageJson = JSON.parse(read("package.json"));
 
 for (const expected of [
@@ -36,7 +37,11 @@ for (const expected of [
   'event.key === "ArrowLeft"',
   'event.key === "Home"',
   'event.key === "End"',
+  'event.key === "Enter"',
+  'event.key === " "',
   "tabRefs.current[nextIndex]?.focus()",
+  "pendingKeyboardFocusByEquipment",
+  "activeButton.focus({ preventScroll: true })",
   'aria-orientation="horizontal"',
   'data-vorta-equipment-tablist="true"',
 ]) {
@@ -74,6 +79,13 @@ for (const expected of [
     `Missing Shift Cover keyboard contract: ${expected}`,
   );
 }
+
+assert.ok(
+  qualityWorkflow.includes(
+    "tests/browser/maintenance-manager-accessibility.spec.ts",
+  ),
+  "The authenticated browser gate must run the accessibility regression",
+);
 
 assert.ok(
   packageJson.scripts["test:contracts"].includes(
