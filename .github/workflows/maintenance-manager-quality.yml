@@ -169,12 +169,14 @@ jobs:
               tests/browser/maintenance-manager-core.spec.ts \
               tests/browser/maintenance-manager-work-orders.spec.ts \
               tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
+              tests/browser/maintenance-manager-accessibility.spec.ts \
               --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
           else
             npm run test:browser -- \
               tests/browser/maintenance-manager-core.spec.ts \
               tests/browser/maintenance-manager-work-orders.spec.ts \
               tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
+              tests/browser/maintenance-manager-accessibility.spec.ts \
               2>&1 | tee maintenance-browser-regression.log
           fi
 
