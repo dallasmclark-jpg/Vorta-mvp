@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "migrationVersion": "20260720193117",
+  "migrationName": "complete_rpc_security_manifest",
+  "invariants": {
+    "authenticatedCallable": 61,
+    "reviewedRead": 46,
+    "reviewedMutation": 15,
+    "securityDefiner": 58,
+    "securityInvoker": 3,
+    "anonymousCallable": 0,
+    "manifestDrift": 0
+  },
+  "securityInvokerRpcs": [
+    {
+      "identity": "vorta_get_equipment_history(uuid)",
+      "scope": "equipment row-level security"
+    },
+    {
+      "identity": "vorta_get_equipment_documents(uuid)",
+      "scope": "equipment and document row-level security"
+    },
+    {
+      "identity": "vorta_get_equipment_document(uuid,uuid)",
+      "scope": "equipment and controlled-document row-level security"
+    }
+  ],
+  "revokedPublicHelpers": [
+    "vorta_effective_pm_status(text,date)",
+    "vorta_spare_component_risk_points(text,text)",
+    "vorta_work_order_is_overdue(text,date)"
+  ],
+  "legacyManifestSources": [
+    "supabase/migrations/20260719235900_harden_privileged_rpcs.sql",
+    "supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql"
+  ]
+}

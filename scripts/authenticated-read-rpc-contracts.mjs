@@ -1,15 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const migration = readFileSync(
-  new URL(
-    "../supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql",
-    import.meta.url,
-  ),
-  "utf8",
+const read = (path) =>
+  readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+const baselineMigration = read(
+  "supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql",
+);
+const manifestMigration = read(
+  "supabase/migrations/20260720193117_complete_rpc_security_manifest.sql",
 );
 
-const reviewedReadRpcs = [
+const reviewedDefinerReadRpcs = [
   "vorta_get_area_equipment_risk_reduction_plan(text,uuid)",
   "vorta_get_area_risk_reduction_plan(text)",
   "vorta_get_ask_vorta_evidence(uuid,text,integer)",
@@ -54,12 +56,26 @@ const reviewedReadRpcs = [
   "vorta_resolve_shift_context(uuid,timestamp with time zone)",
   "vorta_search_equipment_knowledge(uuid,text,integer)",
 ];
+const reviewedInvokerReadRpcs = [
+  "vorta_get_equipment_history(uuid)",
+  "vorta_get_equipment_documents(uuid)",
+  "vorta_get_equipment_document(uuid,uuid)",
+];
 
-assert.equal(reviewedReadRpcs.length, 43);
-for (const rpcIdentity of reviewedReadRpcs) {
+assert.equal(reviewedDefinerReadRpcs.length, 43);
+assert.equal(reviewedInvokerReadRpcs.length, 3);
+assert.equal(reviewedDefinerReadRpcs.length + reviewedInvokerReadRpcs.length, 46);
+
+for (const rpcIdentity of reviewedDefinerReadRpcs) {
   assert.ok(
-    migration.includes(`'${rpcIdentity}'`),
-    `Missing reviewed read RPC: ${rpcIdentity}`,
+    baselineMigration.includes(`'${rpcIdentity}'`),
+    `Missing reviewed SECURITY DEFINER read RPC: ${rpcIdentity}`,
+  );
+}
+for (const rpcIdentity of reviewedInvokerReadRpcs) {
+  assert.ok(
+    manifestMigration.includes(`'${rpcIdentity}'`),
+    `Missing reviewed SECURITY INVOKER read RPC: ${rpcIdentity}`,
   );
 }
 
@@ -74,23 +90,36 @@ for (const expected of [
   "reviewedAuthenticatedReadRpcCount",
   "reviewed_read_count <> 43",
 ]) {
-  assert.ok(migration.includes(expected), `Missing read RPC contract: ${expected}`);
+  assert.ok(
+    baselineMigration.includes(expected),
+    `Missing baseline read RPC contract: ${expected}`,
+  );
+}
+
+for (const expected of [
+  "security_mode",
+  "'invoker'",
+  "read_count <> 46",
+  "authenticatedSecurityInvokerRpcCount",
+  "rpcSecurityManifestDriftCount",
+]) {
+  assert.ok(
+    manifestMigration.includes(expected),
+    `Missing complete read RPC manifest contract: ${expected}`,
+  );
 }
 
 assert.match(
-  migration,
+  manifestMigration,
   /left join private\.vorta_privileged_rpc_allowlist allowlist[\s\S]*allowlist\.rpc_class = 'read'/,
 );
-assert.match(
-  migration,
-  /and allowlist\.rpc_identity is null/,
-);
+assert.match(manifestMigration, /and allowlist\.rpc_identity is null/);
 assert.doesNotMatch(
-  migration,
+  manifestMigration,
   /revoke execute on function public\.vorta_get_demo_backend_health/,
 );
 assert.doesNotMatch(
-  migration,
+  manifestMigration,
   /revoke execute on function public\.vorta_get_shift_cover_snapshot/,
 );
 

@@ -1,0 +1,36 @@
+name: RPC security manifest
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/rpc-security-manifest.json"
+      - "scripts/rpc-security-manifest-contracts.mjs"
+      - "scripts/authenticated-read-rpc-contracts.mjs"
+      - "scripts/live-demo-backend-health.mjs"
+      - "scripts/live-backend-health-gate-contracts.mjs"
+      - "package.json"
+      - ".github/workflows/rpc-security-manifest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-contracts:
+    name: RPC security manifest contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify RPC security manifest
+        run: node scripts/rpc-security-manifest-contracts.mjs
+
+      - name: Verify authenticated read RPC contracts
+        run: node scripts/authenticated-read-rpc-contracts.mjs

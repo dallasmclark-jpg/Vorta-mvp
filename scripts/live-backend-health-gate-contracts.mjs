@@ -16,6 +16,13 @@ for (const expected of [
   "data.coverage",
   "data.integrity",
   "data.maintenanceTruth",
+  "data.security",
+  "reviewedAuthenticatedMutationRpcCount",
+  "reviewedAuthenticatedReadRpcCount",
+  "authenticatedSecurityDefinerRpcCount",
+  "authenticatedSecurityInvokerRpcCount",
+  "anonymousVortaRpcCount",
+  "rpcSecurityManifestDriftCount",
   "largestIdenticalSignatureGroup",
   "signOut",
 ]) {

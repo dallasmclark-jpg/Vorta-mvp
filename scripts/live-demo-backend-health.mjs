@@ -50,6 +50,38 @@ try {
     "Demo work histories have collapsed into repeated identical signatures",
   );
 
+  assert.ok(data.security && typeof data.security === "object", "Health report contains no RPC security contract");
+  assert.equal(
+    Number(data.security.reviewedAuthenticatedMutationRpcCount),
+    15,
+    "Authenticated mutation RPC manifest count has drifted",
+  );
+  assert.equal(
+    Number(data.security.reviewedAuthenticatedReadRpcCount),
+    46,
+    "Authenticated read RPC manifest count has drifted",
+  );
+  assert.equal(
+    Number(data.security.authenticatedSecurityDefinerRpcCount),
+    58,
+    "Authenticated SECURITY DEFINER RPC count has drifted",
+  );
+  assert.equal(
+    Number(data.security.authenticatedSecurityInvokerRpcCount),
+    3,
+    "Authenticated SECURITY INVOKER RPC count has drifted",
+  );
+  assert.equal(
+    Number(data.security.anonymousVortaRpcCount),
+    0,
+    "Anonymous Vorta RPC execution is not permitted",
+  );
+  assert.equal(
+    Number(data.security.rpcSecurityManifestDriftCount),
+    0,
+    "RPC security manifest drift is not permitted",
+  );
+
   console.log(
     JSON.stringify(
       {
@@ -61,6 +93,7 @@ try {
         integrity: data.integrity,
         maintenanceTruth: data.maintenanceTruth,
         realism: data.realism,
+        security: data.security,
       },
       null,
       2,
