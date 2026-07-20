@@ -1,0 +1,69 @@
+name: Improvement
+description: Propose a focused product, workflow, reliability or engineering improvement
+title: "[Improvement] "
+labels:
+  - enhancement
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Portal or technical area
+      options:
+        - Maintenance Manager Dashboard
+        - Equipment
+        - Shift Cover / Labour Risk
+        - Skills Matrix / Training
+        - Ask Vorta
+        - Authentication / Access
+        - Backend / Supabase
+        - Testing / CI / Deployment
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the operational or engineering problem before describing a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: user_value
+    attributes:
+      label: Pilot value
+      description: State the user role, decision or workflow this would improve.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+    validations:
+      required: true
+  - type: dropdown
+    id: data_mode
+    attributes:
+      label: Data-mode impact
+      options:
+        - Demo only
+        - Live only
+        - Demo and live
+        - No data-mode impact
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: source_data
+    attributes:
+      label: Source data and integration assumptions
+      description: Identify required records, RPCs or external systems. State whether the proposal remains read-only.
+  - type: textarea
+    id: protected_scope
+    attributes:
+      label: Protected scope
+      description: Identify existing pages, routes or workflows that must not change.
+  - type: textarea
+    id: success
+    attributes:
+      label: Success evidence
+      description: Describe the measurable result and the tests or pilot evidence that would prove it.

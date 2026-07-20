@@ -5,7 +5,7 @@ const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const gate = read("scripts/live-demo-backend-health.mjs");
-const packageJson = JSON.parse(read("package.json"));
+const contractRunner = read("scripts/run-contract-suite.mjs");
 
 for (const expected of [
   "signInWithPassword",
@@ -33,10 +33,10 @@ assert.doesNotMatch(gate, /supabase\s*\.\s*from\s*\(/);
 assert.doesNotMatch(gate, /vorta_(refresh|recalculate|sync)_/);
 assert.doesNotMatch(gate, /\.(insert|update|upsert|delete)\s*\(/);
 assert.ok(
-  packageJson.scripts["test:contracts"].includes(
-    "node scripts/live-backend-health-gate-contracts.mjs",
+  contractRunner.includes(
+    '"scripts/live-backend-health-gate-contracts.mjs"',
   ),
-  "The protected contract gate must invoke live backend health contracts",
+  "The production contract manifest must invoke live backend health contracts",
 );
 
 const hasMaintenanceTestContext = Boolean(
