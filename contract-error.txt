@@ -1,0 +1,268 @@
+
+> vorta-mvp@1.0.0 test:contracts
+> node scripts/auth-route-contracts.mjs && node scripts/work-order-overlay-contracts.mjs && node scripts/maintenance-dashboard-contracts.mjs && node scripts/maintenance-portal-workflow-contracts.mjs && node scripts/skills-matrix-contracts.mjs && node scripts/equipment-people-workflow-contracts.mjs && node scripts/maintenance-p1-p2-contracts.mjs && node scripts/data-trust-contracts.mjs && node scripts/post-audit-p0-contracts.mjs && node scripts/audit-remediation-contracts.mjs && node scripts/demo-backend-health-contracts.mjs && node scripts/live-backend-health-gate-contracts.mjs
+
+✓ PilotRole contains vorta_admin
+✓ PilotRole contains site_admin
+✓ PilotRole contains maintenance_manager
+✓ PilotRole contains maintenance_planner
+✓ PilotRole contains reliability_engineer
+✓ PilotRole contains engineer
+✓ PilotRole contains production_manager
+✓ PilotRole contains operator
+✓ PilotRole contains contractor_admin
+✓ PilotRole contains contractor_engineer
+✓ Global administrator bypass is preserved
+✓ Ordinary users require an active site context
+✓ Missing site assignment has an explicit error
+✓ Unsupported roles have an explicit error
+✓ Access decision uses global admin or allowed roles
+✓ engineer home path remains /engineer/dashboard
+✓ contractor_admin home path remains /contractor/dashboard
+✓ contractor_engineer home path remains /contractor/dashboard
+✓ production_manager home path remains /production/dashboard
+✓ operator home path remains /operator/dashboard
+✓ maintenance_planner home path remains /planner/planner-dashboard
+✓ Route exists: /engineer/*
+✓ Route exists: /contractor/*
+✓ Route exists: /production/*
+✓ Route exists: /operator/*
+✓ Route exists: /planner/*
+✓ Route exists: /*
+✓ Engineer portal requires engineer role
+✓ Contractor portal accepts both contractor roles
+✓ Production portal requires production manager
+✓ Operator portal requires operator
+✓ Planner portal requires maintenance planner
+✓ Maintenance portal accepts the approved manager roles
+✓ Generic RequireAuth route guards are not used
+✓ Every protected portal has a route error boundary
+✓ Application root error boundary remains present
+✓ Legacy engineer redirect remains intact
+✓ Legacy contractor redirect remains intact
+
+All Vorta auth and routing contracts passed.
+✓ Maintenance routes are wrapped by the React work order experience
+✓ Portal bridge no longer captures arbitrary work order clicks
+✓ Shared maintenance action opens the execution overlay
+✓ Maintenance portal mounts the enhanced execution overlay
+✓ Work order page opens records explicitly
+✓ AI fault history opens records explicitly
+✓ Query-linked work orders open without DOM polling
+✓ Legacy row interception wrapper is retired
+✓ Global overlay traps focus through the shared accessibility hook
+✓ Execution overlay presents a manager verdict
+✓ Execution overlay distinguishes final and interim confirmations
+✓ Execution overlay summarises 261 material issues
+✓ Document navigation is owned by React rather than a document-wide interceptor
+✓ Obsolete document-wide work order interceptor has been removed
+✓ Duplicate equipment-level evidence control has been removed
+
+Work order overlay contracts passed.
+✓ Maintenance dashboard route uses the scoped dashboard experience
+✓ Dashboard wrapper avoids broad rendered-DOM patching
+✓ Router protects the dedicated Shift Cover calendar
+✓ Dashboard owns its explicit operational refresh
+✓ Desktop KPI cards render as a comparison grid
+✓ Portal bridge no longer parses arbitrary work order clicks
+✓ Maintenance actions expose an explicit work order command
+✓ Dashboard uses the explicit work order action
+✓ Temporary dashboard patch workflows are absent
+
+Maintenance dashboard contracts passed.
+Maintenance portal workflow contracts passed.
+Skills Matrix native and workflow contracts passed.
+Equipment → people → training workflow contracts passed.
+Maintenance Manager audit hardening contracts passed.
+P0 data trust contracts passed.
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /unavailableInLive/. Input:
+
+'import { Sparkles } from "lucide-react";\n' +
+  'import { useLayoutEffect, useRef } from "react";\n' +
+  'import { useNavigate } from "react-router-dom";\n' +
+  'import { useAuth } from "../../lib/auth";\n' +
+  'import { getEffectiveDataMode } from "../../lib/dataTrust";\n' +
+  '\n' +
+  'const EQUIPMENT_TABS = [\n' +
+  '  { label: "Overview", route: "overview" },\n' +
+  '  { label: "Notifications", route: "notifications" },\n' +
+  '  { label: "Work Orders", route: "work-orders" },\n' +
+  '  { label: "Calibrations", route: "pms" },\n' +
+  '  { label: "History", route: "history" },\n' +
+  '  { label: "Skills & Engineers", route: "skills" },\n' +
+  '  { label: "Spares", route: "spares" },\n' +
+  '  { label: "Documents", route: "documents" },\n' +
+  '  { label: "AI Insights", route: "ai-insights", actionInLive: true },\n' +
+  '] as const;\n' +
+  '\n' +
+  'export type EquipmentTabRoute = (typeof EQUIPMENT_TABS)[number]["route"];\n' +
+  '\n' +
+  'const scrollPositionByEquipment = new Map<string, number>();\n' +
+  '\n' +
+  'interface EquipmentTabNavigationProps {\n' +
+  '  equipmentId: string;\n' +
+  '  activeTab: EquipmentTabRoute;\n' +
+  '}\n' +
+  '\n' +
+  'export function EquipmentTabNavigation({\n' +
+  '  equipmentId,\n' +
+  '  activeTab,\n' +
+  '}: EquipmentTabNavigationProps): JSX.Element {\n' +
+  '  const navigate = useNavigate();\n' +
+  '  const { siteContext } = useAuth();\n' +
+  '  const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));\n' +
+  '  const navigationRef = useRef<HTMLElement>(null);\n' +
+  '\n' +
+  '  useLayoutEffect(() => {\n' +
+  '    const navigation = navigationRef.current;\n' +
+  '    if (navigation) {\n' +
+  '      navigation.scrollLeft = scrollPositionByEquipment.get(equipmentId) ?? 0;\n' +
+  '    }\n' +
+  '  }, [equipmentId]);\n' +
+  '\n' +
+  '  const rememberScrollPosition = (): void => {\n' +
+  '    const navigation = navigationRef.current;\n' +
+  '    if (navigation) {\n' +
+  '      scrollPositionByEquipment.set(equipmentId, navigation.scrollLeft);\n' +
+  '    }\n' +
+  '  };\n' +
+  '\n' +
+  '  return (\n' +
+  '    <nav\n' +
+  '      ref={navigationRef}\n' +
+  '      onScroll={rememberScrollPosition}\n' +
+  '      className="mt-4 flex gap-1 overflow-x-auto pb-1"\n' +
+  '      aria-label="Equipment sections"\n' +
+  '    >\n' +
+  '      {EQUIPMENT_TABS.map((tab) => {\n' +
+  '        const askVorta = dataMode === "live" && "actionInLive" in tab;\n' +
+  '        const label = askVorta ? "Ask Vorta" : tab.label;\n' +
+  '        const active = tab.route === activeTab;\n' +
+  '\n' +
+  '        return (\n' +
+  '          <button\n' +
+  '            key={tab.route}\n' +
+  '            type="button"\n' +
+  '            aria-current={active ? "page" : undefined}\n' +
+  '            data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}\n' +
+  '            onClick={() => {\n' +
+  '              rememberScrollPosition();\n' +
+  '              navigate(`/equipment/${equipmentId}/${tab.route}`);\n' +
+  '            }}\n' +
+  '            className={`flex min-h-10 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${\n' +
+  '              askVorta\n' +
+  '                ? "ml-1 border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"\n' +
+  '                : active\n' +
+  '                  ? "border-blue-500 bg-blue-500/[0.06] text-blue-400"\n' +
+  '                  : "border-transparent text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"\n' +
+  '            }`}\n' +
+  '          >\n' +
+  '            {askVorta ? <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> : null}\n' +
+  '            {label}\n' +
+  '          </button>\n' +
+  '        );\n' +
+  '      })}\n' +
+  '    </nav>\n' +
+  '  );\n' +
+  '}\n'
+
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/post-audit-p0-contracts.mjs:95:8 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'import { Sparkles } from "lucide-react";\n' +
+    'import { useLayoutEffect, useRef } from "react";\n' +
+    'import { useNavigate } from "react-router-dom";\n' +
+    'import { useAuth } from "../../lib/auth";\n' +
+    'import { getEffectiveDataMode } from "../../lib/dataTrust";\n' +
+    '\n' +
+    'const EQUIPMENT_TABS = [\n' +
+    '  { label: "Overview", route: "overview" },\n' +
+    '  { label: "Notifications", route: "notifications" },\n' +
+    '  { label: "Work Orders", route: "work-orders" },\n' +
+    '  { label: "Calibrations", route: "pms" },\n' +
+    '  { label: "History", route: "history" },\n' +
+    '  { label: "Skills & Engineers", route: "skills" },\n' +
+    '  { label: "Spares", route: "spares" },\n' +
+    '  { label: "Documents", route: "documents" },\n' +
+    '  { label: "AI Insights", route: "ai-insights", actionInLive: true },\n' +
+    '] as const;\n' +
+    '\n' +
+    'export type EquipmentTabRoute = (typeof EQUIPMENT_TABS)[number]["route"];\n' +
+    '\n' +
+    'const scrollPositionByEquipment = new Map<string, number>();\n' +
+    '\n' +
+    'interface EquipmentTabNavigationProps {\n' +
+    '  equipmentId: string;\n' +
+    '  activeTab: EquipmentTabRoute;\n' +
+    '}\n' +
+    '\n' +
+    'export function EquipmentTabNavigation({\n' +
+    '  equipmentId,\n' +
+    '  activeTab,\n' +
+    '}: EquipmentTabNavigationProps): JSX.Element {\n' +
+    '  const navigate = useNavigate();\n' +
+    '  const { siteContext } = useAuth();\n' +
+    '  const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));\n' +
+    '  const navigationRef = useRef<HTMLElement>(null);\n' +
+    '\n' +
+    '  useLayoutEffect(() => {\n' +
+    '    const navigation = navigationRef.current;\n' +
+    '    if (navigation) {\n' +
+    '      navigation.scrollLeft = scrollPositionByEquipment.get(equipmentId) ?? 0;\n' +
+    '    }\n' +
+    '  }, [equipmentId]);\n' +
+    '\n' +
+    '  const rememberScrollPosition = (): void => {\n' +
+    '    const navigation = navigationRef.current;\n' +
+    '    if (navigation) {\n' +
+    '      scrollPositionByEquipment.set(equipmentId, navigation.scrollLeft);\n' +
+    '    }\n' +
+    '  };\n' +
+    '\n' +
+    '  return (\n' +
+    '    <nav\n' +
+    '      ref={navigationRef}\n' +
+    '      onScroll={rememberScrollPosition}\n' +
+    '      className="mt-4 flex gap-1 overflow-x-auto pb-1"\n' +
+    '      aria-label="Equipment sections"\n' +
+    '    >\n' +
+    '      {EQUIPMENT_TABS.map((tab) => {\n' +
+    '        const askVorta = dataMode === "live" && "actionInLive" in tab;\n' +
+    '        const label = askVorta ? "Ask Vorta" : tab.label;\n' +
+    '        const active = tab.route === activeTab;\n' +
+    '\n' +
+    '        return (\n' +
+    '          <button\n' +
+    '            key={tab.route}\n' +
+    '            type="button"\n' +
+    '            aria-current={active ? "page" : undefined}\n' +
+    '            data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}\n' +
+    '            onClick={() => {\n' +
+    '              rememberScrollPosition();\n' +
+    '              navigate(`/equipment/${equipmentId}/${tab.route}`);\n' +
+    '            }}\n' +
+    '            className={`flex min-h-10 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${\n' +
+    '              askVorta\n' +
+    '                ? "ml-1 border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"\n' +
+    '                : active\n' +
+    '                  ? "border-blue-500 bg-blue-500/[0.06] text-blue-400"\n' +
+    '                  : "border-transparent text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"\n' +
+    '            }`}\n' +
+    '          >\n' +
+    '            {askVorta ? <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> : null}\n' +
+    '            {label}\n' +
+    '          </button>\n' +
+    '        );\n' +
+    '      })}\n' +
+    '    </nav>\n' +
+    '  );\n' +
+    '}\n',
+  expected: /unavailableInLive/,
+  operator: 'match'
+}
+
+Node.js v20.20.2
