@@ -75,12 +75,14 @@ test("Maintenance Manager navigation supports keyboard focus and selected-state 
     page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
   ).toBeVisible();
 
-  const shiftButtons = page.locator('button[aria-pressed]');
+  const visibleRota = page.locator('[data-vorta-desktop-rota="true"]');
+  await expect(visibleRota).toBeVisible();
+  const shiftButtons = visibleRota.locator('button[aria-pressed]');
   await expect(shiftButtons.first()).toBeVisible();
-  await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(1);
+  await expect(visibleRota.locator('button[aria-pressed="true"]')).toHaveCount(1);
 
   if ((await shiftButtons.count()) > 1) {
     await shiftButtons.nth(1).click();
-    await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(1);
+    await expect(visibleRota.locator('button[aria-pressed="true"]')).toHaveCount(1);
   }
 });
