@@ -1,4 +1,4 @@
-name: Set-based dashboard scopes
+name: Dashboard scope cache
 
 on:
   pull_request:
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  scope-contracts:
-    name: Set-based dashboard scope contracts
+  scope-cache-contracts:
+    name: Dashboard scope cache contracts
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -24,5 +24,5 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify set-based dashboard scope contracts
+      - name: Verify dashboard scope cache contracts
         run: node scripts/set-based-dashboard-scope-contracts.mjs
