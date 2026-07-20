@@ -1,15 +1,20 @@
-# Set-based dashboard scopes
+# Dashboard scope cache
 
-This focused backend performance batch replaces repeated per-area Dashboard scope and labour-card calculations with shared set-based facts.
+This focused backend performance batch moves repeated Dashboard scope and labour-card construction off the page-load path while preserving the existing UI contract.
 
 ## Scope
 
-- Preserve the existing eight-row site and area scope contract.
-- Preserve all existing labour-card wording and scoring semantics.
-- Build highest-equipment, at-risk counts, cover gaps and top-four child cards from one ranked equipment set.
-- Build site and all area labour cards from shared shift, leave, required-skill and expiry facts.
-- Reject the migration unless the complete legacy and candidate JSON outputs match exactly.
+- Preserve the complete eight-row site and area scope result.
+- Preserve all labour-card wording, scoring and child-card content.
+- Keep the existing scope calculator as the source of truth.
+- Store its typed result in a private cache after site-risk refreshes.
+- Read the cache in display order, with a live-calculation fallback if it is unexpectedly empty.
+- Reject activation unless the cached JSON and final reader hash exactly match the legacy output.
 
-## Expected impact
+## Refresh behaviour
 
-The existing scope builder accounts for most of the remaining operational Dashboard snapshot latency. This migration removes repeated correlated scans and repeated calls to the labour-card helper without changing the UI contract.
+A private trigger refreshes the cache after inserts or updates to `site_risk_profile`, which is updated by the existing risk-refresh workflow. Expensive labour and correlated equipment calculations therefore occur during deliberate risk recalculation rather than on every Dashboard page load.
+
+## Security
+
+The cache table and refresh functions remain private and are not granted to `anon` or `authenticated`. The existing public access-controlled wrapper remains unchanged.
