@@ -36,19 +36,29 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Normalise codemod template escapes
+      - name: Normalise codemod source literals
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path("scripts/apply-live-pilot-batches.mjs")
           source = path.read_text()
-          before = r'new Date(\`${value}T00:00:00\`);'
-          after = r'new Date(\`\${value}T00:00:00\`);'
-          count = source.count(before)
-          if count != 2:
-              raise SystemExit(f"Expected 2 parseDate template matches, found {count}")
-          path.write_text(source.replace(before, after))
+
+          parse_before = r'new Date(\`${value}T00:00:00\`);'
+          parse_after = r'new Date(\`\${value}T00:00:00\`);'
+          parse_count = source.count(parse_before)
+          if parse_count != 2:
+              raise SystemExit(f"Expected 2 parseDate template matches, found {parse_count}")
+          source = source.replace(parse_before, parse_after)
+
+          schedule_before = '`               loading={loading}`'
+          schedule_after = '`              loading={loading}`'
+          schedule_count = source.count(schedule_before)
+          if schedule_count != 1:
+              raise SystemExit(f"Expected 1 schedule-loading match, found {schedule_count}")
+          source = source.replace(schedule_before, schedule_after)
+
+          path.write_text(source)
           PY
 
       - name: Apply focused code changes
