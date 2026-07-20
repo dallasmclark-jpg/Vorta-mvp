@@ -37,6 +37,15 @@ jobs:
       - name: Apply focused patch
         run: node scripts/audit-equipment-live-service.mjs
 
+      - name: Commit inspectable draft patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Consolidate Equipment live evidence foundations"
+          git push origin HEAD:agent/equipment-live-service-audit
+
       - name: Verify TypeScript
         run: npm run typecheck -- --pretty false
 
@@ -45,12 +54,3 @@ jobs:
 
       - name: Verify route smoke
         run: npm run test:smoke
-
-      - name: Commit permanent changes
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Consolidate Equipment live evidence foundations"
-          git push origin HEAD:agent/equipment-live-service-audit
