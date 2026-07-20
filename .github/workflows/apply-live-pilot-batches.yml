@@ -44,12 +44,31 @@ jobs:
           path = Path("scripts/apply-live-pilot-batches.mjs")
           source = path.read_text()
 
-          parse_before = r'new Date(\`${value}T00:00:00\`);'
-          parse_after = r'new Date(\`\${value}T00:00:00\`);'
-          parse_count = source.count(parse_before)
-          if parse_count != 2:
-              raise SystemExit(f"Expected 2 parseDate template matches, found {parse_count}")
-          source = source.replace(parse_before, parse_after)
+          literal_replacements = [
+              (
+                  r'new Date(\`${value}T00:00:00\`);',
+                  r'new Date(\`\${value}T00:00:00\`);',
+                  2,
+                  "parseDate templates",
+              ),
+              (
+                  '`                         {value}%`',
+                  '`                        {value}%`',
+                  1,
+                  "readiness value target",
+              ),
+              (
+                  '`                         style={{ width: \\`${"${value}"}%\\` }}`',
+                  '`                        style={{ width: \\`${"${value}"}%\\` }}`',
+                  1,
+                  "readiness bar target",
+              ),
+          ]
+          for before, after, expected, label in literal_replacements:
+              count = source.count(before)
+              if count != expected:
+                  raise SystemExit(f"Expected {expected} {label} matches, found {count}")
+              source = source.replace(before, after)
 
           old_helpers = '''function replaceRequired(source, before, after, label) {
             const occurrences = source.split(before).length - 1;
