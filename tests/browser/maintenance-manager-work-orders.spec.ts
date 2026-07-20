@@ -28,8 +28,10 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   const equipmentId = equipmentRouteMatch?.[1] ?? "";
   await expectNoPageOverflow(page);
 
-  const equipmentSections = page.locator('[aria-label="Equipment sections"]');
-  const workOrdersTab = equipmentSections.getByRole("button", {
+  const equipmentSections = page.getByRole("tablist", {
+    name: "Equipment sections",
+  });
+  const workOrdersTab = equipmentSections.getByRole("tab", {
     name: "Work Orders",
     exact: true,
   });

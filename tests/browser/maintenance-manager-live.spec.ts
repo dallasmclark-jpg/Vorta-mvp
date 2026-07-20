@@ -49,19 +49,19 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await expect(page.getByText("LIVE SITE EVIDENCE", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/No demonstration values|No legacy demonstration record/)).toHaveCount(0);
 
-  const sections = page.locator('[aria-label="Equipment sections"]');
-  const historyTab = sections.getByRole("button", { name: "History", exact: true });
-  const documentsTab = sections.getByRole("button", { name: "Documents", exact: true });
+  const sections = page.getByRole("tablist", { name: "Equipment sections" });
+  const historyTab = sections.getByRole("tab", { name: "History", exact: true });
+  const documentsTab = sections.getByRole("tab", { name: "Documents", exact: true });
   await expect(historyTab).toBeEnabled();
   await expect(documentsTab).toBeEnabled();
 
-  const navigationAskVorta = sections.getByRole("button", {
+  const navigationAskVorta = sections.getByRole("tab", {
     name: "Ask Vorta",
     exact: true,
   });
   await expect(navigationAskVorta).toBeVisible();
 
-  await sections.getByRole("button", { name: "Work Orders", exact: true }).click();
+  await sections.getByRole("tab", { name: "Work Orders", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
   await expect(page.getByRole("heading", { name: "Work Orders", exact: true })).toBeVisible();
   await expect(page.getByText("Execution readiness", { exact: true }).first()).toBeVisible();
@@ -86,11 +86,11 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await page.getByRole("button", { name: "Back to documents", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents$`));
 
-  await sections.getByRole("button", { name: "Skills & Engineers", exact: true }).click();
+  await sections.getByRole("tab", { name: "Skills & Engineers", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/skills$`));
   await expect(page.getByRole("heading", { name: "Skills & Engineers", exact: true })).toBeVisible();
 
-  await sections.getByRole("button", { name: "Spares", exact: true }).click();
+  await sections.getByRole("tab", { name: "Spares", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
 
