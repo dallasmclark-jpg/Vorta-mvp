@@ -9,7 +9,7 @@ const migration = read(
 );
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
-const packageJson = JSON.parse(read("package.json"));
+const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
 assert.equal(manifest.migrationVersion, "20260720193117");
@@ -100,10 +100,10 @@ for (const expected of [
 }
 
 assert.ok(
-  packageJson.scripts["test:contracts"].includes(
-    "node scripts/rpc-security-manifest-contracts.mjs",
+  contractRunner.includes(
+    '"scripts/rpc-security-manifest-contracts.mjs"',
   ),
-  "The production contract suite must enforce the RPC security manifest",
+  "The production contract manifest must enforce the RPC security manifest",
 );
 
 console.log("RPC security manifest contracts passed.");
