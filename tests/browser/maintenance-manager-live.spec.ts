@@ -40,7 +40,7 @@ async function openLiveEquipment(page: Page): Promise<string> {
   return match?.[1] ?? "";
 }
 
-test("live Equipment routes remain active-site scoped and expose mode-aware navigation", async ({
+test("live Equipment routes remain active-site scoped and expose verified History and Documents", async ({
   page,
 }) => {
   await signIn(page);
@@ -50,8 +50,11 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   await expect(page.getByText(/No demonstration values|No legacy demonstration record/)).toHaveCount(0);
 
   const sections = page.locator('[aria-label="Equipment sections"]');
-  await expect(sections.getByRole("button", { name: "History", exact: true })).toBeDisabled();
-  await expect(sections.getByRole("button", { name: "Documents", exact: true })).toBeDisabled();
+  const historyTab = sections.getByRole("button", { name: "History", exact: true });
+  const documentsTab = sections.getByRole("button", { name: "Documents", exact: true });
+  await expect(historyTab).toBeEnabled();
+  await expect(documentsTab).toBeEnabled();
+
   const navigationAskVorta = sections.getByRole("button", {
     name: "Ask Vorta",
     exact: true,
@@ -61,6 +64,27 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   await sections.getByRole("button", { name: "Work Orders", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
   await expect(page.getByRole("heading", { name: "Work Orders", exact: true })).toBeVisible();
+  await expect(page.getByText("Execution readiness", { exact: true }).first()).toBeVisible();
+
+  await historyTab.click();
+  await page.waitForURL(new RegExp(`/equipment/${equipmentId}/history$`));
+  await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
+  await expect(page.getByText("Work records", { exact: true })).toBeVisible();
+  await expect(page.getByText("Confirmations", { exact: true }).first()).toBeVisible();
+
+  await documentsTab.click();
+  await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents$`));
+  await expect(page.getByRole("heading", { name: "Documents", exact: true })).toBeVisible();
+  await expect(page.getByText("Available documents", { exact: true })).toBeVisible();
+  const openDocument = page.getByRole("button", { name: "Open controlled document" }).first();
+  await expect(openDocument).toBeVisible();
+  await openDocument.click();
+  await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents/[^/]+$`));
+  await expect(page.getByRole("button", { name: "Back to documents", exact: true })).toBeVisible();
+  await expect(page.getByText(/Source:/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to documents", exact: true }).click();
+  await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents$`));
 
   await sections.getByRole("button", { name: "Skills & Engineers", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/skills$`));
@@ -84,6 +108,50 @@ test("live Equipment routes remain active-site scoped and expose mode-aware navi
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
   await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
   await expectNoPageOverflow(page);
+});
+
+test("live Work Orders show unavailable readiness instead of perfect readiness after a source failure", async ({
+  page,
+}) => {
+  await signIn(page);
+  const equipmentId = await openLiveEquipment(page);
+
+  await page.route(/\/rest\/v1\/rpc\/vorta_get_equipment_work_items/, async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "simulated work-order reader failure" }),
+    });
+  });
+
+  await page.goto(`/equipment/${equipmentId}/work-orders`);
+  await expect(page.getByText("Live evidence unavailable", { exact: true }).first()).toBeVisible();
+  const readinessCard = page
+    .getByText("Execution readiness", { exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+  await expect(readinessCard).toContainText("—");
+  await expect(readinessCard).not.toContainText("100%");
+  await expect(page.getByText(/Work-order evidence unavailable|Work source unavailable/).first()).toBeVisible();
+});
+
+test("rejected live History evidence resolves to an unavailable state instead of spinning forever", async ({
+  page,
+}) => {
+  await signIn(page);
+  const equipmentId = await openLiveEquipment(page);
+
+  await page.route(/\/rest\/v1\/rpc\/vorta_get_equipment_history/, async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "simulated history reader failure" }),
+    });
+  });
+
+  await page.goto(`/equipment/${equipmentId}/history`);
+  await expect(page.getByText("Live evidence unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Equipment history could not be loaded/i)).toBeVisible();
+  await expect(page.getByText("Loading verified maintenance history…", { exact: true })).toHaveCount(0);
 });
 
 test("live Shift Cover adapts to the viewport and reports genuine completeness", async ({
@@ -122,7 +190,6 @@ test("live Shift Cover adapts to the viewport and reports genuine completeness",
 
   await expectNoPageOverflow(page);
 });
-
 
 test("malformed live Shift Cover evidence fails closed instead of becoming zero risk", async ({
   page,
