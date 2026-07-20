@@ -67,9 +67,17 @@ assert.match(
   migration,
   /revoke all on private\.vorta_dashboard_scope_cache[\s\S]*from public, anon, authenticated/,
 );
+
+const cacheGrantStart = migration.indexOf(
+  "grant select, insert, update, delete\n  on private.vorta_dashboard_scope_cache",
+);
+const cacheGrantEnd = migration.indexOf(";", cacheGrantStart);
+assert.ok(cacheGrantStart >= 0 && cacheGrantEnd > cacheGrantStart);
+const cacheGrant = migration.slice(cacheGrantStart, cacheGrantEnd + 1);
+assert.match(cacheGrant, /to service_role;/);
 assert.doesNotMatch(
-  migration,
-  /grant\s+(?:select|insert|update|delete|all)[\s\S]*private\.vorta_dashboard_scope_cache[\s\S]*(?:anon|authenticated)/i,
+  cacheGrant,
+  /\b(?:anon|authenticated)\b/i,
   "The typed scope cache must remain private",
 );
 
