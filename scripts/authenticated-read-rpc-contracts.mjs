@@ -99,7 +99,7 @@ for (const expected of [
 for (const expected of [
   "security_mode",
   "'invoker'",
-  "reviewed_read_count <> 46",
+  "read_count <> 46",
   "authenticatedSecurityInvokerRpcCount",
   "rpcSecurityManifestDriftCount",
 ]) {
