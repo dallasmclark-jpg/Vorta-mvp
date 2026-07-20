@@ -2,9 +2,9 @@ file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mj
     throw new Error(`${label}: expected exactly one match, found ${occurrences}`);
           ^
 
-Error: schedule-specific loading state: expected exactly one match, found 0
+Error: risk queue empty-state truth: expected exactly one match, found 0
     at replaceRequired (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mjs:6:11)
-    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mjs:581:12
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mjs:588:12
     at patchFile (file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mjs:21:16)
     at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/apply-live-pilot-batches.mjs:201:1
     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
