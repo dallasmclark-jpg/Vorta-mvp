@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Bell,
   CheckCircle2,
   Database,
@@ -8,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import type { EquipmentTabRoute } from "./EquipmentTabNavigation";
 import {
   loadLiveEquipmentCalibrations,
   loadLiveEquipmentComponents,
@@ -16,6 +18,7 @@ import {
   loadLiveEquipmentWorkItems,
   type LiveCalibration,
   type LiveComponentsPayload,
+  type LiveDataState,
   type LiveEquipmentRecord,
   type LiveNotification,
   type LiveSkillsPayload,
