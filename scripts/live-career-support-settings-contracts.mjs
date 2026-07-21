@@ -6,6 +6,7 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const [
   operations,
   evidenceContracts,
+  invokeEvidence,
   demoBanner,
   careerEntry,
   careerLive,
@@ -22,9 +23,11 @@ const [
   settingsIndex,
   settingsFunction,
   settingsAuth,
+  healthGrantMigration,
 ] = await Promise.all([
   read("../src/screens/AiOperations/AiOperations.tsx"),
   read("../src/lib/liveEvidenceContracts.ts"),
+  read("../src/lib/invokeEvidenceFunction.ts"),
   read("../src/components/DemoSimulationBanner.tsx"),
   read("../src/screens/Career/CareerRouteEntry.tsx"),
   read("../src/screens/Career/LiveCareerSection.tsx"),
@@ -41,12 +44,16 @@ const [
   read("../src/screens/Settings/index.ts"),
   read("../supabase/functions/settings-evidence-data/index.ts"),
   read("../supabase/functions/settings-evidence-data/auth.ts"),
+  read("../supabase/migrations/20260721175500_grant_authenticated_system_health_evidence.sql"),
 ]);
 
 const mustMatch = (source, pattern, message) => assert.match(source, pattern, message);
 const mustNotMatch = (source, pattern, message) => assert.doesNotMatch(source, pattern, message);
 
 mustMatch(demoBanner, /data-demo-simulation="true"/, "Demo workflows must retain a persistent simulation marker");
+mustMatch(invokeEvidence, /attempt < 3/, "Transient evidence transport failures must use a bounded retry");
+mustMatch(invokeEvidence, /TRANSIENT_MESSAGE/, "Only recognised transport failures may be retried");
+mustMatch(invokeEvidence, /supabase\.functions\.invoke\(slug/, "Evidence retries must still use the authenticated Supabase client");
 
 for (const [label, entry, liveName, publicIndex] of [
   ["Career", careerEntry, "LiveCareerSection", careerIndex],
@@ -76,8 +83,10 @@ for (const [label, source, validator, slug, withheld] of [
   ["Support", supportLive, "validateSupportEvidencePayload", "support-evidence-data", "Support evidence was withheld"],
   ["Settings", settingsLive, "validateSettingsEvidencePayload", "settings-evidence-data", "Settings evidence was withheld"],
 ]) {
-  mustMatch(source, new RegExp(`${validator}\\(.*data`, "s"), `${label} must validate function evidence before rendering`);
-  mustMatch(source, new RegExp(`functions\\.invoke\\(\\s*["']${slug}["']`), `${label} must use its secured evidence function`);
+  mustMatch(source, new RegExp(`${validator}\\(.*(?:data|settings)`, "s"), `${label} must validate function evidence before rendering`);
+  const invokesDirectly = new RegExp(`functions\\.invoke\\(\\s*["']${slug}["']`).test(source);
+  const invokesWithBoundary = new RegExp(`invokeEvidenceFunction<[^>]+>\\(\\s*["']${slug}["']`).test(source);
+  assert.ok(invokesDirectly || invokesWithBoundary, `${label} must use its secured evidence function`);
   mustMatch(source, /siteContext\?\.siteId/, `${label} must require an authenticated active site`);
   mustMatch(source, /organisationId !== siteContext\.organisationId/, `${label} must reject cross-organisation responses`);
   mustMatch(source, new RegExp(withheld), `${label} must expose an explicit fail-closed state`);
@@ -91,8 +100,9 @@ mustNotMatch(careerLive, />Save|>Approve|>Complete/, "Live Career must remain re
 mustMatch(supportLive, /mailto:support@vorta\.network/, "Live Support must provide a real support contact");
 mustNotMatch(supportLive, /Create Ticket|Add Reply|Send Reply|VRT-00/, "Live Support must not expose simulated ticket mutations or IDs");
 
-mustMatch(settingsLive, /getSystemHealth\(\)/, "Live Settings must include real system-health evidence");
-mustMatch(settingsLive, /validateSystemHealthData/, "Live Settings must validate mapped health evidence");
+mustMatch(settingsLive, /invokeEvidenceFunction<unknown>/, "Live Settings must use the bounded evidence transport boundary");
+mustMatch(settingsLive, /validateSystemHealthData\(settings\.health\)/, "Live Settings must validate health returned by the secured function");
+mustNotMatch(settingsLive, /getSystemHealth\(|\.rpc\(/, "Live Settings must not call protected health RPCs from the browser");
 mustNotMatch(settingsLive, /Save changes|Send Invite|Invite Team Member|finance@vortademo|VORTA-2026-MAINT/, "Live Settings must not expose demo mutations or billing values");
 
 for (const [label, auth, fn] of [
@@ -124,6 +134,16 @@ mustMatch(settingsFunction, /from\("sites"\)[\s\S]*eq\("id", siteId\)[\s\S]*eq\(
 mustMatch(settingsFunction, /from\("organisations"\)[\s\S]*eq\("id", organisationId\)/, "Settings evidence must resolve the authorised organisation");
 mustMatch(settingsFunction, /select\("site_id,setting_group,setting_key,description,updated_at"\)/, "Settings may expose setting-key metadata only");
 mustNotMatch(settingsFunction, /setting_value/, "Settings evidence must never fetch or return setting values");
+mustMatch(settingsAuth, /const userDb = createClient[\s\S]*Authorization: `Bearer \$\{token\}`/, "Settings health RPCs must execute in the verified caller context");
+for (const rpc of [
+  "vorta_get_system_health_summary",
+  "vorta_get_system_health_incidents",
+  "vorta_get_latest_recovery_manifest",
+]) {
+  mustMatch(settingsFunction, new RegExp(`userDb\\.rpc\\("${rpc}"`), `Settings evidence must include ${rpc} through caller context`);
+  mustMatch(healthGrantMigration, new RegExp(`grant execute on function public\\.${rpc}`), `${rpc} must be granted narrowly to authenticated callers`);
+}
+mustMatch(healthGrantMigration, /revoke all[\s\S]*from public, anon/, "Health RPCs must remain unavailable to public and anonymous callers");
 
 mustMatch(operations, /label: "Career Evidence"[\s\S]*to: "\/career"/, "Live navigation must expose Career evidence");
 mustMatch(operations, /label: isLivePilotMode \? "Support Evidence" : "Support"/, "Live navigation must expose Support evidence");
