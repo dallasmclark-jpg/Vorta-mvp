@@ -16,18 +16,65 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../lib/auth";
+import { invokeEvidenceFunction } from "../../lib/invokeEvidenceFunction";
 import {
   validateSettingsEvidencePayload,
   validateSystemHealthData,
 } from "../../lib/liveEvidenceContracts";
 import { RuntimeContractError } from "../../lib/runtimeContracts";
-import { supabase } from "../../lib/supabaseClient";
-import {
-  getSystemHealth,
-  type RecoveryManifest,
-  type SystemHealthIncident,
-  type SystemHealthSummary,
-} from "./systemHealthService";
+
+type HealthSummary = {
+  siteId: string;
+  overallStatus: string;
+  latestHealthRunId: string | null;
+  latestHealthStatus: string | null;
+  latestHealthFinishedAt: string | null;
+  passedCount: number;
+  failedCount: number;
+  warningCount: number;
+  riskLastRefreshedAt: string | null;
+  riskAgeMinutes: number | null;
+  latestImportStatus: string | null;
+  latestImportAt: string | null;
+  latestImportFileName: string | null;
+  openIncidentCount: number;
+  criticalIncidentCount: number;
+  highIncidentCount: number;
+  mediumIncidentCount: number;
+  latestMonitorRunAt: string | null;
+};
+
+type HealthIncident = {
+  id: string;
+  monitorKey: string | null;
+  title: string;
+  description: string | null;
+  severity: string;
+  status: string;
+  source: string | null;
+  firstObservedAt: string;
+  lastObservedAt: string;
+  occurrenceCount: number;
+  details: Record<string, unknown>;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+};
+
+type RecoveryManifest = {
+  manifestId: string;
+  siteId: string;
+  status: string;
+  migrationVersion: string;
+  migrationName: string | null;
+  schemaMigrationCount: number;
+  latestHealthRunId: string | null;
+  riskRefreshedAt: string | null;
+  datasetCounts: Record<string, number>;
+  datasetFingerprints: Record<string, string>;
+  manifestFingerprint: string;
+  createdAt: string;
+  ageHours: number;
+};
 
 type SettingsPayload = {
   siteId: string;
@@ -72,13 +119,9 @@ type SettingsPayload = {
       updatedAt: string;
     }>;
   };
-};
-
-type LiveSettingsState = {
-  settings: SettingsPayload;
   health: {
-    summary: SystemHealthSummary;
-    incidents: SystemHealthIncident[];
+    summary: HealthSummary;
+    incidents: HealthIncident[];
     recoveryManifest: RecoveryManifest;
   };
 };
@@ -122,14 +165,14 @@ function statusClass(value: string): string {
 
 export function LiveSettingsSection(): JSX.Element {
   const { siteContext } = useAuth();
-  const [state, setState] = useState<LiveSettingsState | null>(null);
+  const [payload, setPayload] = useState<SettingsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (initial = false): Promise<void> => {
     if (!siteContext?.siteId || !siteContext.organisationId) {
-      setState(null);
+      setPayload(null);
       setError("An active maintenance site could not be resolved for this account.");
       setLoading(false);
       setRefreshing(false);
@@ -141,18 +184,12 @@ export function LiveSettingsSection(): JSX.Element {
     setError(null);
 
     try {
-      const [settingsResponse, healthResponse] = await Promise.all([
-        supabase.functions.invoke("settings-evidence-data", {
-          body: { schemaVersion: "settings-evidence-v1" },
-        }),
-        getSystemHealth(),
-      ]);
-      if (settingsResponse.error || !settingsResponse.data) {
-        throw settingsResponse.error ?? new Error("Settings evidence was empty");
-      }
-
-      const settings = validateSettingsEvidencePayload(settingsResponse.data) as unknown as SettingsPayload;
-      const health = validateSystemHealthData(healthResponse) as unknown as LiveSettingsState["health"];
+      const data = await invokeEvidenceFunction<unknown>(
+        "settings-evidence-data",
+        { schemaVersion: "settings-evidence-v2" },
+      );
+      const settings = validateSettingsEvidencePayload(data) as unknown as SettingsPayload;
+      const health = validateSystemHealthData(settings.health) as unknown as SettingsPayload["health"];
       if (
         settings.siteId !== siteContext.siteId ||
         settings.organisationId !== siteContext.organisationId ||
@@ -166,33 +203,39 @@ export function LiveSettingsSection(): JSX.Element {
           "response scope did not match the authenticated site",
         );
       }
-      setState({ settings, health });
+      setPayload({ ...settings, health });
     } catch (loadError) {
-      setState(null);
-      setError(loadError instanceof Error ? loadError.message : "Verified settings evidence is unavailable.");
+      setPayload(null);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Verified settings evidence is unavailable.",
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [siteContext?.organisationId, siteContext?.siteId]);
 
-  useEffect(() => { void load(true); }, [load]);
+  useEffect(() => {
+    void load(true);
+  }, [load]);
 
   const activeIncidents = useMemo(
-    () => state?.health.incidents
+    () => payload?.health.incidents
       .filter((incident) => ["open", "acknowledged"].includes(incident.status.toLowerCase()))
       .slice(0, 8) ?? [],
-    [state],
+    [payload],
   );
 
   const recoveryRows = useMemo(
-    () => state
-      ? Object.values(state.health.recoveryManifest.datasetCounts).reduce(
+    () => payload
+      ? Object.values(payload.health.recoveryManifest.datasetCounts).reduce(
           (total, count) => total + Number(count ?? 0),
           0,
         )
       : 0,
-    [state],
+    [payload],
   );
 
   return (
@@ -219,58 +262,233 @@ export function LiveSettingsSection(): JSX.Element {
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading settings evidence">
-          {[0, 1, 2, 3].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />)}
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="h-28 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
+          ))}
         </div>
       ) : null}
 
       {!loading && error ? (
         <div className="flex flex-col justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 p-5 sm:flex-row sm:items-center" role="alert">
-          <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" aria-hidden="true" /><div><p className="text-sm font-semibold text-red-100">Settings evidence was withheld</p><p className="mt-1 text-xs leading-5 text-red-100/75">{error}</p></div></div>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-red-100">Settings evidence was withheld</p>
+              <p className="mt-1 text-xs leading-5 text-red-100/75">{error}</p>
+            </div>
+          </div>
           <button type="button" onClick={() => void load(false)} className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10">Retry</button>
         </div>
       ) : null}
 
-      {!loading && state ? (
+      {!loading && payload ? (
         <>
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/[0.07] px-4 py-3 text-xs text-slate-300">
             <CheckCircle2 className="h-4 w-4 text-blue-300" aria-hidden="true" />
             <span className="font-semibold text-blue-200">Runtime-validated evidence</span>
-            <span>Active site: {state.settings.siteId}</span>
-            <span>Generated: {formatDateTime(state.settings.generatedAt)}</span>
+            <span>Active site: {payload.siteId}</span>
+            <span>Generated: {formatDateTime(payload.generatedAt)}</span>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ["System health", label(state.health.summary.overallStatus), Activity, state.health.summary.overallStatus === "healthy" ? "text-emerald-300" : state.health.summary.overallStatus === "degraded" ? "text-amber-300" : "text-red-300"],
+              ["System health", label(payload.health.summary.overallStatus), Activity, payload.health.summary.overallStatus === "healthy" ? "text-emerald-300" : payload.health.summary.overallStatus === "degraded" ? "text-amber-300" : "text-red-300"],
               ["Active incidents", activeIncidents.length, AlertTriangle, activeIncidents.length ? "text-amber-300" : "text-emerald-300"],
-              ["Persisted settings", state.settings.configuration.persistedSettingCount, Database, state.settings.configuration.persistedSettingCount ? "text-blue-300" : "text-slate-400"],
+              ["Persisted settings", payload.configuration.persistedSettingCount, Database, payload.configuration.persistedSettingCount ? "text-blue-300" : "text-slate-400"],
               ["Recovery rows tracked", recoveryRows, ShieldCheck, "text-slate-100"],
             ].map(([metricLabel, value, Icon, valueClass]) => {
               const MetricIcon = Icon as typeof Activity;
               return (
                 <Card key={String(metricLabel)} className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-                  <CardContent className="p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs font-medium text-slate-400">{String(metricLabel)}</p><MetricIcon className="h-4 w-4 text-slate-600" aria-hidden="true" /></div><p className={`mt-3 text-2xl font-semibold tabular-nums ${String(valueClass)}`}>{String(value)}</p></CardContent>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium text-slate-400">{String(metricLabel)}</p>
+                      <MetricIcon className="h-4 w-4 text-slate-600" aria-hidden="true" />
+                    </div>
+                    <p className={`mt-3 text-2xl font-semibold tabular-nums ${String(valueClass)}`}>{String(value)}</p>
+                  </CardContent>
                 </Card>
               );
             })}
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-5"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-blue-300" aria-hidden="true" /><h2 className="font-semibold text-slate-50">Active site</h2></div><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-slate-600">Name</dt><dd className="mt-0.5 font-medium text-slate-200">{state.settings.site.name}</dd></div><div><dt className="text-xs text-slate-600">Region</dt><dd className="mt-0.5 text-slate-400">{state.settings.site.region ?? "Not recorded"}</dd></div><div><dt className="text-xs text-slate-600">Address</dt><dd className="mt-0.5 text-slate-400">{[state.settings.site.address, state.settings.site.postcode].filter(Boolean).join(", ") || "Not recorded"}</dd></div><div><dt className="text-xs text-slate-600">Timezone</dt><dd className="mt-0.5 text-slate-400">{state.settings.site.timezone ?? "Not recorded"}</dd></div></dl></CardContent></Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-5"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-violet-300" aria-hidden="true" /><h2 className="font-semibold text-slate-50">Organisation</h2></div><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-slate-600">Name</dt><dd className="mt-0.5 font-medium text-slate-200">{state.settings.organisation.name}</dd></div><div><dt className="text-xs text-slate-600">Industry</dt><dd className="mt-0.5 text-slate-400">{state.settings.organisation.industry ?? "Not recorded"}</dd></div><div><dt className="text-xs text-slate-600">Location</dt><dd className="mt-0.5 text-slate-400">{state.settings.organisation.location ?? "Not recorded"}</dd></div><div><dt className="text-xs text-slate-600">Status</dt><dd className="mt-1"><Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(state.settings.organisation.status ?? "unknown")}`}>{state.settings.organisation.status ?? "unknown"}</Badge></dd></div></dl></CardContent></Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-5"><div className="flex items-center gap-2"><UserCircle className="h-4 w-4 text-emerald-300" aria-hidden="true" /><h2 className="font-semibold text-slate-50">Signed-in access</h2></div><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-slate-600">Profile</dt><dd className="mt-0.5 font-medium text-slate-200">{state.settings.access.fullName}</dd></div><div><dt className="text-xs text-slate-600">Job title</dt><dd className="mt-0.5 text-slate-400">{state.settings.access.jobTitle ?? "Not recorded"}</dd></div><div><dt className="text-xs text-slate-600">Portal role</dt><dd className="mt-0.5 text-slate-400">{label(state.settings.access.appRole)}</dd></div><div><dt className="text-xs text-slate-600">Access granted</dt><dd className="mt-0.5 text-slate-400">{formatDateTime(state.settings.access.grantedAt)}</dd></div></dl></CardContent></Card>
+            <EvidenceCard icon={Building2} title="Active site" rows={[
+              ["Name", payload.site.name],
+              ["Region", payload.site.region ?? "Not recorded"],
+              ["Address", [payload.site.address, payload.site.postcode].filter(Boolean).join(", ") || "Not recorded"],
+              ["Timezone", payload.site.timezone ?? "Not recorded"],
+            ]} />
+            <EvidenceCard icon={MapPin} title="Organisation" rows={[
+              ["Name", payload.organisation.name],
+              ["Industry", payload.organisation.industry ?? "Not recorded"],
+              ["Location", payload.organisation.location ?? "Not recorded"],
+              ["Status", payload.organisation.status ?? "Not recorded"],
+            ]} />
+            <EvidenceCard icon={UserCircle} title="Signed-in access" rows={[
+              ["Profile", payload.access.fullName],
+              ["Job title", payload.access.jobTitle ?? "Not recorded"],
+              ["Portal role", label(payload.access.appRole)],
+              ["Access granted", formatDateTime(payload.access.grantedAt)],
+            ]} />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-blue-300" aria-hidden="true" /><h2 className="font-semibold text-slate-50">System health</h2></div><p className="mt-1 text-xs text-slate-500">Backend evidence from the active-site health register.</p></div><Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(state.health.summary.overallStatus)}`}>{state.health.summary.overallStatus}</Badge></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-gray-800 bg-[#111620] p-3"><p className="text-xs text-slate-600">Checks passed</p><p className="mt-1 text-xl font-semibold text-emerald-300">{state.health.summary.passedCount}</p></div><div className="rounded-lg border border-gray-800 bg-[#111620] p-3"><p className="text-xs text-slate-600">Checks failed</p><p className="mt-1 text-xl font-semibold text-red-300">{state.health.summary.failedCount}</p></div><div className="rounded-lg border border-gray-800 bg-[#111620] p-3"><p className="text-xs text-slate-600">Latest import</p><p className="mt-1 text-sm font-semibold text-slate-300">{state.health.summary.latestImportStatus ?? "Not recorded"}</p><p className="mt-1 text-xs text-slate-600">{formatDateTime(state.health.summary.latestImportAt)}</p></div><div className="rounded-lg border border-gray-800 bg-[#111620] p-3"><p className="text-xs text-slate-600">Risk refreshed</p><p className="mt-1 text-sm font-semibold text-slate-300">{formatDateTime(state.health.summary.riskLastRefreshedAt)}</p></div></div></CardContent></Card>
-            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-300" aria-hidden="true" /><h2 className="font-semibold text-slate-50">Recovery evidence</h2></div><p className="mt-1 text-xs text-slate-500">Latest recovery manifest and dataset footprint.</p></div><Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(state.health.recoveryManifest.status)}`}>{state.health.recoveryManifest.status}</Badge></div><dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-xs text-slate-600">Migration version</dt><dd className="mt-1 font-medium text-slate-300">{state.health.recoveryManifest.migrationVersion}</dd></div><div><dt className="text-xs text-slate-600">Schema migrations</dt><dd className="mt-1 font-medium text-slate-300">{state.health.recoveryManifest.schemaMigrationCount}</dd></div><div><dt className="text-xs text-slate-600">Datasets tracked</dt><dd className="mt-1 font-medium text-slate-300">{Object.keys(state.health.recoveryManifest.datasetCounts).length}</dd></div><div><dt className="text-xs text-slate-600">Manifest created</dt><dd className="mt-1 font-medium text-slate-300">{formatDateTime(state.health.recoveryManifest.createdAt)}</dd></div></dl></CardContent></Card>
+            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-blue-300" aria-hidden="true" />
+                      <h2 className="font-semibold text-slate-50">System health</h2>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">Caller-scoped backend evidence returned through the secured settings function.</p>
+                  </div>
+                  <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(payload.health.summary.overallStatus)}`}>
+                    {payload.health.summary.overallStatus}
+                  </Badge>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <MetricBox label="Checks passed" value={payload.health.summary.passedCount} valueClass="text-emerald-300" />
+                  <MetricBox label="Checks failed" value={payload.health.summary.failedCount} valueClass="text-red-300" />
+                  <MetricBox label="Latest import" value={payload.health.summary.latestImportStatus ?? "Not recorded"} helper={formatDateTime(payload.health.summary.latestImportAt)} />
+                  <MetricBox label="Risk refreshed" value={formatDateTime(payload.health.summary.riskLastRefreshedAt)} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-300" aria-hidden="true" />
+                      <h2 className="font-semibold text-slate-50">Recovery evidence</h2>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">Latest recovery manifest and dataset footprint.</p>
+                  </div>
+                  <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(payload.health.recoveryManifest.status)}`}>
+                    {payload.health.recoveryManifest.status}
+                  </Badge>
+                </div>
+                <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                  <EvidenceValue label="Migration version" value={payload.health.recoveryManifest.migrationVersion} />
+                  <EvidenceValue label="Schema migrations" value={String(payload.health.recoveryManifest.schemaMigrationCount)} />
+                  <EvidenceValue label="Datasets tracked" value={String(Object.keys(payload.health.recoveryManifest.datasetCounts).length)} />
+                  <EvidenceValue label="Manifest created" value={formatDateTime(payload.health.recoveryManifest.createdAt)} />
+                </dl>
+              </CardContent>
+            </Card>
           </div>
 
-          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none"><CardContent className="p-0"><div className="border-b border-gray-800 p-5"><h2 className="font-semibold text-slate-50">Active health incidents</h2><p className="mt-1 text-xs text-slate-500">Open and acknowledged incidents for this site.</p></div><div className="divide-y divide-gray-800/80">{activeIncidents.length === 0 ? <div className="flex items-center gap-3 p-5 text-sm text-emerald-300"><CheckCircle2 className="h-5 w-5" aria-hidden="true" />No active system-health incidents are recorded.</div> : activeIncidents.map((incident) => <div key={incident.id} className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-start"><div className="min-w-0"><p className="text-sm font-semibold text-slate-100">{incident.title}</p>{incident.description ? <p className="mt-1 text-xs leading-5 text-slate-400">{incident.description}</p> : null}<div className="mt-2 flex items-center gap-2 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />Last observed {formatDateTime(incident.lastObservedAt)} · {incident.occurrenceCount} occurrence{incident.occurrenceCount === 1 ? "" : "s"}</div></div><Badge className={`h-auto shrink-0 rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(incident.severity)}`}>{incident.severity}</Badge></div>)}</div></CardContent></Card>
+          <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+            <CardContent className="p-0">
+              <div className="border-b border-gray-800 p-5">
+                <h2 className="font-semibold text-slate-50">Active health incidents</h2>
+                <p className="mt-1 text-xs text-slate-500">Open and acknowledged incidents for this site.</p>
+              </div>
+              <div className="divide-y divide-gray-800/80">
+                {activeIncidents.length === 0 ? (
+                  <div className="flex items-center gap-3 p-5 text-sm text-emerald-300">
+                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                    No active system-health incidents are recorded.
+                  </div>
+                ) : activeIncidents.map((incident) => (
+                  <div key={incident.id} className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-start">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-100">{incident.title}</p>
+                      {incident.description ? <p className="mt-1 text-xs leading-5 text-slate-400">{incident.description}</p> : null}
+                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                        <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Last observed {formatDateTime(incident.lastObservedAt)} · {incident.occurrenceCount} occurrence{incident.occurrenceCount === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <Badge className={`h-auto shrink-0 rounded border px-2 py-0.5 text-[10px] shadow-none ${statusClass(incident.severity)}`}>
+                      {incident.severity}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-5"><div className="flex items-start gap-3"><KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" /><div><p className="text-sm font-semibold text-amber-100">Configuration remains read-only</p><p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">{state.settings.configuration.persistedSettingCount > 0 ? `${state.settings.configuration.persistedSettingCount} setting records are registered, but values are not exposed or editable in the live pilot.` : "No persisted site-setting records are registered. Demo toggles, approval thresholds, invites and billing fields are withheld."}</p><a href="mailto:support@vorta.network?subject=Vorta%20pilot%20configuration" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-blue-300 hover:text-blue-200"><Mail className="h-3.5 w-3.5" aria-hidden="true" />Request a controlled configuration change</a></div></div></div>
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-5">
+            <div className="flex items-start gap-3">
+              <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold text-amber-100">Configuration remains read-only</p>
+                <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+                  {payload.configuration.persistedSettingCount > 0
+                    ? `${payload.configuration.persistedSettingCount} setting records are registered, but values are not exposed or editable in the live pilot.`
+                    : "No persisted site-setting records are registered. Demo toggles, approval thresholds, invites and billing fields are withheld."}
+                </p>
+                <a href="mailto:support@vorta.network?subject=Vorta%20pilot%20configuration" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-blue-300 hover:text-blue-200">
+                  <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                  Request a controlled configuration change
+                </a>
+              </div>
+            </div>
+          </div>
         </>
       ) : null}
     </section>
+  );
+}
+
+function EvidenceCard({
+  icon: Icon,
+  title,
+  rows,
+}: {
+  icon: typeof Building2;
+  title: string;
+  rows: Array<[string, string]>;
+}): JSX.Element {
+  return (
+    <Card className="rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-blue-300" aria-hidden="true" />
+          <h2 className="font-semibold text-slate-50">{title}</h2>
+        </div>
+        <dl className="mt-4 space-y-3 text-sm">
+          {rows.map(([rowLabel, value]) => (
+            <div key={rowLabel}>
+              <dt className="text-xs text-slate-600">{rowLabel}</dt>
+              <dd className="mt-0.5 text-slate-300">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MetricBox({
+  label: metricLabel,
+  value,
+  helper,
+  valueClass = "text-slate-300",
+}: {
+  label: string;
+  value: string | number;
+  helper?: string;
+  valueClass?: string;
+}): JSX.Element {
+  return (
+    <div className="rounded-lg border border-gray-800 bg-[#111620] p-3">
+      <p className="text-xs text-slate-600">{metricLabel}</p>
+      <p className={`mt-1 text-sm font-semibold ${valueClass}`}>{value}</p>
+      {helper ? <p className="mt-1 text-xs text-slate-600">{helper}</p> : null}
+    </div>
+  );
+}
+
+function EvidenceValue({ label: valueLabel, value }: { label: string; value: string }): JSX.Element {
+  return (
+    <div>
+      <dt className="text-xs text-slate-600">{valueLabel}</dt>
+      <dd className="mt-1 font-medium text-slate-300">{value}</dd>
+    </div>
   );
 }
