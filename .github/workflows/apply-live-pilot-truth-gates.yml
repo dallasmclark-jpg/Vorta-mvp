@@ -1,0 +1,56 @@
+name: Apply live-pilot truth gates
+
+on:
+  push:
+    branches:
+      - agent/live-pilot-truth-gates
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused truth gates
+        run: python3 scripts/apply-live-pilot-truth-gates.py
+
+      - name: Remove temporary automation
+        run: |
+          rm scripts/apply-live-pilot-truth-gates.py
+          rm .github/workflows/apply-live-pilot-truth-gates.yml
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Contract suite
+        run: npm run test:contracts
+
+      - name: Route smoke
+        run: npm run test:smoke
+
+      - name: Production build
+        run: npm run build
+
+      - name: Commit focused changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Gate simulated workflows in live pilot mode"
+          git push origin HEAD:agent/live-pilot-truth-gates
