@@ -45,8 +45,18 @@ for (const field of ["requirements", "coverageByGroup", "certExpiries", "actionR
 }
 mustMatch(
   runtimeContracts,
-  /coverage < 0 \|\| coverage > 100/,
-  "Requirements coverage values must be range checked",
+  /function requirePercentage[\s\S]*must be between 0 and 100/,
+  "Requirements coverage values must use the shared percentage range checker",
+);
+mustMatch(
+  runtimeContracts,
+  /requirePercentage\(row, "coverage_pct", rowContract\)/,
+  "Requirement coverage must be range checked",
+);
+mustMatch(
+  runtimeContracts,
+  /requirePercentage\(row, "pct", rowContract\)/,
+  "Requirement group coverage must be range checked",
 );
 
 mustMatch(

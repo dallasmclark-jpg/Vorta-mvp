@@ -10,6 +10,7 @@ import {
 import {
   Activity,
   BarChart3,
+  BookOpen,
   ClipboardCheck,
   ClipboardList,
   Cog,
@@ -198,7 +199,10 @@ const nav: NavGroup[] = [
   },
   {
     groupLabel: "Training",
-    items: [{ label: "Training Plan", icon: GraduationCap, to: "/training" }],
+    items: [
+      { label: "Training Plan", icon: GraduationCap, to: "/training" },
+      { label: "Training Providers", icon: BookOpen, to: "/training-providers" },
+    ],
   },
   {
     groupLabel: "Pilot evidence",
@@ -215,6 +219,7 @@ const liveNav: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
+      { label: "AI Matching", icon: Sparkles, to: "/ai-matching" },
     ],
   },
   {
@@ -223,6 +228,13 @@ const liveNav: NavGroup[] = [
       { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
       { label: "Engineers", icon: Users, to: "/engineers" },
       { label: "Requirements", icon: ClipboardList, to: "/requirements" },
+    ],
+  },
+  {
+    groupLabel: "Training",
+    items: [
+      { label: "Training Evidence", icon: GraduationCap, to: "/training" },
+      { label: "Provider Evidence", icon: BookOpen, to: "/training-providers" },
     ],
   },
   {
@@ -283,51 +295,9 @@ export const AiOperations = (): JSX.Element => {
               }
             />
             <Route path="requirements" element={<RequirementsSection />} />
-            <Route
-              path="training"
-              element={
-                isLivePilotMode ? (
-                  <LivePilotUnavailable
-                    title="Training Plan"
-                    description="Training evidence remains read-only. Booking approvals, completion changes and plan creation are withheld until those actions can be persisted."
-                    actionLabel="Review Skills Matrix"
-                    actionHref="/skills-matrix"
-                  />
-                ) : (
-                  <TrainingSection />
-                )
-              }
-            />
-            <Route
-              path="training-providers"
-              element={
-                isLivePilotMode ? (
-                  <LivePilotUnavailable
-                    title="Training Providers"
-                    description="Provider discovery is not exposed as an operational marketplace until shortlists, enquiries and availability requests can be persisted."
-                    actionLabel="Review Requirements"
-                    actionHref="/requirements"
-                  />
-                ) : (
-                  <TrainingProvidersSection />
-                )
-              }
-            />
-            <Route
-              path="ai-matching"
-              element={
-                isLivePilotMode ? (
-                  <LivePilotUnavailable
-                    title="AI Matching"
-                    description="Match recommendations are withheld as an executable workflow until accept, dismiss and assignment decisions can be stored and audited."
-                    actionLabel="Review Requirements"
-                    actionHref="/requirements"
-                  />
-                ) : (
-                  <AiMatchingSection />
-                )
-              }
-            />
+            <Route path="training" element={<TrainingSection />} />
+            <Route path="training-providers" element={<TrainingProvidersSection />} />
+            <Route path="ai-matching" element={<AiMatchingSection />} />
             <Route
               path="settings/pilot-setup"
               element={
