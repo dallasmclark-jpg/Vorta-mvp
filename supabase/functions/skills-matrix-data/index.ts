@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       : { data: [], error: null };
     if (skillsResult.error) throw skillsResult.error;
 
-    return response(req, build({
+    const payload = build({
       generatedAt: new Date().toISOString(),
       site: siteResult.data ?? {
         id: siteId,
@@ -136,7 +136,13 @@ Deno.serve(async (req: Request) => {
       capabilities: capabilitiesResult.data ?? [],
       gaps: gapsResult.data ?? [],
       skills: skillsResult.data ?? [],
-    }));
+    });
+
+    return response(req, {
+      siteId,
+      organisationId,
+      ...payload,
+    });
   } catch (error) {
     const status = Number((error as any)?.status) || 500;
     if (status >= 500) console.error("skills-matrix-data failed", error);

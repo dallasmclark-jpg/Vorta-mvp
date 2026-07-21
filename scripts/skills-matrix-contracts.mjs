@@ -5,6 +5,10 @@ const page = await readFile(
   new URL("../src/screens/SkillsMatrix/SkillsMatrixNative.tsx", import.meta.url),
   "utf8",
 );
+const runtimeContracts = await readFile(
+  new URL("../src/lib/runtimeContracts.ts", import.meta.url),
+  "utf8",
+);
 const engineersPage = await readFile(
   new URL("../src/screens/Engineers/EngineersSection.tsx", import.meta.url),
   "utf8",
@@ -145,11 +149,21 @@ assert.match(trainingPage, /Training plan focus/);
 assert.match(trainingPage, /clearTrainingFocus/);
 assert.match(trainingPage, /Priority gaps and recommendations are filtered/);
 
+assert.match(runtimeContracts, /requireStringField\(payload, "siteId", contract\)/);
+assert.match(runtimeContracts, /requireStringField\(payload, "organisationId", contract\)/);
+assert.match(runtimeContracts, /responseSiteId !== siteId/);
 assert.match(functionIndex, /avatar_url/);
-assert.match(functionIndex, /organisationId/);
+assert.match(functionIndex, /\.eq\("site_id", siteId\)/);
+assert.match(functionIndex, /\.eq\("organisation_id", organisationId\)/);
+assert.match(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*\.\.\.payload/);
 assert.match(functionIndex, /import \{ context, preflight, response \}/);
-assert.match(functionAuth, /vorta_get_function_context/);
-assert.doesNotMatch(functionIndex + functionAuth, /SUPABASE_SERVICE_ROLE_KEY/);
+assert.match(functionAuth, /authClient\.auth\.getUser\(token\)/);
+assert.match(functionAuth, /SUPABASE_SERVICE_ROLE_KEY/);
+assert.match(functionAuth, /\.from\("user_site_access"\)/);
+assert.match(functionAuth, /ALLOWED_ROLES\.has\(role\)/);
+assert.match(functionAuth, /http:\/\/127\.0\.0\.1:4173/);
+assert.doesNotMatch(functionAuth, /vorta_get_function_context/);
+assert.doesNotMatch(functionAuth, /Access-Control-Allow-Origin"\s*:\s*"\*"/);
 assert.match(functionTransform, /criticalTeamShare \* 12/);
 assert.match(functionTransform, /overallScore = Math\.min\(overallScore, 59\)/);
 assert.match(functionTransform, /sourceUpdatedAt/);

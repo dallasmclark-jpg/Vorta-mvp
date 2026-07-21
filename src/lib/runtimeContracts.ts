@@ -138,20 +138,32 @@ export function validateOperationalDashboardPayload(value: unknown): RuntimeReco
 export function validateSkillsMatrixPayload(value: unknown): RuntimeRecord {
   const contract = "Skills matrix";
   const payload = requireRuntimeRecord(value, contract);
+  const siteId = requireStringField(payload, "siteId", contract);
+  requireStringField(payload, "organisationId", contract);
   requireStringField(payload, "generatedAt", contract);
   requireStringField(payload, "sourceUpdatedAt", contract);
-  requireRecordField(payload, "site", contract);
+  const site = requireRecordField(payload, "site", contract);
+  const responseSiteId = requireStringField(site, "id", `${contract}.site`);
+  requireStringField(site, "name", `${contract}.site`);
   requireRecordField(payload, "overall", contract);
   requireArrayField(payload, "teams", contract);
   requireArrayField(payload, "departments", contract);
   requireRecordField(payload, "areaSkills", contract);
   requireRecordField(payload, "details", contract);
+
+  if (responseSiteId !== siteId) {
+    throw new RuntimeContractError(`${contract}.site.id`, "must match the response siteId");
+  }
+
   return payload;
 }
 
 export function validateRequirementsPayload(value: unknown): RuntimeRecord {
   const contract = "Requirements";
   const payload = requireRuntimeRecord(value, contract);
+  requireStringField(payload, "siteId", contract);
+  requireStringField(payload, "organisationId", contract);
+  requireStringField(payload, "generatedAt", contract);
   const requirements = requireArrayField(payload, "requirements", contract);
   const coverageByGroup = requireArrayField(payload, "coverageByGroup", contract);
   const certExpiries = requireArrayField(payload, "certExpiries", contract);
