@@ -56,8 +56,8 @@ const mustNotMatch = (source, pattern, message) => assert.doesNotMatch(source, p
 
 mustMatch(operations, /groupLabel: "Operations"/, "Daily operations must lead navigation");
 mustMatch(operations, /groupLabel: "Pilot evidence"/, "Pilot evidence must be grouped separately");
-mustMatch(operations, /label: "Training Plan"/, "Training must remain an operational plan");
-mustNotMatch(operations, /label: "Providers"/, "Providers must not return to primary navigation");
+mustMatch(operations, /label: "Training Plan"/, "Training must remain an operational plan in demo mode");
+mustNotMatch(operations, /label: "Providers"/, "Providers must not return as an unqualified primary label");
 mustMatch(operations, /path="training-providers"/, "Providers must remain contextually routable");
 mustMatch(operations, /canAdministerPilot\(role, isDemoAdmin\)/, "Pilot Setup must use shared capability control");
 mustMatch(operations, /canImportSapData\(role, isDemoAdmin\)/, "SAP import must use shared capability control");
@@ -67,49 +67,30 @@ mustMatch(operations, /<Navigate to="\/dashboard" replace \/>/, "Unauthorised ad
 mustMatch(accessControl, /role === "site_admin"/, "Site administrators must retain pilot administration");
 mustMatch(accessControl, /canImportSapData/, "SAP import capability must be testable independently");
 
-mustMatch(
-  operations,
-  /const isLivePilotMode =[\s\S]*VITE_VORTA_DATA_MODE/,
-  "Maintenance navigation must use the explicit data mode",
-);
+mustMatch(operations, /const isLivePilotMode =[\s\S]*VITE_VORTA_DATA_MODE/, "Maintenance navigation must use explicit data mode");
 mustMatch(operations, /const liveNav: NavGroup\[\]/, "Live pilot navigation must be separately declared");
-mustMatch(
-  operations,
-  /nav=\{isLivePilotMode \? liveNav : nav\}/,
-  "Portal navigation must switch to the restricted live set",
-);
-mustMatch(
-  operations,
-  /data-live-pilot-truth="restricted-route"/,
-  "Restricted live routes must present a truth-safe state",
-);
-mustMatch(
-  operations,
-  /const liveNav:[\s\S]*label: "Engineers", icon: Users, to: "\/engineers"/,
-  "Verified Engineers must be available in live navigation",
-);
-mustMatch(
-  operations,
-  /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/,
-  "Engineers must route through its data-mode entry rather than a simulated-workflow guard",
-);
-for (const path of ["career", "training", "training-providers", "ai-matching", "settings", "support"]) {
+mustMatch(operations, /nav=\{isLivePilotMode \? liveNav : nav\}/, "Portal navigation must switch to the live evidence set");
+mustMatch(operations, /const liveNav:[\s\S]*label: "Engineers", icon: Users, to: "\/engineers"/, "Verified Engineers must remain available in live navigation");
+mustMatch(operations, /label: "Career Evidence", icon: TrendingUp, to: "\/career"/, "Verified Career evidence must be available in live navigation");
+mustMatch(operations, /label: isLivePilotMode \? "Support Evidence" : "Support"/, "Live Support must be explicitly labelled as evidence");
+mustMatch(operations, /label: isLivePilotMode \? "System & Access" : "Settings"/, "Live Settings must be explicitly labelled as system and access evidence");
+
+for (const [path, component] of [
+  ["engineers", "EngineersSection"],
+  ["career", "CareerSection"],
+  ["training", "TrainingSection"],
+  ["training-providers", "TrainingProvidersSection"],
+  ["ai-matching", "AiMatchingSection"],
+  ["settings", "SettingsSection"],
+  ["support", "SupportSection"],
+]) {
   mustMatch(
     operations,
-    new RegExp(`path="${path}"[\\s\\S]*?isLivePilotMode \\?`),
-    `${path} must be guarded in live pilot mode`,
+    new RegExp(`<Route path="${path}" element=\\{<${component} \\/>\\}`),
+    `${path} must route through its data-mode entry`,
   );
 }
-mustMatch(
-  operations,
-  /mailto:support@vorta\.network/,
-  "Live pilot support must use a real contact route rather than simulated tickets",
-);
-mustMatch(
-  operations,
-  /!isLivePilotMode[\s\S]*label: "Settings"/,
-  "Simulated Settings navigation must be withheld in live mode",
-);
+mustNotMatch(operations, /LivePilotUnavailable/, "Verified evidence routes must not fall back to the generic restriction page");
 
 assert.equal(
   [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
