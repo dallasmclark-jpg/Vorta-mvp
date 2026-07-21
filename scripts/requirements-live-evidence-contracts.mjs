@@ -3,11 +3,22 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [runtimeContracts, liveRequirements, routeEntry, requirementsIndex] = await Promise.all([
+const [
+  runtimeContracts,
+  liveRequirements,
+  routeEntry,
+  requirementsIndex,
+  functionIndex,
+  functionAuth,
+  functionTransform,
+] = await Promise.all([
   read("../src/lib/runtimeContracts.ts"),
   read("../src/screens/Requirements/LiveRequirementsSection.tsx"),
   read("../src/screens/Requirements/RequirementsRouteEntry.tsx"),
   read("../src/screens/Requirements/index.ts"),
+  read("../supabase/functions/requirements-data/index.ts"),
+  read("../supabase/functions/requirements-data/auth.ts"),
+  read("../supabase/functions/requirements-data/transform.ts"),
 ]);
 
 const mustMatch = (source, pattern, message) => assert.match(source, pattern, message);
@@ -18,6 +29,13 @@ mustMatch(
   /export function validateRequirementsPayload/,
   "Requirements responses must have a dedicated runtime contract",
 );
+for (const field of ["siteId", "organisationId", "generatedAt"]) {
+  mustMatch(
+    runtimeContracts,
+    new RegExp(`requireStringField\\(payload, "${field}"`),
+    `Requirements contract must validate ${field}`,
+  );
+}
 for (const field of ["requirements", "coverageByGroup", "certExpiries", "actionRows", "departments"]) {
   mustMatch(
     runtimeContracts,
@@ -49,7 +67,7 @@ mustMatch(
 mustMatch(
   liveRequirements,
   /supabase\.functions\.invoke\("requirements-data"\)/,
-  "Live Requirements must use the existing site-scoped data function",
+  "Live Requirements must use the active-site data function",
 );
 mustMatch(
   liveRequirements,
@@ -81,6 +99,22 @@ mustNotMatch(
   /Add Requirement|TrendIndicator|Alpha Manufacturing/,
   "Live Requirements must not show demo-only actions, trends or tenant labels",
 );
+
+mustMatch(functionAuth, /authClient\.auth\.getUser\(token\)/, "Requirements must validate the caller JWT");
+mustMatch(functionAuth, /SUPABASE_SERVICE_ROLE_KEY/, "Requirements may use service credentials only after caller verification");
+mustMatch(functionAuth, /\.from\("user_site_access"\)/, "Requirements must resolve active site access from the verified user");
+mustMatch(functionAuth, /ALLOWED_ROLES\.has\(role\)/, "Requirements must enforce allowed portal roles");
+mustMatch(functionAuth, /http:\/\/127\.0\.0\.1:4173/, "Requirements must accept the browser-gate origin");
+mustNotMatch(functionAuth, /vorta_get_function_context/, "Requirements must not depend on the restricted context RPC");
+mustNotMatch(functionAuth, /Access-Control-Allow-Origin"\s*:\s*"\*"/, "Requirements must not restore wildcard browser access");
+
+mustMatch(functionIndex, /\.eq\("site_id", siteId\)/, "Requirements queries must be active-site scoped");
+mustMatch(functionIndex, /\.eq\("organisation_id", organisationId\)/, "Requirements queries must be organisation scoped");
+mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt/, "Requirements responses must include evidence metadata");
+mustMatch(functionIndex, /import \{ context, preflight, response \}/, "Requirements must use the secured request boundary");
+mustMatch(functionIndex, /import \{ build \}/, "Requirements response transformation must remain isolated from access control");
+mustMatch(functionTransform, /coverageByGroup/, "Requirements transform must retain coverage evidence");
+mustMatch(functionTransform, /certExpiries/, "Requirements transform must retain certification evidence");
 
 mustMatch(
   routeEntry,
