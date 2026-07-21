@@ -1,1 +1,1 @@
-export { CareerSection } from "./CareerSection";
+export { CareerRouteEntry as CareerSection } from "./CareerRouteEntry";
