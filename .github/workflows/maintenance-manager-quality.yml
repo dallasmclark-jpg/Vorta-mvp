@@ -232,7 +232,10 @@ jobs:
           VITE_VORTA_DATA_MODE: live
         run: |
           set -o pipefail
-          npx playwright test tests/browser/maintenance-manager-live.spec.ts --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
+          npx playwright test \
+            tests/browser/maintenance-manager-live.spec.ts \
+            tests/browser/maintenance-manager-live-engineers.spec.ts \
+            --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
 
       - name: Preserve live Maintenance Manager regression evidence
         if: steps.live-maintenance-browser-regression.outcome == 'failure'
