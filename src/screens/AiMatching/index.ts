@@ -1,1 +1,1 @@
-export { AiMatchingSection } from "./AiMatchingSection";
+export { AiMatchingRouteEntry as AiMatchingSection } from "./AiMatchingRouteEntry";
