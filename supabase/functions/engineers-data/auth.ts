@@ -6,6 +6,7 @@ const ORIGINS = new Set([
   "https://www.vorta.network",
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://127.0.0.1:4173",
   ...(Deno.env.get("VORTA_ALLOWED_ORIGINS") ?? "")
     .split(",")
     .map((value) => value.trim())
