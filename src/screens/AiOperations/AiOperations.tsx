@@ -122,6 +122,9 @@ const EquipmentAiInsights = lazy(() =>
   import("../Equipment").then((module) => ({ default: module.EquipmentAiInsights })),
 );
 
+const isLivePilotMode =
+  String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
+
 function RouteLoader(): JSX.Element {
   return (
     <section
@@ -133,6 +136,44 @@ function RouteLoader(): JSX.Element {
         <RefreshCw className="h-4 w-4 animate-spin text-blue-400" aria-hidden="true" />
         Loading Maintenance Manager workspace…
       </span>
+    </section>
+  );
+}
+
+interface LivePilotUnavailableProps {
+  title: string;
+  description: string;
+  actionLabel: string;
+  actionHref: string;
+}
+
+function LivePilotUnavailable({
+  title,
+  description,
+  actionLabel,
+  actionHref,
+}: LivePilotUnavailableProps): JSX.Element {
+  return (
+    <section
+      data-live-pilot-truth="restricted-route"
+      className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8"
+    >
+      <header className="py-5">
+        <p className="text-xs font-medium text-slate-400">Read-only live pilot</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-50">{title}</h1>
+      </header>
+      <div className="rounded-xl border border-amber-500/25 bg-[#141820] p-6">
+        <p className="text-sm font-semibold text-amber-200">
+          This workflow is not enabled for verified live use
+        </p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{description}</p>
+        <a
+          href={actionHref}
+          className="mt-5 inline-flex h-10 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 text-sm font-semibold text-blue-300 transition-colors hover:bg-blue-500/20"
+        >
+          {actionLabel}
+        </a>
+      </div>
     </section>
   );
 }
@@ -168,6 +209,30 @@ const nav: NavGroup[] = [
   },
 ];
 
+const liveNav: NavGroup[] = [
+  {
+    groupLabel: "Operations",
+    items: [
+      { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+      { label: "Equipment", icon: Wrench, to: "/equipment" },
+    ],
+  },
+  {
+    groupLabel: "Workforce",
+    items: [
+      { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
+      { label: "Requirements", icon: ClipboardList, to: "/requirements" },
+    ],
+  },
+  {
+    groupLabel: "Pilot evidence",
+    items: [
+      { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
+      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
+    ],
+  },
+];
+
 export const AiOperations = (): JSX.Element => {
   const { role, isDemoAdmin } = useAuth();
   const mayAdministerPilot = canAdministerPilot(role, isDemoAdmin);
@@ -181,13 +246,15 @@ export const AiOperations = (): JSX.Element => {
     ...(mayImportSapData
       ? [{ label: "Data Import", icon: UploadCloud, to: "/settings/data-import" }]
       : []),
-    { label: "Settings", icon: Cog, to: "/settings", end: true },
+    ...(!isLivePilotMode
+      ? [{ label: "Settings", icon: Cog, to: "/settings", end: true }]
+      : []),
   ];
 
   return (
     <PortalShell
       homeRoute="/dashboard"
-      nav={nav}
+      nav={isLivePilotMode ? liveNav : nav}
       secondaryNav={secondaryNav}
       accentColor="blue"
     >
@@ -198,12 +265,82 @@ export const AiOperations = (): JSX.Element => {
             <Route path="pilot-impact" element={<PilotImpactSection />} />
             <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
             <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
-            <Route path="engineers" element={<EngineersSection />} />
-            <Route path="career" element={<CareerSection />} />
+            <Route
+              path="engineers"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="Engineers"
+                    description="The current Engineers page combines verified workforce records with a demonstration coverage calendar. It is withheld in live mode until all coverage and conflict figures use the verified Shift Cover dataset."
+                    actionLabel="Open Shift Cover"
+                    actionHref="/maintenance/labour-risk/shift-cover"
+                  />
+                ) : (
+                  <EngineersSection />
+                )
+              }
+            />
+            <Route
+              path="career"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="My Career"
+                    description="Demonstration qualifications, readiness scores and named user records are withheld until the signed-in manager has a verified career profile."
+                    actionLabel="Open Skills Matrix"
+                    actionHref="/skills-matrix"
+                  />
+                ) : (
+                  <CareerSection />
+                )
+              }
+            />
             <Route path="requirements" element={<RequirementsSection />} />
-            <Route path="training" element={<TrainingSection />} />
-            <Route path="training-providers" element={<TrainingProvidersSection />} />
-            <Route path="ai-matching" element={<AiMatchingSection />} />
+            <Route
+              path="training"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="Training Plan"
+                    description="Training evidence remains read-only. Booking approvals, completion changes and plan creation are withheld until those actions can be persisted."
+                    actionLabel="Review Skills Matrix"
+                    actionHref="/skills-matrix"
+                  />
+                ) : (
+                  <TrainingSection />
+                )
+              }
+            />
+            <Route
+              path="training-providers"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="Training Providers"
+                    description="Provider discovery is not exposed as an operational marketplace until shortlists, enquiries and availability requests can be persisted."
+                    actionLabel="Review Requirements"
+                    actionHref="/requirements"
+                  />
+                ) : (
+                  <TrainingProvidersSection />
+                )
+              }
+            />
+            <Route
+              path="ai-matching"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="AI Matching"
+                    description="Match recommendations are withheld as an executable workflow until accept, dismiss and assignment decisions can be stored and audited."
+                    actionLabel="Review Requirements"
+                    actionHref="/requirements"
+                  />
+                ) : (
+                  <AiMatchingSection />
+                )
+              }
+            />
             <Route
               path="settings/pilot-setup"
               element={
@@ -224,7 +361,21 @@ export const AiOperations = (): JSX.Element => {
                 )
               }
             />
-            <Route path="settings" element={<SettingsSection />} />
+            <Route
+              path="settings"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="Settings"
+                    description="Demonstration site, billing, team, invite and approval-rule values are withheld. Pilot configuration is managed through controlled administration workflows."
+                    actionLabel="Return to Dashboard"
+                    actionHref="/dashboard"
+                  />
+                ) : (
+                  <SettingsSection />
+                )
+              }
+            />
             <Route path="equipment" element={<EquipmentSection />} />
             <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
             <Route
@@ -251,7 +402,21 @@ export const AiOperations = (): JSX.Element => {
               path="equipment/:equipmentId/ai-insights"
               element={<EquipmentAiInsights />}
             />
-            <Route path="support" element={<SupportSection />} />
+            <Route
+              path="support"
+              element={
+                isLivePilotMode ? (
+                  <LivePilotUnavailable
+                    title="Pilot Support"
+                    description="The demonstration ticket register and simulated ticket submission have been removed from live mode. Contact Vorta directly for pilot support."
+                    actionLabel="Email Vorta Support"
+                    actionHref="mailto:support@vorta.network"
+                  />
+                ) : (
+                  <SupportSection />
+                )
+              }
+            />
             <Route path="design-system" element={<DesignSystemSection />} />
             <Route
               path="maintenance/labour-risk/shift-cover"

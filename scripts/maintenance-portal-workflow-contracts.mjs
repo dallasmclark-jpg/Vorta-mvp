@@ -67,6 +67,40 @@ mustMatch(operations, /<Navigate to="\/dashboard" replace \/>/, "Unauthorised ad
 mustMatch(accessControl, /role === "site_admin"/, "Site administrators must retain pilot administration");
 mustMatch(accessControl, /canImportSapData/, "SAP import capability must be testable independently");
 
+mustMatch(
+  operations,
+  /const isLivePilotMode =[\s\S]*VITE_VORTA_DATA_MODE/,
+  "Maintenance navigation must use the explicit data mode",
+);
+mustMatch(operations, /const liveNav: NavGroup\[\]/, "Live pilot navigation must be separately declared");
+mustMatch(
+  operations,
+  /nav=\{isLivePilotMode \? liveNav : nav\}/,
+  "Portal navigation must switch to the restricted live set",
+);
+mustMatch(
+  operations,
+  /data-live-pilot-truth="restricted-route"/,
+  "Restricted live routes must present a truth-safe state",
+);
+for (const path of ["engineers", "career", "training", "training-providers", "ai-matching", "settings", "support"]) {
+  mustMatch(
+    operations,
+    new RegExp(`path="${path}"[\\s\\S]*?isLivePilotMode \\?`),
+    `${path} must be guarded in live pilot mode`,
+  );
+}
+mustMatch(
+  operations,
+  /mailto:support@vorta\.network/,
+  "Live pilot support must use a real contact route rather than simulated tickets",
+);
+mustMatch(
+  operations,
+  /!isLivePilotMode[\s\S]*label: "Settings"/,
+  "Simulated Settings navigation must be withheld in live mode",
+);
+
 assert.equal(
   [...pilotImpact.matchAll(/vorta_get_pilot_value_report/g)].length,
   1,
