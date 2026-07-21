@@ -69,6 +69,7 @@ jobs:
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_ORGANISATION_ID: 10000000-0000-0000-0000-000000000001
       VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
       VORTA_E2E_DENIED_EQUIPMENT_ID: 40000000-0000-0000-0000-000000000013
 
@@ -224,7 +225,7 @@ jobs:
         if: steps.maintenance-visual-regression.outcome == 'failure'
         run: exit 1
 
-      - name: Run live responsive Equipment, Engineers and Shift Cover regression
+      - name: Run live responsive Equipment, workforce and Shift Cover regression
         id: live-maintenance-browser-regression
         continue-on-error: true
         shell: bash
@@ -235,6 +236,7 @@ jobs:
           npx playwright test \
             tests/browser/maintenance-manager-live.spec.ts \
             tests/browser/maintenance-manager-live-engineers.spec.ts \
+            tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
             --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
 
       - name: Preserve live Maintenance Manager regression evidence
