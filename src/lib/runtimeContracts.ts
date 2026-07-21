@@ -72,6 +72,19 @@ function requireNumberField(
   return value;
 }
 
+function requireBooleanField(
+  record: RuntimeRecord,
+  key: string,
+  contract: string,
+): boolean {
+  const value = record[key];
+  if (typeof value !== "boolean") {
+    throw new RuntimeContractError(`${contract}.${key}`, "expected a boolean");
+  }
+
+  return value;
+}
+
 export interface DashboardFreshness {
   maintenanceDataAt: string | null;
   workforceDataAt: string | null;
@@ -133,6 +146,87 @@ export function validateSkillsMatrixPayload(value: unknown): RuntimeRecord {
   requireArrayField(payload, "departments", contract);
   requireRecordField(payload, "areaSkills", contract);
   requireRecordField(payload, "details", contract);
+  return payload;
+}
+
+export function validateRequirementsPayload(value: unknown): RuntimeRecord {
+  const contract = "Requirements";
+  const payload = requireRuntimeRecord(value, contract);
+  const requirements = requireArrayField(payload, "requirements", contract);
+  const coverageByGroup = requireArrayField(payload, "coverageByGroup", contract);
+  const certExpiries = requireArrayField(payload, "certExpiries", contract);
+  const actionRows = requireArrayField(payload, "actionRows", contract);
+  const departments = requireArrayField(payload, "departments", contract);
+  const stats = requireRecordField(payload, "stats", contract);
+
+  requireNumberField(stats, "totalReqs", `${contract}.stats`);
+  requireNumberField(stats, "fullyCovered", `${contract}.stats`);
+  requireNumberField(stats, "skillsAtRisk", `${contract}.stats`);
+  requireNumberField(stats, "criticalGaps", `${contract}.stats`);
+
+  requirements.forEach((item, index) => {
+    const rowContract = `${contract}.requirements[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "title", rowContract);
+    requireStringField(row, "skill_category", rowContract);
+    requireStringField(row, "area", rowContract);
+    requireStringField(row, "group", rowContract);
+    requireNumberField(row, "required_level", rowContract);
+    requireNumberField(row, "current_avg", rowContract);
+    requireNumberField(row, "engineers_qualified", rowContract);
+    requireNumberField(row, "engineers_below", rowContract);
+    requireNumberField(row, "gap", rowContract);
+    const coverage = requireNumberField(row, "coverage_pct", rowContract);
+    requireNumberField(row, "training_required", rowContract);
+    requireBooleanField(row, "is_critical", rowContract);
+    requireBooleanField(row, "certification_required", rowContract);
+    requireBooleanField(row, "single_point_of_failure", rowContract);
+    requireStringField(row, "priority", rowContract);
+    requireStringField(row, "status", rowContract);
+    requireStringField(row, "snapshot_date", rowContract);
+
+    if (coverage < 0 || coverage > 100) {
+      throw new RuntimeContractError(`${rowContract}.coverage_pct`, "must be between 0 and 100");
+    }
+  });
+
+  coverageByGroup.forEach((item, index) => {
+    const rowContract = `${contract}.coverageByGroup[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "group", rowContract);
+    requireNumberField(row, "total", rowContract);
+    requireNumberField(row, "gaps", rowContract);
+    requireNumberField(row, "covered", rowContract);
+    const coverage = requireNumberField(row, "pct", rowContract);
+    if (coverage < 0 || coverage > 100) {
+      throw new RuntimeContractError(`${rowContract}.pct`, "must be between 0 and 100");
+    }
+  });
+
+  certExpiries.forEach((item, index) => {
+    const rowContract = `${contract}.certExpiries[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "engineer_name", rowContract);
+    requireStringField(row, "skill_name", rowContract);
+  });
+
+  actionRows.forEach((item, index) => {
+    const rowContract = `${contract}.actionRows[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "type", rowContract);
+    requireStringField(row, "title", rowContract);
+    requireStringField(row, "subtitle", rowContract);
+    requireStringField(row, "urgency", rowContract);
+  });
+
+  departments.forEach((item, index) => {
+    const rowContract = `${contract}.departments[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "name", rowContract);
+  });
+
   return payload;
 }
 
