@@ -11,6 +11,8 @@ on:
       - "src/screens/LabourRisk/**"
       - "src/screens/SkillsMatrix/**"
       - "src/screens/Training/**"
+      - "src/screens/TrainingProviders/**"
+      - "src/screens/AiMatching/**"
       - "src/screens/Requirements/**"
       - "src/components/**"
       - "src/hooks/**"
@@ -34,6 +36,8 @@ on:
       - "src/screens/LabourRisk/**"
       - "src/screens/SkillsMatrix/**"
       - "src/screens/Training/**"
+      - "src/screens/TrainingProviders/**"
+      - "src/screens/AiMatching/**"
       - "src/screens/Requirements/**"
       - "src/components/**"
       - "src/hooks/**"
@@ -225,7 +229,7 @@ jobs:
         if: steps.maintenance-visual-regression.outcome == 'failure'
         run: exit 1
 
-      - name: Run live responsive Equipment, workforce and Shift Cover regression
+      - name: Run live responsive Equipment, workforce, training and Shift Cover regression
         id: live-maintenance-browser-regression
         continue-on-error: true
         shell: bash
@@ -237,6 +241,7 @@ jobs:
             tests/browser/maintenance-manager-live.spec.ts \
             tests/browser/maintenance-manager-live-engineers.spec.ts \
             tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
+            tests/browser/maintenance-manager-live-training-evidence.spec.ts \
             --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
 
       - name: Preserve live Maintenance Manager regression evidence
