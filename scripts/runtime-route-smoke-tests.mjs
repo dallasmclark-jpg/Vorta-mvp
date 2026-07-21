@@ -56,10 +56,14 @@ assert.throws(
   contracts.RuntimeContractError,
 );
 
+const siteId = "11000000-0000-0000-0000-000000000001";
+const organisationId = "10000000-0000-0000-0000-000000000001";
 const skillsPayload = {
+  siteId,
+  organisationId,
   generatedAt: "2026-07-18T09:00:00Z",
   sourceUpdatedAt: "2026-07-18T08:00:00Z",
-  site: { id: "site-1", name: "Demo Site" },
+  site: { id: siteId, name: "Demo Site" },
   overall: {},
   teams: [],
   departments: [],
@@ -69,6 +73,35 @@ const skillsPayload = {
 assert.equal(contracts.validateSkillsMatrixPayload(skillsPayload), skillsPayload);
 assert.throws(
   () => contracts.validateSkillsMatrixPayload({ generatedAt: "" }),
+  contracts.RuntimeContractError,
+);
+assert.throws(
+  () => contracts.validateSkillsMatrixPayload({ ...skillsPayload, site: { id: "site-2", name: "Other Site" } }),
+  contracts.RuntimeContractError,
+);
+
+const requirementsPayload = {
+  siteId,
+  organisationId,
+  generatedAt: "2026-07-18T09:00:00Z",
+  requirements: [],
+  coverageByGroup: [],
+  certExpiries: [],
+  actionRows: [],
+  departments: [],
+  stats: {
+    totalReqs: 0,
+    fullyCovered: 0,
+    skillsAtRisk: 0,
+    criticalGaps: 0,
+  },
+};
+assert.equal(
+  contracts.validateRequirementsPayload(requirementsPayload),
+  requirementsPayload,
+);
+assert.throws(
+  () => contracts.validateRequirementsPayload({ requirements: [] }),
   contracts.RuntimeContractError,
 );
 
