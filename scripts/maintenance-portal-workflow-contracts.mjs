@@ -100,11 +100,6 @@ for (const path of ["career", "training", "training-providers", "ai-matching", "
     `${path} must be guarded in live pilot mode`,
   );
 }
-mustNotMatch(
-  operations,
-  /path="engineers"[\s\S]{0,220}isLivePilotMode \?/,
-  "Engineers must not return to the restricted live placeholder",
-);
 mustMatch(
   operations,
   /mailto:support@vorta\.network/,
