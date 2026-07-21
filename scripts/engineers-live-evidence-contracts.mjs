@@ -27,9 +27,12 @@ const mustMatch = (source, pattern, message) => assert.match(source, pattern, me
 const mustNotMatch = (source, pattern, message) => assert.doesNotMatch(source, pattern, message);
 
 mustMatch(functionAuth, /req\.headers\.get\("authorization"\)/, "Engineers function must require caller authorization");
-mustMatch(functionAuth, /SUPABASE_ANON_KEY/, "Engineers function must preserve the caller RLS context");
-mustMatch(functionAuth, /vorta_get_function_context/, "Engineers function must resolve the authorised site context");
-mustNotMatch(functionAuth, /SERVICE_ROLE/, "Engineers function authentication must not use service-role credentials");
+mustMatch(functionAuth, /authClient\.auth\.getUser\(token\)/, "Engineers function must verify the bearer token before privileged queries");
+mustMatch(functionAuth, /SUPABASE_SERVICE_ROLE_KEY/, "Engineers function must keep privileged access inside the server boundary");
+mustMatch(functionAuth, /\.from\("profiles"\)[\s\S]*\.eq\("id", user\.id\)/, "Engineers context must resolve the verified user profile");
+mustMatch(functionAuth, /\.from\("user_site_access"\)[\s\S]*\.eq\("user_id", user\.id\)/, "Engineers context must resolve only the verified user's site access");
+mustMatch(functionAuth, /ALLOWED_ROLES\.has\(role\)/, "Engineers context must restrict Maintenance Manager roles");
+mustNotMatch(functionAuth, /vorta_get_function_context/, "Engineers context must not depend on a non-callable public RPC");
 mustMatch(functionIndex, /\.eq\("site_id", siteId\)/, "Engineer records must be active-site scoped");
 mustMatch(functionIndex, /\.eq\("organisation_id", organisationId\)/, "Engineer records must be organisation scoped");
 mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt/, "Engineers responses must include evidence metadata");
