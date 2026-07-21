@@ -13,6 +13,7 @@ const contracts = [
   ["Engineers live evidence", "scripts/engineers-live-evidence-contracts.mjs"],
   ["Skills Matrix", "scripts/skills-matrix-contracts.mjs"],
   ["Read-only training workflows", "scripts/read-only-training-workflow-contracts.mjs"],
+  ["Live Career, Support and Settings", "scripts/live-career-support-settings-contracts.mjs"],
   ["Equipment people workflow", "scripts/equipment-people-workflow-contracts.mjs"],
   ["Maintenance P1 and P2", "scripts/maintenance-p1-p2-contracts.mjs"],
   ["Data trust", "scripts/data-trust-contracts.mjs"],
@@ -61,12 +62,7 @@ for (const [label, path] of selectedContracts) {
     continue;
   }
 
-  failures.push({
-    label,
-    path,
-    status: result.status,
-    signal: result.signal,
-  });
+  failures.push({ label, path, status: result.status, signal: result.signal });
   console.error(`✗ ${label} (${seconds}s)`);
 }
 

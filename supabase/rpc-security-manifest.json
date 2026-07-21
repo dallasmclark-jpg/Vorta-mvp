@@ -1,16 +1,30 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260720193117",
-  "migrationName": "complete_rpc_security_manifest",
+  "migrationVersion": "20260721180500",
+  "migrationName": "extend_rpc_security_manifest_for_health_evidence",
   "invariants": {
-    "authenticatedCallable": 61,
-    "reviewedRead": 46,
+    "authenticatedCallable": 64,
+    "reviewedRead": 49,
     "reviewedMutation": 15,
-    "securityDefiner": 58,
+    "securityDefiner": 61,
     "securityInvoker": 3,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },
+  "healthEvidenceRpcs": [
+    {
+      "identity": "vorta_get_system_health_summary()",
+      "scope": "authenticated active site through vorta_has_site_access"
+    },
+    {
+      "identity": "vorta_get_system_health_incidents(integer)",
+      "scope": "authenticated active site through vorta_has_site_access"
+    },
+    {
+      "identity": "vorta_get_latest_recovery_manifest()",
+      "scope": "authenticated active site through vorta_has_site_access"
+    }
+  ],
   "securityInvokerRpcs": [
     {
       "identity": "vorta_get_equipment_history(uuid)",
@@ -32,6 +46,7 @@
   ],
   "legacyManifestSources": [
     "supabase/migrations/20260719235900_harden_privileged_rpcs.sql",
-    "supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql"
+    "supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql",
+    "supabase/migrations/20260720193117_complete_rpc_security_manifest.sql"
   ]
 }

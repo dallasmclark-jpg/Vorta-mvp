@@ -1,1 +1,1 @@
-export { SettingsSection } from "./SettingsSection";
+export { SettingsRouteEntry as SettingsSection } from "./SettingsRouteEntry";
