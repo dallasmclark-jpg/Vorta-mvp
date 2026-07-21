@@ -1,1 +1,1 @@
-export { RequirementsSection } from "./RequirementsSection";
+export { RequirementsRouteEntry as RequirementsSection } from "./RequirementsRouteEntry";
