@@ -83,13 +83,28 @@ mustMatch(
   /data-live-pilot-truth="restricted-route"/,
   "Restricted live routes must present a truth-safe state",
 );
-for (const path of ["engineers", "career", "training", "training-providers", "ai-matching", "settings", "support"]) {
+mustMatch(
+  operations,
+  /const liveNav:[\s\S]*label: "Engineers", icon: Users, to: "\/engineers"/,
+  "Verified Engineers must be available in live navigation",
+);
+mustMatch(
+  operations,
+  /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/,
+  "Engineers must route through its data-mode entry rather than a simulated-workflow guard",
+);
+for (const path of ["career", "training", "training-providers", "ai-matching", "settings", "support"]) {
   mustMatch(
     operations,
     new RegExp(`path="${path}"[\\s\\S]*?isLivePilotMode \\?`),
     `${path} must be guarded in live pilot mode`,
   );
 }
+mustNotMatch(
+  operations,
+  /path="engineers"[\s\S]{0,220}isLivePilotMode \?/,
+  "Engineers must not return to the restricted live placeholder",
+);
 mustMatch(
   operations,
   /mailto:support@vorta\.network/,
