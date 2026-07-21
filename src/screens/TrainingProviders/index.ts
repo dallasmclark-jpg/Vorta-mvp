@@ -1,1 +1,1 @@
-export { TrainingProvidersSection } from "./TrainingProvidersSection";
+export { TrainingProvidersRouteEntry as TrainingProvidersSection } from "./TrainingProvidersRouteEntry";
