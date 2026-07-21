@@ -1,1 +1,1 @@
-export { SupportSection } from "./SupportSection";
+export { SupportRouteEntry as SupportSection } from "./SupportRouteEntry";
