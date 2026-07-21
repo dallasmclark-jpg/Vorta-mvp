@@ -65,7 +65,7 @@ for (const [label, source, validator, functionSlug, errorHeading] of [
   ["AI Matching", matchingLive, "validateAiMatchingPayload", "ai-matching-data", "AI matching evidence was withheld"],
   ["Training Providers", providersLive, "validateTrainingProvidersPayload", "training-providers-data", "Provider evidence was withheld"],
 ]) {
-  mustMatch(source, new RegExp(`${validator}\\(data\\)`), `${label} must validate its function response`);
+  mustMatch(source, new RegExp(`${validator}\\(\\s*data\\s*,?\\s*\\)`), `${label} must validate its function response`);
   mustMatch(source, new RegExp(`functions\\.invoke\\(\\s*[\"']${functionSlug}[\"']`), `${label} must use its evidence function`);
   mustMatch(source, /siteContext\?\.siteId/, `${label} must require an authenticated active site`);
   mustMatch(source, /organisationId !== siteContext\.organisationId/, `${label} must reject cross-organisation responses`);
