@@ -221,6 +221,7 @@ const liveNav: NavGroup[] = [
     groupLabel: "Workforce",
     items: [
       { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
+      { label: "Engineers", icon: Users, to: "/engineers" },
       { label: "Requirements", icon: ClipboardList, to: "/requirements" },
     ],
   },
@@ -265,21 +266,7 @@ export const AiOperations = (): JSX.Element => {
             <Route path="pilot-impact" element={<PilotImpactSection />} />
             <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
             <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
-            <Route
-              path="engineers"
-              element={
-                isLivePilotMode ? (
-                  <LivePilotUnavailable
-                    title="Engineers"
-                    description="The current Engineers page combines verified workforce records with a demonstration coverage calendar. It is withheld in live mode until all coverage and conflict figures use the verified Shift Cover dataset."
-                    actionLabel="Open Shift Cover"
-                    actionHref="/maintenance/labour-risk/shift-cover"
-                  />
-                ) : (
-                  <EngineersSection />
-                )
-              }
-            />
+            <Route path="engineers" element={<EngineersSection />} />
             <Route
               path="career"
               element={
