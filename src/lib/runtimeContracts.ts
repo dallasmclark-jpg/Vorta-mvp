@@ -85,6 +85,18 @@ function requireBooleanField(
   return value;
 }
 
+function requirePercentage(
+  record: RuntimeRecord,
+  key: string,
+  contract: string,
+): number {
+  const value = requireNumberField(record, key, contract);
+  if (value < 0 || value > 100) {
+    throw new RuntimeContractError(`${contract}.${key}`, "must be between 0 and 100");
+  }
+  return value;
+}
+
 export interface DashboardFreshness {
   maintenanceDataAt: string | null;
   workforceDataAt: string | null;
@@ -189,7 +201,7 @@ export function validateRequirementsPayload(value: unknown): RuntimeRecord {
     requireNumberField(row, "engineers_qualified", rowContract);
     requireNumberField(row, "engineers_below", rowContract);
     requireNumberField(row, "gap", rowContract);
-    const coverage = requireNumberField(row, "coverage_pct", rowContract);
+    requirePercentage(row, "coverage_pct", rowContract);
     requireNumberField(row, "training_required", rowContract);
     requireBooleanField(row, "is_critical", rowContract);
     requireBooleanField(row, "certification_required", rowContract);
@@ -197,10 +209,6 @@ export function validateRequirementsPayload(value: unknown): RuntimeRecord {
     requireStringField(row, "priority", rowContract);
     requireStringField(row, "status", rowContract);
     requireStringField(row, "snapshot_date", rowContract);
-
-    if (coverage < 0 || coverage > 100) {
-      throw new RuntimeContractError(`${rowContract}.coverage_pct`, "must be between 0 and 100");
-    }
   });
 
   coverageByGroup.forEach((item, index) => {
@@ -210,10 +218,7 @@ export function validateRequirementsPayload(value: unknown): RuntimeRecord {
     requireNumberField(row, "total", rowContract);
     requireNumberField(row, "gaps", rowContract);
     requireNumberField(row, "covered", rowContract);
-    const coverage = requireNumberField(row, "pct", rowContract);
-    if (coverage < 0 || coverage > 100) {
-      throw new RuntimeContractError(`${rowContract}.pct`, "must be between 0 and 100");
-    }
+    requirePercentage(row, "pct", rowContract);
   });
 
   certExpiries.forEach((item, index) => {
@@ -237,6 +242,197 @@ export function validateRequirementsPayload(value: unknown): RuntimeRecord {
     const row = requireRuntimeRecord(item, rowContract);
     requireStringField(row, "id", rowContract);
     requireStringField(row, "name", rowContract);
+  });
+
+  return payload;
+}
+
+export function validateTrainingPayload(value: unknown): RuntimeRecord {
+  const contract = "Training";
+  const payload = requireRuntimeRecord(value, contract);
+  requireStringField(payload, "siteId", contract);
+  requireStringField(payload, "organisationId", contract);
+  requireStringField(payload, "generatedAt", contract);
+  const recentActivity = requireArrayField(payload, "recentActivity", contract);
+  const priorityRows = requireArrayField(payload, "priorityRows", contract);
+  const certRiskRows = requireArrayField(payload, "certRiskRows", contract);
+  const recommendedCourses = requireArrayField(payload, "recommendedCourses", contract);
+  requireArrayField(payload, "trainingPartners", contract);
+  requireArrayField(payload, "departments", contract);
+  requireArrayField(payload, "spendByMonth", contract);
+  requireArrayField(payload, "bookingsByDept", contract);
+  requireArrayField(payload, "insights", contract);
+  const stats = requireRecordField(payload, "stats", contract);
+
+  [
+    "totalBookings",
+    "completed",
+    "activeBookings",
+    "totalSpendGBP",
+    "expiringIn30Days",
+    "expiringIn90Days",
+    "engineersNeedingTraining",
+    "criticalGaps",
+  ].forEach((key) => requireNumberField(stats, key, `${contract}.stats`));
+  requirePercentage(stats, "compliancePct", `${contract}.stats`);
+
+  recentActivity.forEach((item, index) => {
+    const rowContract = `${contract}.recentActivity[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "course_title", rowContract);
+    requireStringField(row, "status", rowContract);
+    requireStringField(row, "currency", rowContract);
+  });
+
+  priorityRows.forEach((item, index) => {
+    const rowContract = `${contract}.priorityRows[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "skill_name", rowContract);
+    requireStringField(row, "category", rowContract);
+    requireNumberField(row, "current_avg", rowContract);
+    requireNumberField(row, "target_rating", rowContract);
+    requireNumberField(row, "gap", rowContract);
+    requireNumberField(row, "engineers_qualified", rowContract);
+    requireStringField(row, "priority", rowContract);
+    requireBooleanField(row, "single_point_of_failure", rowContract);
+  });
+
+  certRiskRows.forEach((item, index) => {
+    const rowContract = `${contract}.certRiskRows[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "skill_name", rowContract);
+    requireStringField(row, "engineer_name", rowContract);
+    requireNumberField(row, "days_left", rowContract);
+    requireStringField(row, "status", rowContract);
+  });
+
+  recommendedCourses.forEach((item, index) => {
+    const rowContract = `${contract}.recommendedCourses[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "title", rowContract);
+    requireStringField(row, "delivery_type", rowContract);
+    requireNumberField(row, "duration_days", rowContract);
+    requireNumberField(row, "price", rowContract);
+    requireStringField(row, "currency", rowContract);
+    requireArrayField(row, "skills_covered", rowContract);
+  });
+
+  return payload;
+}
+
+export function validateAiMatchingPayload(value: unknown): RuntimeRecord {
+  const contract = "AI matching";
+  const payload = requireRuntimeRecord(value, contract);
+  requireStringField(payload, "siteId", contract);
+  requireStringField(payload, "organisationId", contract);
+  requireStringField(payload, "generatedAt", contract);
+  const matchResults = requireArrayField(payload, "matchResults", contract);
+  const gapRecs = requireArrayField(payload, "gapRecs", contract);
+  requireArrayField(payload, "departments", contract);
+  requireArrayField(payload, "skills", contract);
+  requireArrayField(payload, "certifications", contract);
+  const stats = requireRecordField(payload, "stats", contract);
+
+  requireNumberField(stats, "openRequirements", `${contract}.stats`);
+  requireNumberField(stats, "availableEngineers", `${contract}.stats`);
+  requirePercentage(stats, "bestMatchScore", `${contract}.stats`);
+  requireNumberField(stats, "criticalSkillGaps", `${contract}.stats`);
+  requireNumberField(stats, "totalEngineers", `${contract}.stats`);
+  requireNumberField(stats, "totalRequirements", `${contract}.stats`);
+
+  matchResults.forEach((item, index) => {
+    const rowContract = `${contract}.matchResults[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "engineer_id", rowContract);
+    requireStringField(row, "engineer_name", rowContract);
+    requireStringField(row, "discipline", rowContract);
+    requireStringField(row, "employment_type", rowContract);
+    requireStringField(row, "availability_status", rowContract);
+    requirePercentage(row, "overall_score", rowContract);
+    requirePercentage(row, "skills_score", rowContract);
+    requirePercentage(row, "cert_score", rowContract);
+    requirePercentage(row, "experience_score", rowContract);
+    requirePercentage(row, "avail_score", rowContract);
+    requireNumberField(row, "training_gap", rowContract);
+    requireArrayField(row, "matched_skills", rowContract);
+    requireArrayField(row, "missing_skills", rowContract);
+    requireArrayField(row, "certifications", rowContract);
+    requireArrayField(row, "active_training", rowContract);
+    requireStringField(row, "status", rowContract);
+    requireStringField(row, "ai_recommendation", rowContract);
+    requireBooleanField(row, "critical_knowledge_holder", rowContract);
+    requireNumberField(row, "years_experience", rowContract);
+  });
+
+  gapRecs.forEach((item, index) => {
+    const rowContract = `${contract}.gapRecs[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "skill_name", rowContract);
+    requireStringField(row, "category", rowContract);
+    requireStringField(row, "risk_level", rowContract);
+    requireNumberField(row, "engineers_below", rowContract);
+    requireStringField(row, "priority", rowContract);
+    requireNumberField(row, "score_impact", rowContract);
+  });
+
+  return payload;
+}
+
+export function validateTrainingProvidersPayload(value: unknown): RuntimeRecord {
+  const contract = "Training providers";
+  const payload = requireRuntimeRecord(value, contract);
+  requireStringField(payload, "siteId", contract);
+  requireStringField(payload, "organisationId", contract);
+  requireStringField(payload, "generatedAt", contract);
+  const providers = requireArrayField(payload, "providers", contract);
+  const gapMatches = requireArrayField(payload, "gapMatches", contract);
+  const stats = requireRecordField(payload, "stats", contract);
+
+  requireNumberField(stats, "providerCount", `${contract}.stats`);
+  requireNumberField(stats, "courseCount", `${contract}.stats`);
+  requireNumberField(stats, "openEnquiries", `${contract}.stats`);
+  requireNumberField(stats, "totalBookings", `${contract}.stats`);
+
+  providers.forEach((item, index) => {
+    const rowContract = `${contract}.providers[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "id", rowContract);
+    requireStringField(row, "name", rowContract);
+    requireStringField(row, "location", rowContract);
+    requireStringField(row, "contact_email", rowContract);
+    requireStringField(row, "status", rowContract);
+    requireNumberField(row, "course_count", rowContract);
+    requireNumberField(row, "booking_count", rowContract);
+    requireNumberField(row, "enquiry_count", rowContract);
+    requireArrayField(row, "delivery_types", rowContract);
+    const courses = requireArrayField(row, "top_courses", rowContract);
+    courses.forEach((courseItem, courseIndex) => {
+      const courseContract = `${rowContract}.top_courses[${courseIndex}]`;
+      const course = requireRuntimeRecord(courseItem, courseContract);
+      requireStringField(course, "id", courseContract);
+      requireStringField(course, "title", courseContract);
+      requireStringField(course, "delivery_type", courseContract);
+      requireNumberField(course, "duration_days", courseContract);
+      requireNumberField(course, "price", courseContract);
+      requireStringField(course, "currency", courseContract);
+      requireNumberField(course, "bookings", courseContract);
+    });
+  });
+
+  gapMatches.forEach((item, index) => {
+    const rowContract = `${contract}.gapMatches[${index}]`;
+    const row = requireRuntimeRecord(item, rowContract);
+    requireStringField(row, "skill_name", rowContract);
+    requireStringField(row, "category", rowContract);
+    requireStringField(row, "risk_level", rowContract);
+    requireNumberField(row, "engineers_below", rowContract);
+    requireBooleanField(row, "single_point_of_failure", rowContract);
+    requireStringField(row, "recommendation", rowContract);
+    requireArrayField(row, "matched_partner_ids", rowContract);
+    requireArrayField(row, "matched_partner_names", rowContract);
   });
 
   return payload;
