@@ -36,8 +36,8 @@ test("live Engineers is active-site scoped and derives availability from Shift C
   await expect(liveEngineers).toHaveAttribute("data-vorta-active-site", allowedSiteId);
   await expect(page.getByRole("heading", { name: "Engineers", exact: true })).toBeVisible();
   await expect(page.getByText("ACTIVE-SITE VERIFIED", { exact: true })).toBeVisible();
-  await expect(page.getByText("Scheduled today", { exact: true })).toBeVisible();
-  await expect(page.getByText("Scheduled this week", { exact: true })).toBeVisible();
+  await expect(page.getByText("Scheduled today", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Scheduled this week", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Rota completeness", { exact: true })).toBeVisible();
   await expect(page.getByText("Verified weekly coverage", { exact: true })).toBeVisible();
 
@@ -92,8 +92,8 @@ test("malformed live Engineers evidence fails closed instead of becoming an empt
   await expect(
     page.getByText("Verified Engineers evidence is unavailable", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/expected a non-empty string/i)).toBeVisible();
-  await expect(page.getByText("0 scoped workforce records", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/^Engineers\.engineers\[0\]\./)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Engineer evidence register" })).toHaveCount(0);
 });
 
 test("a cross-site Engineers response is withheld", async ({ page }) => {
@@ -131,5 +131,5 @@ test("a cross-site Engineers response is withheld", async ({ page }) => {
     page.getByText("Verified Engineers evidence is unavailable", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/does not match the authorised site and organisation/i)).toBeVisible();
-  await expect(page.getByText("ACTIVE-SITE VERIFIED", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Engineer evidence register" })).toHaveCount(0);
 });
