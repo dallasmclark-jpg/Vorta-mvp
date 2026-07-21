@@ -1,368 +1,338 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { context, preflight, response } from "./auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+function numeric(value: unknown): number {
+  const result = Number(value);
+  return Number.isFinite(result) ? result : 0;
+}
+
+function priority(riskLevel: string, singlePoint: boolean): string {
+  if (singlePoint || riskLevel === "critical") return "Critical";
+  if (riskLevel === "high") return "High";
+  if (riskLevel === "medium") return "Medium";
+  return "Low";
+}
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+  const options = preflight(req);
+  if (options) return options;
+  if (!["GET", "POST"].includes(req.method)) {
+    return response(req, { error: "Method not allowed" }, 405);
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } }
-  );
+  try {
+    const { db, siteId, organisationId } = await context(req);
+    const [engineersResult, departmentsResult, gapsResult, partnersResult] =
+      await Promise.all([
+        db.from("engineers")
+          .select("id,full_name,department_id")
+          .eq("site_id", siteId)
+          .eq("organisation_id", organisationId)
+          .order("full_name"),
+        db.from("departments")
+          .select("id,name")
+          .eq("site_id", siteId)
+          .order("name"),
+        db.from("skill_gap_snapshots")
+          .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,risk_level,recommendation,snapshot_date")
+          .eq("site_id", siteId)
+          .eq("organisation_id", organisationId),
+        db.from("training_partners")
+          .select("id,name,location,status")
+          .eq("organisation_id", organisationId),
+      ]);
 
-  // ── Parallel fetch ──────────────────────────────────────────────────────────
-  const [
-    { data: bookingsRaw },
-    { data: coursesRaw },
-    { data: partnersRaw },
-    { data: engineersRaw },
-    { data: departmentsRaw },
-    { data: engineerSkillsRaw },
-    { data: skillGapSnapsRaw },
-    { data: skillsRaw },
-    { data: courseSkillsRaw },
-  ] = await Promise.all([
-    supabase
-      .from("training_bookings")
-      .select("id,engineer_id,course_id,status,booking_date,requested_date,cost,currency"),
-    supabase
-      .from("training_courses")
-      .select("id,title,delivery_type,duration_days,price,currency,training_partner_id,status,description,location"),
-    supabase
-      .from("training_partners")
-      .select("id,name,location,status"),
-    supabase
-      .from("engineers")
-      .select("id,full_name,discipline,department_id,availability_status")
-      .order("full_name"),
-    supabase.from("departments").select("id,name"),
-    supabase
-      .from("engineer_skills")
-      .select("engineer_id,skill_id,training_required,verification_status,expiry_date,last_validated_at,validated_rating,manager_rating,self_rating"),
-    supabase
-      .from("skill_gap_snapshots")
-      .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,risk_level,recommendation,snapshot_date"),
-    supabase.from("skills").select("id,name,category,is_critical,certification_required"),
-    supabase.from("course_skills").select("course_id,skill_id,target_rating"),
-  ]);
+    const baseError =
+      engineersResult.error ?? departmentsResult.error ?? gapsResult.error ??
+      partnersResult.error;
+    if (baseError) throw baseError;
 
-  const bookings     = bookingsRaw      ?? [];
-  const courses      = coursesRaw       ?? [];
-  const partners     = partnersRaw      ?? [];
-  const engineers    = engineersRaw     ?? [];
-  const departments  = departmentsRaw   ?? [];
-  const engSkills    = engineerSkillsRaw ?? [];
-  const snapshots    = skillGapSnapsRaw  ?? [];
-  const skills       = skillsRaw         ?? [];
-  const courseSkills = courseSkillsRaw   ?? [];
+    const engineers = engineersResult.data ?? [];
+    const departments = departmentsResult.data ?? [];
+    const gaps = gapsResult.data ?? [];
+    const partners = partnersResult.data ?? [];
+    const engineerIds = engineers.map((row: any) => row.id);
+    const partnerIds = partners.map((row: any) => row.id);
 
-  // ── Lookup maps ─────────────────────────────────────────────────────────────
-  const courseMap  = new Map(courses.map((c: { id: string; title: string }) => [c.id, c]));
-  const partnerMap = new Map(partners.map((p: { id: string; name: string; location: string }) => [p.id, p]));
-  const engMap     = new Map(engineers.map((e: { id: string; full_name: string; department_id: string }) => [e.id, e]));
-  const deptMap    = new Map(departments.map((d: { id: string; name: string }) => [d.id, d.name]));
-  const skillsById = new Map(skills.map((s: { id: string }) => [s.id, s]));
+    const [bookingsResult, assignmentsResult, coursesResult] = await Promise.all([
+      engineerIds.length
+        ? db.from("training_bookings")
+            .select("id,engineer_id,course_id,status,booking_date,requested_date,cost,currency")
+            .eq("organisation_id", organisationId)
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+      engineerIds.length
+        ? db.from("engineer_skills")
+            .select("engineer_id,skill_id,training_required,verification_status,expiry_date,last_validated_at,validated_rating,manager_rating,self_rating")
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+      partnerIds.length
+        ? db.from("training_courses")
+            .select("id,title,delivery_type,duration_days,price,currency,training_partner_id,status,description,location")
+            .in("training_partner_id", partnerIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-  // ── Enriched bookings ───────────────────────────────────────────────────────
-  type RawBooking = {
-    id: string; engineer_id: string | null; course_id: string;
-    status: string; booking_date: string | null; requested_date: string | null;
-    cost: number | null; currency: string | null;
-  };
-  type RawCourse = { id: string; title: string; delivery_type: string; duration_days: number; price: number; currency: string; training_partner_id: string; status: string };
-  type RawPartner = { id: string; name: string; location: string };
-  type RawEngineer = { id: string; full_name: string; department_id: string };
+    const detailError =
+      bookingsResult.error ?? assignmentsResult.error ?? coursesResult.error;
+    if (detailError) throw detailError;
 
-  const enrichedBookings = (bookings as RawBooking[]).map((b) => {
-    const course  = b.course_id  ? (courseMap.get(b.course_id) as RawCourse | undefined)   : undefined;
-    const partner = course?.training_partner_id ? (partnerMap.get(course.training_partner_id) as RawPartner | undefined) : undefined;
-    const eng     = b.engineer_id ? (engMap.get(b.engineer_id) as RawEngineer | undefined) : undefined;
-    const dept    = eng?.department_id ? deptMap.get(eng.department_id) : undefined;
-    return {
-      id:             b.id,
-      engineer_id:    b.engineer_id ?? null,
-      engineer_name:  eng?.full_name ?? null,
-      department:     dept ?? null,
-      course_title:   course?.title ?? "Unknown Course",
-      delivery_type:  course?.delivery_type ?? null,
-      partner_name:   partner?.name ?? null,
-      status:         b.status,
-      booking_date:   b.booking_date,
-      requested_date: b.requested_date,
-      cost:           b.cost,
-      currency:       b.currency ?? "GBP",
-    };
-  });
+    const bookings = bookingsResult.data ?? [];
+    const assignments = assignmentsResult.data ?? [];
+    const courses = coursesResult.data ?? [];
+    const courseIds = courses.map((row: any) => row.id);
 
-  // Sort by booking_date desc
-  enrichedBookings.sort((a, b) =>
-    (b.booking_date ?? "").localeCompare(a.booking_date ?? "")
-  );
+    const courseSkillsResult = courseIds.length
+      ? await db.from("course_skills")
+          .select("course_id,skill_id,target_rating")
+          .in("course_id", courseIds)
+      : { data: [], error: null };
+    if (courseSkillsResult.error) throw courseSkillsResult.error;
+    const courseSkills = courseSkillsResult.data ?? [];
 
-  // ── KPI stats ───────────────────────────────────────────────────────────────
-  const today    = new Date();
-  const thirty   = new Date(today.getTime() + 30  * 24 * 60 * 60 * 1000);
-  const ninety   = new Date(today.getTime() + 90  * 24 * 60 * 60 * 1000);
+    const skillIds = [...new Set([
+      ...gaps.map((row: any) => row.skill_id),
+      ...assignments.map((row: any) => row.skill_id),
+      ...courseSkills.map((row: any) => row.skill_id),
+    ].filter(Boolean))];
+    const skillsResult = skillIds.length
+      ? await db.from("skills")
+          .select("id,name,category,is_critical,certification_required")
+          .in("id", skillIds)
+      : { data: [], error: null };
+    if (skillsResult.error) throw skillsResult.error;
+    const skills = skillsResult.data ?? [];
 
-  const totalBookings   = bookings.length;
-  const completed       = (bookings as RawBooking[]).filter((b) => b.status === "completed").length;
-  const activeBookings  = (bookings as RawBooking[]).filter((b) => ["booked","approved","pending_approval"].includes(b.status)).length;
-  const totalSpendGBP   = (bookings as RawBooking[]).reduce((s, b) => s + (Number(b.cost) || 0), 0);
-  const compliancePct   = totalBookings > 0 ? Math.round((completed / totalBookings) * 100) : 0;
+    const engineerMap = new Map(engineers.map((row: any) => [row.id, row]));
+    const departmentMap = new Map(departments.map((row: any) => [row.id, row.name]));
+    const partnerMap = new Map(partners.map((row: any) => [row.id, row]));
+    const courseMap = new Map(courses.map((row: any) => [row.id, row]));
+    const skillMap = new Map(skills.map((row: any) => [row.id, row]));
 
-  type EngSkillRow = { engineer_id: string; skill_id: string; training_required: boolean; verification_status: string; expiry_date: string | null };
-
-  const expiringIn30Days = (engSkills as EngSkillRow[]).filter((a) => {
-    if (!a.expiry_date) return false;
-    const d = new Date(a.expiry_date);
-    return d >= today && d <= thirty;
-  }).length;
-
-  const expiringIn90Days = (engSkills as EngSkillRow[]).filter((a) => {
-    if (!a.expiry_date) return false;
-    const d = new Date(a.expiry_date);
-    return d >= today && d <= ninety;
-  }).length;
-
-  const engineersNeedingTraining = new Set(
-    (engSkills as EngSkillRow[])
-      .filter((a) => a.training_required)
-      .map((a) => a.engineer_id)
-  ).size;
-
-  const criticalGaps = (snapshots as { risk_level: string }[]).filter(
-    (s) => s.risk_level === "critical"
-  ).length;
-
-  // ── Spend by month (last 6 populated months) ────────────────────────────────
-  const monthSpend = new Map<string, number>();
-  for (const b of bookings as RawBooking[]) {
-    if (!b.booking_date) continue;
-    const key = b.booking_date.substring(0, 7); // YYYY-MM
-    monthSpend.set(key, (monthSpend.get(key) ?? 0) + (Number(b.cost) || 0));
-  }
-  const spendByMonth = [...monthSpend.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-6)
-    .map(([month, spend]) => ({
-      month,
-      label: new Date(month + "-01").toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
-      spend,
-    }));
-
-  // ── Bookings by department ──────────────────────────────────────────────────
-  const deptBookings = new Map<string, { count: number; spend: number }>();
-  for (const b of enrichedBookings) {
-    if (!b.department) continue;
-    const cur = deptBookings.get(b.department) ?? { count: 0, spend: 0 };
-    cur.count++;
-    cur.spend += Number(b.cost) || 0;
-    deptBookings.set(b.department, cur);
-  }
-  const maxDeptSpend = Math.max(...[...deptBookings.values()].map((v) => v.spend), 1);
-  const bookingsByDept = [...deptBookings.entries()]
-    .map(([dept, { count, spend }]) => ({
-      dept,
-      count,
-      spend,
-      pct: Math.round((spend / maxDeptSpend) * 100),
-    }))
-    .sort((a, b) => b.spend - a.spend);
-
-  // ── Training priority rows from skill_gap_snapshots ─────────────────────────
-  function derivePriority(riskLevel: string, spof: boolean): string {
-    if (spof || riskLevel === "critical") return "Critical";
-    if (riskLevel === "high")   return "High";
-    if (riskLevel === "medium") return "Medium";
-    return "Low";
-  }
-
-  type SnapRow = {
-    id: string; skill_id: string; department_id: string | null;
-    target_rating: number; current_average_rating: number;
-    engineers_at_or_above_target: number; engineers_below_target: number;
-    single_point_of_failure: boolean; risk_level: string;
-    recommendation: string;
-  };
-  type SkillRow = { id: string; name: string; category: string; is_critical: boolean; certification_required?: boolean };
-
-  const priorityRows = (snapshots as SnapRow[])
-    .map((snap) => {
-      const skill    = skillsById.get(snap.skill_id) as SkillRow | undefined;
-      const deptName = snap.department_id ? deptMap.get(snap.department_id) ?? null : null;
+    const enrichedBookings = bookings.map((booking: any) => {
+      const engineer: any = engineerMap.get(booking.engineer_id);
+      const course: any = courseMap.get(booking.course_id);
+      const partner: any = course?.training_partner_id
+        ? partnerMap.get(course.training_partner_id)
+        : null;
       return {
-        id:           snap.id,
-        skill_name:   skill?.name ?? "Unknown Skill",
-        category:     skill?.category ?? "",
-        is_critical:  skill?.is_critical ?? false,
-        dept_name:    deptName,
-        current_avg:  Number(snap.current_average_rating),
-        target_rating: snap.target_rating,
-        gap:          snap.engineers_below_target,
-        engineers_qualified: snap.engineers_at_or_above_target,
-        risk_level:   snap.risk_level,
-        priority:     derivePriority(snap.risk_level, snap.single_point_of_failure),
-        single_point_of_failure: snap.single_point_of_failure,
-        recommendation: snap.recommendation,
+        id: booking.id,
+        engineer_id: booking.engineer_id,
+        engineer_name: engineer?.full_name ?? null,
+        department: engineer?.department_id
+          ? departmentMap.get(engineer.department_id) ?? null
+          : null,
+        course_title: course?.title ?? "Course not recorded",
+        delivery_type: course?.delivery_type ?? null,
+        partner_name: partner?.name ?? null,
+        status: booking.status ?? "unknown",
+        booking_date: booking.booking_date ?? null,
+        requested_date: booking.requested_date ?? null,
+        cost: booking.cost == null ? null : numeric(booking.cost),
+        currency: booking.currency ?? course?.currency ?? "GBP",
       };
-    })
-    .sort((a, b) => {
-      const order: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-      const pa = order[a.priority] ?? 9;
-      const pb = order[b.priority] ?? 9;
-      return pa !== pb ? pa - pb : b.gap - a.gap;
-    });
-
-  // ── Certification risk rows ──────────────────────────────────────────────────
-  const certRiskRows = (engSkills as EngSkillRow[])
-    .filter((a) => {
-      if (!a.expiry_date) return false;
-      return new Date(a.expiry_date) <= ninety;
-    })
-    .map((a) => {
-      const eng   = engMap.get(a.engineer_id) as RawEngineer | undefined;
-      const skill = skillsById.get(a.skill_id) as SkillRow | undefined;
-      const expiry = new Date(a.expiry_date!);
-      const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        skill_name:   skill?.name ?? "Unknown",
-        engineer_name: eng?.full_name ?? "Unknown",
-        expiry_date:  a.expiry_date,
-        days_left:    daysLeft,
-        status:       daysLeft < 0 ? "Expired" : daysLeft <= 30 ? "Expiring Soon" : "Expiring",
-        risk_level:   daysLeft < 0 ? "critical" : daysLeft <= 30 ? "high" : "medium",
-        verification_status: a.verification_status,
-      };
-    })
-    .sort((a, b) => a.days_left - b.days_left)
-    .slice(0, 20);
-
-  // ── Recent activity ─────────────────────────────────────────────────────────
-  const recentActivity = enrichedBookings.slice(0, 15).map((b) => ({
-    id:            b.id,
-    engineer_name: b.engineer_name,
-    course_title:  b.course_title,
-    partner_name:  b.partner_name,
-    status:        b.status,
-    booking_date:  b.booking_date,
-    cost:          b.cost,
-    department:    b.department,
-  }));
-
-  // ── Recommended courses (active, enriched with partner + skills) ────────────
-  type CourseSkillRow = { course_id: string; skill_id: string };
-  const courseSkillMap = new Map<string, string[]>();
-  for (const cs of courseSkills as CourseSkillRow[]) {
-    if (!courseSkillMap.has(cs.course_id)) courseSkillMap.set(cs.course_id, []);
-    const skill = skillsById.get(cs.skill_id) as SkillRow | undefined;
-    if (skill) courseSkillMap.get(cs.course_id)!.push(skill.name);
-  }
-
-  const recommendedCourses = (courses as RawCourse[])
-    .filter((c) => c.status === "active")
-    .map((c) => {
-      const partner = partnerMap.get(c.training_partner_id) as RawPartner | undefined;
-      const skillsCovered = courseSkillMap.get(c.id) ?? [];
-      const bookingCount = (bookings as RawBooking[]).filter((b) => b.course_id === c.id).length;
-      return {
-        id:             c.id,
-        title:          c.title,
-        partner_name:   partner?.name ?? null,
-        partner_location: partner?.location ?? null,
-        delivery_type:  c.delivery_type,
-        duration_days:  Number(c.duration_days),
-        price:          Number(c.price),
-        currency:       c.currency ?? "GBP",
-        skills_covered: skillsCovered,
-        bookings:       bookingCount,
-      };
-    })
-    .sort((a, b) => b.bookings - a.bookings);
-
-  // ── Training partners enriched ───────────────────────────────────────────────
-  type RawPartnerFull = { id: string; name: string; location: string; status: string };
-  const trainingPartners = (partners as RawPartnerFull[]).map((p) => {
-    const partnerCourses = (courses as RawCourse[]).filter(
-      (c) => c.training_partner_id === p.id && c.status === "active"
+    }).sort((left: any, right: any) =>
+      (right.booking_date ?? "").localeCompare(left.booking_date ?? "")
     );
-    const partnerBookings = enrichedBookings.filter((b) => {
-      const course = courseMap.get((bookings as RawBooking[]).find((bk) => bk.id === b.id)?.course_id ?? "") as RawCourse | undefined;
-      return course?.training_partner_id === p.id;
+
+    const today = new Date();
+    const thirtyDays = new Date(today.getTime() + 30 * 86400000);
+    const ninetyDays = new Date(today.getTime() + 90 * 86400000);
+    const totalBookings = enrichedBookings.length;
+    const completed = enrichedBookings.filter((row: any) => row.status === "completed").length;
+    const activeBookings = enrichedBookings.filter((row: any) =>
+      ["booked", "approved", "pending_approval", "pending"].includes(row.status)
+    ).length;
+    const totalSpendGBP = enrichedBookings.reduce(
+      (sum: number, row: any) => sum + numeric(row.cost),
+      0,
+    );
+    const compliancePct = totalBookings
+      ? Math.round((completed / totalBookings) * 100)
+      : 0;
+
+    const expiring = assignments.filter((row: any) => {
+      if (!row.expiry_date) return false;
+      return new Date(row.expiry_date) <= ninetyDays;
+    });
+    const expiringIn30Days = expiring.filter((row: any) => {
+      const date = new Date(row.expiry_date);
+      return date >= today && date <= thirtyDays;
     }).length;
-    const specialisms = [...new Set(
-      partnerCourses.map((c) => c.delivery_type).filter(Boolean)
-    )];
-    return {
-      id:           p.id,
-      name:         p.name,
-      location:     p.location,
-      status:       p.status,
-      course_count: partnerCourses.length,
-      booking_count: partnerBookings,
-      specialisms,
-    };
-  });
+    const expiringIn90Days = expiring.filter((row: any) => {
+      const date = new Date(row.expiry_date);
+      return date >= today && date <= ninetyDays;
+    }).length;
+    const engineersNeedingTraining = new Set(
+      assignments
+        .filter((row: any) => row.training_required)
+        .map((row: any) => row.engineer_id),
+    ).size;
+    const criticalGaps = gaps.filter((row: any) => row.risk_level === "critical").length;
 
-  // ── AI Insights ─────────────────────────────────────────────────────────────
-  const insights: { severity: string; title: string; text: string }[] = [];
+    const monthSpend = new Map<string, number>();
+    for (const booking of enrichedBookings) {
+      if (!booking.booking_date) continue;
+      const month = booking.booking_date.slice(0, 7);
+      monthSpend.set(month, (monthSpend.get(month) ?? 0) + numeric(booking.cost));
+    }
+    const spendByMonth = [...monthSpend.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .slice(-6)
+      .map(([month, spend]) => ({
+        month,
+        label: new Date(`${month}-01T00:00:00`).toLocaleDateString("en-GB", {
+          month: "short",
+          year: "2-digit",
+        }),
+        spend,
+      }));
 
-  const criticalSnapshots = (snapshots as SnapRow[]).filter((s) => s.risk_level === "critical");
-  if (criticalSnapshots.length > 0) {
-    const top = criticalSnapshots[0];
-    const skill = skillsById.get(top.skill_id) as SkillRow | undefined;
-    insights.push({
-      severity: "critical",
-      title: `${criticalSnapshots.length} critical training gap${criticalSnapshots.length !== 1 ? "s" : ""} identified`,
-      text: `${skill?.name ?? "A key skill"} has ${top.engineers_below_target} engineers below target rating ${top.target_rating}/5. Immediate training action required.`,
+    const departmentBookings = new Map<string, { count: number; spend: number }>();
+    for (const booking of enrichedBookings) {
+      if (!booking.department) continue;
+      const current = departmentBookings.get(booking.department) ?? { count: 0, spend: 0 };
+      current.count += 1;
+      current.spend += numeric(booking.cost);
+      departmentBookings.set(booking.department, current);
+    }
+    const maximumDepartmentSpend = Math.max(
+      ...[...departmentBookings.values()].map((row) => row.spend),
+      1,
+    );
+    const bookingsByDept = [...departmentBookings.entries()]
+      .map(([dept, values]) => ({
+        dept,
+        count: values.count,
+        spend: values.spend,
+        pct: Math.round((values.spend / maximumDepartmentSpend) * 100),
+      }))
+      .sort((left, right) => right.spend - left.spend);
+
+    const priorityRows = gaps.map((gap: any) => {
+      const skill: any = skillMap.get(gap.skill_id);
+      return {
+        id: gap.id,
+        skill_name: skill?.name ?? "Skill not recorded",
+        category: skill?.category ?? "Uncategorised",
+        is_critical: Boolean(skill?.is_critical),
+        dept_name: gap.department_id
+          ? departmentMap.get(gap.department_id) ?? null
+          : null,
+        current_avg: numeric(gap.current_average_rating),
+        target_rating: numeric(gap.target_rating),
+        gap: numeric(gap.engineers_below_target),
+        engineers_qualified: numeric(gap.engineers_at_or_above_target),
+        risk_level: gap.risk_level ?? "low",
+        priority: priority(gap.risk_level ?? "low", Boolean(gap.single_point_of_failure)),
+        single_point_of_failure: Boolean(gap.single_point_of_failure),
+        recommendation: gap.recommendation ?? "Review the recorded capability gap.",
+        snapshot_date: gap.snapshot_date,
+      };
+    }).sort((left: any, right: any) => {
+      const order: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+      return (order[left.priority] ?? 9) - (order[right.priority] ?? 9) || right.gap - left.gap;
     });
-  }
 
-  const spofSnaps = (snapshots as SnapRow[]).filter((s) => s.single_point_of_failure);
-  if (spofSnaps.length > 0) {
-    const names = spofSnaps.slice(0, 2).map((s) => (skillsById.get(s.skill_id) as SkillRow | undefined)?.name ?? "Unknown").join(", ");
-    insights.push({
-      severity: "critical",
-      title: `${spofSnaps.length} single-point-of-failure skill${spofSnaps.length !== 1 ? "s" : ""}`,
-      text: `Skills with only one qualified engineer: ${names}${spofSnaps.length > 2 ? ` +${spofSnaps.length - 2} more` : ""}. Prioritise cross-training to eliminate this risk.`,
+    const certRiskRows = expiring.map((assignment: any) => {
+      const engineer: any = engineerMap.get(assignment.engineer_id);
+      const skill: any = skillMap.get(assignment.skill_id);
+      const expiry = new Date(assignment.expiry_date);
+      const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
+      return {
+        skill_name: skill?.name ?? "Skill not recorded",
+        engineer_name: engineer?.full_name ?? "Engineer not recorded",
+        expiry_date: assignment.expiry_date,
+        days_left: daysLeft,
+        status: daysLeft < 0 ? "Expired" : daysLeft <= 30 ? "Expiring Soon" : "Expiring",
+        risk_level: daysLeft < 0 ? "critical" : daysLeft <= 30 ? "high" : "medium",
+        verification_status: assignment.verification_status ?? "unverified",
+      };
+    }).sort((left: any, right: any) => left.days_left - right.days_left).slice(0, 20);
+
+    const courseSkillMap = new Map<string, string[]>();
+    for (const link of courseSkills) {
+      const skill: any = skillMap.get((link as any).skill_id);
+      if (!skill) continue;
+      const current = courseSkillMap.get((link as any).course_id) ?? [];
+      current.push(skill.name);
+      courseSkillMap.set((link as any).course_id, current);
+    }
+    const bookingCountByCourse = new Map<string, number>();
+    for (const booking of bookings) {
+      bookingCountByCourse.set(
+        (booking as any).course_id,
+        (bookingCountByCourse.get((booking as any).course_id) ?? 0) + 1,
+      );
+    }
+
+    const recommendedCourses = courses
+      .filter((course: any) => course.status === "active")
+      .map((course: any) => {
+        const partner: any = partnerMap.get(course.training_partner_id);
+        return {
+          id: course.id,
+          title: course.title ?? "Course not recorded",
+          partner_name: partner?.name ?? null,
+          partner_location: partner?.location ?? null,
+          delivery_type: course.delivery_type ?? "Not recorded",
+          duration_days: numeric(course.duration_days),
+          price: numeric(course.price),
+          currency: course.currency ?? "GBP",
+          skills_covered: courseSkillMap.get(course.id) ?? [],
+          bookings: bookingCountByCourse.get(course.id) ?? 0,
+        };
+      })
+      .sort((left: any, right: any) => right.bookings - left.bookings);
+
+    const trainingPartners = partners.map((partner: any) => {
+      const partnerCourses = courses.filter((course: any) =>
+        course.training_partner_id === partner.id && course.status === "active"
+      );
+      const partnerCourseIds = new Set(partnerCourses.map((course: any) => course.id));
+      return {
+        id: partner.id,
+        name: partner.name,
+        location: partner.location,
+        status: partner.status,
+        course_count: partnerCourses.length,
+        booking_count: bookings.filter((booking: any) =>
+          partnerCourseIds.has(booking.course_id)
+        ).length,
+        specialisms: [...new Set(partnerCourses.map((course: any) => course.delivery_type).filter(Boolean))],
+      };
     });
-  }
 
-  if (engineersNeedingTraining > 0) {
-    insights.push({
-      severity: "high",
-      title: `${engineersNeedingTraining} engineer${engineersNeedingTraining !== 1 ? "s" : ""} flagged for training`,
-      text: `These engineers have skill gaps requiring structured training. Book courses now to close gaps before the next assessment cycle.`,
-    });
-  }
+    const insights: Array<{ severity: string; title: string; text: string }> = [];
+    if (criticalGaps > 0) {
+      const top = priorityRows.find((row: any) => row.priority === "Critical");
+      insights.push({
+        severity: "critical",
+        title: `${criticalGaps} critical training gap${criticalGaps === 1 ? "" : "s"} identified`,
+        text: top
+          ? `${top.skill_name} has ${top.gap} engineer${top.gap === 1 ? "" : "s"} below the recorded target.`
+          : "Critical capability gaps require review.",
+      });
+    }
+    if (engineersNeedingTraining > 0) {
+      insights.push({
+        severity: "high",
+        title: `${engineersNeedingTraining} engineer${engineersNeedingTraining === 1 ? "" : "s"} flagged for training`,
+        text: "These flags are evidence from the current skills register and do not create a booking.",
+      });
+    }
+    if (expiringIn30Days > 0) {
+      insights.push({
+        severity: "high",
+        title: `${expiringIn30Days} certification${expiringIn30Days === 1 ? "" : "s"} expire within 30 days`,
+        text: "Review renewal evidence in the source training workflow before capability lapses.",
+      });
+    }
 
-  const highGapDepts = bookingsByDept.filter((d) => d.count >= 5).slice(0, 2);
-  if (highGapDepts.length > 0) {
-    insights.push({
-      severity: "medium",
-      title: `High training activity in ${highGapDepts[0].dept}`,
-      text: `${highGapDepts[0].count} bookings totalling £${highGapDepts[0].spend.toLocaleString()}. Consider consolidating engineers into group courses to reduce per-head cost.`,
-    });
-  }
-
-  if (recommendedCourses.length > 0) {
-    const top = recommendedCourses[0];
-    insights.push({
-      severity: "medium",
-      title: `"${top.title}" is the most booked course`,
-      text: `${top.bookings} booking${top.bookings !== 1 ? "s" : ""} via ${top.partner_name ?? "a training partner"}. Consider bulk booking to negotiate a reduced rate.`,
-    });
-  }
-
-  return new Response(
-    JSON.stringify({
+    return response(req, {
+      siteId,
+      organisationId,
+      generatedAt: new Date().toISOString(),
       enrichedBookings,
       stats: {
         totalBookings,
@@ -379,12 +349,19 @@ Deno.serve(async (req: Request) => {
       bookingsByDept,
       priorityRows,
       certRiskRows,
-      recentActivity,
+      recentActivity: enrichedBookings.slice(0, 15),
       recommendedCourses,
       trainingPartners,
       departments,
       insights,
-    }),
-    { headers: { "Content-Type": "application/json", ...corsHeaders } }
-  );
+    });
+  } catch (error) {
+    const status = Number((error as any)?.status) || 500;
+    if (status >= 500) console.error("training-data failed", error);
+    return response(req, {
+      error: status < 500
+        ? String((error as any)?.message ?? "Access denied")
+        : "Training evidence could not be loaded",
+    }, status);
+  }
 });
