@@ -27,7 +27,7 @@ function previewPayload({
       requiredSkillCount: 4,
       pmTaskCount: 5,
       calibrationTaskCount: 2,
-      pmEvidenceCoverage: 60,
+      pmEvidenceCoverage: 5,
       engineers: [
         {
           engineerId: "engineer-1",
@@ -39,7 +39,7 @@ function previewPayload({
           explicitCapabilityLevel: 4,
           pmExperienceScore: 3,
           pmTaskCount: 5,
-          pmTasksWithEvidence: 3,
+          pmTasksWithEvidence: 1,
           confirmedPmCount: 3,
           lastPmCompletedAt: "2020-01-01",
           recencyStatus: "stale",
@@ -64,7 +64,7 @@ function previewPayload({
     coreCapabilityScore: 76,
     assetCompetenceScore: 68,
     proposedSkillsReadinessScore: 71,
-    pmExperienceCoverage: assets.length > 0 ? 60 : 0,
+    pmExperienceCoverage: assets.length > 0 ? 5 : 0,
     pmEvidenceCount: assets.length > 0 ? 3 : 0,
     assetsAssessed: assets.length,
     coreEngineersAssessed: 2,
@@ -101,7 +101,7 @@ function previewPayload({
               },
               assetCompetence: {
                 score: 68,
-                pmExperienceCoverage: assets.length > 0 ? 60 : 0,
+                pmExperienceCoverage: assets.length > 0 ? 5 : 0,
                 pmEvidenceCount: assets.length > 0 ? 3 : 0,
                 assets,
               },
@@ -154,17 +154,47 @@ test("enabled Core and Asset Skills Matrix works across responsive viewports", a
   await expect(page.getByText("Skills Readiness", { exact: true })).toBeVisible();
   await expect(page.getByText("Core Capability", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Asset Competence", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText("Full engineer-task evidence saturation", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Historical SAP evidence audit", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/must not be read as .* competent/i),
+  ).toBeVisible();
 
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
   const assetButtons = page.locator("button").filter({ hasText: /\d+ PMs/ });
   await expect.poll(() => assetButtons.count()).toBeGreaterThan(0);
   const assetButtonCount = await assetButtons.count();
   const selectedAssetButton = assetButtons.nth(assetButtonCount > 1 ? 1 : 0);
   await selectedAssetButton.click();
-  await expect(selectedAssetButton).toHaveClass(/border-blue-500/);
+
+  if (viewportWidth < 1280) {
+    await expect(
+      page.getByRole("button", { name: "Back to assets", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("[data-vorta-mobile-asset-list]")).toBeHidden();
+    await expect(page.locator("[data-vorta-mobile-asset-detail]")).toBeVisible();
+    await expect(
+      page.getByPlaceholder("Search equipment, code or area"),
+    ).toBeHidden();
+    await page
+      .getByRole("button", { name: "Back to assets", exact: true })
+      .click();
+    await expect(page.locator("[data-vorta-mobile-asset-list]")).toBeVisible();
+  } else {
+    await expect(selectedAssetButton).toHaveClass(/border-blue-500/);
+  }
+
   await expect(page.getByText("PM score capped at 5", { exact: true })).toBeVisible();
-  await expect(page.getByText("Historical PM evidence is read-only", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Historical PM evidence is read-only", { exact: false }),
+  ).toBeVisible();
 
   const assetSearch = page.getByPlaceholder("Search equipment, code or area");
+  await expect(assetSearch).toBeVisible();
   await assetSearch.fill("no-equipment-should-match-this-value");
   await expect(
     page.getByText("No asset matches the current search.", { exact: true }),
@@ -182,6 +212,42 @@ test("enabled Core and Asset Skills Matrix works across responsive viewports", a
   expect(nextScopeValue).not.toBeNull();
   await scopeSelect.selectOption(nextScopeValue ?? "");
   await expect(scopeSelect).toHaveValue(nextScopeValue ?? "");
+
+  if (viewportWidth <= 420) {
+    const previewSection = page.locator("[data-vorta-skills-preview]");
+    const paddingBottom = await previewSection.evaluate((element) =>
+      Number.parseFloat(window.getComputedStyle(element).paddingBottom),
+    );
+    expect(
+      paddingBottom,
+      "Mobile preview needs clearance above the fixed Ask Vorta control",
+    ).toBeGreaterThanOrEqual(120);
+
+    const footer = page.locator("[data-vorta-skills-preview-footer]");
+    await footer.scrollIntoViewIfNeeded();
+    const aiButton = page.getByRole("button", {
+      name: "Ask Vorta AI",
+      exact: true,
+    });
+    if (await aiButton.isVisible()) {
+      const [footerBox, aiBox] = await Promise.all([
+        footer.boundingBox(),
+        aiButton.boundingBox(),
+      ]);
+      expect(footerBox).not.toBeNull();
+      expect(aiBox).not.toBeNull();
+      const overlaps =
+        Boolean(footerBox && aiBox) &&
+        footerBox!.x < aiBox!.x + aiBox!.width &&
+        footerBox!.x + footerBox!.width > aiBox!.x &&
+        footerBox!.y < aiBox!.y + aiBox!.height &&
+        footerBox!.y + footerBox!.height > aiBox!.y;
+      expect(
+        overlaps,
+        "The fixed Ask Vorta control must not obscure the final evidence notice",
+      ).toBe(false);
+    }
+  }
 
   await expectNoPageOverflow(page);
   await testInfo.attach(`core-asset-preview-${testInfo.project.name}`, {
@@ -229,16 +295,29 @@ test("enabled preview shows an honest empty asset-evidence state", async ({
   ).toBeVisible();
 });
 
-test("enabled preview marks stale PM evidence without hiding the history", async ({
+test("enabled preview marks sparse and stale PM evidence without hiding history", async ({
   page,
 }, testInfo) => {
   test.skip(
     testInfo.project.name !== "desktop-1920",
-    "Stale-evidence state is exercised once per workflow",
+    "Sparse and stale evidence are exercised once per workflow",
   );
   await signInMaintenanceManager(page);
   await mockSkillsPreview(page, previewPayload());
   await page.goto("/skills-matrix");
+
+  await expect(
+    page.getByText(
+      "Sparse linked history is an evidence-quality warning, not proof that engineers lack competence on this asset.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Strict denominator: 10 possible engineer-PM pairs.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+
   const staleDate = page.getByText("01 Jan 2020", { exact: true });
   await expect(staleDate).toBeVisible();
   await expect(staleDate).toHaveClass(/text-red-400/);
