@@ -15,6 +15,7 @@ const contracts = [
   ["Read-only training workflows", "scripts/read-only-training-workflow-contracts.mjs"],
   ["Live Career, Support and Settings", "scripts/live-career-support-settings-contracts.mjs"],
   ["Pilot release security", "scripts/pilot-release-security-contracts.mjs"],
+  ["Pilot resilience and performance", "scripts/pilot-resilience-performance-contracts.mjs"],
   ["Equipment people workflow", "scripts/equipment-people-workflow-contracts.mjs"],
   ["Maintenance P1 and P2", "scripts/maintenance-p1-p2-contracts.mjs"],
   ["Data trust", "scripts/data-trust-contracts.mjs"],

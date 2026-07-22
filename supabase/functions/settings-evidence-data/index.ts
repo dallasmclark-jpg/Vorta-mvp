@@ -30,16 +30,6 @@ function numericRecord(value: unknown): Record<string, number> {
   );
 }
 
-function stringRecord(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-      key,
-      String(entry ?? ""),
-    ]),
-  );
-}
-
 Deno.serve(async (req: Request) => {
   const early = preflight(req);
   if (early) return early;
@@ -143,10 +133,7 @@ Deno.serve(async (req: Request) => {
         firstObservedAt: text(row.first_observed_at, new Date(0).toISOString()),
         lastObservedAt: text(row.last_observed_at, new Date(0).toISOString()),
         occurrenceCount: numberValue(row.occurrence_count, 1),
-        details:
-          row.details && typeof row.details === "object" && !Array.isArray(row.details)
-            ? row.details
-            : {},
+        details: {},
         acknowledgedAt: nullableText(row.acknowledged_at),
         resolvedAt: nullableText(row.resolved_at),
       })),
@@ -160,8 +147,8 @@ Deno.serve(async (req: Request) => {
         latestHealthRunId: nullableText(recoveryRow.latest_health_run_id),
         riskRefreshedAt: nullableText(recoveryRow.risk_refreshed_at),
         datasetCounts: numericRecord(recoveryRow.dataset_counts),
-        datasetFingerprints: stringRecord(recoveryRow.dataset_fingerprints),
-        manifestFingerprint: text(recoveryRow.manifest_fingerprint),
+        datasetFingerprints: {},
+        manifestFingerprint: "withheld",
         createdAt: text(recoveryRow.created_at, new Date(0).toISOString()),
         ageHours: numberValue(recoveryRow.age_hours),
       },

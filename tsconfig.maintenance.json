@@ -13,6 +13,7 @@
     "types": ["vite/client"]
   },
   "include": [
+    "src/screens/AiOperations/index.ts",
     "src/screens/AiOperations/AiOperations.tsx",
     "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
     "src/screens/AiOperations/MaintenanceDashboardExperience.tsx",
@@ -40,6 +41,7 @@
     "src/components/PortalShell.tsx",
     "src/lib/accessControl.ts",
     "src/lib/dataTrust.ts",
+    "src/lib/liveEvidenceResilience.ts",
     "src/lib/runtimeContracts.ts",
     "src/lib/maintenanceActions.ts",
     "src/hooks/useModalFocusTrap.ts"
