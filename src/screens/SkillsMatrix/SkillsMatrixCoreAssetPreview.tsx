@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowLeft,
   Boxes,
   CheckCircle2,
   Clock3,
   Gauge,
+  Info,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -243,6 +245,7 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
   const [selectedScopeId, setSelectedScopeId] = useState("overall");
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [assetSearch, setAssetSearch] = useState("");
+  const [mobileAssetDetailOpen, setMobileAssetDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,8 +304,9 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
     const term = assetSearch.trim().toLowerCase();
     if (!term) return rows;
     return rows.filter((asset) =>
-      [asset.equipmentName, asset.equipmentCode, asset.area, asset.line ?? ""]
-        .some((value) => value.toLowerCase().includes(term)),
+      [asset.equipmentName, asset.equipmentCode, asset.area, asset.line ?? ""].some(
+        (value) => value.toLowerCase().includes(term),
+      ),
     );
   }, [assetSearch, preview?.assetCompetence.assets]);
 
@@ -313,6 +317,7 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
         ? current
         : availableAssets[0]?.equipmentId ?? null,
     );
+    setMobileAssetDetailOpen(false);
   }, [preview]);
 
   const selectedAsset = useMemo(
@@ -323,8 +328,35 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
     [preview?.assetCompetence.assets, selectedAssetId],
   );
 
+  const totalPmTasks = useMemo(
+    () =>
+      preview?.assetCompetence.assets.reduce(
+        (sum, asset) => sum + asset.pmTaskCount,
+        0,
+      ) ?? 0,
+    [preview?.assetCompetence.assets],
+  );
+  const strictPairDenominator =
+    (selectedSummary?.memberCount ?? 0) * totalPmTasks;
+  const sparseHistory =
+    totalPmTasks > 0 && (selectedSummary?.pmExperienceCoverage ?? 0) < 10;
+
+  const selectAsset = (assetId: string): void => {
+    setSelectedAssetId(assetId);
+    setMobileAssetDetailOpen(true);
+  };
+
+  const changeScope = (scopeId: string): void => {
+    setSelectedScopeId(scopeId);
+    setAssetSearch("");
+    setMobileAssetDetailOpen(false);
+  };
+
   return (
-    <section className="flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:gap-8 md:px-6 xl:px-8">
+    <section
+      data-vorta-skills-preview="core-asset"
+      className="flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-36 pt-0 md:gap-8 md:px-6 md:pb-12 xl:px-8"
+    >
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -406,9 +438,9 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
             </div>
             <select
               value={selectedSummary.id}
-              onChange={(event) => setSelectedScopeId(event.target.value)}
+              onChange={(event) => changeScope(event.target.value)}
               aria-label="Select workforce scope"
-              className="min-h-10 min-w-[240px] rounded-lg border border-gray-700 bg-[#0d1219] px-3 text-sm text-slate-200 outline-none focus:border-blue-500/60"
+              className="min-h-10 w-full rounded-lg border border-gray-700 bg-[#0d1219] px-3 text-sm text-slate-200 outline-none focus:border-blue-500/60 md:w-auto md:min-w-[240px]"
             >
               {scopes.map((scope) => (
                 <option key={scope.id} value={scope.id}>
@@ -472,7 +504,7 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                 </div>
 
                 <div className="mt-5 overflow-hidden rounded-lg border border-gray-800">
-                  <div className="grid grid-cols-[minmax(0,1fr)_80px_88px] gap-3 border-b border-gray-800 bg-[#0f141b] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  <div className="grid grid-cols-[minmax(0,1fr)_64px_72px] gap-2 border-b border-gray-800 bg-[#0f141b] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600 sm:grid-cols-[minmax(0,1fr)_80px_88px] sm:gap-3 sm:px-4">
                     <span>Engineer</span>
                     <span className="text-right">Skills</span>
                     <span className="text-right">Score</span>
@@ -481,7 +513,7 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                     {preview.coreCapability.engineers.map((engineer) => (
                       <div
                         key={engineer.engineerId}
-                        className="grid grid-cols-[minmax(0,1fr)_80px_88px] items-center gap-3 px-4 py-3"
+                        className="grid grid-cols-[minmax(0,1fr)_64px_72px] items-center gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_80px_88px] sm:gap-3 sm:px-4"
                       >
                         <p className="truncate text-sm font-medium text-slate-200">
                           {engineer.engineerName}
@@ -509,31 +541,84 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
-                    <p className="text-[10px] text-slate-500">PM evidence coverage</p>
+                    <p className="text-[10px] text-slate-500">
+                      Full engineer-task evidence saturation
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-blue-300">
                       {preview.assetCompetence.pmExperienceCoverage}%
                     </p>
                   </div>
                 </div>
 
-                <div className="relative mt-5">
-                  <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-600" />
-                  <input
-                    value={assetSearch}
-                    onChange={(event) => setAssetSearch(event.target.value)}
-                    placeholder="Search equipment, code or area"
-                    className="min-h-10 w-full rounded-lg border border-gray-800 bg-[#0f141b] pl-10 pr-3 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/50"
-                  />
+                <div
+                  data-vorta-pm-evidence-audit
+                  className={`mt-5 rounded-lg border p-4 ${
+                    sparseHistory
+                      ? "border-amber-400/25 bg-amber-400/[0.06]"
+                      : "border-gray-800 bg-[#10151d]"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Info className={`mt-0.5 h-4 w-4 shrink-0 ${sparseHistory ? "text-amber-300" : "text-blue-300"}`} />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold ${sparseHistory ? "text-amber-200" : "text-slate-200"}`}>
+                        Historical SAP evidence audit
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-400">
+                        The percentage measures how many engineer × PM combinations have at least one linked confirmation. It is deliberately stricter than competence and must not be read as “the team is {preview.assetCompetence.pmExperienceCoverage}% competent”.
+                      </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-[10px] text-slate-600">Engineers</p>
+                          <p className="mt-0.5 text-sm font-semibold text-slate-200">
+                            {selectedSummary.memberCount}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-600">PM tasks</p>
+                          <p className="mt-0.5 text-sm font-semibold text-slate-200">
+                            {totalPmTasks}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-600">Confirmed executions</p>
+                          <p className="mt-0.5 text-sm font-semibold text-slate-200">
+                            {selectedSummary.pmEvidenceCount}
+                          </p>
+                        </div>
+                      </div>
+                      {strictPairDenominator > 0 ? (
+                        <p className="mt-3 text-[10px] leading-4 text-slate-500">
+                          Strict denominator: {strictPairDenominator} possible engineer-PM pairs. Repeated executions improve experience scores but do not create new covered pairs.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={mobileAssetDetailOpen ? "hidden xl:block" : "block"}>
+                  <div className="relative mt-5">
+                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-600" />
+                    <input
+                      value={assetSearch}
+                      onChange={(event) => setAssetSearch(event.target.value)}
+                      placeholder="Search equipment, code or area"
+                      className="min-h-10 w-full rounded-lg border border-gray-800 bg-[#0f141b] pl-10 pr-3 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/50"
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(220px,0.78fr)_minmax(0,1.22fr)]">
-                  <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+                  <div
+                    data-vorta-mobile-asset-list
+                    className={`${mobileAssetDetailOpen ? "hidden xl:block" : "block"} max-h-[620px] space-y-2 overflow-y-auto pr-1`}
+                  >
                     {assets.map((asset) => (
                       <button
                         key={asset.equipmentId}
                         type="button"
-                        onClick={() => setSelectedAssetId(asset.equipmentId)}
-                        className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                        onClick={() => selectAsset(asset.equipmentId)}
+                        className={`min-h-11 w-full rounded-lg border p-3 text-left transition-colors ${
                           asset.equipmentId === selectedAsset?.equipmentId
                             ? "border-blue-500/40 bg-blue-500/[0.08]"
                             : "border-gray-800 bg-[#10151d] hover:border-gray-700"
@@ -552,10 +637,10 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                             {asset.assetCompetenceScore}
                           </span>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] text-slate-500">
                           <span>{asset.pmTaskCount} PMs</span>
                           <span>{asset.calibrationTaskCount} calibrations</span>
-                          <span>{asset.pmEvidenceCoverage}% evidence</span>
+                          <span>{asset.pmEvidenceCoverage}% saturation</span>
                         </div>
                       </button>
                     ))}
@@ -567,13 +652,26 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                   </div>
 
                   {selectedAsset ? (
-                    <div className="min-w-0 rounded-lg border border-gray-800 bg-[#10151d] p-4">
+                    <div
+                      data-vorta-mobile-asset-detail
+                      className={`${mobileAssetDetailOpen ? "block" : "hidden xl:block"} min-w-0 scroll-mt-24 rounded-lg border border-gray-800 bg-[#10151d] p-4`}
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setMobileAssetDetailOpen(false)}
+                        className="-ml-2 mb-3 min-h-10 gap-2 px-2 text-xs text-slate-300 xl:hidden"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to assets
+                      </Button>
+
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                             {selectedAsset.equipmentCode}
                           </p>
-                          <h3 className="mt-1 truncate text-base font-semibold text-slate-50">
+                          <h3 className="mt-1 break-words text-base font-semibold text-slate-50">
                             {selectedAsset.equipmentName}
                           </h3>
                           <p className="mt-1 text-xs text-slate-500">
@@ -586,12 +684,14 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                         </Badge>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                         {[
                           ["Asset score", `${selectedAsset.assetCompetenceScore}%`],
                           ["Required skills", String(selectedAsset.requiredSkillCount)],
                           ["PM tasks", String(selectedAsset.pmTaskCount)],
                           ["Minimum cover", String(selectedAsset.minimumQualified)],
+                          ["Calibrations", String(selectedAsset.calibrationTaskCount)],
+                          ["History saturation", `${selectedAsset.pmEvidenceCoverage}%`],
                         ].map(([label, value]) => (
                           <div key={label} className="rounded-lg border border-gray-800 bg-[#0d1219] p-3">
                             <p className="text-[10px] text-slate-600">{label}</p>
@@ -599,6 +699,12 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                           </div>
                         ))}
                       </div>
+
+                      {selectedAsset.pmEvidenceCoverage < 10 ? (
+                        <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[10px] leading-4 text-slate-400">
+                          Sparse linked history is an evidence-quality warning, not proof that engineers lack competence on this asset.
+                        </div>
+                      ) : null}
 
                       <div className="mt-5">
                         <div className="flex items-center justify-between gap-3">
@@ -648,6 +754,11 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                               </div>
                             </div>
                           ))}
+                          {selectedAsset.engineers.length === 0 ? (
+                            <div className="p-4 text-sm text-slate-500">
+                              No engineer evidence is available for this asset in the selected scope.
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -655,7 +766,9 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
                     <div className="flex min-h-72 items-center justify-center rounded-lg border border-dashed border-gray-800 bg-[#10151d] p-6 text-center">
                       <div>
                         <Wrench className="mx-auto h-6 w-6 text-slate-700" />
-                        <p className="mt-3 text-sm text-slate-500">Select an asset to inspect competence evidence.</p>
+                        <p className="mt-3 text-sm text-slate-500">
+                          Select an asset to inspect competence evidence.
+                        </p>
                       </div>
                     </div>
                   )}
@@ -664,7 +777,10 @@ export const SkillsMatrixCoreAssetPreview = (): JSX.Element => {
             </Card>
           </div>
 
-          <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3">
+          <div
+            data-vorta-skills-preview-footer
+            className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3"
+          >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
             <p className="text-xs leading-5 text-slate-400">
               Existing Skills Matrix calculations, risk outputs and screen behaviour remain unchanged unless the preview feature flag is enabled. Historical PM evidence is read-only and cannot promote an engineer to independent status without the existing validation and authorisation controls.
