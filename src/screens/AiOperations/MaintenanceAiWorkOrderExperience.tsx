@@ -19,6 +19,8 @@ import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
+const CORE_ASSET_SKILLS_PREVIEW_ENABLED =
+  import.meta.env.VITE_SKILLS_MATRIX_CORE_ASSET_PREVIEW === "true";
 
 interface GlobalAiPromptEventDetail {
   question?: string;
@@ -59,6 +61,8 @@ export function MaintenanceAiWorkOrderExperience({
 }: PropsWithChildren): JSX.Element {
   const { siteContext } = useAuth();
   const location = useLocation();
+  const skillsPreviewActive =
+    CORE_ASSET_SKILLS_PREVIEW_ENABLED && location.pathname === "/skills-matrix";
   const showAssistantLauncher =
     location.pathname !== "/dashboard" &&
     !/^\/equipment\/[^/]+(?:\/|$)/.test(location.pathname);
@@ -175,6 +179,7 @@ export function MaintenanceAiWorkOrderExperience({
     <div
       className="contents"
       data-vorta-maintenance-portal="true"
+      data-vorta-skills-preview-active={skillsPreviewActive ? "true" : undefined}
       onPointerOverCapture={handleNavigationIntent}
       onPointerDownCapture={handleNavigationIntent}
       onFocusCapture={handleNavigationIntent}
