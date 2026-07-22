@@ -1,14 +1,18 @@
 [build]
-  command = "node scripts/validate-data-mode.mjs && npm run build"
+  command = "node scripts/validate-data-mode.mjs && node scripts/validate-live-pilot.mjs && npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
 
 [context.production.environment]
-  # The current public site uses demonstration records. Change this to "live"
-  # only when the selected site has verified pilot data and live fallbacks are disabled.
+  # The public Vorta site remains a demonstration deployment.
   VITE_VORTA_DATA_MODE = "demo"
+
+[context.pilot-live.environment]
+  # Stable read-only live pilot boundary. This branch must not contain demo fallbacks.
+  VITE_VORTA_DATA_MODE = "live"
+  VORTA_LIVE_PILOT_APPROVED = "true"
 
 [[headers]]
   for = "/vorta-build.json"
