@@ -2,6 +2,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const ORIGINS = new Set([
   "https://vorta-app.netlify.app",
+  "https://main--vorta-app.netlify.app",
+  "https://pilot-live--vorta-app.netlify.app",
   "https://vorta.network",
   "https://www.vorta.network",
   "http://localhost:5173",
@@ -21,10 +23,33 @@ const ALLOWED_ROLES = new Set([
   "reliability_engineer",
 ]);
 
+const SAFE_PUBLIC_ERROR_STATUSES = new Set([400, 401, 403, 404, 405, 409, 422, 429]);
+
 function normaliseRole(value: unknown): string {
   return typeof value === "string"
     ? value.trim().toLowerCase().replace(/[\s-]+/g, "_")
     : "";
+}
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true;
+  return ORIGINS.has(origin) || /^https:\/\/deploy-preview-\d+--vorta-app\.netlify\.app$/.test(origin);
+}
+
+function publicResponseBody(body: unknown, status: number): unknown {
+  if (status < 500 || SAFE_PUBLIC_ERROR_STATUSES.has(status)) return body;
+
+  const correlationId = crypto.randomUUID();
+  console.error("Live evidence returned an unexpected server failure.", {
+    correlationId,
+    status,
+    body,
+  });
+
+  return {
+    error: "Verified live evidence is temporarily unavailable.",
+    correlationId,
+  };
 }
 
 export function headers(req: Request): Record<string, string> {
@@ -36,14 +61,14 @@ export function headers(req: Request): Record<string, string> {
       "Content-Type, Authorization, X-Client-Info, Apikey",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
-    ...(origin && ORIGINS.has(origin)
+    ...(origin && isAllowedOrigin(origin)
       ? { "Access-Control-Allow-Origin": origin }
       : {}),
   };
 }
 
 export function response(req: Request, body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
+  return new Response(JSON.stringify(publicResponseBody(body, status)), {
     status,
     headers: headers(req),
   });
@@ -53,7 +78,7 @@ export function preflight(req: Request): Response | null {
   if (req.method !== "OPTIONS") return null;
   const origin = req.headers.get("origin");
   return new Response(null, {
-    status: origin && !ORIGINS.has(origin) ? 403 : 204,
+    status: isAllowedOrigin(origin) ? 204 : 403,
     headers: headers(req),
   });
 }
