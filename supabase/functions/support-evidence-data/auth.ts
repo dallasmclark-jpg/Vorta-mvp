@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const ORIGINS = new Set([
   "https://vorta-app.netlify.app",
   "https://main--vorta-app.netlify.app",
+  "https://pilot-live--vorta-app.netlify.app",
   "https://vorta.network",
   "https://www.vorta.network",
   "http://localhost:5173",
@@ -22,6 +23,8 @@ const ALLOWED_ROLES = new Set([
   "reliability_engineer",
 ]);
 
+const SAFE_PUBLIC_ERROR_STATUSES = new Set([400, 401, 403, 404, 405, 409, 422, 429]);
+
 function normaliseRole(value: unknown): string {
   return typeof value === "string"
     ? value.trim().toLowerCase().replace(/[\s-]+/g, "_")
@@ -31,6 +34,22 @@ function normaliseRole(value: unknown): string {
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true;
   return ORIGINS.has(origin) || /^https:\/\/deploy-preview-\d+--vorta-app\.netlify\.app$/.test(origin);
+}
+
+function publicResponseBody(body: unknown, status: number): unknown {
+  if (status < 500 || SAFE_PUBLIC_ERROR_STATUSES.has(status)) return body;
+
+  const correlationId = crypto.randomUUID();
+  console.error("Support evidence returned an unexpected server failure.", {
+    correlationId,
+    status,
+    body,
+  });
+
+  return {
+    error: "Verified support evidence is temporarily unavailable.",
+    correlationId,
+  };
 }
 
 export function headers(req: Request): Record<string, string> {
@@ -46,7 +65,10 @@ export function headers(req: Request): Record<string, string> {
 }
 
 export function response(req: Request, body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: headers(req) });
+  return new Response(JSON.stringify(publicResponseBody(body, status)), {
+    status,
+    headers: headers(req),
+  });
 }
 
 export function preflight(req: Request): Response | null {
