@@ -50,9 +50,8 @@ export function MaintenancePortalHardening(): JSX.Element {
         max-height: calc(100dvh - 1rem);
       }
 
-      [data-vorta-maintenance-portal="true"]:has(
-        [data-vorta-skills-preview="core-asset"]
-      ) button[aria-label="Ask Vorta AI"] {
+      [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+        button[aria-label="Ask Vorta AI"] {
         width: 3rem !important;
         min-width: 3rem !important;
         max-width: 3rem !important;
@@ -66,9 +65,8 @@ export function MaintenancePortalHardening(): JSX.Element {
         opacity: 0.92;
       }
 
-      [data-vorta-maintenance-portal="true"]:has(
-        [data-vorta-skills-preview="core-asset"]
-      ) button[aria-label="Ask Vorta AI"] svg {
+      [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+        button[aria-label="Ask Vorta AI"] svg {
         width: 1.125rem !important;
         height: 1.125rem !important;
         flex: none !important;
@@ -132,9 +130,8 @@ export function MaintenancePortalHardening(): JSX.Element {
           margin-inline: auto;
         }
 
-        [data-vorta-maintenance-portal="true"]:has(
-          [data-vorta-skills-preview="core-asset"]
-        ) button[aria-label="Ask Vorta AI"] {
+        [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+          button[aria-label="Ask Vorta AI"] {
           right: 0.75rem !important;
           bottom: 0.75rem !important;
         }
