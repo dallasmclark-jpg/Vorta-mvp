@@ -6,8 +6,10 @@ on:
       - main
     paths:
       - "src/screens/SkillsMatrix/**"
+      - "src/components/MaintenancePortalHardening.tsx"
       - "src/lib/runtimeContracts.ts"
       - "tests/browser/maintenance-manager-core-asset-skills-preview.spec.ts"
+      - "tests/browser/maintenance-manager-mobile-ai-launcher.spec.ts"
       - "tests/browser/maintenance-manager-test-helpers.ts"
       - "playwright.config.ts"
       - "netlify.toml"
@@ -81,6 +83,7 @@ jobs:
           set -o pipefail
           npx playwright test \
             tests/browser/maintenance-manager-core-asset-skills-preview.spec.ts \
+            tests/browser/maintenance-manager-mobile-ai-launcher.spec.ts \
             --config=playwright.config.ts \
             --project=phone-360 \
             --project=samsung-tablet-landscape \
