@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const ORIGINS = new Set([
   "https://vorta-app.netlify.app",
   "https://main--vorta-app.netlify.app",
+  "https://pilot-live--vorta-app.netlify.app",
   "https://vorta.network",
   "https://www.vorta.network",
   "http://localhost:5173",
