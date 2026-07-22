@@ -6,6 +6,7 @@ import {
   round,
   statusFromScore,
 } from "./transform-helpers.ts";
+import { buildCapabilityPreview } from "./transform-asset-experience.ts";
 import { createScopeAnalyser } from "./transform-analysis.ts";
 import {
   buildDepartmentScopes,
@@ -25,6 +26,8 @@ export function build(input: any) {
     equipment,
     requirements,
     capabilities,
+    preventiveMaintenance,
+    pmExperience,
     gaps,
     skills,
   } = input;
@@ -106,10 +109,19 @@ export function build(input: any) {
     engineerTeamNames,
   });
 
-  const analysedOverall = analyseScope(overallScope);
-  const analysedTeams = teamScopes.map(analyseScope);
+  const enrichWithPreview = (row: any, scope: any) => {
+    const preview = buildCapabilityPreview(input, scope);
+    Object.assign(row.summary, preview.summary);
+    row.detail.capabilityPreview = preview.detail;
+    return row;
+  };
+
+  const analysedOverall = enrichWithPreview(analyseScope(overallScope), overallScope);
+  const analysedTeams = teamScopes.map((scope: any) =>
+    enrichWithPreview(analyseScope(scope), scope)
+  );
   const analysedDepartments = departmentScopes
-    .map(analyseScope)
+    .map((scope: any) => enrichWithPreview(analyseScope(scope), scope))
     .sort(
       (left: any, right: any) =>
         left.summary.score - right.summary.score ||
@@ -169,6 +181,8 @@ export function build(input: any) {
       ...assignments.map((row: any) => row.last_validated_at),
       ...risks.map((row: any) => row.reviewed_at),
       ...capabilities.map((row: any) => row.valid_from),
+      ...preventiveMaintenance.map((row: any) => row.updated_at),
+      ...pmExperience.map((row: any) => row.source_updated_at ?? row.calculated_at),
     ],
     generatedAt,
   );

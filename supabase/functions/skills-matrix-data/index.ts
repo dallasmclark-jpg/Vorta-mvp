@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
         .eq("site_id", siteId)
         .eq("active", true),
       db.from("equipment_assets")
-        .select("id,equipment_code,name,area,criticality,status,department_id,updated_at")
+        .select("id,equipment_code,name,area,line,criticality,status,department_id,updated_at")
         .eq("site_id", siteId),
       db.from("skill_gap_snapshots")
         .select("id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,sme_engineer_id,risk_level,recommendation,snapshot_date")
@@ -68,6 +68,8 @@ Deno.serve(async (req: Request) => {
       membersResult,
       requirementsResult,
       capabilitiesResult,
+      preventiveMaintenanceResult,
+      pmExperienceResult,
     ] = await Promise.all([
       engineerIds.length
         ? db.from("engineer_skills")
@@ -95,6 +97,19 @@ Deno.serve(async (req: Request) => {
             .in("equipment_id", equipmentIds)
             .in("engineer_id", engineerIds)
         : Promise.resolve({ data: [], error: null }),
+      equipmentIds.length
+        ? db.from("preventive_maintenance")
+            .select("id,equipment_id,pm_number,title,pm_type,frequency,criticality,calibration_point,updated_at")
+            .eq("site_id", siteId)
+            .in("equipment_id", equipmentIds)
+        : Promise.resolve({ data: [], error: null }),
+      equipmentIds.length && engineerIds.length
+        ? db.from("engineer_pm_experience_snapshots")
+            .select("engineer_id,preventive_maintenance_id,equipment_id,confirmed_pm_count,confirmation_line_count,experience_score,first_completed_at,last_completed_at,evidence_quality,recency_status,recency_factor,calculated_at,source_updated_at")
+            .eq("site_id", siteId)
+            .in("equipment_id", equipmentIds)
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     const detailError =
@@ -102,7 +117,9 @@ Deno.serve(async (req: Request) => {
       risksResult.error ??
       membersResult.error ??
       requirementsResult.error ??
-      capabilitiesResult.error;
+      capabilitiesResult.error ??
+      preventiveMaintenanceResult.error ??
+      pmExperienceResult.error;
     if (detailError) throw detailError;
 
     const skillIds = [...new Set([
@@ -113,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
     const skillsResult = skillIds.length
       ? await db.from("skills")
-          .select("id,name,category,subcategory,description,is_critical,certification_required,expiry_required,display_order")
+          .select("id,name,category,subcategory,description,is_critical,certification_required,expiry_required,display_order,skill_type,ai_weight")
           .in("id", skillIds)
       : { data: [], error: null };
     if (skillsResult.error) throw skillsResult.error;
@@ -134,6 +151,8 @@ Deno.serve(async (req: Request) => {
       equipment,
       requirements: requirementsResult.data ?? [],
       capabilities: capabilitiesResult.data ?? [],
+      preventiveMaintenance: preventiveMaintenanceResult.data ?? [],
+      pmExperience: pmExperienceResult.data ?? [],
       gaps: gapsResult.data ?? [],
       skills: skillsResult.data ?? [],
     });

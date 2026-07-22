@@ -49,12 +49,24 @@ const functionTransform = await readFile(
   new URL("../supabase/functions/skills-matrix-data/transform.ts", import.meta.url),
   "utf8",
 );
+const functionAssetExperience = await readFile(
+  new URL("../supabase/functions/skills-matrix-data/transform-asset-experience.ts", import.meta.url),
+  "utf8",
+);
 const functionAnalysis = await readFile(
   new URL("../supabase/functions/skills-matrix-data/transform-analysis.ts", import.meta.url),
   "utf8",
 );
 const functionScopes = await readFile(
   new URL("../supabase/functions/skills-matrix-data/transform-scopes.ts", import.meta.url),
+  "utf8",
+);
+const experienceMigration = await readFile(
+  new URL("../supabase/migrations/20260722103718_add_pm_experience_evidence.sql", import.meta.url),
+  "utf8",
+);
+const experienceIndexMigration = await readFile(
+  new URL("../supabase/migrations/20260722104725_index_pm_experience_foreign_keys.sql", import.meta.url),
   "utf8",
 );
 
@@ -157,6 +169,11 @@ assert.match(functionIndex, /\.eq\("site_id", siteId\)/);
 assert.match(functionIndex, /\.eq\("organisation_id", organisationId\)/);
 assert.match(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*\.\.\.payload/);
 assert.match(functionIndex, /import \{ context, preflight, response \}/);
+assert.match(functionIndex, /\.from\("preventive_maintenance"\)/);
+assert.match(functionIndex, /\.from\("engineer_pm_experience_snapshots"\)/);
+assert.match(functionIndex, /preventiveMaintenance: preventiveMaintenanceResult\.data/);
+assert.match(functionIndex, /pmExperience: pmExperienceResult\.data/);
+assert.match(functionIndex, /skill_type,ai_weight/);
 assert.match(functionAuth, /authClient\.auth\.getUser\(token\)/);
 assert.match(functionAuth, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(functionAuth, /\.from\("user_site_access"\)/);
@@ -168,6 +185,12 @@ assert.match(functionTransform, /criticalTeamShare \* 12/);
 assert.match(functionTransform, /overallScore = Math\.min\(overallScore, 59\)/);
 assert.match(functionTransform, /sourceUpdatedAt/);
 assert.match(functionTransform, /areaSkills/);
+assert.match(functionTransform, /buildCapabilityPreview/);
+assert.match(functionTransform, /row\.detail\.capabilityPreview = preview\.detail/);
+assert.match(functionAnalysis, /skillsCoverage \* 0\.45/);
+assert.match(functionAnalysis, /experienceDepth \* 0\.2/);
+assert.match(functionAnalysis, /smeResilience \* 0\.2/);
+assert.match(functionAnalysis, /validationHealth \* 0\.15/);
 assert.match(functionAnalysis, /criticalGaps = priorityRisks\.filter/);
 assert.match(functionAnalysis, /spofCount = priorityRisks\.filter/);
 assert.match(functionAnalysis, /avatarUrl: engineer\.avatar_url/);
@@ -176,6 +199,35 @@ assert.match(functionScopes, /name: "Operational Technology Team"/);
 assert.match(functionScopes, /explicitSpecialists/);
 assert.match(functionScopes, /explicitMemberIds\(calibrationTeam\.id\)/);
 assert.match(functionScopes, /explicitMemberIds\(otTeam\.id\)/);
+
+assert.match(functionAssetExperience, /const PREVIEW_MODEL = "core-asset-preview-v1"/);
+assert.match(functionAssetExperience, /lower\(row\.skill_type\) === "technical"/);
+assert.match(functionAssetExperience, /experience_score/);
+assert.match(functionAssetExperience, /recency_factor/);
+assert.match(functionAssetExperience, /coreCapabilityScore \* 0\.4 \+ assetCompetenceScore \* 0\.6/);
+assert.match(functionAssetExperience, /previewOnly: true/);
+assert.match(functionAssetExperience, /scoreAuthority: "current-capability-v3"/);
+assert.match(functionAssetExperience, /proposedSkillsReadinessScore/);
+assert.match(functionAssetExperience, /pmExperienceCoverage/);
+assert.match(functionAssetExperience, /confirmedPmCount/);
+
+assert.match(experienceMigration, /create table if not exists public\.engineer_source_identities/);
+assert.match(experienceMigration, /create table if not exists public\.engineer_pm_experience_snapshots/);
+assert.match(experienceMigration, /alter table public\.engineer_source_identities enable row level security/);
+assert.match(experienceMigration, /alter table public\.engineer_pm_experience_snapshots enable row level security/);
+assert.match(experienceMigration, /private\.vorta_rls_has_site_access/);
+assert.match(experienceMigration, /private\.vorta_rls_has_engineer_access/);
+assert.match(experienceMigration, /private\.vorta_rls_has_equipment_access/);
+assert.match(experienceMigration, /where confirmation\.reversal = false/);
+assert.match(experienceMigration, /least\(count\(\*\), 5\)::smallint as experience_score/);
+assert.match(experienceMigration, /group by[\s\S]*line\.work_order_id/);
+assert.match(experienceMigration, /revoke all on function private\.vorta_refresh_engineer_pm_experience\(uuid\)/);
+assert.match(experienceMigration, /grant execute on function private\.vorta_refresh_engineer_pm_experience\(uuid\)[\s\S]*to service_role/);
+assert.doesNotMatch(experienceMigration, /grant execute[\s\S]*to authenticated/);
+assert.match(experienceIndexMigration, /engineer_pm_experience_engineer_fk_idx/);
+assert.match(experienceIndexMigration, /engineer_pm_experience_equipment_fk_idx/);
+assert.match(experienceIndexMigration, /engineer_source_identities_verified_by_idx/);
+assert.match(experienceIndexMigration, /engineer_source_identities_import_batch_idx/);
 
 assert.match(entry, /\.\/SkillsMatrixNative/);
 assert.match(compatibilityEntry, /\.\/SkillsMatrixNative/);
@@ -214,4 +266,4 @@ for (const obsolete of [
   );
 }
 
-console.log("Skills Matrix native and workflow contracts passed.");
+console.log("Skills Matrix native, PM evidence and preview contracts passed.");
