@@ -7,6 +7,12 @@ const [
   careerAuth,
   supportAuth,
   settingsAuth,
+  trainingAuth,
+  aiMatchingAuth,
+  providersAuth,
+  engineersAuth,
+  requirementsAuth,
+  skillsMatrixAuth,
   headers,
   netlify,
   livePilotGuard,
@@ -14,6 +20,12 @@ const [
   read("../supabase/functions/career-evidence-data/auth.ts"),
   read("../supabase/functions/support-evidence-data/auth.ts"),
   read("../supabase/functions/settings-evidence-data/auth.ts"),
+  read("../supabase/functions/training-data/auth.ts"),
+  read("../supabase/functions/ai-matching-data/auth.ts"),
+  read("../supabase/functions/training-providers-data/auth.ts"),
+  read("../supabase/functions/engineers-data/auth.ts"),
+  read("../supabase/functions/requirements-data/auth.ts"),
+  read("../supabase/functions/skills-matrix-data/auth.ts"),
   read("../public/_headers"),
   read("../netlify.toml"),
   read("./validate-live-pilot.mjs"),
@@ -25,12 +37,20 @@ for (const [label, source] of [
   ["Career", careerAuth],
   ["Support", supportAuth],
   ["Settings", settingsAuth],
+  ["Training", trainingAuth],
+  ["AI Matching", aiMatchingAuth],
+  ["Training Providers", providersAuth],
+  ["Engineers", engineersAuth],
+  ["Requirements", requirementsAuth],
+  ["Skills Matrix", skillsMatrixAuth],
 ]) {
   mustMatch(source, /SAFE_PUBLIC_ERROR_STATUSES/, `${label} must preserve only controlled client errors`);
   mustMatch(source, /status < 500/, `${label} must distinguish server failures from controlled responses`);
   mustMatch(source, /crypto\.randomUUID\(\)/, `${label} server failures must receive a correlation ID`);
   mustMatch(source, /publicResponseBody\(body, status\)/, `${label} responses must pass through the sanitizer`);
   mustMatch(source, /temporarily unavailable/, `${label} must return a generic server-failure message`);
+  mustMatch(source, /https:\/\/pilot-live--vorta-app\.netlify\.app/, `${label} must allow the controlled pilot branch origin`);
+  mustMatch(source, /deploy-preview-\\d\+--vorta-app/, `${label} must retain preview-origin coverage`);
 }
 
 mustMatch(headers, /X-Frame-Options:\s*DENY/, "Production must deny framing");
