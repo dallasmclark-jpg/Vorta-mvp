@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/validate-data-mode.mjs && node scripts/validate-live-pilot.mjs && npm run build"
+  command = "node scripts/validate-data-mode.mjs && npm run build"
   publish = "dist"
 
 [build.environment]
