@@ -11,8 +11,9 @@
     "test:contracts": "node scripts/run-contract-suite.mjs",
     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
     "test:browser": "playwright test --config=playwright.config.ts",
+    "prebuild": "node scripts/validate-live-pilot.mjs",
     "build:metadata": "node scripts/write-build-metadata.mjs",
-    "build": "node scripts/validate-live-pilot.mjs && npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
+    "build": "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
     "check": "npm run build"
   },
   "dependencies": {
