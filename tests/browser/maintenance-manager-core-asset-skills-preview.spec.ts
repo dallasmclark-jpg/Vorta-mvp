@@ -122,16 +122,22 @@ async function mockSkillsPreview(page: Page, body: unknown): Promise<void> {
   });
 }
 
-test("enabled Core and Asset Skills Matrix works across responsive viewports", async ({
-  page,
-}, testInfo) => {
-  await signInMaintenanceManager(page);
-
-  const responsePromise = page.waitForResponse(
+function waitForSkillsResponse(page: Page) {
+  return page.waitForResponse(
     (response) =>
       response.url().includes("/functions/v1/skills-matrix-data") &&
       response.request().method() === "POST",
+    { timeout: 30_000 },
   );
+}
+
+test("enabled Core and Asset Skills Matrix works across responsive viewports", async ({
+  page,
+}, testInfo) => {
+  // The dashboard starts a fast warmup immediately after authentication, so the
+  // listener must exist before sign-in rather than racing the cached route load.
+  const responsePromise = waitForSkillsResponse(page);
+  await signInMaintenanceManager(page);
   await page.goto("/skills-matrix");
 
   const response = await responsePromise;
@@ -160,9 +166,7 @@ test("enabled Core and Asset Skills Matrix works across responsive viewports", a
   await expect(
     page.getByText("Historical SAP evidence audit", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(/must not be read as .* competent/i),
-  ).toBeVisible();
+  await expect(page.getByText(/must not be read as .* competent/i)).toBeVisible();
 
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   const assetButtons = page.locator("button").filter({ hasText: /\d+ PMs/ });
