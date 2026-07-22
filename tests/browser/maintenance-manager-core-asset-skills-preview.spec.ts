@@ -180,15 +180,16 @@ test("enabled Core and Asset Skills Matrix works across responsive viewports", a
     await expect(
       page.getByPlaceholder("Search equipment, code or area"),
     ).toBeHidden();
+    await expect(page.getByText("PM score capped at 5", { exact: true })).toBeVisible();
     await page
       .getByRole("button", { name: "Back to assets", exact: true })
       .click();
     await expect(page.locator("[data-vorta-mobile-asset-list]")).toBeVisible();
   } else {
     await expect(selectedAssetButton).toHaveClass(/border-blue-500/);
+    await expect(page.getByText("PM score capped at 5", { exact: true })).toBeVisible();
   }
 
-  await expect(page.getByText("PM score capped at 5", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Historical PM evidence is read-only", { exact: false }),
   ).toBeVisible();
