@@ -49,30 +49,60 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await expect(page.getByText("LIVE SITE EVIDENCE", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/No demonstration values|No legacy demonstration record/)).toHaveCount(0);
 
-  const sections = page.getByRole("tablist", { name: "Equipment sections" });
-  const historyTab = sections.getByRole("tab", { name: "History", exact: true });
-  const documentsTab = sections.getByRole("tab", { name: "Documents", exact: true });
-  await expect(historyTab).toBeEnabled();
-  await expect(documentsTab).toBeEnabled();
+  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
 
-  const navigationAskVorta = sections.getByRole("tab", {
-    name: "Ask Vorta",
-    exact: true,
-  });
-  await expect(navigationAskVorta).toBeVisible();
+  const openEquipmentSection = async (
+    route: "work-orders" | "history" | "documents" | "skills" | "spares" | "ai-insights",
+    label: "Work Orders" | "History" | "Documents" | "Skills & Engineers" | "Spares" | "Ask Vorta",
+  ): Promise<void> => {
+    if (isMobileEquipmentNavigation) {
+      const mobileSections = page.getByRole("combobox", {
+        name: "Equipment section",
+      });
+      await expect(mobileSections).toBeEnabled();
+      await mobileSections.selectOption(route);
+      return;
+    }
 
-  await sections.getByRole("tab", { name: "Work Orders", exact: true }).click();
+    const sections = page.getByRole("tablist", { name: "Equipment sections" });
+    const sectionTab = sections.getByRole("tab", { name: label, exact: true });
+    await expect(sectionTab).toBeEnabled();
+    await sectionTab.click();
+  };
+
+  if (isMobileEquipmentNavigation) {
+    const mobileSections = page.getByRole("combobox", {
+      name: "Equipment section",
+    });
+    await expect(mobileSections).toBeEnabled();
+    await expect(mobileSections.locator('option[value="history"]')).toHaveText("History");
+    await expect(mobileSections.locator('option[value="documents"]')).toHaveText("Documents");
+    await expect(mobileSections.locator('option[value="ai-insights"]')).toHaveText("Ask Vorta");
+  } else {
+    const sections = page.getByRole("tablist", { name: "Equipment sections" });
+    await expect(
+      sections.getByRole("tab", { name: "History", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      sections.getByRole("tab", { name: "Documents", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      sections.getByRole("tab", { name: "Ask Vorta", exact: true }),
+    ).toBeVisible();
+  }
+
+  await openEquipmentSection("work-orders", "Work Orders");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
   await expect(page.getByRole("heading", { name: "Work Orders", exact: true })).toBeVisible();
   await expect(page.getByText("Execution readiness", { exact: true }).first()).toBeVisible();
 
-  await historyTab.click();
+  await openEquipmentSection("history", "History");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/history$`));
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
   await expect(page.getByText("Work records", { exact: true })).toBeVisible();
   await expect(page.getByText("Confirmations", { exact: true }).first()).toBeVisible();
 
-  await documentsTab.click();
+  await openEquipmentSection("documents", "Documents");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents$`));
   await expect(page.getByRole("heading", { name: "Documents", exact: true })).toBeVisible();
   await expect(page.getByText("Available documents", { exact: true })).toBeVisible();
@@ -86,11 +116,11 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await page.getByRole("button", { name: "Back to documents", exact: true }).click();
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/documents$`));
 
-  await sections.getByRole("tab", { name: "Skills & Engineers", exact: true }).click();
+  await openEquipmentSection("skills", "Skills & Engineers");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/skills$`));
   await expect(page.getByRole("heading", { name: "Skills & Engineers", exact: true })).toBeVisible();
 
-  await sections.getByRole("tab", { name: "Spares", exact: true }).click();
+  await openEquipmentSection("spares", "Spares");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
 
@@ -104,7 +134,7 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await closeAssistant.click();
   await expect(closeAssistant).toBeHidden();
 
-  await navigationAskVorta.click();
+  await openEquipmentSection("ai-insights", "Ask Vorta");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
   await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
   await expectNoPageOverflow(page);

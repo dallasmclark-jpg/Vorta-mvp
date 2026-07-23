@@ -1,4 +1,5 @@
 import "./equipmentMobilePolish.css";
+import "./equipmentOverviewMobileFocus.css";
 
 export { EquipmentLiveListEntry as EquipmentSection } from "./EquipmentLiveListEntry";
 export {

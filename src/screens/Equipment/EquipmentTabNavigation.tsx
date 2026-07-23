@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import {
   useLayoutEffect,
   useRef,
@@ -103,56 +103,117 @@ export function EquipmentTabNavigation({
     tabRefs.current[nextIndex]?.focus();
   };
 
-  return (
-    <nav
-      ref={navigationRef}
-      onScroll={rememberScrollPosition}
-      className="mt-4 flex gap-1 overflow-x-auto pb-1"
-      aria-label="Equipment sections"
-      role="tablist"
-      aria-orientation="horizontal"
-      data-vorta-equipment-tablist="true"
-    >
-      {EQUIPMENT_TABS.map((tab, index) => {
-        const askVorta = dataMode === "live" && "actionInLive" in tab;
-        const label = askVorta ? "Ask Vorta" : tab.label;
-        const active = tab.route === activeTab;
+  const routeTo = (route: EquipmentTabRoute): void => {
+    navigate(`/equipment/${equipmentId}/${route}`);
+  };
 
-        return (
+  return (
+    <>
+      <div
+        className="mt-4 sm:hidden"
+        data-vorta-equipment-mobile-menu="true"
+      >
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Equipment section
+          </span>
+          <span className="relative block">
+            <select
+              value={activeTab}
+              onChange={(event) => routeTo(event.target.value as EquipmentTabRoute)}
+              className="min-h-12 w-full appearance-none rounded-xl border border-gray-700 bg-[#10151d] px-4 pr-11 text-sm font-semibold text-slate-100 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              aria-label="Equipment section"
+            >
+              {EQUIPMENT_TABS.map((tab) => {
+                const askVorta = dataMode === "live" && "actionInLive" in tab;
+                return (
+                  <option key={tab.route} value={tab.route}>
+                    {askVorta ? "Ask Vorta" : tab.label}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-300"
+              aria-hidden="true"
+            />
+          </span>
+        </label>
+      </div>
+
+      <nav
+        ref={navigationRef}
+        onScroll={rememberScrollPosition}
+        className="mt-4 hidden gap-1 overflow-x-auto pb-1 sm:flex"
+        aria-label="Equipment sections"
+        role="tablist"
+        aria-orientation="horizontal"
+        data-vorta-equipment-tablist="true"
+      >
+        {EQUIPMENT_TABS.map((tab, index) => {
+          const askVorta = dataMode === "live" && "actionInLive" in tab;
+          const label = askVorta ? "Ask Vorta" : tab.label;
+          const active = tab.route === activeTab;
+
+          return (
+            <button
+              key={tab.route}
+              ref={(element) => {
+                tabRefs.current[index] = element;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-current={active ? "page" : undefined}
+              tabIndex={active ? 0 : -1}
+              data-vorta-equipment-tab={tab.route}
+              data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}
+              onKeyDown={(event) => handleTabKeyDown(event, index, tab.route)}
+              onClick={() => {
+                rememberScrollPosition();
+                routeTo(tab.route);
+              }}
+              className={`flex min-h-10 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-300 ${
+                askVorta
+                  ? `ml-1 border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15 hover:text-blue-200 ${
+                      active ? "ring-1 ring-inset ring-blue-400/50" : ""
+                    }`
+                  : active
+                    ? "border-blue-500 bg-blue-500/[0.08] text-blue-300 shadow-[inset_0_-1px_0_rgba(96,165,250,0.65)]"
+                    : "border-transparent text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"
+              }`}
+            >
+              {askVorta ? (
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : null}
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {activeTab === "overview" ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 gap-2 border-t border-gray-800 bg-[#0b0e14]/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:hidden"
+          data-vorta-equipment-mobile-actions="true"
+        >
           <button
-            key={tab.route}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
             type="button"
-            role="tab"
-            aria-selected={active}
-            aria-current={active ? "page" : undefined}
-            tabIndex={active ? 0 : -1}
-            data-vorta-equipment-tab={tab.route}
-            data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}
-            onKeyDown={(event) => handleTabKeyDown(event, index, tab.route)}
-            onClick={() => {
-              rememberScrollPosition();
-              navigate(`/equipment/${equipmentId}/${tab.route}`);
-            }}
-            className={`flex min-h-10 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-300 ${
-              askVorta
-                ? `ml-1 border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15 hover:text-blue-200 ${
-                    active ? "ring-1 ring-inset ring-blue-400/50" : ""
-                  }`
-                : active
-                  ? "border-blue-500 bg-blue-500/[0.08] text-blue-300 shadow-[inset_0_-1px_0_rgba(96,165,250,0.65)]"
-                  : "border-transparent text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"
-            }`}
+            onClick={() => routeTo("work-orders")}
+            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-700 bg-[#141820] px-4 text-sm font-semibold text-slate-100 transition-colors active:bg-gray-800"
           >
-            {askVorta ? (
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : null}
-            {label}
+            Actions
           </button>
-        );
-      })}
-    </nav>
+          <button
+            type="button"
+            onClick={() => routeTo("ai-insights")}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition-colors active:bg-blue-500"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Ask Vorta
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }

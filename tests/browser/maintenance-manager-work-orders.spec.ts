@@ -28,19 +28,31 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   const equipmentId = equipmentRouteMatch?.[1] ?? "";
   await expectNoPageOverflow(page);
 
-  const equipmentSections = page.getByRole("tablist", {
-    name: "Equipment sections",
-  });
-  const workOrdersTab = equipmentSections.getByRole("tab", {
-    name: "Work Orders",
-    exact: true,
-  });
-  await expect(workOrdersTab).toBeVisible();
-  await expectOperationalTouchTarget(workOrdersTab);
-  await workOrdersTab.click();
+  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
+
+  if (isMobileEquipmentNavigation) {
+    const mobileEquipmentSections = page.getByRole("combobox", {
+      name: "Equipment section",
+    });
+    await expect(mobileEquipmentSections).toBeVisible();
+    await expectOperationalTouchTarget(mobileEquipmentSections);
+    await mobileEquipmentSections.selectOption("work-orders");
+  } else {
+    const equipmentSections = page.getByRole("tablist", {
+      name: "Equipment sections",
+    });
+    const workOrdersTab = equipmentSections.getByRole("tab", {
+      name: "Work Orders",
+      exact: true,
+    });
+    await expect(workOrdersTab).toBeVisible();
+    await expectOperationalTouchTarget(workOrdersTab);
+    await workOrdersTab.click();
+  }
+
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders(?:\\?.*)?$`));
   await expect(
-    page.getByRole("heading", { name: "Complete equipment work history" }),
+    page.getByRole("heading", { name: "Work Execution Briefing", exact: true }),
   ).toBeVisible();
   await expectNoPageOverflow(page);
   await expect(
