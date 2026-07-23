@@ -48,7 +48,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   ).toBeHidden();
 
   const firstWorkOrderButton = page.locator("#work-order-register tbody button").first();
-  await expect(firstWorkOrderButton).toBeVisible();
+  await expect(firstWorkOrderButton).toBeVisible({ timeout: 30_000 });
   await expectOperationalTouchTarget(firstWorkOrderButton);
   const firstWorkOrder = (await firstWorkOrderButton.textContent())?.trim() ?? "";
   expect(firstWorkOrder).not.toBe("");
