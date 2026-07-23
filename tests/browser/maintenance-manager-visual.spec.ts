@@ -14,7 +14,9 @@ async function settleVisualPage(page: Page): Promise<void> {
       }
     `,
   });
-  await page.waitForLoadState("networkidle");
+  // Supabase keep-alive and browser telemetry can keep a page technically busy
+  // after its visible UI is stable. Do not fail the visual gate on that noise.
+  await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
   await page.evaluate(() => document.fonts.ready);
 }
 
