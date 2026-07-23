@@ -1,3 +1,5 @@
+import "./equipmentMobilePolish.css";
+
 export { EquipmentLiveListEntry as EquipmentSection } from "./EquipmentLiveListEntry";
 export {
   EquipmentOverviewTrustedEntry as EquipmentOverview,
