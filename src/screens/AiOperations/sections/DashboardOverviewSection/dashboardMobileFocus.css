@@ -8,16 +8,6 @@
     display: none;
   }
 
-  [data-vorta-dashboard-root="true"] > section > header > div:last-child > button:first-child {
-    font-size: 0;
-  }
-
-  [data-vorta-dashboard-root="true"] > section > header > div:last-child > button:first-child::after {
-    content: "Refresh";
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-  }
-
   [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
@@ -106,13 +96,7 @@
     min-width: 0;
     min-height: 2.75rem;
     padding: 0.75rem;
-    font-size: 0;
-  }
-
-  [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid + div.flex.flex-col button::after {
-    content: "View plan";
     font-size: 0.875rem;
-    line-height: 1.25rem;
   }
 
   [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid + div.flex.flex-col button svg {
