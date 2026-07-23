@@ -52,9 +52,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
 
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders(?:\\?.*)?$`));
   await expect(
-    page.getByRole("heading", {
-      name: /Work Execution Briefing|Complete equipment work history/,
-    }),
+    page.getByRole("heading", { name: "Work Execution Briefing", exact: true }),
   ).toBeVisible();
   await expectNoPageOverflow(page);
   await expect(
