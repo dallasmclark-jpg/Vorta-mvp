@@ -125,7 +125,8 @@ check(
   "The authenticated browser workflow must protect the Shift Cover calendar route.",
 );
 check(
-  browserTest.includes('getByLabel("Risk scope"') &&
+  browserTest.includes('data-vorta-mobile-risk-scope="true"') &&
+    browserTest.includes('name: "Risk scope"') &&
     browserTest.includes('name: "Ask Vorta AI"') &&
     browserTest.includes("toBeHidden") &&
     workOrderBrowserTest.includes("originating page"),
