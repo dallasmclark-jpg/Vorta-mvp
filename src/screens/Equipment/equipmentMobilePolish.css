@@ -22,13 +22,6 @@
     min-width: 0;
     flex: 1 1 auto;
     justify-content: center;
-    font-size: 0;
-  }
-
-  [data-vorta-production-equipment-list="true"] > header button.h-auto::after {
-    content: "Refresh";
-    font-size: 0.875rem;
-    line-height: 1.25rem;
   }
 
   [data-vorta-production-equipment-list="true"] > header button[aria-label="Refresh"],
