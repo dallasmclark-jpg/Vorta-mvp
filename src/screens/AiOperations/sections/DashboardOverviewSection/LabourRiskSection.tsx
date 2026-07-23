@@ -146,13 +146,17 @@ export function LabourRiskSection({
   };
 
   return (
-    <section className="flex w-full flex-col gap-4" data-vorta-dashboard-section="labour-risk">
+    <section
+      className="flex w-full flex-col gap-4"
+      data-vorta-dashboard-section="labour-risk"
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-slate-50">
           {isSiteRiskScope ? "Labour Risk" : `${activeScopeLabel} Labour Risk`}
         </h2>
         <button
           type="button"
+          data-vorta-section-link="labour-risk"
           onClick={() => onNavigate(viewAllRoute)}
           className="text-sm font-medium text-blue-500 transition-colors hover:text-blue-400"
         >
@@ -160,12 +164,16 @@ export function LabourRiskSection({
         </button>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        data-vorta-card-rail="labour-risk"
+        className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
         {items.map((item, index) => (
           <Card
             key={item.title}
             role="link"
             tabIndex={0}
+            data-vorta-dashboard-card="labour-risk"
             data-vorta-labour-risk-card={item.slug}
             aria-label={`Open ${item.title} workflow`}
             onClick={() => openItem(item)}
@@ -174,7 +182,7 @@ export function LabourRiskSection({
           >
             <CardContent className="flex h-full flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
-                <h3 className="flex-1 text-sm font-semibold text-slate-50">
+                <h3 className="flex-1 text-[15px] font-semibold leading-5 text-slate-50 sm:text-sm">
                   {item.title}
                 </h3>
                 <Badge
@@ -184,16 +192,30 @@ export function LabourRiskSection({
                   {item.level}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400">{item.description}</p>
-              <div className="flex flex-col gap-0.5">
-                <p className="text-xs text-slate-400">Overall risk score</p>
-                <p className="text-xl font-semibold text-slate-50">{item.displayScore}</p>
+              <p
+                data-vorta-mobile-secondary="true"
+                className="text-[13px] leading-[18px] text-slate-400 sm:text-xs"
+              >
+                {item.description}
+              </p>
+              <div data-vorta-primary-metric="true" className="flex flex-col gap-0.5">
+                <p className="text-[13px] text-slate-400 sm:text-xs">Overall risk score</p>
+                <p className="text-2xl font-semibold text-slate-50 sm:text-xl">
+                  {item.displayScore}
+                </p>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">{item.metricLabel}</span>
-                <span className="text-xs font-semibold text-slate-50">{item.metricValue}</span>
+                <span className="text-[13px] text-slate-400 sm:text-xs">
+                  {item.metricLabel}
+                </span>
+                <span className="text-[13px] font-semibold text-slate-50 sm:text-xs">
+                  {item.metricValue}
+                </span>
               </div>
-              <div className="flex items-center justify-between gap-2">
+              <div
+                data-vorta-mobile-secondary="true"
+                className="flex items-center justify-between gap-2"
+              >
                 <span className="text-xs text-slate-400">{item.extraLabel}</span>
                 <span className="text-xs font-semibold text-slate-50">{item.extraValue}</span>
               </div>
@@ -204,8 +226,17 @@ export function LabourRiskSection({
                   animate={index === 0}
                   ariaLabel={`${item.title} risk score ${item.displayScore}`}
                 />
-                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-[13px] leading-[18px] text-slate-400 sm:text-xs">
+                  {item.label}
+                </p>
               </div>
+              <span
+                data-vorta-mobile-card-action="true"
+                aria-hidden="true"
+                className="hidden rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 text-sm font-semibold text-blue-300"
+              >
+                Open details →
+              </span>
             </CardContent>
           </Card>
         ))}
