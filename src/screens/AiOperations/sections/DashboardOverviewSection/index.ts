@@ -8,6 +8,7 @@ import {
 import {
   MobileRiskScopeSelector,
 } from "./MobileRiskScopeSelector";
+import "./dashboardMobileFocus.css";
 
 export const DashboardOverviewSection = (): JSX.Element =>
   createElement(
