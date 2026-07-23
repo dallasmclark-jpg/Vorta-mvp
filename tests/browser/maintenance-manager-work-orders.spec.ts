@@ -28,11 +28,13 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   const equipmentId = equipmentRouteMatch?.[1] ?? "";
   await expectNoPageOverflow(page);
 
-  const mobileEquipmentSections = page.getByRole("combobox", {
-    name: "Equipment section",
-  });
+  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
 
-  if (await mobileEquipmentSections.isVisible()) {
+  if (isMobileEquipmentNavigation) {
+    const mobileEquipmentSections = page.getByRole("combobox", {
+      name: "Equipment section",
+    });
+    await expect(mobileEquipmentSections).toBeVisible();
     await expectOperationalTouchTarget(mobileEquipmentSections);
     await mobileEquipmentSections.selectOption("work-orders");
   } else {
