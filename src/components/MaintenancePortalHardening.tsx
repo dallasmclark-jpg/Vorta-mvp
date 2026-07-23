@@ -97,6 +97,19 @@ export function MaintenancePortalHardening(): JSX.Element {
         }
       }
 
+      @media (max-width: 639px) {
+        [data-vorta-dashboard-root="true"] button:not([aria-label^="Explain "]),
+        [data-vorta-dashboard-root="true"] [role="button"] {
+          min-height: 2.75rem;
+        }
+
+        [data-vorta-dashboard-root="true"] button[aria-label="User profile"] {
+          width: 2.75rem !important;
+          min-width: 2.75rem;
+          height: 2.75rem !important;
+        }
+      }
+
       @media (max-width: 420px) {
         [data-vorta-maintenance-portal="true"] {
           overflow-x: clip;
