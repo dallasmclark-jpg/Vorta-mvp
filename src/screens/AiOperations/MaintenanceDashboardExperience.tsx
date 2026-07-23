@@ -17,34 +17,43 @@ function resolveDashboardSection(
   root: HTMLElement,
   sectionKey: DashboardSectionKey,
 ): HTMLElement | null {
+  const sections = Array.from(root.getElementsByTagName("section"));
+
   if (sectionKey === "overview") {
-    return root.querySelector<HTMLElement>("section");
+    return sections[0] ?? null;
   }
 
   if (sectionKey === "labour") {
-    return root.querySelector<HTMLElement>(
-      '[data-vorta-dashboard-section="labour-risk"]',
+    return (
+      sections.find(
+        (section) => section.dataset.vortaDashboardSection === "labour-risk",
+      ) ?? null
     );
   }
 
   if (sectionKey === "trends") {
-    return root.querySelector<HTMLElement>(
-      '[aria-label="Risk reduction performance"]',
+    return (
+      sections.find(
+        (section) =>
+          section.getAttribute("aria-label") === "Risk reduction performance",
+      ) ?? null
     );
   }
 
   return (
-    Array.from(root.querySelectorAll<HTMLElement>("section")).find((section) => {
-      const heading = section.querySelector("h2")?.textContent?.trim().toLowerCase() ?? "";
+    sections.find((section) => {
+      const heading = section
+        .getElementsByTagName("h2")
+        .item(0)
+        ?.textContent?.trim()
+        .toLowerCase() ?? "";
       return heading.includes("plant area risk") || heading.includes("equipment risk");
     }) ?? null
   );
 }
 
 function scrollToDashboardSection(sectionKey: DashboardSectionKey): void {
-  const root = document.querySelector<HTMLElement>(
-    '[data-vorta-dashboard-root="true"]',
-  );
+  const root = document.getElementById("maintenance-dashboard-root");
   if (!root) return;
 
   const target = resolveDashboardSection(root, sectionKey);
@@ -82,7 +91,7 @@ function MobileDashboardSectionNav(): JSX.Element {
 
 export function MaintenanceDashboardExperience(): JSX.Element {
   return (
-    <div data-vorta-dashboard-root="true">
+    <div id="maintenance-dashboard-root" data-vorta-dashboard-root="true">
       <style>{`
         [data-vorta-dashboard-root="true"] [role="tab"] {
           min-height: 2.5rem;
