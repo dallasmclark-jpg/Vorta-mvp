@@ -192,26 +192,28 @@ export function EquipmentTabNavigation({
         })}
       </nav>
 
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 gap-2 border-t border-gray-800 bg-[#0b0e14]/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:hidden"
-        data-vorta-equipment-mobile-actions="true"
-      >
-        <button
-          type="button"
-          onClick={() => routeTo("work-orders")}
-          className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-700 bg-[#141820] px-4 text-sm font-semibold text-slate-100 transition-colors active:bg-gray-800"
+      {activeTab === "overview" ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 gap-2 border-t border-gray-800 bg-[#0b0e14]/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:hidden"
+          data-vorta-equipment-mobile-actions="true"
         >
-          Actions
-        </button>
-        <button
-          type="button"
-          onClick={() => routeTo("ai-insights")}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition-colors active:bg-blue-500"
-        >
-          <Sparkles className="h-4 w-4" aria-hidden="true" />
-          Ask Vorta
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => routeTo("work-orders")}
+            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-700 bg-[#141820] px-4 text-sm font-semibold text-slate-100 transition-colors active:bg-gray-800"
+          >
+            Actions
+          </button>
+          <button
+            type="button"
+            onClick={() => routeTo("ai-insights")}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition-colors active:bg-blue-500"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Ask Vorta
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
