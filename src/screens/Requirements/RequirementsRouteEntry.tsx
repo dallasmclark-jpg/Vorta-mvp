@@ -10,18 +10,12 @@ function MobileDemoRequirementsSection(): JSX.Element {
   return <MobileRequirementsSection dataMode="demo" />;
 }
 
-function MobileLiveRequirementsSection(): JSX.Element {
-  return <MobileRequirementsSection dataMode="live" />;
-}
-
 export const RequirementsRouteEntry = (): JSX.Element => {
   const isPhone = useMediaQuery("(max-width: 639px)");
   const DemoRequirementsSection = isPhone
     ? MobileDemoRequirementsSection
     : DesktopDemoRequirementsSection;
-  const LiveRequirementsSection = isPhone
-    ? MobileLiveRequirementsSection
-    : DesktopLiveRequirementsSection;
+  const LiveRequirementsSection = DesktopLiveRequirementsSection;
 
   return isLivePilotMode ? <LiveRequirementsSection /> : <DemoRequirementsSection />;
 };
