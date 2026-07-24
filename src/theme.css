@@ -1,0 +1,206 @@
+:root {
+  --vorta-page: #f8fafc;
+  --vorta-sidebar: #ffffff;
+  --vorta-surface: #ffffff;
+  --vorta-surface-subtle: #f1f5f9;
+  --vorta-border: #dbe3ee;
+  --vorta-border-strong: #cbd5e1;
+  --vorta-text: #0f172a;
+  --vorta-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+html.dark {
+  --vorta-page: #0b0e14;
+  --vorta-sidebar: #090b10;
+  --vorta-surface: #141820;
+  --vorta-surface-subtle: #10151d;
+  --vorta-border: #1f2937;
+  --vorta-border-strong: #334155;
+  --vorta-text: #f8fafc;
+  --vorta-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
+}
+
+html,
+body,
+#app {
+  background-color: var(--vorta-page);
+  color: var(--vorta-text);
+}
+
+html.light,
+html.light body,
+html.light #app {
+  background-color: var(--vorta-page) !important;
+  color: var(--vorta-text);
+  color-scheme: light;
+}
+
+html.dark body {
+  color-scheme: dark;
+}
+
+html.light ::selection {
+  background: rgba(59, 130, 246, 0.2);
+  color: #0f172a;
+}
+
+html.light [data-vorta-portal-shell="true"] {
+  background-color: var(--vorta-page) !important;
+  color: var(--vorta-text) !important;
+}
+
+html.light [data-vorta-sidebar="true"] {
+  border-color: var(--vorta-border) !important;
+  background-color: var(--vorta-sidebar) !important;
+  box-shadow: 10px 0 30px rgba(15, 23, 42, 0.04);
+}
+
+html.light [data-vorta-sidebar-tooltip="true"] {
+  border-color: var(--vorta-border-strong) !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: var(--vorta-shadow) !important;
+}
+
+html.light [data-vorta-sidebar-tooltip="true"] > span[aria-hidden="true"] {
+  border-color: var(--vorta-border-strong) !important;
+  background-color: #ffffff !important;
+}
+
+html.light svg[aria-label="Vorta"] path {
+  fill: #0f172a;
+}
+
+/* Convert only neutral dark surfaces. Operational risk colours retain their hue. */
+html.light [class*="bg-[#0"],
+html.light [class*="bg-[#1"],
+html.light :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/40"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/60"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/60"],
+  [class~="bg-slate-800/70"]
+) {
+  background-color: var(--vorta-surface) !important;
+}
+
+html.light :is(
+  [class~="bg-[#10151d]"],
+  [class~="bg-[#0d131b]"],
+  [class~="bg-slate-900/40"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/60"]
+) {
+  background-color: var(--vorta-surface-subtle) !important;
+}
+
+html.light :is([class~="text-slate-50"], [class~="text-slate-100"]) {
+  color: #0f172a !important;
+}
+
+html.light :is([class~="text-slate-200"], [class~="text-gray-100"], [class~="text-gray-200"]) {
+  color: #1e293b !important;
+}
+
+html.light :is([class~="text-slate-300"], [class~="text-gray-300"]) {
+  color: #334155 !important;
+}
+
+html.light :is([class~="text-slate-400"], [class~="text-gray-400"]) {
+  color: #475569 !important;
+}
+
+html.light :is(
+  [class~="text-slate-500"],
+  [class~="text-slate-600"],
+  [class~="text-gray-500"],
+  [class~="text-gray-600"]
+) {
+  color: #64748b !important;
+}
+
+html.light [class*="border-gray-8"],
+html.light [class*="border-slate-8"],
+html.light [class*="border-slate-7"] {
+  border-color: var(--vorta-border) !important;
+}
+
+html.light :is(input, select, textarea) {
+  color-scheme: light;
+}
+
+html.light :is(input, select, textarea)[class*="bg-[#"],
+html.light :is(input, select, textarea)[class*="bg-slate-"] {
+  border-color: var(--vorta-border-strong) !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light :is(input, textarea)::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.light :is(
+  [class~="hover:bg-white/5"],
+  [class~="hover:bg-white/[0.05]"],
+  [class~="hover:bg-white/[0.06]"],
+  [class~="hover:bg-white/10"]
+):hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light :is([class~="hover:text-slate-100"], [class~="hover:text-slate-200"]):hover {
+  color: #0f172a !important;
+}
+
+.vorta-theme-control {
+  left: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.vorta-theme-menu,
+.vorta-theme-trigger {
+  box-shadow: var(--vorta-shadow);
+}
+
+html.light .vorta-theme-menu,
+html.light .vorta-theme-trigger {
+  border-color: var(--vorta-border-strong) !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+}
+
+html.light .vorta-theme-trigger:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light .vorta-theme-trigger:focus-visible {
+  --tw-ring-offset-color: #f8fafc !important;
+}
+
+@media (min-width: 768px) {
+  .vorta-theme-control {
+    left: 4.5rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .vorta-theme-control {
+    left: 14.75rem;
+  }
+}
