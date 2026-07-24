@@ -1,8 +1,15 @@
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useAuth } from "../../lib/auth";
+import { getEffectiveDataMode } from "../../lib/dataTrust";
 import { LiveRequirementsSection } from "./LiveRequirementsSection";
+import { MobileRequirementsSection } from "./MobileRequirementsSection";
 import { RequirementsSection as DemoRequirementsSection } from "./RequirementsSection";
 
-const isLivePilotMode =
-  String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
+export const RequirementsRouteEntry = (): JSX.Element => {
+  const { siteContext } = useAuth();
+  const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
+  const isPhone = useMediaQuery("(max-width: 639px)");
 
-export const RequirementsRouteEntry = (): JSX.Element =>
-  isLivePilotMode ? <LiveRequirementsSection /> : <DemoRequirementsSection />;
+  if (isPhone) return <MobileRequirementsSection dataMode={dataMode} />;
+  return dataMode === "live" ? <LiveRequirementsSection /> : <DemoRequirementsSection />;
+};
