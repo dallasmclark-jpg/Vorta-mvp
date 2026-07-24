@@ -5,7 +5,6 @@ const password = process.env.VORTA_E2E_PASSWORD ?? "";
 
 async function signIn(page: Page): Promise<void> {
   expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -13,9 +12,9 @@ async function signIn(page: Page): Promise<void> {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.removeItem("vorta:appearance");
-  });
+  await page.goto("/");
+  await page.evaluate(() => window.localStorage.removeItem("vorta:appearance"));
+  await page.reload();
   await signIn(page);
 });
 
