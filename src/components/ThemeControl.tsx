@@ -42,7 +42,7 @@ const options: ThemeOption[] = [
   },
 ];
 
-const getServerSnapshot = (): ThemePreference => "system";
+const getServerSnapshot = (): ThemePreference => "dark";
 
 export function ThemeControl(): JSX.Element {
   const preference = useSyncExternalStore(
@@ -52,7 +52,7 @@ export function ThemeControl(): JSX.Element {
   );
   const [open, setOpen] = useState(false);
   const controlRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === preference) ?? options[2];
+  const selected = options.find((option) => option.value === preference) ?? options[1];
   const SelectedIcon = selected.icon;
 
   useEffect(() => {
