@@ -135,14 +135,6 @@ html.light [class*="border-slate-7"] {
   border-color: var(--vorta-border) !important;
 }
 
-html.light :is([class~="divide-gray-800"], [class~="divide-slate-800"], [class~="divide-slate-700"]) > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--vorta-border) !important;
-}
-
-html.light :is([class~="ring-slate-700"], [class~="ring-slate-800"]) {
-  --tw-ring-color: var(--vorta-border-strong) !important;
-}
-
 html.light :is(input, select, textarea) {
   color-scheme: light;
 }
@@ -174,18 +166,6 @@ html.light :is(
 
 html.light :is([class~="hover:text-slate-100"], [class~="hover:text-slate-200"]):hover {
   color: #0f172a !important;
-}
-
-html.light :is([class~="shadow-black/25"], [class~="shadow-black/40"], [class~="shadow-black/50"]) {
-  --tw-shadow-color: rgba(15, 23, 42, 0.14) !important;
-}
-
-html.light :is([class~="fill-slate-400"], [class~="fill-slate-500"], [class~="fill-slate-600"]) {
-  fill: #64748b !important;
-}
-
-html.light :is([class~="stroke-slate-700"], [class~="stroke-slate-800"]) {
-  stroke: #cbd5e1 !important;
 }
 
 .vorta-theme-control {
@@ -222,20 +202,5 @@ html.light .vorta-theme-trigger:focus-visible {
 @media (min-width: 1536px) {
   .vorta-theme-control {
     left: 14.75rem;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  html.theme-ready body,
-  html.theme-ready #app,
-  html.theme-ready [data-vorta-portal-shell="true"],
-  html.theme-ready [data-vorta-sidebar="true"] {
-    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
-  }
-}
-
-@media print {
-  .vorta-theme-control {
-    display: none !important;
   }
 }
