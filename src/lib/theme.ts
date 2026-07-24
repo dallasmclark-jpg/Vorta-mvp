@@ -5,18 +5,19 @@ const STORAGE_KEY = "vorta:appearance";
 const THEME_EVENT = "vorta:theme-change";
 const DARK_BACKGROUND = "#0b0e14";
 const LIGHT_BACKGROUND = "#f8fafc";
+const DEFAULT_PREFERENCE: ThemePreference = "dark";
 
 const isThemePreference = (value: string | null): value is ThemePreference =>
   value === "light" || value === "dark" || value === "system";
 
 function readStoredPreference(): ThemePreference {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return DEFAULT_PREFERENCE;
 
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return isThemePreference(stored) ? stored : "system";
+    return isThemePreference(stored) ? stored : DEFAULT_PREFERENCE;
   } catch {
-    return "system";
+    return DEFAULT_PREFERENCE;
   }
 }
 
@@ -95,7 +96,9 @@ export function setThemePreference(preference: ThemePreference): void {
 
 export function subscribeTheme(subscriber: () => void): () => void {
   subscribers.add(subscriber);
-  return () => subscribers.delete(subscriber);
+  return () => {
+    subscribers.delete(subscriber);
+  };
 }
 
 export function initialiseTheme(): void {
@@ -116,7 +119,9 @@ if (typeof window !== "undefined") {
 
   window.addEventListener("storage", (event) => {
     if (event.key !== STORAGE_KEY) return;
-    const preference = isThemePreference(event.newValue) ? event.newValue : "system";
+    const preference = isThemePreference(event.newValue)
+      ? event.newValue
+      : DEFAULT_PREFERENCE;
     applyTheme(preference);
     emitChange();
   });
