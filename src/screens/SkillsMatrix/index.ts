@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
@@ -9,9 +10,7 @@ export function SkillsMatrixSection(): JSX.Element {
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const isPhone = useMediaQuery("(max-width: 639px)");
 
-  return isPhone && dataMode === "demo" ? (
-    <MobileSkillsMatrix dataMode={dataMode} />
-  ) : (
-    <NativeSkillsMatrixSection />
-  );
+  return isPhone && dataMode === "demo"
+    ? createElement(MobileSkillsMatrix, { dataMode })
+    : createElement(NativeSkillsMatrixSection);
 }
