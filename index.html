@@ -13,13 +13,13 @@
     (() => {
       const storageKey = "vorta:appearance";
       const valid = new Set(["light", "dark", "system"]);
-      let preference = "system";
+      let preference = "dark";
 
       try {
         const stored = localStorage.getItem(storageKey);
         if (valid.has(stored)) preference = stored;
       } catch {
-        preference = "system";
+        preference = "dark";
       }
 
       const resolved = preference === "system"
