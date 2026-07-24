@@ -1,12 +1,18 @@
 import { DemoSimulationBanner } from "../../components/DemoSimulationBanner";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useAuth } from "../../lib/auth";
+import { getEffectiveDataMode } from "../../lib/dataTrust";
 import { LiveTrainingSection } from "./LiveTrainingSection";
+import { MobileTrainingSection } from "./MobileTrainingSection";
 import { TrainingSection as DemoTrainingSection } from "./TrainingSection";
 
-const isLivePilotMode =
-  String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
-
 export function TrainingRouteEntry(): JSX.Element {
-  if (isLivePilotMode) return <LiveTrainingSection />;
+  const { siteContext } = useAuth();
+  const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
+  const isPhone = useMediaQuery("(max-width: 639px)");
+
+  if (isPhone) return <MobileTrainingSection dataMode={dataMode} />;
+  if (dataMode === "live") return <LiveTrainingSection />;
 
   return (
     <>
