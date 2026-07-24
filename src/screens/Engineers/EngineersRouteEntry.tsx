@@ -9,10 +9,6 @@ function MobileDemoEngineersSection(): JSX.Element {
   return <MobileEngineersSection dataMode="demo" />;
 }
 
-function MobileLiveEngineersSection(): JSX.Element {
-  return <MobileEngineersSection dataMode="live" />;
-}
-
 export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
@@ -20,9 +16,7 @@ export function EngineersRouteEntry(): JSX.Element {
   const DemoEngineersSection = isPhone
     ? MobileDemoEngineersSection
     : DesktopDemoEngineersSection;
-  const LiveEngineersSection = isPhone
-    ? MobileLiveEngineersSection
-    : DesktopLiveEngineersSection;
+  const LiveEngineersSection = DesktopLiveEngineersSection;
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>
