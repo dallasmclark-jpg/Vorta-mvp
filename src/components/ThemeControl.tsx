@@ -3,22 +3,20 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ComponentType,
 } from "react";
-import { Check, Monitor, Moon, Sun, type LucideProps } from "lucide-react";
+import { Check, Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import {
   getThemePreference,
   setThemePreference,
   subscribeTheme,
   type ThemePreference,
 } from "../lib/theme";
-import "../theme.css";
 
 interface ThemeOption {
   value: ThemePreference;
   label: string;
   description: string;
-  icon: ComponentType<LucideProps>;
+  icon: LucideIcon;
 }
 
 const options: ThemeOption[] = [
@@ -116,7 +114,7 @@ export function ThemeControl(): JSX.Element {
                   }}
                   className={`flex min-h-14 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
                     active
-                      ? "bg-blue-500/12 text-blue-300"
+                      ? "bg-blue-500/10 text-blue-300"
                       : "text-slate-300 hover:bg-white/[0.06] hover:text-slate-100"
                   }`}
                 >
