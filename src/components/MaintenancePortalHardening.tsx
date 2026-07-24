@@ -50,6 +50,28 @@ export function MaintenancePortalHardening(): JSX.Element {
         max-height: calc(100dvh - 1rem);
       }
 
+      [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+        button[aria-label="Ask Vorta AI"] {
+        width: 3rem !important;
+        min-width: 3rem !important;
+        max-width: 3rem !important;
+        height: 3rem !important;
+        min-height: 3rem !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        overflow: hidden !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+        opacity: 0.92;
+      }
+
+      [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+        button[aria-label="Ask Vorta AI"] svg {
+        width: 1.125rem !important;
+        height: 1.125rem !important;
+        flex: none !important;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         [data-vorta-maintenance-portal="true"] *,
         [data-vorta-maintenance-portal="true"] *::before,
@@ -119,6 +141,17 @@ export function MaintenancePortalHardening(): JSX.Element {
           width: calc(100vw - 0.75rem) !important;
           max-width: calc(100vw - 0.75rem) !important;
           margin-inline: auto;
+        }
+
+        [data-vorta-maintenance-portal="true"][data-vorta-skills-preview-active="true"]
+          button[aria-label="Ask Vorta AI"] {
+          right: 0.75rem !important;
+          bottom: 0.75rem !important;
+        }
+
+        [data-vorta-skills-preview="core-asset"] [data-vorta-mobile-asset-list],
+        [data-vorta-skills-preview="core-asset"] [data-vorta-mobile-asset-detail] {
+          scroll-padding-bottom: 4rem;
         }
       }
 

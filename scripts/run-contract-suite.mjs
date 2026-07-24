@@ -13,6 +13,7 @@ const contracts = [
   ["Requirements live evidence", "scripts/requirements-live-evidence-contracts.mjs"],
   ["Engineers live evidence", "scripts/engineers-live-evidence-contracts.mjs"],
   ["Skills Matrix", "scripts/skills-matrix-contracts.mjs"],
+  ["Skills Matrix core and asset preview", "scripts/skills-matrix-core-asset-preview-contracts.mjs"],
   ["Read-only training workflows", "scripts/read-only-training-workflow-contracts.mjs"],
   ["Live Career, Support and Settings", "scripts/live-career-support-settings-contracts.mjs"],
   ["Pilot release security", "scripts/pilot-release-security-contracts.mjs"],
