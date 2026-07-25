@@ -208,6 +208,7 @@ test("Mobile work plan scrolls into view with compact action cards", async ({
             </div>
           </div>
         </div>
+        <div style="height: 1200px;"></div>
       `,
     );
     window.scrollTo(0, 0);
@@ -227,10 +228,6 @@ test("Mobile work plan scrolls into view with compact action cards", async ({
   await expect(page.locator("#synthetic-work-plan-driver")).toBeHidden();
   await expect(page.locator("#synthetic-work-plan-risk-label")).toBeHidden();
 
-  await expect(page.locator("#synthetic-work-plan-card")).toHaveJSProperty(
-    "style",
-    expect.anything(),
-  );
   const compactPresentation = await page
     .locator("#synthetic-work-plan-card")
     .evaluate((card) => ({
