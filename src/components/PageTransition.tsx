@@ -7,13 +7,14 @@ interface PageTransitionProps {
 
 export const PageTransition = ({ children }: PageTransitionProps): JSX.Element => {
   const { pathname } = useLocation();
+  const isSettingsPage = pathname.split("/").includes("settings");
 
   return (
     <>
       <div key={pathname} className="min-w-0 w-full max-w-full overflow-x-hidden">
         {children}
       </div>
-      <ThemeControl />
+      {isSettingsPage ? <ThemeControl /> : null}
     </>
   );
 };
