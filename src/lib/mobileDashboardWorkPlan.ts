@@ -57,32 +57,36 @@ export const installMobileDashboardWorkPlan = (): void => {
     "true",
   );
 
-  document.addEventListener("click", (event) => {
-    if (!window.matchMedia(PHONE_VIEWPORT_QUERY).matches) {
-      return;
-    }
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!window.matchMedia(PHONE_VIEWPORT_QUERY).matches) {
+        return;
+      }
 
-    const target =
-      event.target instanceof Element
-        ? event.target.closest("button")
-        : null;
+      const target =
+        event.target instanceof Element
+          ? event.target.closest("button")
+          : null;
 
-    if (!(target instanceof HTMLButtonElement)) {
-      return;
-    }
+      if (!(target instanceof HTMLButtonElement)) {
+        return;
+      }
 
-    const isOpeningWorkPlan =
-      target.getAttribute("aria-expanded") === "false" &&
-      normalizeButtonLabel(target) === "View work plan";
+      const isOpeningWorkPlan =
+        target.getAttribute("aria-expanded") === "false" &&
+        normalizeButtonLabel(target) === "View work plan";
 
-    if (!isOpeningWorkPlan) {
-      return;
-    }
+      if (!isOpeningWorkPlan) {
+        return;
+      }
 
-    const summary = getWorkPlanSummary(target);
+      const summary = getWorkPlanSummary(target);
 
-    if (summary) {
-      scrollToExpandedWorkPlan(summary);
-    }
-  });
+      if (summary) {
+        scrollToExpandedWorkPlan(summary);
+      }
+    },
+    { capture: true },
+  );
 };
