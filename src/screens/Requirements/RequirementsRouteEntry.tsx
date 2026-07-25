@@ -1,7 +1,7 @@
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { LiveRequirementsSection as DesktopLiveRequirementsSection } from "./LiveRequirementsSection";
+import { LiveRequirementsSection } from "./LiveRequirementsSection";
 import { MobileRequirementsSection } from "./MobileRequirementsSection";
-import { RequirementsSection as DesktopDemoRequirementsSection } from "./RequirementsSection";
+import { RequirementsSection as DemoRequirementsSection } from "./RequirementsSection";
 
 const isLivePilotMode =
   String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
@@ -13,5 +13,5 @@ export const RequirementsRouteEntry = (): JSX.Element => {
     return <MobileRequirementsSection dataMode={isLivePilotMode ? "live" : "demo"} />;
   }
 
-  return isLivePilotMode ? <DesktopLiveRequirementsSection /> : <DesktopDemoRequirementsSection />;
+  return isLivePilotMode ? <LiveRequirementsSection /> : <DemoRequirementsSection />;
 };
