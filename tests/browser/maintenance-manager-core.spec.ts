@@ -11,11 +11,23 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
 }) => {
   await signInMaintenanceManager(page);
 
-  await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
-  await expect(page.locator("[data-vorta-data-mode]")).toBeVisible();
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  const isPhone = viewportWidth < 640;
+  const dashboardHeading = page.getByRole("heading", {
+    name: "Operations Overview",
+    includeHidden: true,
+  });
+  const dataModeBanner = page.locator("[data-vorta-data-mode]");
+
+  if (isPhone) {
+    await expect(dashboardHeading).toBeHidden();
+    await expect(dataModeBanner).toBeHidden();
+  } else {
+    await expect(dashboardHeading).toBeVisible();
+    await expect(dataModeBanner).toBeVisible();
+  }
   await expectNoPageOverflow(page);
 
-  const viewportWidth = page.viewportSize()?.width ?? 1366;
   if (viewportWidth === 1366) {
     await verifyCrossSiteIsolation(page);
   }
@@ -85,7 +97,11 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   await expectNoPageOverflow(page);
 
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
+  if (isPhone) {
+    await expect(dashboardHeading).toBeHidden();
+  } else {
+    await expect(dashboardHeading).toBeVisible();
+  }
   await expect(
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
   ).toBeHidden();
