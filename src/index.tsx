@@ -24,6 +24,9 @@ import {
   installFrontendErrorTelemetry,
 } from "./lib/frontendErrorTelemetry";
 import {
+  installMobileDashboardWorkPlan,
+} from "./lib/mobileDashboardWorkPlan";
+import {
   supabaseConfigurationError,
 } from "./lib/supabaseClient";
 
@@ -149,6 +152,8 @@ const MaintenancePlanner = lazy(() =>
     }),
   ),
 );
+
+installMobileDashboardWorkPlan();
 
 const appElement =
   document.getElementById(
