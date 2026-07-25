@@ -371,6 +371,42 @@ const getRiskKpiExplanation = (
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
+  const [
+    isPhoneViewport,
+    setIsPhoneViewport,
+  ] = useState(() =>
+    window.matchMedia(
+      "(max-width: 639px)",
+    ).matches,
+  );
+
+  useEffect(() => {
+    const phoneViewportQuery =
+      window.matchMedia(
+        "(max-width: 639px)",
+      );
+
+    const handlePhoneViewportChange = (
+      event: MediaQueryListEvent,
+    ) => {
+      setIsPhoneViewport(
+        event.matches,
+      );
+    };
+
+    phoneViewportQuery.addEventListener(
+      "change",
+      handlePhoneViewportChange,
+    );
+
+    return () => {
+      phoneViewportQuery.removeEventListener(
+        "change",
+        handlePhoneViewportChange,
+      );
+    };
+  }, []);
+
   const riskKpiGridRef =
     useRef<HTMLDivElement>(null);
 
@@ -1287,14 +1323,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Card header */}
             <header className="grid gap-4 lg:grid-cols-[minmax(180px,0.55fr)_minmax(360px,1.45fr)_auto] lg:items-end">
               <div className="flex flex-col gap-1.5">
-                <Badge className="w-fit rounded bg-[#ef444420] px-2 py-1 text-xs font-semibold tracking-wider text-red-400 hover:bg-[#ef444420]">
+                <Badge
+                  data-vorta-risk-intelligence-label="true"
+                  hidden={isPhoneViewport}
+                  className="w-fit rounded bg-[#ef444420] px-2 py-1 text-xs font-semibold tracking-wider text-red-400 hover:bg-[#ef444420]"
+                >
                   RISK INTELLIGENCE
                 </Badge>
 
                 <h2 className="text-base font-semibold text-slate-50">
-                  {isSiteRiskScope
-                    ? "Site Risk Briefing"
-                    : `${activeScopeLabel} Risk Briefing`}
+                  {isPhoneViewport
+                    ? "Today's Risk"
+                    : isSiteRiskScope
+                      ? "Site Risk Briefing"
+                      : `${activeScopeLabel} Risk Briefing`}
                 </h2>
               </div>
 
@@ -1411,7 +1453,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
             {/* Priority action summary */}
             <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 flex-col gap-1">
+              <div
+                data-vorta-work-plan-summary="true"
+                hidden={isPhoneViewport}
+                className="flex min-w-0 flex-col gap-1"
+              >
                 <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
                   {isSiteRiskScope
                     ? "TODAY'S SITE RISK REDUCTION PLAN"
