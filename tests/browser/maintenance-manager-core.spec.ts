@@ -85,6 +85,21 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(standaloneAskButton).toBeHidden();
 
     const aiInput = embeddedAi.locator('input[type="text"]').first();
+    await aiInput.focus();
+    const focusedInputPresentation = await aiInput.evaluate((input) => {
+      const styles = window.getComputedStyle(input);
+      return {
+        outlineStyle: styles.outlineStyle,
+        outlineWidth: styles.outlineWidth,
+        boxShadow: styles.boxShadow,
+      };
+    });
+    expect(focusedInputPresentation).toEqual({
+      outlineStyle: "none",
+      outlineWidth: "0px",
+      boxShadow: "none",
+    });
+
     await aiInput.fill("What needs attention today?");
     await aiInput.press("Enter");
 
