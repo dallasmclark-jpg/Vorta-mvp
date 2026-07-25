@@ -39,6 +39,7 @@ const evidenceCoverage = read(
 const equipmentList = read(
   "src/screens/Equipment/EquipmentLiveListEntry.tsx",
 );
+const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 
 for (const requiredPath of [
@@ -99,7 +100,9 @@ assert.match(equipmentList, /type RiskFilter = "all" \| "high" \| "overdue" \| "
 assert.match(equipmentList, /Evidence unavailable/);
 assert.match(equipmentList, /Risk and backlog records remain available/);
 assert.match(equipmentList, /Complete path/);
-assert.match(equipmentIndex, /EquipmentLiveListEntry as EquipmentSection/);
+assert.match(equipmentIndex, /EquipmentRouteEntry as EquipmentSection/);
+assert.match(equipmentRoute, /EquipmentLiveListEntry/);
+assert.match(equipmentRoute, /MobileEquipmentSection/);
 assert.doesNotMatch(equipmentIndex, /EquipmentSectionEntry as EquipmentSection/);
 
 assert.match(backendHealth, /private\.vorta_get_demo_backend_health_internal/);
