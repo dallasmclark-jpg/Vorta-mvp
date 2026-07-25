@@ -22,6 +22,9 @@ test("appearance control switches theme and persists the chosen mode", async ({ 
   const root = page.locator("html");
   const trigger = page.getByRole("button", { name: "Appearance: Dark", exact: true });
 
+  await expect(trigger).toBeHidden();
+  await page.goto("/settings");
+  await page.waitForURL(/\/settings(?:\?.*)?$/);
   await expect(trigger).toBeVisible();
   await expect(root).toHaveClass(/dark/);
 
@@ -60,10 +63,17 @@ test("appearance control switches theme and persists the chosen mode", async ({ 
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem("vorta:appearance"))).toBe("light");
 
   await page.reload();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
+  await page.waitForURL(/\/settings(?:\?.*)?$/);
   await expect(root).toHaveClass(/light/);
   await expect(page.getByRole("button", { name: "Appearance: Light", exact: true })).toBeVisible();
 
+  await page.goto("/dashboard");
+  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
+  await expect(page.getByRole("button", { name: "Appearance: Light", exact: true })).toBeHidden();
+  await expect(root).toHaveClass(/light/);
+
+  await page.goto("/settings");
+  await page.waitForURL(/\/settings(?:\?.*)?$/);
   await page.getByRole("button", { name: "Appearance: Light", exact: true }).click();
   await page.getByRole("menuitemradio", { name: /^System/ }).click();
 
