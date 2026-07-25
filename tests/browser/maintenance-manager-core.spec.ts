@@ -26,6 +26,34 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(dashboardHeading).toBeVisible();
     await expect(dataModeBanner).toBeVisible();
   }
+
+  const riskIntelligenceLabel = page.locator(
+    '[data-vorta-risk-intelligence-label="true"]',
+  );
+  const workPlanSummary = page.locator(
+    '[data-vorta-work-plan-summary="true"]',
+  );
+
+  if (isPhone) {
+    await expect(riskIntelligenceLabel).toBeHidden();
+    await expect(workPlanSummary).toBeHidden();
+    await expect(
+      page.getByRole("heading", {
+        name: "Today's Risk",
+        exact: true,
+      }),
+    ).toBeVisible();
+  } else {
+    await expect(riskIntelligenceLabel).toBeVisible();
+    await expect(workPlanSummary).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Site Risk Briefing",
+        exact: true,
+      }),
+    ).toBeVisible();
+  }
+
   await expectNoPageOverflow(page);
 
   if (viewportWidth === 1366) {
