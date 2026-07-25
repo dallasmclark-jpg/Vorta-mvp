@@ -371,6 +371,42 @@ const getRiskKpiExplanation = (
 export const DashboardOverviewSection = (): JSX.Element => {
   const navigate = useNavigate();
 
+  const [
+    isPhoneViewport,
+    setIsPhoneViewport,
+  ] = useState(() =>
+    window.matchMedia(
+      "(max-width: 639px)",
+    ).matches,
+  );
+
+  useEffect(() => {
+    const phoneViewportQuery =
+      window.matchMedia(
+        "(max-width: 639px)",
+      );
+
+    const handlePhoneViewportChange = (
+      event: MediaQueryListEvent,
+    ) => {
+      setIsPhoneViewport(
+        event.matches,
+      );
+    };
+
+    phoneViewportQuery.addEventListener(
+      "change",
+      handlePhoneViewportChange,
+    );
+
+    return () => {
+      phoneViewportQuery.removeEventListener(
+        "change",
+        handlePhoneViewportChange,
+      );
+    };
+  }, []);
+
   const riskKpiGridRef =
     useRef<HTMLDivElement>(null);
 
@@ -1671,7 +1707,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <div>
                       <div
                         data-vorta-work-plan-header="true"
-                        className="mb-3 hidden items-center justify-between sm:flex"
+                        hidden={isPhoneViewport}
+                        className="mb-3 flex items-center justify-between"
                       >
                         <div>
                           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -1735,7 +1772,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               >
                                 <span
                                   data-vorta-work-plan-rank="true"
-                                  className="hidden h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300 sm:flex"
+                                  hidden={isPhoneViewport}
+                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300"
                                 >
                                   {index + 1}
                                 </span>
@@ -1756,7 +1794,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                                   <div
                                     data-vorta-work-plan-metadata="true"
-                                    className="mt-1.5 hidden flex-wrap gap-1.5 sm:flex"
+                                    hidden={isPhoneViewport}
+                                    className="mt-1.5 flex flex-wrap gap-1.5"
                                   >
                                     {workOrder && (
                                       <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-300">
@@ -1792,7 +1831,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 >
                                   <p
                                     data-vorta-work-plan-risk-label="true"
-                                    className="hidden text-[11px] font-medium uppercase tracking-wider text-slate-500 sm:block"
+                                    hidden={isPhoneViewport}
+                                    className="text-[11px] font-medium uppercase tracking-wider text-slate-500"
                                   >
                                     Asset risk
                                   </p>
@@ -1801,7 +1841,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   </p>
                                   <p
                                     data-vorta-work-plan-projected-score="true"
-                                    className="hidden text-xs text-slate-500 sm:block"
+                                    hidden={isPhoneViewport}
+                                    className="text-xs text-slate-500"
                                   >
                                     to {action.projectedScore}
                                   </p>
