@@ -4,6 +4,7 @@ import { AlertTriangle, Brain, Camera, Copy, ExternalLink, FileText, Image as Im
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { Select } from "../../components/Select";
 import {
   getVisualDiagnosticCases,
   matchVisualDiagnostic,
@@ -1078,20 +1079,19 @@ export function EquipmentKnowledgeAssistant({ equipmentId, summary }: EquipmentK
 
           {visualCases.length > 0 && (
             <div className="mb-2">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 Demo fallback case
-              </label>
-              <select
+              </span>
+              <Select
                 value={selectedCaseId}
-                onChange={(event) => handleSelectVisualCase(event.target.value)}
-                className="w-full rounded-md border border-gray-700 bg-[#141820] px-2 py-1.5 text-[11px] text-slate-200 focus:border-blue-500/50 focus:outline-none"
-              >
-                {visualCases.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
+                onChange={handleSelectVisualCase}
+                options={visualCases.map((item) => ({
+                  value: item.id,
+                  label: item.title,
+                }))}
+                placeholder="Demo fallback case"
+                className="h-10 w-full"
+              />
             </div>
           )}
 
