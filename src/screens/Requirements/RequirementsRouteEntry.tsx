@@ -6,16 +6,12 @@ import { RequirementsSection as DesktopDemoRequirementsSection } from "./Require
 const isLivePilotMode =
   String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
 
-function MobileDemoRequirementsSection(): JSX.Element {
-  return <MobileRequirementsSection dataMode="demo" />;
-}
-
 export const RequirementsRouteEntry = (): JSX.Element => {
   const isPhone = useMediaQuery("(max-width: 639px)");
-  const DemoRequirementsSection = isPhone
-    ? MobileDemoRequirementsSection
-    : DesktopDemoRequirementsSection;
-  const LiveRequirementsSection = DesktopLiveRequirementsSection;
 
-  return isLivePilotMode ? <LiveRequirementsSection /> : <DemoRequirementsSection />;
+  if (isPhone) {
+    return <MobileRequirementsSection dataMode={isLivePilotMode ? "live" : "demo"} />;
+  }
+
+  return isLivePilotMode ? <DesktopLiveRequirementsSection /> : <DesktopDemoRequirementsSection />;
 };
