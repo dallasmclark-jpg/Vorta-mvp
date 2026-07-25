@@ -249,6 +249,7 @@ jobs:
             tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
             tests/browser/maintenance-manager-live-training-evidence.spec.ts \
             tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
+            --project=desktop-1920 \
             --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
 
       - name: Preserve live Maintenance Manager regression evidence
