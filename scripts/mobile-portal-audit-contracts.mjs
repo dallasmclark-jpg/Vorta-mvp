@@ -94,7 +94,7 @@ check(
 );
 
 check(
-  pageTransition.includes("data-vorta-mobile-page-title") &&
+  pageTransition.includes("vortaMobilePageTitle") &&
     pageTransition.includes("mobileRouteLabel") &&
     mobileHardening.includes("data-vorta-mobile-page-title"),
   "The mobile shell must retain active-page context after scrolling.",
