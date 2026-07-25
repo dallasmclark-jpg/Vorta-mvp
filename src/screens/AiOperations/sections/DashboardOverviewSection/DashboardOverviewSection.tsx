@@ -1487,7 +1487,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
             {/* Priority action summary */}
             <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 flex-col gap-1">
+              <div
+                data-vorta-work-plan-summary="true"
+                hidden={isPhoneViewport}
+                className="flex min-w-0 flex-col gap-1"
+              >
                 <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
                   {isSiteRiskScope
                     ? "TODAY'S SITE RISK REDUCTION PLAN"
