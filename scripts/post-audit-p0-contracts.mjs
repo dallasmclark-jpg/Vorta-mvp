@@ -192,6 +192,7 @@ assert.match(
 );
 assert.match(playwright, /dependencies: \["auth-setup"\]/);
 assert.match(playwright, /storageState: maintenanceManagerAuthState/);
+assert.match(playwright, /maxFailures: process\.env\.CI \? 1 : undefined/);
 assert.match(authSetup, /storageState\(\{ path: maintenanceManagerAuthState \}\)/);
 
 assert.doesNotMatch(netlify, /netlify-release-gate/);
