@@ -25,6 +25,8 @@ const [
   validateMode,
   releaseGate,
   qualityWorkflow,
+  playwright,
+  authSetup,
 ] = await Promise.all([
   read("src/lib/dataTrust.ts"),
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
@@ -54,6 +56,8 @@ const [
   read("scripts/validate-data-mode.mjs"),
   read("scripts/netlify-release-gate.mjs"),
   read(".github/workflows/maintenance-manager-quality.yml"),
+  read("playwright.config.ts"),
+  read("tests/browser/maintenance-manager-auth.setup.ts"),
 ]);
 
 assert.match(
@@ -186,6 +190,9 @@ assert.match(
   /tests\/browser\/maintenance-manager-live-boundary-evidence\.spec\.ts\s*\\\n\s*--project=desktop-1920/,
   "Live evidence tests must run once on desktop instead of multiplying authenticated requests across every viewport.",
 );
+assert.match(playwright, /dependencies: \["auth-setup"\]/);
+assert.match(playwright, /storageState: maintenanceManagerAuthState/);
+assert.match(authSetup, /storageState\(\{ path: maintenanceManagerAuthState \}\)/);
 
 assert.doesNotMatch(netlify, /netlify-release-gate/);
 assert.match(netlify, /node scripts\/validate-data-mode\.mjs && npm run build/);
