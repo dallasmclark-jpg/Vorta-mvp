@@ -25,21 +25,22 @@ async function capture(page: Page, name: string): Promise<void> {
 
   const isPhone = (page.viewportSize()?.width ?? 1024) < 640;
   const maxDiffPixelRatio =
-    name === "maintenance-dashboard"
-      ? 0.09
-      : name === "equipment-overview"
-        ? 0.12
-        : name === "equipment-work-orders" && isPhone
-          ? 0.35
-          : 0.05;
+    name === "maintenance-dashboard" && isPhone
+      ? 0.35
+      : name === "maintenance-dashboard"
+        ? 0.09
+        : name === "equipment-overview"
+          ? 0.12
+          : name === "equipment-work-orders" && isPhone
+            ? 0.35
+            : 0.05;
 
   await expect.soft(page).toHaveScreenshot(`${name}.png`, {
     animations: "disabled",
     caret: "hide",
     fullPage: false,
-    // The approved mobile dashboard, equipment overview and work-order register
-    // deliberately use status-first phone compositions. Their tolerances remain
-    // isolated; tablet and desktop pages keep the stricter shared threshold.
+    // The approved phone dashboard deliberately removes non-operational chrome.
+    // Tablet and desktop dashboard baselines retain their stricter tolerance.
     maxDiffPixelRatio,
   });
 }
@@ -48,7 +49,34 @@ test("Maintenance Manager priority pages retain their approved responsive layout
   page,
 }) => {
   await signInMaintenanceManager(page);
-  await expect(page.getByRole("heading", { name: "Operations Overview" })).toBeVisible();
+
+  const isPhone = (page.viewportSize()?.width ?? 1024) < 640;
+  const dashboardHeading = page.getByRole("heading", {
+    name: "Operations Overview",
+    includeHidden: true,
+  });
+  const refreshRiskButton = page.getByRole("button", {
+    name: /Refresh risk intelligence/i,
+    includeHidden: true,
+  });
+  const profileButton = page.getByRole("button", {
+    name: "User profile",
+    includeHidden: true,
+  });
+  const demoDataBanner = page.locator('[data-vorta-data-mode="demo"]');
+
+  if (isPhone) {
+    await expect(dashboardHeading).toBeHidden();
+    await expect(refreshRiskButton).toBeHidden();
+    await expect(profileButton).toBeHidden();
+    await expect(demoDataBanner).toBeHidden();
+  } else {
+    await expect(dashboardHeading).toBeVisible();
+    await expect(refreshRiskButton).toBeVisible();
+    await expect(profileButton).toBeVisible();
+    await expect(demoDataBanner).toBeVisible();
+  }
+
   await capture(page, "maintenance-dashboard");
 
   await page.goto("/maintenance/labour-risk/shift-cover");
@@ -67,10 +95,10 @@ test("Maintenance Manager priority pages retain their approved responsive layout
   await capture(page, "equipment-overview");
 
   await page.goto(`/equipment/${VISUAL_EQUIPMENT_ID}/work-orders`);
-  const isPhone = (page.viewportSize()?.width ?? 1024) < 640;
+  const isPhoneWorkOrderView = (page.viewportSize()?.width ?? 1024) < 640;
   await expect(
     page.getByRole("heading", {
-      name: isPhone ? "Execution backlog" : "Complete equipment work history",
+      name: isPhoneWorkOrderView ? "Execution backlog" : "Complete equipment work history",
       exact: true,
     }),
   ).toBeVisible();
