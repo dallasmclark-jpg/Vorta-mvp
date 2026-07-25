@@ -46,7 +46,7 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
   await expect(staleNotice).toBeVisible();
   await expect(staleNotice).toContainText(/last successful snapshot/i);
   await expect(staleNotice).toContainText(/projected actions are disabled/i);
-  await expect(siteRiskHeading).toBeVisible();
+  await expect(riskBriefingLabel).toBeVisible();
 
   const workPlanButton = page.getByRole("button", {
     name: "View work plan",
