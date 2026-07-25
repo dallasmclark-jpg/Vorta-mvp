@@ -17,10 +17,47 @@ const getWorkPlanSummary = (
     : null;
 };
 
+const simplifyMobileWorkPlanCard = (
+  card: HTMLElement,
+): void => {
+  card.style.alignItems = "flex-start";
+  card.style.gap = "0.625rem";
+  card.style.padding = "0.75rem";
+
+  card
+    .querySelectorAll<HTMLElement>(
+      ":scope > div.min-w-0 > div:first-child > :not(p), :scope > div:last-child > p:first-child",
+    )
+    .forEach((element) => {
+      element.hidden = true;
+    });
+
+  const title = card.querySelector<HTMLElement>(
+    ":scope > div.min-w-0 > div:first-child > p",
+  );
+
+  if (title) {
+    title.style.display = "-webkit-box";
+    title.style.overflow = "hidden";
+    title.style.lineHeight = "1.2rem";
+    title.style.setProperty("-webkit-box-orient", "vertical");
+    title.style.setProperty("-webkit-line-clamp", "2");
+  }
+
+  const metadata = card.querySelector<HTMLElement>(
+    ":scope > div.min-w-0 > div:nth-child(2)",
+  );
+
+  if (metadata) {
+    metadata.style.marginTop = "0.375rem";
+    metadata.style.gap = "0.375rem";
+  }
+};
+
 const prepareMobileWorkPlan = (
   panel: HTMLElement,
 ): void => {
-  panel.dataset.vortaMobileWorkPlan = "true";
+  panel.style.scrollMarginTop = "5.5rem";
 
   const content = panel.querySelector<HTMLElement>(
     ":scope > div.flex.flex-col.gap-5",
@@ -31,14 +68,17 @@ const prepareMobileWorkPlan = (
     return;
   }
 
-  queueSection.dataset.vortaMobileWorkPlanQueue = "true";
+  const queueHeading = queueSection.firstElementChild;
+
+  if (queueHeading instanceof HTMLElement) {
+    queueHeading.hidden = true;
+  }
+
   queueSection
     .querySelectorAll<HTMLElement>(
       ":scope > div.flex.flex-col.gap-2 > button",
     )
-    .forEach((card) => {
-      card.dataset.vortaMobileWorkPlanCard = "true";
-    });
+    .forEach(simplifyMobileWorkPlanCard);
 };
 
 const scrollToExpandedWorkPlan = (
