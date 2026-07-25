@@ -97,9 +97,8 @@ check(
     mobileDashboardStyles.includes("min-height: 4.25rem") &&
     mobileDashboardStyles.includes("min-height: 4.625rem") &&
     mobileDashboardStyles.includes("border-width: 0 !important") &&
-    mobileDashboardStyles.includes(
-      'button[aria-label="Add attachment or context"]',
-    ) &&
+    mobileDashboardStyles.includes("svg.lucide-bot") &&
+    mobileDashboardStyles.includes("padding-inline: 0.25rem !important") &&
     mobileDashboardStyles.includes("font-size: 0.75rem !important"),
   "Phone dashboard must retain the compact briefing, tab overflow cue, unclipped Ask Vorta input and simplified work-plan hierarchy.",
 );
