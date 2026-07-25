@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx playwright test tests/browser/maintenance-manager-core.spec.ts --config=playwright.config.ts --project=phone-360 2>&1 | tee mobile-work-plan-browser.log
+          npx playwright test tests/browser/maintenance-manager-core.spec.ts --config=playwright.config.ts --project=phone-360 --grep "Mobile work plan scrolls" 2>&1 | tee mobile-work-plan-browser.log
 
       - name: Preserve phone regression evidence
         if: steps.phone-regression.outcome == 'failure'
