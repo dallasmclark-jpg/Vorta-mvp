@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
+import { Select } from "../../components/Select";
 import { EquipmentSection } from "./EquipmentSection";
 import {
   loadEquipmentEvidenceCoverage,
@@ -279,40 +280,45 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
             />
           </label>
-          <label className="sr-only" htmlFor="equipment-area-filter">Filter by area</label>
-          <select
-            id="equipment-area-filter"
+          <Select
             value={area}
-            onChange={(event) => setArea(event.target.value)}
-            className="min-h-10 rounded-lg border border-gray-700 bg-[#10151d] px-3 text-sm text-slate-200 outline-none"
-          >
-            <option value="all">All areas</option>
-            {areas.map((areaName) => <option key={areaName} value={areaName}>{areaName}</option>)}
-          </select>
-          <label className="sr-only" htmlFor="equipment-risk-filter">Filter by risk or evidence</label>
-          <select
-            id="equipment-risk-filter"
+            onChange={setArea}
+            options={[
+              { value: "all", label: "All areas" },
+              ...areas.map((areaName) => ({
+                value: areaName,
+                label: areaName,
+              })),
+            ]}
+            placeholder="Filter by area"
+            className="h-10 w-full"
+          />
+          <Select
             value={riskFilter}
-            onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}
-            className="min-h-10 rounded-lg border border-gray-700 bg-[#10151d] px-3 text-sm text-slate-200 outline-none"
-          >
-            <option value="all">All risk states</option>
-            <option value="high">High and critical</option>
-            <option value="overdue">Overdue PM or calibration</option>
-            <option value="evidence-gaps" disabled={Boolean(coverageError)}>Evidence gaps</option>
-          </select>
-          <label className="sr-only" htmlFor="equipment-sort">Sort equipment</label>
-          <select
-            id="equipment-sort"
+            onChange={(value) => setRiskFilter(value as RiskFilter)}
+            options={[
+              { value: "all", label: "All risk states" },
+              { value: "high", label: "High and critical" },
+              { value: "overdue", label: "Overdue PM or calibration" },
+              ...(coverageError
+                ? []
+                : [{ value: "evidence-gaps", label: "Evidence gaps" }]),
+            ]}
+            placeholder="Filter by risk or evidence"
+            className="h-10 w-full"
+          />
+          <Select
             value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as SortKey)}
-            className="min-h-10 rounded-lg border border-gray-700 bg-[#10151d] px-3 text-sm text-slate-200 outline-none"
-          >
-            <option value="risk">Highest risk first</option>
-            <option value="backlog">Largest backlog first</option>
-            <option value="evidence">Evidence gaps first</option>
-            <option value="name">Asset name</option>
-          </select>
+            onChange={(value) => setSortKey(value as SortKey)}
+            options={[
+              { value: "risk", label: "Highest risk first" },
+              { value: "backlog", label: "Largest backlog first" },
+              { value: "evidence", label: "Evidence gaps first" },
+              { value: "name", label: "Asset name" },
+            ]}
+            placeholder="Sort equipment"
+            className="h-10 w-full"
+          />
         </div>
 
         {coverageError ? (
