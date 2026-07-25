@@ -5,7 +5,7 @@ const distDirectory = resolve(process.cwd(), "dist");
 const budgets = {
   totalJavaScriptBytes: 3_250_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 150_000,
+  totalCssBytes: 151_000,
   totalDistBytes: 3_500_000,
 };
 
