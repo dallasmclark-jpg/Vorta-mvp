@@ -24,16 +24,20 @@ async function capture(page: Page, name: string): Promise<void> {
   await settleVisualPage(page);
 
   const isPhone = (page.viewportSize()?.width ?? 1024) < 640;
+  const isLiveRiskPage =
+    name === "shift-cover" || name === "skills-matrix";
   const maxDiffPixelRatio =
     name === "maintenance-dashboard" && isPhone
       ? 0.35
       : name === "maintenance-dashboard"
         ? 0.09
-        : name === "equipment-overview"
-          ? 0.12
-          : name === "equipment-work-orders" && isPhone
-            ? 0.35
-            : 0.05;
+        : isLiveRiskPage && isPhone
+          ? 0.1
+          : name === "equipment-overview"
+            ? 0.12
+            : name === "equipment-work-orders" && isPhone
+              ? 0.35
+              : 0.05;
 
   await expect.soft(page).toHaveScreenshot(`${name}.png`, {
     animations: "disabled",

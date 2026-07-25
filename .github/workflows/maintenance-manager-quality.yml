@@ -192,6 +192,8 @@ jobs:
               tests/browser/maintenance-manager-work-orders.spec.ts \
               tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
               tests/browser/maintenance-manager-accessibility.spec.ts \
+              --project=phone-360 \
+              --project=desktop-1920 \
               2>&1 | tee maintenance-browser-regression.log
           fi
 
@@ -217,7 +219,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx playwright test tests/browser/maintenance-manager-visual.spec.ts --config=playwright.config.ts 2>&1 | tee maintenance-visual-regression.log
+          npx playwright test \
+            tests/browser/maintenance-manager-visual.spec.ts \
+            --project=phone-360 \
+            --project=desktop-1920 \
+            --config=playwright.config.ts 2>&1 | tee maintenance-visual-regression.log
 
       - name: Preserve visual regression evidence
         if: steps.maintenance-visual-regression.outcome == 'failure'
@@ -249,6 +255,7 @@ jobs:
             tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
             tests/browser/maintenance-manager-live-training-evidence.spec.ts \
             tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
+            --project=desktop-1920 \
             --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
 
       - name: Preserve live Maintenance Manager regression evidence

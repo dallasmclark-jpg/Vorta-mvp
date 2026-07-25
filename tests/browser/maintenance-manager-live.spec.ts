@@ -1,22 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const email = process.env.VORTA_E2E_EMAIL ?? "demo@vorta.network";
-const password = process.env.VORTA_E2E_PASSWORD ?? "";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
 const deniedEquipmentId =
   process.env.VORTA_E2E_DENIED_EQUIPMENT_ID ??
   "40000000-0000-0000-0000-000000000013";
-
-async function signIn(page: Page): Promise<void> {
-  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
-}
 
 async function expectNoPageOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(
@@ -43,7 +32,7 @@ async function openLiveEquipment(page: Page): Promise<string> {
 test("live Equipment routes remain active-site scoped and expose verified History and Documents", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const equipmentId = await openLiveEquipment(page);
 
   await expect(page.getByText("LIVE SITE EVIDENCE", { exact: true }).first()).toBeVisible();
@@ -143,7 +132,7 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
 test("live Work Orders show unavailable readiness instead of perfect readiness after a source failure", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const equipmentId = await openLiveEquipment(page);
 
   await page.route(/\/rest\/v1\/rpc\/vorta_get_equipment_work_items/, async (route) => {
@@ -167,7 +156,7 @@ test("live Work Orders show unavailable readiness instead of perfect readiness a
 test("rejected live History evidence resolves to an unavailable state instead of spinning forever", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const equipmentId = await openLiveEquipment(page);
 
   await page.route(/\/rest\/v1\/rpc\/vorta_get_equipment_history/, async (route) => {
@@ -187,7 +176,7 @@ test("rejected live History evidence resolves to an unavailable state instead of
 test("live Shift Cover adapts to the viewport and reports genuine completeness", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   await page.goto("/maintenance/labour-risk/shift-cover");
 
   await expect(page.getByRole("heading", { name: "Shift Cover Risk", exact: true })).toBeVisible();
@@ -224,7 +213,7 @@ test("live Shift Cover adapts to the viewport and reports genuine completeness",
 test("malformed live Shift Cover evidence fails closed instead of becoming zero risk", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
 
   await page.route(
     /\/rest\/v1\/rpc\/vorta_get_shift_cover_snapshot/,
@@ -280,7 +269,7 @@ test("malformed live Shift Cover evidence fails closed instead of becoming zero 
 });
 
 test("a direct Equipment URL for another site fails closed", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   await page.goto(`/equipment/${deniedEquipmentId}/overview`);
   await expect(
     page.getByRole("heading", { name: "Equipment not available for this site" }),
@@ -292,7 +281,7 @@ test("a direct Equipment URL for another site fails closed", async ({ page }) =>
 test("live Spares distinguishes empty inventory and service failure from 100 percent", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const equipmentId = await openLiveEquipment(page);
   const componentsPattern = /\/rest\/v1\/equipment_components\?/;
 
