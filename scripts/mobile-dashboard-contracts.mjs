@@ -79,14 +79,9 @@ check(
 );
 
 check(
-  mobileDashboardStyles.includes(
-    '[data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"]',
-  ) &&
-    mobileDashboardStyles.includes(
-      '[data-vorta-dashboard-root="true"] [data-vorta-work-plan-summary="true"]',
-    ) &&
+  mobileDashboardStyles.includes("[hidden]") &&
     mobileDashboardStyles.includes("display: none !important;"),
-  "Phone dashboards must force-hide the redundant risk badge and work-plan summary even when component display utilities are present.",
+  "Phone dashboards must honour the hidden attribute even when component display utilities are present.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
