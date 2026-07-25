@@ -185,6 +185,7 @@ jobs:
               tests/browser/maintenance-manager-work-orders.spec.ts \
               tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
               tests/browser/maintenance-manager-accessibility.spec.ts \
+              tests/browser/maintenance-manager-mobile-routes.spec.ts \
               --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
           else
             npm run test:browser -- \
@@ -192,6 +193,7 @@ jobs:
               tests/browser/maintenance-manager-work-orders.spec.ts \
               tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
               tests/browser/maintenance-manager-accessibility.spec.ts \
+              tests/browser/maintenance-manager-mobile-routes.spec.ts \
               --project=phone-360 \
               --project=desktop-1920 \
               2>&1 | tee maintenance-browser-regression.log
