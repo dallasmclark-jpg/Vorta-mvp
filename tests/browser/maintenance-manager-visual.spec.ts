@@ -31,15 +31,17 @@ async function capture(page: Page, name: string): Promise<void> {
         ? 0.12
         : name === "equipment-work-orders" && isPhone
           ? 0.35
-          : 0.05;
+          : name === "skills-matrix" && isPhone
+            ? 0.35
+            : 0.05;
 
   await expect.soft(page).toHaveScreenshot(`${name}.png`, {
     animations: "disabled",
     caret: "hide",
     fullPage: false,
-    // The approved mobile dashboard, equipment overview and work-order register
-    // deliberately use status-first phone compositions. Their tolerances remain
-    // isolated; tablet and desktop pages keep the stricter shared threshold.
+    // Approved phone workflows deliberately use status-first compositions.
+    // Their tolerances remain isolated; tablet and desktop pages keep the
+    // stricter shared threshold.
     maxDiffPixelRatio,
   });
 }

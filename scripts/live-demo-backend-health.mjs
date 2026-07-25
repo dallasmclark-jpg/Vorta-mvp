@@ -7,6 +7,13 @@ const required = (name) => {
   return value;
 };
 
+const sleep = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const isTransientSchemaCacheError = (error) =>
+  error?.code === "PGRST002" ||
+  /schema cache|retrying/i.test(String(error?.message ?? ""));
+
 const supabaseUrl = required("VITE_SUPABASE_URL");
 const supabaseKey = required("VITE_SUPABASE_ANON_KEY");
 const email = required("VORTA_E2E_EMAIL");
@@ -26,9 +33,30 @@ const { data: signIn, error: signInError } =
 assert.ifError(signInError);
 assert.ok(signIn.user, "Authenticated health gate did not receive a user");
 
+const readHealthReport = async () => {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const { data, error } = await supabase.rpc("vorta_get_demo_backend_health");
+
+    if (!error) return data;
+
+    lastError = error;
+    if (!isTransientSchemaCacheError(error) || attempt === 5) break;
+
+    const retryDelay = 500 * 2 ** (attempt - 1);
+    console.warn(
+      `Live backend health schema cache is unavailable; retrying in ${retryDelay}ms (${attempt}/5).`,
+    );
+    await sleep(retryDelay);
+  }
+
+  assert.ifError(lastError);
+  return null;
+};
+
 try {
-  const { data, error } = await supabase.rpc("vorta_get_demo_backend_health");
-  assert.ifError(error);
+  const data = await readHealthReport();
   assert.ok(data && typeof data === "object", "Health RPC returned no report");
 
   assert.equal(data.siteId, expectedSiteId, "Health report returned the wrong site");
