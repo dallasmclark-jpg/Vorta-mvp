@@ -1,104 +1,11 @@
 import { DashboardOverviewSection } from "./sections/DashboardOverviewSection";
 
-type DashboardSectionKey = "overview" | "plant" | "labour" | "trends";
-
-const MOBILE_SECTION_OPTIONS: Array<{
-  key: DashboardSectionKey;
-  label: string;
-  ariaLabel: string;
-}> = [
-  { key: "overview", label: "Overview", ariaLabel: "Jump to dashboard overview" },
-  { key: "plant", label: "Plant", ariaLabel: "Jump to plant risk" },
-  { key: "labour", label: "Labour", ariaLabel: "Jump to labour risk" },
-  { key: "trends", label: "Trends", ariaLabel: "Jump to risk reduction trends" },
-];
-
-function resolveDashboardSection(
-  root: HTMLElement,
-  sectionKey: DashboardSectionKey,
-): HTMLElement | null {
-  const sections = Array.from(root.getElementsByTagName("section"));
-
-  if (sectionKey === "overview") {
-    return sections[0] ?? null;
-  }
-
-  if (sectionKey === "labour") {
-    return (
-      sections.find(
-        (section) => section.dataset.vortaDashboardSection === "labour-risk",
-      ) ?? null
-    );
-  }
-
-  if (sectionKey === "trends") {
-    return (
-      sections.find(
-        (section) =>
-          section.getAttribute("aria-label") === "Risk reduction performance",
-      ) ?? null
-    );
-  }
-
-  return (
-    sections.find((section) => {
-      const heading = section
-        .getElementsByTagName("h2")
-        .item(0)
-        ?.textContent?.trim()
-        .toLowerCase() ?? "";
-      return heading.includes("plant area risk") || heading.includes("equipment risk");
-    }) ?? null
-  );
-}
-
-function scrollToDashboardSection(sectionKey: DashboardSectionKey): void {
-  const root = document.getElementById("maintenance-dashboard-root");
-  if (!root) return;
-
-  const target = resolveDashboardSection(root, sectionKey);
-  if (!target) return;
-
-  const reduceMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-
-  target.scrollIntoView({
-    behavior: reduceMotion ? "auto" : "smooth",
-    block: "start",
-  });
-}
-
-function MobileDashboardSectionNav(): JSX.Element {
-  return (
-    <nav
-      data-vorta-mobile-section-nav="true"
-      aria-label="Dashboard section navigation"
-    >
-      {MOBILE_SECTION_OPTIONS.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          aria-label={option.ariaLabel}
-          onClick={() => scrollToDashboardSection(option.key)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 export function MaintenanceDashboardExperience(): JSX.Element {
   return (
     <div id="maintenance-dashboard-root" data-vorta-dashboard-root="true">
       <style>{`
         [data-vorta-dashboard-root="true"] [role="tab"] {
           min-height: 2.5rem;
-        }
-
-        [data-vorta-mobile-section-nav="true"] {
-          display: none;
         }
 
         @media (min-width: 1280px) {
@@ -124,7 +31,7 @@ export function MaintenanceDashboardExperience(): JSX.Element {
         @media (max-width: 639px) {
           [data-vorta-dashboard-root="true"] > section {
             gap: 1rem !important;
-            padding: 0.75rem 0.75rem 8rem !important;
+            padding: 0.75rem 0.75rem 1.5rem !important;
           }
 
           [data-vorta-dashboard-root="true"] > section > header {
@@ -152,42 +59,6 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           [data-vorta-dashboard-root="true"] h2 {
             font-size: 1.0625rem !important;
             line-height: 1.4rem !important;
-          }
-
-          [data-vorta-mobile-section-nav="true"] {
-            position: fixed;
-            z-index: 45;
-            right: auto;
-            bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
-            left: 50%;
-            display: grid;
-            width: calc(100vw - 1.5rem);
-            max-width: 28rem;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.25rem;
-            transform: translateX(-50%);
-            border: 1px solid rgba(71, 85, 105, 0.8);
-            border-radius: 0.875rem;
-            background: rgba(13, 17, 23, 0.96);
-            padding: 0.25rem;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.48);
-            backdrop-filter: blur(14px);
-          }
-
-          [data-vorta-mobile-section-nav="true"] button {
-            min-height: 2.75rem;
-            border-radius: 0.625rem;
-            padding: 0.5rem 0.25rem;
-            color: #cbd5e1;
-            font-size: 0.75rem;
-            font-weight: 700;
-            transition: background-color 150ms ease, color 150ms ease;
-          }
-
-          [data-vorta-mobile-section-nav="true"] button:hover,
-          [data-vorta-mobile-section-nav="true"] button:focus-visible {
-            background: rgba(37, 99, 235, 0.22);
-            color: #eff6ff;
           }
 
           [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]),
@@ -349,7 +220,6 @@ export function MaintenanceDashboardExperience(): JSX.Element {
       `}</style>
 
       <DashboardOverviewSection />
-      <MobileDashboardSectionNav />
     </div>
   );
 }
