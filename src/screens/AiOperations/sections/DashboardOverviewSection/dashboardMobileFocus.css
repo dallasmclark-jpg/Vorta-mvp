@@ -25,6 +25,14 @@
     display: none !important;
   }
 
+  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"]:focus,
+  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   [data-vorta-dashboard-root="true"] div:has(> header [data-vorta-embedded-ai="true"]) {
     gap: 0.75rem !important;
   }
