@@ -16,6 +16,7 @@ const [
   trustedEntries,
   liveRoutes,
   liveTrust,
+  equipmentRoute,
   equipmentIndex,
   browserTest,
   browserHelpers,
@@ -38,6 +39,7 @@ const [
   read("src/screens/Equipment/EquipmentTrustedEntries.tsx"),
   read("src/screens/Equipment/EquipmentLiveRoutes.tsx"),
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
+  read("src/screens/Equipment/EquipmentRouteEntry.tsx"),
   read("src/screens/Equipment/index.ts"),
   read("tests/browser/maintenance-manager-core.spec.ts"),
   read("tests/browser/maintenance-manager-test-helpers.ts"),
@@ -88,7 +90,10 @@ assert.match(equipmentEntry, /EquipmentOverviewLive/);
 assert.match(trustedEntries, /LIVE EVIDENCE UNAVAILABLE/);
 assert.match(trustedEntries, /legacy demonstration records/);
 assert.match(liveRoutes, /EquipmentSectionEntry/);
-assert.match(equipmentIndex, /EquipmentLiveListEntry as EquipmentSection/);
+assert.match(equipmentIndex, /EquipmentRouteEntry as EquipmentSection/);
+assert.match(equipmentRoute, /EquipmentLiveListEntry/);
+assert.match(equipmentRoute, /dataMode === "demo"/);
+assert.match(equipmentRoute, /<MobileEquipmentSection \/>/);
 for (const routeEntry of [
   "EquipmentOverviewTrustedEntry",
   "EquipmentNotificationsTrustedEntry",
