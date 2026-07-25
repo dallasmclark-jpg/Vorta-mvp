@@ -127,7 +127,8 @@ check(
 );
 check(
   browserTest.includes('data-vorta-mobile-risk-scope="true"') &&
-    browserTest.includes('name: "Risk scope"') &&
+    browserTest.includes('getByRole("listbox")') &&
+    browserTest.includes('getByRole("option")') &&
     browserTest.includes('name: "Ask Vorta AI"') &&
     browserTest.includes("toBeHidden") &&
     workOrderBrowserTest.includes("originating page"),
