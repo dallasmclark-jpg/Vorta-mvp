@@ -59,39 +59,18 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await verifyCrossSiteIsolation(page);
   }
 
-  if (viewportWidth <= 420) {
-    const riskScopeTrigger = page
-      .locator('[data-vorta-mobile-risk-scope="true"] button')
-      .first();
-    await expect(riskScopeTrigger).toBeVisible();
-    await expectOperationalTouchTarget(riskScopeTrigger);
-    await riskScopeTrigger.click();
-
-    const riskScopeMenu = page.getByRole("listbox");
-    await expect(riskScopeMenu).toBeVisible();
-
-    const areaOption = riskScopeMenu.getByRole("option").nth(1);
-    await expect(areaOption).toBeVisible();
-    const areaLabel = await areaOption.locator("span").first().textContent();
-    expect(areaLabel?.trim()).toBeTruthy();
-    await areaOption.click();
-
-    await expect(riskScopeMenu).toBeHidden();
-    await expect(riskScopeTrigger).toContainText(areaLabel?.trim() ?? "");
-  } else {
-    const riskScopeTabs = page.getByRole("tablist", {
-      name: "Risk intelligence scope",
-    });
-    await expect(riskScopeTabs).toBeVisible();
-    const areaTab = riskScopeTabs
-      .getByRole("tab")
-      .filter({ hasNotText: /^\s*Site Risk/i })
-      .first();
-    await expect(areaTab).toBeVisible();
-    await expectOperationalTouchTarget(areaTab);
-    await areaTab.click();
-    await expect(areaTab).toHaveAttribute("aria-selected", "true");
-  }
+  const riskScopeTabs = page.getByRole("tablist", {
+    name: "Risk intelligence scope",
+  });
+  await expect(riskScopeTabs).toBeVisible();
+  const areaTab = riskScopeTabs
+    .getByRole("tab")
+    .filter({ hasNotText: /^\s*Site Risk/i })
+    .first();
+  await expect(areaTab).toBeVisible();
+  await expectOperationalTouchTarget(areaTab);
+  await areaTab.click();
+  await expect(areaTab).toHaveAttribute("aria-selected", "true");
 
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   const selectedRiskSummaryCard = page
