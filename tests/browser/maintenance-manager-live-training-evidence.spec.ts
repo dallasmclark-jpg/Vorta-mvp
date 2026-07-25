@@ -1,22 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const email = process.env.VORTA_E2E_EMAIL ?? "demo@vorta.network";
-const password = process.env.VORTA_E2E_PASSWORD ?? "";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
 const allowedOrganisationId =
   process.env.VORTA_E2E_ORGANISATION_ID ??
   "10000000-0000-0000-0000-000000000001";
-
-async function signIn(page: Page): Promise<void> {
-  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
-}
 
 async function expectNoPageOverflow(page: Page, label: string): Promise<void> {
   const overflow = await page.evaluate(
@@ -50,7 +39,7 @@ async function expectScopedResponse(
 }
 
 test("live Training renders verified read-only evidence", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(page, "/training", "training-data");
   expect(Array.isArray(body.recentActivity)).toBe(true);
   expect(Array.isArray(body.priorityRows)).toBe(true);
@@ -64,7 +53,7 @@ test("live Training renders verified read-only evidence", async ({ page }) => {
 });
 
 test("live AI Matching renders decision-support evidence without assignment actions", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(page, "/ai-matching", "ai-matching-data");
   expect(Array.isArray(body.matchResults)).toBe(true);
   expect(Array.isArray(body.gapRecs)).toBe(true);
@@ -78,7 +67,7 @@ test("live AI Matching renders decision-support evidence without assignment acti
 });
 
 test("live Training Providers renders catalogue evidence without fake enquiries", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(
     page,
     "/training-providers",
@@ -99,7 +88,7 @@ test("live training workflow pages fail closed when evidence scope metadata is m
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1920", "Fail-closed contracts are exercised once per run");
-  await signIn(page);
+  await signInMaintenanceManager(page);
 
   await page.route(/\/functions\/v1\/training-data/, async (route) => {
     await route.fulfill({
