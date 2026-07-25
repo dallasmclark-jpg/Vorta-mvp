@@ -20,6 +20,11 @@ const mobileDashboardStyles = read(
 const mobileRiskScopeSelector = read(
   "src/screens/AiOperations/sections/DashboardOverviewSection/MobileRiskScopeSelector.tsx",
 );
+const dashboardOverview = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+);
+const portalShell = read("src/components/PortalShell.tsx");
+const aiCommandBar = read("src/components/ai/VortaAiCommandBar.tsx");
 
 check(
   dashboardWrapper.includes('data-vorta-mobile-section-nav="true"') &&
@@ -94,6 +99,15 @@ check(
       'header:has([data-vorta-embedded-ai="true"]) > div:first-child > *',
     ),
   "Phone dashboards must use Today's Risk as the scope heading and remove the repeated briefing heading.",
+);
+
+check(
+  portalShell.includes("px-4 py-1 md:hidden") &&
+    aiCommandBar.includes("px-2 py-1 sm:py-1.5") &&
+    dashboardOverview.includes('className="p-3 sm:p-5"') &&
+    dashboardOverview.includes("p-2.5 sm:p-4") &&
+    dashboardWrapper.includes("0.75rem 0.75rem 8rem"),
+  "Phone dashboard polish must retain the compact header, command bar, briefing card and bottom-navigation clearance.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
