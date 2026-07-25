@@ -14,6 +14,9 @@ const dashboardWrapper = read(
 const labourRisk = read(
   "src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx",
 );
+const mobileDashboardStyles = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/dashboardMobileFocus.css",
+);
 
 check(
   dashboardWrapper.includes('data-vorta-mobile-section-nav="true"') &&
@@ -73,6 +76,17 @@ check(
     !dashboardWrapper.includes("innerHTML") &&
     !dashboardWrapper.includes("appendChild"),
   "Mobile dashboard improvements must not reintroduce rendered-DOM patching.",
+);
+
+check(
+  mobileDashboardStyles.includes(
+    '[data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"]',
+  ) &&
+    mobileDashboardStyles.includes(
+      '[data-vorta-dashboard-root="true"] [data-vorta-work-plan-summary="true"]',
+    ) &&
+    mobileDashboardStyles.includes("display: none !important;"),
+  "Phone dashboards must force-hide the redundant risk badge and work-plan summary even when component display utilities are present.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
