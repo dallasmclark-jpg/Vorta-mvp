@@ -1,22 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const email = process.env.VORTA_E2E_EMAIL ?? "demo@vorta.network";
-const password = process.env.VORTA_E2E_PASSWORD ?? "";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
 const deniedSiteId =
   process.env.VORTA_E2E_DENIED_SITE_ID ??
   "11000000-0000-0000-0000-000000000002";
-
-async function signIn(page: Page): Promise<void> {
-  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
-}
 
 async function expectNoPageOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(
@@ -28,7 +17,7 @@ async function expectNoPageOverflow(page: Page): Promise<void> {
 test("live Engineers is active-site scoped and derives availability from Shift Cover", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   await page.goto("/engineers");
 
   const liveEngineers = page.locator('[data-vorta-live-engineers="true"]');
@@ -59,7 +48,7 @@ test("live Engineers is active-site scoped and derives availability from Shift C
 test("malformed live Engineers evidence fails closed instead of becoming an empty workforce", async ({
   page,
 }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   await page.route(/\/functions\/v1\/engineers-data/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -97,7 +86,7 @@ test("malformed live Engineers evidence fails closed instead of becoming an empt
 });
 
 test("a cross-site Engineers response is withheld", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   await page.route(/\/functions\/v1\/engineers-data/, async (route) => {
     await route.fulfill({
       status: 200,
