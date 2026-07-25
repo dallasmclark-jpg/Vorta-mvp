@@ -27,23 +27,11 @@ const portalShell = read("src/components/PortalShell.tsx");
 const aiCommandBar = read("src/components/ai/VortaAiCommandBar.tsx");
 
 check(
-  dashboardWrapper.includes('data-vorta-mobile-section-nav="true"') &&
-    dashboardWrapper.includes('aria-label="Dashboard section navigation"'),
-  "Mobile dashboard must expose a persistent section navigator.",
-);
-
-for (const label of ["Overview", "Plant", "Labour", "Trends"]) {
-  check(
-    dashboardWrapper.includes(`label: "${label}"`),
-    `Mobile dashboard navigation is missing ${label}.`,
-  );
-}
-
-check(
-  dashboardWrapper.includes("scrollIntoView") &&
-    dashboardWrapper.includes("prefers-reduced-motion") &&
-    dashboardWrapper.includes('aria-label="Risk reduction performance"'),
-  "Mobile section navigation must scroll accessibly to live dashboard sections.",
+  !dashboardWrapper.includes('data-vorta-mobile-section-nav="true"') &&
+    !dashboardWrapper.includes("MobileDashboardSectionNav") &&
+    !dashboardWrapper.includes("MOBILE_SECTION_OPTIONS") &&
+    !dashboardWrapper.includes("scrollToDashboardSection"),
+  "Mobile dashboard must not render the removed persistent bottom navigation.",
 );
 
 check(
@@ -106,8 +94,9 @@ check(
     aiCommandBar.includes("px-2 py-1 sm:py-1.5") &&
     dashboardOverview.includes('className="p-3 sm:p-5"') &&
     dashboardOverview.includes("p-2.5 sm:p-4") &&
-    dashboardWrapper.includes("0.75rem 0.75rem 8rem"),
-  "Phone dashboard polish must retain the compact header, command bar, briefing card and bottom-navigation clearance.",
+    dashboardWrapper.includes("0.75rem 0.75rem 1.5rem") &&
+    !dashboardWrapper.includes("0.75rem 0.75rem 8rem"),
+  "Phone dashboard polish must retain compact spacing without obsolete bottom-navigation clearance.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
