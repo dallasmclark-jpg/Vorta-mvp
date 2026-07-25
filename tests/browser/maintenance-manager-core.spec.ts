@@ -37,12 +37,7 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   if (isPhone) {
     await expect(riskIntelligenceLabel).toBeHidden();
     await expect(workPlanSummary).toBeHidden();
-    await expect(
-      page.getByRole("heading", {
-        name: "Today's Risk",
-        exact: true,
-      }),
-    ).toBeVisible();
+    await expect(page.getByText("Today's Risk", { exact: true })).toBeVisible();
   } else {
     await expect(riskIntelligenceLabel).toBeVisible();
     await expect(workPlanSummary).toBeVisible();
@@ -68,20 +63,16 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expectOperationalTouchTarget(riskScopeTrigger);
     await riskScopeTrigger.click();
 
-    const riskScopeDialog = page.getByRole("dialog", {
-      name: "Risk scope",
-    });
-    await expect(riskScopeDialog).toBeVisible();
+    const riskScopeMenu = page.getByRole("listbox");
+    await expect(riskScopeMenu).toBeVisible();
 
-    const areaOption = riskScopeDialog
-      .locator('button[aria-pressed="false"]')
-      .first();
+    const areaOption = riskScopeMenu.getByRole("option").nth(1);
     await expect(areaOption).toBeVisible();
-    const areaLabel = await areaOption.locator("span").nth(1).textContent();
+    const areaLabel = await areaOption.locator("span").first().textContent();
     expect(areaLabel?.trim()).toBeTruthy();
     await areaOption.click();
 
-    await expect(riskScopeDialog).toBeHidden();
+    await expect(riskScopeMenu).toBeHidden();
     await expect(riskScopeTrigger).toContainText(areaLabel?.trim() ?? "");
   } else {
     const riskScopeTabs = page.getByRole("tablist", {
