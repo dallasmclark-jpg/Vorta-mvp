@@ -1,9 +1,5 @@
 @media (max-width: 639px) {
-  [data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"],
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-summary="true"] {
-    display: none !important;
-  }
-
+  [hidden],
   [data-vorta-maintenance-portal="true"]:has(> [data-vorta-dashboard-root="true"]) > [data-vorta-data-mode="demo"],
   [data-vorta-dashboard-root="true"] > section > header {
     display: none !important;
@@ -34,8 +30,6 @@
   [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"]:focus-visible {
     outline: none !important;
     box-shadow: none !important;
-    -webkit-appearance: none;
-    appearance: none;
   }
 
   [data-vorta-dashboard-root="true"] div:has(> header [data-vorta-embedded-ai="true"]) {
