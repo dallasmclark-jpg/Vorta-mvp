@@ -1,0 +1,86 @@
+@media (max-width: 639px) {
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden {
+    min-height: 3rem;
+    padding-inline: 0.75rem;
+  }
+
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden::after {
+    order: 2;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: rgb(203 213 225);
+    content: attr(data-vorta-mobile-page-title);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
+    order: 3;
+    margin-left: 0;
+  }
+
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
+    order: 1;
+    flex: 0 0 auto;
+  }
+
+  [data-vorta-mobile-equipment="true"],
+  [data-vorta-mobile-equipment-overview="true"],
+  [data-vorta-mobile-engineers="true"],
+  [data-vorta-mobile-requirements="true"],
+  [data-vorta-mobile-training="true"],
+  [data-vorta-mobile-training-providers="true"],
+  [data-vorta-mobile-career="true"],
+  [data-vorta-mobile-support="true"],
+  [data-vorta-mobile-settings="true"] {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  nav[aria-label="Pilot setup stages"] {
+    display: flex !important;
+    gap: 0.5rem;
+    margin-right: -1rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 0.5rem 1rem 0.5rem 0.5rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  nav[aria-label="Pilot setup stages"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav[aria-label="Pilot setup stages"] > button {
+    min-width: 8.5rem;
+    flex: 0 0 8.5rem;
+    align-items: center;
+    padding: 0.75rem;
+    scroll-snap-align: start;
+  }
+
+  nav[aria-label="Pilot setup stages"] > button p {
+    display: none;
+  }
+
+  nav[aria-label="Pilot setup stages"] > button > div:last-child > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+  }
+
+  [data-vorta-pilot-evidence-tabs="true"] {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgb(31 41 55);
+    background: rgb(11 14 20 / 0.96);
+    backdrop-filter: blur(12px);
+  }
+}

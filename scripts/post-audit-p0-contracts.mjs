@@ -10,6 +10,8 @@ const [
   liveViews,
   pilotEvidenceViews,
   pilotEvidenceService,
+  equipmentRoute,
+  equipmentOverviewRoute,
   equipmentIndex,
   equipmentTabs,
   maintenanceActions,
@@ -41,6 +43,8 @@ const [
     read("src/screens/Equipment/LiveEquipmentDocumentViewerView.tsx"),
   ]).then((parts) => parts.join("\n")),
   read("src/screens/Equipment/equipmentPilotEvidence.ts"),
+  read("src/screens/Equipment/EquipmentRouteEntry.tsx"),
+  read("src/screens/Equipment/EquipmentOverviewRouteEntry.tsx"),
   read("src/screens/Equipment/index.ts"),
   read("src/screens/Equipment/EquipmentTabNavigation.tsx"),
   read("src/lib/maintenanceActions.ts"),
@@ -78,9 +82,15 @@ assert.doesNotMatch(liveTrust, /vorta_get_demo_equipment_risk_list/);
 assert.doesNotMatch(liveTrust, /riskBreakdownFor/);
 
 assert.match(liveRoutes, /EquipmentSectionEntry/);
-assert.match(equipmentIndex, /EquipmentLiveListEntry as EquipmentSection/);
+assert.match(equipmentIndex, /EquipmentRouteEntry as EquipmentSection/);
+assert.match(equipmentRoute, /EquipmentLiveListEntry/);
+assert.match(equipmentRoute, /dataMode === "demo"/);
+assert.match(equipmentRoute, /<MobileEquipmentSection \/>/);
+assert.match(equipmentIndex, /EquipmentOverviewRouteEntry as EquipmentOverview/);
+assert.match(equipmentOverviewRoute, /EquipmentOverviewTrustedEntry/);
+assert.match(equipmentOverviewRoute, /dataMode === "demo"/);
+assert.match(equipmentOverviewRoute, /<MobileEquipmentOverview \/>/);
 for (const entry of [
-  "EquipmentOverviewTrustedEntry",
   "EquipmentNotificationsTrustedEntry",
   "EquipmentWorkOrdersTrustedEntry",
   "EquipmentCalibrationsTrustedEntry",

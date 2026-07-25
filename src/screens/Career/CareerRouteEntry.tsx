@@ -1,11 +1,29 @@
 import { DemoSimulationBanner } from "../../components/DemoSimulationBanner";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { CareerSection as DemoCareerSection } from "./CareerSection";
 import { LiveCareerSection } from "./LiveCareerSection";
+import { MobileCareerSection } from "./MobileCareerSection";
 
 const isLivePilotMode =
   String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
 
 export function CareerRouteEntry(): JSX.Element {
+  const isPhone = useMediaQuery("(max-width: 639px)");
+
+  if (isPhone) {
+    return (
+      <>
+        {!isLivePilotMode ? (
+          <DemoSimulationBanner
+            title="workforce development"
+            description="The named manager profile and readiness score are illustrative demonstration data."
+          />
+        ) : null}
+        <MobileCareerSection dataMode={isLivePilotMode ? "live" : "demo"} />
+      </>
+    );
+  }
+
   if (isLivePilotMode) return <LiveCareerSection />;
 
   return (

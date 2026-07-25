@@ -1,9 +1,6 @@
-import "./equipmentMobilePolish.css";
-import "./equipmentOverviewMobileFocus.css";
-
-export { EquipmentLiveListEntry as EquipmentSection } from "./EquipmentLiveListEntry";
+export { EquipmentRouteEntry as EquipmentSection } from "./EquipmentRouteEntry";
+export { EquipmentOverviewRouteEntry as EquipmentOverview } from "./EquipmentOverviewRouteEntry";
 export {
-  EquipmentOverviewTrustedEntry as EquipmentOverview,
   EquipmentNotificationsTrustedEntry as EquipmentNotifications,
   EquipmentWorkOrdersTrustedEntry as EquipmentWorkOrders,
   EquipmentCalibrationsTrustedEntry as EquipmentPMs,

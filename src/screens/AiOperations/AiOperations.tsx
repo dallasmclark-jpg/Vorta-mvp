@@ -5,7 +5,6 @@ import type { NavGroup } from "../../components/PortalShell";
 import { useAuth } from "../../lib/auth";
 import { canAdministerPilot, canImportSapData } from "../../lib/accessControl";
 import {
-  Activity,
   BarChart3,
   BookOpen,
   ClipboardCheck,
@@ -22,8 +21,10 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { PilotEvidenceFrame } from "../PilotEvidence/PilotEvidenceFrame";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
+import "./mobilePortalHardening.css";
 
 const EngineersSection = lazy(() => import("../Engineers").then((module) => ({ default: module.EngineersSection })));
 const RequirementsSection = lazy(() => import("../Requirements").then((module) => ({ default: module.RequirementsSection })));
@@ -74,7 +75,7 @@ const nav: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
-      { label: "AI Matching", icon: Sparkles, to: "/ai-matching" },
+      { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
   },
   {
@@ -82,8 +83,8 @@ const nav: NavGroup[] = [
     items: [
       { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
       { label: "Engineers", icon: Users, to: "/engineers" },
-      { label: "My Career", icon: TrendingUp, to: "/career" },
       { label: "Requirements", icon: ClipboardList, to: "/requirements" },
+      { label: "Workforce Development", icon: TrendingUp, to: "/career" },
     ],
   },
   {
@@ -96,8 +97,7 @@ const nav: NavGroup[] = [
   {
     groupLabel: "Pilot evidence",
     items: [
-      { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
-      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
+      { label: "Pilot Evidence", icon: BarChart3, to: "/pilot-impact" },
     ],
   },
 ];
@@ -108,7 +108,7 @@ const liveNav: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
-      { label: "AI Matching", icon: Sparkles, to: "/ai-matching" },
+      { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
   },
   {
@@ -116,8 +116,8 @@ const liveNav: NavGroup[] = [
     items: [
       { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
       { label: "Engineers", icon: Users, to: "/engineers" },
-      { label: "Career Evidence", icon: TrendingUp, to: "/career" },
       { label: "Requirements", icon: ClipboardList, to: "/requirements" },
+      { label: "Career Evidence", icon: TrendingUp, to: "/career" },
     ],
   },
   {
@@ -130,8 +130,7 @@ const liveNav: NavGroup[] = [
   {
     groupLabel: "Pilot evidence",
     items: [
-      { label: "Pilot Impact", icon: BarChart3, to: "/pilot-impact" },
-      { label: "Pilot Adoption", icon: Activity, to: "/pilot-adoption" },
+      { label: "Pilot Evidence", icon: BarChart3, to: "/pilot-impact" },
     ],
   },
 ];
@@ -172,8 +171,22 @@ export const AiOperations = (): JSX.Element => {
         <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
-            <Route path="pilot-impact" element={<PilotImpactSection />} />
-            <Route path="pilot-adoption" element={<PilotAdoptionSection />} />
+            <Route
+              path="pilot-impact"
+              element={(
+                <PilotEvidenceFrame active="impact">
+                  <PilotImpactSection />
+                </PilotEvidenceFrame>
+              )}
+            />
+            <Route
+              path="pilot-adoption"
+              element={(
+                <PilotEvidenceFrame active="adoption">
+                  <PilotAdoptionSection />
+                </PilotEvidenceFrame>
+              )}
+            />
             <Route path="skills-matrix" element={<SkillsMatrixRouteEntry />} />
             <Route path="engineers" element={<EngineersSection />} />
             <Route path="career" element={<CareerSection />} />

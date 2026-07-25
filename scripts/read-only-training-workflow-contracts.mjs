@@ -66,7 +66,7 @@ for (const [label, source, validator, functionSlug, errorHeading] of [
   ["Training Providers", providersLive, "validateTrainingProvidersPayload", "training-providers-data", "Provider evidence was withheld"],
 ]) {
   mustMatch(source, new RegExp(`${validator}\\(\\s*data\\s*,?\\s*\\)`), `${label} must validate its function response`);
-  mustMatch(source, new RegExp(`functions\\.invoke\\(\\s*[\"']${functionSlug}[\"']`), `${label} must use its evidence function`);
+  mustMatch(source, new RegExp(`functions\\.invoke\\(\\s*["']${functionSlug}["']`), `${label} must use its evidence function`);
   mustMatch(source, /siteContext\?\.siteId/, `${label} must require an authenticated active site`);
   mustMatch(source, /organisationId !== siteContext\.organisationId/, `${label} must reject cross-organisation responses`);
   mustMatch(source, new RegExp(errorHeading), `${label} must expose an explicit fail-closed state`);
@@ -88,7 +88,7 @@ for (const validator of [
 }
 mustMatch(runtimeContracts, /requirePercentage/, "Training workflow scores must be range checked");
 
-mustMatch(operations, /label: "AI Matching"[\s\S]*to: "\/ai-matching"/, "Live navigation must expose AI Matching evidence");
+mustMatch(operations, /label: "Capability Matching"[\s\S]*to: "\/ai-matching"/, "Live navigation must expose matching evidence as decision support");
 mustMatch(operations, /label: "Training Evidence"[\s\S]*to: "\/training"/, "Live navigation must expose Training evidence");
 mustMatch(operations, /label: "Provider Evidence"[\s\S]*to: "\/training-providers"/, "Live navigation must expose provider evidence");
 mustMatch(operations, /<Route path="training" element=\{<TrainingSection \/>\}/, "Training route must use its mode-aware entry");
