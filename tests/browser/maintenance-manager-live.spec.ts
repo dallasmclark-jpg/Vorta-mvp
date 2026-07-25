@@ -39,55 +39,26 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await expect(page.getByText("LIVE SITE EVIDENCE", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/No demonstration values|No legacy demonstration record/)).toHaveCount(0);
 
-  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
-
   const openEquipmentSection = async (
     route: "work-orders" | "history" | "documents" | "skills" | "spares" | "ai-insights",
     label: "Work Orders" | "History" | "Documents" | "Skills & Engineers" | "Spares" | "Ask Vorta",
   ): Promise<void> => {
-    if (isMobileEquipmentNavigation) {
-      const mobileSections = page.getByRole("combobox", {
-        name: "Equipment section",
-      });
-      await expect(mobileSections).toBeEnabled();
-      await mobileSections.click();
-      const option = page.getByRole("option", {
-        name: label,
-        exact: true,
-      });
-      await expect(option).toBeVisible();
-      await option.click();
-      return;
-    }
-
     const sections = page.getByRole("tablist", { name: "Equipment sections" });
     const sectionTab = sections.getByRole("tab", { name: label, exact: true });
     await expect(sectionTab).toBeEnabled();
     await sectionTab.click();
   };
 
-  if (isMobileEquipmentNavigation) {
-    const mobileSections = page.getByRole("combobox", {
-      name: "Equipment section",
-    });
-    await expect(mobileSections).toBeEnabled();
-    await mobileSections.click();
-    await expect(page.getByRole("option", { name: "History", exact: true })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Documents", exact: true })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Ask Vorta", exact: true })).toBeVisible();
-    await mobileSections.click();
-  } else {
-    const sections = page.getByRole("tablist", { name: "Equipment sections" });
-    await expect(
-      sections.getByRole("tab", { name: "History", exact: true }),
-    ).toBeEnabled();
-    await expect(
-      sections.getByRole("tab", { name: "Documents", exact: true }),
-    ).toBeEnabled();
-    await expect(
-      sections.getByRole("tab", { name: "Ask Vorta", exact: true }),
-    ).toBeVisible();
-  }
+  const sections = page.getByRole("tablist", { name: "Equipment sections" });
+  await expect(
+    sections.getByRole("tab", { name: "History", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    sections.getByRole("tab", { name: "Documents", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    sections.getByRole("tab", { name: "Ask Vorta", exact: true }),
+  ).toBeVisible();
 
   await openEquipmentSection("work-orders", "Work Orders");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders$`));
