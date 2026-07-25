@@ -1219,7 +1219,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
       <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
-        <CardContent className="p-5">
+        <CardContent className="p-3 sm:p-5">
           <div className="flex flex-col gap-5">
 
             <div className="sm:hidden">
@@ -1376,7 +1376,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
             {/* KPI strip */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
+              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2 sm:py-2.5">
                 <p className="text-xs text-slate-500">{isSiteRiskScope
                   ? "Site Risk"
                   : "Area Risk"}</p>
@@ -1407,7 +1407,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                   "No live data"
                 )}</p>
               </div>
-              <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2.5">
+              <div className="flex flex-col gap-0.5 rounded-lg border border-red-500/30 bg-[#0d1117] px-3 py-2 sm:py-2.5">
                 <p className="text-xs text-slate-500">{isSiteRiskScope
                   ? "Highest Area"
                   : "Highest Asset"}</p>
@@ -1422,17 +1422,17 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     ? `Risk ${activeRiskScope.highestChildScore}`
                     : "No live data"}</p>
               </div>
-              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
+              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2 sm:py-2.5">
                 <p className="text-xs text-slate-500">PM Backlog</p>
                 <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.overduePmCount ?? "—"}</p>
                 <p className="text-xs text-orange-400">Overdue PMs</p>
               </div>
-              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2.5">
+              <div className="flex flex-col gap-0.5 rounded-lg border border-gray-800 bg-[#0d1117] px-3 py-2 sm:py-2.5">
                 <p className="text-xs text-slate-500">Calibration Backlog</p>
                 <p className="text-xl font-semibold text-slate-50">{activeRiskScope?.calibrationBacklogCount ?? "—"}</p>
                 <p className="text-xs text-yellow-400">Due / overdue</p>
               </div>
-              <div className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2.5 ${
+              <div className={`flex flex-col gap-0.5 rounded-lg border bg-[#0d1117] px-3 py-2 sm:py-2.5 ${
                 activeRiskScope?.noEngineerOverride
                   ? "border-red-500/50"
                   : "border-gray-800"
@@ -1452,7 +1452,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
             </div>
 
             {/* Priority action summary */}
-            <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-2.5 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
               <div
                 data-vorta-work-plan-summary="true"
                 hidden={isPhoneViewport}
