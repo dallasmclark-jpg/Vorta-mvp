@@ -19,7 +19,17 @@ export async function signInMaintenanceManager(page: Page): Promise<void> {
   ).not.toBe("");
 
   await page.goto("/");
-  await page.getByLabel("Email").fill(maintenanceManagerEmail);
+  const emailInput = page.getByLabel("Email");
+  const entryPoint = await Promise.race([
+    page.waitForURL(/\/dashboard(?:\?.*)?$/).then(() => "dashboard" as const),
+    emailInput.waitFor({ state: "visible" }).then(() => "login" as const),
+  ]);
+
+  if (entryPoint === "dashboard") {
+    return;
+  }
+
+  await emailInput.fill(maintenanceManagerEmail);
   await page
     .getByRole("textbox", { name: "Password", exact: true })
     .fill(maintenanceManagerPassword);
