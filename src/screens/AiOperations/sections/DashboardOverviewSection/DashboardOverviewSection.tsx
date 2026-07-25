@@ -1671,7 +1671,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     <div>
                       <div
                         data-vorta-work-plan-header="true"
-                        className="mb-3 flex items-center justify-between"
+                        className="mb-3 hidden items-center justify-between sm:flex"
                       >
                         <div>
                           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -1735,7 +1735,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               >
                                 <span
                                   data-vorta-work-plan-rank="true"
-                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300"
+                                  className="hidden h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300 sm:flex"
                                 >
                                   {index + 1}
                                 </span>
@@ -1756,7 +1756,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
                                   <div
                                     data-vorta-work-plan-metadata="true"
-                                    className="mt-1.5 flex flex-wrap gap-1.5"
+                                    className="mt-1.5 hidden flex-wrap gap-1.5 sm:flex"
                                   >
                                     {workOrder && (
                                       <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-300">
@@ -1792,7 +1792,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 >
                                   <p
                                     data-vorta-work-plan-risk-label="true"
-                                    className="text-[11px] font-medium uppercase tracking-wider text-slate-500"
+                                    className="hidden text-[11px] font-medium uppercase tracking-wider text-slate-500 sm:block"
                                   >
                                     Asset risk
                                   </p>
@@ -1801,7 +1801,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   </p>
                                   <p
                                     data-vorta-work-plan-projected-score="true"
-                                    className="text-xs text-slate-500"
+                                    className="hidden text-xs text-slate-500 sm:block"
                                   >
                                     to {action.projectedScore}
                                   </p>
