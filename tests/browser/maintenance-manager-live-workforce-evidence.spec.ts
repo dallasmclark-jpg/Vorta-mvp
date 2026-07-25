@@ -1,22 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const email = process.env.VORTA_E2E_EMAIL ?? "demo@vorta.network";
-const password = process.env.VORTA_E2E_PASSWORD ?? "";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
 const allowedOrganisationId =
   process.env.VORTA_E2E_ORGANISATION_ID ??
   "10000000-0000-0000-0000-000000000001";
-
-async function signIn(page: Page): Promise<void> {
-  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
-}
 
 async function expectNoPageOverflow(page: Page, label: string): Promise<void> {
   const overflow = await page.evaluate(
@@ -34,7 +23,7 @@ async function waitForFunctionResponse(page: Page, slug: string) {
 }
 
 test("live Skills Matrix returns active-site capability evidence", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const responsePromise = waitForFunctionResponse(page, "skills-matrix-data");
   await page.goto("/skills-matrix");
 
@@ -59,7 +48,7 @@ test("live Skills Matrix returns active-site capability evidence", async ({ page
 });
 
 test("live Requirements returns active-site requirement evidence", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const responsePromise = waitForFunctionResponse(page, "requirements-data");
   await page.goto("/requirements");
 
@@ -80,7 +69,7 @@ test("workforce pages fail closed when required evidence metadata is missing", a
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1920", "Fail-closed contract is exercised once per run");
-  await signIn(page);
+  await signInMaintenanceManager(page);
 
   await page.route(/\/functions\/v1\/skills-matrix-data/, async (route) => {
     await route.fulfill({
