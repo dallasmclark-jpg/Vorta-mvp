@@ -95,7 +95,7 @@ const nav: NavGroup[] = [
     ],
   },
   {
-    groupLabel: "Pilot",
+    groupLabel: "Pilot evidence",
     items: [
       { label: "Pilot Evidence", icon: BarChart3, to: "/pilot-impact" },
     ],
@@ -117,7 +117,7 @@ const liveNav: NavGroup[] = [
       { label: "Skills Matrix", icon: Network, to: "/skills-matrix" },
       { label: "Engineers", icon: Users, to: "/engineers" },
       { label: "Requirements", icon: ClipboardList, to: "/requirements" },
-      { label: "Workforce Development", icon: TrendingUp, to: "/career" },
+      { label: "Career Evidence", icon: TrendingUp, to: "/career" },
     ],
   },
   {
@@ -128,7 +128,7 @@ const liveNav: NavGroup[] = [
     ],
   },
   {
-    groupLabel: "Pilot",
+    groupLabel: "Pilot evidence",
     items: [
       { label: "Pilot Evidence", icon: BarChart3, to: "/pilot-impact" },
     ],
