@@ -115,6 +115,62 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(standaloneAskButton).toBeVisible();
   }
 
+  if (isPhone) {
+    const viewWorkPlanButton = page.getByRole(
+      "button",
+      { name: "View work plan", exact: true },
+    );
+    await expect(viewWorkPlanButton).toBeVisible();
+    await viewWorkPlanButton.click();
+
+    const workPlanDetails = page.locator(
+      '[data-vorta-work-plan-details="true"]',
+    );
+    await expect(workPlanDetails).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await workPlanDetails.boundingBox();
+        return box?.y ?? Number.POSITIVE_INFINITY;
+      })
+      .toBeLessThanOrEqual(96);
+
+    await expect(
+      workPlanDetails.locator(
+        '[data-vorta-work-plan-header="true"]',
+      ),
+    ).toBeHidden();
+
+    const firstWorkPlanAction = workPlanDetails
+      .locator('[data-vorta-work-plan-action="true"]')
+      .first();
+    await expect(firstWorkPlanAction).toBeVisible();
+    await expect(
+      firstWorkPlanAction.locator(
+        '[data-vorta-work-plan-driver="true"]',
+      ),
+    ).toBeVisible();
+    await expect(
+      firstWorkPlanAction.locator(
+        '[data-vorta-work-plan-rank="true"]',
+      ),
+    ).toBeHidden();
+    await expect(
+      firstWorkPlanAction.locator(
+        '[data-vorta-work-plan-metadata="true"]',
+      ),
+    ).toBeHidden();
+    await expect(
+      firstWorkPlanAction.locator(
+        '[data-vorta-work-plan-risk-label="true"]',
+      ),
+    ).toBeHidden();
+    await expect(
+      firstWorkPlanAction.locator(
+        '[data-vorta-work-plan-projected-score="true"]',
+      ),
+    ).toBeHidden();
+  }
+
   const shiftCoverCard = page.locator(
     '[data-vorta-labour-risk-card="shift-cover"]',
   );
