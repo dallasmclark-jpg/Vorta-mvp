@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
+import { Select } from "../../components/Select";
 import { useAuth } from "../../lib/auth";
 import { RuntimeContractError } from "../../lib/runtimeContracts";
 import { supabase } from "../../lib/supabaseClient";
@@ -656,20 +657,19 @@ export function LiveEngineersSection(): JSX.Element {
                       className="h-10 w-full rounded-lg border border-gray-800 bg-[#0b0e14] pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                     />
                   </label>
-                  <label>
-                    <span className="sr-only">Filter by capability risk</span>
-                    <select
-                      value={riskFilter}
-                      onChange={(event) => setRiskFilter(event.target.value)}
-                      className="h-10 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-200 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-                    >
-                      <option value="all">All capability risk</option>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </label>
+                  <Select
+                    value={riskFilter}
+                    onChange={setRiskFilter}
+                    options={[
+                      { value: "all", label: "All capability risk" },
+                      { value: "critical", label: "Critical" },
+                      { value: "high", label: "High" },
+                      { value: "medium", label: "Medium" },
+                      { value: "low", label: "Low" },
+                    ]}
+                    placeholder="Filter by capability risk"
+                    className="h-10 w-full sm:w-auto"
+                  />
                 </div>
               </div>
 
