@@ -37,7 +37,11 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   if (isPhone) {
     await expect(riskIntelligenceLabel).toBeHidden();
     await expect(workPlanSummary).toBeHidden();
-    await expect(page.getByText("Today's Risk", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .locator('[data-vorta-mobile-risk-scope="true"]')
+        .getByText("Today's Risk", { exact: true }),
+    ).toBeVisible();
   } else {
     await expect(riskIntelligenceLabel).toBeVisible();
     await expect(workPlanSummary).toBeVisible();
