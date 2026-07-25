@@ -1363,14 +1363,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
             {/* Card header */}
             <header className="grid gap-4 lg:grid-cols-[minmax(180px,0.55fr)_minmax(360px,1.45fr)_auto] lg:items-end">
               <div className="flex flex-col gap-1.5">
-                <Badge className="w-fit rounded bg-[#ef444420] px-2 py-1 text-xs font-semibold tracking-wider text-red-400 hover:bg-[#ef444420]">
+                <Badge
+                  data-vorta-risk-intelligence-label="true"
+                  hidden={isPhoneViewport}
+                  className="w-fit rounded bg-[#ef444420] px-2 py-1 text-xs font-semibold tracking-wider text-red-400 hover:bg-[#ef444420]"
+                >
                   RISK INTELLIGENCE
                 </Badge>
 
                 <h2 className="text-base font-semibold text-slate-50">
-                  {isSiteRiskScope
-                    ? "Site Risk Briefing"
-                    : `${activeScopeLabel} Risk Briefing`}
+                  {isPhoneViewport
+                    ? "Today's Risk"
+                    : isSiteRiskScope
+                      ? "Site Risk Briefing"
+                      : `${activeScopeLabel} Risk Briefing`}
                 </h2>
               </div>
 
