@@ -17,6 +17,7 @@ const [
   liveRoutes,
   liveTrust,
   equipmentRoute,
+  equipmentOverviewRoute,
   equipmentIndex,
   browserTest,
   browserHelpers,
@@ -40,6 +41,7 @@ const [
   read("src/screens/Equipment/EquipmentLiveRoutes.tsx"),
   read("src/screens/Equipment/equipmentLiveTrust.ts"),
   read("src/screens/Equipment/EquipmentRouteEntry.tsx"),
+  read("src/screens/Equipment/EquipmentOverviewRouteEntry.tsx"),
   read("src/screens/Equipment/index.ts"),
   read("tests/browser/maintenance-manager-core.spec.ts"),
   read("tests/browser/maintenance-manager-test-helpers.ts"),
@@ -94,8 +96,11 @@ assert.match(equipmentIndex, /EquipmentRouteEntry as EquipmentSection/);
 assert.match(equipmentRoute, /EquipmentLiveListEntry/);
 assert.match(equipmentRoute, /dataMode === "demo"/);
 assert.match(equipmentRoute, /<MobileEquipmentSection \/>/);
+assert.match(equipmentIndex, /EquipmentOverviewRouteEntry as EquipmentOverview/);
+assert.match(equipmentOverviewRoute, /EquipmentOverviewTrustedEntry/);
+assert.match(equipmentOverviewRoute, /dataMode === "demo"/);
+assert.match(equipmentOverviewRoute, /<MobileEquipmentOverview \/>/);
 for (const routeEntry of [
-  "EquipmentOverviewTrustedEntry",
   "EquipmentNotificationsTrustedEntry",
   "EquipmentWorkOrdersTrustedEntry",
   "EquipmentCalibrationsTrustedEntry",
