@@ -183,7 +183,7 @@ assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
 assert.match(
   qualityWorkflow,
-  /tests\/browser\/maintenance-manager-live-boundary-evidence\.spec\.ts\s*\\\\\n\s*--project=desktop-1920/,
+  /tests\/browser\/maintenance-manager-live-boundary-evidence\.spec\.ts\s*\\\n\s*--project=desktop-1920/,
   "Live evidence tests must run once on desktop instead of multiplying authenticated requests across every viewport.",
 );
 
