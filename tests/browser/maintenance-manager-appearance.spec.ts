@@ -70,3 +70,38 @@ test("appearance control switches theme and persists the chosen mode", async ({ 
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem("vorta:appearance"))).toBe("system");
   await expect(root).toHaveAttribute("data-theme-preference", "system");
 });
+
+test("mobile navigation drawer opens from the right", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone-360", "Phone navigation regression only");
+
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+
+  const openMenu = page.getByRole("button", { name: "Open menu", exact: true });
+  await expect(openMenu).toBeVisible();
+  await openMenu.click();
+
+  const drawer = page.getByRole("dialog", {
+    name: "Portal navigation",
+    exact: true,
+  });
+  await expect(drawer).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      const drawerBox = await drawer.boundingBox();
+      return drawerBox ? Math.round(drawerBox.x + drawerBox.width) : null;
+    })
+    .toBe(viewport!.width);
+
+  const drawerBox = await drawer.boundingBox();
+  expect(drawerBox).not.toBeNull();
+  expect(drawerBox!.x, "The drawer must occupy the right side, not start at the left edge").toBeGreaterThan(0);
+
+  const sidebar = drawer.locator('[data-vorta-sidebar="true"]');
+  await expect(sidebar).toHaveCSS("border-right-width", "0px");
+  await expect(sidebar).toHaveCSS("border-left-width", "1px");
+
+  await page.getByRole("button", { name: "Close sidebar", exact: true }).click();
+  await expect(drawer).toBeHidden();
+});
