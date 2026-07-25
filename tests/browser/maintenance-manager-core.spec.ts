@@ -110,6 +110,49 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(closeGlobalAssistant).toBeVisible();
     await closeGlobalAssistant.click();
     await expect(closeGlobalAssistant).toBeHidden();
+
+    const viewWorkPlanButton = page.getByRole("button", {
+      name: "View work plan",
+      exact: true,
+    });
+    await expect(viewWorkPlanButton).toBeVisible();
+    await expect(viewWorkPlanButton).toBeEnabled();
+    await viewWorkPlanButton.scrollIntoViewIfNeeded();
+    await viewWorkPlanButton.click();
+
+    const workPlanPanel = page.locator(
+      'header:has([data-vorta-embedded-ai="true"]) + div.grid + div.flex.flex-col + div.border-t',
+    );
+    await expect(workPlanPanel).toBeVisible();
+    await expect(
+      page.getByText("Recommended Work Queue", { exact: true }),
+    ).toBeHidden();
+    await expect(
+      page.getByText(
+        "Ranked by final asset risk reduction, including current-shift labour coverage, then criticality, overdue age and duration.",
+        { exact: true },
+      ),
+    ).toBeHidden();
+
+    await expect
+      .poll(async () => {
+        const box = await workPlanPanel.boundingBox();
+        return box !== null && box.y >= 0 && box.y < 180;
+      })
+      .toBe(true);
+
+    const firstWorkPlanAction = workPlanPanel
+      .locator("div.flex.flex-col.gap-2 > button")
+      .first();
+    await expect(firstWorkPlanAction).toBeVisible();
+    await expect(
+      firstWorkPlanAction.locator(
+        ":scope > div.min-w-0 > div:first-child > :not(p)",
+      ),
+    ).toBeHidden();
+    await expect(
+      firstWorkPlanAction.getByText("Asset risk", { exact: true }),
+    ).toBeHidden();
   } else {
     await expect(selectedRiskSummaryCard).toBeVisible();
     await expect(standaloneAskButton).toBeVisible();
