@@ -1225,7 +1225,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
             <div className="sm:hidden" data-vorta-mobile-risk-scope="true">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Risk scope
+                Today's Risk
               </span>
               <Select
                 value={selectedRiskScopeKey}
