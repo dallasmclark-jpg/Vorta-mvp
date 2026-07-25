@@ -169,8 +169,8 @@ html.light :is([class~="hover:text-slate-100"], [class~="hover:text-slate-200"])
 }
 
 .vorta-theme-control {
-  left: 1rem;
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 4.5rem;
+  bottom: 1rem;
 }
 
 .vorta-theme-menu,
@@ -193,9 +193,13 @@ html.light .vorta-theme-trigger:focus-visible {
   --tw-ring-offset-color: #f8fafc !important;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .vorta-theme-control {
-    left: 4.5rem;
+    inset: 0.75rem 4.25rem auto auto;
+  }
+
+  .vorta-theme-menu {
+    inset: calc(100% + 0.5rem) 0 auto auto;
   }
 }
 
