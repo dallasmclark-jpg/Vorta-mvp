@@ -5,22 +5,22 @@ import { EngineersSection as DesktopDemoEngineersSection } from "./EngineersSect
 import { LiveEngineersSection as DesktopLiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
 
-function MobileDemoEngineersSection(): JSX.Element {
-  return <MobileEngineersSection dataMode="demo" />;
-}
-
 export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const isPhone = useMediaQuery("(max-width: 639px)");
-  const DemoEngineersSection = isPhone
-    ? MobileDemoEngineersSection
-    : DesktopDemoEngineersSection;
-  const LiveEngineersSection = DesktopLiveEngineersSection;
+
+  if (isPhone && dataMode !== "unavailable") {
+    return (
+      <div className="contents" data-vorta-engineers-mode={dataMode}>
+        <MobileEngineersSection dataMode={dataMode} />
+      </div>
+    );
+  }
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>
-      {dataMode === "demo" ? <DemoEngineersSection /> : <LiveEngineersSection />}
+      {dataMode === "demo" ? <DesktopDemoEngineersSection /> : <DesktopLiveEngineersSection />}
     </div>
   );
 }
