@@ -460,14 +460,18 @@ export const EquipmentOverview = (): JSX.Element => {
 
   return (
     <section className="flex w-full flex-col gap-0 overflow-x-hidden pb-10">
-      <div className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6">
-        <div className="mb-4 flex items-center justify-between gap-4">
+      <div
+        className="lg:sticky lg:top-0 z-10 border-b border-gray-800 bg-[#0b0e14] px-4 pb-4 pt-4 md:px-6"
+        data-vorta-equipment-detail-header="true"
+      >
+        <div className="mb-3 flex items-center justify-between gap-4 sm:mb-4">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
             <button type="button" onClick={() => navigate("/equipment")} className="transition-colors hover:text-slate-300">Equipment</button>
             <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate text-slate-300">{eq.name} ({eq.assetNumber})</span>
+            <span className="truncate text-slate-300 sm:hidden">{eq.assetNumber}</span>
+            <span className="hidden truncate text-slate-300 sm:inline">{eq.name} ({eq.assetNumber})</span>
           </nav>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
             <Button type="button" variant="outline" onClick={copyAssetReference} className="h-auto gap-2 border-gray-700 bg-transparent px-3 py-1.5 text-xs text-slate-300 hover:bg-gray-800 hover:text-slate-100">
               {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? "Copied" : "Copy asset ref"}
@@ -484,36 +488,36 @@ export const EquipmentOverview = (): JSX.Element => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-          <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820]">
+        <div className="flex flex-wrap gap-3 sm:flex-col sm:gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820] sm:h-28 sm:w-32">
             <img src={eq.image} alt={eq.name} className="h-full w-full object-cover" onError={(event) => { (event.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-50">{eq.name}</h1>
-              <Badge className={`inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>{eq.riskLevel} Risk</Badge>
+              <h1 className="line-clamp-2 text-lg font-bold leading-6 tracking-tight text-slate-50 sm:text-2xl">{eq.name}</h1>
+              <Badge className={`hidden h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none sm:inline-flex ${riskBadgeClass}`}>{eq.riskLevel} Risk</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <EquipmentRiskIndicator riskLevel={eq.riskLevel} />
               <span className="text-sm font-semibold text-slate-200">{eq.status}</span>
-              <span className="text-sm text-slate-500">{eq.statusNote}</span>
+              <span className="hidden text-sm text-slate-500 sm:inline">{eq.statusNote}</span>
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 sm:gap-x-4">
               <span className="font-medium text-slate-300">{eq.assetNumber}</span>
-              <span className="rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide">{eq.type}</span>
               <span>📍 {eq.area}</span>
-              <span>Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
-              <span>Model: <span className="text-slate-300">{eq.model}</span></span>
-              <span>Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
+              <span className="hidden rounded bg-gray-800 px-1.5 py-0.5 font-medium tracking-wide sm:inline">{eq.type}</span>
+              <span className="hidden sm:inline">Manufacturer: <span className="text-slate-300">{eq.manufacturer}</span></span>
+              <span className="hidden sm:inline">Model: <span className="text-slate-300">{eq.model}</span></span>
+              <span className="hidden sm:inline">Criticality: <span className="text-slate-300">{eq.criticality}</span></span>
             </div>
           </div>
-          <div className="flex shrink-0 flex-col gap-2 lg:w-52">
+          <div className="flex w-full shrink-0 flex-row items-center justify-between gap-3 rounded-xl border border-gray-800 bg-[#10151d] px-4 py-3 sm:flex-col sm:items-stretch sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 lg:w-52">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Score</span>
             <div className="flex items-end gap-3">
-              <span className="text-4xl font-bold text-slate-50">{currentRisk}%</span>
+              <span className="text-3xl font-bold text-slate-50 sm:text-4xl">{currentRisk}%</span>
               <Badge className={`mb-1 inline-flex h-auto rounded border px-2 py-0.5 text-[10px] font-bold uppercase shadow-none ${riskBadgeClass}`}>{eq.riskLevel}</Badge>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="hidden flex-col gap-1.5 sm:flex">
               <span className="text-xs font-medium text-slate-500">Risk drivers</span>
               <div className="flex h-2 overflow-hidden rounded-full bg-gray-800">
                 {eq.riskBreakdown.map((driver) => (
@@ -537,20 +541,23 @@ export const EquipmentOverview = (): JSX.Element => {
         <Card className="overflow-hidden rounded-2xl border border-blue-500/25 bg-[linear-gradient(135deg,#131923_0%,#10151d_55%,#101722_100%)] shadow-none">
           <CardContent className="p-0">
             <div className="grid gap-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
-              <div className="p-5 md:p-6">
+              <div className="p-4 sm:p-5 md:p-6">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="h-auto rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300 shadow-none">Equipment intelligence</Badge>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"><Database className="h-3.5 w-3.5" />SAP · Skills · Spares · Documents · refreshed 2h ago</span>
+                  <Badge className="hidden h-auto rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300 shadow-none sm:inline-flex">Equipment intelligence</Badge>
+                  <span className="hidden items-center gap-1.5 text-[11px] text-slate-500 sm:inline-flex"><Database className="h-3.5 w-3.5" />SAP · Skills · Spares · Documents · refreshed 2h ago</span>
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-slate-50">Equipment Risk Briefing</h2>
-                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{briefing}</p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <h2 className="text-base font-semibold text-slate-50 sm:mt-4 sm:text-xl">Risk briefing</h2>
+                <p className="mt-1.5 text-sm leading-5 text-slate-300 sm:hidden">
+                  {eq.riskLevel} risk · {driverRows[0]?.label ?? "Maintenance exposure"}
+                </p>
+                <p className="mt-2 hidden max-w-4xl text-sm leading-6 text-slate-300 sm:block">{briefing}</p>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3 lg:grid-cols-4">
                   <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3"><Metric label="Awaiting SAP work order" value={demo.awaitingNotifications} tone="text-orange-300" /></div>
-                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3"><Metric label="Predicted failure mode" value="Bearing degradation" tone="text-red-300" /></div>
+                  <div className="hidden rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3 sm:block"><Metric label="Predicted failure mode" value="Bearing degradation" tone="text-red-300" /></div>
                   <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3"><Metric label="Risk after plan" value={`${afterPlan}%`} tone="text-emerald-300" /></div>
-                  <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3"><Metric label="Calculated reduction" value={`-${totalReduction} points`} tone="text-emerald-300" /></div>
+                  <div className="hidden rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3 sm:block"><Metric label="Calculated reduction" value={`-${totalReduction} points`} tone="text-emerald-300" /></div>
                 </div>
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-5 hidden flex-col gap-2 sm:flex sm:flex-row">
                   <div className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-gray-700 bg-[#0a0f16] px-3 focus-within:border-blue-500/60">
                     <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
                     <input
@@ -564,7 +571,7 @@ export const EquipmentOverview = (): JSX.Element => {
                   <Button type="button" onClick={askVorta} className="min-h-11 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"><BrainCircuit className="h-4 w-4" />Ask Vorta</Button>
                 </div>
               </div>
-              <div className="border-t border-gray-800 bg-[#0b1017]/70 p-5 xl:border-l xl:border-t-0 md:p-6">
+              <div className="hidden border-t border-gray-800 bg-[#0b1017]/70 p-5 sm:block xl:border-l xl:border-t-0 md:p-6">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk evidence</p>
                 <div className="mt-4 flex flex-col gap-3">
                   {driverRows.slice(0, 5).map((driver, index) => (
