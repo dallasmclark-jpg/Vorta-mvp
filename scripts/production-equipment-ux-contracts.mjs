@@ -60,8 +60,6 @@ assert.ok(
 );
 
 for (const [label, source] of [
-  ["dashboard risk scope", dashboardOverview],
-  ["equipment section navigation", equipmentTabs],
   ["demo equipment sort", equipmentSection],
   ["live equipment filters", liveEntry],
   ["equipment spares filter", equipmentSpares],
@@ -77,6 +75,41 @@ for (const [label, source] of [
     !source.includes("<select"),
     `${label} must not fall back to a native mobile select menu.`,
   );
+}
+
+for (const [label, source, markers] of [
+  [
+    "dashboard risk scope",
+    dashboardOverview,
+    [
+      'data-vorta-mobile-risk-scope="true"',
+      'aria-label="Risk intelligence scope"',
+      'data-vorta-risk-dot="true"',
+      "overflow-x-auto",
+    ],
+  ],
+  [
+    "equipment section navigation",
+    equipmentTabs,
+    [
+      'data-vorta-equipment-mobile-tabs="true"',
+      'data-vorta-equipment-tablist="true"',
+      'aria-label="Equipment sections"',
+      "overflow-x-auto",
+    ],
+  ],
+]) {
+  assert.ok(
+    !source.includes("components/Select"),
+    `${label} must use horizontal tabs rather than a dropdown.`,
+  );
+  assert.ok(
+    !source.includes("<select"),
+    `${label} must not fall back to a native mobile select menu.`,
+  );
+  for (const marker of markers) {
+    assert.ok(source.includes(marker), `${label} is missing ${marker}.`);
+  }
 }
 
 for (const expected of [
