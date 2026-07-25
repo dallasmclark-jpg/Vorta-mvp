@@ -90,6 +90,20 @@ check(
 );
 
 check(
+  mobileDashboardStyles.includes(
+    '[data-vorta-mobile-risk-scope="true"]::after',
+  ) &&
+    mobileDashboardStyles.includes("linear-gradient(90deg") &&
+    mobileDashboardStyles.includes("min-height: 4.25rem") &&
+    mobileDashboardStyles.includes("min-height: 4.625rem") &&
+    mobileDashboardStyles.includes("border-width: 0 !important") &&
+    mobileDashboardStyles.includes("svg.lucide-bot") &&
+    mobileDashboardStyles.includes("padding-inline: 0.25rem !important") &&
+    mobileDashboardStyles.includes("font-size: 0.75rem !important"),
+  "Phone dashboard must retain the compact briefing, tab overflow cue, unclipped Ask Vorta input and simplified work-plan hierarchy.",
+);
+
+check(
   portalShell.includes("px-4 py-1 md:hidden") &&
     aiCommandBar.includes("px-2 py-1 sm:py-1.5") &&
     dashboardOverview.includes('className="p-3 sm:p-5"') &&
