@@ -124,7 +124,7 @@ export function MaintenanceDashboardExperience(): JSX.Element {
         @media (max-width: 639px) {
           [data-vorta-dashboard-root="true"] > section {
             gap: 1rem !important;
-            padding: 0.75rem 0.75rem 7rem !important;
+            padding: 0.75rem 0.75rem 8rem !important;
           }
 
           [data-vorta-dashboard-root="true"] > section > header {

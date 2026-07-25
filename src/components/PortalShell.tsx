@@ -570,7 +570,7 @@ export const PortalShell = ({
       {/* ── Main content ────────────────────────────────────────────────── */}
       <section className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         {/* Mobile top bar */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
+        <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-1 md:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
