@@ -6,14 +6,16 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
 }) => {
   await signInMaintenanceManager(page);
 
-  const siteRiskHeading = page.getByRole("heading", {
-    name:
-      (page.viewportSize()?.width ?? 1366) < 640
-        ? "Today's Risk"
-        : "Site Risk Briefing",
-    exact: true,
-  });
-  await expect(siteRiskHeading).toBeVisible();
+  const isPhone = (page.viewportSize()?.width ?? 1366) < 640;
+  const riskBriefingLabel = isPhone
+    ? page
+        .locator('[data-vorta-mobile-risk-scope="true"]')
+        .getByText("Today's Risk", { exact: true })
+    : page.getByRole("heading", {
+        name: "Site Risk Briefing",
+        exact: true,
+      });
+  await expect(riskBriefingLabel).toBeVisible();
 
   await page.route(
     /\/rest\/v1\/rpc\/vorta_refresh_and_get_operational_dashboard/,
@@ -31,8 +33,6 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
     exact: true,
     includeHidden: true,
   });
-  const isPhone = (page.viewportSize()?.width ?? 1366) < 640;
-
   if (isPhone) {
     await expect(refreshRiskButton).toBeHidden();
     await refreshRiskButton.evaluate((button: HTMLButtonElement) => button.click());
