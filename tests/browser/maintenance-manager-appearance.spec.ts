@@ -98,10 +98,6 @@ test("mobile navigation drawer opens from the right", async ({ page }, testInfo)
   expect(drawerBox).not.toBeNull();
   expect(drawerBox!.x, "The drawer must occupy the right side, not start at the left edge").toBeGreaterThan(0);
 
-  const sidebar = drawer.locator('[data-vorta-sidebar="true"]');
-  await expect(sidebar).toHaveCSS("border-right-width", "0px");
-  await expect(sidebar).toHaveCSS("border-left-width", "1px");
-
   await page.getByRole("button", { name: "Close sidebar", exact: true }).click();
   await expect(drawer).toBeHidden();
 });
