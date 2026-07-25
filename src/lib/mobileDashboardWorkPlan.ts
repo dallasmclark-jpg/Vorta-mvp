@@ -17,6 +17,30 @@ const getWorkPlanSummary = (
     : null;
 };
 
+const prepareMobileWorkPlan = (
+  panel: HTMLElement,
+): void => {
+  panel.dataset.vortaMobileWorkPlan = "true";
+
+  const content = panel.querySelector<HTMLElement>(
+    ":scope > div.flex.flex-col.gap-5",
+  );
+  const queueSection = content?.children.item(2);
+
+  if (!(queueSection instanceof HTMLElement)) {
+    return;
+  }
+
+  queueSection.dataset.vortaMobileWorkPlanQueue = "true";
+  queueSection
+    .querySelectorAll<HTMLElement>(
+      ":scope > div.flex.flex-col.gap-2 > button",
+    )
+    .forEach((card) => {
+      card.dataset.vortaMobileWorkPlanCard = "true";
+    });
+};
+
 const scrollToExpandedWorkPlan = (
   summary: HTMLElement,
 ): void => {
@@ -30,6 +54,8 @@ const scrollToExpandedWorkPlan = (
       ) {
         return;
       }
+
+      prepareMobileWorkPlan(panel);
 
       const reducedMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
