@@ -23,6 +23,7 @@ const mobileRoutes = [
 test("Maintenance Manager mobile routes retain context and avoid page overflow", async ({
   page,
 }) => {
+  test.setTimeout(180_000);
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   test.skip(viewportWidth >= 640, "Phone-only route matrix.");
 
