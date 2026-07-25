@@ -461,11 +461,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
             "(prefers-reduced-motion: reduce)",
           ).matches;
 
-        riskPlanDetailsRef.current?.scrollIntoView({
+        const detailsElement =
+          riskPlanDetailsRef.current;
+
+        if (!detailsElement) {
+          return;
+        }
+
+        window.scrollTo({
+          top:
+            window.scrollY +
+            detailsElement.getBoundingClientRect().top -
+            72,
           behavior: prefersReducedMotion
             ? "auto"
             : "smooth",
-          block: "start",
         });
       });
 
@@ -1539,7 +1549,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
               <div
                 ref={riskPlanDetailsRef}
                 data-vorta-work-plan-details="true"
-                className="scroll-mt-20 border-t border-gray-800 pt-4"
+                className="border-t border-gray-800 pt-4"
               >
                 {riskReductionPlanLoading && !riskReductionPlan ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
