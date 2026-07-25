@@ -1,22 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const email = process.env.VORTA_E2E_EMAIL ?? "demo@vorta.network";
-const password = process.env.VORTA_E2E_PASSWORD ?? "";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
 const allowedOrganisationId =
   process.env.VORTA_E2E_ORGANISATION_ID ??
   "10000000-0000-0000-0000-000000000001";
-
-async function signIn(page: Page): Promise<void> {
-  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
-  await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
-}
 
 async function expectNoPageOverflow(page: Page, label: string): Promise<void> {
   const overflow = await page.evaluate(
@@ -50,7 +39,7 @@ async function expectScopedResponse(
 }
 
 test("live Career renders site-wide workforce evidence without a fake personal profile", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(page, "/career", "career-evidence-data");
   expect(Array.isArray(body.paths)).toBe(true);
   expect(Array.isArray(body.requirements)).toBe(true);
@@ -64,7 +53,7 @@ test("live Career renders site-wide workforce evidence without a fake personal p
 });
 
 test("live Support renders operational evidence and a real support contact", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(page, "/support", "support-evidence-data");
   expect(Array.isArray(body.requests)).toBe(true);
 
@@ -81,7 +70,7 @@ test("live Support renders operational evidence and a real support contact", asy
 });
 
 test("live Settings renders scoped access and health evidence without fake configuration controls", async ({ page }) => {
-  await signIn(page);
+  await signInMaintenanceManager(page);
   const body = await expectScopedResponse(page, "/settings", "settings-evidence-data");
   expect((body.site as { id?: unknown } | undefined)?.id).toBe(allowedSiteId);
   expect((body.organisation as { id?: unknown } | undefined)?.id).toBe(allowedOrganisationId);
@@ -98,7 +87,7 @@ test("live boundary evidence pages fail closed when scope metadata is missing", 
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1920", "Fail-closed contracts are exercised once per run");
-  await signIn(page);
+  await signInMaintenanceManager(page);
 
   await page.route(/\/functions\/v1\/career-evidence-data/, async (route) => {
     await route.fulfill({
