@@ -23,9 +23,19 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
     },
   );
 
-  await page
-    .getByRole("button", { name: "Refresh risk intelligence", exact: true })
-    .click();
+  const refreshRiskButton = page.getByRole("button", {
+    name: "Refresh risk intelligence",
+    exact: true,
+    includeHidden: true,
+  });
+  const isPhone = (page.viewportSize()?.width ?? 1366) < 640;
+
+  if (isPhone) {
+    await expect(refreshRiskButton).toBeHidden();
+    await refreshRiskButton.evaluate((button: HTMLButtonElement) => button.click());
+  } else {
+    await refreshRiskButton.click();
+  }
 
   const staleNotice = page.locator(
     '[data-vorta-dashboard-evidence-state="stale"]',
