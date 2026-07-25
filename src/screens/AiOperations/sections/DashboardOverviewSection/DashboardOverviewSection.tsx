@@ -374,6 +374,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const riskKpiGridRef =
     useRef<HTMLDivElement>(null);
 
+  const riskPlanDetailsRef =
+    useRef<HTMLDivElement>(null);
+
   const handleRiskKpiScroll = (
     direction: "previous" | "next",
   ) => {
@@ -410,6 +413,33 @@ export const DashboardOverviewSection = (): JSX.Element => {
     useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
   const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
+  useEffect(() => {
+    if (!isRiskDetailOpen) {
+      return;
+    }
+
+    const animationFrameId =
+      window.requestAnimationFrame(() => {
+        const prefersReducedMotion =
+          window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+
+        riskPlanDetailsRef.current?.scrollIntoView({
+          behavior: prefersReducedMotion
+            ? "auto"
+            : "smooth",
+          block: "start",
+        });
+      });
+
+    return () => {
+      window.cancelAnimationFrame(
+        animationFrameId,
+      );
+    };
+  }, [isRiskDetailOpen]);
+
   const [
     hasOpenedRiskPlan,
     setHasOpenedRiskPlan,
@@ -1470,7 +1500,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
 
             {/* Expandable risk detail drawer */}
             {isRiskDetailOpen && (
-              <div className="border-t border-gray-800 pt-4">
+              <div
+                ref={riskPlanDetailsRef}
+                data-vorta-work-plan-details="true"
+                className="scroll-mt-20 border-t border-gray-800 pt-4"
+              >
                 {riskReductionPlanLoading && !riskReductionPlan ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
                     <RefreshCw className="h-4 w-4 animate-spin text-blue-400" />
@@ -1635,7 +1669,10 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     </div>
 
                     <div>
-                      <div className="mb-3 flex items-center justify-between">
+                      <div
+                        data-vorta-work-plan-header="true"
+                        className="mb-3 flex items-center justify-between"
+                      >
                         <div>
                           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                             Recommended Work Queue
@@ -1693,9 +1730,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     ),
                                   );
                                 }}
+                                data-vorta-work-plan-action="true"
                                 className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-gray-800 disabled:hover:bg-[#0d1117]"
                               >
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
+                                <span
+                                  data-vorta-work-plan-rank="true"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300"
+                                >
                                   {index + 1}
                                 </span>
 
@@ -1705,12 +1746,18 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                       {action.action}
                                     </p>
 
-                                    <Badge className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-400 shadow-none">
+                                    <Badge
+                                      data-vorta-work-plan-driver="true"
+                                      className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-400 shadow-none"
+                                    >
                                       {action.driver}
                                     </Badge>
                                   </div>
 
-                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                  <div
+                                    data-vorta-work-plan-metadata="true"
+                                    className="mt-1.5 flex flex-wrap gap-1.5"
+                                  >
                                     {workOrder && (
                                       <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-300">
                                         {workOrder}
@@ -1739,14 +1786,23 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                   </div>
                                 </div>
 
-                                <div className="text-right">
-                                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                                <div
+                                  data-vorta-work-plan-risk="true"
+                                  className="text-right"
+                                >
+                                  <p
+                                    data-vorta-work-plan-risk-label="true"
+                                    className="text-[11px] font-medium uppercase tracking-wider text-slate-500"
+                                  >
                                     Asset risk
                                   </p>
                                   <p className="text-sm font-semibold text-emerald-400">
                                     −{action.calculatedReduction}
                                   </p>
-                                  <p className="text-xs text-slate-500">
+                                  <p
+                                    data-vorta-work-plan-projected-score="true"
+                                    className="text-xs text-slate-500"
+                                  >
                                     to {action.projectedScore}
                                   </p>
                                 </div>
