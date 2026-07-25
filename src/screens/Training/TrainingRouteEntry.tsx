@@ -21,10 +21,12 @@ function MobileDemoTrainingSection(): JSX.Element {
 
 export function TrainingRouteEntry(): JSX.Element {
   const isPhone = useMediaQuery("(max-width: 639px)");
-  const LiveTrainingSection = DesktopLiveTrainingSection;
 
-  if (isLivePilotMode) return <LiveTrainingSection />;
-  if (isPhone) return <MobileDemoTrainingSection />;
+  if (isPhone) {
+    return isLivePilotMode ? <MobileTrainingSection dataMode="live" /> : <MobileDemoTrainingSection />;
+  }
+
+  if (isLivePilotMode) return <DesktopLiveTrainingSection />;
 
   return (
     <>
