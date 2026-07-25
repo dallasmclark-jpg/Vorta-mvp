@@ -1,0 +1,45 @@
+name: Mobile work plan build diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Capture production build output
+        shell: bash
+        run: |
+          set +e
+          npm run build > build-diagnostics.log 2>&1
+          echo "$?" > build-status.txt
+          exit 0
+
+      - name: Preserve build diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-work-plan-build-diagnostics
+          path: |
+            build-diagnostics.log
+            build-status.txt
+          if-no-files-found: error
+          retention-days: 1
