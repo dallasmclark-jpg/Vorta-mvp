@@ -64,30 +64,30 @@ export async function expectOperationalTouchTarget(locator: Locator): Promise<vo
   ).toBeGreaterThanOrEqual(39.5);
 }
 
-async function authenticateSupabaseTestUser(page: Page): Promise<string> {
-  const authEndpoint = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=password`;
-  const authResponse = await page.request.post(authEndpoint, {
-    headers: {
-      apikey: supabaseAnonKey,
-      "Content-Type": "application/json",
-    },
-    data: {
-      email: maintenanceManagerEmail,
-      password: maintenanceManagerPassword,
-    },
+async function getStoredSupabaseAccessToken(page: Page): Promise<string> {
+  const accessToken = await page.evaluate(() => {
+    for (const value of Object.values(localStorage)) {
+      try {
+        const session = JSON.parse(value) as {
+          access_token?: unknown;
+          currentSession?: { access_token?: unknown };
+        };
+        const token =
+          typeof session.access_token === "string"
+            ? session.access_token
+            : session.currentSession?.access_token;
+        if (typeof token === "string" && token.length > 0) {
+          return token;
+        }
+      } catch {
+        // Ignore unrelated local-storage values.
+      }
+    }
+    return "";
   });
-
-  expect(
-    authResponse.ok(),
-    `Supabase test-user authentication failed: ${await authResponse.text()}`,
-  ).toBe(true);
-
-  const payload = (await authResponse.json()) as { access_token?: unknown };
-  const accessToken =
-    typeof payload.access_token === "string" ? payload.access_token : "";
   expect(
     accessToken,
-    "Authenticated Supabase access token must be available",
+    "The shared authenticated browser session must expose a Supabase access token",
   ).not.toBe("");
   return accessToken;
 }
@@ -99,7 +99,7 @@ export async function verifyCrossSiteIsolation(page: Page): Promise<void> {
     "VITE_SUPABASE_ANON_KEY must be configured",
   ).not.toBe("");
 
-  const accessToken = await authenticateSupabaseTestUser(page);
+  const accessToken = await getStoredSupabaseAccessToken(page);
   const today = new Date();
   const end = new Date(today);
   end.setUTCDate(end.getUTCDate() + 6);
@@ -114,6 +114,7 @@ export async function verifyCrossSiteIsolation(page: Page): Promise<void> {
 
   const allowedResponse = await page.request.post(endpoint, {
     headers,
+    timeout: 30_000,
     data: {
       p_site_id: allowedSiteId,
       p_start_date: startDate,
@@ -134,6 +135,7 @@ export async function verifyCrossSiteIsolation(page: Page): Promise<void> {
 
   const deniedResponse = await page.request.post(endpoint, {
     headers,
+    timeout: 30_000,
     data: {
       p_site_id: deniedSiteId,
       p_start_date: startDate,
