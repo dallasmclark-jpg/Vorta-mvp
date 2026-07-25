@@ -11,6 +11,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";
+import { Select } from "../../components/Select";
 import { useAuth } from "../../lib/auth";
 import {
   RuntimeContractError,
@@ -371,20 +372,19 @@ export const LiveRequirementsSection = (): JSX.Element => {
                       className="h-9 min-w-[220px] rounded-lg border border-gray-800 bg-[#0b0e14] pl-9 pr-3 text-sm text-slate-200 outline-none focus:border-blue-500/60"
                     />
                   </label>
-                  <label>
-                    <span className="sr-only">Filter by priority</span>
-                    <select
-                      value={priority}
-                      onChange={(event) => setPriority(event.target.value)}
-                      className="h-9 rounded-lg border border-gray-800 bg-[#0b0e14] px-3 text-sm text-slate-200 outline-none focus:border-blue-500/60"
-                    >
-                      <option value="all">All priorities</option>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </label>
+                  <Select
+                    value={priority}
+                    onChange={setPriority}
+                    options={[
+                      { value: "all", label: "All priorities" },
+                      { value: "critical", label: "Critical" },
+                      { value: "high", label: "High" },
+                      { value: "medium", label: "Medium" },
+                      { value: "low", label: "Low" },
+                    ]}
+                    placeholder="Filter by priority"
+                    className="h-10 w-full sm:w-auto"
+                  />
                 </div>
               </div>
 
