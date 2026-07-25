@@ -24,6 +24,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { Select } from "../../components/Select";
 import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import type { EquipmentBase } from "./equipmentData";
 import {
@@ -1091,16 +1092,18 @@ export const EquipmentSpares = (): JSX.Element => {
                     className="min-w-0 flex-1 bg-transparent text-xs text-slate-200 outline-none placeholder:text-slate-600"
                   />
                 </div>
-                <select
+                <Select
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                  className="min-h-10 rounded-lg border border-gray-700 bg-[#0b0f15] px-3 text-xs text-slate-300 outline-none focus:border-blue-500/50"
-                >
-                  <option value="all">All parts</option>
-                  <option value="attention">Requires attention</option>
-                  <option value="out">Out of stock</option>
-                  <option value="critical">Critical and high</option>
-                </select>
+                  onChange={setStatusFilter}
+                  options={[
+                    { value: "all", label: "All parts" },
+                    { value: "attention", label: "Requires attention" },
+                    { value: "out", label: "Out of stock" },
+                    { value: "critical", label: "Critical and high" },
+                  ]}
+                  placeholder="Filter parts"
+                  className="h-10 w-full sm:w-auto"
+                />
               </div>
 
               <div className="mt-4 overflow-x-auto">
