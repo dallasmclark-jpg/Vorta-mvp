@@ -1,6 +1,9 @@
 name: Mobile work plan build diagnostics
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - fix/mobile-work-plan-focus
@@ -14,7 +17,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Check out branch
+      - name: Check out tested commit
         uses: actions/checkout@v4
 
       - name: Use Node.js
