@@ -15,9 +15,13 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   await expect(page.getByRole("heading", { name: "Equipment", exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
 
-  const equipmentButton = page
-    .locator('div[role="button"][aria-expanded] button')
-    .first();
+  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
+  const equipmentButton = isMobileEquipmentNavigation
+    ? page
+        .locator('[data-vorta-mobile-equipment="true"] button')
+        .filter({ hasText: "Open" })
+        .first()
+    : page.locator('div[role="button"][aria-expanded] button').first();
   await expect(equipmentButton).toBeVisible();
   await expectOperationalTouchTarget(equipmentButton);
   await equipmentButton.click();
@@ -27,8 +31,6 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   expect(equipmentRouteMatch).not.toBeNull();
   const equipmentId = equipmentRouteMatch?.[1] ?? "";
   await expectNoPageOverflow(page);
-
-  const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
 
   const equipmentSections = page.getByRole("tablist", {
     name: "Equipment sections",
