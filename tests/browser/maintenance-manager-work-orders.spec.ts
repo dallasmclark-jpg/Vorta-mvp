@@ -30,31 +30,16 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
 
   const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
 
-  if (isMobileEquipmentNavigation) {
-    const mobileEquipmentSections = page.getByRole("combobox", {
-      name: "Equipment section",
-    });
-    await expect(mobileEquipmentSections).toBeVisible();
-    await expectOperationalTouchTarget(mobileEquipmentSections);
-    await mobileEquipmentSections.click();
-    const workOrdersOption = page.getByRole("option", {
-      name: "Work Orders",
-      exact: true,
-    });
-    await expect(workOrdersOption).toBeVisible();
-    await workOrdersOption.click();
-  } else {
-    const equipmentSections = page.getByRole("tablist", {
-      name: "Equipment sections",
-    });
-    const workOrdersTab = equipmentSections.getByRole("tab", {
-      name: "Work Orders",
-      exact: true,
-    });
-    await expect(workOrdersTab).toBeVisible();
-    await expectOperationalTouchTarget(workOrdersTab);
-    await workOrdersTab.click();
-  }
+  const equipmentSections = page.getByRole("tablist", {
+    name: "Equipment sections",
+  });
+  const workOrdersTab = equipmentSections.getByRole("tab", {
+    name: "Work Orders",
+    exact: true,
+  });
+  await expect(workOrdersTab).toBeVisible();
+  await expectOperationalTouchTarget(workOrdersTab);
+  await workOrdersTab.click();
 
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/work-orders(?:\\?.*)?$`));
   await expectNoPageOverflow(page);
