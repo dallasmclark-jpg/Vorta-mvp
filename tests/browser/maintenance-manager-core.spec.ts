@@ -151,3 +151,109 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
   ).toBeHidden();
 });
+
+test("Mobile work plan scrolls into view with compact action cards", async ({
+  page,
+}) => {
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  test.skip(viewportWidth >= 640, "Phone-only dashboard behaviour.");
+
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-vorta-mobile-work-plan-scroll",
+    "true",
+  );
+
+  await page.evaluate(() => {
+    const app = document.getElementById("app");
+    if (app) app.hidden = true;
+
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="synthetic-work-plan-summary">
+          <div>
+            <button type="button" aria-expanded="false">View work plan</button>
+          </div>
+        </div>
+        <div id="synthetic-work-plan" class="border-t pt-4" style="margin-top: 1200px;">
+          <div class="flex flex-col gap-5">
+            <div></div>
+            <div></div>
+            <div>
+              <div id="synthetic-work-plan-heading">
+                <p>Recommended Work Queue</p>
+                <p>Ranked explanatory copy</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button id="synthetic-work-plan-card" type="button">
+                  <span id="synthetic-work-plan-rank">1</span>
+                  <div class="min-w-0">
+                    <div>
+                      <p id="synthetic-work-plan-title">Complete the highest-value maintenance action with a deliberately long title</p>
+                      <span id="synthetic-work-plan-driver">Calibration</span>
+                    </div>
+                    <div id="synthetic-work-plan-metadata">
+                      <span>PM-261003</span>
+                      <span>3h 0m</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p id="synthetic-work-plan-risk-label">Asset risk</p>
+                    <p>-9</p>
+                    <p id="synthetic-work-plan-projected-score">to 78</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="height: 1200px;"></div>
+      `,
+    );
+    window.scrollTo(0, 0);
+  });
+
+  await page.getByRole("button", { name: "View work plan", exact: true }).click();
+
+  const workPlanPanel = page.locator("#synthetic-work-plan");
+  await expect
+    .poll(async () => {
+      const box = await workPlanPanel.boundingBox();
+      return box !== null && box.y >= 0 && box.y < 180;
+    })
+    .toBe(true);
+
+  await expect(page.locator("#synthetic-work-plan-heading")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-rank")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-driver")).toBeVisible();
+  await expect(page.locator("#synthetic-work-plan-metadata")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-risk-label")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-projected-score")).toBeHidden();
+
+  const compactPresentation = await page
+    .locator("#synthetic-work-plan-card")
+    .evaluate((card) => ({
+      alignItems: card.style.alignItems,
+      gap: card.style.gap,
+      gridTemplateColumns: card.style.gridTemplateColumns,
+      padding: card.style.padding,
+    }));
+  expect(compactPresentation).toEqual({
+    alignItems: "flex-start",
+    gap: "0.625rem",
+    gridTemplateColumns: "minmax(0px, 1fr) auto",
+    padding: "0.75rem",
+  });
+
+  const titlePresentation = await page
+    .locator("#synthetic-work-plan-title")
+    .evaluate((title) => ({
+      display: title.style.display,
+      lineClamp: title.style.getPropertyValue("-webkit-line-clamp"),
+    }));
+  expect(titlePresentation).toEqual({
+    display: "-webkit-box",
+    lineClamp: "2",
+  });
+});
