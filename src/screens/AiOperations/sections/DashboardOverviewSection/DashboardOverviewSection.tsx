@@ -21,7 +21,6 @@ import { useModalFocusTrap } from "../../../../hooks/useModalFocusTrap";
 import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
 import type { DashboardFreshness } from "../../../../lib/runtimeContracts";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
-import { Select } from "../../../../components/Select";
 import {
   getAreaInterventionPlansStrict,
   getSiteRiskReductionPlan,
@@ -1223,30 +1222,21 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <CardContent className="p-3 sm:p-5">
           <div className="flex flex-col gap-5">
 
-            <div className="sm:hidden" data-vorta-mobile-risk-scope="true">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <div data-vorta-mobile-risk-scope="true">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 sm:hidden">
                 Today's Risk
               </span>
-              <Select
-                value={selectedRiskScopeKey}
-                onChange={handleRiskScopeChange}
-                options={riskScopes.map((scope) => ({
-                  value: scope.scopeKey,
-                  label: `${scope.scopeLabel} · ${formatSiteRisk(scope.riskScore)}`,
-                }))}
-                placeholder="Risk scope"
-                className="h-12 w-full font-semibold text-slate-100"
-              />
-            </div>
-
-            <div className="hidden overflow-x-auto border-b border-gray-800 pb-4 sm:block">
               <div
-                role="tablist"
-                aria-label="Risk intelligence scope"
-                className="flex min-w-max items-center gap-2"
+                className="overflow-x-auto border-b border-gray-800 pb-2 sm:pb-4"
+                style={{ scrollbarWidth: "none" }}
               >
-                {riskScopes.map(
-                  (scope) => {
+                <div
+                  role="tablist"
+                  aria-label="Risk intelligence scope"
+                  className="flex min-w-max items-center gap-2"
+                >
+                  {riskScopes.map(
+                    (scope) => {
                     const isSelected =
                       scope.scopeKey ===
                       selectedRiskScopeKey;
@@ -1277,18 +1267,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             scope.scopeKey,
                           )
                         }
-                        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors ${
                           isSelected
                             ? "border-blue-500/40 bg-blue-600 text-white"
                             : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
                         }`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            isSelected
-                              ? "bg-white"
-                              : dotClassName
-                          }`}
+                          className={`h-2 w-2 rounded-full ${dotClassName}`}
+                          data-vorta-risk-dot="true"
                         />
 
                         <span>
@@ -1310,8 +1297,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         </span>
                       </button>
                     );
-                  },
-                )}
+                    },
+                  )}
+                </div>
               </div>
             </div>
 
