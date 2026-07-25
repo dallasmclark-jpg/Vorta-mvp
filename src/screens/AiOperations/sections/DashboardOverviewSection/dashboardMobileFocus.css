@@ -9,22 +9,13 @@
     position: relative;
   }
 
-  [data-vorta-dashboard-root="true"] [data-vorta-mobile-risk-scope="true"] > span {
-    margin-bottom: 0.375rem;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-mobile-risk-scope="true"] > div {
-    padding-right: 1.75rem;
-    padding-bottom: 0.375rem;
-  }
-
   [data-vorta-dashboard-root="true"] [data-vorta-mobile-risk-scope="true"]::after {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 2rem;
+    width: 1.75rem;
     height: 2.75rem;
-    background: linear-gradient(90deg, rgba(20, 24, 32, 0), #141820 78%);
+    background: linear-gradient(90deg, transparent, #141820 78%);
     content: "";
     pointer-events: none;
   }
@@ -46,26 +37,13 @@
     display: none !important;
   }
 
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] div:has(> div > input[type="text"]) {
-    gap: 0.25rem;
-    padding-inline: 0.375rem;
-  }
-
   [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] svg.lucide-bot {
     display: none;
   }
 
   [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"] {
-    padding-right: 0.25rem !important;
-    padding-left: 0.25rem !important;
+    padding-inline: 0.25rem !important;
     font-size: 0.8125rem;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] button[aria-label="Add attachment or context"],
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] button[aria-label="Start voice input"],
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] button[aria-label="Stop voice input"] {
-    width: 1.75rem;
-    height: 1.75rem;
   }
 
   [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"]:focus {
@@ -138,14 +116,8 @@
   }
 
   [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) > div:first-child button {
-    color: #64748b !important;
     font-size: 0.75rem !important;
-    font-weight: 600 !important;
-  }
-
-  [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) > div:first-child button:hover,
-  [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) > div:first-child button:focus-visible {
-    color: #60a5fa !important;
+    opacity: 0.72;
   }
 
   [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) > div:first-child p,
