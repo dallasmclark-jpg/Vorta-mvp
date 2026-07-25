@@ -187,7 +187,7 @@ test("Mobile work plan scrolls into view with compact action cards", async ({
               </div>
               <div class="flex flex-col gap-2">
                 <button id="synthetic-work-plan-card" type="button">
-                  <span>1</span>
+                  <span id="synthetic-work-plan-rank">1</span>
                   <div class="min-w-0">
                     <div>
                       <p id="synthetic-work-plan-title">Complete the highest-value maintenance action with a deliberately long title</p>
@@ -201,7 +201,7 @@ test("Mobile work plan scrolls into view with compact action cards", async ({
                   <div>
                     <p id="synthetic-work-plan-risk-label">Asset risk</p>
                     <p>-9</p>
-                    <p>to 78</p>
+                    <p id="synthetic-work-plan-projected-score">to 78</p>
                   </div>
                 </button>
               </div>
@@ -225,19 +225,24 @@ test("Mobile work plan scrolls into view with compact action cards", async ({
     .toBe(true);
 
   await expect(page.locator("#synthetic-work-plan-heading")).toBeHidden();
-  await expect(page.locator("#synthetic-work-plan-driver")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-rank")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-driver")).toBeVisible();
+  await expect(page.locator("#synthetic-work-plan-metadata")).toBeHidden();
   await expect(page.locator("#synthetic-work-plan-risk-label")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-projected-score")).toBeHidden();
 
   const compactPresentation = await page
     .locator("#synthetic-work-plan-card")
     .evaluate((card) => ({
       alignItems: card.style.alignItems,
       gap: card.style.gap,
+      gridTemplateColumns: card.style.gridTemplateColumns,
       padding: card.style.padding,
     }));
   expect(compactPresentation).toEqual({
     alignItems: "flex-start",
     gap: "0.625rem",
+    gridTemplateColumns: "minmax(0px, 1fr) auto",
     padding: "0.75rem",
   });
 
