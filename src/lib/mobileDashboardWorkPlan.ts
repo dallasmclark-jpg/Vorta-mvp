@@ -22,11 +22,12 @@ const simplifyMobileWorkPlanCard = (
 ): void => {
   card.style.alignItems = "flex-start";
   card.style.gap = "0.625rem";
+  card.style.gridTemplateColumns = "minmax(0, 1fr) auto";
   card.style.padding = "0.75rem";
 
   card
     .querySelectorAll<HTMLElement>(
-      ":scope > div.min-w-0 > div:first-child > :not(p), :scope > div:last-child > p:first-child",
+      ":scope > span:first-child, :scope > div.min-w-0 > div:nth-child(2), :scope > div:last-child > p:first-child, :scope > div:last-child > p:last-child",
     )
     .forEach((element) => {
       element.hidden = true;
@@ -42,15 +43,6 @@ const simplifyMobileWorkPlanCard = (
     title.style.lineHeight = "1.2rem";
     title.style.setProperty("-webkit-box-orient", "vertical");
     title.style.setProperty("-webkit-line-clamp", "2");
-  }
-
-  const metadata = card.querySelector<HTMLElement>(
-    ":scope > div.min-w-0 > div:nth-child(2)",
-  );
-
-  if (metadata) {
-    metadata.style.marginTop = "0.375rem";
-    metadata.style.gap = "0.375rem";
   }
 };
 
