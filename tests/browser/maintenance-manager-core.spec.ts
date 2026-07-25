@@ -70,6 +70,36 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(areaTab).toHaveAttribute("aria-selected", "true");
   }
 
+  const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
+  const selectedRiskSummaryCard = page
+    .locator('header:has([data-vorta-embedded-ai="true"]) + div.grid > div')
+    .first();
+  const standaloneAskButton = embeddedAi.getByRole("button", {
+    name: "Ask",
+    exact: true,
+    includeHidden: true,
+  });
+
+  if (isPhone) {
+    await expect(selectedRiskSummaryCard).toBeHidden();
+    await expect(standaloneAskButton).toBeHidden();
+
+    const aiInput = embeddedAi.locator('input[type="text"]').first();
+    await aiInput.fill("What needs attention today?");
+    await aiInput.press("Enter");
+
+    const closeGlobalAssistant = page.getByRole("button", {
+      name: "Close global assistant",
+      exact: true,
+    });
+    await expect(closeGlobalAssistant).toBeVisible();
+    await closeGlobalAssistant.click();
+    await expect(closeGlobalAssistant).toBeHidden();
+  } else {
+    await expect(selectedRiskSummaryCard).toBeVisible();
+    await expect(standaloneAskButton).toBeVisible();
+  }
+
   const shiftCoverCard = page.locator(
     '[data-vorta-labour-risk-card="shift-cover"]',
   );
