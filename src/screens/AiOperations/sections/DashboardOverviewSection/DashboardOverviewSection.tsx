@@ -21,6 +21,7 @@ import { useModalFocusTrap } from "../../../../hooks/useModalFocusTrap";
 import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
 import type { DashboardFreshness } from "../../../../lib/runtimeContracts";
 import { VortaAiCommandBar } from "../../../../components/ai/VortaAiCommandBar";
+import { Select } from "../../../../components/Select";
 import {
   getAreaInterventionPlansStrict,
   getSiteRiskReductionPlan,
@@ -1222,26 +1223,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
         <CardContent className="p-3 sm:p-5">
           <div className="flex flex-col gap-5">
 
-            <div className="sm:hidden">
-              <label
-                htmlFor="risk-scope-select"
-                className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >
+            <div className="sm:hidden" data-vorta-mobile-risk-scope="true">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Risk scope
-              </label>
-              <select
-                id="risk-scope-select"
-                aria-label="Risk scope"
+              </span>
+              <Select
                 value={selectedRiskScopeKey}
-                onChange={(event) => handleRiskScopeChange(event.target.value)}
-                className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              >
-                {riskScopes.map((scope) => (
-                  <option key={scope.scopeKey} value={scope.scopeKey}>
-                    {scope.scopeLabel} · {formatSiteRisk(scope.riskScore)}
-                  </option>
-                ))}
-              </select>
+                onChange={handleRiskScopeChange}
+                options={riskScopes.map((scope) => ({
+                  value: scope.scopeKey,
+                  label: `${scope.scopeLabel} · ${formatSiteRisk(scope.riskScore)}`,
+                }))}
+                placeholder="Risk scope"
+                className="h-12 w-full font-semibold text-slate-100"
+              />
             </div>
 
             <div className="hidden overflow-x-auto border-b border-gray-800 pb-4 sm:block">
