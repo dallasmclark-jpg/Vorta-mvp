@@ -4,13 +4,29 @@
     padding-inline: 0.75rem;
   }
 
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden::after {
     order: 2;
-    margin-left: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: rgb(203 213 225);
+    content: attr(data-vorta-mobile-page-title);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
+    order: 3;
+    margin-left: 0;
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
     order: 1;
+    flex: 0 0 auto;
   }
 
   [data-vorta-mobile-equipment="true"],
