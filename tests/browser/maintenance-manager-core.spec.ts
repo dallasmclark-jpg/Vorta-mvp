@@ -110,49 +110,6 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(closeGlobalAssistant).toBeVisible();
     await closeGlobalAssistant.click();
     await expect(closeGlobalAssistant).toBeHidden();
-
-    const viewWorkPlanButton = page.getByRole("button", {
-      name: "View work plan",
-      exact: true,
-    });
-    await expect(viewWorkPlanButton).toBeVisible();
-    await expect(viewWorkPlanButton).toBeEnabled();
-    await viewWorkPlanButton.scrollIntoViewIfNeeded();
-    await viewWorkPlanButton.click();
-
-    const workPlanPanel = page.locator(
-      'header:has([data-vorta-embedded-ai="true"]) + div.grid + div.flex.flex-col + div.border-t',
-    );
-    await expect(workPlanPanel).toBeVisible();
-    await expect(
-      page.getByText("Recommended Work Queue", { exact: true }),
-    ).toBeHidden();
-    await expect(
-      page.getByText(
-        "Ranked by final asset risk reduction, including current-shift labour coverage, then criticality, overdue age and duration.",
-        { exact: true },
-      ),
-    ).toBeHidden();
-
-    await expect
-      .poll(async () => {
-        const box = await workPlanPanel.boundingBox();
-        return box !== null && box.y >= 0 && box.y < 180;
-      })
-      .toBe(true);
-
-    const firstWorkPlanAction = workPlanPanel
-      .locator("div.flex.flex-col.gap-2 > button")
-      .first();
-    await expect(firstWorkPlanAction).toBeVisible();
-    await expect(
-      firstWorkPlanAction.locator(
-        ":scope > div.min-w-0 > div:first-child > :not(p)",
-      ),
-    ).toBeHidden();
-    await expect(
-      firstWorkPlanAction.getByText("Asset risk", { exact: true }),
-    ).toBeHidden();
   } else {
     await expect(selectedRiskSummaryCard).toBeVisible();
     await expect(standaloneAskButton).toBeVisible();
@@ -193,4 +150,108 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   await expect(
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
   ).toBeHidden();
+});
+
+test("Mobile work plan scrolls into view with compact action cards", async ({
+  page,
+}) => {
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  test.skip(viewportWidth >= 640, "Phone-only dashboard behaviour.");
+
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-vorta-mobile-work-plan-scroll",
+    "true",
+  );
+
+  await page.evaluate(() => {
+    const app = document.getElementById("app");
+    if (app) app.hidden = true;
+
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="synthetic-work-plan-summary">
+          <div>
+            <button type="button" aria-expanded="false">View work plan</button>
+          </div>
+        </div>
+        <div id="synthetic-work-plan" class="border-t pt-4" style="margin-top: 1200px;">
+          <div class="flex flex-col gap-5">
+            <div></div>
+            <div></div>
+            <div>
+              <div id="synthetic-work-plan-heading">
+                <p>Recommended Work Queue</p>
+                <p>Ranked explanatory copy</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button id="synthetic-work-plan-card" type="button">
+                  <span>1</span>
+                  <div class="min-w-0">
+                    <div>
+                      <p id="synthetic-work-plan-title">Complete the highest-value maintenance action with a deliberately long title</p>
+                      <span id="synthetic-work-plan-driver">Calibration</span>
+                    </div>
+                    <div id="synthetic-work-plan-metadata">
+                      <span>PM-261003</span>
+                      <span>3h 0m</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p id="synthetic-work-plan-risk-label">Asset risk</p>
+                    <p>-9</p>
+                    <p>to 78</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    );
+    window.scrollTo(0, 0);
+  });
+
+  await page.getByRole("button", { name: "View work plan", exact: true }).click();
+
+  const workPlanPanel = page.locator("#synthetic-work-plan");
+  await expect
+    .poll(async () => {
+      const box = await workPlanPanel.boundingBox();
+      return box !== null && box.y >= 0 && box.y < 180;
+    })
+    .toBe(true);
+
+  await expect(page.locator("#synthetic-work-plan-heading")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-driver")).toBeHidden();
+  await expect(page.locator("#synthetic-work-plan-risk-label")).toBeHidden();
+
+  await expect(page.locator("#synthetic-work-plan-card")).toHaveJSProperty(
+    "style",
+    expect.anything(),
+  );
+  const compactPresentation = await page
+    .locator("#synthetic-work-plan-card")
+    .evaluate((card) => ({
+      alignItems: card.style.alignItems,
+      gap: card.style.gap,
+      padding: card.style.padding,
+    }));
+  expect(compactPresentation).toEqual({
+    alignItems: "flex-start",
+    gap: "0.625rem",
+    padding: "0.75rem",
+  });
+
+  const titlePresentation = await page
+    .locator("#synthetic-work-plan-title")
+    .evaluate((title) => ({
+      display: title.style.display,
+      lineClamp: title.style.getPropertyValue("-webkit-line-clamp"),
+    }));
+  expect(titlePresentation).toEqual({
+    display: "-webkit-box",
+    lineClamp: "2",
+  });
 });
