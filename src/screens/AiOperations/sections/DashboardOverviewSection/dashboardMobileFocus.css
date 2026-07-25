@@ -21,6 +21,10 @@
     display: none;
   }
 
+  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] button:has(> svg.lucide-send) {
+    display: none !important;
+  }
+
   [data-vorta-dashboard-root="true"] div:has(> header [data-vorta-embedded-ai="true"]) {
     gap: 0.75rem !important;
   }
@@ -37,22 +41,7 @@
   }
 
   [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid > div:first-child {
-    grid-column: 1 / -1;
-    min-height: 7rem;
-    border-color: rgba(59, 130, 246, 0.35);
-    background:
-      radial-gradient(circle at top right, rgba(37, 99, 235, 0.2), transparent 44%),
-      #0d1117;
-    padding: 1rem;
-  }
-
-  [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid > div:first-child > p:nth-child(2) {
-    font-size: 2.25rem;
-    line-height: 2.5rem;
-  }
-
-  [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid > div:first-child > p:last-child .text-slate-500 {
-    display: none;
+    display: none !important;
   }
 
   [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) + div.grid > div:nth-child(2) {
