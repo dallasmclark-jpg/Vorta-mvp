@@ -81,9 +81,10 @@ for (const [label, source] of [
 
 for (const expected of [
   'data-vorta-equipment-detail-header="true"',
-  "grid-cols-[72px_minmax(0,1fr)]",
+  "flex flex-wrap gap-3",
   "sm:hidden",
   "Risk briefing",
+  "h-20 w-20",
   "sm:w-32",
   "sm:text-4xl",
 ]) {
