@@ -1,8 +1,8 @@
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { EngineersSection as DesktopDemoEngineersSection } from "./EngineersSection";
-import { LiveEngineersSection as DesktopLiveEngineersSection } from "./LiveEngineersSection";
+import { EngineersSection as DemoEngineersSection } from "./EngineersSection";
+import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
 
 export function EngineersRouteEntry(): JSX.Element {
@@ -20,7 +20,7 @@ export function EngineersRouteEntry(): JSX.Element {
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>
-      {dataMode === "demo" ? <DesktopDemoEngineersSection /> : <DesktopLiveEngineersSection />}
+      {dataMode === "demo" ? <DemoEngineersSection /> : <LiveEngineersSection />}
     </div>
   );
 }
