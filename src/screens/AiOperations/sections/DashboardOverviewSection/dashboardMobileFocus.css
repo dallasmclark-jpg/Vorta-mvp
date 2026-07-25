@@ -96,31 +96,6 @@
     display: none;
   }
 
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-header="true"] {
-    display: none;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-action="true"] {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    padding: 0.875rem;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-rank="true"],
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-metadata="true"],
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-risk-label="true"],
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-projected-score="true"] {
-    display: none;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-driver="true"] {
-    font-size: 0.6875rem;
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-work-plan-risk="true"] {
-    align-self: center;
-  }
-
   [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) > div:first-child p,
   [data-vorta-dashboard-root="true"] [data-vorta-dashboard-section="labour-risk"] > div:first-child p,
   [data-vorta-dashboard-root="true"] [aria-label="Risk reduction performance"] > div:first-child p {
