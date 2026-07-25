@@ -181,10 +181,10 @@ assert.match(qualityWorkflow, /VITE_VORTA_DATA_MODE: live/);
 assert.match(qualityWorkflow, /maintenance-manager-live\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-core\.spec\.ts/);
 assert.match(qualityWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
-assert.doesNotMatch(
+assert.match(
   qualityWorkflow,
-  /maintenance-manager-live\.spec\.ts[^\n]*--project=/,
-  "Live responsive tests must run against every configured viewport project.",
+  /tests\/browser\/maintenance-manager-live-boundary-evidence\.spec\.ts\s*\\\\\n\s*--project=desktop-1920/,
+  "Live evidence tests must run once on desktop instead of multiplying authenticated requests across every viewport.",
 );
 
 assert.doesNotMatch(netlify, /netlify-release-gate/);
