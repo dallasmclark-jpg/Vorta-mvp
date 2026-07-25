@@ -909,7 +909,7 @@ export function VortaAiCommandBar({
 
           {/* Input row */}
           <div className="flex flex-col gap-2 md:flex-row">
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-700 bg-[#0f1218] px-2 py-1.5 focus-within:border-blue-500/50">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-700 bg-[#0f1218] px-2 py-1 sm:py-1.5 focus-within:border-blue-500/50">
 
               {/* Plus button + attachment dropdown */}
               <div className="relative shrink-0">
