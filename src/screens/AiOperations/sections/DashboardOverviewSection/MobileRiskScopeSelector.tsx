@@ -245,9 +245,9 @@ export function MobileRiskScopeSelector(): JSX.Element | null {
       data-vorta-mobile-risk-scope="true"
       className="sm:hidden"
     >
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-        Risk scope
-      </p>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        Today's Risk
+      </h2>
 
       <button
         type="button"

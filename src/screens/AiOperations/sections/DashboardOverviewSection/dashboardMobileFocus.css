@@ -14,7 +14,7 @@
     gap: 0;
   }
 
-  [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) > div:first-child > span {
+  [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) > div:first-child > * {
     display: none;
   }
 

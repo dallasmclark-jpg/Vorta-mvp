@@ -17,6 +17,9 @@ const labourRisk = read(
 const mobileDashboardStyles = read(
   "src/screens/AiOperations/sections/DashboardOverviewSection/dashboardMobileFocus.css",
 );
+const mobileRiskScopeSelector = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/MobileRiskScopeSelector.tsx",
+);
 
 check(
   dashboardWrapper.includes('data-vorta-mobile-section-nav="true"') &&
@@ -82,6 +85,15 @@ check(
   mobileDashboardStyles.includes("[hidden]") &&
     mobileDashboardStyles.includes("display: none !important;"),
   "Phone dashboards must honour the hidden attribute even when component display utilities are present.",
+);
+
+check(
+  mobileRiskScopeSelector.includes("<h2") &&
+    mobileRiskScopeSelector.includes("Today's Risk") &&
+    mobileDashboardStyles.includes(
+      'header:has([data-vorta-embedded-ai="true"]) > div:first-child > *',
+    ),
+  "Phone dashboards must use Today's Risk as the scope heading and remove the repeated briefing heading.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
