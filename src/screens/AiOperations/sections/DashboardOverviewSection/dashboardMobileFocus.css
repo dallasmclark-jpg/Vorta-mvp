@@ -1,11 +1,7 @@
 @media (max-width: 639px) {
+  [data-vorta-maintenance-portal="true"]:has(> [data-vorta-dashboard-root="true"]) > [data-vorta-data-mode="demo"],
   [data-vorta-dashboard-root="true"] > section > header {
-    border-bottom: 0;
-    padding-bottom: 0.25rem !important;
-  }
-
-  [data-vorta-dashboard-root="true"] > section > header > div:first-child > p {
-    display: none;
+    display: none !important;
   }
 
   [data-vorta-dashboard-root="true"] header:has([data-vorta-embedded-ai="true"]) {
