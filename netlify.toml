@@ -8,11 +8,18 @@
 [context.production.environment]
   # The public Vorta site remains a demonstration deployment.
   VITE_VORTA_DATA_MODE = "demo"
+  # Keep the evidence-backed split Skills Matrix disabled in production until review is complete.
+  VITE_SKILLS_MATRIX_CORE_ASSET_PREVIEW = "false"
+
+[context.deploy-preview.environment]
+  # Pull-request previews deliberately exercise the new split interface without changing production.
+  VITE_SKILLS_MATRIX_CORE_ASSET_PREVIEW = "true"
 
 [context.pilot-live.environment]
   # Stable read-only live pilot boundary. This branch must not contain demo fallbacks.
   VITE_VORTA_DATA_MODE = "live"
   VORTA_LIVE_PILOT_APPROVED = "true"
+  VITE_SKILLS_MATRIX_CORE_ASSET_PREVIEW = "false"
 
 [[headers]]
   for = "/vorta-build.json"

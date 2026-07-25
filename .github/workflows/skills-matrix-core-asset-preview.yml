@@ -1,0 +1,107 @@
+name: Skills Matrix enabled preview
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/screens/SkillsMatrix/**"
+      - "src/components/MaintenancePortalHardening.tsx"
+      - "src/lib/runtimeContracts.ts"
+      - "tests/browser/maintenance-manager-core-asset-skills-preview.spec.ts"
+      - "tests/browser/maintenance-manager-mobile-ai-launcher.spec.ts"
+      - "tests/browser/maintenance-manager-test-helpers.ts"
+      - "playwright.config.ts"
+      - "netlify.toml"
+      - ".github/workflows/skills-matrix-core-asset-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skills-matrix-core-asset-preview-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: Enabled Core and Asset preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VITE_SKILLS_MATRIX_CORE_ASSET_PREVIEW: "true"
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_ORGANISATION_ID: 10000000-0000-0000-0000-000000000001
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci --silent
+
+      - name: Verify authenticated browser-test secret
+        shell: bash
+        run: |
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured for the enabled Skills Matrix preview gate." >&2
+            exit 1
+          }
+
+      - name: Create enabled preview production build
+        run: npx vite build
+
+      - name: Install browser-test runner without changing the lockfile
+        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run enabled responsive preview regression
+        id: enabled-preview-regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test \
+            tests/browser/maintenance-manager-core-asset-skills-preview.spec.ts \
+            tests/browser/maintenance-manager-mobile-ai-launcher.spec.ts \
+            --config=playwright.config.ts \
+            --project=phone-360 \
+            --project=samsung-tablet-landscape \
+            --project=desktop-1920 \
+            2>&1 | tee skills-matrix-enabled-preview.log
+
+      - name: Preserve enabled preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-matrix-enabled-preview-evidence
+          path: |
+            skills-matrix-enabled-preview.log
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Enforce enabled preview result
+        if: steps.enabled-preview-regression.outcome == 'failure'
+        run: exit 1
