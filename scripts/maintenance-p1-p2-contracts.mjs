@@ -90,7 +90,8 @@ check(
   "Skills Matrix must render selected-skill context directly.",
 );
 check(
-  dashboard.includes('aria-label="Risk scope"') &&
+  dashboard.includes('placeholder="Risk scope"') &&
+    dashboard.includes('data-vorta-mobile-risk-scope="true"') &&
     portalWrapper.includes("showAssistantLauncher") &&
     portalWrapper.includes('location.pathname !== "/dashboard"'),
   "Mobile risk scope and duplicate assistant controls must be handled explicitly.",
@@ -126,7 +127,8 @@ check(
 );
 check(
   browserTest.includes('data-vorta-mobile-risk-scope="true"') &&
-    browserTest.includes('name: "Risk scope"') &&
+    browserTest.includes('getByRole("listbox")') &&
+    browserTest.includes('getByRole("option")') &&
     browserTest.includes('name: "Ask Vorta AI"') &&
     browserTest.includes("toBeHidden") &&
     workOrderBrowserTest.includes("originating page"),

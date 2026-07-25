@@ -36,7 +36,13 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
     });
     await expect(mobileEquipmentSections).toBeVisible();
     await expectOperationalTouchTarget(mobileEquipmentSections);
-    await mobileEquipmentSections.selectOption("work-orders");
+    await mobileEquipmentSections.click();
+    const workOrdersOption = page.getByRole("option", {
+      name: "Work Orders",
+      exact: true,
+    });
+    await expect(workOrdersOption).toBeVisible();
+    await workOrdersOption.click();
   } else {
     const equipmentSections = page.getByRole("tablist", {
       name: "Equipment sections",

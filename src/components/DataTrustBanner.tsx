@@ -45,13 +45,14 @@ export function DataTrustBanner(): JSX.Element {
   const mode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const presentation = PRESENTATION[mode];
   const Icon = presentation.icon;
+  const mobileVisibility = mode === "demo" ? "hidden sm:flex" : "flex";
 
   return (
     <aside
       data-vorta-data-mode={mode}
       role={mode === "unavailable" ? "alert" : "status"}
       aria-live={mode === "unavailable" ? "assertive" : "polite"}
-      className={`sticky top-0 z-40 flex min-h-10 w-full items-center gap-3 border-b px-4 py-2 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur-md md:px-6 ${presentation.className}`}
+      className={`sticky top-0 z-40 min-h-10 w-full items-center gap-3 border-b px-4 py-2 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur-md md:px-6 ${mobileVisibility} ${presentation.className}`}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
 

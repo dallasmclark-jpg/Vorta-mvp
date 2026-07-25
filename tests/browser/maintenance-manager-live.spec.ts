@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
+
 const allowedSiteId =
   process.env.VORTA_E2E_SITE_ID ??
   "11000000-0000-0000-0000-000000000001";
@@ -49,7 +50,13 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
         name: "Equipment section",
       });
       await expect(mobileSections).toBeEnabled();
-      await mobileSections.selectOption(route);
+      await mobileSections.click();
+      const option = page.getByRole("option", {
+        name: label,
+        exact: true,
+      });
+      await expect(option).toBeVisible();
+      await option.click();
       return;
     }
 
@@ -64,9 +71,11 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
       name: "Equipment section",
     });
     await expect(mobileSections).toBeEnabled();
-    await expect(mobileSections.locator('option[value="history"]')).toHaveText("History");
-    await expect(mobileSections.locator('option[value="documents"]')).toHaveText("Documents");
-    await expect(mobileSections.locator('option[value="ai-insights"]')).toHaveText("Ask Vorta");
+    await mobileSections.click();
+    await expect(page.getByRole("option", { name: "History", exact: true })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Documents", exact: true })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Ask Vorta", exact: true })).toBeVisible();
+    await mobileSections.click();
   } else {
     const sections = page.getByRole("tablist", { name: "Equipment sections" });
     await expect(

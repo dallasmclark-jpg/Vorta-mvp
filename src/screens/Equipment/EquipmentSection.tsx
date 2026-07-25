@@ -12,6 +12,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
+import { Select } from "../../components/Select";
 
 import {
   getEquipmentList,
@@ -1274,25 +1275,26 @@ export const EquipmentSection = (): JSX.Element => {
             className="w-full rounded-xl border border-gray-800 bg-[#141820] py-3 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20"
           />
         </div>
-        <label className="flex min-w-[190px] items-center gap-3 rounded-xl border border-gray-800 bg-[#141820] px-3">
+        <div
+          className="flex min-w-[190px] items-center gap-3 rounded-xl border border-gray-800 bg-[#141820] px-3"
+          data-vorta-equipment-sort="true"
+        >
           <span className="whitespace-nowrap text-xs font-medium text-slate-500">
             Sort by
           </span>
-          <select
+          <Select
             value={sortKey}
-            onChange={(event) =>
-              setSortKey(event.target.value as EquipmentSortKey)
-            }
-            data-vorta-equipment-sort="true"
-            className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-200 outline-none"
-            aria-label="Sort equipment"
-          >
-            <option value="risk">Highest risk</option>
-            <option value="backlog">Largest backlog</option>
-            <option value="name">Equipment name</option>
-            <option value="evidence">Evidence gaps</option>
-          </select>
-        </label>
+            onChange={(value) => setSortKey(value as EquipmentSortKey)}
+            options={[
+              { value: "risk", label: "Highest risk" },
+              { value: "backlog", label: "Largest backlog" },
+              { value: "name", label: "Equipment name" },
+              { value: "evidence", label: "Evidence gaps" },
+            ]}
+            placeholder="Sort equipment"
+            className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 font-semibold"
+          />
+        </div>
       </div>
 
       {/* ── Filter Chips ────────────────────────────────────────────────── */}

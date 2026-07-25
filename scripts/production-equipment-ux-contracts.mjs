@@ -9,6 +9,20 @@ const evidenceCoverage = read(
   "src/screens/Equipment/equipmentEvidenceCoverage.ts",
 );
 const liveEntry = read("src/screens/Equipment/EquipmentLiveListEntry.tsx");
+const dataTrustBanner = read("src/components/DataTrustBanner.tsx");
+const equipmentTabs = read("src/screens/Equipment/EquipmentTabNavigation.tsx");
+const equipmentOverview = read("src/screens/Equipment/EquipmentOverview.tsx");
+const dashboardOverview = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+);
+const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
+const equipmentAssistant = read(
+  "src/screens/Equipment/EquipmentKnowledgeAssistant.tsx",
+);
+const liveEngineers = read("src/screens/Engineers/LiveEngineersSection.tsx");
+const liveRequirements = read(
+  "src/screens/Requirements/LiveRequirementsSection.tsx",
+);
 const netlify = read("netlify.toml");
 const migration = read(
   "supabase/migrations/20260719233000_add_equipment_evidence_coverage_rpc.sql",
@@ -24,18 +38,61 @@ assert.ok(
   ),
 );
 for (const option of [
-  '<option value="risk">Highest risk</option>',
-  '<option value="backlog">Largest backlog</option>',
-  '<option value="name">Equipment name</option>',
-  '<option value="evidence">Evidence gaps</option>',
+  '{ value: "risk", label: "Highest risk" }',
+  '{ value: "backlog", label: "Largest backlog" }',
+  '{ value: "name", label: "Equipment name" }',
+  '{ value: "evidence", label: "Evidence gaps" }',
 ]) {
   assert.ok(equipmentSection.includes(option));
 }
+assert.ok(equipmentSection.includes('import { Select } from "../../components/Select"'));
+assert.ok(!equipmentSection.includes("<select"));
 assert.ok(equipmentSection.includes('| "Evidence Gaps"'));
 assert.ok(equipmentSection.includes('label="Evidence Gaps"'));
 assert.ok(equipmentSection.includes('itemEvidence &&'));
 assert.ok(equipmentSection.includes('!itemEvidence.complete'));
 assert.ok(!equipmentSection.includes('>5/5 evidence<'));
+assert.ok(
+  dataTrustBanner.includes(
+    'const mobileVisibility = mode === "demo" ? "hidden sm:flex" : "flex"',
+  ),
+  "Demo trust messaging must be removed from every phone route without hiding live or unavailable warnings.",
+);
+
+for (const [label, source] of [
+  ["dashboard risk scope", dashboardOverview],
+  ["equipment section navigation", equipmentTabs],
+  ["demo equipment sort", equipmentSection],
+  ["live equipment filters", liveEntry],
+  ["equipment spares filter", equipmentSpares],
+  ["equipment assistant cases", equipmentAssistant],
+  ["engineer risk filter", liveEngineers],
+  ["requirements priority filter", liveRequirements],
+]) {
+  assert.ok(
+    source.includes("components/Select"),
+    `${label} must use the shared Vorta dropdown.`,
+  );
+  assert.ok(
+    !source.includes("<select"),
+    `${label} must not fall back to a native mobile select menu.`,
+  );
+}
+
+for (const expected of [
+  'data-vorta-equipment-detail-header="true"',
+  "flex flex-wrap gap-3",
+  "sm:hidden",
+  "Risk briefing",
+  "h-20 w-20",
+  "sm:w-32",
+  "sm:text-4xl",
+]) {
+  assert.ok(
+    equipmentOverview.includes(expected),
+    `Mobile equipment summary is missing ${expected}.`,
+  );
+}
 
 assert.equal(
   evidenceCoverage.match(/\.rpc\(/g)?.length ?? 0,

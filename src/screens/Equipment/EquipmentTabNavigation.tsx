@@ -1,4 +1,4 @@
-import { ChevronDown, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import {
   useLayoutEffect,
   useRef,
@@ -7,6 +7,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
+import { Select } from "../../components/Select";
 
 const EQUIPMENT_TABS = [
   { label: "Overview", route: "overview" },
@@ -40,6 +41,13 @@ export function EquipmentTabNavigation({
   const navigationRef = useRef<HTMLElement>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndex = EQUIPMENT_TABS.findIndex((tab) => tab.route === activeTab);
+  const mobileOptions = EQUIPMENT_TABS.map((tab) => ({
+    value: tab.route,
+    label:
+      dataMode === "live" && "actionInLive" in tab
+        ? "Ask Vorta"
+        : tab.label,
+  }));
 
   useLayoutEffect(() => {
     const navigation = navigationRef.current;
@@ -113,32 +121,18 @@ export function EquipmentTabNavigation({
         className="mt-4 sm:hidden"
         data-vorta-equipment-mobile-menu="true"
       >
-        <label className="block">
+        <div>
           <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
             Equipment section
           </span>
-          <span className="relative block">
-            <select
-              value={activeTab}
-              onChange={(event) => routeTo(event.target.value as EquipmentTabRoute)}
-              className="min-h-12 w-full appearance-none rounded-xl border border-gray-700 bg-[#10151d] px-4 pr-11 text-sm font-semibold text-slate-100 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              aria-label="Equipment section"
-            >
-              {EQUIPMENT_TABS.map((tab) => {
-                const askVorta = dataMode === "live" && "actionInLive" in tab;
-                return (
-                  <option key={tab.route} value={tab.route}>
-                    {askVorta ? "Ask Vorta" : tab.label}
-                  </option>
-                );
-              })}
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-300"
-              aria-hidden="true"
-            />
-          </span>
-        </label>
+          <Select
+            value={activeTab}
+            onChange={(value) => routeTo(value as EquipmentTabRoute)}
+            options={mobileOptions}
+            placeholder="Equipment section"
+            className="h-12 w-full font-semibold text-slate-100"
+          />
+        </div>
       </div>
 
       <nav
