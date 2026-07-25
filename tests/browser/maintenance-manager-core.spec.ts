@@ -121,6 +121,11 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
       { name: "View work plan", exact: true },
     );
     await expect(viewWorkPlanButton).toBeVisible();
+    await expect(
+      page.locator(
+        '[data-vorta-work-plan-summary="true"]',
+      ),
+    ).toBeHidden();
     await viewWorkPlanButton.click();
 
     const workPlanDetails = page.locator(
