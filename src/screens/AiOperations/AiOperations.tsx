@@ -8,8 +8,8 @@ import {
   BarChart3,
   BookOpen,
   ClipboardCheck,
-  ClipboardClock,
   ClipboardList,
+  Clock3,
   Cog,
   GraduationCap,
   Headphones,
@@ -76,7 +76,7 @@ const nav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
-      { label: "Shift Handover", icon: ClipboardClock, to: "/shift-handover" },
+      { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
@@ -110,7 +110,7 @@ const liveNav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
-      { label: "Shift Handover", icon: ClipboardClock, to: "/shift-handover" },
+      { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
