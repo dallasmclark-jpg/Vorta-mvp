@@ -153,7 +153,9 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   expect(inputBox?.x ?? 9999).toBeLessThan(microphoneBox?.x ?? 0);
   expect(microphoneBox?.x ?? 9999).toBeLessThan(sendButtonBox?.x ?? 0);
 
-  const fileInput = mobileAssistant.locator('input[type="file"]');
+  const fileInput = page.locator(
+    'input[type="file"][accept*="image/*"]',
+  );
   await expect(fileInput).toHaveAttribute("accept", /image\/\*/);
   await fileInput.setInputFiles({
     name: "equipment-photo.png",
