@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
@@ -10,6 +11,6 @@ export function SkillsMatrixSection(): JSX.Element {
   const isPhone = useMediaQuery("(max-width: 767px)");
 
   return isPhone
-    ? <MobileCapabilitySummary dataMode={dataMode} />
-    : <NativeSkillsMatrixSection />;
+    ? createElement(MobileCapabilitySummary, { dataMode })
+    : createElement(NativeSkillsMatrixSection);
 }
