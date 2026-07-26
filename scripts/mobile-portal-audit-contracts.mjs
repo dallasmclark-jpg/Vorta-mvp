@@ -151,7 +151,7 @@ check(
     browserTest.includes("What can I help with?") &&
     browserTest.includes('toHaveCSS("font-size", "0px")') &&
     browserTest.includes('toHaveValue("")') &&
-    browserTest.includes('toHaveCSS("outline-style", "none")') &&
+    browserTest.includes('toHaveCSS("outline-width", "0px")') &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
   "Authenticated browser coverage must protect the mobile route matrix and polished AI conversation.",
