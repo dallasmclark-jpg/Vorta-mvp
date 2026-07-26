@@ -28,7 +28,7 @@ interface ToolResult {
   message?: string;
 }
 
-const MODEL = "gpt-5.6-sol";
+const MODEL = "gpt-5-mini";
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOOL_OUTPUT_CHARACTERS = 35_000;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -428,6 +428,88 @@ function trimToolResult(result: ToolResult): string {
   });
 }
 
+function compactShiftCoverData(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const brief = value as JsonRecord;
+  const calendar = Array.isArray(brief.calendar)
+    ? brief.calendar.filter(
+        (item): item is JsonRecord =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+  const priorityShifts = calendar
+    .filter(
+      (shift) =>
+        shift.coverageStatus !== "covered" ||
+        numberValue(shift.missingSkillCount) > 0,
+    )
+    .sort(
+      (first, second) =>
+        Number(second.coverageStatus !== "covered") -
+          Number(first.coverageStatus !== "covered") ||
+        numberValue(second.labourRiskScore) -
+          numberValue(first.labourRiskScore) ||
+        numberValue(second.missingSkillCount) -
+          numberValue(first.missingSkillCount),
+    )
+    .slice(0, 4);
+  const priorityKeys = new Set(
+    priorityShifts.map(
+      (shift) => `${String(shift.shiftDate)}:${String(shift.shiftType)}`,
+    ),
+  );
+  const forPriorityShift = (item: unknown): item is JsonRecord => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const row = item as JsonRecord;
+    return priorityKeys.has(`${String(row.shiftDate)}:${String(row.shiftType)}`);
+  };
+  const skillRisks = Array.isArray(brief.skillRisks)
+    ? brief.skillRisks.filter(forPriorityShift)
+    : [];
+  const topSkillRisks = priorityShifts.flatMap((shift) =>
+    skillRisks
+      .filter(
+        (risk) =>
+          risk.shiftDate === shift.shiftDate &&
+          risk.shiftType === shift.shiftType,
+      )
+      .sort(
+        (first, second) =>
+          numberValue(first.qualifiedEngineerCount) -
+            numberValue(second.qualifiedEngineerCount) ||
+          String(first.skillName).localeCompare(String(second.skillName)),
+      )
+      .slice(0, 4),
+  );
+
+  return {
+    ...brief,
+    calendar,
+    offRota: Array.isArray(brief.offRota)
+      ? brief.offRota.filter(forPriorityShift)
+      : [],
+    coverCandidates: Array.isArray(brief.coverCandidates)
+      ? brief.coverCandidates.filter(forPriorityShift)
+      : [],
+    coverPackages: Array.isArray(brief.coverPackages)
+      ? brief.coverPackages.filter(forPriorityShift)
+      : [],
+    skillRisks: topSkillRisks,
+    summary: {
+      shiftsChecked: calendar.length,
+      reducedCoverShifts: calendar.filter(
+        (shift) => shift.coverageStatus !== "covered",
+      ).length,
+      shiftsWithSkillExposure: calendar.filter(
+        (shift) => numberValue(shift.missingSkillCount) > 0,
+      ).length,
+      priorityShiftCountWithDetailedEvidence: priorityShifts.length,
+    },
+    detailScope:
+      "All shift summaries are included. Named rota-off, candidate, package and skill-by-asset detail is limited to the four highest-priority shifts.",
+  };
+}
+
 async function rpcTool(
   supabase: SupabaseClient,
   source: string,
@@ -533,9 +615,9 @@ async function executeTool(
           message: "Dates must use YYYY-MM-DD and cover no more than 31 days.",
         };
       }
-      return rpcTool(
+      const result = await rpcTool(
         supabase,
-        "Shift cover calendar, exceptions and skills",
+        "Shift Cover decision pack",
         "vorta_get_shift_cover_ai_brief",
         {
           p_site_id: request.siteId,
@@ -543,6 +625,9 @@ async function executeTool(
           p_end_date: endDate,
         },
       );
+      return result.status === "ok"
+        ? { ...result, data: compactShiftCoverData(result.data) }
+        : result;
     }
 
     case "get_site_work_backlog": {

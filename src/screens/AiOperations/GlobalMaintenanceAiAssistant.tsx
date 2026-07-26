@@ -1191,7 +1191,11 @@ function buildGlobalAnswer(
   const selectedEquipment = mentionedEquipment ?? topEquipment;
 
   const evidence: string[] = [];
+  const findings: VortaAgentFinding[] = [];
+  const coverOptions: VortaAgentCoverOption[] = [];
   const recommendedActions: string[] = [];
+  const actionPlan: VortaAgentAction[] = [];
+  const followUpQuestions: string[] = [];
   const sources: string[] = [];
   const missingData: string[] = [];
   let directAnswer = "";
@@ -1208,10 +1212,16 @@ function buildGlobalAnswer(
       const unavailableExceptions = shiftCoverBrief.exceptions.filter(
         (exception: ShiftCoverException) => !exception.isAvailable,
       );
-      const riskyShifts = shiftCoverBrief.calendar
+      const reducedShifts = shiftCoverBrief.calendar
+        .filter((shift: ShiftCoverCalendarItem) => shift.coverageStatus !== "covered")
+        .sort(
+          (first: ShiftCoverCalendarItem, second: ShiftCoverCalendarItem) =>
+            second.labourRiskScore - first.labourRiskScore ||
+            second.missingSkillCount - first.missingSkillCount,
+        );
+      const exposedShifts = shiftCoverBrief.calendar
         .filter(
           (shift: ShiftCoverCalendarItem) =>
-            shift.coverageStatus !== "covered" ||
             shift.missingSkillCount > 0 ||
             shift.equipmentWithMissingCover > 0,
         )
@@ -1227,7 +1237,7 @@ function buildGlobalAnswer(
             first.shiftDate.localeCompare(second.shiftDate),
         );
       const issueCount =
-        riskyShifts.length + unavailableExceptions.length + skillRisks.length;
+        reducedShifts.length + unavailableExceptions.length + exposedShifts.length;
 
       if (issueCount === 0) {
         directAnswer = `I checked all ${shiftCoverBrief.calendar.length} day and night shifts for ${shiftCoverRange.label}. No recorded holiday, training or other absence creates a cover issue, and no missing required-skill exposure was returned.`;
@@ -1237,16 +1247,38 @@ function buildGlobalAnswer(
         evidence.push("No unavailable holiday, training, sickness or other rota exception is recorded for the period.");
         evidence.push("No equipment-required skill is below its minimum qualified-engineer threshold.");
         recommendedActions.push("No immediate cover change is required; recheck after any leave, training or rota update.");
+        findings.push({
+          category: "cover",
+          severity: "low",
+          title: "No cover intervention required",
+          detail: `${shiftCoverBrief.calendar.length} dated shifts were checked. None has reduced rota cover or a missing required-skill exposure.`,
+        });
+        actionPlan.push({
+          priority: "planned",
+          action: "Recheck Shift Cover after the next rota, leave or training update.",
+          owner: "Maintenance Planner",
+          expectedImpact: "Keeps the no-intervention decision aligned with the latest attendance records.",
+          verification: "Confirm the Shift Cover calendar still shows no reduced shifts or missing required skills.",
+        });
       } else {
-        const highestRiskShift = riskyShifts[0];
+        const priorityShifts = (reducedShifts.length > 0 ? reducedShifts : exposedShifts).slice(0, 3);
+        const highestRiskShift = priorityShifts[0];
+        const highestRiskPackage = highestRiskShift
+          ? shiftCoverBrief.coverPackages.find(
+              (item) =>
+                item.shiftDate === highestRiskShift.shiftDate &&
+                item.shiftType === highestRiskShift.shiftType,
+            )
+          : undefined;
         directAnswer =
-          `I checked ${shiftCoverBrief.calendar.length} day and night shifts for ${shiftCoverRange.label}. ` +
-          `${riskyShifts.length} shift${riskyShifts.length === 1 ? "" : "s"} ${riskyShifts.length === 1 ? "has" : "have"} reduced or missing cover, ` +
-          `${unavailableExceptions.length} unavailable engineer/team exception${unavailableExceptions.length === 1 ? "" : "s"} ${unavailableExceptions.length === 1 ? "is" : "are"} recorded, ` +
-          `and ${skillRisks.length} highest required-skill exposure${skillRisks.length === 1 ? "" : "s"} ${skillRisks.length === 1 ? "was" : "were"} returned for attention.` +
+          `${shiftCoverRange.label} has ${reducedShifts.length} reduced-cover shift${reducedShifts.length === 1 ? "" : "s"}; ` +
+          `${exposedShifts.length} of ${shiftCoverBrief.calendar.length} shifts have at least one required-skill exposure. ` +
           (highestRiskShift
-            ? ` Highest risk: ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)} at ${highestRiskShift.labourRiskScore.toFixed(1)} ${highestRiskShift.labourRiskLevel}.`
-            : "");
+            ? `Priority is ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)}: ${highestRiskShift.teamNames.join(" + ")} with ${highestRiskShift.missingSkillCount} missing required-skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets. `
+            : "") +
+          (unavailableExceptions.length === 0
+            ? "No holiday, training or absence exception is recorded."
+            : `${unavailableExceptions.length} unavailable engineer or team exception${unavailableExceptions.length === 1 ? " is" : "s are"} recorded.`);
 
         unavailableExceptions.slice(0, 3).forEach((exception: ShiftCoverException) => {
           const person = exception.engineerName ?? exception.teamName ?? "Scheduled team";
@@ -1258,12 +1290,59 @@ function buildGlobalAnswer(
 
         if (unavailableExceptions.length === 0) {
           evidence.push("No holiday, training, sickness or other unavailable rota exception is recorded for the period.");
+          findings.push({
+            category: "absence",
+            severity: "info",
+            title: "No recorded leave or training",
+            detail: "No holiday, training, sickness or other unavailable rota exception is recorded for this period. Confirm any unrecorded changes before assigning overtime.",
+          });
+        } else {
+          unavailableExceptions.slice(0, 3).forEach((exception: ShiftCoverException) => {
+            const person = exception.engineerName ?? exception.teamName ?? "Scheduled team";
+            findings.push({
+              category: "absence",
+              severity: "high",
+              title: `${person} unavailable`,
+              detail: `${formatShiftLabel(exception.shiftDate, exception.shiftType)} — ${readableExceptionType(exception.exceptionType)}${exception.notes ? `: ${exception.notes}` : "."}`,
+            });
+          });
         }
 
-        riskyShifts.slice(0, 2).forEach((shift: ShiftCoverCalendarItem) => {
+        priorityShifts.forEach((shift: ShiftCoverCalendarItem, index) => {
+          const shiftRisks = skillRisks
+            .filter(
+              (risk) =>
+                risk.shiftDate === shift.shiftDate &&
+                risk.shiftType === shift.shiftType,
+            )
+            .slice(0, 4);
+          const gapSummary =
+            shiftRisks.length > 0
+              ? shiftRisks
+                  .map(
+                    (risk) =>
+                      `${risk.skillName} on ${risk.equipmentCode ?? risk.equipmentName}`,
+                  )
+                  .join("; ")
+              : "Open Shift Cover for the complete skill-by-asset list";
+
           evidence.push(
             `${formatShiftLabel(shift.shiftDate, shift.shiftType)}: ${shift.coverageStatus} cover with ${formatEngineerList(shift.engineerNames, "no engineers scheduled")}; ${shift.missingSkillCount} missing skill${shift.missingSkillCount === 1 ? "" : "s"} across ${shift.equipmentWithMissingCover} affected asset${shift.equipmentWithMissingCover === 1 ? "" : "s"}; labour risk ${shift.labourRiskScore.toFixed(1)} ${shift.labourRiskLevel}.`,
           );
+          findings.push({
+            category: "cover",
+            severity:
+              index === 0 && shift.missingSkillCount >= 50
+                ? "critical"
+                : shift.coverageStatus !== "covered"
+                  ? "high"
+                  : "medium",
+            title: `${index === 0 ? "Priority — " : ""}${formatShiftLabel(shift.shiftDate, shift.shiftType)}`,
+            detail:
+              `${shift.teamNames.join(" + ")}: ${formatEngineerList(shift.engineerNames, "no engineers scheduled")}. ` +
+              `${shift.missingSkillCount} required-skill exposures across ${shift.equipmentWithMissingCover} assets. ` +
+              `Examples: ${gapSummary}.`,
+          });
         });
 
         if (highestRiskShift) {
@@ -1276,13 +1355,20 @@ function buildGlobalAnswer(
             evidence.push(
               `${formatShiftLabel(offRota.shiftDate, offRota.shiftType)} off-rota candidates: ${formatEngineerList(offRota.engineerNames, "none without a rest conflict")}. This is not confirmed availability.`,
             );
+            findings.push({
+              category: "cover",
+              severity: "info",
+              title: "Off-rota engineers for the priority shift",
+              detail:
+                `${formatEngineerList(offRota.engineerNames, "No engineers without a rest conflict")}. ` +
+                (offRota.restConflictEngineerNames.length > 0
+                  ? `Rest-conflict review: ${offRota.restConflictEngineerNames.join(", ")}. `
+                  : "") +
+                "Off-rota does not mean available; overtime, leave and fatigue checks are required.",
+            });
           }
 
-          const coverPackage = shiftCoverBrief.coverPackages.find(
-            (item) =>
-              item.shiftDate === highestRiskShift.shiftDate &&
-              item.shiftType === highestRiskShift.shiftType,
-          );
+          const coverPackage = highestRiskPackage;
           if (coverPackage) {
             evidence.push(
               `Calculated cover package: ${coverPackage.engineerNames.join(", ")} would close ${coverPackage.missingSkillsClosed} of ${highestRiskShift.missingSkillCount} zero-cover skill exposures and leave ${coverPackage.remainingMissingSkills}; ${coverPackage.assetsWithClosedGaps} assets would have at least one gap closed.`,
@@ -1306,7 +1392,16 @@ function buildGlobalAnswer(
           }
         }
 
-        skillRisks.slice(0, 3).forEach((risk: ShiftCoverSkillRisk) => {
+        const highestShiftRisks = highestRiskShift
+          ? skillRisks
+              .filter(
+                (risk) =>
+                  risk.shiftDate === highestRiskShift.shiftDate &&
+                  risk.shiftType === highestRiskShift.shiftType,
+              )
+              .slice(0, 4)
+          : [];
+        highestShiftRisks.forEach((risk: ShiftCoverSkillRisk) => {
           const qualifiedNames = formatEngineerList(
             risk.qualifiedEngineerNames,
             "no qualified engineer on shift",
@@ -1316,25 +1411,79 @@ function buildGlobalAnswer(
           );
         });
 
+        priorityShifts.forEach((shift) => {
+          const coverPackage = shiftCoverBrief.coverPackages.find(
+            (item) =>
+              item.shiftDate === shift.shiftDate &&
+              item.shiftType === shift.shiftType,
+          );
+          if (!coverPackage || coverPackage.engineerNames.length === 0) return;
+          coverOptions.push({
+            engineerNames: coverPackage.engineerNames,
+            shift: formatShiftLabel(coverPackage.shiftDate, coverPackage.shiftType),
+            reason:
+              coverPackage.closedSkills.length > 0
+                ? `Strongest calculated package for ${coverPackage.closedSkills.slice(0, 4).join(", ")} and ${coverPackage.protectedAssets.slice(0, 4).join(", ")}.`
+                : "Strongest calculated package from the validated skills evidence available.",
+            projectedImpact:
+              `Closes ${coverPackage.missingSkillsClosed} of ${shift.missingSkillCount} zero-cover exposures; ` +
+              `${coverPackage.remainingMissingSkills} remain across the shift.`,
+            caveat: "Provisional only—confirm overtime acceptance, unrecorded leave, fatigue and rest compliance.",
+          });
+        });
+
         if (unavailableExceptions[0]) {
           const firstException = unavailableExceptions[0];
           recommendedActions.push(
             `Confirm replacement cover for ${firstException.engineerName ?? firstException.teamName ?? "the unavailable team"} on ${formatShiftLabel(firstException.shiftDate, firstException.shiftType)}.`,
           );
         }
-        if (skillRisks[0]) {
-          const firstSkillRisk = skillRisks[0];
+        if (highestShiftRisks[0]) {
+          const firstSkillRisk = highestShiftRisks[0];
           recommendedActions.push(
             firstSkillRisk.qualifiedEngineerCount === 0
               ? `Assign a validated ${firstSkillRisk.skillName} engineer to ${formatShiftLabel(firstSkillRisk.shiftDate, firstSkillRisk.shiftType)} or arrange competent contractor escalation.`
               : `Add backup ${firstSkillRisk.skillName} cover on ${formatShiftLabel(firstSkillRisk.shiftDate, firstSkillRisk.shiftType)}; current cover is below the required minimum.`,
           );
         }
-        if (riskyShifts[0]) {
+        if (highestRiskShift) {
           recommendedActions.push(
-            `After cover is confirmed, re-run Shift Cover and verify the remaining missing-skill count for ${formatShiftLabel(riskyShifts[0].shiftDate, riskyShifts[0].shiftType)}.`,
+            `After cover is confirmed, re-run Shift Cover and verify the remaining missing-skill count for ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)}.`,
           );
         }
+
+        if (highestRiskShift && highestRiskPackage) {
+          actionPlan.push({
+            priority: "now",
+            action: `Contact ${highestRiskPackage.engineerNames.join(", ")} for provisional cover of ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)}.`,
+            owner: "Maintenance Manager",
+            expectedImpact: `If all accept, ${highestRiskPackage.missingSkillsClosed} of ${highestRiskShift.missingSkillCount} zero-cover exposures close; ${highestRiskPackage.remainingMissingSkills} remain.`,
+            verification: "Record confirmed availability, re-run Shift Cover and compare the remaining missing-skill count.",
+          });
+          actionPlan.push({
+            priority: "before_shift",
+            action:
+              highestRiskPackage.remainingMissingSkills > 0
+                ? `Protect the ${highestRiskPackage.remainingMissingSkills} residual exposures by moving non-essential work and arranging validated contractor or cross-shift support.`
+                : "Confirm the revised team covers every required asset skill before releasing the plan.",
+            owner: "Maintenance Planner",
+            expectedImpact: "Prevents planned work from relying on skills that remain uncovered after the proposed rota change.",
+            verification: "Check the work plan against the residual skill-by-asset list in Shift Cover.",
+          });
+        }
+        actionPlan.push({
+          priority: "before_shift",
+          action: "Confirm overtime acceptance, fatigue controls and any leave or training not yet recorded.",
+          owner: "Shift Supervisor",
+          expectedImpact: "Turns provisional names into a safe, auditable cover decision.",
+          verification: "Update the rota exceptions and confirm the final named shift roster at handover.",
+        });
+        followUpQuestions.push(
+          "Show every reduced-cover shift next week.",
+          "Which skills remain after the proposed cover?",
+          "Which planned work should move away from the priority shift?",
+          "Which contractors could cover the residual skills?",
+        );
       }
 
       sources.push(
@@ -1602,7 +1751,11 @@ function buildGlobalAnswer(
   return {
     directAnswer: roleAwareAnswer,
     evidence: unique(evidence),
+    findings,
+    coverOptions,
     recommendedActions: roleActions,
+    actionPlan,
+    followUpQuestions,
     sources: unique(sources),
     confidence: Math.min(92, Math.max(55, 55 + dataPoints * 8)),
     roleLabel: roleProfile.label,
@@ -2490,6 +2643,7 @@ export function GlobalMaintenanceAiAssistant({
           "Conversational reasoning is temporarily unavailable; this is the verified Vorta fallback response.",
         ]);
         answer.confidence = Math.min(answer.confidence, 85);
+        answer.responseBadge = "Verified Vorta decision pack";
       }
 
       setMessages((previous) =>
