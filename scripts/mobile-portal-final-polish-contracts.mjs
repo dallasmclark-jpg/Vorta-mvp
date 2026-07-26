@@ -48,6 +48,9 @@ assert.match(maintenanceExperience, /<MobilePageHeaderExperience \/>/);
 assert.match(mobilePageHeader, /data-vorta-mobile-header-title/);
 assert.match(mobilePageHeader, /content: attr\(data-vorta-mobile-header-title\)/);
 assert.match(mobilePageHeader, /data-vorta-mobile-duplicate-page-title/);
+assert.match(mobilePageHeader, /data-vorta-mobile-settings-duplicate-theme-toggle/);
+assert.match(mobilePageHeader, /removeSettingsHeaderThemeShortcut/);
+assert.match(mobilePageHeader, /THEME_SHORTCUT_LABELS/);
 assert.match(mobilePageHeader, /title: "Capability"/);
 assert.match(mobilePageHeader, /title: "Shift Handover"/);
 assert.match(mobilePageHeader, /profile: \{ title: "Equipment", duplicateHeadings: \[\] \}/);
@@ -82,4 +85,4 @@ assert.match(polish, /href="\/settings\/data-import"/);
 assert.match(polish, /@media \(min-width: 640px\) and \(max-width: 767px\)/);
 assert.match(polish, /height: 100dvh !important/);
 
-console.log("Final mobile portal navigation, page titles, breakpoints, capability summary and route restrictions passed.");
+console.log("Final mobile portal navigation, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
