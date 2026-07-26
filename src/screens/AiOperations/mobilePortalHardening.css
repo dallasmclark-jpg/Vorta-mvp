@@ -38,7 +38,7 @@
   }
 
   [data-vorta-embedded-ai="true"],
-  [data-vorta-maintenance-portal="true"] div:has(> div > input[placeholder*="calibration risk"]) {
+  [data-vorta-maintenance-portal="true"] div:has(> div > input[placeholder^="Ask Vorta about"]) {
     display: none !important;
   }
 
