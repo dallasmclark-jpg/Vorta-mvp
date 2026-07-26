@@ -20,10 +20,10 @@ const mobileRoutes = [
   ["/settings", "Settings"],
 ] as const;
 
-test("Maintenance Manager mobile routes retain context and avoid page overflow", async ({
+test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry", async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(210_000);
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   test.skip(viewportWidth >= 640, "Phone-only route matrix.");
 
@@ -32,12 +32,58 @@ test("Maintenance Manager mobile routes retain context and avoid page overflow",
   const mobileTopBar = page.locator(
     '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
   );
+  const mobileLogo = mobileTopBar.locator(":scope > :not(button)").first();
+  const mobileMenu = mobileTopBar.getByRole("button", { name: "Open menu" });
+  const sharedLauncher = page.locator(
+    '[data-vorta-shared-mobile-ai-launcher="true"]',
+  );
 
   for (const [path, label] of mobileRoutes) {
     await page.goto(path);
     await expect(mobileTopBar).toHaveAttribute("data-vorta-mobile-page-title", label);
+    await expect(mobileTopBar).toHaveCSS("display", "grid");
+    await expect(mobileLogo).toBeVisible();
+    await expect(mobileMenu).toBeVisible();
+
+    const logoBox = await mobileLogo.boundingBox();
+    const menuBox = await mobileMenu.boundingBox();
+    expect(logoBox).not.toBeNull();
+    expect(menuBox).not.toBeNull();
+    expect(logoBox?.x ?? 9999).toBeLessThan(menuBox?.x ?? 0);
+
+    await expect(sharedLauncher).toHaveCount(1);
+    await expect(sharedLauncher).toBeVisible();
+    await expect(sharedLauncher).toHaveAccessibleName("Ask Vorta");
     await expectNoPageOverflow(page);
   }
+
+  await page.goto("/equipment");
+  const equipmentButton = page
+    .locator('[data-vorta-mobile-equipment="true"] button')
+    .filter({ hasText: "Open" })
+    .first();
+  await expect(equipmentButton).toBeVisible({ timeout: 30_000 });
+  await equipmentButton.click();
+  await page.waitForURL(/\/equipment\/[^/]+\/overview(?:\?.*)?$/);
+
+  await expect(page.locator('[data-vorta-equipment-mobile-actions="true"]')).toHaveCount(0);
+  await expect(sharedLauncher).toHaveCount(1);
+  const finalAction = page.getByRole("button", { name: /View work and actions/ });
+  await expect(finalAction).toBeVisible({ timeout: 30_000 });
+  await page.locator('[data-vorta-mobile-ai-safe-area="true"]').scrollIntoViewIfNeeded();
+
+  const finalActionBox = await finalAction.boundingBox();
+  const launcherBox = await sharedLauncher.boundingBox();
+  expect(finalActionBox).not.toBeNull();
+  expect(launcherBox).not.toBeNull();
+  expect(finalActionBox?.y ?? 9999).toBeLessThan(launcherBox?.y ?? 0);
+
+  const calibrationTab = page.getByRole("tab", { name: "Calibrations", exact: true });
+  await calibrationTab.click();
+  await page.waitForURL(/\/equipment\/[^/]+\/pms(?:\?.*)?$/);
+  await expect(page.locator('input[placeholder*="calibration risk"]')).toBeHidden();
+  await expect(sharedLauncher).toHaveCount(1);
+  await expectNoPageOverflow(page);
 
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Appearance", exact: true })).toBeVisible();
