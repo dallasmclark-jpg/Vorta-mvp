@@ -13,6 +13,7 @@ const maintenanceActions = read("src/lib/maintenanceActions.ts");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobileHardening = read("src/screens/AiOperations/mobilePortalHardening.css");
 const mobileAiPolish = read("src/screens/AiOperations/MobileAiPolishStyles.tsx");
+const mobileComposer = read("src/screens/AiOperations/MobileAiComposerControls.tsx");
 const pageTransition = read("src/components/PageTransition.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
@@ -140,8 +141,24 @@ check(
     mobileAiPolish.includes("input:focus-visible") &&
     mobileAiPolish.includes("outline: 0 solid transparent !important") &&
     mobileAiPolish.includes("box-shadow: none !important") &&
-    mobileAiPolish.includes('data-vorta-fault-panel="true"'),
-  "Mobile Ask Vorta must retain its branded header and neutral input focus state.",
+    mobileAiPolish.includes('data-vorta-fault-panel="true"') &&
+    mobileAiPolish.includes('data-vorta-ai-attach-control="true"') &&
+    mobileAiPolish.includes('button[aria-label$="voice dictation"]') &&
+    mobileAiPolish.includes("order: 1") &&
+    mobileAiPolish.includes("order: 3") &&
+    mobileAiPolish.includes("order: 4"),
+  "Mobile Ask Vorta must retain its branded header, neutral focus and ChatGPT-style composer order.",
+);
+
+check(
+  mobileComposer.includes("createPortal") &&
+    mobileComposer.includes('aria-label="Add photos and files"') &&
+    mobileComposer.includes('accept="image/*,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx"') &&
+    mobileComposer.includes('data-vorta-ai-attachment-count=') &&
+    mobileComposer.includes('data-vorta-ai-mobile-mic="true"') &&
+    mobileComposer.includes("webkitSpeechRecognition") &&
+    mobileComposer.includes("setControlledInputValue"),
+  "The shared mobile composer must provide file selection and a working voice control for both assistant modes.",
 );
 
 check(
@@ -152,9 +169,12 @@ check(
     browserTest.includes('toHaveCSS("font-size", "0px")') &&
     browserTest.includes('toHaveValue("")') &&
     browserTest.includes('toHaveCSS("outline-width", "0px")') &&
+    browserTest.includes("Add photos and files") &&
+    browserTest.includes("equipment-evidence.jpg") &&
+    browserTest.includes("microphoneBox") &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
-  "Authenticated browser coverage must protect the mobile route matrix and polished AI conversation.",
+  "Authenticated browser coverage must protect the mobile route matrix and ChatGPT-style AI composer.",
 );
 
 console.log("Maintenance Manager mobile portal audit contracts passed.");
