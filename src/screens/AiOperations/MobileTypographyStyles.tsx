@@ -8,7 +8,7 @@ const MOBILE_TYPOGRAPHY_STYLES = `
   :is(
     [data-vorta-maintenance-portal="true"],
     [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"]
-  ) .text-\[10px\] {
+  ) [class~="text-[10px]"] {
     font-size: 0.75rem !important;
     line-height: 1rem !important;
   }
@@ -16,7 +16,7 @@ const MOBILE_TYPOGRAPHY_STYLES = `
   :is(
     [data-vorta-maintenance-portal="true"],
     [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"]
-  ) .text-\[11px\] {
+  ) [class~="text-[11px]"] {
     font-size: 0.8125rem !important;
     line-height: 1.1rem !important;
   }
@@ -24,7 +24,7 @@ const MOBILE_TYPOGRAPHY_STYLES = `
   :is(
     [data-vorta-maintenance-portal="true"],
     [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"]
-  ) .text-\[12px\] {
+  ) [class~="text-[12px]"] {
     font-size: 0.875rem !important;
     line-height: 1.2rem !important;
   }
@@ -32,7 +32,7 @@ const MOBILE_TYPOGRAPHY_STYLES = `
   :is(
     [data-vorta-maintenance-portal="true"],
     [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"]
-  ) .text-\[13px\] {
+  ) [class~="text-[13px]"] {
     font-size: 0.9375rem !important;
     line-height: 1.3rem !important;
   }
@@ -133,6 +133,7 @@ const MOBILE_TYPOGRAPHY_STYLES = `
     line-height: 1.2rem !important;
   }
 
+  /* Scale the existing What can I help with? empty state without changing its copy. */
   [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])
     > div.flex:not(:first-child):not(:has(> div.mb-2))
     > div:only-child.justify-start
