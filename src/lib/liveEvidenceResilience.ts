@@ -39,7 +39,7 @@ type RpcClient = {
     functionName: string,
     parameters?: Record<string, unknown>,
     options?: Record<string, unknown>,
-  ) => Promise<InvokeResult>;
+  ) => unknown;
   [RPC_INSTALL_MARKER]?: boolean;
 };
 
@@ -139,18 +139,20 @@ function installRpcResilience(): void {
   if (client[RPC_INSTALL_MARKER]) return;
 
   const rpc = client.rpc.bind(client);
-  client.rpc = async (
+  client.rpc = (
     functionName: string,
     parameters?: Record<string, unknown>,
     options?: Record<string, unknown>,
-  ): Promise<InvokeResult> => {
+  ): unknown => {
     if (!EVIDENCE_RPCS.has(functionName)) {
       return rpc(functionName, parameters, options);
     }
 
     return retryTransientEvidence(
       functionName,
-      () => rpc(functionName, parameters, options),
+      () => Promise.resolve(
+        rpc(functionName, parameters, options),
+      ) as Promise<InvokeResult>,
     );
   };
 
