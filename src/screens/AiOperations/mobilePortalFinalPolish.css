@@ -3,6 +3,7 @@
   [data-vorta-portal-shell="true"] > section > div.md\:hidden {
     display: flex !important;
     min-height: 3.25rem;
+    flex-direction: row-reverse !important;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -15,12 +16,12 @@
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
-    order: 2;
-    margin-left: auto !important;
+    order: initial !important;
+    margin-left: 0 !important;
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
-    order: 1;
+    order: initial !important;
     min-width: 0;
   }
 
