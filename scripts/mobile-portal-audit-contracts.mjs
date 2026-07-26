@@ -184,7 +184,7 @@ check(
     browserTest.includes("expectNoPageOverflow") &&
     browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
     browserTest.includes("data-vorta-engineer-avatar-image") &&
-    browserTest.includes("naturalWidth > 0") &&
+    browserTest.includes('toHaveAttribute("src", /^https:') &&
     browserTest.includes("What can I help with?") &&
     browserTest.includes('toHaveCSS("font-size", "0px")') &&
     browserTest.includes('toHaveValue("")') &&
