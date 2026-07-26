@@ -47,6 +47,7 @@ const expectedContracts = [
   "work-order-overlay-contracts.mjs",
   "maintenance-dashboard-contracts.mjs",
   "mobile-portal-final-polish-contracts.mjs",
+  "mobile-typography-contracts.mjs",
   "maintenance-portal-workflow-contracts.mjs",
   "skills-matrix-contracts.mjs",
   "equipment-people-workflow-contracts.mjs",
