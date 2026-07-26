@@ -206,10 +206,7 @@ export const AiOperations = (): JSX.Element => {
             <Route path="requirements" element={<RequirementsSection />} />
             <Route path="training" element={<TrainingSection />} />
             <Route path="training-providers" element={<TrainingProvidersSection />} />
-            <Route
-              path="ai-matching"
-              element={capabilityMatchingEnabled ? <AiMatchingSection /> : <Navigate to="/requirements" replace />}
-            />
+            <Route path="ai-matching" element={<AiMatchingSection />} />
             <Route
               path="settings/pilot-setup"
               element={mayAdministerPilot ? (
