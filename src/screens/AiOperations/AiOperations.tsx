@@ -22,6 +22,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { EquipmentMobileDetailFrame } from "../Equipment/EquipmentMobileDetailFrame";
 import { PilotEvidenceFrame } from "../PilotEvidence/PilotEvidenceFrame";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
@@ -225,16 +226,79 @@ export const AiOperations = (): JSX.Element => {
             />
             <Route path="settings" element={<SettingsSection />} />
             <Route path="equipment" element={<EquipmentSection />} />
-            <Route path="equipment/:equipmentId/overview" element={<EquipmentOverview />} />
-            <Route path="equipment/:equipmentId/notifications" element={<EquipmentNotifications />} />
-            <Route path="equipment/:equipmentId/work-orders" element={<EquipmentWorkOrders />} />
-            <Route path="equipment/:equipmentId/pms" element={<EquipmentPMs />} />
-            <Route path="equipment/:equipmentId/history" element={<EquipmentHistory />} />
-            <Route path="equipment/:equipmentId/skills" element={<EquipmentSkills />} />
-            <Route path="equipment/:equipmentId/spares" element={<EquipmentSpares />} />
+            <Route
+              path="equipment/:equipmentId/overview"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="overview">
+                  <EquipmentOverview />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/notifications"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="notifications">
+                  <EquipmentNotifications />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/work-orders"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="work-orders">
+                  <EquipmentWorkOrders />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/pms"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="pms">
+                  <EquipmentPMs />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/history"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="history">
+                  <EquipmentHistory />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/skills"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="skills">
+                  <EquipmentSkills />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/spares"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="spares">
+                  <EquipmentSpares />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
             <Route path="equipment/:equipmentId/documents/:documentId" element={<EquipmentDocumentViewer />} />
-            <Route path="equipment/:equipmentId/documents" element={<EquipmentDocuments />} />
-            <Route path="equipment/:equipmentId/ai-insights" element={<EquipmentAiInsights />} />
+            <Route
+              path="equipment/:equipmentId/documents"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="documents">
+                  <EquipmentDocuments />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
+            <Route
+              path="equipment/:equipmentId/ai-insights"
+              element={(
+                <EquipmentMobileDetailFrame activeTab="ai-insights">
+                  <EquipmentAiInsights />
+                </EquipmentMobileDetailFrame>
+              )}
+            />
             <Route path="support" element={<SupportSection />} />
             <Route path="design-system" element={<DesignSystemSection />} />
             <Route path="maintenance/labour-risk/shift-cover" element={<ShiftCoverPageEntry />} />

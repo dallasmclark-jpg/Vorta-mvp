@@ -22,6 +22,7 @@ const contracts = [
   ["Pilot release security", "scripts/pilot-release-security-contracts.mjs"],
   ["Pilot resilience and performance", "scripts/pilot-resilience-performance-contracts.mjs"],
   ["Equipment people workflow", "scripts/equipment-people-workflow-contracts.mjs"],
+  ["Equipment tab continuity", "scripts/equipment-tab-continuity-contracts.mjs"],
   ["Maintenance P1 and P2", "scripts/maintenance-p1-p2-contracts.mjs"],
   ["Data trust", "scripts/data-trust-contracts.mjs"],
   ["Post-audit P0", "scripts/post-audit-p0-contracts.mjs"],

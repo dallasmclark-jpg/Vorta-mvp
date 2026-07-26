@@ -51,6 +51,7 @@ const expectedContracts = [
   "maintenance-portal-workflow-contracts.mjs",
   "skills-matrix-contracts.mjs",
   "equipment-people-workflow-contracts.mjs",
+  "equipment-tab-continuity-contracts.mjs",
   "maintenance-p1-p2-contracts.mjs",
   "data-trust-contracts.mjs",
   "post-audit-p0-contracts.mjs",

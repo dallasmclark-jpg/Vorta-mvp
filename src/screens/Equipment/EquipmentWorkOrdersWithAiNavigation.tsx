@@ -10,7 +10,7 @@ export function EquipmentWorkOrdersWithAiNavigation(): JSX.Element {
   const { equipmentId } = useParams<{ equipmentId?: string }>();
   const [searchParams] = useSearchParams();
   const workOrderNumber = searchParams.get("workOrder")?.trim() ?? "";
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
     if (!workOrderNumber) return;
