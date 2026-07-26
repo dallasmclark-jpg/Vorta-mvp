@@ -58,6 +58,278 @@
     max-width: calc(100vw - 2rem);
   }
 
+  /* General Vorta AI becomes a clean full-screen mobile conversation. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) {
+    inset: 0 !important;
+    display: flex !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgb(11 14 20) !important;
+    box-shadow: none !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child {
+    min-height: 3.5rem;
+    padding: 0.5rem 0.75rem !important;
+    background: rgb(11 14 20) !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child > div:first-child > div:first-child,
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child p,
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Minimise global assistant"] {
+    display: none !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child h3 {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Close global assistant"] {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+  }
+
+  /* Quick-question chips and the verbose verified-context sentence stay out of the default mobile view. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2) {
+    display: none !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2):has(button:not([title])) {
+    display: block !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2):has(button:not([title])) > div.mb-2 {
+    display: none !important;
+  }
+
+  /* Conversation area. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) {
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: 1 1 auto !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+    overflow-y: auto !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-start > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.25rem 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-end > div {
+    max-width: 84% !important;
+    padding: 0.625rem 0.875rem !important;
+    border-radius: 1.25rem 1.25rem 0.35rem 1.25rem !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-end p,
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-start > div > p {
+    font-size: 0.9375rem !important;
+    line-height: 1.5rem !important;
+  }
+
+  /* Mobile answers show the direct answer and one useful next action, not the entire audit trail by default. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(1),
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(2),
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(n+4) {
+    display: none !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > p {
+    color: rgb(226 232 240) !important;
+    font-size: 0.9375rem !important;
+    line-height: 1.55rem !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) {
+    margin-top: 0.75rem;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) h4 {
+    margin-bottom: 0.35rem !important;
+    color: rgb(100 116 139) !important;
+    font-size: 0.6875rem !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li {
+    color: rgb(203 213 225) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.35rem !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li:not(:first-child) {
+    display: none !important;
+  }
+
+  /* Replace the oversized introduction card with a simple ChatGPT-style welcome. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child .justify-start > div > div.flex.flex-col.gap-2 > p {
+    display: flex;
+    min-height: calc(100dvh - 10rem);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: transparent !important;
+    text-align: center;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child .justify-start > div > div.flex.flex-col.gap-2 > p::before {
+    display: block;
+    color: rgb(241 245 249);
+    content: "What can I help with?";
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child .justify-start > div > div.flex.flex-col.gap-2 > p::after {
+    display: block;
+    max-width: 18rem;
+    margin-top: 0.5rem;
+    color: rgb(100 116 139);
+    content: "Ask about risk, equipment, labour, PMs or spares.";
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.35rem;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)):not(:has(> div:only-child)) > div:first-child {
+    display: none !important;
+  }
+
+  /* Compact mobile composer with icon-only send. */
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t {
+    padding: 0.625rem 0.75rem max(0.75rem, env(safe-area-inset-bottom)) !important;
+    background: rgb(11 14 20) !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex {
+    align-items: center;
+    gap: 0.25rem !important;
+    padding: 0.3rem 0.35rem 0.3rem 0.45rem;
+    border: 1px solid rgb(51 65 85);
+    border-radius: 1.5rem;
+    background: rgb(20 24 32);
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:first-child {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    border: 0 !important;
+    border-radius: 9999px !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t input {
+    min-height: 2.5rem;
+    padding: 0.4rem 0.35rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    font-size: 0.9375rem !important;
+    box-shadow: none !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:last-child {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 9999px !important;
+    font-size: 0 !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:last-child svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  /* Fault intelligence uses the same restrained mobile language. */
+  [data-vorta-fault-panel="true"] {
+    border: 0 !important;
+    background: rgb(11 14 20) !important;
+    box-shadow: none !important;
+  }
+
+  [data-vorta-fault-panel="true"] header > div:first-child > div:first-child,
+  [data-vorta-fault-panel="true"] header p,
+  [data-vorta-fault-panel="true"] button[aria-label="Minimise fault assistant"],
+  [data-vorta-fault-panel="true"] > div > div.flex.flex-wrap.border-b,
+  [data-vorta-fault-panel="true"] > div > div.flex.items-center.border-b {
+    display: none !important;
+  }
+
+  [data-vorta-fault-panel="true"] header {
+    min-height: 3.5rem !important;
+    padding-inline: 0.75rem !important;
+    background: rgb(11 14 20) !important;
+  }
+
+  [data-vorta-fault-panel="true"] button[data-vorta-fault-close="true"] {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+  }
+
+  [data-vorta-fault-panel="true"] > div > div.min-h-0.flex-1 {
+    padding: 1rem !important;
+  }
+
+  [data-vorta-fault-panel="true"] .space-y-5 > section:first-child {
+    padding: 0.25rem 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  [data-vorta-fault-panel="true"] .space-y-5 > section:first-child > div:first-child,
+  [data-vorta-fault-panel="true"] .space-y-5 > section:first-child > h4,
+  [data-vorta-fault-panel="true"] .space-y-5 > section:not(:first-child),
+  [data-vorta-fault-panel="true"] .space-y-5 > div.flex {
+    display: none !important;
+  }
+
+  [data-vorta-fault-panel="true"] .space-y-5 > section:first-child > p {
+    margin-top: 0 !important;
+    color: rgb(226 232 240) !important;
+    font-size: 0.9375rem !important;
+    line-height: 1.55rem !important;
+  }
+
+  [data-vorta-fault-panel="true"] .space-y-5 > section:first-child li:not(:first-child) {
+    display: none !important;
+  }
+
+  [data-vorta-fault-panel="true"] form {
+    gap: 0.25rem !important;
+    padding: 0.625rem 0.75rem max(0.75rem, env(safe-area-inset-bottom)) !important;
+    background: rgb(11 14 20) !important;
+  }
+
+  [data-vorta-fault-panel="true"] form > div {
+    min-height: 3rem;
+    border-radius: 1.5rem !important;
+    background: rgb(20 24 32) !important;
+  }
+
+  [data-vorta-fault-panel="true"] form > button {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 9999px !important;
+    font-size: 0 !important;
+  }
+
   nav[aria-label="Pilot setup stages"] {
     display: flex !important;
     gap: 0.5rem;
