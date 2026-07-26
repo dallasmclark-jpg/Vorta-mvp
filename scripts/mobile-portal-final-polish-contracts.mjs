@@ -7,6 +7,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 
 const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
+const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const aiMatchingEntry = read("src/screens/AiMatching/AiMatchingRouteEntry.tsx");
 const phoneGuard = read("src/screens/AiOperations/TabletDesktopOnly.tsx");
 const polish = read("src/screens/AiOperations/mobilePortalFinalPolish.css");
@@ -39,6 +40,8 @@ assert.match(operations, /path="shift-handover" element=\{<ShiftHandoverSection 
 
 assert.match(phoneGuard, /max-width: 767px/);
 assert.match(phoneGuard, /<Navigate to=\{fallbackRoute\} replace \/>/);
+assert.match(maintenanceExperience, /const isPhone = useMediaQuery\("\(max-width: 767px\)"\)/);
+assert.match(maintenanceExperience, /data-vorta-shared-mobile-ai-launcher="true"/);
 
 for (const route of routes) {
   assert.match(route, /max-width: 767px/, "Every explicit phone route must cover the full sub-768px range.");
@@ -59,6 +62,7 @@ assert.match(polish, /Remove the retired standalone matching action/);
 assert.match(polish, /data-vorta-mobile-requirements/);
 
 assert.match(polish, /@media \(max-width: 767px\)/);
+assert.match(polish, /flex-direction: row-reverse !important/);
 assert.match(polish, /justify-content: space-between/);
 assert.match(polish, /justify-content: flex-end/);
 assert.match(polish, /aria-label="Portal navigation"/);
