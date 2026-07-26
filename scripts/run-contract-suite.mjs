@@ -6,6 +6,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const contracts = [
   ["Authentication routes", "scripts/auth-route-contracts.mjs"],
+  ["Maintenance session recovery", "scripts/maintenance-session-recovery-contracts.mjs"],
   ["Work-order overlays", "scripts/work-order-overlay-contracts.mjs"],
   ["Maintenance dashboard", "scripts/maintenance-dashboard-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
