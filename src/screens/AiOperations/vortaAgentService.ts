@@ -16,7 +16,10 @@ export interface VortaAgentCoverOption {
   engineerNames: string[];
   shift: string;
   reason: string;
+  skillsCovered: string[];
+  assetsProtected: string[];
   projectedImpact: string;
+  remainingRisk: string;
   caveat: string;
 }
 
@@ -84,7 +87,10 @@ function isCoverOptions(value: unknown): value is VortaAgentCoverOption[] {
         isStringArray(item.engineerNames) &&
         typeof item.shift === "string" &&
         typeof item.reason === "string" &&
+        isStringArray(item.skillsCovered) &&
+        isStringArray(item.assetsProtected) &&
         typeof item.projectedImpact === "string" &&
+        typeof item.remainingRisk === "string" &&
         typeof item.caveat === "string",
     )
   );

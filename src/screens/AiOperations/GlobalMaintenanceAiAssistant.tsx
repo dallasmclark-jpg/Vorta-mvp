@@ -1270,6 +1270,18 @@ function buildGlobalAnswer(
                 item.shiftType === highestRiskShift.shiftType,
             )
           : undefined;
+        const jointHighestRiskCount = highestRiskShift
+          ? priorityShifts.filter(
+              (shift) =>
+                shift.labourRiskScore === highestRiskShift.labourRiskScore &&
+                shift.missingSkillCount === highestRiskShift.missingSkillCount,
+            ).length
+          : 0;
+        const priorityReason = highestRiskShift
+          ? jointHighestRiskCount > 1
+            ? `It is the earliest of ${jointHighestRiskCount} joint-highest shifts at ${highestRiskShift.labourRiskScore.toFixed(1)} labour risk, with ${highestRiskShift.missingSkillCount} skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets.`
+            : `It ranks first at ${highestRiskShift.labourRiskScore.toFixed(1)} labour risk, with ${highestRiskShift.missingSkillCount} skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets.`
+          : "";
         directAnswer =
           `${shiftCoverRange.label} has ${reducedShifts.length} reduced-cover shift${reducedShifts.length === 1 ? "" : "s"}; ` +
           `${exposedShifts.length} of ${shiftCoverBrief.calendar.length} shifts have at least one required-skill exposure. ` +
@@ -1278,7 +1290,10 @@ function buildGlobalAnswer(
             : "") +
           (unavailableExceptions.length === 0
             ? "No holiday, training or absence exception is recorded."
-            : `${unavailableExceptions.length} unavailable engineer or team exception${unavailableExceptions.length === 1 ? " is" : "s are"} recorded.`);
+            : `${unavailableExceptions.length} unavailable engineer or team exception${unavailableExceptions.length === 1 ? " is" : "s are"} recorded.`) +
+          (highestRiskPackage
+            ? ` First move: contact ${highestRiskPackage.engineerNames.join(", ")}; this package closes the most priority-shift exposure currently calculated.`
+            : "");
 
         unavailableExceptions.slice(0, 3).forEach((exception: ShiftCoverException) => {
           const person = exception.engineerName ?? exception.teamName ?? "Scheduled team";
@@ -1340,8 +1355,8 @@ function buildGlobalAnswer(
             title: `${index === 0 ? "Priority — " : ""}${formatShiftLabel(shift.shiftDate, shift.shiftType)}`,
             detail:
               `${shift.teamNames.join(" + ")}: ${formatEngineerList(shift.engineerNames, "no engineers scheduled")}. ` +
-              `${shift.missingSkillCount} required-skill exposures across ${shift.equipmentWithMissingCover} assets. ` +
-              `Examples: ${gapSummary}.`,
+              `${shift.missingSkillCount} required-skill exposures—fewer validated engineers than the equipment requirement—across ${shift.equipmentWithMissingCover} assets. ` +
+              `${index === 0 ? `${priorityReason} ` : ""}Examples: ${gapSummary}.`,
           });
         });
 
@@ -1421,13 +1436,16 @@ function buildGlobalAnswer(
           coverOptions.push({
             engineerNames: coverPackage.engineerNames,
             shift: formatShiftLabel(coverPackage.shiftDate, coverPackage.shiftType),
-            reason:
-              coverPackage.closedSkills.length > 0
-                ? `Strongest calculated package for ${coverPackage.closedSkills.slice(0, 4).join(", ")} and ${coverPackage.protectedAssets.slice(0, 4).join(", ")}.`
-                : "Strongest calculated package from the validated skills evidence available.",
+            reason: "Strongest calculated package from the validated skills evidence available for this shift.",
+            skillsCovered: coverPackage.closedSkills.slice(0, 6),
+            assetsProtected: coverPackage.protectedAssets.slice(0, 6),
             projectedImpact:
               `Closes ${coverPackage.missingSkillsClosed} of ${shift.missingSkillCount} zero-cover exposures; ` +
               `${coverPackage.remainingMissingSkills} remain across the shift.`,
+            remainingRisk:
+              coverPackage.remainingMissingSkills > 0
+                ? `${coverPackage.remainingMissingSkills} required-skill exposures remain. Review the residual skill-by-asset list before releasing planned work.`
+                : "No zero-cover exposure remains in the calculated package; verify the revised roster before release.",
             caveat: "Provisional only—confirm overtime acceptance, unrecorded leave, fatigue and rest compliance.",
           });
         });
@@ -1859,26 +1877,28 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
         </Badge>
       </div>
 
-      <p className="text-xs leading-relaxed text-slate-200">{answer.directAnswer}</p>
+      <p className="text-[15px] leading-6 text-slate-200 sm:text-xs sm:leading-relaxed">
+        {answer.directAnswer}
+      </p>
 
       {hasStructuredFindings && (
         <div>
-          <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
             What Vorta found
           </h4>
           <div className="flex flex-col gap-1.5">
             {answer.findings?.slice(0, 8).map((finding, index) => (
               <div
                 key={`${finding.category}-${finding.title}-${index}`}
-                className={`rounded-md border px-2.5 py-2 ${findingTone(finding.severity)}`}
+                className={`rounded-md border px-3 py-2.5 sm:px-2.5 sm:py-2 ${findingTone(finding.severity)}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-current">{finding.title}</p>
-                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide opacity-70">
+                  <p className="text-[15px] font-bold text-current sm:text-xs">{finding.title}</p>
+                  <span className="shrink-0 text-xs font-bold uppercase tracking-wide opacity-70 sm:text-[10px]">
                     {finding.severity}
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-300">
+                <p className="mt-1 text-sm leading-6 text-slate-300 sm:mt-0.5 sm:text-xs sm:leading-relaxed">
                   {finding.detail}
                 </p>
               </div>
@@ -1889,24 +1909,51 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
 
       {answer.coverOptions && answer.coverOptions.length > 0 && (
         <div>
-          <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
             Best cover options
           </h4>
           <div className="flex flex-col gap-1.5">
             {answer.coverOptions.slice(0, 5).map((option, index) => (
               <div
                 key={`${option.shift}-${option.engineerNames.join("-")}-${index}`}
-                className="rounded-md border border-blue-500/20 bg-blue-500/8 px-2.5 py-2"
+                className="rounded-md border border-blue-500/20 bg-blue-500/8 px-3 py-2.5 sm:px-2.5 sm:py-2"
               >
-                <p className="text-xs font-bold text-blue-200">
+                <p className="text-[15px] font-bold text-blue-200 sm:text-xs">
                   {option.engineerNames.join(" + ")}
                 </p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-300">{option.shift}</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">{option.reason}</p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-emerald-300">
+                <p className="mt-1 text-sm font-semibold text-slate-300 sm:mt-0.5 sm:text-xs">
+                  {option.shift}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-400 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                  {option.reason}
+                </p>
+                {option.skillsCovered.length > 0 && (
+                  <div className="mt-2 sm:mt-1">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                      Skills covered
+                    </p>
+                    <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                      {option.skillsCovered.join(", ")}
+                    </p>
+                  </div>
+                )}
+                {option.assetsProtected.length > 0 && (
+                  <div className="mt-2 sm:mt-1">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                      Assets protected
+                    </p>
+                    <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                      {option.assetsProtected.join(", ")}
+                    </p>
+                  </div>
+                )}
+                <p className="mt-2 text-[15px] font-semibold leading-6 text-emerald-300 sm:mt-1 sm:text-xs sm:leading-relaxed">
                   {option.projectedImpact}
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-amber-200/80">
+                <p className="mt-2 text-sm leading-5 text-orange-200 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                  Remaining risk: {option.remainingRisk}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-amber-200/80 sm:mt-1 sm:text-[11px] sm:leading-relaxed">
                   {option.caveat}
                 </p>
               </div>
@@ -1930,7 +1977,7 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
       )}
 
       <div>
-        <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
           Risk-reduction plan
         </h4>
         {hasStructuredActions ? (
@@ -1938,23 +1985,23 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
             {answer.actionPlan?.slice(0, 5).map((item, index) => (
               <div
                 key={`${item.priority}-${item.action}-${index}`}
-                className="rounded-md border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2"
+                className="rounded-md border border-emerald-500/15 bg-emerald-500/5 px-3 py-2.5 sm:px-2.5 sm:py-2"
               >
                 <div className="flex items-start gap-2">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-300">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-xs font-semibold leading-relaxed text-slate-200">
+                    <p className="text-sm font-semibold leading-6 text-slate-200 sm:text-xs sm:leading-relaxed">
                       {item.action}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
+                    <p className="mt-1 text-xs text-slate-400 sm:mt-0.5 sm:text-[11px]">
                       {item.owner} · {item.priority.replace("_", " ")}
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-emerald-300">
+                    <p className="mt-2 text-sm leading-5 text-emerald-300 sm:mt-1 sm:text-xs sm:leading-relaxed">
                       {item.expectedImpact}
                     </p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-1 text-xs leading-5 text-slate-500 sm:mt-0.5 sm:text-[11px] sm:leading-relaxed">
                       Verify: {item.verification}
                     </p>
                   </div>
