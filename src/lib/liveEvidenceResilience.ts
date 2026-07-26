@@ -13,10 +13,15 @@ const EVIDENCE_FUNCTIONS = new Set([
   "shift-handover-data",
 ]);
 
-const TRANSIENT_MESSAGE = /failed to send a request|failed to fetch|network|load failed|timed out|timeout/i;
+const EVIDENCE_RPCS = new Set([
+  "vorta_get_shift_cover_snapshot",
+]);
+
+const TRANSIENT_MESSAGE = /failed to send a request|failed to fetch|network|load failed|timed out|timeout|statement timeout|canceling statement/i;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 3;
-const INSTALL_MARKER = "__vortaLiveEvidenceResilienceInstalled";
+const FUNCTIONS_INSTALL_MARKER = "__vortaLiveEvidenceResilienceInstalled";
+const RPC_INSTALL_MARKER = "__vortaLiveEvidenceRpcResilienceInstalled";
 
 type InvokeResult = {
   data?: unknown;
@@ -26,7 +31,16 @@ type InvokeResult = {
 type InvokeOptions = Record<string, unknown> | undefined;
 
 type FunctionsClient = typeof supabase.functions & {
-  [INSTALL_MARKER]?: boolean;
+  [FUNCTIONS_INSTALL_MARKER]?: boolean;
+};
+
+type RpcClient = {
+  rpc: (
+    functionName: string,
+    parameters?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ) => Promise<InvokeResult>;
+  [RPC_INSTALL_MARKER]?: boolean;
 };
 
 function delay(milliseconds: number): Promise<void> {
@@ -43,10 +57,10 @@ function errorFrom(value: unknown): Error | null {
   return new Error(String(value));
 }
 
-function withTimeout<T>(request: Promise<T>, functionName: string): Promise<T> {
+function withTimeout<T>(request: Promise<T>, evidenceName: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeoutId = window.setTimeout(() => {
-      reject(new Error(`${functionName} evidence request timed out`));
+      reject(new Error(`${evidenceName} evidence request timed out`));
     }, REQUEST_TIMEOUT_MS);
 
     request.then(
@@ -62,11 +76,41 @@ function withTimeout<T>(request: Promise<T>, functionName: string): Promise<T> {
   });
 }
 
-function installLiveEvidenceResilience(): void {
-  if (typeof window === "undefined") return;
+async function retryTransientEvidence(
+  evidenceName: string,
+  request: () => Promise<InvokeResult>,
+): Promise<InvokeResult> {
+  let lastThrownError: Error | null = null;
+  let lastResult: InvokeResult | null = null;
 
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const result = await withTimeout(request(), evidenceName);
+      const resultError = errorFrom(result?.error);
+      if (!resultError) return result;
+
+      lastResult = result;
+      if (!TRANSIENT_MESSAGE.test(resultError.message) || attempt === MAX_ATTEMPTS - 1) {
+        return result;
+      }
+    } catch (error) {
+      const currentError = errorFrom(error) ?? new Error(`${evidenceName} evidence request failed`);
+      lastThrownError = currentError;
+      if (!TRANSIENT_MESSAGE.test(currentError.message) || attempt === MAX_ATTEMPTS - 1) {
+        throw currentError;
+      }
+    }
+
+    await delay(300 * (attempt + 1));
+  }
+
+  if (lastResult) return lastResult;
+  throw lastThrownError ?? new Error(`${evidenceName} evidence could not be loaded`);
+}
+
+function installFunctionResilience(): void {
   const functions = supabase.functions as FunctionsClient;
-  if (functions[INSTALL_MARKER]) return;
+  if (functions[FUNCTIONS_INSTALL_MARKER]) return;
 
   const invoke = functions.invoke.bind(functions) as (
     functionName: string,
@@ -81,38 +125,42 @@ function installLiveEvidenceResilience(): void {
       return invoke(functionName, options);
     }
 
-    let lastThrownError: Error | null = null;
-    let lastResult: InvokeResult | null = null;
-
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-      try {
-        const result = await withTimeout(
-          invoke(functionName, options),
-          functionName,
-        );
-        const resultError = errorFrom(result?.error);
-        if (!resultError) return result;
-
-        lastResult = result;
-        if (!TRANSIENT_MESSAGE.test(resultError.message) || attempt === MAX_ATTEMPTS - 1) {
-          return result;
-        }
-      } catch (error) {
-        const currentError = errorFrom(error) ?? new Error(`${functionName} evidence request failed`);
-        lastThrownError = currentError;
-        if (!TRANSIENT_MESSAGE.test(currentError.message) || attempt === MAX_ATTEMPTS - 1) {
-          throw currentError;
-        }
-      }
-
-      await delay(300 * (attempt + 1));
-    }
-
-    if (lastResult) return lastResult;
-    throw lastThrownError ?? new Error(`${functionName} evidence could not be loaded`);
+    return retryTransientEvidence(
+      functionName,
+      () => invoke(functionName, options),
+    );
   }) as typeof functions.invoke;
 
-  functions[INSTALL_MARKER] = true;
+  functions[FUNCTIONS_INSTALL_MARKER] = true;
+}
+
+function installRpcResilience(): void {
+  const client = supabase as unknown as RpcClient;
+  if (client[RPC_INSTALL_MARKER]) return;
+
+  const rpc = client.rpc.bind(client);
+  client.rpc = async (
+    functionName: string,
+    parameters?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): Promise<InvokeResult> => {
+    if (!EVIDENCE_RPCS.has(functionName)) {
+      return rpc(functionName, parameters, options);
+    }
+
+    return retryTransientEvidence(
+      functionName,
+      () => rpc(functionName, parameters, options),
+    );
+  };
+
+  client[RPC_INSTALL_MARKER] = true;
+}
+
+function installLiveEvidenceResilience(): void {
+  if (typeof window === "undefined") return;
+  installFunctionResilience();
+  installRpcResilience();
 }
 
 installLiveEvidenceResilience();
