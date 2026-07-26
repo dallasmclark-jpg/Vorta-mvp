@@ -96,6 +96,8 @@ const PAGE_PROFILES: Array<{
   },
 ];
 
+const THEME_SHORTCUT_LABELS = new Set(["light", "dark", "system"]);
+
 function normaliseText(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
 }
@@ -116,6 +118,40 @@ function profileForPath(pathname: string): MobilePageProfile {
       duplicateHeadings: [],
     }
   );
+}
+
+function clearDuplicateThemeShortcuts(): void {
+  document
+    .querySelectorAll<HTMLElement>('[data-vorta-mobile-settings-duplicate-theme-toggle="true"]')
+    .forEach((control) =>
+      control.removeAttribute("data-vorta-mobile-settings-duplicate-theme-toggle"),
+    );
+}
+
+function removeSettingsHeaderThemeShortcut(pathname: string): void {
+  clearDuplicateThemeShortcuts();
+  if (pathname !== "/settings") return;
+
+  const mobileSettings = document.querySelector<HTMLElement>(
+    '[data-vorta-mobile-settings="true"]',
+  );
+  if (!mobileSettings) return;
+
+  const appearanceSection = Array.from(
+    mobileSettings.querySelectorAll<HTMLElement>("section"),
+  ).find((section) =>
+    Array.from(section.querySelectorAll<HTMLHeadingElement>("h2")).some(
+      (heading) => normaliseText(heading.textContent) === "appearance",
+    ),
+  );
+
+  document
+    .querySelectorAll<HTMLElement>('button, [role="button"]')
+    .forEach((control) => {
+      if (appearanceSection?.contains(control)) return;
+      if (!THEME_SHORTCUT_LABELS.has(normaliseText(control.textContent))) return;
+      control.setAttribute("data-vorta-mobile-settings-duplicate-theme-toggle", "true");
+    });
 }
 
 const MOBILE_PAGE_HEADER_STYLES = `
@@ -157,6 +193,10 @@ const MOBILE_PAGE_HEADER_STYLES = `
     white-space: nowrap !important;
     border: 0 !important;
   }
+
+  [data-vorta-mobile-settings-duplicate-theme-toggle="true"] {
+    display: none !important;
+  }
 }
 `;
 
@@ -168,7 +208,10 @@ export function MobilePageHeaderExperience(): JSX.Element {
     const duplicateHeadings = new Set(profile.duplicateHeadings.map(normaliseText));
 
     const applyHeader = (): void => {
-      if (!window.matchMedia("(max-width: 767px)").matches) return;
+      if (!window.matchMedia("(max-width: 767px)").matches) {
+        clearDuplicateThemeShortcuts();
+        return;
+      }
 
       const topBar = document.querySelector<HTMLElement>(
         '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
@@ -186,12 +229,14 @@ export function MobilePageHeaderExperience(): JSX.Element {
         .querySelectorAll<HTMLElement>('[data-vorta-mobile-duplicate-page-title="true"]')
         .forEach((heading) => heading.removeAttribute("data-vorta-mobile-duplicate-page-title"));
 
-      if (duplicateHeadings.size === 0) return;
+      if (duplicateHeadings.size > 0) {
+        const duplicate = Array.from(portal.querySelectorAll<HTMLHeadingElement>("h1")).find(
+          (heading) => duplicateHeadings.has(normaliseText(heading.textContent)),
+        );
+        duplicate?.setAttribute("data-vorta-mobile-duplicate-page-title", "true");
+      }
 
-      const duplicate = Array.from(portal.querySelectorAll<HTMLHeadingElement>("h1")).find(
-        (heading) => duplicateHeadings.has(normaliseText(heading.textContent)),
-      );
-      duplicate?.setAttribute("data-vorta-mobile-duplicate-page-title", "true");
+      removeSettingsHeaderThemeShortcut(location.pathname);
     };
 
     const frame = window.requestAnimationFrame(applyHeader);
@@ -206,6 +251,7 @@ export function MobilePageHeaderExperience(): JSX.Element {
       window.cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener("resize", applyHeader);
+      clearDuplicateThemeShortcuts();
     };
   }, [location.pathname]);
 
