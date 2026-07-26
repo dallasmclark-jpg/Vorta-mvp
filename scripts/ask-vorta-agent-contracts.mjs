@@ -78,6 +78,9 @@ check(
 check(
   agent.includes('type: "json_schema"') &&
     agent.includes("additionalProperties: false") &&
+    agent.includes("skillsCovered") &&
+    agent.includes("assetsProtected") &&
+    agent.includes("remainingRisk") &&
     agent.includes("coverOptions") &&
     agent.includes("actionPlan") &&
     agent.includes("followUpQuestions") &&
@@ -102,6 +105,10 @@ check(
     assistant.includes("findings.push({") &&
     assistant.includes("coverOptions.push({") &&
     assistant.includes("actionPlan.push({") &&
+    assistant.includes("Skills covered") &&
+    assistant.includes("Assets protected") &&
+    assistant.includes("Remaining risk:") &&
+    assistant.includes("text-[15px]") &&
     assistant.includes("zero-cover exposures"),
   "The shared assistant must use the agent first and retain its verified deterministic fallback.",
 );
