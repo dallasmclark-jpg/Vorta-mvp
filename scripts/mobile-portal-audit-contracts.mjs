@@ -117,12 +117,23 @@ check(
 );
 
 check(
+  mobileHardening.includes("height: 100dvh !important") &&
+    mobileHardening.includes('content: "What can I help with?"') &&
+    mobileHardening.includes("font-size: 0 !important") &&
+    mobileHardening.includes("div:nth-of-type(n+4)") &&
+    mobileHardening.includes('data-vorta-fault-panel="true"'),
+  "Mobile Vorta AI must use a full-screen chat presentation with a restrained answer and icon-only composer.",
+);
+
+check(
   browserTest.includes("mobileRoutes") &&
     browserTest.includes("expectNoPageOverflow") &&
     browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
+    browserTest.includes("What can I help with?") &&
+    browserTest.includes('toHaveCSS("font-size", "0px")') &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
-  "Authenticated browser coverage must protect the mobile route matrix and shared AI launcher.",
+  "Authenticated browser coverage must protect the mobile route matrix and simplified AI conversation.",
 );
 
 console.log("Maintenance Manager mobile portal audit contracts passed.");
