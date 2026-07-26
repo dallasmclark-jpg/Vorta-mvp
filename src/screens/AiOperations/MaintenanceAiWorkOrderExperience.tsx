@@ -21,7 +21,7 @@ import { getCachedEquipmentIdentity } from "../Equipment/equipmentService";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
-import "./mobileAiPolish.css";
+import { MobileAiPolishStyles } from "./MobileAiPolishStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
 
@@ -216,6 +216,7 @@ export function MaintenanceAiWorkOrderExperience({
       onFocusCapture={handleNavigationIntent}
       onClickCapture={trackRecommendationFollowThrough}
     >
+      <MobileAiPolishStyles />
       <DataTrustBanner />
       {children}
       {isPhone ? (
