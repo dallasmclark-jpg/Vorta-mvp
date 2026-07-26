@@ -7,6 +7,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 
 const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
+const aiMatchingEntry = read("src/screens/AiMatching/AiMatchingRouteEntry.tsx");
 const phoneGuard = read("src/screens/AiOperations/TabletDesktopOnly.tsx");
 const polish = read("src/screens/AiOperations/mobilePortalFinalPolish.css");
 const skillsEntry = read("src/screens/SkillsMatrix/index.ts");
@@ -27,8 +28,11 @@ const routes = [
 
 assert.match(environment, /^VITE_ENABLE_CAPABILITY_MATCHING=false$/m);
 assert.match(operations, /VITE_ENABLE_CAPABILITY_MATCHING/);
-assert.match(operations, /capabilityMatchingEnabled \? <AiMatchingSection \/> : <Navigate to="\/requirements" replace \/>/);
+assert.match(operations, /path="ai-matching" element=\{<AiMatchingSection \/>\}/);
 assert.match(operations, /\.\.\.\(capabilityMatchingEnabled/);
+assert.match(aiMatchingEntry, /VITE_ENABLE_CAPABILITY_MATCHING/);
+assert.match(aiMatchingEntry, /if \(!capabilityMatchingEnabled\)/);
+assert.match(aiMatchingEntry, /<Navigate to="\/requirements" replace \/>/);
 assert.match(operations, /<TabletDesktopOnly>[\s\S]*?<PilotSetupSection \/>[\s\S]*?<\/TabletDesktopOnly>/);
 assert.match(operations, /<TabletDesktopOnly>[\s\S]*?<SapDataImportSection \/>[\s\S]*?<\/TabletDesktopOnly>/);
 assert.match(operations, /path="shift-handover" element=\{<ShiftHandoverSection \/>\}/);
