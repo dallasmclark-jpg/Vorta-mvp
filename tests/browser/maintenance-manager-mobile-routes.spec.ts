@@ -111,9 +111,9 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(promptInput).toBeVisible();
   await expect(promptInput).toHaveValue("");
   await promptInput.focus();
-  await expect(promptInput).toHaveCSS("outline-style", "none");
+  await expect(promptInput).toHaveCSS("outline-width", "0px");
   await expect(promptInput).toHaveCSS("box-shadow", "none");
-  await expect(promptInput).toHaveCSS("border-top-style", "none");
+  await expect(promptInput).toHaveCSS("border-top-width", "0px");
 
   const sendButton = mobileAssistant.getByRole("button", { name: "Send", exact: true });
   await expect(sendButton).toBeVisible();
