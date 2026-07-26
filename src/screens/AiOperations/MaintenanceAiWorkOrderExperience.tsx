@@ -93,7 +93,7 @@ export function MaintenanceAiWorkOrderExperience({
 }: PropsWithChildren): JSX.Element {
   const { siteContext } = useAuth();
   const location = useLocation();
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
   const showDesktopAssistantLauncher =
     !isPhone &&
     location.pathname !== "/dashboard" &&
