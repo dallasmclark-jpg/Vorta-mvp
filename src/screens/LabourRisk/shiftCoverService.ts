@@ -54,6 +54,41 @@ export interface ShiftCoverSnapshot {
   completeness: ShiftCoverCompleteness;
 }
 
+export interface ShiftCoverException {
+  shiftDate: string;
+  shiftType: ShiftType;
+  engineerName: string | null;
+  teamName: string | null;
+  exceptionType: string;
+  isAvailable: boolean;
+  notes: string | null;
+}
+
+export interface ShiftCoverSkillRisk {
+  shiftDate: string;
+  shiftType: ShiftType;
+  skillName: string;
+  skillCategory: string | null;
+  equipmentName: string;
+  equipmentCode: string | null;
+  requiredLevel: number;
+  minimumQualifiedEngineers: number;
+  qualifiedEngineerCount: number;
+  qualifiedEngineerNames: string[];
+  riskLevel: "critical" | "high";
+}
+
+export interface ShiftCoverAiBrief {
+  mode: "live";
+  siteId: string;
+  generatedAt: string;
+  startDate: string;
+  endDate: string;
+  calendar: ShiftCoverCalendarItem[];
+  exceptions: ShiftCoverException[];
+  skillRisks: ShiftCoverSkillRisk[];
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const COVERAGE_STATUSES = new Set<ShiftCoverageStatus>([
@@ -159,6 +194,18 @@ function timestampString(value: unknown, label: string): string {
 function nullableTimestamp(value: unknown, label: string): string | null {
   if (value === null || value === undefined || value === "") return null;
   return timestampString(value, label);
+}
+
+function nullableString(value: unknown, label: string): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return requiredString(value, label);
+}
+
+function requiredBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== "boolean") {
+    return unavailable(`${label} must be true or false.`);
+  }
+  return value;
 }
 
 function shiftType(value: unknown, label: string): ShiftType {
@@ -370,6 +417,129 @@ function parseSnapshot(
   };
 }
 
+function parseException(value: unknown, index: number): ShiftCoverException {
+  const label = `exceptions[${index}]`;
+  const record = toRecord(value, label);
+  return {
+    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    engineerName: nullableString(
+      read(record, "engineerName", "engineer_name"),
+      `${label}.engineerName`,
+    ),
+    teamName: nullableString(read(record, "teamName", "team_name"), `${label}.teamName`),
+    exceptionType: requiredString(
+      read(record, "exceptionType", "exception_type"),
+      `${label}.exceptionType`,
+    ),
+    isAvailable: requiredBoolean(
+      read(record, "isAvailable", "is_available"),
+      `${label}.isAvailable`,
+    ),
+    notes: nullableString(record.notes, `${label}.notes`),
+  };
+}
+
+function parseSkillRisk(value: unknown, index: number): ShiftCoverSkillRisk {
+  const label = `skillRisks[${index}]`;
+  const record = toRecord(value, label);
+  const riskLevel = requiredString(
+    read(record, "riskLevel", "risk_level"),
+    `${label}.riskLevel`,
+  ).toLowerCase();
+  if (riskLevel !== "critical" && riskLevel !== "high") {
+    return unavailable(`${label}.riskLevel must be critical or high.`);
+  }
+
+  return {
+    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    skillName: requiredString(read(record, "skillName", "skill_name"), `${label}.skillName`),
+    skillCategory: nullableString(
+      read(record, "skillCategory", "skill_category"),
+      `${label}.skillCategory`,
+    ),
+    equipmentName: requiredString(
+      read(record, "equipmentName", "equipment_name"),
+      `${label}.equipmentName`,
+    ),
+    equipmentCode: nullableString(
+      read(record, "equipmentCode", "equipment_code"),
+      `${label}.equipmentCode`,
+    ),
+    requiredLevel: finiteNumber(
+      read(record, "requiredLevel", "required_level"),
+      `${label}.requiredLevel`,
+      { minimum: 0, integer: true },
+    ),
+    minimumQualifiedEngineers: finiteNumber(
+      read(record, "minimumQualifiedEngineers", "minimum_qualified_engineers"),
+      `${label}.minimumQualifiedEngineers`,
+      { minimum: 1, integer: true },
+    ),
+    qualifiedEngineerCount: finiteNumber(
+      read(record, "qualifiedEngineerCount", "qualified_engineer_count"),
+      `${label}.qualifiedEngineerCount`,
+      { minimum: 0, integer: true },
+    ),
+    qualifiedEngineerNames: stringArray(
+      read(record, "qualifiedEngineerNames", "qualified_engineer_names"),
+      `${label}.qualifiedEngineerNames`,
+    ),
+    riskLevel,
+  };
+}
+
+function parseAiBrief(
+  value: unknown,
+  requestedSiteId: string,
+  startDate: string,
+  endDate: string,
+): ShiftCoverAiBrief {
+  const payload = toRecord(value, "shiftCoverAiBrief");
+  if (payload.mode !== "live") {
+    return unavailable("shiftCoverAiBrief.mode must be live.");
+  }
+
+  const siteId = requiredString(payload.siteId ?? payload.site_id, "shiftCoverAiBrief.siteId");
+  if (siteId !== requestedSiteId) {
+    return unavailable("shiftCoverAiBrief.siteId does not match the authorised active site.");
+  }
+
+  if (!Array.isArray(payload.calendar)) {
+    return unavailable("shiftCoverAiBrief.calendar must be an array.");
+  }
+  if (!Array.isArray(payload.exceptions)) {
+    return unavailable("shiftCoverAiBrief.exceptions must be an array.");
+  }
+  const rawSkillRisks = payload.skillRisks ?? payload.skill_risks;
+  if (!Array.isArray(rawSkillRisks)) {
+    return unavailable("shiftCoverAiBrief.skillRisks must be an array.");
+  }
+
+  const startTimestamp = dateOnlyTimestamp(startDate, "requested start date");
+  const endTimestamp = dateOnlyTimestamp(endDate, "requested end date");
+
+  return {
+    mode: "live",
+    siteId,
+    generatedAt: timestampString(
+      payload.generatedAt ?? payload.generated_at,
+      "shiftCoverAiBrief.generatedAt",
+    ),
+    startDate: requiredString(
+      payload.startDate ?? payload.start_date,
+      "shiftCoverAiBrief.startDate",
+    ),
+    endDate: requiredString(payload.endDate ?? payload.end_date, "shiftCoverAiBrief.endDate"),
+    calendar: payload.calendar.map((item, index) =>
+      parseCalendarItem(item, index, startTimestamp, endTimestamp),
+    ),
+    exceptions: payload.exceptions.map(parseException),
+    skillRisks: rawSkillRisks.map(parseSkillRisk),
+  };
+}
+
 export async function getShiftCoverSnapshot(
   siteId: string,
   startDate: string,
@@ -401,4 +571,37 @@ export async function getShiftCoverSnapshot(
   }
 
   return parseSnapshot(data, requestedSiteId, startDate, endDate);
+}
+
+export async function getShiftCoverAiBrief(
+  siteId: string,
+  startDate: string,
+  endDate: string,
+): Promise<ShiftCoverAiBrief> {
+  const requestedSiteId = siteId.trim();
+  if (!requestedSiteId) {
+    throw new VortaDataUnavailableError(
+      "Shift Cover analysis is unavailable because no authorised active site was supplied.",
+    );
+  }
+
+  const { data, error } = await supabase.rpc("vorta_get_shift_cover_ai_brief", {
+    p_site_id: requestedSiteId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+
+  if (error) {
+    throw new VortaDataUnavailableError(
+      `Shift Cover analysis could not load verified site data: ${error.message}`,
+    );
+  }
+
+  if (data === null || data === undefined) {
+    throw new VortaDataUnavailableError(
+      "Shift Cover analysis returned no authorised site evidence.",
+    );
+  }
+
+  return parseAiBrief(data, requestedSiteId, startDate, endDate);
 }

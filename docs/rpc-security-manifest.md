@@ -4,10 +4,10 @@ The authenticated Vorta Data API surface is controlled by a runtime manifest in 
 
 ## Current contract
 
-- 61 authenticated-callable public Vorta functions
-- 46 reviewed read RPCs
+- 65 authenticated-callable public Vorta functions
+- 50 reviewed read RPCs
 - 15 reviewed mutation RPCs
-- 58 intentional `SECURITY DEFINER` wrappers
+- 62 intentional `SECURITY DEFINER` wrappers
 - 3 `SECURITY INVOKER` equipment-evidence readers
 - 0 anonymous-callable Vorta functions
 - 0 manifest drift findings
@@ -19,6 +19,11 @@ The three invoker readers are:
 - `vorta_get_equipment_document(uuid,uuid)`
 
 They preserve the existing equipment and document row-level security model rather than bypassing it.
+
+The Ask Vorta shift-cover evidence wrapper,
+`vorta_get_shift_cover_ai_brief(uuid,date,date)`, is a reviewed read-only
+`SECURITY DEFINER` RPC with a fixed search path and explicit requested-site
+access enforcement.
 
 ## Adding or changing an RPC
 

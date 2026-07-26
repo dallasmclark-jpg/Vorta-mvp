@@ -1,16 +1,22 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260721180500",
-  "migrationName": "extend_rpc_security_manifest_for_health_evidence",
+  "migrationVersion": "20260726233000",
+  "migrationName": "register_shift_cover_ai_brief_rpc",
   "invariants": {
-    "authenticatedCallable": 64,
-    "reviewedRead": 49,
+    "authenticatedCallable": 65,
+    "reviewedRead": 50,
     "reviewedMutation": 15,
-    "securityDefiner": 61,
+    "securityDefiner": 62,
     "securityInvoker": 3,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },
+  "askVortaEvidenceRpcs": [
+    {
+      "identity": "vorta_get_shift_cover_ai_brief(uuid,date,date)",
+      "scope": "authenticated requested-site access through vorta_has_site_access"
+    }
+  ],
   "healthEvidenceRpcs": [
     {
       "identity": "vorta_get_system_health_summary()",
