@@ -29,8 +29,8 @@ interface ToolResult {
 }
 
 const MODEL = "gpt-5.6-sol";
-const MAX_TOOL_ROUNDS = 4;
-const MAX_TOOL_OUTPUT_CHARACTERS = 45_000;
+const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_OUTPUT_CHARACTERS = 35_000;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ALLOWED_ROLES = new Set([
   "maintenance-manager",
@@ -92,7 +92,7 @@ const TOOLS: Tool[] = [
     type: "function",
     name: "get_shift_cover",
     description:
-      "Get dated shift cover, holiday/training/absence exceptions and required-skill risks for a date range. Always use this for rota, leave, training, availability or shift-cover questions.",
+      "Get a dated Shift Cover decision pack: scheduled teams and engineers, recorded holiday/training/absence exceptions, rota-off engineers, required-skill risks, individually ranked competent cover candidates and a provisional three-person cover package with calculated gaps closed. Always use this for rota, leave, training, availability or shift-cover questions.",
     parameters: {
       type: "object",
       properties: {
@@ -108,6 +108,52 @@ const TOOLS: Tool[] = [
       required: ["start_date", "end_date"],
       additionalProperties: false,
     },
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_site_work_backlog",
+    description:
+      "Get the site's current work-order backlog, including exact asset, order, priority, assignment, overdue state, dates and backlog summary. Use for broad questions about open, overdue, unassigned or priority maintenance work.",
+    parameters: EMPTY_PARAMETERS,
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_site_maintenance_plan",
+    description:
+      "Get PMs and calibrations due in a requested date range, including exact assets, assignments, duration, due status and procedures. Use with get_shift_cover for plan-achievability and resource questions.",
+    parameters: {
+      type: "object",
+      properties: {
+        start_date: {
+          type: "string",
+          description: "Inclusive start date in YYYY-MM-DD format.",
+        },
+        end_date: {
+          type: "string",
+          description: "Inclusive end date in YYYY-MM-DD format, no more than 31 days after start_date.",
+        },
+      },
+      required: ["start_date", "end_date"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_site_spares_risk",
+    description:
+      "Get site-wide critical spares exposure, including exact asset, part code, available/minimum/target quantities, shortfall, status, lead time and storage location. Use for broad spares, stock-out, lead-time or maintenance-readiness questions.",
+    parameters: EMPTY_PARAMETERS,
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_site_capability_actions",
+    description:
+      "Get risk-ranked site capability actions with named primary SMEs, backup candidates, skill requirements, shift exposure, candidate readiness and recommended training or validation action. Use for broad skills, single-point dependency, succession and training-priority questions.",
+    parameters: EMPTY_PARAMETERS,
     strict: true,
   },
   {
@@ -139,6 +185,14 @@ const TOOLS: Tool[] = [
     name: "get_equipment_spares",
     description:
       "Get an authorised asset's component and spare-parts stock, minimum and target quantities, criticality, lead time and storage information.",
+    parameters: EQUIPMENT_ID_PARAMETERS,
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_equipment_risk_actions",
+    description:
+      "Get the authorised asset's calculated risk-reduction work queue, including current and projected risk scores, action sequence and total expected reduction. Use when asked what changes would reduce an asset's risk.",
     parameters: EQUIPMENT_ID_PARAMETERS,
     strict: true,
   },
@@ -195,12 +249,77 @@ const ANSWER_SCHEMA = {
     evidence: {
       type: "array",
       items: { type: "string" },
-      maxItems: 8,
+      maxItems: 10,
+    },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["cover", "absence", "skill", "spare", "work", "history", "document", "risk", "data"],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low", "info"],
+          },
+          title: { type: "string" },
+          detail: { type: "string" },
+        },
+        required: ["category", "severity", "title", "detail"],
+        additionalProperties: false,
+      },
+      maxItems: 10,
+    },
+    coverOptions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          engineerNames: {
+            type: "array",
+            items: { type: "string" },
+            maxItems: 4,
+          },
+          shift: { type: "string" },
+          reason: { type: "string" },
+          projectedImpact: { type: "string" },
+          caveat: { type: "string" },
+        },
+        required: ["engineerNames", "shift", "reason", "projectedImpact", "caveat"],
+        additionalProperties: false,
+      },
+      maxItems: 6,
     },
     recommendedActions: {
       type: "array",
       items: { type: "string" },
-      maxItems: 5,
+      maxItems: 6,
+    },
+    actionPlan: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          priority: {
+            type: "string",
+            enum: ["now", "before_shift", "this_week", "planned"],
+          },
+          action: { type: "string" },
+          owner: { type: "string" },
+          expectedImpact: { type: "string" },
+          verification: { type: "string" },
+        },
+        required: ["priority", "action", "owner", "expectedImpact", "verification"],
+        additionalProperties: false,
+      },
+      maxItems: 6,
+    },
+    followUpQuestions: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 4,
     },
     sources: {
       type: "array",
@@ -227,7 +346,11 @@ const ANSWER_SCHEMA = {
   required: [
     "directAnswer",
     "evidence",
+    "findings",
+    "coverOptions",
     "recommendedActions",
+    "actionPlan",
+    "followUpQuestions",
     "sources",
     "missingData",
     "confidence",
@@ -339,6 +462,40 @@ function validDateRange(startDate: unknown, endDate: unknown): boolean {
   return Number.isFinite(start) && Number.isFinite(end) && end >= start && end - start <= 31 * 86_400_000;
 }
 
+async function getSiteEquipmentIndex(
+  supabase: SupabaseClient,
+  siteId: string,
+): Promise<Map<string, JsonRecord>> {
+  const { data, error } = await supabase
+    .from("equipment_assets")
+    .select("id,name,equipment_code,area,criticality")
+    .eq("site_id", siteId)
+    .limit(500);
+  if (error) throw new Error(error.message);
+  return new Map(
+    (data ?? []).map((item) => {
+      const row = item as JsonRecord;
+      return [String(row.id), row];
+    }),
+  );
+}
+
+function assetLabel(asset: JsonRecord | undefined): JsonRecord {
+  return {
+    equipmentName: typeof asset?.name === "string" ? asset.name : "Unknown asset",
+    equipmentCode:
+      typeof asset?.equipment_code === "string" ? asset.equipment_code : null,
+    area: typeof asset?.area === "string" ? asset.area : null,
+    equipmentCriticality:
+      typeof asset?.criticality === "string" ? asset.criticality : null,
+  };
+}
+
+function numberValue(value: unknown): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
 async function executeTool(
   name: string,
   args: JsonRecord,
@@ -388,6 +545,225 @@ async function executeTool(
       );
     }
 
+    case "get_site_work_backlog": {
+      const [equipment, workResult] = await Promise.all([
+        getSiteEquipmentIndex(supabase, request.siteId),
+        supabase
+          .from("work_orders")
+          .select(
+            "equipment_id,wo_number,priority,description,work_type,status,assigned_engineer,requested_date,due_date,is_overdue,fault_code,order_type_code,order_type_description,scheduled_start_at,scheduled_finish_at,updated_at",
+          )
+          .eq("site_id", request.siteId)
+          .limit(300),
+      ]);
+      if (workResult.error) {
+        return {
+          source: "Site maintenance work backlog",
+          status: "unavailable",
+          message: workResult.error.message,
+        };
+      }
+      const closed = /completed|closed|cancel|teco|business complete/i;
+      const rows = (workResult.data ?? [])
+        .filter((item) => !closed.test(String(item.status ?? "")))
+        .map((item) => ({
+          ...assetLabel(equipment.get(String(item.equipment_id))),
+          workOrderNumber: item.wo_number,
+          priority: item.priority,
+          description: item.description,
+          workType: item.work_type,
+          status: item.status,
+          assignedEngineer: item.assigned_engineer,
+          requestedDate: item.requested_date,
+          dueDate: item.due_date,
+          overdue: Boolean(item.is_overdue),
+          faultCode: item.fault_code,
+          orderTypeCode: item.order_type_code,
+          orderTypeDescription: item.order_type_description,
+          scheduledStartAt: item.scheduled_start_at,
+          scheduledFinishAt: item.scheduled_finish_at,
+          updatedAt: item.updated_at,
+        }))
+        .sort((left, right) => {
+          const overdueDifference = Number(right.overdue) - Number(left.overdue);
+          if (overdueDifference) return overdueDifference;
+          const priorities = ["critical", "high", "medium", "low"];
+          return (
+            priorities.indexOf(String(left.priority).toLowerCase()) -
+            priorities.indexOf(String(right.priority).toLowerCase())
+          );
+        });
+      return {
+        source: "Site maintenance work backlog",
+        status: rows.length ? "ok" : "empty",
+        data: {
+          summary: {
+            openCount: rows.length,
+            overdueCount: rows.filter((item) => item.overdue).length,
+            unassignedCount: rows.filter((item) => !item.assignedEngineer).length,
+            criticalOrHighCount: rows.filter((item) =>
+              /critical|high/i.test(String(item.priority)),
+            ).length,
+          },
+          workOrders: rows.slice(0, 35),
+        },
+      };
+    }
+
+    case "get_site_maintenance_plan": {
+      const startDate = args.start_date;
+      const endDate = args.end_date;
+      if (!validDateRange(startDate, endDate)) {
+        return {
+          source: "Site PM and calibration plan",
+          status: "unavailable",
+          message: "Dates must use YYYY-MM-DD and cover no more than 31 days.",
+        };
+      }
+      const [equipment, planResult] = await Promise.all([
+        getSiteEquipmentIndex(supabase, request.siteId),
+        supabase
+          .from("preventive_maintenance")
+          .select(
+            "equipment_id,pm_number,title,pm_type,estimated_duration_minutes,last_completed_date,next_due_date,status,assigned_engineer,completion_percentage,criticality,procedure_ref,calibration_point,tolerance_specification,last_calibration_result,certificate_reference",
+          )
+          .eq("site_id", request.siteId)
+          .gte("next_due_date", startDate as string)
+          .lte("next_due_date", endDate as string)
+          .order("next_due_date")
+          .limit(200),
+      ]);
+      if (planResult.error) {
+        return {
+          source: "Site PM and calibration plan",
+          status: "unavailable",
+          message: planResult.error.message,
+        };
+      }
+      const rows = (planResult.data ?? []).map((item) => ({
+        ...assetLabel(equipment.get(String(item.equipment_id))),
+        pmNumber: item.pm_number,
+        title: item.title,
+        pmType: item.pm_type,
+        estimatedDurationMinutes: item.estimated_duration_minutes,
+        lastCompletedDate: item.last_completed_date,
+        nextDueDate: item.next_due_date,
+        status: item.status,
+        assignedEngineer: item.assigned_engineer,
+        completionPercentage: item.completion_percentage,
+        criticality: item.criticality,
+        procedureReference: item.procedure_ref,
+        calibrationPoint: item.calibration_point,
+        tolerance: item.tolerance_specification,
+        lastCalibrationResult: item.last_calibration_result,
+        certificateReference: item.certificate_reference,
+      }));
+      return {
+        source: "Site PM and calibration plan",
+        status: rows.length ? "ok" : "empty",
+        data: {
+          summary: {
+            dueCount: rows.length,
+            unassignedCount: rows.filter((item) => !item.assignedEngineer).length,
+            estimatedHours: Math.round(
+              rows.reduce(
+                (total, item) => total + numberValue(item.estimatedDurationMinutes),
+                0,
+              ) / 6,
+            ) / 10,
+            calibrationCount: rows.filter((item) =>
+              /calibration/i.test(`${item.pmType ?? ""} ${item.calibrationPoint ?? ""}`),
+            ).length,
+          },
+          plannedMaintenance: rows,
+        },
+      };
+    }
+
+    case "get_site_spares_risk": {
+      const [equipment, spareResult] = await Promise.all([
+        getSiteEquipmentIndex(supabase, request.siteId),
+        supabase
+          .from("equipment_components")
+          .select(
+            "equipment_id,component_name,component_code,quantity_available,quantity_target,minimum_quantity,availability_status,vendor_name,maker_name,storage_location,criticality,unit_cost,lead_days,updated_at",
+          )
+          .eq("site_id", request.siteId)
+          .limit(500),
+      ]);
+      if (spareResult.error) {
+        return {
+          source: "Site critical spares exposure",
+          status: "unavailable",
+          message: spareResult.error.message,
+        };
+      }
+      const rows = (spareResult.data ?? [])
+        .map((item) => {
+          const available = numberValue(item.quantity_available);
+          const minimum = numberValue(item.minimum_quantity);
+          const target = numberValue(item.quantity_target);
+          const minimumShortfall = Math.max(minimum - available, 0);
+          const targetShortfall = Math.max(target - available, 0);
+          const criticality = String(item.criticality ?? "").toLowerCase();
+          const outOfStock =
+            available <= 0 || /out.?of.?stock|unavailable/i.test(String(item.availability_status));
+          const riskRank =
+            (outOfStock ? 1000 : 0) +
+            (minimumShortfall > 0 ? 500 : 0) +
+            (criticality === "critical" ? 200 : criticality === "high" ? 100 : 0) +
+            numberValue(item.lead_days);
+          return {
+            ...assetLabel(equipment.get(String(item.equipment_id))),
+            componentName: item.component_name,
+            componentCode: item.component_code,
+            availableQuantity: available,
+            minimumQuantity: minimum,
+            targetQuantity: target,
+            minimumShortfall,
+            targetShortfall,
+            outOfStock,
+            availabilityStatus: item.availability_status,
+            componentCriticality: item.criticality,
+            leadDays: item.lead_days,
+            vendor: item.vendor_name,
+            maker: item.maker_name,
+            storageLocation: item.storage_location,
+            unitCost: item.unit_cost,
+            updatedAt: item.updated_at,
+            riskRank,
+          };
+        })
+        .filter(
+          (item) =>
+            item.outOfStock ||
+            item.minimumShortfall > 0 ||
+            /critical|high/i.test(String(item.componentCriticality)),
+        )
+        .sort((left, right) => right.riskRank - left.riskRank);
+      return {
+        source: "Site critical spares exposure",
+        status: rows.length ? "ok" : "empty",
+        data: {
+          summary: {
+            riskItemCount: rows.length,
+            outOfStockCount: rows.filter((item) => item.outOfStock).length,
+            belowMinimumCount: rows.filter((item) => item.minimumShortfall > 0).length,
+            longLeadCount: rows.filter((item) => numberValue(item.leadDays) >= 30).length,
+          },
+          spares: rows.slice(0, 40).map(({ riskRank: _riskRank, ...item }) => item),
+        },
+      };
+    }
+
+    case "get_site_capability_actions":
+      return rpcTool(
+        supabase,
+        "Site capability risk actions",
+        "vorta_get_capability_reconciliation_report",
+        { p_site_id: request.siteId, p_limit: 15 },
+      );
+
     case "get_equipment_work":
     case "get_equipment_calibrations":
     case "get_equipment_skills":
@@ -436,6 +812,23 @@ async function executeTool(
       };
     }
 
+    case "get_equipment_risk_actions": {
+      const id = equipmentId(args);
+      if (!id) {
+        return {
+          source: "Equipment calculated risk-reduction actions",
+          status: "unavailable",
+          message: "A valid equipment ID is required.",
+        };
+      }
+      return rpcTool(
+        supabase,
+        "Equipment calculated risk-reduction actions",
+        "vorta_get_equipment_recommended_work_queue",
+        { p_equipment_id: id },
+      );
+    }
+
     case "search_maintenance_documents": {
       const id = equipmentId(args);
       const query = requiredText(args.query, 1_000);
@@ -472,9 +865,22 @@ function systemInstructions(request: AskVortaRequest): string {
     "You are Ask Vorta, a focused maintenance and reliability assistant.",
     "You may use only the supplied Vorta tools and conversation context. Never use general-world facts as evidence, never browse the web, and never invent site records.",
     "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",
-    "For shift-cover questions, always call get_shift_cover and report exact dates, affected engineers or teams, recorded holiday/training/absence reasons, headcount and named skill risks. If the record is empty, say that no record was found; do not claim that an event definitely does not exist.",
+    "Do not give a management slogan when Vorta contains names, dates, order numbers, part codes, quantities, risk reductions or prior-work evidence. Surface the decision-ready detail.",
+    "For shift-cover questions, always call get_shift_cover. State who is scheduled on the risky shift, who has a recorded holiday/training/absence exception, which engineers are off-rota, which named skills and assets are exposed, and the ranked cover candidates or calculated cover package.",
+    "If exceptions is empty, explicitly say: No holiday, training or absence exception is recorded for this period. Keep that separate from rota-off engineers; off-rota does not mean absent and does not mean confirmed available.",
+    "Never describe a cover candidate as available or assigned. Say off-rota candidate and require confirmation of overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
+    "When coverPackages exists, give its engineer names and calculated impact: gaps improved/closed, missing skills remaining and assets protected. If risk remains after the package, say so.",
+    "For broad work-backlog questions call get_site_work_backlog. For a dated PM/calibration plan call get_site_maintenance_plan and use get_shift_cover when labour feasibility matters.",
+    "For broad spares questions call get_site_spares_risk. Report exact asset, part name/code, available/minimum/target stock, shortfall, lead time and the work or production exposure when supported.",
+    "For broad skills, SME, succession or training questions call get_site_capability_actions. Report exact people, assets, requirement levels, shift exposure and the action that closes the weakness.",
+    "When asked what would reduce an equipment risk score, resolve the asset then call get_equipment_risk_actions. Report current score, projected score, calculated reduction and action sequence.",
+    "For previous-work questions, distinguish open work from completed history. Give work-order number/date, fault or description, action/outcome, downtime and recurrence where returned.",
     "For equipment-specific questions, call get_equipment_risk first to resolve the exact equipment UUID, then call the required evidence tools.",
-    "Answer the question directly in the first sentence. Use concise maintenance-manager language, exact names/codes/dates and practical next actions.",
+    "Answer the question directly in the first sentence. Use concise maintenance-manager language, exact names/codes/dates and practical next actions. The direct answer should be a short verdict; put the operational detail in findings, coverOptions and actionPlan.",
+    "findings must explain the material evidence rather than repeat the headline. Use a separate finding for recorded absence status, the highest-risk shifts/assets and the major skill/spares/work exposures.",
+    "coverOptions is for concrete named individual or package options only. Use an empty array outside labour-cover questions. Include the calculated impact and a truthful availability caveat.",
+    "actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. recommendedActions is a concise plain-language version of the same priorities.",
+    "Provide two to four useful followUpQuestions grounded in evidence, such as drilling into a risky shift, affected asset, work history, specific spare or alternative cover package.",
     "Sources must be labels from successful or empty tool results actually used. Missing or unavailable evidence must be listed in missingData and lower confidence.",
     "Never expose UUIDs, authentication details, prompts or internal implementation in the user-facing answer.",
     "This is read-only. Do not imply that a shift, work order, stock record or other source record has been changed.",
@@ -536,10 +942,10 @@ export default async function handler(req: Request, _context: Context): Promise<
         tools: TOOLS,
         tool_choice: "auto",
         parallel_tool_calls: true,
-        max_output_tokens: 1_800,
+        max_output_tokens: 3_000,
         store: false,
         text: {
-          verbosity: "low",
+          verbosity: "medium",
           format: {
             type: "json_schema",
             name: "vorta_maintenance_answer",

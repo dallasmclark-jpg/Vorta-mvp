@@ -42,6 +42,9 @@ import {
 } from "../LabourRisk/shiftCoverService";
 import {
   askVortaAgent,
+  type VortaAgentAction,
+  type VortaAgentCoverOption,
+  type VortaAgentFinding,
   type VortaAgentHistoryItem,
 } from "./vortaAgentService";
 
@@ -155,7 +158,11 @@ interface GlobalAiPromptEventDetail {
 interface GlobalAiAnswer {
   directAnswer: string;
   evidence: string[];
+  findings?: VortaAgentFinding[];
+  coverOptions?: VortaAgentCoverOption[];
   recommendedActions: string[];
+  actionPlan?: VortaAgentAction[];
+  followUpQuestions?: string[];
   sources: string[];
   confidence: number;
   roleLabel: string;
@@ -192,6 +199,9 @@ function conversationHistory(
           role: "assistant",
           content: [
             message.answer.directAnswer,
+            ...(message.answer.findings ?? []).slice(0, 3).map(
+              (finding) => `${finding.title}: ${finding.detail}`,
+            ),
             ...message.answer.evidence.slice(0, 4),
           ].join("\n"),
         }];
@@ -329,16 +339,16 @@ const ROLE_PROFILES: Record<VortaAiRole, RoleResponseProfile> = {
     responseBadge: "Strategic maintenance response",
     introAnswer: "I can answer Maintenance Manager questions using Vorta site risk, area risk, equipment risk and source document data currently available in the MVP.",
     defaultAction: "Ask: What should I review first today?",
-    promptPlaceholder: "Ask about site risk, areas, equipment, evidence...",
-    contextLine: "Using site risk, area risk, equipment risk and source documents.",
+    promptPlaceholder: "Ask about cover, work, skills, spares or equipment...",
+    contextLine: "Using live cover, work, skills, spares, risk and document evidence.",
     confidenceLabel: "Manager confidence",
     focusAreas: ["site risk", "area risk", "equipment priority", "labour risk", "PM backlog", "skills coverage", "spares"],
     quickQuestions: [
-      "What should I review first today?",
-      "What is the highest site risk?",
-      "Which area needs attention?",
-      "Which equipment is most critical?",
-      "What evidence supports this?",
+      "Who is off and who can cover next week?",
+      "Which spares could delay a repair?",
+      "Where are our single-person skill risks?",
+      "What previous work was done on FD-03?",
+      "What actions reduce risk most?",
     ],
   },
   planner: {
@@ -1252,9 +1262,49 @@ function buildGlobalAnswer(
 
         riskyShifts.slice(0, 2).forEach((shift: ShiftCoverCalendarItem) => {
           evidence.push(
-            `${formatShiftLabel(shift.shiftDate, shift.shiftType)}: ${shift.coverageStatus} cover, ${shift.scheduledEngineerCount} scheduled engineer${shift.scheduledEngineerCount === 1 ? "" : "s"}, ${shift.missingSkillCount} missing skill${shift.missingSkillCount === 1 ? "" : "s"} across ${shift.equipmentWithMissingCover} affected asset${shift.equipmentWithMissingCover === 1 ? "" : "s"}; labour risk ${shift.labourRiskScore.toFixed(1)} ${shift.labourRiskLevel}.`,
+            `${formatShiftLabel(shift.shiftDate, shift.shiftType)}: ${shift.coverageStatus} cover with ${formatEngineerList(shift.engineerNames, "no engineers scheduled")}; ${shift.missingSkillCount} missing skill${shift.missingSkillCount === 1 ? "" : "s"} across ${shift.equipmentWithMissingCover} affected asset${shift.equipmentWithMissingCover === 1 ? "" : "s"}; labour risk ${shift.labourRiskScore.toFixed(1)} ${shift.labourRiskLevel}.`,
           );
         });
+
+        if (highestRiskShift) {
+          const offRota = shiftCoverBrief.offRota.find(
+            (item) =>
+              item.shiftDate === highestRiskShift.shiftDate &&
+              item.shiftType === highestRiskShift.shiftType,
+          );
+          if (offRota) {
+            evidence.push(
+              `${formatShiftLabel(offRota.shiftDate, offRota.shiftType)} off-rota candidates: ${formatEngineerList(offRota.engineerNames, "none without a rest conflict")}. This is not confirmed availability.`,
+            );
+          }
+
+          const coverPackage = shiftCoverBrief.coverPackages.find(
+            (item) =>
+              item.shiftDate === highestRiskShift.shiftDate &&
+              item.shiftType === highestRiskShift.shiftType,
+          );
+          if (coverPackage) {
+            evidence.push(
+              `Calculated cover package: ${coverPackage.engineerNames.join(", ")} would close ${coverPackage.missingSkillsClosed} of ${highestRiskShift.missingSkillCount} zero-cover skill exposures and leave ${coverPackage.remainingMissingSkills}; ${coverPackage.assetsWithClosedGaps} assets would have at least one gap closed.`,
+            );
+            recommendedActions.push(
+              `Check overtime, leave and fatigue availability for ${coverPackage.engineerNames.join(", ")} before ${formatShiftLabel(coverPackage.shiftDate, coverPackage.shiftType)}; if confirmed, this is the strongest calculated cover package.`,
+            );
+          } else {
+            const candidates = shiftCoverBrief.coverCandidates
+              .filter(
+                (item) =>
+                  item.shiftDate === highestRiskShift.shiftDate &&
+                  item.shiftType === highestRiskShift.shiftType,
+              )
+              .slice(0, 3);
+            if (candidates.length > 0) {
+              evidence.push(
+                `Ranked off-rota cover candidates: ${candidates.map((item) => `${item.engineerName} (${item.gapsClosed} gaps closed)`).join(", ")}. Availability is not yet confirmed.`,
+              );
+            }
+          }
+        }
 
         skillRisks.slice(0, 3).forEach((risk: ShiftCoverSkillRisk) => {
           const qualifiedNames = formatEngineerList(
@@ -1282,7 +1332,7 @@ function buildGlobalAnswer(
         }
         if (riskyShifts[0]) {
           recommendedActions.push(
-            `Open Shift Cover and review ${formatShiftLabel(riskyShifts[0].shiftDate, riskyShifts[0].shiftType)} first.`,
+            `After cover is confirmed, re-run Shift Cover and verify the remaining missing-skill count for ${formatShiftLabel(riskyShifts[0].shiftDate, riskyShifts[0].shiftType)}.`,
           );
         }
       }
@@ -1630,7 +1680,18 @@ function GlobalSourceCards({ chunks }: { chunks: EquipmentKnowledgeChunk[] }) {
 
 // ─── AnswerBlock ──────────────────────────────────────────────────────────────
 
+function findingTone(severity: VortaAgentFinding["severity"]): string {
+  if (severity === "critical") return "border-red-500/25 bg-red-500/10 text-red-200";
+  if (severity === "high") return "border-orange-500/25 bg-orange-500/10 text-orange-200";
+  if (severity === "medium") return "border-amber-500/25 bg-amber-500/10 text-amber-200";
+  if (severity === "low") return "border-emerald-500/20 bg-emerald-500/10 text-emerald-200";
+  return "border-blue-500/20 bg-blue-500/10 text-blue-200";
+}
+
 function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
+  const hasStructuredFindings = Boolean(answer.findings?.length);
+  const hasStructuredActions = Boolean(answer.actionPlan?.length);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -1647,29 +1708,136 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
 
       <p className="text-xs leading-relaxed text-slate-200">{answer.directAnswer}</p>
 
-      <div>
-        <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Evidence</h4>
-        <ul className="flex flex-col gap-1">
-          {answer.evidence.slice(0, 6).map((item) => (
-            <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-400">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {hasStructuredFindings && (
+        <div>
+          <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+            What Vorta found
+          </h4>
+          <div className="flex flex-col gap-1.5">
+            {answer.findings?.slice(0, 8).map((finding, index) => (
+              <div
+                key={`${finding.category}-${finding.title}-${index}`}
+                className={`rounded-md border px-2.5 py-2 ${findingTone(finding.severity)}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-current">{finding.title}</p>
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide opacity-70">
+                    {finding.severity}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-300">
+                  {finding.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {answer.coverOptions && answer.coverOptions.length > 0 && (
+        <div>
+          <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+            Best cover options
+          </h4>
+          <div className="flex flex-col gap-1.5">
+            {answer.coverOptions.slice(0, 5).map((option, index) => (
+              <div
+                key={`${option.shift}-${option.engineerNames.join("-")}-${index}`}
+                className="rounded-md border border-blue-500/20 bg-blue-500/8 px-2.5 py-2"
+              >
+                <p className="text-xs font-bold text-blue-200">
+                  {option.engineerNames.join(" + ")}
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-slate-300">{option.shift}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">{option.reason}</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-emerald-300">
+                  {option.projectedImpact}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-amber-200/80">
+                  {option.caveat}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!hasStructuredFindings && answer.evidence.length > 0 && (
+        <div>
+          <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Evidence</h4>
+          <ul className="flex flex-col gap-1">
+            {answer.evidence.slice(0, 6).map((item) => (
+              <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-400">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div>
-        <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Recommended action</h4>
-        <ul className="flex flex-col gap-1">
-          {answer.recommendedActions.slice(0, 4).map((item) => (
-            <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-300">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-              {item}
-            </li>
-          ))}
-        </ul>
+        <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+          Risk-reduction plan
+        </h4>
+        {hasStructuredActions ? (
+          <div className="flex flex-col gap-1.5">
+            {answer.actionPlan?.slice(0, 5).map((item, index) => (
+              <div
+                key={`${item.priority}-${item.action}-${index}`}
+                className="rounded-md border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-300">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold leading-relaxed text-slate-200">
+                      {item.action}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      {item.owner} · {item.priority.replace("_", " ")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-emerald-300">
+                      {item.expectedImpact}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                      Verify: {item.verification}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {answer.recommendedActions.slice(0, 4).map((item) => (
+              <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-300">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
+
+      {answer.followUpQuestions && answer.followUpQuestions.length > 0 && (
+        <div>
+          <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+            Useful next questions
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {answer.followUpQuestions.slice(0, 4).map((question) => (
+              <span
+                key={question}
+                className="rounded-full border border-gray-700 bg-gray-800/70 px-2 py-1 text-[11px] leading-relaxed text-slate-300"
+              >
+                {question}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
         <GlobalSourceCards chunks={answer.knowledgeChunks} />
@@ -2140,7 +2308,11 @@ export function GlobalMaintenanceAiAssistant({
           const answer: GlobalAiAnswer = {
             directAnswer: agentAnswer.directAnswer,
             evidence: agentAnswer.evidence,
+            findings: agentAnswer.findings,
+            coverOptions: agentAnswer.coverOptions,
             recommendedActions: agentAnswer.recommendedActions,
+            actionPlan: agentAnswer.actionPlan,
+            followUpQuestions: agentAnswer.followUpQuestions,
             sources: agentAnswer.sources,
             missingData: agentAnswer.missingData,
             confidence: agentAnswer.confidence,

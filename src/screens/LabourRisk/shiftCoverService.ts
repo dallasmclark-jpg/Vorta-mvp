@@ -78,6 +78,49 @@ export interface ShiftCoverSkillRisk {
   riskLevel: "critical" | "high";
 }
 
+export interface ShiftCoverOffRota {
+  shiftDate: string;
+  shiftType: ShiftType;
+  teamNames: string[];
+  engineerNames: string[];
+  restConflictEngineerNames: string[];
+  status: string;
+}
+
+export interface ShiftCoverCandidate {
+  shiftDate: string;
+  shiftType: ShiftType;
+  engineerName: string;
+  discipline: string | null;
+  currentTeam: string | null;
+  candidateRank: number;
+  gapsImproved: number;
+  gapsClosed: number;
+  remainingMissingSkills: number;
+  criticalGapsCovered: number;
+  assetsProtected: number;
+  skillsSupplied: number;
+  topSkills: string[];
+  topAssets: string[];
+  restConflict: boolean;
+  availabilityStatus: string;
+}
+
+export interface ShiftCoverPackage {
+  shiftDate: string;
+  shiftType: ShiftType;
+  engineerNames: string[];
+  teamNames: string[];
+  gapsImproved: number;
+  gapsClosed: number;
+  missingSkillsClosed: number;
+  remainingMissingSkills: number;
+  assetsWithClosedGaps: number;
+  closedSkills: string[];
+  protectedAssets: string[];
+  status: string;
+}
+
 export interface ShiftCoverAiBrief {
   mode: "live";
   siteId: string;
@@ -87,6 +130,10 @@ export interface ShiftCoverAiBrief {
   calendar: ShiftCoverCalendarItem[];
   exceptions: ShiftCoverException[];
   skillRisks: ShiftCoverSkillRisk[];
+  offRota: ShiftCoverOffRota[];
+  coverCandidates: ShiftCoverCandidate[];
+  coverPackages: ShiftCoverPackage[];
+  decisionNotes: string[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -490,6 +537,142 @@ function parseSkillRisk(value: unknown, index: number): ShiftCoverSkillRisk {
   };
 }
 
+function parseOffRota(value: unknown, index: number): ShiftCoverOffRota {
+  const label = `offRota[${index}]`;
+  const record = toRecord(value, label);
+  return {
+    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    teamNames: stringArray(read(record, "teamNames", "team_names"), `${label}.teamNames`),
+    engineerNames: stringArray(
+      read(record, "engineerNames", "engineer_names"),
+      `${label}.engineerNames`,
+    ),
+    restConflictEngineerNames: stringArray(
+      read(record, "restConflictEngineerNames", "rest_conflict_engineer_names"),
+      `${label}.restConflictEngineerNames`,
+    ),
+    status: requiredString(record.status, `${label}.status`),
+  };
+}
+
+function parseCoverCandidate(value: unknown, index: number): ShiftCoverCandidate {
+  const label = `coverCandidates[${index}]`;
+  const record = toRecord(value, label);
+  return {
+    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    engineerName: requiredString(
+      read(record, "engineerName", "engineer_name"),
+      `${label}.engineerName`,
+    ),
+    discipline: nullableString(record.discipline, `${label}.discipline`),
+    currentTeam: nullableString(
+      read(record, "currentTeam", "current_team"),
+      `${label}.currentTeam`,
+    ),
+    candidateRank: finiteNumber(
+      read(record, "candidateRank", "candidate_rank"),
+      `${label}.candidateRank`,
+      { minimum: 1, integer: true },
+    ),
+    gapsImproved: finiteNumber(
+      read(record, "gapsImproved", "gaps_improved"),
+      `${label}.gapsImproved`,
+      { minimum: 0, integer: true },
+    ),
+    gapsClosed: finiteNumber(
+      read(record, "gapsClosed", "gaps_closed"),
+      `${label}.gapsClosed`,
+      { minimum: 0, integer: true },
+    ),
+    remainingMissingSkills: finiteNumber(
+      read(record, "remainingMissingSkills", "remaining_missing_skills"),
+      `${label}.remainingMissingSkills`,
+      { minimum: 0, integer: true },
+    ),
+    criticalGapsCovered: finiteNumber(
+      read(record, "criticalGapsCovered", "critical_gaps_covered"),
+      `${label}.criticalGapsCovered`,
+      { minimum: 0, integer: true },
+    ),
+    assetsProtected: finiteNumber(
+      read(record, "assetsProtected", "assets_protected"),
+      `${label}.assetsProtected`,
+      { minimum: 0, integer: true },
+    ),
+    skillsSupplied: finiteNumber(
+      read(record, "skillsSupplied", "skills_supplied"),
+      `${label}.skillsSupplied`,
+      { minimum: 0, integer: true },
+    ),
+    topSkills: stringArray(
+      read(record, "topSkills", "top_skills"),
+      `${label}.topSkills`,
+    ),
+    topAssets: stringArray(
+      read(record, "topAssets", "top_assets"),
+      `${label}.topAssets`,
+    ),
+    restConflict: requiredBoolean(
+      read(record, "restConflict", "rest_conflict"),
+      `${label}.restConflict`,
+    ),
+    availabilityStatus: requiredString(
+      read(record, "availabilityStatus", "availability_status"),
+      `${label}.availabilityStatus`,
+    ),
+  };
+}
+
+function parseCoverPackage(value: unknown, index: number): ShiftCoverPackage {
+  const label = `coverPackages[${index}]`;
+  const record = toRecord(value, label);
+  return {
+    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
+    shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    engineerNames: stringArray(
+      read(record, "engineerNames", "engineer_names"),
+      `${label}.engineerNames`,
+    ),
+    teamNames: stringArray(read(record, "teamNames", "team_names"), `${label}.teamNames`),
+    gapsImproved: finiteNumber(
+      read(record, "gapsImproved", "gaps_improved"),
+      `${label}.gapsImproved`,
+      { minimum: 0, integer: true },
+    ),
+    gapsClosed: finiteNumber(
+      read(record, "gapsClosed", "gaps_closed"),
+      `${label}.gapsClosed`,
+      { minimum: 0, integer: true },
+    ),
+    missingSkillsClosed: finiteNumber(
+      read(record, "missingSkillsClosed", "missing_skills_closed"),
+      `${label}.missingSkillsClosed`,
+      { minimum: 0, integer: true },
+    ),
+    remainingMissingSkills: finiteNumber(
+      read(record, "remainingMissingSkills", "remaining_missing_skills"),
+      `${label}.remainingMissingSkills`,
+      { minimum: 0, integer: true },
+    ),
+    assetsWithClosedGaps: finiteNumber(
+      read(record, "assetsWithClosedGaps", "assets_with_closed_gaps"),
+      `${label}.assetsWithClosedGaps`,
+      { minimum: 0, integer: true },
+    ),
+    closedSkills: stringArray(
+      read(record, "closedSkills", "closed_skills"),
+      `${label}.closedSkills`,
+    ),
+    protectedAssets: stringArray(
+      read(record, "protectedAssets", "protected_assets"),
+      `${label}.protectedAssets`,
+    ),
+    status: requiredString(record.status, `${label}.status`),
+  };
+}
+
 function parseAiBrief(
   value: unknown,
   requestedSiteId: string,
@@ -516,6 +699,10 @@ function parseAiBrief(
   if (!Array.isArray(rawSkillRisks)) {
     return unavailable("shiftCoverAiBrief.skillRisks must be an array.");
   }
+  const rawOffRota = payload.offRota ?? payload.off_rota;
+  const rawCoverCandidates = payload.coverCandidates ?? payload.cover_candidates;
+  const rawCoverPackages = payload.coverPackages ?? payload.cover_packages;
+  const rawDecisionNotes = payload.decisionNotes ?? payload.decision_notes;
 
   const startTimestamp = dateOnlyTimestamp(startDate, "requested start date");
   const endTimestamp = dateOnlyTimestamp(endDate, "requested end date");
@@ -537,6 +724,16 @@ function parseAiBrief(
     ),
     exceptions: payload.exceptions.map(parseException),
     skillRisks: rawSkillRisks.map(parseSkillRisk),
+    offRota: Array.isArray(rawOffRota) ? rawOffRota.map(parseOffRota) : [],
+    coverCandidates: Array.isArray(rawCoverCandidates)
+      ? rawCoverCandidates.map(parseCoverCandidate)
+      : [],
+    coverPackages: Array.isArray(rawCoverPackages)
+      ? rawCoverPackages.map(parseCoverPackage)
+      : [],
+    decisionNotes: Array.isArray(rawDecisionNotes)
+      ? stringArray(rawDecisionNotes, "shiftCoverAiBrief.decisionNotes")
+      : [],
   };
 }
 
