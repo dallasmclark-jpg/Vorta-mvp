@@ -34,6 +34,7 @@ const contracts = [
   ["Equipment module boundaries", "scripts/equipment-module-boundary-contracts.mjs"],
   ["Equipment live service boundaries", "scripts/equipment-live-service-boundary-contracts.mjs"],
   ["Shift Handover", "scripts/shift-handover-contracts.mjs"],
+  ["Ask Vorta agent", "scripts/ask-vorta-agent-contracts.mjs"],
   ["Repository hygiene", "scripts/repository-hygiene-contracts.mjs"],
 ];
 

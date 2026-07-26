@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import {
   getAreaRiskProfiles,
@@ -32,6 +33,17 @@ import {
   type EquipmentListItem,
   type SiteRiskProfile,
 } from "../Equipment/equipmentService";
+import {
+  getShiftCoverAiBrief,
+  type ShiftCoverAiBrief,
+  type ShiftCoverCalendarItem,
+  type ShiftCoverException,
+  type ShiftCoverSkillRisk,
+} from "../LabourRisk/shiftCoverService";
+import {
+  askVortaAgent,
+  type VortaAgentHistoryItem,
+} from "./vortaAgentService";
 
 type ChatRole = "user" | "assistant";
 
@@ -107,6 +119,7 @@ type VortaAiRole =
   | "contractor";
 
 type GlobalAiIntent =
+  | "shift-cover"
   | "shift-skills-gap"
   | "daily-priority"
   | "site-risk"
@@ -161,6 +174,36 @@ interface GlobalAiMessage {
   answer?: GlobalAiAnswer;
   error?: string;
   retryQuestion?: string;
+}
+
+function conversationHistory(
+  messages: GlobalAiMessage[],
+  excludedMessageId?: string,
+): VortaAgentHistoryItem[] {
+  return messages
+    .filter((message) => message.id !== excludedMessageId)
+    .flatMap((message): VortaAgentHistoryItem[] => {
+      if (message.role === "user" && message.text?.trim()) {
+        return [{ role: "user", content: message.text.trim() }];
+      }
+
+      if (message.role === "assistant" && message.answer) {
+        return [{
+          role: "assistant",
+          content: [
+            message.answer.directAnswer,
+            ...message.answer.evidence.slice(0, 4),
+          ].join("\n"),
+        }];
+      }
+
+      return [];
+    })
+    .slice(-8);
+}
+
+function agentRole(role: VortaAiRole): string {
+  return role === "planner" ? "maintenance-planner" : role;
 }
 
 // ─── Shift skills types ───────────────────────────────────────────────────────
@@ -268,6 +311,12 @@ interface GlobalSparesContext {
   assetsWithIssues: number;
   issues: GlobalSpareIssue[];
   sourceNote: string;
+}
+
+interface ShiftCoverDateRange {
+  startDate: string;
+  endDate: string;
+  label: string;
 }
 
 // ─── Role profiles ────────────────────────────────────────────────────────────
@@ -402,6 +451,77 @@ function shorten(text: string, max = 240): string {
 
 function unique(items: string[]): string[] {
   return [...new Set(items.filter(Boolean))];
+}
+
+function addCalendarDays(value: Date, days: number): Date {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function startOfCalendarWeek(value: Date): Date {
+  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const day = date.getDay();
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+  return date;
+}
+
+function formatDateOnly(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatBriefDate(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(year, month - 1, day));
+}
+
+function resolveShiftCoverDateRange(question: string, now = new Date()): ShiftCoverDateRange {
+  const q = question.toLowerCase();
+  const thisWeekStart = startOfCalendarWeek(now);
+  let start = thisWeekStart;
+  let end = addCalendarDays(thisWeekStart, 6);
+
+  if (q.includes("next week") || q.includes("following week")) {
+    start = addCalendarDays(thisWeekStart, 7);
+    end = addCalendarDays(start, 6);
+  } else if (q.includes("today")) {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    end = start;
+  } else if (q.includes("tomorrow")) {
+    start = addCalendarDays(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
+    end = start;
+  } else if (q.includes("next 7 days") || q.includes("next seven days")) {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    end = addCalendarDays(start, 6);
+  }
+
+  const startDate = formatDateOnly(start);
+  const endDate = formatDateOnly(end);
+  return {
+    startDate,
+    endDate,
+    label:
+      startDate === endDate
+        ? formatBriefDate(startDate)
+        : `${formatBriefDate(startDate)} to ${formatBriefDate(endDate)}`,
+  };
+}
+
+function readableExceptionType(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatShiftLabel(shiftDate: string, shiftType: string): string {
+  return `${formatBriefDate(shiftDate)} ${shiftType === "night" ? "night" : "day"} shift`;
 }
 
 function withTimeout<T>(
@@ -763,6 +883,19 @@ async function fetchGlobalSparesContext(assets: EquipmentListItem[]): Promise<Gl
 function classifyGlobalQuestion(question: string): GlobalAiIntent {
   const q = question.toLowerCase();
 
+  if (
+    q.includes("shift cover") ||
+    q.includes("rota cover") ||
+    q.includes("cover issue") ||
+    q.includes("cover risk") ||
+    (
+      (q.includes("holiday") || q.includes("annual leave") || q.includes("training") || q.includes("off"))
+      && (q.includes("shift") || q.includes("rota") || q.includes("week"))
+    )
+  ) {
+    return "shift-cover";
+  }
+
   // Must be checked before daily-priority because "today" would match there first
   if (
     (q.includes("skill") || q.includes("skills") || q.includes("competency") || q.includes("competence") || q.includes("gap") || q.includes("gaps")) &&
@@ -905,6 +1038,7 @@ function findMentionedEquipment(question: string, equipment: EquipmentListItem[]
 
 function getIntentTitle(intent: GlobalAiIntent): string {
   switch (intent) {
+    case "shift-cover":      return "Shift cover";
     case "shift-skills-gap": return "Shift skills gap";
     case "daily-priority":   return "Daily priority";
     case "site-risk":        return "Site risk";
@@ -929,7 +1063,7 @@ function roleAwareDirectAnswer(
 ): string {
   const equipmentName = topEquipment?.name ?? "the highest-risk asset";
 
-  if (intent === "spares-risk") {
+  if (intent === "spares-risk" || intent === "shift-cover") {
     return baseAnswer;
   }
 
@@ -985,6 +1119,10 @@ function roleAwareActions(
     ],
   };
 
+  if (intent === "shift-cover") {
+    return unique(baseActions).slice(0, 5);
+  }
+
   if (intent === "spares-risk") {
     return unique([...baseActions, ...roleActions[roleProfile.role]]).slice(0, 5);
   }
@@ -1020,6 +1158,8 @@ function buildGlobalAnswer(
   knowledgeChunks: EquipmentKnowledgeChunk[],
   roleProfile: RoleResponseProfile,
   shiftSkillsContext: ShiftSkillsContext | null,
+  shiftCoverBrief: ShiftCoverAiBrief | null,
+  shiftCoverRange: ShiftCoverDateRange | null,
   sparesContext: GlobalSparesContext | null,
 ): GlobalAiAnswer {
   const intent = classifyGlobalQuestion(question);
@@ -1047,6 +1187,115 @@ function buildGlobalAnswer(
   let directAnswer = "";
 
   switch (intent) {
+    case "shift-cover": {
+      if (!shiftCoverBrief || !shiftCoverRange) {
+        directAnswer = "I cannot confirm the requested shift cover because the verified Shift Cover calendar was not available.";
+        missingData.push("The dated Shift Cover calendar, exceptions and skill coverage could not be loaded.");
+        sources.push("Verified Shift Cover calendar");
+        break;
+      }
+
+      const unavailableExceptions = shiftCoverBrief.exceptions.filter(
+        (exception: ShiftCoverException) => !exception.isAvailable,
+      );
+      const riskyShifts = shiftCoverBrief.calendar
+        .filter(
+          (shift: ShiftCoverCalendarItem) =>
+            shift.coverageStatus !== "covered" ||
+            shift.missingSkillCount > 0 ||
+            shift.equipmentWithMissingCover > 0,
+        )
+        .sort(
+          (first: ShiftCoverCalendarItem, second: ShiftCoverCalendarItem) =>
+            second.labourRiskScore - first.labourRiskScore,
+        );
+      const skillRisks = shiftCoverBrief.skillRisks
+        .slice()
+        .sort(
+          (first: ShiftCoverSkillRisk, second: ShiftCoverSkillRisk) =>
+            first.qualifiedEngineerCount - second.qualifiedEngineerCount ||
+            first.shiftDate.localeCompare(second.shiftDate),
+        );
+      const issueCount =
+        riskyShifts.length + unavailableExceptions.length + skillRisks.length;
+
+      if (issueCount === 0) {
+        directAnswer = `I checked all ${shiftCoverBrief.calendar.length} day and night shifts for ${shiftCoverRange.label}. No recorded holiday, training or other absence creates a cover issue, and no missing required-skill exposure was returned.`;
+        evidence.push(
+          `${shiftCoverBrief.calendar.length} dated shifts checked; none is marked reduced, partial, gap or contractor cover.`,
+        );
+        evidence.push("No unavailable holiday, training, sickness or other rota exception is recorded for the period.");
+        evidence.push("No equipment-required skill is below its minimum qualified-engineer threshold.");
+        recommendedActions.push("No immediate cover change is required; recheck after any leave, training or rota update.");
+      } else {
+        const highestRiskShift = riskyShifts[0];
+        directAnswer =
+          `I checked ${shiftCoverBrief.calendar.length} day and night shifts for ${shiftCoverRange.label}. ` +
+          `${riskyShifts.length} shift${riskyShifts.length === 1 ? "" : "s"} ${riskyShifts.length === 1 ? "has" : "have"} reduced or missing cover, ` +
+          `${unavailableExceptions.length} unavailable engineer/team exception${unavailableExceptions.length === 1 ? "" : "s"} ${unavailableExceptions.length === 1 ? "is" : "are"} recorded, ` +
+          `and ${skillRisks.length} highest required-skill exposure${skillRisks.length === 1 ? "" : "s"} ${skillRisks.length === 1 ? "was" : "were"} returned for attention.` +
+          (highestRiskShift
+            ? ` Highest risk: ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)} at ${highestRiskShift.labourRiskScore.toFixed(1)} ${highestRiskShift.labourRiskLevel}.`
+            : "");
+
+        unavailableExceptions.slice(0, 3).forEach((exception: ShiftCoverException) => {
+          const person = exception.engineerName ?? exception.teamName ?? "Scheduled team";
+          const note = exception.notes ? ` — ${exception.notes}` : "";
+          evidence.push(
+            `${formatShiftLabel(exception.shiftDate, exception.shiftType)}: ${person} unavailable — ${readableExceptionType(exception.exceptionType)}${note}.`,
+          );
+        });
+
+        if (unavailableExceptions.length === 0) {
+          evidence.push("No holiday, training, sickness or other unavailable rota exception is recorded for the period.");
+        }
+
+        riskyShifts.slice(0, 2).forEach((shift: ShiftCoverCalendarItem) => {
+          evidence.push(
+            `${formatShiftLabel(shift.shiftDate, shift.shiftType)}: ${shift.coverageStatus} cover, ${shift.scheduledEngineerCount} scheduled engineer${shift.scheduledEngineerCount === 1 ? "" : "s"}, ${shift.missingSkillCount} missing skill${shift.missingSkillCount === 1 ? "" : "s"} across ${shift.equipmentWithMissingCover} affected asset${shift.equipmentWithMissingCover === 1 ? "" : "s"}; labour risk ${shift.labourRiskScore.toFixed(1)} ${shift.labourRiskLevel}.`,
+          );
+        });
+
+        skillRisks.slice(0, 3).forEach((risk: ShiftCoverSkillRisk) => {
+          const qualifiedNames = formatEngineerList(
+            risk.qualifiedEngineerNames,
+            "no qualified engineer on shift",
+          );
+          evidence.push(
+            `${formatShiftLabel(risk.shiftDate, risk.shiftType)} — ${risk.skillName} on ${risk.equipmentName}${risk.equipmentCode ? ` (${risk.equipmentCode})` : ""}: ${risk.qualifiedEngineerCount}/${risk.minimumQualifiedEngineers} qualified; ${qualifiedNames}.`,
+          );
+        });
+
+        if (unavailableExceptions[0]) {
+          const firstException = unavailableExceptions[0];
+          recommendedActions.push(
+            `Confirm replacement cover for ${firstException.engineerName ?? firstException.teamName ?? "the unavailable team"} on ${formatShiftLabel(firstException.shiftDate, firstException.shiftType)}.`,
+          );
+        }
+        if (skillRisks[0]) {
+          const firstSkillRisk = skillRisks[0];
+          recommendedActions.push(
+            firstSkillRisk.qualifiedEngineerCount === 0
+              ? `Assign a validated ${firstSkillRisk.skillName} engineer to ${formatShiftLabel(firstSkillRisk.shiftDate, firstSkillRisk.shiftType)} or arrange competent contractor escalation.`
+              : `Add backup ${firstSkillRisk.skillName} cover on ${formatShiftLabel(firstSkillRisk.shiftDate, firstSkillRisk.shiftType)}; current cover is below the required minimum.`,
+          );
+        }
+        if (riskyShifts[0]) {
+          recommendedActions.push(
+            `Open Shift Cover and review ${formatShiftLabel(riskyShifts[0].shiftDate, riskyShifts[0].shiftType)} first.`,
+          );
+        }
+      }
+
+      sources.push(
+        "Verified Shift Cover calendar",
+        "Shift exceptions",
+        "Engineer skills",
+        "Equipment required skills",
+      );
+      break;
+    }
+
     case "shift-skills-gap": {
       if (!shiftSkillsContext) {
         directAnswer = "I cannot check shift skills gaps because shift skills context is not available.";
@@ -1292,7 +1541,13 @@ function buildGlobalAnswer(
   const roleAwareAnswer = roleAwareDirectAnswer(directAnswer, roleProfile, selectedEquipment, intent);
   const roleActions = roleAwareActions(recommendedActions, roleProfile, selectedEquipment, intent);
 
-  const dataPoints = [siteRisk, selectedArea, selectedEquipment, knowledgeChunks.length > 0].filter(Boolean).length;
+  const dataPoints = [
+    siteRisk,
+    selectedArea,
+    selectedEquipment,
+    knowledgeChunks.length > 0,
+    shiftCoverBrief,
+  ].filter(Boolean).length;
 
   return {
     directAnswer: roleAwareAnswer,
@@ -1474,6 +1729,8 @@ export function GlobalMaintenanceAiAssistant({
   shouldHandlePrompt,
 }: GlobalMaintenanceAiAssistantProps): JSX.Element | null {
   const roleProfile = getRoleProfile(role);
+  const { siteContext } = useAuth();
+  const agentContextReady = Boolean(siteContext?.siteId);
 
   const [open, setOpen] = useState(false);
   const [minimised, setMinimised] = useState(false);
@@ -1865,8 +2122,60 @@ export function GlobalMaintenanceAiAssistant({
   const runQuestion = async (
     question: string,
     assistantId: string,
+    history: VortaAgentHistoryItem[],
   ): Promise<void> => {
     try {
+      let agentFailureMessage: string | null = null;
+
+      if (siteContext?.siteId) {
+        try {
+          const agentAnswer = await askVortaAgent({
+            question,
+            role: agentRole(roleProfile.role),
+            siteId: siteContext.siteId,
+            history,
+            pagePath: window.location.pathname,
+          });
+
+          const answer: GlobalAiAnswer = {
+            directAnswer: agentAnswer.directAnswer,
+            evidence: agentAnswer.evidence,
+            recommendedActions: agentAnswer.recommendedActions,
+            sources: agentAnswer.sources,
+            missingData: agentAnswer.missingData,
+            confidence: agentAnswer.confidence,
+            roleLabel: roleProfile.label,
+            responseBadge: roleProfile.responseBadge,
+            intentLabel: agentAnswer.intentLabel,
+            roleNote: roleAwareNote(roleProfile),
+          };
+
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    loading: false,
+                    answer,
+                    error: undefined,
+                    retryQuestion: undefined,
+                  }
+                : message,
+            ),
+          );
+          return;
+        } catch (agentError) {
+          agentFailureMessage =
+            agentError instanceof Error
+              ? agentError.message
+              : "The conversational reasoning service was unavailable.";
+          console.warn(
+            "Ask Vorta agent unavailable; using verified deterministic fallback:",
+            agentFailureMessage,
+          );
+        }
+      }
+
       if (
         !contextReady ||
         !siteRisk ||
@@ -1874,7 +2183,8 @@ export function GlobalMaintenanceAiAssistant({
         equipment.length === 0
       ) {
         throw new Error(
-          "Vorta site context is not ready.",
+          agentFailureMessage ??
+            "Vorta site context is not ready.",
         );
       }
 
@@ -1882,6 +2192,10 @@ export function GlobalMaintenanceAiAssistant({
         classifyGlobalQuestion(
           question,
         );
+      const shiftCoverRange =
+        intent === "shift-cover"
+          ? resolveShiftCoverDateRange(question)
+          : null;
 
       const mentionedAsset =
         findMentionedEquipment(
@@ -1931,10 +2245,17 @@ export function GlobalMaintenanceAiAssistant({
       const [
         knowledgeChunks,
         sparesContext,
+        shiftCoverBrief,
       ] = await withTimeout(
         Promise.all(
           [
-            topAsset
+            topAsset &&
+            (
+              intent === "evidence" ||
+              intent === "equipment-risk" ||
+              intent === "pm-risk" ||
+              intent === "spares-risk"
+            )
               ? searchEquipmentKnowledge(
                   topAsset.id,
                   knowledgeQuery,
@@ -1946,6 +2267,18 @@ export function GlobalMaintenanceAiAssistant({
             "spares-risk"
               ? fetchGlobalSparesContext(
                   sparesAssets,
+                )
+              : Promise.resolve(
+                  null,
+                ),
+
+            intent === "shift-cover" &&
+            shiftCoverRange &&
+            siteContext?.siteId
+              ? getShiftCoverAiBrief(
+                  siteContext.siteId,
+                  shiftCoverRange.startDate,
+                  shiftCoverRange.endDate,
                 )
               : Promise.resolve(
                   null,
@@ -1974,8 +2307,18 @@ export function GlobalMaintenanceAiAssistant({
           knowledgeChunks,
           roleProfile,
           shiftSkillsContext,
+          shiftCoverBrief,
+          shiftCoverRange,
           sparesContext,
         );
+
+      if (agentFailureMessage) {
+        answer.missingData = unique([
+          ...(answer.missingData ?? []),
+          "Conversational reasoning is temporarily unavailable; this is the verified Vorta fallback response.",
+        ]);
+        answer.confidence = Math.min(answer.confidence, 85);
+      }
 
       setMessages((previous) =>
         previous.map(
@@ -2044,9 +2387,7 @@ export function GlobalMaintenanceAiAssistant({
     }
 
     if (
-      !contextReady ||
-      loadingContext ||
-      contextError
+      !agentContextReady
     ) {
       return;
     }
@@ -2085,6 +2426,7 @@ export function GlobalMaintenanceAiAssistant({
     void runQuestion(
       trimmed,
       assistantId,
+      conversationHistory(messages),
     );
   };
 
@@ -2093,9 +2435,7 @@ export function GlobalMaintenanceAiAssistant({
     question: string,
   ): void => {
     if (
-      !contextReady ||
-      loadingContext ||
-      contextError
+      !agentContextReady
     ) {
       return;
     }
@@ -2120,6 +2460,7 @@ export function GlobalMaintenanceAiAssistant({
     void runQuestion(
       question,
       assistantId,
+      conversationHistory(messages, assistantId),
     );
   };
 
@@ -2158,13 +2499,13 @@ export function GlobalMaintenanceAiAssistant({
   }, [roleProfile.role, shouldHandlePrompt]);
 
   useEffect(() => {
-    if (!open || !contextReady || !pendingPrompt) return;
+    if (!open || !agentContextReady || !pendingPrompt) return;
 
     const question = pendingPrompt;
     setPendingPrompt("");
 
     void submitQuestion(question);
-  }, [open, contextReady, pendingPrompt]);
+  }, [open, agentContextReady, pendingPrompt]);
 
   if (!open) {
     if (!showLauncher) return null;
@@ -2243,13 +2584,12 @@ export function GlobalMaintenanceAiAssistant({
                   key={question}
                   type="button"
                   disabled={
-                    !contextReady ||
-                    loadingContext
+                    !agentContextReady
                   }
                   title={
-                    contextReady
+                    agentContextReady
                       ? question
-                      : "Site context must load before Vorta can analyse this question"
+                      : "An authorised Vorta site is required before analysis"
                   }
                   onClick={() =>
                     submitQuestion(
@@ -2279,11 +2619,11 @@ export function GlobalMaintenanceAiAssistant({
 
                     <div>
                       <p className="font-semibold text-amber-100">
-                        Site context unavailable
+                        Local fallback context unavailable
                       </p>
 
                       <p className="mt-0.5 leading-4 text-amber-100/70">
-                        {contextError}
+                        Ask Vorta can still query its secure Vorta tools. {contextError}
                       </p>
                     </div>
                   </div>
@@ -2332,7 +2672,7 @@ export function GlobalMaintenanceAiAssistant({
                   {message.loading ? (
                     <div className="flex items-center gap-2 text-xs text-slate-300">
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-                      Analysing site risk, area risk, equipment and source data...
+                      Choosing and checking the relevant Vorta sources...
                     </div>
                   ) : message.error ? (
                     <div
@@ -2360,11 +2700,7 @@ export function GlobalMaintenanceAiAssistant({
                           type="button"
                           variant="outline"
                           disabled={
-                            !contextReady ||
-                            loadingContext ||
-                            Boolean(
-                              contextError,
-                            )
+                            !agentContextReady
                           }
                           onClick={() =>
                             retryFailedQuestion(
@@ -2439,11 +2775,9 @@ export function GlobalMaintenanceAiAssistant({
                 placeholder={
                   listening
                     ? "Listening..."
-                    : loadingContext
-                      ? "Loading site context..."
-                      : contextError
-                        ? "Retry site context before asking a question"
-                        : roleProfile.promptPlaceholder
+                    : agentContextReady
+                      ? roleProfile.promptPlaceholder
+                      : "An authorised site is required"
                 }
                 value={input}
                 onChange={(event) =>
@@ -2456,9 +2790,7 @@ export function GlobalMaintenanceAiAssistant({
                     if (
                       event.key ===
                         "Enter" &&
-                      contextReady &&
-                      !loadingContext &&
-                      !contextError
+                      agentContextReady
                     ) {
                       void submitQuestion(
                         input,
@@ -2482,11 +2814,7 @@ export function GlobalMaintenanceAiAssistant({
                 }
                 disabled={
                   !input.trim() ||
-                  !contextReady ||
-                  loadingContext ||
-                  Boolean(
-                    contextError,
-                  )
+                  !agentContextReady
                 }
                 className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
