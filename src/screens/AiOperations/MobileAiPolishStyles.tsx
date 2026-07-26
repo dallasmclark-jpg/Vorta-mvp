@@ -91,8 +91,19 @@ const MOBILE_AI_POLISH_STYLES = `
     order: 3;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:last-child {
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) {
     order: 4;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 9999px !important;
+    font-size: 0 !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) svg {
+    width: 1.125rem;
+    height: 1.125rem;
   }
 
   [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button[aria-label$="voice dictation"],
