@@ -11,13 +11,18 @@ type FunctionInvocationResult = {
   response?: Response | null;
 };
 
+type FunctionInvokeOptions = {
+  headers?: HeadersInit;
+  [key: string]: unknown;
+};
+
 type FunctionInvoke = (
   functionName: string,
   options?: unknown,
 ) => Promise<unknown>;
 
 let recoveryInstalled = false;
-let refreshInFlight: Promise<boolean> | null = null;
+let refreshInFlight: Promise<Session | null> | null = null;
 
 function sessionNeedsRefresh(session: Session): boolean {
   if (typeof session.expires_at !== "number") return false;
@@ -28,15 +33,15 @@ function sessionNeedsRefresh(session: Session): boolean {
   );
 }
 
-async function refreshAuthenticatedSession(): Promise<boolean> {
+async function refreshAuthenticatedSession(): Promise<Session | null> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = supabase.auth
     .refreshSession()
     .then(({ data, error }) =>
-      !error && Boolean(data.session?.access_token),
+      !error && data.session?.access_token ? data.session : null,
     )
-    .catch(() => false)
+    .catch(() => null)
     .finally(() => {
       refreshInFlight = null;
     });
@@ -44,32 +49,102 @@ async function refreshAuthenticatedSession(): Promise<boolean> {
   return refreshInFlight;
 }
 
-async function ensureFreshSession(forceRefresh: boolean): Promise<boolean> {
+async function ensureFreshSession(
+  forceRefresh: boolean,
+): Promise<Session | null> {
   const { data, error } = await supabase.auth.getSession();
   const session = data.session;
 
-  if (error || !session?.access_token) return false;
-  if (!forceRefresh && !sessionNeedsRefresh(session)) return true;
+  if (error || !session?.access_token) return null;
+  if (!forceRefresh && !sessionNeedsRefresh(session)) return session;
 
   return refreshAuthenticatedSession();
+}
+
+function responseFrom(value: unknown): Response | null {
+  if (typeof Response !== "undefined" && value instanceof Response) {
+    return value;
+  }
+
+  if (!value || typeof value !== "object") return null;
+
+  const candidate = value as {
+    response?: unknown;
+    context?: unknown;
+  };
+
+  if (
+    typeof Response !== "undefined" &&
+    candidate.response instanceof Response
+  ) {
+    return candidate.response;
+  }
+
+  if (
+    typeof Response !== "undefined" &&
+    candidate.context instanceof Response
+  ) {
+    return candidate.context;
+  }
+
+  return null;
+}
+
+function statusFrom(value: unknown): number | null {
+  const response = responseFrom(value);
+  if (response) return response.status;
+  if (!value || typeof value !== "object") return null;
+
+  const candidate = value as {
+    status?: unknown;
+    context?: { status?: unknown } | null;
+  };
+  if (typeof candidate.status === "number") return candidate.status;
+  if (typeof candidate.context?.status === "number") {
+    return candidate.context.status;
+  }
+
+  return null;
+}
+
+function errorMessage(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "message" in value) {
+    const message = (value as { message?: unknown }).message;
+    return typeof message === "string" ? message : "";
+  }
+  return "";
 }
 
 function invocationFailedAuthentication(result: unknown): boolean {
   if (!result || typeof result !== "object") return false;
 
   const invocation = result as FunctionInvocationResult;
-  if (invocation.response?.status === 401) return true;
+  const status =
+    statusFrom(invocation.response) ?? statusFrom(invocation.error);
+  if (status === 401 || status === 403) return true;
 
-  const message =
-    invocation.error instanceof Error
-      ? invocation.error.message
-      : typeof invocation.error === "string"
-        ? invocation.error
-        : "";
-
-  return /authentication required|invalid jwt|jwt expired|token.*expired/i.test(
-    message,
+  return /authentication required|invalid jwt|jwt expired|token.*expired|unauthori[sz]ed/i.test(
+    errorMessage(invocation.error),
   );
+}
+
+function optionsWithAccessToken(
+  options: unknown,
+  accessToken: string,
+): FunctionInvokeOptions {
+  const base =
+    options && typeof options === "object" && !Array.isArray(options)
+      ? { ...(options as FunctionInvokeOptions) }
+      : {};
+  const headers = new Headers(base.headers);
+  headers.set("Authorization", `Bearer ${accessToken}`);
+
+  return {
+    ...base,
+    headers: Object.fromEntries(headers.entries()),
+  };
 }
 
 function expiredSessionResult(
@@ -83,7 +158,8 @@ function expiredSessionResult(
   return {
     data: null,
     error: new Error(SESSION_EXPIRED_MESSAGE),
-    response: invocation?.response ?? null,
+    response:
+      invocation?.response ?? responseFrom(invocation?.error) ?? null,
   };
 }
 
@@ -100,17 +176,30 @@ export function installMaintenanceSessionRecovery(): void {
     functionName,
     options,
   ) => {
-    await ensureFreshSession(false);
-
-    const initialResult = await originalInvoke(functionName, options);
+    const currentSession = await ensureFreshSession(false);
+    const initialResult = await originalInvoke(
+      functionName,
+      currentSession?.access_token
+        ? optionsWithAccessToken(options, currentSession.access_token)
+        : options,
+    );
     if (!invocationFailedAuthentication(initialResult)) {
       return initialResult;
     }
 
-    const refreshed = await ensureFreshSession(true);
-    if (!refreshed) return expiredSessionResult(initialResult);
+    const refreshedSession = await ensureFreshSession(true);
+    if (!refreshedSession?.access_token) {
+      return expiredSessionResult(initialResult);
+    }
 
-    return originalInvoke(functionName, options);
+    const retryResult = await originalInvoke(
+      functionName,
+      optionsWithAccessToken(options, refreshedSession.access_token),
+    );
+
+    return invocationFailedAuthentication(retryResult)
+      ? expiredSessionResult(retryResult)
+      : retryResult;
   };
 
   (
