@@ -9,8 +9,10 @@ const check = (condition, message) => {
 };
 
 const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
+const maintenanceActions = read("src/lib/maintenanceActions.ts");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobileHardening = read("src/screens/AiOperations/mobilePortalHardening.css");
+const mobileAiPolish = read("src/screens/AiOperations/MobileAiPolishStyles.tsx");
 const pageTransition = read("src/components/PageTransition.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
@@ -106,14 +108,20 @@ check(
 
 check(
   maintenanceExperience.includes('data-vorta-shared-mobile-ai-launcher="true"') &&
+    maintenanceExperience.includes('data-vorta-ai-context-prompt=') &&
     maintenanceExperience.includes('aria-label="Ask Vorta"') &&
     maintenanceExperience.includes('data-vorta-mobile-ai-safe-area="true"') &&
     maintenanceExperience.includes("mobileAssistantPrompt") &&
+    maintenanceExperience.includes("openMaintenanceAiAssistant({ submit: false })") &&
+    maintenanceExperience.includes('import { MobileAiPolishStyles } from "./MobileAiPolishStyles"') &&
+    maintenanceExperience.includes("<MobileAiPolishStyles />") &&
+    maintenanceActions.includes("question?: string") &&
+    maintenanceActions.includes("submit: question ?") &&
     equipmentTabs.includes('tab.route !== "ai-insights"') &&
     !equipmentTabs.includes('data-vorta-equipment-mobile-actions="true"') &&
     mobileHardening.includes('data-vorta-embedded-ai="true"') &&
     mobileHardening.includes('placeholder^="Ask Vorta about"'),
-  "Mobile pages must use one contextual Ask Vorta launcher without duplicate Equipment docks or inline forms.",
+  "Mobile pages must open one contextual Ask Vorta assistant without duplicate controls or prefilled composer text.",
 );
 
 check(
@@ -126,14 +134,27 @@ check(
 );
 
 check(
+  mobileAiPolish.includes("MOBILE_AI_POLISH_STYLES") &&
+    mobileAiPolish.includes("linear-gradient(145deg") &&
+    mobileAiPolish.includes('button[aria-label="Close global assistant"]') &&
+    mobileAiPolish.includes("input:focus-visible") &&
+    mobileAiPolish.includes("outline: 0 solid transparent !important") &&
+    mobileAiPolish.includes("box-shadow: none !important") &&
+    mobileAiPolish.includes('data-vorta-fault-panel="true"'),
+  "Mobile Ask Vorta must retain its branded header and neutral input focus state.",
+);
+
+check(
   browserTest.includes("mobileRoutes") &&
     browserTest.includes("expectNoPageOverflow") &&
     browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
     browserTest.includes("What can I help with?") &&
     browserTest.includes('toHaveCSS("font-size", "0px")') &&
+    browserTest.includes('toHaveValue("")') &&
+    browserTest.includes('toHaveCSS("outline-width", "0px")') &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
-  "Authenticated browser coverage must protect the mobile route matrix and simplified AI conversation.",
+  "Authenticated browser coverage must protect the mobile route matrix and polished AI conversation.",
 );
 
 console.log("Maintenance Manager mobile portal audit contracts passed.");

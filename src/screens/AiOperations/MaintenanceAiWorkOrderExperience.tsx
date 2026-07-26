@@ -21,6 +21,7 @@ import { getCachedEquipmentIdentity } from "../Equipment/equipmentService";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
+import { MobileAiPolishStyles } from "./MobileAiPolishStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
 
@@ -215,6 +216,7 @@ export function MaintenanceAiWorkOrderExperience({
       onFocusCapture={handleNavigationIntent}
       onClickCapture={trackRecommendationFollowThrough}
     >
+      <MobileAiPolishStyles />
       <DataTrustBanner />
       {children}
       {isPhone ? (
@@ -228,12 +230,10 @@ export function MaintenanceAiWorkOrderExperience({
         <button
           type="button"
           data-vorta-shared-mobile-ai-launcher="true"
+          data-vorta-ai-context-prompt={mobileAssistantPrompt(location.pathname)}
           aria-label="Ask Vorta"
           onClick={() => {
-            openMaintenanceAiAssistant({
-              question: mobileAssistantPrompt(location.pathname),
-              submit: false,
-            });
+            openMaintenanceAiAssistant({ submit: false });
           }}
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-blue-400/30 bg-blue-600 px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(15,23,42,0.55)] transition-colors active:bg-blue-500"
         >

@@ -7,7 +7,7 @@ export interface WorkOrderDetailSelection {
 }
 
 export interface MaintenanceAiPrompt {
-  question: string;
+  question?: string;
   submit?: boolean;
   role?: "maintenance-manager";
 }
@@ -27,17 +27,16 @@ export function openWorkOrderDetail(selection: WorkOrderDetailSelection): boolea
   return true;
 }
 
-export function openMaintenanceAiAssistant(prompt: MaintenanceAiPrompt): boolean {
+export function openMaintenanceAiAssistant(prompt: MaintenanceAiPrompt = {}): boolean {
   if (typeof window === "undefined") return false;
 
-  const question = prompt.question.trim();
-  if (!question) return false;
+  const question = prompt.question?.trim() ?? "";
 
   window.dispatchEvent(
     new CustomEvent<MaintenanceAiPrompt>(VORTA_MAINTENANCE_AI_PROMPT_EVENT, {
       detail: {
         question,
-        submit: prompt.submit ?? true,
+        submit: question ? (prompt.submit ?? true) : false,
         role: prompt.role ?? "maintenance-manager",
       },
     }),

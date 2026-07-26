@@ -78,6 +78,17 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   expect(assistantBox?.width ?? 0).toBeGreaterThanOrEqual((viewport?.width ?? 360) - 2);
   expect(assistantBox?.height ?? 0).toBeGreaterThanOrEqual((viewport?.height ?? 640) - 2);
 
+  const assistantHeaderIcon = mobileAssistant.locator(
+    ":scope > div:first-child > div:first-child > div:first-child svg",
+  );
+  await expect(assistantHeaderIcon).toBeVisible();
+  await expect(
+    mobileAssistant.getByText("Site risk and action assistant", { exact: true }),
+  ).toBeVisible();
+  const closeAssistantBox = await closeAssistant.boundingBox();
+  expect(closeAssistantBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+  expect(closeAssistantBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
   for (const question of [
     "What should I review first today?",
     "Which area needs attention?",
@@ -95,6 +106,14 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     window.getComputedStyle(element, "::before").content,
   );
   expect(welcomeContent).toBe('"What can I help with?"');
+
+  const promptInput = mobileAssistant.locator('input[type="text"]').last();
+  await expect(promptInput).toBeVisible();
+  await expect(promptInput).toHaveValue("");
+  await promptInput.focus();
+  await expect(promptInput).toHaveCSS("outline-width", "0px");
+  await expect(promptInput).toHaveCSS("box-shadow", "none");
+  await expect(promptInput).toHaveCSS("border-top-width", "0px");
 
   const sendButton = mobileAssistant.getByRole("button", { name: "Send", exact: true });
   await expect(sendButton).toBeVisible();
