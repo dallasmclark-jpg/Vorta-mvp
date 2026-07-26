@@ -112,7 +112,7 @@ check(
     equipmentTabs.includes('tab.route !== "ai-insights"') &&
     !equipmentTabs.includes('data-vorta-equipment-mobile-actions="true"') &&
     mobileHardening.includes('data-vorta-embedded-ai="true"') &&
-    mobileHardening.includes('placeholder*="calibration risk"'),
+    mobileHardening.includes('placeholder^="Ask Vorta about"'),
   "Mobile pages must use one contextual Ask Vorta launcher without duplicate Equipment docks or inline forms.",
 );
 
