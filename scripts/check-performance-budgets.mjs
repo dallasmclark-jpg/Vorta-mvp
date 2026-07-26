@@ -4,10 +4,10 @@ import { extname, join, relative, resolve } from "node:path";
 const distDirectory = resolve(process.cwd(), "dist");
 const budgets = {
   // Shift Handover is a route-level lazy workspace. Preserve the strict
-  // per-chunk and CSS ceilings while allowing its bounded aggregate output.
+  // per-chunk ceiling while allowing its bounded aggregate and responsive CSS.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 151_000,
+  totalCssBytes: 157_000,
   totalDistBytes: 3_600_000,
 };
 
