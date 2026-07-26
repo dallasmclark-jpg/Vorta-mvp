@@ -10,6 +10,7 @@ const EVIDENCE_FUNCTIONS = new Set([
   "career-evidence-data",
   "support-evidence-data",
   "settings-evidence-data",
+  "shift-handover-data",
 ]);
 
 const TRANSIENT_MESSAGE = /failed to send a request|failed to fetch|network|load failed|timed out|timeout/i;
