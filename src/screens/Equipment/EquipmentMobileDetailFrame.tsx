@@ -52,9 +52,64 @@ export function EquipmentMobileDetailFrame({
   if (!isPhone) return <>{children}</>;
 
   return (
-    <div data-vorta-equipment-mobile-route-frame="true">
+    <div
+      data-vorta-equipment-mobile-route-frame="true"
+      data-vorta-equipment-active-tab={activeTab}
+      className="w-full min-w-0 max-w-full overflow-x-clip"
+    >
       <style>{`
         @media (max-width: 767px) {
+          [data-vorta-equipment-mobile-route-frame="true"],
+          [data-vorta-equipment-mobile-route-content="true"],
+          [data-vorta-equipment-mobile-route-content="true"] > * {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow-x: clip;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            :where(div, section, article, header, main, aside, form, label) {
+            min-width: 0 !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            :where(.grid, .flex) > * {
+            min-width: 0 !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            :where(h1, h2, h3, h4, p, a, button, span, code, td, th) {
+            overflow-wrap: anywhere;
+            word-break: normal;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            :where(img, canvas, video, iframe) {
+            max-width: 100% !important;
+            height: auto;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            svg[class*="min-w-"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            :where(input, select, textarea) {
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"]
+            [class~="overflow-x-auto"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
           [data-vorta-equipment-mobile-route-content="true"]
             :is(header, div):has(> [data-vorta-equipment-tab-placeholder="true"]) {
             display: none !important;
@@ -69,6 +124,117 @@ export function EquipmentMobileDetailFrame({
           [data-vorta-equipment-mobile-route-content="true"]
             [data-vorta-equipment-tab-placeholder="true"] {
             display: none !important;
+          }
+
+          /* Desktop data tables become complete phone cards rather than 760–900px
+             surfaces clipped inside a 360px viewport. */
+          [data-vorta-equipment-mobile-route-content="true"] table {
+            display: block !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            border-collapse: separate !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table thead {
+            display: none !important;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table tbody {
+            display: grid !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            gap: 0.75rem;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table tbody tr {
+            display: grid !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            padding: 1rem;
+            border: 1px solid rgb(31 41 55) !important;
+            border-radius: 0.75rem;
+            background: rgb(13 18 25);
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table tbody td {
+            display: block !important;
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            border: 0 !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table tbody td:first-child,
+          [data-vorta-equipment-mobile-route-content="true"] table tbody td:last-child,
+          [data-vorta-equipment-mobile-route-content="true"] table tbody td[colspan] {
+            grid-column: 1 / -1;
+          }
+
+          [data-vorta-equipment-mobile-route-content="true"] table tbody td::before {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: rgb(100 116 139);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            line-height: 1rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(2)::before {
+            content: "Criticality";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(3)::before {
+            content: "Stock / target";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(4)::before {
+            content: "Supplier";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(5)::before {
+            content: "Lead time";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(6)::before {
+            content: "Storage";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[900px]"] tbody td:nth-child(7)::before {
+            content: "Exposure";
+          }
+
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(2)::before {
+            content: "Status";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(3)::before {
+            content: "Stock";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(4)::before {
+            content: "Minimum";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(5)::before {
+            content: "Target";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(6)::before {
+            content: "Supplier";
+          }
+          [data-vorta-equipment-active-tab="spares"]
+            table[class*="min-w-[760px]"] tbody td:nth-child(7)::before {
+            content: "Lead time";
           }
         }
       `}</style>
