@@ -21,6 +21,7 @@ export interface LiveEngineerCertification {
 export interface LiveEngineerRecord {
   id: string;
   full_name: string;
+  avatar_url: string | null;
   discipline: string | null;
   employment_type: string;
   availability_status: string;
@@ -151,6 +152,7 @@ function parseEngineer(value: unknown, index: number): LiveEngineerRecord {
   return {
     id: requireString(row, "id", contract),
     full_name: requireString(row, "full_name", contract),
+    avatar_url: nullableString(row.avatar_url, `${contract}.avatar_url`),
     discipline: nullableString(row.discipline, `${contract}.discipline`),
     employment_type: requireString(row, "employment_type", contract),
     availability_status: requireString(row, "availability_status", contract),

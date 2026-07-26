@@ -15,7 +15,7 @@ Deno.serve(async (req: Request) => {
       db
         .from("engineers")
         .select(
-          "id,full_name,employment_type,discipline,availability_status,verified,shift_pattern,department_id,site_id",
+          "id,full_name,employment_type,discipline,availability_status,verified,shift_pattern,department_id,site_id,avatar_url",
         )
         .eq("site_id", siteId)
         .eq("organisation_id", organisationId)

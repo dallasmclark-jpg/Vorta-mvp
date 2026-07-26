@@ -57,6 +57,14 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     await expectNoPageOverflow(page);
   }
 
+  await page.goto("/engineers");
+  const engineerPhotos = page.locator(
+    '[data-vorta-mobile-engineers="true"] [data-vorta-engineer-avatar-image="true"]',
+  );
+  await expect(engineerPhotos.first()).toBeVisible({ timeout: 30_000 });
+  expect(await engineerPhotos.count()).toBeGreaterThan(0);
+  await expect(engineerPhotos.first()).toHaveAttribute("src", /^https:\/\//);
+
   await page.goto("/dashboard");
   await sharedLauncher.click();
 
@@ -95,7 +103,9 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     "Which equipment is most critical?",
     "What evidence supports this?",
   ]) {
-    await expect(mobileAssistant.getByRole("button", { name: question, exact: true })).toBeHidden();
+    await expect(
+      mobileAssistant.getByRole("button", { name: question, exact: true }),
+    ).toBeHidden();
   }
 
   const introAnswer = mobileAssistant.getByText(
@@ -115,41 +125,44 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(promptInput).toHaveCSS("box-shadow", "none");
   await expect(promptInput).toHaveCSS("border-top-width", "0px");
 
-  const attachmentButton = mobileAssistant.getByRole("button", {
+  const attachButton = mobileAssistant.getByRole("button", {
     name: "Add photos and files",
     exact: true,
   });
   const microphoneButton = mobileAssistant.getByRole("button", {
-    name: /voice dictation/,
+    name: /voice dictation$/,
   });
-  const sendButton = mobileAssistant.getByRole("button", { name: "Send", exact: true });
-  await expect(attachmentButton).toBeVisible();
+  const sendButton = mobileAssistant.getByRole("button", {
+    name: "Send",
+    exact: true,
+  });
+  await expect(attachButton).toBeVisible();
   await expect(microphoneButton).toBeVisible();
   await expect(sendButton).toBeVisible();
   await expect(sendButton).toHaveCSS("font-size", "0px");
 
-  const attachmentInput = page.locator('input[type="file"][accept*="image/*"]');
-  await expect(attachmentInput).toHaveCount(1);
-  await attachmentInput.setInputFiles({
-    name: "equipment-evidence.jpg",
-    mimeType: "image/jpeg",
-    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-  });
-  await expect(attachmentButton).toHaveAttribute("data-vorta-ai-attachment-count", "1");
-
-  const attachmentBox = await attachmentButton.boundingBox();
+  const attachBox = await attachButton.boundingBox();
   const inputBox = await promptInput.boundingBox();
   const microphoneBox = await microphoneButton.boundingBox();
   const sendButtonBox = await sendButton.boundingBox();
-  expect(attachmentBox).not.toBeNull();
-  expect(inputBox).not.toBeNull();
-  expect(microphoneBox).not.toBeNull();
-  expect(sendButtonBox).not.toBeNull();
-  expect(attachmentBox?.x ?? 9999).toBeLessThan(inputBox?.x ?? 0);
-  expect(inputBox?.x ?? 9999).toBeLessThan(microphoneBox?.x ?? 0);
-  expect(microphoneBox?.x ?? 9999).toBeLessThan(sendButtonBox?.x ?? 0);
+  expect(attachBox?.width ?? 0).toBeGreaterThanOrEqual(40);
+  expect(microphoneBox?.width ?? 0).toBeGreaterThanOrEqual(40);
   expect(sendButtonBox?.width ?? 0).toBeGreaterThanOrEqual(40);
   expect(sendButtonBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+  expect(attachBox?.x ?? 9999).toBeLessThan(inputBox?.x ?? 0);
+  expect(inputBox?.x ?? 9999).toBeLessThan(microphoneBox?.x ?? 0);
+  expect(microphoneBox?.x ?? 9999).toBeLessThan(sendButtonBox?.x ?? 0);
+
+  const fileInput = page.locator(
+    'input[type="file"][accept*="image/*"]',
+  );
+  await expect(fileInput).toHaveAttribute("accept", /image\/\*/);
+  await fileInput.setInputFiles({
+    name: "equipment-photo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("vorta-photo"),
+  });
+  await expect(attachButton).toHaveAttribute("data-vorta-ai-attachment-count", "1");
 
   await closeAssistant.click();
   await expect(mobileAssistant).toBeHidden();
@@ -163,11 +176,15 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await equipmentButton.click();
   await page.waitForURL(/\/equipment\/[^/]+\/overview(?:\?.*)?$/);
 
-  await expect(page.locator('[data-vorta-equipment-mobile-actions="true"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-vorta-equipment-mobile-actions="true"]'),
+  ).toHaveCount(0);
   await expect(sharedLauncher).toHaveCount(1);
   const finalAction = page.getByRole("button", { name: /View work and actions/ });
   await expect(finalAction).toBeVisible({ timeout: 30_000 });
-  await page.locator('[data-vorta-mobile-ai-safe-area="true"]').scrollIntoViewIfNeeded();
+  await page
+    .locator('[data-vorta-mobile-ai-safe-area="true"]')
+    .scrollIntoViewIfNeeded();
 
   const finalActionBox = await finalAction.boundingBox();
   const launcherBox = await sharedLauncher.boundingBox();
@@ -175,7 +192,10 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   expect(launcherBox).not.toBeNull();
   expect(finalActionBox?.y ?? 9999).toBeLessThan(launcherBox?.y ?? 0);
 
-  const calibrationTab = page.getByRole("tab", { name: "Calibrations", exact: true });
+  const calibrationTab = page.getByRole("tab", {
+    name: "Calibrations",
+    exact: true,
+  });
   await calibrationTab.click();
   await page.waitForURL(/\/equipment\/[^/]+\/pms(?:\?.*)?$/);
   await expect(page.locator('input[placeholder*="calibration risk"]')).toBeHidden();
@@ -185,16 +205,26 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Appearance", exact: true })).toBeVisible();
   for (const label of ["Light", "Dark", "System"]) {
-    const appearanceOption = page.getByRole("button", { name: new RegExp(`^${label}`) });
+    const appearanceOption = page.getByRole("button", {
+      name: new RegExp(`^${label}`),
+    });
     await expect(appearanceOption).toBeVisible();
     const box = await appearanceOption.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
 
   await page.goto("/pilot-impact");
-  await expect(page.getByRole("navigation", { name: "Pilot evidence views" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Impact/ })).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.getByRole("navigation", { name: "Pilot evidence views" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /Impact/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await page.getByRole("link", { name: /Adoption/ }).click();
   await page.waitForURL(/\/pilot-adoption$/);
-  await expect(page.getByRole("link", { name: /Adoption/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: /Adoption/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
