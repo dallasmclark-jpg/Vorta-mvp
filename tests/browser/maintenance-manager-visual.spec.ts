@@ -90,7 +90,11 @@ test("Maintenance Manager priority pages retain their approved responsive layout
   await capture(page, "shift-cover");
 
   await page.goto("/skills-matrix");
-  await expect(page.getByRole("heading", { name: /Skills Matrix/i }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: isPhone ? "Capability Summary" : /Skills Matrix/i,
+    }).first(),
+  ).toBeVisible();
   await capture(page, "skills-matrix");
 
   // Visual baselines must target a named fixture, not whichever asset currently ranks first by risk.
