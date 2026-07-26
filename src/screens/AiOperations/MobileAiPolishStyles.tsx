@@ -1,4 +1,11 @@
+import { MobileAiComposerControls } from "./MobileAiComposerControls";
+
 const MOBILE_AI_POLISH_STYLES = `
+[data-vorta-ai-attach-control="true"],
+[data-vorta-ai-mobile-mic="true"] {
+  display: none;
+}
+
 @media (max-width: 639px) {
   :is(
     [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child,
@@ -71,13 +78,84 @@ const MOBILE_AI_POLISH_STYLES = `
     --tw-ring-shadow: 0 0 #0000 !important;
     -webkit-tap-highlight-color: transparent;
   }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > [data-vorta-ai-attach-control="true"] {
+    order: 1;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > input {
+    order: 2;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button[aria-label$="voice dictation"] {
+    order: 3;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) {
+    order: 4;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 9999px !important;
+    font-size: 0 !important;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button[aria-label$="voice dictation"],
+  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > [data-vorta-ai-attach-control="true"],
+  [data-vorta-fault-panel="true"] [data-vorta-ai-attach-control="true"],
+  [data-vorta-fault-panel="true"] [data-vorta-ai-mobile-mic="true"] {
+    display: inline-flex !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 9999px !important;
+    background: transparent;
+  }
+
+  [data-vorta-fault-panel="true"] form {
+    align-items: center;
+  }
+
+  [data-vorta-fault-panel="true"] form > [data-vorta-ai-attach-control="true"] {
+    order: 1;
+  }
+
+  [data-vorta-fault-panel="true"] form > div {
+    order: 2;
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 1px solid rgb(51 65 85) !important;
+  }
+
+  [data-vorta-fault-panel="true"] form > div > svg {
+    display: none !important;
+  }
+
+  [data-vorta-fault-panel="true"] form > [data-vorta-ai-mobile-mic="true"] {
+    order: 3;
+  }
+
+  [data-vorta-fault-panel="true"] form > button[type="submit"] {
+    order: 4;
+  }
 }
 `;
 
 export function MobileAiPolishStyles(): JSX.Element {
   return (
-    <style data-vorta-mobile-ai-polish="true">
-      {MOBILE_AI_POLISH_STYLES}
-    </style>
+    <>
+      <style data-vorta-mobile-ai-polish="true">
+        {MOBILE_AI_POLISH_STYLES}
+      </style>
+      <MobileAiComposerControls />
+    </>
   );
 }
