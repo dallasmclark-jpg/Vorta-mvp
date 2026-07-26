@@ -7,7 +7,7 @@ import { MobileEquipmentSection } from "./MobileEquipmentSection";
 export function EquipmentRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
   if (isPhone && dataMode === "demo") {
     return <MobileEquipmentSection />;

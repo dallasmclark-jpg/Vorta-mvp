@@ -25,7 +25,9 @@ import {
 import { PilotEvidenceFrame } from "../PilotEvidence/PilotEvidenceFrame";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
+import { TabletDesktopOnly } from "./TabletDesktopOnly";
 import "./mobilePortalHardening.css";
+import "./mobilePortalFinalPolish.css";
 
 const EngineersSection = lazy(() => import("../Engineers").then((module) => ({ default: module.EngineersSection })));
 const RequirementsSection = lazy(() => import("../Requirements").then((module) => ({ default: module.RequirementsSection })));
@@ -59,6 +61,8 @@ const EquipmentAiInsights = lazy(() => import("../Equipment").then((module) => (
 
 const isLivePilotMode =
   String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
+const capabilityMatchingEnabled =
+  String(import.meta.env.VITE_ENABLE_CAPABILITY_MATCHING ?? "").trim().toLowerCase() === "true";
 
 function RouteLoader(): JSX.Element {
   return (
@@ -78,7 +82,9 @@ const nav: NavGroup[] = [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
-      { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
+      ...(capabilityMatchingEnabled
+        ? [{ label: "Capability Matching", icon: Sparkles, to: "/ai-matching" }]
+        : []),
     ],
   },
   {
@@ -112,7 +118,9 @@ const liveNav: NavGroup[] = [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
       { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
-      { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
+      ...(capabilityMatchingEnabled
+        ? [{ label: "Capability Matching", icon: Sparkles, to: "/ai-matching" }]
+        : []),
     ],
   },
   {
@@ -201,11 +209,19 @@ export const AiOperations = (): JSX.Element => {
             <Route path="ai-matching" element={<AiMatchingSection />} />
             <Route
               path="settings/pilot-setup"
-              element={mayAdministerPilot ? <PilotSetupSection /> : <Navigate to="/dashboard" replace />}
+              element={mayAdministerPilot ? (
+                <TabletDesktopOnly>
+                  <PilotSetupSection />
+                </TabletDesktopOnly>
+              ) : <Navigate to="/dashboard" replace />}
             />
             <Route
               path="settings/data-import"
-              element={mayImportSapData ? <SapDataImportSection /> : <Navigate to="/dashboard" replace />}
+              element={mayImportSapData ? (
+                <TabletDesktopOnly>
+                  <SapDataImportSection />
+                </TabletDesktopOnly>
+              ) : <Navigate to="/dashboard" replace />}
             />
             <Route path="settings" element={<SettingsSection />} />
             <Route path="equipment" element={<EquipmentSection />} />

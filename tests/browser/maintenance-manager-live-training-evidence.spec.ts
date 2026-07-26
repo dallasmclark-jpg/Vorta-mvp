@@ -52,18 +52,16 @@ test("live Training renders verified read-only evidence", async ({ page }) => {
   await expectNoPageOverflow(page, "Live Training evidence");
 });
 
-test("live AI Matching renders decision-support evidence without assignment actions", async ({ page }) => {
+test("live Capability Matching is withheld and returns users to Requirements", async ({ page }) => {
   await signInMaintenanceManager(page);
-  const body = await expectScopedResponse(page, "/ai-matching", "ai-matching-data");
-  expect(Array.isArray(body.matchResults)).toBe(true);
-  expect(Array.isArray(body.gapRecs)).toBe(true);
+  await page.goto("/ai-matching");
+  await page.waitForURL(/\/requirements$/);
 
-  await expect(page.getByRole("heading", { name: "AI Matching Evidence", exact: true })).toBeVisible();
-  await expect(page.getByText("Runtime-validated evidence", { exact: true })).toBeVisible();
-  await expect(page.getByText("AI matching evidence was withheld", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Requirements", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AI Matching Evidence", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Accept Recommendation", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Dismiss", exact: true })).toHaveCount(0);
-  await expectNoPageOverflow(page, "Live AI Matching evidence");
+  await expectNoPageOverflow(page, "Withheld live Capability Matching route");
 });
 
 test("live Training Providers renders catalogue evidence without fake enquiries", async ({ page }) => {
@@ -113,25 +111,6 @@ test("live training workflow pages fail closed when evidence scope metadata is m
   await expect(page.getByText(/Training\.siteId/i)).toBeVisible();
 
   await page.unroute(/\/functions\/v1\/training-data/);
-  await page.route(/\/functions\/v1\/ai-matching-data/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        matchResults: [],
-        gapRecs: [],
-        departments: [],
-        skills: [],
-        certifications: [],
-        stats: {},
-      }),
-    });
-  });
-  await page.goto("/ai-matching");
-  await expect(page.getByText("AI matching evidence was withheld", { exact: true })).toBeVisible();
-  await expect(page.getByText(/AI matching\.siteId/i)).toBeVisible();
-
-  await page.unroute(/\/functions\/v1\/ai-matching-data/);
   await page.route(/\/functions\/v1\/training-providers-data/, async (route) => {
     await route.fulfill({
       status: 200,

@@ -20,7 +20,7 @@ function MobileDemoTrainingSection(): JSX.Element {
 }
 
 export function TrainingRouteEntry(): JSX.Element {
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
   if (isPhone) {
     return isLivePilotMode ? <MobileTrainingSection dataMode="live" /> : <MobileDemoTrainingSection />;

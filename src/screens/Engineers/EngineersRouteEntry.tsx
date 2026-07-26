@@ -8,7 +8,7 @@ import { MobileEngineersSection } from "./MobileEngineersSection";
 export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
   if (isPhone && dataMode !== "unavailable") {
     return (
