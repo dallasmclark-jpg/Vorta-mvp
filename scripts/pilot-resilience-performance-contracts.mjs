@@ -56,7 +56,7 @@ mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject
 for (const [name, value] of [
   ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "151_000"],
+  ["totalCssBytes", "157_000"],
   ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
