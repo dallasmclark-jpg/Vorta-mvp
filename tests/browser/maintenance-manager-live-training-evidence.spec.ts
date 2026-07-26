@@ -57,7 +57,7 @@ test("live Capability Matching is withheld and returns users to Requirements", a
   await page.goto("/ai-matching");
   await page.waitForURL(/\/requirements$/);
 
-  await expect(page.getByRole("heading", { name: "Requirements Evidence", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Requirements", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "AI Matching Evidence", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Accept Recommendation", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Dismiss", exact: true })).toHaveCount(0);
