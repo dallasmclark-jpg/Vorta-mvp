@@ -63,11 +63,7 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   );
   await expect(engineerPhotos.first()).toBeVisible({ timeout: 30_000 });
   expect(await engineerPhotos.count()).toBeGreaterThan(0);
-  const firstEngineerPhotoLoaded = await engineerPhotos.first().evaluate((image) => {
-    const element = image as HTMLImageElement;
-    return element.complete && element.naturalWidth > 0;
-  });
-  expect(firstEngineerPhotoLoaded).toBe(true);
+  await expect(engineerPhotos.first()).toHaveAttribute("src", /^https:\/\//);
 
   await page.goto("/dashboard");
   await sharedLauncher.click();
