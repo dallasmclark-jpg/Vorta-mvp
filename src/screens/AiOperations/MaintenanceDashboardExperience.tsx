@@ -28,7 +28,7 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           }
         }
 
-        @media (max-width: 639px) {
+        @media (max-width: 767px) {
           [data-vorta-dashboard-root="true"] > section {
             gap: 1rem !important;
             padding: 0.75rem 0.75rem 1.5rem !important;
@@ -52,13 +52,13 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           }
 
           [data-vorta-dashboard-root="true"] > section > header h1 {
-            font-size: 1.375rem !important;
-            line-height: 1.75rem !important;
+            font-size: 1.625rem !important;
+            line-height: 2rem !important;
           }
 
           [data-vorta-dashboard-root="true"] h2 {
-            font-size: 1.0625rem !important;
-            line-height: 1.4rem !important;
+            font-size: 1.1875rem !important;
+            line-height: 1.55rem !important;
           }
 
           [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]),
@@ -81,8 +81,8 @@ export function MaintenanceDashboardExperience(): JSX.Element {
             justify-content: flex-end;
             padding: 0.25rem 0.5rem;
             text-align: right;
-            font-size: 0.8125rem !important;
-            line-height: 1.1rem;
+            font-size: 0.9375rem !important;
+            line-height: 1.25rem;
           }
 
           [data-vorta-dashboard-root="true"] section:has([aria-label^="View equipment in "]) div:has(> [aria-label^="View equipment in "]) {
@@ -118,13 +118,13 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           }
 
           [data-vorta-dashboard-root="true"] [aria-label^="View equipment in "] h3 {
-            font-size: 0.9375rem !important;
-            line-height: 1.25rem !important;
+            font-size: 1.0625rem !important;
+            line-height: 1.4rem !important;
           }
 
           [data-vorta-dashboard-root="true"] [aria-label^="View equipment in "] [class~="text-xs"] {
-            font-size: 0.8125rem !important;
-            line-height: 1.125rem !important;
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
           }
 
           [data-vorta-dashboard-root="true"] [aria-label^="View equipment in "] [class~="text-xl"] {
@@ -148,7 +148,7 @@ export function MaintenanceDashboardExperience(): JSX.Element {
             min-height: 2.75rem;
             width: 100%;
             justify-content: center;
-            font-size: 0.8125rem !important;
+            font-size: 0.9375rem !important;
           }
 
           [data-vorta-dashboard-root="true"] [data-vorta-card-rail="labour-risk"] {
@@ -208,8 +208,8 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           }
 
           [data-vorta-dashboard-root="true"] [data-risk-kpi-card] [class~="text-xs"] {
-            font-size: 0.8125rem !important;
-            line-height: 1.125rem !important;
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
           }
 
           [data-vorta-dashboard-root="true"] button[aria-label^="Scroll to previous risk KPI"],
