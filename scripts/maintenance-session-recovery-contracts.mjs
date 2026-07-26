@@ -23,10 +23,15 @@ check(
   recovery.includes("refreshSession()") &&
     recovery.includes("refreshInFlight") &&
     recovery.includes("SESSION_REFRESH_LEEWAY_MS") &&
-    recovery.includes("invocation.response?.status === 401") &&
+    recovery.includes("statusFrom(invocation.error)") &&
+    recovery.includes("candidate.context instanceof Response") &&
+    recovery.includes("status === 401 || status === 403") &&
     recovery.includes("ensureFreshSession(true)") &&
-    recovery.includes("originalInvoke(functionName, options)"),
-  "Maintenance evidence requests must proactively refresh and retry once after a 401.",
+    recovery.includes("optionsWithAccessToken") &&
+    recovery.includes('headers.set("Authorization"') &&
+    recovery.includes("invocationFailedAuthentication(retryResult)") &&
+    recovery.includes("expiredSessionResult(retryResult)"),
+  "Maintenance evidence requests must detect wrapped authentication failures, refresh, attach the new token and fail clearly after one retry.",
 );
 
 check(
