@@ -22,6 +22,10 @@ const equipmentTabs = read("src/screens/Equipment/EquipmentTabNavigation.tsx");
 const mobileEquipment = read("src/screens/Equipment/MobileEquipmentSection.tsx");
 const mobileEquipmentOverview = read("src/screens/Equipment/MobileEquipmentOverview.tsx");
 const engineersRoute = read("src/screens/Engineers/EngineersRouteEntry.tsx");
+const mobileEngineers = read("src/screens/Engineers/MobileEngineersSection.tsx");
+const engineerAvatar = read("src/screens/Engineers/EngineerAvatar.tsx");
+const engineersRuntime = read("src/screens/Engineers/engineersRuntimeContracts.ts");
+const engineersFunction = read("supabase/functions/engineers-data/index.ts");
 const requirementsRoute = read("src/screens/Requirements/RequirementsRouteEntry.tsx");
 const trainingRoute = read("src/screens/Training/TrainingRouteEntry.tsx");
 const providersRoute = read("src/screens/TrainingProviders/TrainingProvidersRouteEntry.tsx");
@@ -38,6 +42,20 @@ check(
   engineersRoute.includes("<MobileEngineersSection dataMode={dataMode}") &&
     engineersRoute.includes('dataMode !== "unavailable"'),
   "Engineers must share the phone presentation across demo and live evidence.",
+);
+
+check(
+  mobileEngineers.includes("EngineerAvatar") &&
+    mobileEngineers.includes("avatar_url: string | null") &&
+    mobileEngineers.includes("avatarUrl={engineer.avatar_url}") &&
+    mobileEngineers.includes("avatarUrl={selectedEngineer.avatar_url}") &&
+    engineerAvatar.includes('data-vorta-engineer-avatar-image="true"') &&
+    engineerAvatar.includes('referrerPolicy="no-referrer"') &&
+    engineerAvatar.includes("onError={() => setImageFailed(true)}") &&
+    engineersRuntime.includes("avatar_url: string | null") &&
+    engineersRuntime.includes("row.avatar_url") &&
+    engineersFunction.includes("site_id,avatar_url"),
+  "Engineer photographs must be returned by live evidence, validated and rendered through the resilient shared avatar.",
 );
 
 check(
@@ -165,16 +183,18 @@ check(
   browserTest.includes("mobileRoutes") &&
     browserTest.includes("expectNoPageOverflow") &&
     browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
+    browserTest.includes("data-vorta-engineer-avatar-image") &&
+    browserTest.includes("naturalWidth > 0") &&
     browserTest.includes("What can I help with?") &&
     browserTest.includes('toHaveCSS("font-size", "0px")') &&
     browserTest.includes('toHaveValue("")') &&
     browserTest.includes('toHaveCSS("outline-width", "0px")') &&
     browserTest.includes("Add photos and files") &&
-    browserTest.includes("equipment-evidence.jpg") &&
+    browserTest.includes("equipment-photo.png") &&
     browserTest.includes("microphoneBox") &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
-  "Authenticated browser coverage must protect the mobile route matrix and ChatGPT-style AI composer.",
+  "Authenticated browser coverage must protect engineer photographs, the mobile route matrix and ChatGPT-style AI composer.",
 );
 
 console.log("Maintenance Manager mobile portal audit contracts passed.");
