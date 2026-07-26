@@ -25,6 +25,7 @@ import {
 import { PilotEvidenceFrame } from "../PilotEvidence/PilotEvidenceFrame";
 import { MaintenanceAiWorkOrderExperience } from "./MaintenanceAiWorkOrderExperience";
 import { MaintenanceDashboardExperience } from "./MaintenanceDashboardExperience";
+import { TabletDesktopOnly } from "./TabletDesktopOnly";
 import "./mobilePortalHardening.css";
 import "./mobilePortalFinalPolish.css";
 
@@ -211,11 +212,19 @@ export const AiOperations = (): JSX.Element => {
             />
             <Route
               path="settings/pilot-setup"
-              element={mayAdministerPilot ? <PilotSetupSection /> : <Navigate to="/dashboard" replace />}
+              element={mayAdministerPilot ? (
+                <TabletDesktopOnly>
+                  <PilotSetupSection />
+                </TabletDesktopOnly>
+              ) : <Navigate to="/dashboard" replace />}
             />
             <Route
               path="settings/data-import"
-              element={mayImportSapData ? <SapDataImportSection /> : <Navigate to="/dashboard" replace />}
+              element={mayImportSapData ? (
+                <TabletDesktopOnly>
+                  <SapDataImportSection />
+                </TabletDesktopOnly>
+              ) : <Navigate to="/dashboard" replace />}
             />
             <Route path="settings" element={<SettingsSection />} />
             <Route path="equipment" element={<EquipmentSection />} />
