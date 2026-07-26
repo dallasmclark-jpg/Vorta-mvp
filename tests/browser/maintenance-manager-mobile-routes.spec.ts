@@ -115,10 +115,39 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(promptInput).toHaveCSS("box-shadow", "none");
   await expect(promptInput).toHaveCSS("border-top-width", "0px");
 
+  const attachmentButton = mobileAssistant.getByRole("button", {
+    name: "Add photos and files",
+    exact: true,
+  });
+  const microphoneButton = mobileAssistant.getByRole("button", {
+    name: /voice dictation/,
+  });
   const sendButton = mobileAssistant.getByRole("button", { name: "Send", exact: true });
+  await expect(attachmentButton).toBeVisible();
+  await expect(microphoneButton).toBeVisible();
   await expect(sendButton).toBeVisible();
   await expect(sendButton).toHaveCSS("font-size", "0px");
+
+  const attachmentInput = page.locator('input[type="file"][accept*="image/*"]');
+  await expect(attachmentInput).toHaveCount(1);
+  await attachmentInput.setInputFiles({
+    name: "equipment-evidence.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+  });
+  await expect(attachmentButton).toHaveAttribute("data-vorta-ai-attachment-count", "1");
+
+  const attachmentBox = await attachmentButton.boundingBox();
+  const inputBox = await promptInput.boundingBox();
+  const microphoneBox = await microphoneButton.boundingBox();
   const sendButtonBox = await sendButton.boundingBox();
+  expect(attachmentBox).not.toBeNull();
+  expect(inputBox).not.toBeNull();
+  expect(microphoneBox).not.toBeNull();
+  expect(sendButtonBox).not.toBeNull();
+  expect(attachmentBox?.x ?? 9999).toBeLessThan(inputBox?.x ?? 0);
+  expect(inputBox?.x ?? 9999).toBeLessThan(microphoneBox?.x ?? 0);
+  expect(microphoneBox?.x ?? 9999).toBeLessThan(sendButtonBox?.x ?? 0);
   expect(sendButtonBox?.width ?? 0).toBeGreaterThanOrEqual(40);
   expect(sendButtonBox?.height ?? 0).toBeGreaterThanOrEqual(40);
 
