@@ -10,7 +10,7 @@ const frame = read("src/screens/Equipment/EquipmentMobileDetailFrame.tsx");
 const navigation = read("src/screens/Equipment/EquipmentTabNavigation.tsx");
 const overviewEntry = read("src/screens/Equipment/EquipmentOverviewRouteEntry.tsx");
 const workOrdersEntry = read("src/screens/Equipment/EquipmentWorkOrdersWithAiNavigation.tsx");
-const browser = read("tests/browser/maintenance-manager-mobile-routes.spec.ts");
+const browser = read("tests/browser/maintenance-manager-equipment-tab-continuity.spec.ts");
 
 assert.match(frame, /max-width: 767px/);
 assert.match(frame, /data-vorta-equipment-shared-mobile-hero="true"/);
