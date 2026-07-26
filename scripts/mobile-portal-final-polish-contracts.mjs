@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
+const mobilePageHeader = read("src/screens/AiOperations/MobilePageHeaderExperience.tsx");
 const aiMatchingEntry = read("src/screens/AiMatching/AiMatchingRouteEntry.tsx");
 const phoneGuard = read("src/screens/AiOperations/TabletDesktopOnly.tsx");
 const polish = read("src/screens/AiOperations/mobilePortalFinalPolish.css");
@@ -42,6 +43,16 @@ assert.match(phoneGuard, /max-width: 767px/);
 assert.match(phoneGuard, /<Navigate to=\{fallbackRoute\} replace \/>/);
 assert.match(maintenanceExperience, /const isPhone = useMediaQuery\("\(max-width: 767px\)"\)/);
 assert.match(maintenanceExperience, /data-vorta-shared-mobile-ai-launcher="true"/);
+assert.match(maintenanceExperience, /<MobilePageHeaderExperience \/>/);
+
+assert.match(mobilePageHeader, /data-vorta-mobile-header-title/);
+assert.match(mobilePageHeader, /content: attr\(data-vorta-mobile-header-title\)/);
+assert.match(mobilePageHeader, /data-vorta-mobile-duplicate-page-title/);
+assert.match(mobilePageHeader, /title: "Capability"/);
+assert.match(mobilePageHeader, /title: "Shift Handover"/);
+assert.match(mobilePageHeader, /profile: \{ title: "Equipment", duplicateHeadings: \[\] \}/);
+assert.match(mobilePageHeader, /font-size: 1\.125rem !important/);
+assert.match(mobilePageHeader, /min-height: 4rem !important/);
 
 for (const route of routes) {
   assert.match(route, /max-width: 767px/, "Every explicit phone route must cover the full sub-768px range.");
@@ -71,4 +82,4 @@ assert.match(polish, /href="\/settings\/data-import"/);
 assert.match(polish, /@media \(min-width: 640px\) and \(max-width: 767px\)/);
 assert.match(polish, /height: 100dvh !important/);
 
-console.log("Final mobile portal navigation, breakpoints, capability summary and route restrictions passed.");
+console.log("Final mobile portal navigation, page titles, breakpoints, capability summary and route restrictions passed.");
