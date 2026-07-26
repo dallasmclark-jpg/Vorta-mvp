@@ -8,7 +8,7 @@ const isLivePilotMode =
   String(import.meta.env.VITE_VORTA_DATA_MODE ?? "").trim().toLowerCase() === "live";
 
 export function SettingsRouteEntry(): JSX.Element {
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
   if (isPhone) {
     return (
