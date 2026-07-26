@@ -12,7 +12,6 @@ const mobileRoutes = [
   ["/requirements", "Requirements"],
   ["/training", "Training"],
   ["/training-providers", "Training Providers"],
-  ["/ai-matching", "Capability Matching"],
   ["/career", "Workforce Development"],
   ["/pilot-impact", "Pilot Evidence"],
   ["/pilot-adoption", "Pilot Evidence"],
@@ -41,7 +40,7 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   for (const [path, label] of mobileRoutes) {
     await page.goto(path);
     await expect(mobileTopBar).toHaveAttribute("data-vorta-mobile-page-title", label);
-    await expect(mobileTopBar).toHaveCSS("display", "grid");
+    await expect(mobileTopBar).toHaveCSS("display", "flex");
     await expect(mobileLogo).toBeVisible();
     await expect(mobileMenu).toBeVisible();
 
@@ -57,6 +56,17 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     await expectNoPageOverflow(page);
   }
 
+  await mobileMenu.click();
+  const navigation = page.getByRole("dialog", { name: "Portal navigation" });
+  await expect(navigation).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Capability Matching" })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Pilot Setup" })).toBeHidden();
+  await expect(navigation.getByRole("link", { name: "Data Import" })).toBeHidden();
+  const navigationBox = await navigation.boundingBox();
+  expect(navigationBox).not.toBeNull();
+  expect((navigationBox?.x ?? 0) + (navigationBox?.width ?? 0)).toBeGreaterThanOrEqual(358);
+  await navigation.getByRole("button", { name: "Close sidebar" }).click();
+
   await page.goto("/engineers");
   const engineerPhotos = page.locator(
     '[data-vorta-mobile-engineers="true"] [data-vorta-engineer-avatar-image="true"]',
@@ -64,6 +74,13 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(engineerPhotos.first()).toBeVisible({ timeout: 30_000 });
   expect(await engineerPhotos.count()).toBeGreaterThan(0);
   await expect(engineerPhotos.first()).toHaveAttribute("src", /^https:\/\//);
+
+  await page.goto("/skills-matrix");
+  await expect(page.locator('[data-vorta-mobile-capability-summary="true"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Capability Summary" })).toBeVisible();
+
+  await page.goto("/ai-matching");
+  await page.waitForURL(/\/requirements$/);
 
   await page.goto("/dashboard");
   await sharedLauncher.click();
@@ -227,4 +244,45 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     "aria-current",
     "page",
   );
+});
+
+test("The 640 to 767 phone range uses the same compact workflows", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone-360", "Run the breakpoint bridge once.");
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 700, height: 900 });
+  await signInMaintenanceManager(page);
+
+  const mobileTopBar = page.locator(
+    '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
+  );
+  await expect(mobileTopBar).toBeVisible();
+  await expect(mobileTopBar).toHaveCSS("display", "flex");
+
+  for (const [path, marker] of [
+    ["/skills-matrix", '[data-vorta-mobile-capability-summary="true"]'],
+    ["/requirements", '[data-vorta-mobile-requirements="true"]'],
+    ["/engineers", '[data-vorta-mobile-engineers="true"]'],
+    ["/training", '[data-vorta-mobile-training="true"]'],
+    ["/training-providers", '[data-vorta-mobile-training-providers="true"]'],
+    ["/settings", '[data-vorta-mobile-settings="true"]'],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.locator(marker)).toBeVisible({ timeout: 30_000 });
+    await expectNoPageOverflow(page);
+  }
+
+  await page.goto("/settings/pilot-setup");
+  await page.waitForURL(/\/settings$/);
+  await page.goto("/settings/data-import");
+  await page.waitForURL(/\/settings$/);
+
+  await page.goto("/dashboard");
+  await page.locator('[data-vorta-shared-mobile-ai-launcher="true"]').click();
+  const assistant = page.locator(
+    '[data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])',
+  );
+  const box = await assistant.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(698);
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(898);
 });
