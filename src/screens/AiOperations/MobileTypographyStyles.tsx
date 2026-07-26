@@ -90,12 +90,12 @@ const MOBILE_TYPOGRAPHY_STYLES = `
   }
 
   /* Dashboard keeps its large risk values while lifting headings, labels and actions. */
-  [data-vorta-dashboard-root="true"] > section > header h1 {
+  [data-vorta-dashboard-root="true"] > section > header h1[class] {
     font-size: 1.625rem !important;
     line-height: 2rem !important;
   }
 
-  [data-vorta-dashboard-root="true"] h2 {
+  [data-vorta-dashboard-root="true"] h2.text-base {
     font-size: 1.1875rem !important;
     line-height: 1.55rem !important;
   }
