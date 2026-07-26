@@ -32,6 +32,7 @@ for (const slug of [
   "career-evidence-data",
   "support-evidence-data",
   "settings-evidence-data",
+  "shift-handover-data",
 ]) {
   mustMatch(resilience, new RegExp(`"${slug}"`), `${slug} must use the shared resilience boundary`);
 }
