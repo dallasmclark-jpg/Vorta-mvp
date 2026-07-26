@@ -11,6 +11,7 @@ const contracts = [
   ["Maintenance dashboard", "scripts/maintenance-dashboard-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
+  ["Final mobile portal polish", "scripts/mobile-portal-final-polish-contracts.mjs"],
   ["Maintenance portal workflow", "scripts/maintenance-portal-workflow-contracts.mjs"],
   ["Requirements live evidence", "scripts/requirements-live-evidence-contracts.mjs"],
   ["Engineers live evidence", "scripts/engineers-live-evidence-contracts.mjs"],
