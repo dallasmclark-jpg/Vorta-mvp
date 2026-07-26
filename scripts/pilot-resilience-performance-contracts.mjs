@@ -32,14 +32,18 @@ for (const slug of [
   "career-evidence-data",
   "support-evidence-data",
   "settings-evidence-data",
+  "shift-handover-data",
 ]) {
   mustMatch(resilience, new RegExp(`"${slug}"`), `${slug} must use the shared resilience boundary`);
 }
+mustMatch(resilience, /"vorta_get_shift_cover_snapshot"/, "Shift Cover RPC must use the shared resilience boundary");
+mustMatch(resilience, /statement timeout\|canceling statement/, "Database statement timeouts must be treated as transient evidence failures");
 mustMatch(resilience, /REQUEST_TIMEOUT_MS = 15_000/, "Evidence requests must have a bounded timeout");
 mustMatch(resilience, /MAX_ATTEMPTS = 3/, "Evidence requests must use bounded retry");
 mustMatch(resilience, /TRANSIENT_MESSAGE/, "Only recognised transport failures may be retried");
 mustMatch(resilience, /attempt === MAX_ATTEMPTS - 1/, "Retries must stop at the final attempt");
-mustMatch(resilience, /__vortaLiveEvidenceResilienceInstalled/, "The shared wrapper must be idempotent during reloads");
+mustMatch(resilience, /__vortaLiveEvidenceResilienceInstalled/, "The shared function wrapper must be idempotent during reloads");
+mustMatch(resilience, /__vortaLiveEvidenceRpcResilienceInstalled/, "The shared RPC wrapper must be idempotent during reloads");
 mustMatch(operationsIndex, /import "\.\.\/\.\.\/lib\/liveEvidenceResilience"/, "Maintenance Manager must install the resilience boundary before routes render");
 
 mustMatch(settingsFunction, /details: \{\}/, "Settings evidence must withhold incident detail payloads");
@@ -54,10 +58,10 @@ mustMatch(playwright, /failOnFlakyTests: Boolean\(process\.env\.CI\)/, "CI must 
 mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject focused tests");
 
 for (const [name, value] of [
-  ["totalJavaScriptBytes", "3_250_000"],
+  ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "151_000"],
-  ["totalDistBytes", "3_500_000"],
+  ["totalCssBytes", "157_000"],
+  ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
 }

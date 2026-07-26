@@ -30,6 +30,7 @@ const contracts = [
   ["Live backend health gate", "scripts/live-backend-health-gate-contracts.mjs"],
   ["Equipment module boundaries", "scripts/equipment-module-boundary-contracts.mjs"],
   ["Equipment live service boundaries", "scripts/equipment-live-service-boundary-contracts.mjs"],
+  ["Shift Handover", "scripts/shift-handover-contracts.mjs"],
   ["Repository hygiene", "scripts/repository-hygiene-contracts.mjs"],
 ];
 

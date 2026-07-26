@@ -9,6 +9,7 @@ import {
   BookOpen,
   ClipboardCheck,
   ClipboardList,
+  Clock3,
   Cog,
   GraduationCap,
   Headphones,
@@ -42,6 +43,7 @@ const PilotSetupSection = lazy(() => import("../PilotSetup/PilotSetupSection").t
 const SkillsMatrixRouteEntry = lazy(() => import("./SkillsMatrixRouteEntry").then((module) => ({ default: module.SkillsMatrixRouteEntry })));
 const ShiftCoverPageEntry = lazy(() => import("../LabourRisk/ShiftCoverPageEntry").then((module) => ({ default: module.ShiftCoverPageEntry })));
 const LabourRiskDetailPage = lazy(() => import("../LabourRisk").then((module) => ({ default: module.LabourRiskDetailPage })));
+const ShiftHandoverSection = lazy(() => import("../ShiftHandover").then((module) => ({ default: module.ShiftHandoverSection })));
 
 const EquipmentSection = lazy(() => import("../Equipment").then((module) => ({ default: module.EquipmentSection })));
 const EquipmentOverview = lazy(() => import("../Equipment").then((module) => ({ default: module.EquipmentOverview })));
@@ -74,6 +76,7 @@ const nav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+      { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
@@ -107,6 +110,7 @@ const liveNav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+      { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Capability Matching", icon: Sparkles, to: "/ai-matching" },
     ],
@@ -171,6 +175,7 @@ export const AiOperations = (): JSX.Element => {
         <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
+            <Route path="shift-handover" element={<ShiftHandoverSection />} />
             <Route
               path="pilot-impact"
               element={(
