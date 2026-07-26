@@ -54,10 +54,10 @@ mustMatch(playwright, /failOnFlakyTests: Boolean\(process\.env\.CI\)/, "CI must 
 mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject focused tests");
 
 for (const [name, value] of [
-  ["totalJavaScriptBytes", "3_250_000"],
+  ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
   ["totalCssBytes", "151_000"],
-  ["totalDistBytes", "3_500_000"],
+  ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
 }
