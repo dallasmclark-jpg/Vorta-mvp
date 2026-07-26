@@ -81,29 +81,18 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     exact: true,
     includeHidden: true,
   });
+  const sharedMobileAi = page.locator(
+    '[data-vorta-shared-mobile-ai-launcher="true"]',
+  );
 
   if (isPhone) {
     await expect(selectedRiskSummaryCard).toBeHidden();
+    await expect(embeddedAi).toBeHidden();
     await expect(standaloneAskButton).toBeHidden();
-
-    const aiInput = embeddedAi.locator('input[type="text"]').first();
-    await aiInput.focus();
-    const focusedInputPresentation = await aiInput.evaluate((input) => {
-      const styles = window.getComputedStyle(input);
-      return {
-        outlineStyle: styles.outlineStyle,
-        outlineWidth: styles.outlineWidth,
-        boxShadow: styles.boxShadow,
-      };
-    });
-    expect(focusedInputPresentation).toEqual({
-      outlineStyle: "none",
-      outlineWidth: "0px",
-      boxShadow: "none",
-    });
-
-    await aiInput.fill("What needs attention today?");
-    await aiInput.press("Enter");
+    await expect(sharedMobileAi).toHaveCount(1);
+    await expect(sharedMobileAi).toBeVisible();
+    await expectOperationalTouchTarget(sharedMobileAi);
+    await sharedMobileAi.click();
 
     const closeGlobalAssistant = page.getByRole("button", {
       name: "Close global assistant",
@@ -115,6 +104,7 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   } else {
     await expect(selectedRiskSummaryCard).toBeVisible();
     await expect(standaloneAskButton).toBeVisible();
+    await expect(sharedMobileAi).toHaveCount(0);
   }
 
   const shiftCoverCard = page.locator(
@@ -146,12 +136,14 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
   await page.goto("/dashboard");
   if (isPhone) {
     await expect(dashboardHeading).toBeHidden();
+    await expect(sharedMobileAi).toHaveCount(1);
+    await expect(sharedMobileAi).toBeVisible();
   } else {
     await expect(dashboardHeading).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
+    ).toBeHidden();
   }
-  await expect(
-    page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
-  ).toBeHidden();
 });
 
 test("Mobile work plan scrolls into view with compact action cards", async ({
