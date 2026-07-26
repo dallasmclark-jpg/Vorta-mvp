@@ -1,6 +1,11 @@
 import { MobileAiComposerControls } from "./MobileAiComposerControls";
 
 const MOBILE_AI_POLISH_STYLES = `
+[data-vorta-ai-attach-control="true"],
+[data-vorta-ai-mobile-mic="true"] {
+  display: none;
+}
+
 @media (max-width: 639px) {
   :is(
     [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child,
@@ -94,6 +99,7 @@ const MOBILE_AI_POLISH_STYLES = `
   [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > [data-vorta-ai-attach-control="true"],
   [data-vorta-fault-panel="true"] [data-vorta-ai-attach-control="true"],
   [data-vorta-fault-panel="true"] [data-vorta-ai-mobile-mic="true"] {
+    display: inline-flex !important;
     width: 2.5rem !important;
     height: 2.5rem !important;
     min-width: 2.5rem;
