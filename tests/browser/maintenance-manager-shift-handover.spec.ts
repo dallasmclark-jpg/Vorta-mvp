@@ -53,3 +53,39 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   await expectNoPageOverflow(page);
 });
+
+test("Shift Handover refreshes the session after a wrapped 401", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone-360", "Exercise mobile session recovery once.");
+  test.setTimeout(120_000);
+  await signInMaintenanceManager(page);
+
+  let handoverPostAttempts = 0;
+  await page.route(/\/functions\/v1\/shift-handover-data(?:\?.*)?$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+
+    handoverPostAttempts += 1;
+    if (handoverPostAttempts === 1) {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ code: 401, message: "Invalid JWT" }),
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await page.goto("/shift-handover");
+
+  const cards = page.locator('[data-vorta-shift-handover-card="true"]');
+  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  expect(handoverPostAttempts).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expectNoPageOverflow(page);
+});
