@@ -57,6 +57,55 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     await expectNoPageOverflow(page);
   }
 
+  await page.goto("/dashboard");
+  await sharedLauncher.click();
+
+  const mobileAssistant = page.locator(
+    '[data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])',
+  );
+  const closeAssistant = mobileAssistant.getByRole("button", {
+    name: "Close global assistant",
+    exact: true,
+  });
+  await expect(mobileAssistant).toBeVisible();
+  await expect(closeAssistant).toBeVisible();
+
+  const assistantBox = await mobileAssistant.boundingBox();
+  const viewport = page.viewportSize();
+  expect(assistantBox).not.toBeNull();
+  expect(Math.abs(assistantBox?.x ?? 9999)).toBeLessThanOrEqual(1);
+  expect(Math.abs(assistantBox?.y ?? 9999)).toBeLessThanOrEqual(1);
+  expect(assistantBox?.width ?? 0).toBeGreaterThanOrEqual((viewport?.width ?? 360) - 2);
+  expect(assistantBox?.height ?? 0).toBeGreaterThanOrEqual((viewport?.height ?? 640) - 2);
+
+  for (const question of [
+    "What should I review first today?",
+    "Which area needs attention?",
+    "Which equipment is most critical?",
+    "What evidence supports this?",
+  ]) {
+    await expect(mobileAssistant.getByRole("button", { name: question, exact: true })).toBeHidden();
+  }
+
+  const introAnswer = mobileAssistant.getByText(
+    /I can answer Maintenance Manager questions using Vorta site risk/,
+  );
+  await expect(introAnswer).toBeVisible();
+  const welcomeContent = await introAnswer.evaluate((element) =>
+    window.getComputedStyle(element, "::before").content,
+  );
+  expect(welcomeContent).toBe('"What can I help with?"');
+
+  const sendButton = mobileAssistant.getByRole("button", { name: "Send", exact: true });
+  await expect(sendButton).toBeVisible();
+  await expect(sendButton).toHaveCSS("font-size", "0px");
+  const sendButtonBox = await sendButton.boundingBox();
+  expect(sendButtonBox?.width ?? 0).toBeGreaterThanOrEqual(40);
+  expect(sendButtonBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+
+  await closeAssistant.click();
+  await expect(mobileAssistant).toBeHidden();
+
   await page.goto("/equipment");
   const equipmentButton = page
     .locator('[data-vorta-mobile-equipment="true"] button')
