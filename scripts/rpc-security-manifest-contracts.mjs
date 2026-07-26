@@ -13,22 +13,31 @@ const healthGrantMigration = read(
 const healthManifestMigration = read(
   "supabase/migrations/20260721180500_extend_rpc_security_manifest_for_health_evidence.sql",
 );
+const askVortaManifestMigration = read(
+  "supabase/migrations/20260726233000_register_shift_cover_ai_brief_rpc.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260721180500");
-assert.equal(manifest.migrationName, "extend_rpc_security_manifest_for_health_evidence");
+assert.equal(manifest.migrationVersion, "20260726233000");
+assert.equal(manifest.migrationName, "register_shift_cover_ai_brief_rpc");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 64,
-  reviewedRead: 49,
+  authenticatedCallable: 65,
+  reviewedRead: 50,
   reviewedMutation: 15,
-  securityDefiner: 61,
+  securityDefiner: 62,
   securityInvoker: 3,
   anonymousCallable: 0,
   manifestDrift: 0,
 });
+assert.ok(
+  askVortaManifestMigration.includes("vorta_get_shift_cover_ai_brief(uuid,date,date)") &&
+    askVortaManifestMigration.includes("'read'") &&
+    askVortaManifestMigration.includes("'definer'"),
+  "Ask Vorta Shift Cover evidence RPC is missing from the reviewed manifest migration",
+);
 
 const invokerRpcs = [
   "vorta_get_equipment_history(uuid)",
@@ -127,8 +136,8 @@ for (const expected of [
   "authenticatedSecurityInvokerRpcCount",
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
-  "49",
-  "61",
+  "50",
+  "62",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),

@@ -7,6 +7,9 @@ const agent = read("netlify/functions/ask-vorta.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const evaluationSet = JSON.parse(read("tests/evals/ask-vorta-core.json"));
+const rpcManifestMigration = read(
+  "supabase/migrations/20260726233000_register_shift_cover_ai_brief_rpc.sql",
+);
 
 const check = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -89,6 +92,15 @@ check(
     !agent.includes(".upsert(") &&
     !agent.includes(".delete("),
   "The first Ask Vorta agent release must remain read-only.",
+);
+
+check(
+  rpcManifestMigration.includes("vorta_get_shift_cover_ai_brief(uuid,date,date)") &&
+    rpcManifestMigration.includes("'read'") &&
+    rpcManifestMigration.includes("'definer'") &&
+    rpcManifestMigration.includes("anonymous_execute") &&
+    rpcManifestMigration.includes("false"),
+  "The Shift Cover AI brief must remain registered in the reviewed read-only RPC manifest.",
 );
 
 check(
