@@ -22,6 +22,12 @@ const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
 const portalWrapper = read(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
 );
+const mobileHardening = read(
+  "src/screens/AiOperations/mobilePortalHardening.css",
+);
+const equipmentTabs = read(
+  "src/screens/Equipment/EquipmentTabNavigation.tsx",
+);
 const workOrders = read("src/screens/Equipment/EquipmentWorkOrders.tsx");
 const aiCommand = read("src/lib/maintenanceAiAssistant.ts");
 const globalAi = read(
@@ -34,6 +40,9 @@ const evidenceHardening = read(
 const skillsMatrix = read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx");
 const portalShell = read("src/components/PortalShell.tsx");
 const browserTest = read("tests/browser/maintenance-manager-core.spec.ts");
+const mobileRoutesBrowserTest = read(
+  "tests/browser/maintenance-manager-mobile-routes.spec.ts",
+);
 const workOrderBrowserTest = read("tests/browser/maintenance-manager-work-orders.spec.ts");
 const liveBrowserTest = read("tests/browser/maintenance-manager-live.spec.ts");
 const indexHtml = read("index.html");
@@ -93,9 +102,11 @@ check(
   dashboard.includes('aria-label="Risk intelligence scope"') &&
     dashboard.includes('data-vorta-mobile-risk-scope="true"') &&
     dashboard.includes('data-vorta-risk-dot="true"') &&
-    portalWrapper.includes("showAssistantLauncher") &&
-    portalWrapper.includes('location.pathname !== "/dashboard"'),
-  "Mobile risk scope and duplicate assistant controls must be handled explicitly.",
+    portalWrapper.includes('data-vorta-shared-mobile-ai-launcher="true"') &&
+    portalWrapper.includes("showDesktopAssistantLauncher") &&
+    mobileHardening.includes('data-vorta-embedded-ai="true"') &&
+    !equipmentTabs.includes('data-vorta-equipment-mobile-actions="true"'),
+  "Mobile risk scope and the single shared assistant launcher must be handled explicitly.",
 );
 check(
   portalShell.includes("2xl:w-56") &&
@@ -130,10 +141,11 @@ check(
   browserTest.includes('data-vorta-mobile-risk-scope="true"') &&
     browserTest.includes('name: "Risk intelligence scope"') &&
     browserTest.includes('getByRole("tab")') &&
-    browserTest.includes('name: "Ask Vorta AI"') &&
-    browserTest.includes("toBeHidden") &&
+    browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
+    mobileRoutesBrowserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
+    mobileRoutesBrowserTest.includes("data-vorta-equipment-mobile-actions") &&
     workOrderBrowserTest.includes("originating page"),
-  "Browser regressions must cover mobile risk scope, duplicate assistant controls and same-page work orders.",
+  "Browser regressions must cover mobile risk scope, the shared assistant and same-page work orders.",
 );
 check(
   liveBrowserTest.includes("data-vorta-mobile-rota") &&

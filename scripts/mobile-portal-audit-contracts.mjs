@@ -9,11 +9,13 @@ const check = (condition, message) => {
 };
 
 const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
+const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobileHardening = read("src/screens/AiOperations/mobilePortalHardening.css");
 const pageTransition = read("src/components/PageTransition.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
 const equipmentOverviewRoute = read("src/screens/Equipment/EquipmentOverviewRouteEntry.tsx");
+const equipmentTabs = read("src/screens/Equipment/EquipmentTabNavigation.tsx");
 const mobileEquipment = read("src/screens/Equipment/MobileEquipmentSection.tsx");
 const mobileEquipmentOverview = read("src/screens/Equipment/MobileEquipmentOverview.tsx");
 const engineersRoute = read("src/screens/Engineers/EngineersRouteEntry.tsx");
@@ -96,16 +98,31 @@ check(
 check(
   pageTransition.includes("vortaMobilePageTitle") &&
     pageTransition.includes("mobileRouteLabel") &&
-    mobileHardening.includes("data-vorta-mobile-page-title"),
-  "The mobile shell must retain active-page context after scrolling.",
+    mobileHardening.includes("grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem") &&
+    mobileHardening.includes('> div.md\\:hidden > button') &&
+    mobileHardening.includes("grid-column: 3"),
+  "The shared phone header must lock logo-left, title-centre and menu-right positions.",
+);
+
+check(
+  maintenanceExperience.includes('data-vorta-shared-mobile-ai-launcher="true"') &&
+    maintenanceExperience.includes('aria-label="Ask Vorta"') &&
+    maintenanceExperience.includes('data-vorta-mobile-ai-safe-area="true"') &&
+    maintenanceExperience.includes("mobileAssistantPrompt") &&
+    equipmentTabs.includes('tab.route !== "ai-insights"') &&
+    !equipmentTabs.includes('data-vorta-equipment-mobile-actions="true"') &&
+    mobileHardening.includes('data-vorta-embedded-ai="true"') &&
+    mobileHardening.includes('placeholder^="Ask Vorta about"'),
+  "Mobile pages must use one contextual Ask Vorta launcher without duplicate Equipment docks or inline forms.",
 );
 
 check(
   browserTest.includes("mobileRoutes") &&
     browserTest.includes("expectNoPageOverflow") &&
+    browserTest.includes("data-vorta-shared-mobile-ai-launcher") &&
     browserTest.includes("Pilot evidence views") &&
     browserTest.includes("Appearance"),
-  "Authenticated browser coverage must protect the mobile route matrix.",
+  "Authenticated browser coverage must protect the mobile route matrix and shared AI launcher.",
 );
 
 console.log("Maintenance Manager mobile portal audit contracts passed.");
