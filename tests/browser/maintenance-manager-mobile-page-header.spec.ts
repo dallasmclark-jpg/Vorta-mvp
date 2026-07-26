@@ -63,3 +63,28 @@ test("equipment detail keeps the asset identity while the top bar says Equipment
   await expect(assetHeading).not.toHaveAttribute("data-vorta-mobile-duplicate-page-title", "true");
   await expectNoPageOverflow(page);
 });
+
+test("Settings keeps appearance controls in the page and removes the duplicate header toggle", async ({
+  page,
+}) => {
+  test.skip((page.viewportSize()?.width ?? 1366) >= 768, "Phone-only header contract.");
+  await signInMaintenanceManager(page);
+  await page.goto("/settings");
+
+  const topBar = page.locator(
+    '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
+  );
+  await expect(topBar).toHaveAttribute("data-vorta-mobile-header-title", "Settings");
+  await expect(topBar.getByRole("button", { name: "Open menu", exact: true })).toBeVisible();
+  await expect(topBar.locator("button:visible")).toHaveCount(1);
+
+  const settings = page.locator('[data-vorta-mobile-settings="true"]');
+  await expect(settings.getByRole("heading", { name: "Appearance", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Light\b/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^Dark\b/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^System\b/ })).toHaveCount(1);
+  await expect(
+    page.locator('[data-vorta-mobile-settings-duplicate-theme-toggle="true"]'),
+  ).toBeHidden();
+  await expectNoPageOverflow(page);
+});
