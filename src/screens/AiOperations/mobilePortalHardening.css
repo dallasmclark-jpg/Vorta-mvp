@@ -1,13 +1,17 @@
 @media (max-width: 639px) {
   [data-vorta-portal-shell="true"] > section > div.md\:hidden {
+    display: grid !important;
+    grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+    align-items: center;
+    gap: 0.75rem;
     min-height: 3rem;
     padding-inline: 0.75rem;
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden::after {
-    order: 2;
+    grid-column: 2;
+    grid-row: 1;
     min-width: 0;
-    flex: 1 1 auto;
     overflow: hidden;
     color: rgb(203 213 225);
     content: attr(data-vorta-mobile-page-title);
@@ -20,13 +24,22 @@
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
-    order: 3;
-    margin-left: 0;
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    margin-left: 0 !important;
   }
 
   [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
-    order: 1;
-    flex: 0 0 auto;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    min-width: 0;
+  }
+
+  [data-vorta-embedded-ai="true"],
+  [data-vorta-maintenance-portal="true"] div:has(> div > input[placeholder*="calibration risk"]) {
+    display: none !important;
   }
 
   [data-vorta-mobile-equipment="true"],
@@ -39,6 +52,10 @@
   [data-vorta-mobile-support="true"],
   [data-vorta-mobile-settings="true"] {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  [data-vorta-shared-mobile-ai-launcher="true"] {
+    max-width: calc(100vw - 2rem);
   }
 
   nav[aria-label="Pilot setup stages"] {
