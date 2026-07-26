@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import {
   expectNoPageOverflow,
   signInMaintenanceManager,
@@ -18,6 +18,23 @@ const mobileRoutes = [
   ["/support", "Support"],
   ["/settings", "Settings"],
 ] as const;
+
+async function fontSizePixels(locator: Locator): Promise<number> {
+  return locator.evaluate((element) =>
+    Number.parseFloat(window.getComputedStyle(element).fontSize),
+  );
+}
+
+async function pseudoFontSizePixels(
+  locator: Locator,
+  pseudo: "::before" | "::after",
+): Promise<number> {
+  return locator.evaluate(
+    (element, pseudoElement) =>
+      Number.parseFloat(window.getComputedStyle(element, pseudoElement).fontSize),
+    pseudo,
+  );
+}
 
 test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry", async ({
   page,
@@ -53,6 +70,7 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     await expect(sharedLauncher).toHaveCount(1);
     await expect(sharedLauncher).toBeVisible();
     await expect(sharedLauncher).toHaveAccessibleName("Ask Vorta");
+    expect(await fontSizePixels(sharedLauncher), "Mobile typography: Ask Vorta launcher").toBeGreaterThanOrEqual(16);
     await expectNoPageOverflow(page);
   }
 
@@ -62,6 +80,8 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(navigation.getByRole("link", { name: "Capability Matching" })).toHaveCount(0);
   await expect(navigation.getByRole("link", { name: "Pilot Setup" })).toBeHidden();
   await expect(navigation.getByRole("link", { name: "Data Import" })).toBeHidden();
+  const firstNavigationLink = navigation.getByRole("link").first();
+  expect(await fontSizePixels(firstNavigationLink), "Mobile typography: navigation links").toBeGreaterThanOrEqual(16);
   const navigationBox = await navigation.boundingBox();
   expect(navigationBox).not.toBeNull();
   expect((navigationBox?.x ?? 0) + (navigationBox?.width ?? 0)).toBeGreaterThanOrEqual(358);
@@ -74,15 +94,37 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(engineerPhotos.first()).toBeVisible({ timeout: 30_000 });
   expect(await engineerPhotos.count()).toBeGreaterThan(0);
   await expect(engineerPhotos.first()).toHaveAttribute("src", /^https:\/\//);
+  const engineerDescription = page.getByText(
+    "Who is available, capable and at risk today.",
+    { exact: true },
+  );
+  expect(await fontSizePixels(engineerDescription), "Mobile typography: body copy").toBeGreaterThanOrEqual(16);
 
   await page.goto("/skills-matrix");
-  await expect(page.locator('[data-vorta-mobile-capability-summary="true"]')).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Capability Summary" })).toBeVisible();
+  const capabilitySummary = page.locator('[data-vorta-mobile-capability-summary="true"]');
+  await expect(capabilitySummary).toBeVisible();
+  const capabilityHeading = page.getByRole("heading", { name: "Capability Summary" });
+  await expect(capabilityHeading).toBeVisible();
+  expect(await fontSizePixels(capabilityHeading), "Mobile typography: page heading").toBeGreaterThanOrEqual(24);
+  const capabilityDescription = page.getByText(
+    "Current workforce coverage, critical gaps and affected assets.",
+    { exact: true },
+  );
+  expect(await fontSizePixels(capabilityDescription), "Mobile typography: secondary copy").toBeGreaterThanOrEqual(16);
+  const capabilityScope = page.getByRole("button", {
+    name: "Site Maintenance Capability",
+    exact: true,
+  });
+  expect(await fontSizePixels(capabilityScope), "Mobile typography: selector tabs").toBeGreaterThanOrEqual(16);
+  const capabilityEyebrow = capabilitySummary.getByText(/capability$/i).first();
+  expect(await fontSizePixels(capabilityEyebrow), "Mobile typography: compact labels").toBeGreaterThanOrEqual(12);
 
   await page.goto("/ai-matching");
   await page.waitForURL(/\/requirements$/);
 
   await page.goto("/dashboard");
+  const plantAreaHeading = page.getByRole("heading", { name: "Plant Area Risk", exact: true });
+  expect(await fontSizePixels(plantAreaHeading), "Mobile typography: dashboard section heading").toBeGreaterThanOrEqual(19);
   await sharedLauncher.click();
 
   const mobileAssistant = page.locator(
@@ -107,9 +149,12 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     ":scope > div:first-child > div:first-child > div:first-child svg",
   );
   await expect(assistantHeaderIcon).toBeVisible();
-  await expect(
-    mobileAssistant.getByText("Site risk and action assistant", { exact: true }),
-  ).toBeVisible();
+  const assistantSubtitle = mobileAssistant.getByText(
+    "Site risk and action assistant",
+    { exact: true },
+  );
+  await expect(assistantSubtitle).toBeVisible();
+  expect(await fontSizePixels(assistantSubtitle), "Mobile typography: assistant subtitle").toBeGreaterThanOrEqual(14);
   const closeAssistantBox = await closeAssistant.boundingBox();
   expect(closeAssistantBox?.width ?? 0).toBeGreaterThanOrEqual(44);
   expect(closeAssistantBox?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -133,10 +178,13 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
     window.getComputedStyle(element, "::before").content,
   );
   expect(welcomeContent).toBe('"What can I help with?"');
+  expect(await pseudoFontSizePixels(introAnswer, "::before"), "Mobile typography: assistant welcome").toBeGreaterThanOrEqual(30);
+  expect(await pseudoFontSizePixels(introAnswer, "::after"), "Mobile typography: assistant helper").toBeGreaterThanOrEqual(17);
 
   const promptInput = mobileAssistant.locator('input[type="text"]').last();
   await expect(promptInput).toBeVisible();
   await expect(promptInput).toHaveValue("");
+  expect(await fontSizePixels(promptInput), "Mobile typography: composer input").toBeGreaterThanOrEqual(18);
   await promptInput.focus();
   await expect(promptInput).toHaveCSS("outline-width", "0px");
   await expect(promptInput).toHaveCSS("box-shadow", "none");
@@ -271,6 +319,10 @@ test("The 640 to 767 phone range uses the same compact workflows", async ({ page
     await expectNoPageOverflow(page);
   }
 
+  await page.goto("/skills-matrix");
+  const capabilityHeading = page.getByRole("heading", { name: "Capability Summary" });
+  expect(await fontSizePixels(capabilityHeading), "Mobile typography at 700px").toBeGreaterThanOrEqual(24);
+
   await page.goto("/settings/pilot-setup");
   await page.waitForURL(/\/settings$/);
   await page.goto("/settings/data-import");
@@ -285,4 +337,6 @@ test("The 640 to 767 phone range uses the same compact workflows", async ({ page
   expect(box).not.toBeNull();
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(698);
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(898);
+  const promptInput = assistant.locator('input[type="text"]').last();
+  expect(await fontSizePixels(promptInput), "Mobile typography: 700px composer").toBeGreaterThanOrEqual(18);
 });
