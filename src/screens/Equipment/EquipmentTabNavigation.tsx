@@ -1,8 +1,11 @@
 import { Sparkles } from "lucide-react";
 import {
+  createContext,
+  useContext,
   useLayoutEffect,
   useRef,
   type KeyboardEvent,
+  type PropsWithChildren,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -25,10 +28,26 @@ export type EquipmentTabRoute = (typeof EQUIPMENT_TABS)[number]["route"];
 
 const scrollPositionByEquipment = new Map<string, number>();
 const pendingKeyboardFocusByEquipment = new Map<string, EquipmentTabRoute>();
+const pendingVerticalScrollByEquipment = new Map<
+  string,
+  { route: EquipmentTabRoute; top: number }
+>();
+const EquipmentTabNavigationVisibilityContext = createContext(true);
 
 interface EquipmentTabNavigationProps {
   equipmentId: string;
   activeTab: EquipmentTabRoute;
+}
+
+export function EquipmentTabNavigationVisibilityProvider({
+  visible,
+  children,
+}: PropsWithChildren<{ visible: boolean }>): JSX.Element {
+  return (
+    <EquipmentTabNavigationVisibilityContext.Provider value={visible}>
+      {children}
+    </EquipmentTabNavigationVisibilityContext.Provider>
+  );
 }
 
 export function EquipmentTabNavigation({
@@ -38,7 +57,8 @@ export function EquipmentTabNavigation({
   const navigate = useNavigate();
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
-  const isPhone = useMediaQuery("(max-width: 639px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
+  const visible = useContext(EquipmentTabNavigationVisibilityContext);
   const navigationRef = useRef<HTMLElement>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const visibleTabs = isPhone
@@ -47,6 +67,7 @@ export function EquipmentTabNavigation({
   const activeIndex = visibleTabs.findIndex((tab) => tab.route === activeTab);
 
   useLayoutEffect(() => {
+    if (!visible) return;
     const navigation = navigationRef.current;
     if (!navigation) return;
 
@@ -70,7 +91,34 @@ export function EquipmentTabNavigation({
       pendingKeyboardFocusByEquipment.delete(equipmentId);
       activeButton.focus({ preventScroll: true });
     }
-  }, [activeIndex, activeTab, equipmentId]);
+  }, [activeIndex, activeTab, equipmentId, visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || typeof window === "undefined") return;
+    const pending = pendingVerticalScrollByEquipment.get(equipmentId);
+    if (!pending || pending.route !== activeTab) return;
+
+    const restore = (): void => {
+      window.scrollTo({
+        top: pending.top,
+        left: window.scrollX,
+        behavior: "auto",
+      });
+    };
+
+    restore();
+    const firstFrame = window.requestAnimationFrame(() => {
+      restore();
+      window.requestAnimationFrame(restore);
+    });
+    const settledTimer = window.setTimeout(restore, 160);
+    pendingVerticalScrollByEquipment.delete(equipmentId);
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.clearTimeout(settledTimer);
+    };
+  }, [activeTab, equipmentId, visible]);
 
   const rememberScrollPosition = (): void => {
     const navigation = navigationRef.current;
@@ -109,8 +157,18 @@ export function EquipmentTabNavigation({
   };
 
   const routeTo = (route: EquipmentTabRoute): void => {
-    navigate(`/equipment/${equipmentId}/${route}`);
+    pendingVerticalScrollByEquipment.set(equipmentId, {
+      route,
+      top: window.scrollY,
+    });
+    navigate(`/equipment/${equipmentId}/${route}`, {
+      preventScrollReset: true,
+    });
   };
+
+  if (!visible) {
+    return <span data-vorta-equipment-tab-placeholder="true" hidden />;
+  }
 
   return (
     <div className="mt-4" data-vorta-equipment-mobile-tabs="true">
