@@ -22,6 +22,7 @@ import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWo
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 import { MobileAiPolishStyles } from "./MobileAiPolishStyles";
+import { MobilePageHeaderExperience } from "./MobilePageHeaderExperience";
 import { MobileTypographyStyles } from "./MobileTypographyStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
@@ -218,6 +219,7 @@ export function MaintenanceAiWorkOrderExperience({
       onClickCapture={trackRecommendationFollowThrough}
     >
       <MobileAiPolishStyles />
+      <MobilePageHeaderExperience />
       <MobileTypographyStyles />
       <DataTrustBanner />
       {children}
