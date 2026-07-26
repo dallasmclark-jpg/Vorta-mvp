@@ -10,6 +10,9 @@ const evaluationSet = JSON.parse(read("tests/evals/ask-vorta-core.json"));
 const rpcManifestMigration = read(
   "supabase/migrations/20260726233000_register_shift_cover_ai_brief_rpc.sql",
 );
+const intelligenceMigration = read(
+  "supabase/migrations/20260726234000_enrich_ask_vorta_maintenance_intelligence.sql",
+);
 
 const check = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -19,10 +22,15 @@ const requiredTools = [
   "get_site_risk",
   "get_equipment_risk",
   "get_shift_cover",
+  "get_site_work_backlog",
+  "get_site_maintenance_plan",
+  "get_site_spares_risk",
+  "get_site_capability_actions",
   "get_equipment_work",
   "get_equipment_calibrations",
   "get_equipment_skills",
   "get_equipment_spares",
+  "get_equipment_risk_actions",
   "get_equipment_history",
   "get_equipment_documents",
   "search_maintenance_documents",
@@ -50,22 +58,26 @@ check(
 
 check(
   agent.includes("For shift-cover questions, always call get_shift_cover") &&
-    agent.includes("holiday/training/absence reasons") &&
+    agent.includes("off-rota candidate") &&
+    agent.includes("calculated cover package") &&
     agent.includes('"vorta_get_shift_cover_ai_brief"'),
-  "Shift-cover questions must use dated calendar, exception and skills evidence.",
+  "Shift-cover questions must use dated absences, rota, skills and calculated cover evidence.",
 );
 
 check(
-  agent.includes("MAX_TOOL_ROUNDS = 4") &&
+  agent.includes("MAX_TOOL_ROUNDS = 5") &&
     agent.includes("MAX_TOOL_OUTPUT_CHARACTERS") &&
     agent.includes("store: false") &&
-    agent.includes("max_output_tokens: 1_800"),
+    agent.includes("max_output_tokens: 3_000"),
   "The agent loop, provider storage and response size must remain bounded.",
 );
 
 check(
   agent.includes('type: "json_schema"') &&
     agent.includes("additionalProperties: false") &&
+    agent.includes("coverOptions") &&
+    agent.includes("actionPlan") &&
+    agent.includes("followUpQuestions") &&
     agent.includes("missingData") &&
     agent.includes("toolsUsed"),
   "Ask Vorta must return a strict evidence-aware response contract.",
@@ -104,8 +116,19 @@ check(
 );
 
 check(
+  intelligenceMigration.includes("'offRota'") &&
+    intelligenceMigration.includes("'coverCandidates'") &&
+    intelligenceMigration.includes("'coverPackages'") &&
+    intelligenceMigration.includes("'missingSkillsClosed'") &&
+    intelligenceMigration.includes("'remainingMissingSkills'") &&
+    intelligenceMigration.includes("off_rota_confirmation_required") &&
+    intelligenceMigration.includes("provisional_confirm_availability_and_fatigue"),
+  "Shift Cover intelligence must name rota-off engineers and calculate provisional cover impact without claiming availability.",
+);
+
+check(
   Array.isArray(evaluationSet) &&
-    evaluationSet.length >= 50 &&
+    evaluationSet.length >= 80 &&
     evaluationSet.every(
       (scenario) =>
         typeof scenario.id === "string" &&
