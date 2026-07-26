@@ -36,11 +36,14 @@ for (const slug of [
 ]) {
   mustMatch(resilience, new RegExp(`"${slug}"`), `${slug} must use the shared resilience boundary`);
 }
+mustMatch(resilience, /"vorta_get_shift_cover_snapshot"/, "Shift Cover RPC must use the shared resilience boundary");
+mustMatch(resilience, /statement timeout\|canceling statement/, "Database statement timeouts must be treated as transient evidence failures");
 mustMatch(resilience, /REQUEST_TIMEOUT_MS = 15_000/, "Evidence requests must have a bounded timeout");
 mustMatch(resilience, /MAX_ATTEMPTS = 3/, "Evidence requests must use bounded retry");
 mustMatch(resilience, /TRANSIENT_MESSAGE/, "Only recognised transport failures may be retried");
 mustMatch(resilience, /attempt === MAX_ATTEMPTS - 1/, "Retries must stop at the final attempt");
-mustMatch(resilience, /__vortaLiveEvidenceResilienceInstalled/, "The shared wrapper must be idempotent during reloads");
+mustMatch(resilience, /__vortaLiveEvidenceResilienceInstalled/, "The shared function wrapper must be idempotent during reloads");
+mustMatch(resilience, /__vortaLiveEvidenceRpcResilienceInstalled/, "The shared RPC wrapper must be idempotent during reloads");
 mustMatch(operationsIndex, /import "\.\.\/\.\.\/lib\/liveEvidenceResilience"/, "Maintenance Manager must install the resilience boundary before routes render");
 
 mustMatch(settingsFunction, /details: \{\}/, "Settings evidence must withhold incident detail payloads");
