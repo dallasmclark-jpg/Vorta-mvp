@@ -12,7 +12,7 @@ const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceActions = read("src/lib/maintenanceActions.ts");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobileHardening = read("src/screens/AiOperations/mobilePortalHardening.css");
-const mobileAiPolish = read("src/screens/AiOperations/mobileAiPolish.css");
+const mobileAiPolish = read("src/screens/AiOperations/MobileAiPolishStyles.tsx");
 const pageTransition = read("src/components/PageTransition.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
@@ -113,7 +113,8 @@ check(
     maintenanceExperience.includes('data-vorta-mobile-ai-safe-area="true"') &&
     maintenanceExperience.includes("mobileAssistantPrompt") &&
     maintenanceExperience.includes("openMaintenanceAiAssistant({ submit: false })") &&
-    maintenanceExperience.includes('import "./mobileAiPolish.css"') &&
+    maintenanceExperience.includes('import { MobileAiPolishStyles } from "./MobileAiPolishStyles"') &&
+    maintenanceExperience.includes("<MobileAiPolishStyles />") &&
     maintenanceActions.includes("question?: string") &&
     maintenanceActions.includes("submit: question ?") &&
     equipmentTabs.includes('tab.route !== "ai-insights"') &&
@@ -133,7 +134,8 @@ check(
 );
 
 check(
-  mobileAiPolish.includes("linear-gradient(145deg") &&
+  mobileAiPolish.includes("MOBILE_AI_POLISH_STYLES") &&
+    mobileAiPolish.includes("linear-gradient(145deg") &&
     mobileAiPolish.includes('button[aria-label="Close global assistant"]') &&
     mobileAiPolish.includes("input:focus-visible") &&
     mobileAiPolish.includes("outline: 0 solid transparent !important") &&
