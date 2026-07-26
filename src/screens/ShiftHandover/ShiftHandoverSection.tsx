@@ -14,13 +14,14 @@ import {
   Search,
   Timer,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type ComponentType,
+  type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -151,7 +152,7 @@ function MetricCard({
   label: string;
   value: string;
   detail: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: LucideIcon;
   tone?: string;
 }): JSX.Element {
   return (
@@ -174,7 +175,7 @@ function SelectorTab({
   onClick,
 }: {
   active: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   onClick: () => void;
 }): JSX.Element {
   return (
@@ -202,7 +203,7 @@ function HandoverCard({
   selected: boolean;
   onOpen: () => void;
 }): JSX.Element {
-  const statusTone = STATUS_TONE[item.status];
+  const tone = STATUS_TONE[item.status];
   return (
     <button
       type="button"
@@ -218,7 +219,7 @@ function HandoverCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${statusTone.dot}`} aria-hidden="true" />
+            <span className={`h-2 w-2 rounded-full ${tone.dot}`} aria-hidden="true" />
             <span className="text-xs font-semibold text-blue-300">{item.workOrderNumber}</span>
             <span className={`text-xs font-bold uppercase tracking-[0.12em] ${CRITICALITY_TONE[item.criticality]}`}>
               {item.criticality}
@@ -235,7 +236,7 @@ function HandoverCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${statusTone.badge}`}>
+        <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}>
           {item.statusLabel}
         </span>
         <span className="rounded-md border border-gray-700 bg-[#0d1117] px-2 py-1 text-xs text-slate-400">
@@ -270,13 +271,7 @@ function HandoverCard({
   );
 }
 
-function DetailSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}): JSX.Element {
+function DetailSection({ title, children }: { title: string; children: ReactNode }): JSX.Element {
   return (
     <section className="border-t border-gray-800 pt-5">
       <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</h3>
@@ -295,7 +290,7 @@ function HandoverDetail({
   showClose: boolean;
 }): JSX.Element {
   const navigate = useNavigate();
-  const statusTone = STATUS_TONE[item.status];
+  const tone = STATUS_TONE[item.status];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-vorta-shift-handover-detail="true">
@@ -303,7 +298,7 @@ function HandoverDetail({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-blue-300">{item.workOrderNumber}</span>
-            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${statusTone.badge}`}>
+            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}>
               {item.statusLabel}
             </span>
           </div>
@@ -438,7 +433,7 @@ export function ShiftHandoverSection(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const modePresentation = MODE_PRESENTATION[dataMode];
-  const isCompactDetail = useMediaQuery("(max-width: 1279px)");
+  const compactDetail = useMediaQuery("(max-width: 1279px)");
 
   const [snapshot, setSnapshot] = useState<ShiftHandoverSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -481,14 +476,12 @@ export function ShiftHandoverSection(): JSX.Element {
   }, [scopeMode]);
 
   const filteredItems = useMemo(() => {
-    const normalisedQuery = query.trim().toLowerCase();
-    const matchesStatus = (item: ShiftHandoverItem): boolean => {
+    const searchTerm = query.trim().toLowerCase();
+    const statusMatch = (item: ShiftHandoverItem): boolean => {
       if (status === "all") return true;
       if (status === "completed") return item.status === "completed";
       if (status === "contractor") return item.status === "external_contractor";
-      if (status === "waiting") {
-        return ["waiting_on_parts", "waiting_on_production", "deferred"].includes(item.status);
-      }
+      if (status === "waiting") return ["waiting_on_parts", "waiting_on_production", "deferred"].includes(item.status);
       return item.status !== "completed";
     };
 
@@ -498,8 +491,8 @@ export function ShiftHandoverSection(): JSX.Element {
         if (scopeMode === "area" && scopeValue !== "all" && item.area !== scopeValue) return false;
         if (discipline !== "all" && item.discipline !== discipline) return false;
         if (criticality !== "all" && item.criticality !== criticality) return false;
-        if (!matchesStatus(item)) return false;
-        if (!normalisedQuery) return true;
+        if (!statusMatch(item)) return false;
+        if (!searchTerm) return true;
         return [
           item.workOrderNumber,
           item.notificationNumber,
@@ -510,13 +503,11 @@ export function ShiftHandoverSection(): JSX.Element {
           item.building,
           item.assignedEngineer,
           item.functionalLocation,
-        ].join(" ").toLowerCase().includes(normalisedQuery);
+        ].join(" ").toLowerCase().includes(searchTerm);
       })
       .sort((a, b) => {
         if (sortMode === "breakdown") return b.breakdownMinutes - a.breakdownMinutes;
-        if (sortMode === "recent") {
-          return new Date(b.lastActivityAt ?? 0).getTime() - new Date(a.lastActivityAt ?? 0).getTime();
-        }
+        if (sortMode === "recent") return new Date(b.lastActivityAt ?? 0).getTime() - new Date(a.lastActivityAt ?? 0).getTime();
         return b.criticalityRank - a.criticalityRank || b.breakdownMinutes - a.breakdownMinutes;
       });
   }, [criticality, discipline, query, scopeMode, scopeValue, snapshot?.items, sortMode, status]);
@@ -530,7 +521,7 @@ export function ShiftHandoverSection(): JSX.Element {
 
   const openItem = (item: ShiftHandoverItem): void => {
     setSelectedId(item.id);
-    if (isCompactDetail) setDetailOpen(true);
+    if (compactDetail) setDetailOpen(true);
   };
 
   return (
@@ -746,9 +737,7 @@ export function ShiftHandoverSection(): JSX.Element {
       ) : null}
 
       <DetailDrawer open={detailOpen && Boolean(selectedItem)} onClose={() => setDetailOpen(false)} maxWidth="max-w-xl">
-        {selectedItem ? (
-          <HandoverDetail item={selectedItem} onClose={() => setDetailOpen(false)} showClose />
-        ) : null}
+        {selectedItem ? <HandoverDetail item={selectedItem} onClose={() => setDetailOpen(false)} showClose /> : null}
       </DetailDrawer>
     </section>
   );
