@@ -17,7 +17,7 @@ import { openMaintenanceAiAssistant } from "../../lib/maintenanceActions";
 import { warmMaintenancePortalDataFast } from "../../lib/maintenancePortalFastWarmup";
 import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefetch";
 import { trackPilotUsageEvent } from "../../lib/pilotUsage";
-import { getCachedEquipmentIdentity } from "../Equipment/equipmentData";
+import { getCachedEquipmentIdentity } from "../Equipment/equipmentService";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
