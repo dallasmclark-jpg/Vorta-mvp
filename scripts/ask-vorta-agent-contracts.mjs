@@ -67,6 +67,9 @@ check(
 check(
   agent.includes("MAX_TOOL_ROUNDS = 5") &&
     agent.includes("MAX_TOOL_OUTPUT_CHARACTERS") &&
+    agent.includes('const MODEL = "gpt-5-mini"') &&
+    agent.includes("compactShiftCoverData") &&
+    agent.includes("priorityShiftCountWithDetailedEvidence") &&
     agent.includes("store: false") &&
     agent.includes("max_output_tokens: 3_000"),
   "The agent loop, provider storage and response size must remain bounded.",
@@ -94,7 +97,12 @@ check(
   assistant.includes("await askVortaAgent") &&
     assistant.includes("conversationHistory(messages)") &&
     assistant.includes("using verified deterministic fallback") &&
-    assistant.includes("buildGlobalAnswer("),
+    assistant.includes("buildGlobalAnswer(") &&
+    assistant.includes('answer.responseBadge = "Verified Vorta decision pack"') &&
+    assistant.includes("findings.push({") &&
+    assistant.includes("coverOptions.push({") &&
+    assistant.includes("actionPlan.push({") &&
+    assistant.includes("zero-cover exposures"),
   "The shared assistant must use the agent first and retain its verified deterministic fallback.",
 );
 
