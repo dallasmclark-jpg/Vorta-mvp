@@ -72,13 +72,14 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
     await expect(executionDialog).toBeHidden();
     await expect(page).toHaveURL(workOrdersUrl);
 
-    const askVorta = page.getByRole("button", { name: "Ask Vorta", exact: true });
-    if (await askVorta.isVisible()) {
-      await expectOperationalTouchTarget(askVorta);
-      await askVorta.click();
-      await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
-      await expect(page).toHaveURL(workOrdersUrl);
-    }
+    await expect(page.getByPlaceholder(/Ask Vorta about .* work execution/i)).toBeHidden();
+    const askVorta = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
+    await expect(askVorta).toHaveCount(1);
+    await expect(askVorta).toBeVisible();
+    await expectOperationalTouchTarget(askVorta);
+    await askVorta.click();
+    await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
+    await expect(page).toHaveURL(workOrdersUrl);
 
     await expectNoPageOverflow(page);
     return;
