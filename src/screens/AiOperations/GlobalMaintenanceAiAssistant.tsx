@@ -1932,13 +1932,13 @@ function AnswerBlock({
         </Badge>
       </div>
 
-      <p className="text-[15px] leading-6 text-slate-200 sm:text-xs sm:leading-relaxed">
+      <p className="text-base leading-7 text-slate-200 sm:text-sm sm:leading-6">
         {answer.directAnswer}
       </p>
 
       {hasStructuredFindings && (
         <div>
-          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
+          <h4 className="mb-2 text-[15px] font-bold uppercase tracking-wider text-slate-400 sm:text-sm">
             What Vorta found
           </h4>
           <div className="flex flex-col gap-1.5">
@@ -1948,12 +1948,12 @@ function AnswerBlock({
                 className={`rounded-md border px-3 py-2.5 sm:px-2.5 sm:py-2 ${findingTone(finding.severity)}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[15px] font-bold text-current sm:text-xs">{finding.title}</p>
-                  <span className="shrink-0 text-xs font-bold uppercase tracking-wide opacity-70 sm:text-[10px]">
+                  <p className="text-base font-bold text-current sm:text-sm">{finding.title}</p>
+                  <span className="shrink-0 text-[13px] font-bold uppercase tracking-wide opacity-70 sm:text-xs">
                     {finding.severity}
                   </span>
                 </div>
-                <p className="mt-1 text-sm leading-6 text-slate-300 sm:mt-0.5 sm:text-xs sm:leading-relaxed">
+                <p className="mt-1 text-[15px] leading-6 text-slate-300 sm:mt-0.5 sm:text-sm sm:leading-6">
                   {finding.detail}
                 </p>
               </div>
@@ -1964,7 +1964,7 @@ function AnswerBlock({
 
       {answer.coverOptions && answer.coverOptions.length > 0 && (
         <div>
-          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
+          <h4 className="mb-2 text-[15px] font-bold uppercase tracking-wider text-slate-400 sm:text-sm">
             Best cover options
           </h4>
           <div className="flex flex-col gap-1.5">
@@ -1999,31 +1999,31 @@ function AnswerBlock({
                   </p>
                   {option.skillsCovered.length > 0 && (
                     <div className="mt-2 sm:mt-1">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                      <p className="text-[13px] font-bold uppercase tracking-wide text-slate-400 sm:text-xs">
                         Skills covered
                       </p>
-                      <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                      <p className="mt-0.5 text-[15px] leading-6 text-slate-300 sm:text-sm">
                         {option.skillsCovered.join(", ")}
                       </p>
                     </div>
                   )}
                   {option.assetsProtected.length > 0 && (
                     <div className="mt-2 sm:mt-1">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                      <p className="text-[13px] font-bold uppercase tracking-wide text-slate-400 sm:text-xs">
                         Assets protected
                       </p>
-                      <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                      <p className="mt-0.5 text-[15px] leading-6 text-slate-300 sm:text-sm">
                         {option.assetsProtected.join(", ")}
                       </p>
                     </div>
                   )}
-                  <p className="mt-2 text-[15px] font-semibold leading-6 text-emerald-300 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                  <p className="mt-2 text-base font-semibold leading-6 text-emerald-300 sm:mt-1 sm:text-sm sm:leading-6">
                     {option.projectedImpact}
                   </p>
-                  <p className="mt-2 text-sm leading-5 text-orange-200 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                  <p className="mt-2 text-[15px] leading-6 text-orange-200 sm:mt-1 sm:text-sm sm:leading-6">
                     Remaining risk: {option.remainingRisk}
                   </p>
-                  <p className="mt-2 text-sm leading-5 text-amber-200/80 sm:mt-1 sm:text-[11px] sm:leading-relaxed">
+                  <p className="mt-2 text-[15px] leading-6 text-amber-200/80 sm:mt-1 sm:text-[13px] sm:leading-5">
                     {option.caveat}
                   </p>
                 </div>
