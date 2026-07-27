@@ -770,7 +770,9 @@ function enforceAnswerEvidence(
         "Off-rota engineers — availability not confirmed",
         "Highest missing skills and affected assets",
         "Calculated cover-package impact",
-      ].includes(String(item.title)),
+      ].includes(String(item.title)) &&
+      (!broadCoverQuestion && !packageQuestion ||
+        !["cover", "absence", "skill"].includes(String(item.category))),
   );
   answer.findings = [...deterministicFindings, ...existingFindings].slice(0, 10);
 
