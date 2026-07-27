@@ -44,6 +44,7 @@ if (!token) {
 function answerText(answer) {
   return [
     answer.directAnswer,
+    ...(answer.decisionSummary || []).flatMap((item) => [item.label, item.value]),
     ...(answer.evidence || []),
     ...(answer.findings || []).flatMap((item) => [item.title, item.detail]),
     ...(answer.coverOptions || []).flatMap((item) => [
