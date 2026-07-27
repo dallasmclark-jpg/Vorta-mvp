@@ -3,9 +3,9 @@
     "id": "golden-cover-week",
     "question": "What shift cover issues are there from 27 July to 2 August 2026?",
     "expectedTools": ["get_shift_cover"],
-    "mustMention": ["79", "26", "Daniel Roberts", "Nathan Brooks", "Priya Shah", "Sophie Williams"],
-    "mustMentionAny": ["Gareth Owen", "Nia Roberts", "Isla Green"],
-    "mustNotMention": ["definitely available", "has been assigned"]
+    "mustMention": ["1 Aug", "2 Aug", "51.5", "79", "26", "Daniel Roberts", "Nathan Brooks", "Priya Shah", "Sophie Williams", "Gareth Owen", "Nia Roberts", "Isla Green", "57", "22"],
+    "mustMentionAny": ["off-rota", "availability not confirmed"],
+    "mustNotMention": ["highest priority issues are on the July 29", "definitely available", "has been assigned", "closes 88 missing-skill gaps"]
   },
   {
     "id": "golden-cover-absence",
