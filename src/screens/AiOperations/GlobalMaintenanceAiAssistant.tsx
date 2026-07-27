@@ -1886,7 +1886,7 @@ function buildGlobalAnswer(
     roleNote: roleAwareNote(roleProfile),
     knowledgeChunks,
     missingData: unique(missingData),
-    evidenceGeneratedAt: shiftCoverBrief?.generatedAt,
+    evidenceGeneratedAt: shiftCoverBrief?.sourceUpdatedAt ?? shiftCoverBrief?.generatedAt,
   };
 }
 

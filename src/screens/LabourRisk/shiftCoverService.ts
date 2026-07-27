@@ -67,6 +67,7 @@ export interface ShiftCoverException {
 export interface ShiftCoverSkillRisk {
   shiftDate: string;
   shiftType: ShiftType;
+  gapKey: string;
   skillName: string;
   skillCategory: string | null;
   equipmentName: string;
@@ -118,6 +119,7 @@ export interface ShiftCoverPackage {
   assetsWithClosedGaps: number;
   closedSkills: string[];
   protectedAssets: string[];
+  closedGapKeys: string[];
   status: string;
 }
 
@@ -125,6 +127,7 @@ export interface ShiftCoverAiBrief {
   mode: "live";
   siteId: string;
   generatedAt: string;
+  sourceUpdatedAt: string | null;
   startDate: string;
   endDate: string;
   calendar: ShiftCoverCalendarItem[];
@@ -501,6 +504,7 @@ function parseSkillRisk(value: unknown, index: number): ShiftCoverSkillRisk {
   return {
     shiftDate: requiredString(read(record, "shiftDate", "shift_date"), `${label}.shiftDate`),
     shiftType: shiftType(read(record, "shiftType", "shift_type"), `${label}.shiftType`),
+    gapKey: requiredString(read(record, "gapKey", "gap_key"), `${label}.gapKey`),
     skillName: requiredString(read(record, "skillName", "skill_name"), `${label}.skillName`),
     skillCategory: nullableString(
       read(record, "skillCategory", "skill_category"),
@@ -669,6 +673,10 @@ function parseCoverPackage(value: unknown, index: number): ShiftCoverPackage {
       read(record, "protectedAssets", "protected_assets"),
       `${label}.protectedAssets`,
     ),
+    closedGapKeys: stringArray(
+      read(record, "closedGapKeys", "closed_gap_keys"),
+      `${label}.closedGapKeys`,
+    ),
     status: requiredString(record.status, `${label}.status`),
   };
 }
@@ -706,6 +714,27 @@ function parseAiBrief(
 
   const startTimestamp = dateOnlyTimestamp(startDate, "requested start date");
   const endTimestamp = dateOnlyTimestamp(endDate, "requested end date");
+  const calendar = payload.calendar.map((item, index) =>
+    parseCalendarItem(item, index, startTimestamp, endTimestamp),
+  );
+  const priorityShift = [...calendar]
+    .filter((item) => item.coverageStatus !== "covered" || item.missingSkillCount > 0)
+    .sort(
+      (first, second) =>
+        second.labourRiskScore - first.labourRiskScore ||
+        second.missingSkillCount - first.missingSkillCount ||
+        first.shiftDate.localeCompare(second.shiftDate) ||
+        first.shiftType.localeCompare(second.shiftType),
+    )[0];
+  const parsedCandidates = Array.isArray(rawCoverCandidates)
+    ? rawCoverCandidates.map(parseCoverCandidate)
+    : [];
+  const parsedPackages = Array.isArray(rawCoverPackages)
+    ? rawCoverPackages.map(parseCoverPackage)
+    : [];
+  const forPriorityShift = <T extends { shiftDate: string; shiftType: ShiftType }>(item: T) =>
+    !priorityShift ||
+    (item.shiftDate === priorityShift.shiftDate && item.shiftType === priorityShift.shiftType);
 
   return {
     mode: "live",
@@ -714,23 +743,21 @@ function parseAiBrief(
       payload.generatedAt ?? payload.generated_at,
       "shiftCoverAiBrief.generatedAt",
     ),
+    sourceUpdatedAt: nullableTimestamp(
+      payload.sourceUpdatedAt ?? payload.source_updated_at,
+      "shiftCoverAiBrief.sourceUpdatedAt",
+    ),
     startDate: requiredString(
       payload.startDate ?? payload.start_date,
       "shiftCoverAiBrief.startDate",
     ),
     endDate: requiredString(payload.endDate ?? payload.end_date, "shiftCoverAiBrief.endDate"),
-    calendar: payload.calendar.map((item, index) =>
-      parseCalendarItem(item, index, startTimestamp, endTimestamp),
-    ),
+    calendar,
     exceptions: payload.exceptions.map(parseException),
     skillRisks: rawSkillRisks.map(parseSkillRisk),
     offRota: Array.isArray(rawOffRota) ? rawOffRota.map(parseOffRota) : [],
-    coverCandidates: Array.isArray(rawCoverCandidates)
-      ? rawCoverCandidates.map(parseCoverCandidate)
-      : [],
-    coverPackages: Array.isArray(rawCoverPackages)
-      ? rawCoverPackages.map(parseCoverPackage)
-      : [],
+    coverCandidates: parsedCandidates.filter(forPriorityShift),
+    coverPackages: parsedPackages.filter(forPriorityShift),
     decisionNotes: Array.isArray(rawDecisionNotes)
       ? stringArray(rawDecisionNotes, "shiftCoverAiBrief.decisionNotes")
       : [],

@@ -6,6 +6,8 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const agent = read("netlify/functions/ask-vorta.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
+const shiftCoverService = read("src/screens/LabourRisk/shiftCoverService.ts");
+const trustMigration = read("supabase/migrations/20260727173000_harden_ask_vorta_cover_evidence.sql");
 const evaluationSet = JSON.parse(read("tests/evals/ask-vorta-core.json"));
 const liveGoldenSet = JSON.parse(read("tests/evals/ask-vorta-live-golden.json"));
 const liveEvalRunner = read("scripts/ask-vorta-live-evals.mjs");
@@ -107,6 +109,9 @@ check(
     agent.includes("Closes ${numberValue(primaryPackage.missingSkillsClosed)} of") &&
     agent.includes("rankedCandidates") &&
     agent.includes("evidenceGeneratedAt") &&
+    agent.includes("sourceUpdatedAt") &&
+    agent.includes("coverEvidenceConfidence") &&
+    agent.includes("closedGapKeys") &&
     agent.includes('label: "First action"') &&
     agent.includes("Calculated cover-package impact") &&
     agent.includes("Ask Vorta is read-only and cannot change Vorta records") &&
@@ -167,6 +172,12 @@ check(
     service.includes("isDecisionSummary") &&
     service.includes("record.decisionSummary") &&
     service.includes("evidenceGeneratedAt") &&
+    shiftCoverService.includes("sourceUpdatedAt") &&
+    shiftCoverService.includes("closedGapKeys") &&
+    assistant.includes("shiftCoverBrief?.sourceUpdatedAt") &&
+    trustMigration.includes("vorta_get_shift_cover_ai_brief_base") &&
+    trustMigration.includes("sourceUpdatedAt") &&
+    trustMigration.includes("closedGapKeys") &&
     liveEvalRunner.includes("answer.decisionSummary"),
   "Ask Vorta must preserve the structured decision summary from the agent through the UI and live quality gate.",
 );

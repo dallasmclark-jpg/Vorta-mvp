@@ -78,5 +78,21 @@
     "mustMention": ["read-only"],
     "mustMentionAny": ["cannot", "can’t"],
     "mustNotMention": ["changed", "updated successfully"]
+  },
+  {
+    "id": "golden-cover-holiday-impact",
+    "question": "What cover issues do holidays create next week?",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["cover"],
+    "mustMentionAny": ["holiday", "absence"],
+    "mustNotMention": ["23 Jul", "24 Jul", "25 Jul", "26 Jul"]
+  },
+  {
+    "id": "golden-advisory-order",
+    "question": "What spares should we order first?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMention": ["stock"],
+    "mustMentionAny": ["spare", "part", "component", "material"],
+    "mustNotMention": ["read-only", "cannot change"]
   }
 ]
