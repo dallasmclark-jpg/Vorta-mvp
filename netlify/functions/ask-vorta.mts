@@ -676,6 +676,8 @@ function enforceAnswerEvidence(
     !/\b(holiday|training|absence|rest conflict|fatigue)\b/i.test(question);
   const packageQuestion = /\b(best|strongest|recommended|cover package)\b/i.test(
     question,
+  ) || /\b(who can cover|cover option|cover candidate|replacement cover)\b/i.test(
+    question,
   );
 
   const primaryShift = requestedShift ?? priorityShift;
@@ -707,7 +709,7 @@ function enforceAnswerEvidence(
         : "Priority shift and scheduled team",
     detail:
       jointHighestShifts.length > 1 && primaryShift === priorityShift
-        ? `${jointHighestShifts.map((shift) => `${readableShift(shift)} (${textValues(shift.teamNames).join(" + ")})`).join(" and ")} are joint highest at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} labour risk, with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets. Scheduled engineers: ${scheduledNames.join(", ")}.`
+        ? `${jointHighestShifts.map((shift) => `${readableShift(shift)} (${textValues(shift.teamNames).join(" + ")}), scheduled: ${textValues(shift.engineerNames).join(", ")}`).join("; ")}. These shifts are joint highest at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} labour risk, with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets.`
         : `${readableShift(primaryShift)} — ${teamNames.join(" + ")}. Scheduled engineers: ${scheduledNames.join(", ")}. Labour risk ${numberValue(primaryShift.labourRiskScore).toFixed(1)}; ${numberValue(primaryShift.missingSkillCount)} missing required-skill gaps across ${numberValue(primaryShift.equipmentWithMissingCover)} assets.`,
   });
   deterministicFindings.push({
@@ -822,6 +824,14 @@ function enforceAnswerEvidence(
         ? `${exceptions.length} holiday, training or absence exception${exceptions.length === 1 ? " is" : "s are"} recorded. `
         : "No holiday, training or absence exception is recorded. ") +
       `First move: contact ${packageNames.join(", ")} for ${readableShift(primaryPackage)}; the provisional package fully closes ${numberValue(primaryPackage.missingSkillsClosed)} gaps and leaves ${numberValue(primaryPackage.remainingMissingSkills)}.`;
+  }
+
+  if (packageQuestion && primaryPackage) {
+    const packageNames = textValues(primaryPackage.engineerNames);
+    answer.directAnswer =
+      `Best provisional cover for ${readableShift(primaryPackage)} is ${packageNames.join(", ")}. ` +
+      `The calculation fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} gaps. ` +
+      "They are off-rota candidates, not confirmed available; confirm overtime acceptance, leave and fatigue/rest compliance.";
   }
 
   if ((broadCoverQuestion || packageQuestion) && primaryPackage) {
