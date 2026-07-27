@@ -44,7 +44,11 @@ export const PageTransition = ({ children }: PageTransitionProps): JSX.Element =
 
   return (
     <>
-      <div key={pathname} className="min-w-0 w-full max-w-full overflow-x-hidden">
+      <div
+        key={pathname}
+        data-vorta-page-content="true"
+        className="min-h-full min-w-0 w-full max-w-full overflow-x-hidden"
+      >
         {children}
       </div>
       {isSettingsPage ? <ThemeControl /> : null}
