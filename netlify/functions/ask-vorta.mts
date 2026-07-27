@@ -1406,10 +1406,11 @@ export default async function handler(req: Request, _context: Context): Promise<
         tools: TOOLS,
         tool_choice: "auto",
         parallel_tool_calls: true,
-        max_output_tokens: 3_000,
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 2_000,
         store: false,
         text: {
-          verbosity: "medium",
+          verbosity: "low",
           format: {
             type: "json_schema",
             name: "vorta_maintenance_answer",

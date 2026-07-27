@@ -97,8 +97,10 @@ check(
     agent.includes("compactShiftCoverData") &&
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
     agent.includes("store: false") &&
-    agent.includes("max_output_tokens: 3_000"),
-  "The agent loop, provider storage and response size must remain bounded.",
+    agent.includes('reasoning: { effort: "minimal" }') &&
+    agent.includes('verbosity: "low"') &&
+    agent.includes("max_output_tokens: 2_000"),
+  "The agent loop, reasoning effort, provider storage and response size must remain bounded for serverless latency.",
 );
 
 check(
