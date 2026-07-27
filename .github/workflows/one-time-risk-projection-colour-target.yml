@@ -1,0 +1,40 @@
+name: One-time risk projection colour safety target
+
+on:
+  pull_request_target:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.number == 128
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out focused branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/risk-plan-projection-integrity
+          fetch-depth: 0
+
+      - name: Apply and push final safety patch
+        run: |
+          python scripts/apply-risk-projection-site-colour-fix.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use safe projected value for risk colour state"
+          git push origin HEAD:fix/risk-plan-projection-integrity
+
+      - name: Remove one-time workflow
+        if: always()
+        run: |
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/one-time-risk-projection-colour-target.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove one-time projection colour patch runner"
+          git push origin main
