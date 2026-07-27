@@ -93,14 +93,14 @@ check(
 check(
   agent.includes("MAX_TOOL_ROUNDS = 5") &&
     agent.includes("MAX_TOOL_OUTPUT_CHARACTERS") &&
-    agent.includes('const MODEL = "gpt-5-mini"') &&
+    agent.includes('const MODEL = "gpt-4.1-mini"') &&
     agent.includes("compactShiftCoverData") &&
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
     agent.includes("store: false") &&
-    agent.includes('reasoning: { effort: "minimal" }') &&
-    agent.includes('verbosity: "low"') &&
-    agent.includes("max_output_tokens: 2_000"),
-  "The agent loop, reasoning effort, provider storage and response size must remain bounded for serverless latency.",
+    !agent.includes("reasoning: { effort:") &&
+    !agent.includes('verbosity: "low"') &&
+    agent.includes("max_output_tokens: 3_000"),
+  "The agent loop, low-latency model, provider storage and response size must remain bounded for serverless latency.",
 );
 
 check(
