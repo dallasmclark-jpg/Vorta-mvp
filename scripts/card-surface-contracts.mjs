@@ -26,7 +26,7 @@ assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
 assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
 assert.match(surfaces, /Nested metrics should read as raised controls/);
-assert.match(surfaces, /Operational risk colours retain their hue|preserve their operational meaning/);
+assert.match(surfaces, /risk colours[\s\S]*keep their operational meaning/);
 assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
