@@ -6,7 +6,9 @@ import {
 import {
   AlertTriangle,
   Bot,
+  Check,
   ChevronDown,
+  ClipboardPlus,
   ExternalLink,
   Loader2,
   Mic,
@@ -15,8 +17,11 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { useAuth } from "../../lib/auth";
@@ -42,8 +47,13 @@ import {
 } from "../LabourRisk/shiftCoverService";
 import {
   askVortaAgent,
+  AskVortaAgentError,
+  createAskVortaActionDraft,
+  markAskVortaFallback,
+  submitAskVortaFeedback,
   type VortaAgentAction,
   type VortaAgentCoverOption,
+  type VortaAgentEvidenceLink,
   type VortaAgentFinding,
   type VortaAgentHistoryItem,
 } from "./vortaAgentService";
@@ -156,6 +166,7 @@ interface GlobalAiPromptEventDetail {
 }
 
 interface GlobalAiAnswer {
+  responseId?: string;
   directAnswer: string;
   evidence: string[];
   findings?: VortaAgentFinding[];
@@ -171,6 +182,7 @@ interface GlobalAiAnswer {
   roleNote?: string;
   knowledgeChunks?: EquipmentKnowledgeChunk[];
   missingData?: string[];
+  evidenceLinks?: VortaAgentEvidenceLink[];
 }
 
 interface GlobalAiMessage {
@@ -1859,9 +1871,52 @@ function findingTone(severity: VortaAgentFinding["severity"]): string {
   return "border-blue-500/20 bg-blue-500/10 text-blue-200";
 }
 
-function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
+function AnswerBlock({
+  answer,
+  onFollowUp,
+}: {
+  answer: GlobalAiAnswer;
+  onFollowUp: (question: string) => void;
+}) {
+  const navigate = useNavigate();
+  const { siteContext } = useAuth();
   const hasStructuredFindings = Boolean(answer.findings?.length);
   const hasStructuredActions = Boolean(answer.actionPlan?.length);
+  const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | null>(null);
+  const [feedbackPending, setFeedbackPending] = useState(false);
+  const [draftedActions, setDraftedActions] = useState<Set<number>>(() => new Set());
+  const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
+
+  const recordFeedback = async (value: "helpful" | "not_helpful"): Promise<void> => {
+    if (!answer.responseId || feedbackPending) return;
+    setFeedbackPending(true);
+    try {
+      await submitAskVortaFeedback(answer.responseId, value);
+      setFeedback(value);
+    } catch (error) {
+      setWorkflowMessage(error instanceof Error ? error.message : "Feedback could not be saved.");
+    } finally {
+      setFeedbackPending(false);
+    }
+  };
+
+  const prepareDraft = async (item: VortaAgentAction, index: number): Promise<void> => {
+    if (!siteContext?.siteId || draftedActions.has(index)) return;
+    setWorkflowMessage(null);
+    try {
+      await createAskVortaActionDraft({
+        responseId: answer.responseId,
+        siteId: siteContext.siteId,
+        action: item,
+      });
+      setDraftedActions((current) => new Set(current).add(index));
+      setWorkflowMessage("Action draft prepared for review. No source record was changed.");
+    } catch (error) {
+      setWorkflowMessage(
+        error instanceof Error ? error.message : "The action draft could not be prepared.",
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -1914,49 +1969,65 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
           </h4>
           <div className="flex flex-col gap-1.5">
             {answer.coverOptions.slice(0, 5).map((option, index) => (
-              <div
+              <details
                 key={`${option.shift}-${option.engineerNames.join("-")}-${index}`}
-                className="rounded-md border border-blue-500/20 bg-blue-500/8 px-3 py-2.5 sm:px-2.5 sm:py-2"
+                open={index === 0 ? true : undefined}
+                className="group rounded-md border border-blue-500/20 bg-blue-500/8 px-3 py-2.5 sm:px-2.5 sm:py-2"
               >
-                <p className="text-[15px] font-bold text-blue-200 sm:text-xs">
-                  {option.engineerNames.join(" + ")}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-300 sm:mt-0.5 sm:text-xs">
-                  {option.shift}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-400 sm:mt-1 sm:text-xs sm:leading-relaxed">
-                  {option.reason}
-                </p>
-                {option.skillsCovered.length > 0 && (
-                  <div className="mt-2 sm:mt-1">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
-                      Skills covered
-                    </p>
-                    <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
-                      {option.skillsCovered.join(", ")}
-                    </p>
-                  </div>
-                )}
-                {option.assetsProtected.length > 0 && (
-                  <div className="mt-2 sm:mt-1">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
-                      Assets protected
-                    </p>
-                    <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
-                      {option.assetsProtected.join(", ")}
-                    </p>
-                  </div>
-                )}
-                <p className="mt-2 text-[15px] font-semibold leading-6 text-emerald-300 sm:mt-1 sm:text-xs sm:leading-relaxed">
-                  {option.projectedImpact}
-                </p>
-                <p className="mt-2 text-sm leading-5 text-orange-200 sm:mt-1 sm:text-xs sm:leading-relaxed">
-                  Remaining risk: {option.remainingRisk}
-                </p>
-                <p className="mt-2 text-sm leading-5 text-amber-200/80 sm:mt-1 sm:text-[11px] sm:leading-relaxed">
-                  {option.caveat}
-                </p>
-              </div>
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-2 sm:hidden">
+                  <span>
+                    <span className="block text-[15px] font-bold text-blue-200">
+                      {index === 0 ? "Recommended — " : ""}
+                      {option.engineerNames.join(" + ")}
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold text-slate-300">
+                      {option.shift}
+                    </span>
+                  </span>
+                  <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-blue-300 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="hidden group-open:block sm:!block">
+                  <p className="hidden text-[15px] font-bold text-blue-200 sm:block sm:text-xs">
+                    {index === 0 ? "Recommended — " : ""}
+                    {option.engineerNames.join(" + ")}
+                  </p>
+                  <p className="mt-1 hidden text-sm font-semibold text-slate-300 sm:block sm:mt-0.5 sm:text-xs">
+                    {option.shift}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-400 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                    {option.reason}
+                  </p>
+                  {option.skillsCovered.length > 0 && (
+                    <div className="mt-2 sm:mt-1">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                        Skills covered
+                      </p>
+                      <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                        {option.skillsCovered.join(", ")}
+                      </p>
+                    </div>
+                  )}
+                  {option.assetsProtected.length > 0 && (
+                    <div className="mt-2 sm:mt-1">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">
+                        Assets protected
+                      </p>
+                      <p className="mt-0.5 text-sm leading-5 text-slate-300 sm:text-xs">
+                        {option.assetsProtected.join(", ")}
+                      </p>
+                    </div>
+                  )}
+                  <p className="mt-2 text-[15px] font-semibold leading-6 text-emerald-300 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                    {option.projectedImpact}
+                  </p>
+                  <p className="mt-2 text-sm leading-5 text-orange-200 sm:mt-1 sm:text-xs sm:leading-relaxed">
+                    Remaining risk: {option.remainingRisk}
+                  </p>
+                  <p className="mt-2 text-sm leading-5 text-amber-200/80 sm:mt-1 sm:text-[11px] sm:leading-relaxed">
+                    {option.caveat}
+                  </p>
+                </div>
+              </details>
             ))}
           </div>
         </div>
@@ -2004,6 +2075,25 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
                     <p className="mt-1 text-xs leading-5 text-slate-500 sm:mt-0.5 sm:text-[11px] sm:leading-relaxed">
                       Verify: {item.verification}
                     </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!siteContext?.siteId || draftedActions.has(index)}
+                      onClick={() => void prepareDraft(item, index)}
+                      className="mt-2 h-8 border-emerald-500/25 bg-emerald-500/5 px-2.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-70 sm:h-7 sm:text-[11px]"
+                    >
+                      {draftedActions.has(index) ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          Draft prepared
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardPlus className="h-3.5 w-3.5" />
+                          Prepare action draft
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -2028,12 +2118,14 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
           </h4>
           <div className="flex flex-wrap gap-1.5">
             {answer.followUpQuestions.slice(0, 4).map((question) => (
-              <span
+              <button
+                type="button"
                 key={question}
-                className="rounded-full border border-gray-700 bg-gray-800/70 px-2 py-1 text-[11px] leading-relaxed text-slate-300"
+                onClick={() => onFollowUp(question)}
+                className="rounded-full border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-left text-xs leading-relaxed text-slate-300 transition-colors hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-200 sm:px-2 sm:py-1 sm:text-[11px]"
               >
                 {question}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -2041,6 +2133,27 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
 
       {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
         <GlobalSourceCards chunks={answer.knowledgeChunks} />
+      )}
+
+      {answer.evidenceLinks && answer.evidenceLinks.length > 0 && (
+        <div>
+          <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+            Open in Vorta
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {answer.evidenceLinks.slice(0, 8).map((link) => (
+              <button
+                type="button"
+                key={`${link.recordType}-${link.path}`}
+                onClick={() => navigate(link.path)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-200 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {link.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {answer.sources.length > 0 && (
@@ -2072,6 +2185,12 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
         </div>
       )}
 
+      {workflowMessage && (
+        <p className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-2 text-xs leading-relaxed text-blue-100">
+          {workflowMessage}
+        </p>
+      )}
+
       <div className="flex items-center justify-between border-t border-gray-800 pt-2 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3 w-3 text-emerald-400" />
@@ -2079,6 +2198,41 @@ function AnswerBlock({ answer }: { answer: GlobalAiAnswer }) {
         </span>
         <span className="font-semibold text-blue-400">{answer.confidence}% confidence</span>
       </div>
+      {answer.responseId && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-slate-500">
+            {feedback ? "Thanks—this improves Ask Vorta." : "Was this decision pack useful?"}
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              aria-label="Mark this Ask Vorta response helpful"
+              disabled={feedbackPending}
+              onClick={() => void recordFeedback("helpful")}
+              className={`rounded-md border p-2 transition-colors ${
+                feedback === "helpful"
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                  : "border-gray-700 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
+              }`}
+            >
+              <ThumbsUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Mark this Ask Vorta response not helpful"
+              disabled={feedbackPending}
+              onClick={() => void recordFeedback("not_helpful")}
+              className={`rounded-md border p-2 transition-colors ${
+                feedback === "not_helpful"
+                  ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                  : "border-gray-700 text-slate-400 hover:border-amber-500/30 hover:text-amber-300"
+              }`}
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2494,6 +2648,7 @@ export function GlobalMaintenanceAiAssistant({
   ): Promise<void> => {
     try {
       let agentFailureMessage: string | null = null;
+      let agentFailureResponseId: string | undefined;
 
       if (siteContext?.siteId) {
         try {
@@ -2506,6 +2661,7 @@ export function GlobalMaintenanceAiAssistant({
           });
 
           const answer: GlobalAiAnswer = {
+            responseId: agentAnswer.responseId,
             directAnswer: agentAnswer.directAnswer,
             evidence: agentAnswer.evidence,
             findings: agentAnswer.findings,
@@ -2516,6 +2672,7 @@ export function GlobalMaintenanceAiAssistant({
             sources: agentAnswer.sources,
             missingData: agentAnswer.missingData,
             confidence: agentAnswer.confidence,
+            evidenceLinks: agentAnswer.evidenceLinks,
             roleLabel: roleProfile.label,
             responseBadge: roleProfile.responseBadge,
             intentLabel: agentAnswer.intentLabel,
@@ -2537,6 +2694,10 @@ export function GlobalMaintenanceAiAssistant({
           );
           return;
         } catch (agentError) {
+          agentFailureResponseId =
+            agentError instanceof AskVortaAgentError
+              ? agentError.responseId
+              : undefined;
           agentFailureMessage =
             agentError instanceof Error
               ? agentError.message
@@ -2691,6 +2852,9 @@ export function GlobalMaintenanceAiAssistant({
         ]);
         answer.confidence = Math.min(answer.confidence, 85);
         answer.responseBadge = "Verified Vorta decision pack";
+        if (agentFailureResponseId) {
+          void markAskVortaFallback(agentFailureResponseId);
+        }
       }
 
       setMessages((previous) =>
@@ -3092,6 +3256,9 @@ export function GlobalMaintenanceAiAssistant({
                     <AnswerBlock
                       answer={
                         message.answer
+                      }
+                      onFollowUp={
+                        submitQuestion
                       }
                     />
                   ) : (

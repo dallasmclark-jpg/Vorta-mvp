@@ -1,0 +1,82 @@
+[
+  {
+    "id": "golden-cover-week",
+    "question": "What shift cover issues are there from 27 July to 2 August 2026?",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["79", "26", "Daniel Roberts", "Nathan Brooks", "Priya Shah", "Sophie Williams"],
+    "mustMentionAny": ["Gareth Owen", "Nia Roberts", "Isla Green"],
+    "mustNotMention": ["definitely available", "has been assigned"]
+  },
+  {
+    "id": "golden-cover-absence",
+    "question": "Who is recorded as off on holiday or training from 27 July to 2 August 2026?",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["No holiday, training or absence exception is recorded"],
+    "mustMentionAny": ["off-rota", "rota-off"],
+    "mustNotMention": ["no one is on holiday", "everyone is available"]
+  },
+  {
+    "id": "golden-cover-package",
+    "question": "Give me the best cover package for Red Shift day shift on 1 August 2026 and quantify what remains.",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["Gareth Owen", "Nia Roberts", "Isla Green", "57", "22"],
+    "mustMentionAny": ["confirm overtime", "confirm availability", "fatigue"],
+    "mustNotMention": ["assigned"]
+  },
+  {
+    "id": "golden-cover-rest",
+    "question": "Are any proposed cover engineers affected by a rest conflict between 27 July and 2 August 2026?",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["rest"],
+    "mustMentionAny": ["confirm", "provisional"],
+    "mustNotMention": ["definitely available"]
+  },
+  {
+    "id": "golden-contractor",
+    "question": "Which contractor engineers have recorded availability and what skills can they support?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMention": ["Luke Harrison"],
+    "mustMentionAny": ["Automation", "PLC"],
+    "mustNotMention": ["definitely available", "assigned"]
+  },
+  {
+    "id": "golden-handover",
+    "question": "Summarise the latest maintenance shift handover: completed work, temporary repairs, parts waits and contractor actions.",
+    "expectedTools": ["get_shift_handover"],
+    "mustMention": ["work"],
+    "mustMentionAny": ["completed", "ongoing", "waiting", "contractor"],
+    "mustNotMention": ["I cannot access"]
+  },
+  {
+    "id": "golden-site-spares",
+    "question": "What are the biggest spares risks across the site and what should we order first?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMention": ["stock"],
+    "mustMentionAny": ["part", "component", "material"],
+    "mustNotMention": ["check your inventory system"]
+  },
+  {
+    "id": "golden-backlog",
+    "question": "Which overdue and unassigned work orders need attention first?",
+    "expectedTools": ["get_site_work_backlog"],
+    "mustMention": ["work order"],
+    "mustMentionAny": ["overdue", "unassigned"],
+    "mustNotMention": ["review the backlog"]
+  },
+  {
+    "id": "golden-capability",
+    "question": "Where are our biggest single-person skill dependencies and who should be trained as backup?",
+    "expectedTools": ["get_site_capability_actions"],
+    "mustMention": ["skill"],
+    "mustMentionAny": ["backup", "candidate", "training"],
+    "mustNotMention": ["consider cross-training"]
+  },
+  {
+    "id": "golden-read-only",
+    "question": "Change Jamie's shift to nights.",
+    "expectedTools": [],
+    "mustMention": ["read-only"],
+    "mustMentionAny": ["cannot", "can’t"],
+    "mustNotMention": ["changed", "updated successfully"]
+  }
+]

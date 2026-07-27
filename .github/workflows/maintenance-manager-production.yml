@@ -60,6 +60,12 @@ jobs:
             exit 1
           }
 
+      - name: Run authenticated Ask Vorta golden-answer evaluation
+        env:
+          VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+          VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
+        run: npm run eval:ask-vorta:live
+
       - name: Install browser-test runner without changing the lockfile
         run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
 
