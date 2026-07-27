@@ -18,6 +18,7 @@ const EVIDENCE_RPCS = new Set([
 ]);
 
 const TRANSIENT_MESSAGE = /failed to send a request|failed to fetch|network|load failed|timed out|timeout|statement timeout|canceling statement/i;
+const GENERIC_FUNCTION_ERROR = /edge function returned a non-2xx status code/i;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 3;
 const FUNCTIONS_INSTALL_MARKER = "__vortaLiveEvidenceResilienceInstalled";
@@ -57,6 +58,18 @@ function errorFrom(value: unknown): Error | null {
   return new Error(String(value));
 }
 
+function withFriendlyEvidenceError(result: InvokeResult): InvokeResult {
+  const error = errorFrom(result.error);
+  if (!error || !GENERIC_FUNCTION_ERROR.test(error.message)) return result;
+
+  return {
+    ...result,
+    error: new Error(
+      "Secure evidence could not be refreshed. Tap refresh to try again.",
+    ),
+  };
+}
+
 function withTimeout<T>(request: Promise<T>, evidenceName: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeoutId = window.setTimeout(() => {
@@ -91,7 +104,7 @@ async function retryTransientEvidence(
 
       lastResult = result;
       if (!TRANSIENT_MESSAGE.test(resultError.message) || attempt === MAX_ATTEMPTS - 1) {
-        return result;
+        return withFriendlyEvidenceError(result);
       }
     } catch (error) {
       const currentError = errorFrom(error) ?? new Error(`${evidenceName} evidence request failed`);
@@ -104,7 +117,7 @@ async function retryTransientEvidence(
     await delay(300 * (attempt + 1));
   }
 
-  if (lastResult) return lastResult;
+  if (lastResult) return withFriendlyEvidenceError(lastResult);
   throw lastThrownError ?? new Error(`${evidenceName} evidence could not be loaded`);
 }
 

@@ -2,8 +2,24 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
 
 const SESSION_REFRESH_LEEWAY_MS = 90_000;
+const MOBILE_RESUME_REFRESH_AFTER_MS = 5 * 60 * 1_000;
 const SESSION_EXPIRED_MESSAGE =
   "Your secure Vorta session expired. Please sign in again.";
+const HIDDEN_HTTP_ERROR_MESSAGE =
+  /edge function returned a non-2xx status code/i;
+
+const EVIDENCE_FUNCTIONS = new Set([
+  "skills-matrix-data",
+  "engineers-data",
+  "requirements-data",
+  "training-data",
+  "training-providers-data",
+  "ai-matching-data",
+  "career-evidence-data",
+  "support-evidence-data",
+  "settings-evidence-data",
+  "shift-handover-data",
+]);
 
 type FunctionInvocationResult = {
   data: unknown;
@@ -23,6 +39,7 @@ type FunctionInvoke = (
 
 let recoveryInstalled = false;
 let refreshInFlight: Promise<Session | null> | null = null;
+let hiddenAt: number | null = null;
 
 function sessionNeedsRefresh(session: Session): boolean {
   if (typeof session.expires_at !== "number") return false;
@@ -130,6 +147,24 @@ function invocationFailedAuthentication(result: unknown): boolean {
   );
 }
 
+function invocationMayNeedSessionRefresh(
+  functionName: string,
+  result: unknown,
+): boolean {
+  if (invocationFailedAuthentication(result)) return true;
+  if (!EVIDENCE_FUNCTIONS.has(functionName)) return false;
+  if (!result || typeof result !== "object") return false;
+
+  const invocation = result as FunctionInvocationResult;
+  const visibleStatus =
+    statusFrom(invocation.response) ?? statusFrom(invocation.error);
+
+  return (
+    visibleStatus === null &&
+    HIDDEN_HTTP_ERROR_MESSAGE.test(errorMessage(invocation.error))
+  );
+}
+
 function optionsWithAccessToken(
   options: unknown,
   accessToken: string,
@@ -183,7 +218,7 @@ export function installMaintenanceSessionRecovery(): void {
         ? optionsWithAccessToken(options, currentSession.access_token)
         : options,
     );
-    if (!invocationFailedAuthentication(initialResult)) {
+    if (!invocationMayNeedSessionRefresh(functionName, initialResult)) {
       return initialResult;
     }
 
@@ -208,14 +243,25 @@ export function installMaintenanceSessionRecovery(): void {
     }
   ).invoke = invokeWithSessionRecovery;
 
-  const recoverOnResume = (): void => {
-    void ensureFreshSession(false);
+  const recoverOnResume = (forceRefresh: boolean): void => {
+    void ensureFreshSession(forceRefresh);
   };
 
-  window.addEventListener("pageshow", recoverOnResume);
-  window.addEventListener("online", recoverOnResume);
+  window.addEventListener("pageshow", (event) => {
+    recoverOnResume(event.persisted);
+  });
+  window.addEventListener("online", () => recoverOnResume(true));
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") recoverOnResume();
+    if (document.visibilityState === "hidden") {
+      hiddenAt = Date.now();
+      return;
+    }
+
+    if (document.visibilityState === "visible") {
+      const hiddenDuration = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      recoverOnResume(hiddenDuration >= MOBILE_RESUME_REFRESH_AFTER_MS);
+    }
   });
 }
 

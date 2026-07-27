@@ -26,20 +26,28 @@ check(
     recovery.includes("statusFrom(invocation.error)") &&
     recovery.includes("candidate.context instanceof Response") &&
     recovery.includes("status === 401 || status === 403") &&
+    recovery.includes("invocationMayNeedSessionRefresh") &&
+    recovery.includes("HIDDEN_HTTP_ERROR_MESSAGE") &&
+    recovery.includes("EVIDENCE_FUNCTIONS.has(functionName)") &&
     recovery.includes("ensureFreshSession(true)") &&
     recovery.includes("optionsWithAccessToken") &&
     recovery.includes('headers.set("Authorization"') &&
     recovery.includes("invocationFailedAuthentication(retryResult)") &&
     recovery.includes("expiredSessionResult(retryResult)"),
-  "Maintenance evidence requests must detect wrapped authentication failures, refresh, attach the new token and fail clearly after one retry.",
+  "Maintenance evidence requests must recover explicit and hidden authentication failures, attach a refreshed token and fail clearly after one retry.",
 );
 
 check(
-  recovery.includes('window.addEventListener("pageshow"') &&
+  recovery.includes("MOBILE_RESUME_REFRESH_AFTER_MS") &&
+    recovery.includes('window.addEventListener("pageshow"') &&
+    recovery.includes("event.persisted") &&
     recovery.includes('window.addEventListener("online"') &&
+    recovery.includes("recoverOnResume(true)") &&
     recovery.includes('document.addEventListener("visibilitychange"') &&
-    recovery.includes('document.visibilityState === "visible"'),
-  "Mobile browser resume and reconnect events must refresh stale sessions.",
+    recovery.includes('document.visibilityState === "hidden"') &&
+    recovery.includes('document.visibilityState === "visible"') &&
+    recovery.includes("hiddenDuration >= MOBILE_RESUME_REFRESH_AFTER_MS"),
+  "Mobile browser resume and reconnect events must force-refresh sessions after meaningful suspension.",
 );
 
 check(

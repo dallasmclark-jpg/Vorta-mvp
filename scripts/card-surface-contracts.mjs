@@ -24,13 +24,15 @@ assert.doesNotMatch(card, /text-card-foreground shadow/);
 
 assert.match(surfaces, /--vorta-surface-page: #090c12/);
 assert.match(surfaces, /--vorta-surface-card: #141922/);
-assert.match(surfaces, /--vorta-surface-raised: #1d2532/);
-assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.09\)/);
+assert.match(surfaces, /--vorta-surface-raised: #181f2a/);
+assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
 assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.09\)/);
+assert.match(surfaces, /--vorta-surface-raised-shadow: inset 0 1px 0/);
+assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
 assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
-assert.match(surfaces, /Nested metrics should read as raised controls/);
+assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
 assert.match(surfaces, /rounded-lg/);
 assert.match(surfaces, /border-color: var\(--vorta-surface-raised-border\)/);
 assert.match(surfaces, /Secondary evidence remains readable/);
