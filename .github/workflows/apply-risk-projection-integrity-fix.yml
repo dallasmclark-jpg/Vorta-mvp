@@ -1,0 +1,219 @@
+name: Apply risk projection integrity fix
+
+on:
+  push:
+    branches:
+      - fix/risk-plan-projection-integrity
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/risk-plan-projection-integrity
+          fetch-depth: 0
+
+      - name: Apply focused source changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard_path = Path("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx")
+          dashboard = dashboard_path.read_text()
+
+          before = '''const formatSiteRisk = (value: number): string =>
+            Number(value).toFixed(1);
+
+          const formatFreshness'''
+          after = '''const formatSiteRisk = (value: number): string =>
+            Number(value).toFixed(1);
+
+          const normaliseProjectedRisk = (
+            currentValue: number,
+            projectedValue: number,
+          ): number => {
+            const current = Number(currentValue);
+            const projected = Number(projectedValue);
+
+            if (!Number.isFinite(current)) {
+              return 0;
+            }
+
+            if (
+              !Number.isFinite(projected) ||
+              projected < 0 ||
+              projected > 100
+            ) {
+              return current;
+            }
+
+            return Math.min(current, projected);
+          };
+
+          const formatFreshness'''
+          if dashboard.count(before) != 1:
+            raise SystemExit("formatSiteRisk insertion point changed")
+          dashboard = dashboard.replace(before, after)
+
+          before = '''  const siteRiskReduction = riskReductionPlan
+            ? Math.max(
+                0,
+                Math.round(
+                  (Number(riskReductionPlan.currentSiteRisk) -
+                    Number(riskReductionPlan.projectedSiteRisk)) *
+                    10,
+                ) / 10,
+              )
+            : 0;
+'''
+          after = '''  const safeProjectedSiteRisk = riskReductionPlan
+            ? normaliseProjectedRisk(
+                riskReductionPlan.currentSiteRisk,
+                riskReductionPlan.projectedSiteRisk,
+              )
+            : 0;
+
+          const safeProjectedAreaRisk = riskReductionPlan
+            ? normaliseProjectedRisk(
+                riskReductionPlan.currentAreaRisk,
+                riskReductionPlan.projectedAreaRisk,
+              )
+            : 0;
+
+          const siteRiskReduction = riskReductionPlan
+            ? Math.max(
+                0,
+                Math.round(
+                  (Number(riskReductionPlan.currentSiteRisk) -
+                    safeProjectedSiteRisk) *
+                    10,
+                ) / 10,
+              )
+            : 0;
+
+          const areaRiskReduction = riskReductionPlan
+            ? Math.max(
+                0,
+                Number(riskReductionPlan.currentAreaRisk) -
+                  safeProjectedAreaRisk,
+              )
+            : 0;
+'''
+          if dashboard.count(before) != 1:
+            raise SystemExit("site risk reduction block changed")
+          dashboard = dashboard.replace(before, after)
+
+          before = '''                  {riskReductionPlan
+                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
+                      isSiteRiskScope
+                        ? "area"
+                        : "area"
+                    } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                    : activeRiskScope?.priorityAction ??
+'''
+          after = '''                  {riskReductionPlan
+                    ? areaRiskReduction > 0
+                      ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce area risk from ${riskReductionPlan.currentAreaRisk} to ${safeProjectedAreaRisk}.`
+                      : `${riskReductionPlan.equipmentName}: complete the highest-value work queue. Asset exposure reduces, while ${riskReductionPlan.highestArea} area risk remains ${riskReductionPlan.currentAreaRisk} until the next leading exposure is cleared.`
+                    : activeRiskScope?.priorityAction ??
+'''
+          if dashboard.count(before) != 1:
+            raise SystemExit("risk plan summary block changed")
+          dashboard = dashboard.replace(before, after)
+
+          before = '''                          <span className="text-emerald-400">
+                            {riskReductionPlan.projectedAreaRisk}
+                          </span>'''
+          after = '''                          <span
+                            data-vorta-risk-projection="area"
+                            className={
+                              areaRiskReduction > 0
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
+                            {safeProjectedAreaRisk}
+                          </span>'''
+          if dashboard.count(before) != 1:
+            raise SystemExit("area risk projection block changed")
+          dashboard = dashboard.replace(before, after)
+
+          before = '''                            {formatSiteRisk(riskReductionPlan.projectedSiteRisk)}'''
+          after = '''                            {formatSiteRisk(safeProjectedSiteRisk)}'''
+          if dashboard.count(before) != 1:
+            raise SystemExit("site risk projection value changed")
+          dashboard = dashboard.replace(before, after)
+
+          dashboard_path.write_text(dashboard)
+
+          contract_path = Path("scripts/maintenance-dashboard-contracts.mjs")
+          contracts = contract_path.read_text()
+          before = '''const maintenanceActions = read("../src/lib/maintenanceActions.ts");
+'''
+          after = '''const maintenanceActions = read("../src/lib/maintenanceActions.ts");
+          const riskProjectionMigration = read(
+            "../supabase/migrations/20260727214000_fix_risk_plan_projection_integrity.sql",
+          );
+'''
+          if contracts.count(before) != 1:
+            raise SystemExit("contract import point changed")
+          contracts = contracts.replace(before, after)
+
+          before = '''check(
+            "Desktop KPI cards render as a comparison grid",
+'''
+          after = '''check(
+            "Risk reduction projections fail closed and never colour an increase as improvement",
+            dashboard.includes("normaliseProjectedRisk") &&
+              dashboard.includes("safeProjectedSiteRisk") &&
+              dashboard.includes("safeProjectedAreaRisk") &&
+              dashboard.includes("areaRiskReduction > 0") &&
+              dashboard.includes('data-vorta-risk-projection="area"') &&
+              riskProjectionMigration.includes("vorta_safe_projected_risk") &&
+              riskProjectionMigration.includes("least(p_current, p_projected)") &&
+              !riskProjectionMigration.includes("select private.vorta_refresh_dashboard_scope_plan_cache();")
+          );
+
+          check(
+            "Desktop KPI cards render as a comparison grid",
+'''
+          if contracts.count(before) != 1:
+            raise SystemExit("contract check insertion point changed")
+          contracts = contracts.replace(before, after)
+          contract_path.write_text(contracts)
+
+          migration_path = Path("supabase/migrations/20260727214000_fix_risk_plan_projection_integrity.sql")
+          migration = migration_path.read_text()
+          marker = "select private.vorta_refresh_dashboard_scope_plan_cache();\n\ndo $validation$"
+          if marker not in migration:
+            raise SystemExit("migration cache refresh marker changed")
+          prefix, validation = migration.split(marker, 1)
+          replacement = '''do $validation$
+          begin
+            if private.vorta_safe_projected_risk(68.4, 87.7) <> 68.4
+               or private.vorta_safe_projected_risk(80, 82) <> 80
+               or private.vorta_safe_projected_risk(70, 62) <> 62
+               or private.vorta_risk_level(68.4) <> 'High' then
+              raise exception 'Risk projection integrity helpers failed validation';
+            end if;
+          end;
+          $validation$;
+          '''
+          migration_path.write_text(prefix + replacement)
+
+          workflow_path = Path(".github/workflows/apply-risk-projection-integrity-fix.yml")
+          workflow_path.unlink()
+          PY
+
+      - name: Commit focused fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix risk plan projection integrity and presentation"
+          git push origin HEAD:fix/risk-plan-projection-integrity
