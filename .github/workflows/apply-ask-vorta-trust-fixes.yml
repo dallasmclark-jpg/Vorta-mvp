@@ -1,0 +1,57 @@
+name: Apply Ask Vorta trust fixes
+
+on:
+  push:
+    branches:
+      - agent/ask-vorta-trust-and-cover-fixes
+    paths:
+      - scripts/apply-ask-vorta-agent-trust-fixes.mjs
+      - scripts/apply-ask-vorta-client-trust-fixes.mjs
+      - .github/workflows/apply-ask-vorta-trust-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/ask-vorta-trust-and-cover-fixes
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply agent trust fixes
+        run: node scripts/apply-ask-vorta-agent-trust-fixes.mjs
+
+      - name: Apply client and regression fixes
+        run: node scripts/apply-ask-vorta-client-trust-fixes.mjs
+
+      - name: Remove one-off patch runners
+        run: rm scripts/apply-ask-vorta-agent-trust-fixes.mjs scripts/apply-ask-vorta-client-trust-fixes.mjs .github/workflows/apply-ask-vorta-trust-fixes.yml
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run production checks
+        run: npm run check
+
+      - name: Check patch cleanliness
+        run: git diff --check
+
+      - name: Commit implemented fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Harden Ask Vorta cover evidence"
+          git push
