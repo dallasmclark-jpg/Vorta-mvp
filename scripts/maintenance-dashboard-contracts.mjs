@@ -59,6 +59,7 @@ check(
   "Risk reduction projections fail closed and never colour an increase as improvement",
   dashboard.includes("normaliseProjectedRisk") &&
     dashboard.includes("safeProjectedSiteRisk") &&
+    dashboard.includes("safeProjectedSiteRisk <") &&
     dashboard.includes("safeProjectedAreaRisk") &&
     dashboard.includes("areaRiskReduction > 0") &&
     dashboard.includes('data-vorta-risk-projection="area"') &&

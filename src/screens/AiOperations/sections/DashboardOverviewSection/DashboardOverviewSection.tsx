@@ -1657,8 +1657,8 @@ export const DashboardOverviewSection = (): JSX.Element => {
                           <span className="mx-1.5 text-slate-600">→</span>
                           <span
                             className={
-                              riskReductionPlan.projectedSiteRisk <
-                              riskReductionPlan.currentSiteRisk
+                              safeProjectedSiteRisk <
+                              Number(riskReductionPlan.currentSiteRisk)
                                 ? "text-emerald-400"
                                 : "text-slate-400"
                             }
