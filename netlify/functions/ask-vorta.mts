@@ -28,7 +28,7 @@ interface ToolResult {
   message?: string;
 }
 
-const MODEL = "gpt-5-mini";
+const MODEL = "gpt-4.1-mini";
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOOL_OUTPUT_CHARACTERS = 35_000;
 const RATE_LIMIT_WINDOW_MINUTES = 5;
@@ -1406,11 +1406,9 @@ export default async function handler(req: Request, _context: Context): Promise<
         tools: TOOLS,
         tool_choice: "auto",
         parallel_tool_calls: true,
-        reasoning: { effort: "minimal" },
-        max_output_tokens: 2_000,
+        max_output_tokens: 3_000,
         store: false,
         text: {
-          verbosity: "low",
           format: {
             type: "json_schema",
             name: "vorta_maintenance_answer",
