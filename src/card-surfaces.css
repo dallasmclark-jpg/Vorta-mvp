@@ -43,6 +43,17 @@ html.dark {
 }
 
 /*
+ * A grouping frame should organise child cards without competing with them.
+ * Scope this to the dashboard risk briefing's existing semantic hook so
+ * standalone equipment, engineer, labour and capability cards stay filled.
+ */
+[data-vorta-page-content="true"]
+  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/*
  * A large part of the MVP predates the shared Card primitive. Scope the new
  * hierarchy to neutral, bordered content surfaces so risk colours, selected
  * blue states, charts and status badges keep their operational meaning.
@@ -62,6 +73,13 @@ html.dark {
   border-color: var(--vorta-surface-border) !important;
   background-color: var(--vorta-surface-card) !important;
   box-shadow: var(--vorta-surface-shadow) !important;
+}
+
+/* Re-assert group frames after legacy neutral-card normalisation. */
+[data-vorta-page-content="true"]
+  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 /* Nested metrics should read as grouped panels, not a second card hierarchy. */
