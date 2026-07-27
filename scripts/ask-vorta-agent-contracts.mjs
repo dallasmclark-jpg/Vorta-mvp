@@ -102,6 +102,11 @@ check(
     agent.includes("Joint-highest-risk shifts") &&
     agent.includes("Off-rota engineers — availability not confirmed") &&
     agent.includes("skill-by-asset exposure points") &&
+    agent.includes("Residual risk after proposed cover") &&
+    agent.includes("insufficient validated skill coverage") &&
+    agent.includes("Closes ${numberValue(primaryPackage.missingSkillsClosed)} of") &&
+    agent.includes("rankedCandidates") &&
+    agent.includes("evidenceGeneratedAt") &&
     agent.includes('label: "First action"') &&
     agent.includes("Calculated cover-package impact") &&
     agent.includes("Ask Vorta is read-only and cannot change Vorta records") &&
@@ -145,6 +150,9 @@ check(
     assistant.includes("actionPlan.push({") &&
     assistant.includes("Decision summary") &&
     assistant.includes("Detailed cover evidence") &&
+    assistant.includes("More questions") &&
+    assistant.includes("Evidence updated") &&
+    assistant.includes('"Alternative — "') &&
     assistant.includes("<details") &&
     assistant.includes("Skills covered") &&
     assistant.includes("Assets protected") &&
@@ -158,6 +166,7 @@ check(
     agent.includes("decisionSummary") &&
     service.includes("isDecisionSummary") &&
     service.includes("record.decisionSummary") &&
+    service.includes("evidenceGeneratedAt") &&
     liveEvalRunner.includes("answer.decisionSummary"),
   "Ask Vorta must preserve the structured decision summary from the agent through the UI and live quality gate.",
 );

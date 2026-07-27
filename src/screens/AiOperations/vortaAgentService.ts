@@ -53,6 +53,7 @@ export interface VortaAgentAnswer {
   intentLabel: string;
   toolsUsed: string[];
   evidenceLinks: VortaAgentEvidenceLink[];
+  evidenceGeneratedAt?: string;
 }
 
 export interface VortaAgentDecisionSummaryItem {
@@ -214,6 +215,11 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
     intentLabel: record.intentLabel.trim() || "Vorta analysis",
     toolsUsed: [...new Set(record.toolsUsed)],
     evidenceLinks: record.evidenceLinks,
+    evidenceGeneratedAt:
+      typeof record.evidenceGeneratedAt === "string" &&
+      Number.isFinite(new Date(record.evidenceGeneratedAt).getTime())
+        ? record.evidenceGeneratedAt
+        : undefined,
   };
 }
 
