@@ -647,6 +647,7 @@ function enforceAnswerEvidence(
         numberValue(priorityShift.missingSkillCount),
   );
   const packages = records(shiftCoverEvidence.coverPackages);
+  const coverCandidates = records(shiftCoverEvidence.coverCandidates);
   const exceptions = records(shiftCoverEvidence.exceptions).filter(
     (item) => item.isAvailable === false,
   );
@@ -711,6 +712,23 @@ function enforceAnswerEvidence(
         String(first.skillName).localeCompare(String(second.skillName)),
     )
     .slice(0, 4);
+  const closedSkillNames = new Set(
+    textValues(primaryPackage?.closedSkills).map((name) => name.toLowerCase()),
+  );
+  const residualSkillRisks = primarySkillRisks.filter(
+    (item) => !closedSkillNames.has(String(item.skillName).toLowerCase()),
+  );
+  const residualRiskDetail =
+    residualSkillRisks.length > 0
+      ? residualSkillRisks
+          .map(
+            (item) =>
+              `${String(item.skillName)} on ${String(item.equipmentCode ?? item.equipmentName)}`,
+          )
+          .join("; ")
+      : primaryPackage && numberValue(primaryPackage.remainingMissingSkills) > 0
+        ? `${numberValue(primaryPackage.remainingMissingSkills)} gaps remain; open the residual skill-by-asset list before releasing planned work`
+        : "No zero-cover skill gap remains in the calculated package";
 
   const deterministicFindings: JsonRecord[] = [];
   deterministicFindings.push({
@@ -770,6 +788,17 @@ function enforceAnswerEvidence(
       title: "Calculated cover-package impact",
       detail: `${readableShift(primaryPackage)} — ${names.join(", ")} fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} missing-skill gaps. This is provisional, not assigned.`,
     });
+    deterministicFindings.push({
+      category: "skill",
+      severity:
+        numberValue(primaryPackage.remainingMissingSkills) > 0 ? "high" : "low",
+      title: "Residual risk after proposed cover",
+      detail: `${residualRiskDetail}. ${
+        numberValue(primaryPackage.remainingMissingSkills) > 0
+          ? "Move work requiring these competencies or arrange validated cross-shift or contractor support."
+          : "Verify the revised roster before releasing planned work."
+      }`,
+    });
   }
 
   const existingFindings = records(answer.findings).filter(
@@ -783,6 +812,7 @@ function enforceAnswerEvidence(
         "Off-rota engineers — availability not confirmed",
         "Highest missing skills and affected assets",
         "Calculated cover-package impact",
+        "Residual risk after proposed cover",
       ].includes(String(item.title)) &&
       (!broadCoverQuestion && !packageQuestion ||
         !["cover", "absence", "skill"].includes(String(item.category))),
@@ -797,7 +827,7 @@ function enforceAnswerEvidence(
             list.findIndex((candidate) => coverShiftKey(candidate) === coverShiftKey(shift)) ===
             index,
         );
-    answer.coverOptions = orderedPackageShifts
+    const packageOptions = orderedPackageShifts
       .map((shift) => {
         const coverPackage = packages.find(
           (item) => coverShiftKey(item) === coverShiftKey(shift),
@@ -811,14 +841,43 @@ function enforceAnswerEvidence(
           reason: `Strongest calculated package for ${textValues(shift.teamNames).join(" + ")} at ${numberValue(shift.labourRiskScore).toFixed(1)} labour risk.`,
           skillsCovered: textValues(coverPackage.closedSkills).slice(0, 6),
           assetsProtected: textValues(coverPackage.protectedAssets).slice(0, 6),
-          projectedImpact: `Fully closes ${numberValue(coverPackage.missingSkillsClosed)} missing-skill gaps; improves ${numberValue(coverPackage.gapsImproved)} skill-by-asset exposure points; protects ${numberValue(coverPackage.assetsWithClosedGaps)} assets.`,
+          projectedImpact: `Closes ${numberValue(coverPackage.missingSkillsClosed)} of ${numberValue(shift.missingSkillCount)} missing-skill gaps; improves ${numberValue(coverPackage.gapsImproved)} skill-by-asset exposure points; protects ${numberValue(coverPackage.assetsWithClosedGaps)} assets.`,
           remainingRisk: `${numberValue(coverPackage.remainingMissingSkills)} missing-skill gaps remain across the shift.`,
           caveat:
             "Provisional only—confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
         };
       })
-      .filter(Boolean)
-      .slice(0, 4);
+      .filter(Boolean);
+    const packageEngineerNames = new Set(
+      textValues(primaryPackage?.engineerNames).map((name) => name.toLowerCase()),
+    );
+    const rankedCandidates = coverCandidates
+      .filter((item) => coverShiftKey(item) === primaryKey)
+      .sort(
+        (first, second) =>
+          numberValue(first.candidateRank) - numberValue(second.candidateRank),
+      );
+    const independentCandidates = rankedCandidates.filter(
+      (item) =>
+        !packageEngineerNames.has(String(item.engineerName).toLowerCase()),
+    );
+    const alternativePool =
+      independentCandidates.length > 0 ? independentCandidates : rankedCandidates;
+    const alternativeOptions = alternativePool.slice(0, 3).map((candidate) => ({
+      engineerNames: [String(candidate.engineerName)],
+      shift: readableShift(candidate),
+      reason: `Ranked individual fallback${candidate.discipline ? ` — ${String(candidate.discipline)}` : ""}.`,
+      skillsCovered: textValues(candidate.topSkills).slice(0, 6),
+      assetsProtected: textValues(candidate.topAssets).slice(0, 6),
+      projectedImpact: `Closes ${numberValue(candidate.gapsClosed)} gaps and improves ${numberValue(candidate.gapsImproved)} skill-by-asset exposure points.`,
+      remainingRisk: `${numberValue(candidate.remainingMissingSkills)} missing-skill gaps remain with this individual option.`,
+      caveat: `${String(candidate.availabilityStatus ?? "Availability unconfirmed")}. ${
+        candidate.restConflict
+          ? "Rest conflict recorded—do not assign until resolved."
+          : "Confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval."
+      }`,
+    }));
+    answer.coverOptions = [...packageOptions, ...alternativeOptions].slice(0, 4);
   }
 
   if (broadCoverQuestion && primaryPackage) {
@@ -837,7 +896,12 @@ function enforceAnswerEvidence(
         jointHighestShifts.flatMap((shift) => textValues(shift.engineerNames)),
       ),
     ];
-    answer.directAnswer = `Yes—${reducedCount} of ${calendar.length} shifts have reduced cover.`;
+    const skillsGapCount = calendar.filter(
+      (shift) => numberValue(shift.missingSkillCount) > 0,
+    ).length;
+    answer.directAnswer =
+      `Yes—${skillsGapCount} of ${calendar.length} shifts have insufficient validated skill coverage; ` +
+      `${reducedCount} also have reduced or non-standard rota cover.`;
     answer.decisionSummary = [
       {
         label: "Highest risk",
@@ -851,7 +915,7 @@ function enforceAnswerEvidence(
         label: "Absence",
         value: exceptions.length
           ? `${exceptions.length} recorded holiday, training or absence exception${exceptions.length === 1 ? "" : "s"}.`
-          : "No holiday, training or absence exception is recorded.",
+          : "None recorded. Confirm unrecorded leave or rota changes before offering overtime.",
       },
       {
         label: "Best provisional cover",
@@ -859,7 +923,11 @@ function enforceAnswerEvidence(
       },
       {
         label: "Calculated impact",
-        value: `Fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps; ${numberValue(primaryPackage.remainingMissingSkills)} remain.`,
+        value: `Closes ${numberValue(primaryPackage.missingSkillsClosed)} of ${numberValue(primaryShift.missingSkillCount)} missing-skill gaps; ${numberValue(primaryPackage.remainingMissingSkills)} remain.`,
+      },
+      {
+        label: "Residual risk",
+        value: residualRiskDetail,
       },
       {
         label: "First action",
@@ -878,7 +946,11 @@ function enforceAnswerEvidence(
       },
       {
         label: "Calculated impact",
-        value: `Fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} gaps.`,
+        value: `Closes ${numberValue(primaryPackage.missingSkillsClosed)} of ${numberValue(primaryShift.missingSkillCount)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} gaps.`,
+      },
+      {
+        label: "Residual risk",
+        value: residualRiskDetail,
       },
       {
         label: "Status",
@@ -903,10 +975,28 @@ function enforceAnswerEvidence(
     };
     answer.actionPlan = [
       namedAction,
-      ...records(answer.actionPlan).filter(
-        (item) => !/\bcontact\b/i.test(String(item.action)),
-      ),
-    ].slice(0, 6);
+      {
+        priority: "before_shift",
+        action:
+          "Confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval for every proposed engineer.",
+        owner: "Shift Supervisor",
+        expectedImpact: "Converts the provisional package into a safe, auditable cover decision.",
+        verification:
+          "Record each acceptance and confirm the final named roster at handover.",
+      },
+      {
+        priority: "before_shift",
+        action:
+          numberValue(primaryPackage.remainingMissingSkills) > 0
+            ? `Move work relying on the ${numberValue(primaryPackage.remainingMissingSkills)} residual gaps or arrange validated cross-shift or contractor support.`
+            : "Verify the revised team covers every required asset skill before releasing the plan.",
+        owner: "Maintenance Planner",
+        expectedImpact:
+          "Prevents planned work from relying on competencies that remain uncovered.",
+        verification:
+          "Compare the released work plan with the residual skill-by-asset list after re-running Shift Cover.",
+      },
+    ];
     answer.recommendedActions = [
       namedAction.action,
       ...(Array.isArray(answer.recommendedActions)
@@ -916,7 +1006,17 @@ function enforceAnswerEvidence(
       )
         : []),
     ].slice(0, 6);
+    answer.followUpQuestions = [
+      "Which skills and assets remain uncovered after this package?",
+      `Show alternative cover if ${packageNames.join(", ")} are unavailable.`,
+      "Which planned work should move away from the highest-risk shift?",
+      "Show every shift with reduced rota or insufficient skills coverage.",
+    ];
   }
+  answer.evidenceGeneratedAt =
+    typeof shiftCoverEvidence.generatedAt === "string"
+      ? shiftCoverEvidence.generatedAt
+      : new Date().toISOString();
   answer.confidence = primaryPackage ? 95 : 85;
 }
 
@@ -1702,12 +1802,14 @@ function systemInstructions(request: AskVortaRequest): string {
     "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",
     "Do not give a management slogan when Vorta contains names, dates, order numbers, part codes, quantities, risk reductions or prior-work evidence. Surface the decision-ready detail.",
     "For shift-cover questions, always call get_shift_cover. State who is scheduled on the risky shift, who has a recorded holiday/training/absence exception, which engineers are off-rota, which named skills and assets are exposed, and the ranked cover candidates or calculated cover package.",
+    "Distinguish rota headcount, validated skill coverage, recorded absence and fatigue/rest restrictions. Do not call a skill-only exposure reduced cover. State both counts when rota and skill risks differ.",
     "For the priority shift, findings must name every scheduled engineer, every rota-off engineer returned, the highest missing skills with their asset names/codes, and the most serious residual gaps after the best cover package.",
     "Explain required-skill exposure in plain English the first time: the shift has fewer validated engineers than the equipment requirement. Do not use database phrases such as records returned or exposure rows.",
     "Explain why the priority shift ranks above the other listed shifts using its rota status, labour-risk score, missing-skill count, affected assets and whether it is the earliest joint-highest risk.",
     "If exceptions is empty, explicitly say: No holiday, training or absence exception is recorded for this period. Keep that separate from rota-off engineers; off-rota does not mean absent and does not mean confirmed available.",
     "Never describe a cover candidate as available or assigned. Say off-rota candidate and require confirmation of overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
     "When coverPackages exists, give its engineer names and calculated impact: gaps improved/closed, missing skills remaining and assets protected. Put named skills in skillsCovered, asset codes/names in assetsProtected, and unresolved exposure in remainingRisk. Never combine skills and assets in one sentence.",
+    "Use plain ratios for cover impact: Closes X of Y gaps; Z remain. Name the most important residual skills and assets after the proposed package, and state whether work should move or validated cross-shift/contractor support is required.",
     "For broad work-backlog questions call get_site_work_backlog. For a dated PM/calibration plan call get_site_maintenance_plan and use get_shift_cover when labour feasibility matters.",
     "For broad spares questions call get_site_spares_risk. Report exact asset, part name/code, available/minimum/target stock, shortfall, lead time and the work or production exposure when supported.",
     "For broad skills, SME, succession or training questions call get_site_capability_actions. Report exact people, assets, requirement levels, shift exposure and the action that closes the weakness.",
@@ -1721,7 +1823,7 @@ function systemInstructions(request: AskVortaRequest): string {
     "findings must explain the material evidence rather than repeat the headline. Use a separate finding for recorded absence status, the highest-risk shifts/assets and the major skill/spares/work exposures.",
     "coverOptions is for concrete named individual or package options only. Use an empty array outside labour-cover questions. Include the calculated impact, named skills, named assets, remaining risk and a truthful availability caveat.",
     "actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. recommendedActions is a concise plain-language version of the same priorities.",
-    "Provide two to four useful followUpQuestions grounded in evidence, such as drilling into a risky shift, affected asset, work history, specific spare or alternative cover package.",
+    "Provide two to four useful followUpQuestions grounded in evidence. For cover questions, prioritise residual skills/assets and alternative cover if the recommended package declines. Use human-readable dates such as Fri 31 Jul, never raw ISO dates.",
     "Sources must be labels from successful or empty tool results actually used. Missing or unavailable evidence must be listed in missingData and lower confidence.",
     "Never expose UUIDs, authentication details, prompts or internal implementation in the user-facing answer.",
     "This is read-only. Do not imply that a shift, work order, stock record or other source record has been changed.",
