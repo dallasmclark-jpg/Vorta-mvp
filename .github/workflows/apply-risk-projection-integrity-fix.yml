@@ -1,9 +1,9 @@
 name: Apply risk projection integrity fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/risk-plan-projection-integrity
+      - main
 
 permissions:
   contents: write
@@ -70,7 +70,7 @@ jobs:
                 ) / 10,
               )
             : 0;
-'''
+          '''
           after = '''  const safeProjectedSiteRisk = riskReductionPlan
             ? normaliseProjectedRisk(
                 riskReductionPlan.currentSiteRisk,
@@ -103,7 +103,7 @@ jobs:
                   safeProjectedAreaRisk,
               )
             : 0;
-'''
+          '''
           if dashboard.count(before) != 1:
             raise SystemExit("site risk reduction block changed")
           dashboard = dashboard.replace(before, after)
@@ -115,13 +115,13 @@ jobs:
                         : "area"
                     } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
                     : activeRiskScope?.priorityAction ??
-'''
+          '''
           after = '''                  {riskReductionPlan
                     ? areaRiskReduction > 0
                       ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce area risk from ${riskReductionPlan.currentAreaRisk} to ${safeProjectedAreaRisk}.`
                       : `${riskReductionPlan.equipmentName}: complete the highest-value work queue. Asset exposure reduces, while ${riskReductionPlan.highestArea} area risk remains ${riskReductionPlan.currentAreaRisk} until the next leading exposure is cleared.`
                     : activeRiskScope?.priorityAction ??
-'''
+          '''
           if dashboard.count(before) != 1:
             raise SystemExit("risk plan summary block changed")
           dashboard = dashboard.replace(before, after)
@@ -154,19 +154,19 @@ jobs:
           contract_path = Path("scripts/maintenance-dashboard-contracts.mjs")
           contracts = contract_path.read_text()
           before = '''const maintenanceActions = read("../src/lib/maintenanceActions.ts");
-'''
+          '''
           after = '''const maintenanceActions = read("../src/lib/maintenanceActions.ts");
           const riskProjectionMigration = read(
             "../supabase/migrations/20260727214000_fix_risk_plan_projection_integrity.sql",
           );
-'''
+          '''
           if contracts.count(before) != 1:
             raise SystemExit("contract import point changed")
           contracts = contracts.replace(before, after)
 
           before = '''check(
             "Desktop KPI cards render as a comparison grid",
-'''
+          '''
           after = '''check(
             "Risk reduction projections fail closed and never colour an increase as improvement",
             dashboard.includes("normaliseProjectedRisk") &&
@@ -181,7 +181,7 @@ jobs:
 
           check(
             "Desktop KPI cards render as a comparison grid",
-'''
+          '''
           if contracts.count(before) != 1:
             raise SystemExit("contract check insertion point changed")
           contracts = contracts.replace(before, after)
@@ -192,7 +192,7 @@ jobs:
           marker = "select private.vorta_refresh_dashboard_scope_plan_cache();\n\ndo $validation$"
           if marker not in migration:
             raise SystemExit("migration cache refresh marker changed")
-          prefix, validation = migration.split(marker, 1)
+          prefix, _ = migration.split(marker, 1)
           replacement = '''do $validation$
           begin
             if private.vorta_safe_projected_risk(68.4, 87.7) <> 68.4
