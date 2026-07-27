@@ -33,13 +33,13 @@ patchFile("src/screens/LabourRisk/shiftCoverService.ts", [
     "AI brief source timestamp type",
   ],
   [
-    `    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), \`${label}.shiftDate\`),\n    shiftType: shiftType(read(record, "shiftType", "shift_type"), \`${label}.shiftType\`),\n    skillName: requiredString(read(record, "skillName", "skill_name"), \`${label}.skillName\`),`,
-    `    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), \`${label}.shiftDate\`),\n    shiftType: shiftType(read(record, "shiftType", "shift_type"), \`${label}.shiftType\`),\n    gapKey: requiredString(read(record, "gapKey", "gap_key"), \`${label}.gapKey\`),\n    skillName: requiredString(read(record, "skillName", "skill_name"), \`${label}.skillName\`),`,
+    `    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), \`\${label}.shiftDate\`),\n    shiftType: shiftType(read(record, "shiftType", "shift_type"), \`\${label}.shiftType\`),\n    skillName: requiredString(read(record, "skillName", "skill_name"), \`\${label}.skillName\`),`,
+    `    shiftDate: requiredString(read(record, "shiftDate", "shift_date"), \`\${label}.shiftDate\`),\n    shiftType: shiftType(read(record, "shiftType", "shift_type"), \`\${label}.shiftType\`),\n    gapKey: requiredString(read(record, "gapKey", "gap_key"), \`\${label}.gapKey\`),\n    skillName: requiredString(read(record, "skillName", "skill_name"), \`\${label}.skillName\`),`,
     "skill-risk gap key parser",
   ],
   [
-    `    protectedAssets: stringArray(\n      read(record, "protectedAssets", "protected_assets"),\n      \`${label}.protectedAssets\`,\n    ),\n    status: requiredString(record.status, \`${label}.status\`),`,
-    `    protectedAssets: stringArray(\n      read(record, "protectedAssets", "protected_assets"),\n      \`${label}.protectedAssets\`,\n    ),\n    closedGapKeys: stringArray(\n      read(record, "closedGapKeys", "closed_gap_keys"),\n      \`${label}.closedGapKeys\`,\n    ),\n    status: requiredString(record.status, \`${label}.status\`),`,
+    `    protectedAssets: stringArray(\n      read(record, "protectedAssets", "protected_assets"),\n      \`\${label}.protectedAssets\`,\n    ),\n    status: requiredString(record.status, \`\${label}.status\`),`,
+    `    protectedAssets: stringArray(\n      read(record, "protectedAssets", "protected_assets"),\n      \`\${label}.protectedAssets\`,\n    ),\n    closedGapKeys: stringArray(\n      read(record, "closedGapKeys", "closed_gap_keys"),\n      \`\${label}.closedGapKeys\`,\n    ),\n    status: requiredString(record.status, \`\${label}.status\`),`,
     "cover-package closed keys parser",
   ],
   [
