@@ -96,7 +96,11 @@ check(
     agent.includes('const MODEL = "gpt-4.1-mini"') &&
     agent.includes("compactShiftCoverData") &&
     agent.includes("enforceAnswerEvidence") &&
-    agent.includes("Priority shift scheduled team") &&
+    agent.includes("compareCoverPriority") &&
+    agent.includes("Joint-highest-risk shifts") &&
+    agent.includes("Off-rota engineers — availability not confirmed") &&
+    agent.includes("skill-by-asset exposure points") &&
+    agent.includes("First move: contact") &&
     agent.includes("Calculated cover-package impact") &&
     agent.includes("Ask Vorta is read-only and cannot change Vorta records") &&
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
