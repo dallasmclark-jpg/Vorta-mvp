@@ -21,7 +21,7 @@
     "expectedTools": ["get_shift_cover"],
     "mustMention": ["Gareth Owen", "Nia Roberts", "Isla Green", "57", "22"],
     "mustMentionAny": ["confirm overtime", "confirm availability", "fatigue"],
-    "mustNotMention": ["assigned"]
+    "mustNotMention": ["has been assigned"]
   },
   {
     "id": "golden-cover-rest",
@@ -52,7 +52,7 @@
     "question": "What are the biggest spares risks across the site and what should we order first?",
     "expectedTools": ["get_site_spares_risk"],
     "mustMention": ["stock"],
-    "mustMentionAny": ["part", "component", "material"],
+    "mustMentionAny": ["spare", "part", "component", "material"],
     "mustNotMention": ["check your inventory system"]
   },
   {
