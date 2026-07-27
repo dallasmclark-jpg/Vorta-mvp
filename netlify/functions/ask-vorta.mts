@@ -670,9 +670,7 @@ function enforceAnswerEvidence(
         item.shiftType === priorityShift.shiftType,
     );
   const broadCoverQuestion =
-    /\b(shift cover|cover issue|coverage issue|labour cover|staffing issue)\b/i.test(
-      question,
-    ) &&
+    /\bcover(?:age)?\b/i.test(question) &&
     !/\b(holiday|training|absence|rest conflict|fatigue)\b/i.test(question);
   const packageQuestion = /\b(best|strongest|recommended|cover package)\b/i.test(
     question,
@@ -819,13 +817,19 @@ function enforceAnswerEvidence(
       )
       .join(" and ");
     const packageNames = textValues(primaryPackage.engineerNames);
+    const scheduledForHighestRisk = [
+      ...new Set(
+        jointHighestShifts.flatMap((shift) => textValues(shift.engineerNames)),
+      ),
+    ];
     answer.directAnswer =
       `Yes—${reducedCount} of ${calendar.length} shifts have reduced cover. ` +
       `Highest risk is ${highestLabels}, both at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets. ` +
+      `Scheduled engineers: ${scheduledForHighestRisk.join(", ")}. ` +
       (exceptions.length
         ? `${exceptions.length} holiday, training or absence exception${exceptions.length === 1 ? " is" : "s are"} recorded. `
         : "No holiday, training or absence exception is recorded. ") +
-      `First move: contact ${packageNames.join(", ")} for ${readableShift(primaryPackage)}; the provisional package fully closes ${numberValue(primaryPackage.missingSkillsClosed)} gaps and leaves ${numberValue(primaryPackage.remainingMissingSkills)}.`;
+      `First move: contact the off-rota package ${packageNames.join(", ")} for ${readableShift(primaryPackage)}; it fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps and leaves ${numberValue(primaryPackage.remainingMissingSkills)}.`;
   }
 
   if (packageQuestion && primaryPackage) {
@@ -858,10 +862,11 @@ function enforceAnswerEvidence(
         ? answer.recommendedActions.filter(
             (item): item is string =>
               typeof item === "string" && !/\bcontact\b/i.test(item),
-          )
+      )
         : []),
     ].slice(0, 6);
   }
+  answer.confidence = primaryPackage ? 95 : 85;
 }
 
 async function rpcTool(
@@ -896,6 +901,61 @@ function validDateRange(startDate: unknown, endDate: unknown): boolean {
   const start = new Date(`${startDate}T00:00:00Z`).getTime();
   const end = new Date(`${endDate}T00:00:00Z`).getTime();
   return Number.isFinite(start) && Number.isFinite(end) && end >= start && end - start <= 31 * 86_400_000;
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  const next = new Date(value);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function formatUtcDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function normaliseRelativeShiftCoverArguments(
+  question: string,
+  timezone: string,
+  args: JsonRecord,
+  now = new Date(),
+): JsonRecord {
+  const relativeRange =
+    /\b(this|current|next|following)\s+week\b|\bnext\s+(7|seven)\s+days\b|\b(today|tomorrow)\b/i.exec(
+      question,
+    )?.[0];
+  if (!relativeRange) return args;
+
+  const localDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const today = new Date(`${localDate}T12:00:00Z`);
+  const weekday = today.getUTCDay();
+  const thisWeekStart = addUtcDays(today, weekday === 0 ? -6 : 1 - weekday);
+  let start = thisWeekStart;
+  let end = addUtcDays(start, 6);
+
+  if (/\b(next|following)\s+week\b/i.test(question)) {
+    start = addUtcDays(thisWeekStart, 7);
+    end = addUtcDays(start, 6);
+  } else if (/\btomorrow\b/i.test(question)) {
+    start = addUtcDays(today, 1);
+    end = start;
+  } else if (/\btoday\b/i.test(question)) {
+    start = today;
+    end = start;
+  } else if (/\bnext\s+(7|seven)\s+days\b/i.test(question)) {
+    start = today;
+    end = addUtcDays(start, 6);
+  }
+
+  return {
+    ...args,
+    start_date: formatUtcDate(start),
+    end_date: formatUtcDate(end),
+  };
 }
 
 async function sha256Fingerprint(value: string): Promise<string> {
@@ -1776,13 +1836,21 @@ export default async function handler(req: Request, _context: Context): Promise<
         toolCalls.map(async (toolCall) => {
           usedTools.add(toolCall.name);
           const toolArguments = parseArguments(toolCall.arguments);
-          const link = evidenceLinkForTool(toolCall.name, toolArguments);
+          const effectiveArguments =
+            toolCall.name === "get_shift_cover"
+              ? normaliseRelativeShiftCoverArguments(
+                  request.question,
+                  request.pageContext.timezone,
+                  toolArguments,
+                )
+              : toolArguments;
+          const link = evidenceLinkForTool(toolCall.name, effectiveArguments);
           if (link) evidenceLinks.set(link.path, link);
           let result: ToolResult;
           try {
             result = await executeTool(
               toolCall.name,
-              toolArguments,
+              effectiveArguments,
               supabase,
               request,
             );
@@ -1793,7 +1861,7 @@ export default async function handler(req: Request, _context: Context): Promise<
               !Array.isArray(result.data)
             ) {
               shiftCoverEvidence = result.data as JsonRecord;
-              shiftCoverArguments = toolArguments;
+              shiftCoverArguments = effectiveArguments;
             }
           } catch (error) {
             result = {

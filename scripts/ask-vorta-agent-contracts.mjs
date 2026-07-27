@@ -95,6 +95,8 @@ check(
     agent.includes("MAX_TOOL_OUTPUT_CHARACTERS") &&
     agent.includes('const MODEL = "gpt-4.1-mini"') &&
     agent.includes("compactShiftCoverData") &&
+    agent.includes("normaliseRelativeShiftCoverArguments") &&
+    agent.includes("start_date: formatUtcDate(start)") &&
     agent.includes("enforceAnswerEvidence") &&
     agent.includes("compareCoverPriority") &&
     agent.includes("Joint-highest-risk shifts") &&
