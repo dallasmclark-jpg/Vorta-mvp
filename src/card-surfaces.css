@@ -64,6 +64,13 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
+/* Group-only frames organise child cards without competing with them. */
+[data-vorta-page-content="true"]
+  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 /* Nested metrics should read as grouped panels, not a second card hierarchy. */
 html [data-vorta-page-content="true"] :where(
   .vorta-card,

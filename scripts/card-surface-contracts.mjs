@@ -32,6 +32,18 @@ assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
 assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
+assert.match(surfaces, /Group-only frames organise child cards without competing with them/);
+assert.match(
+  surfaces,
+  /\[data-vorta-card="true"\]:has\(\[data-vorta-mobile-risk-scope="true"\]\)/,
+);
+assert.match(surfaces, /background-color: transparent !important/);
+assert.match(surfaces, /box-shadow: none !important/);
+assert.equal(
+  (surfaces.match(/:has\(\[data-vorta-mobile-risk-scope="true"\]\)/g) ?? []).length,
+  1,
+  "Only the explicit risk-briefing group may become transparent.",
+);
 assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
 assert.match(surfaces, /rounded-lg/);
 assert.match(surfaces, /border-color: var\(--vorta-surface-raised-border\)/);
@@ -51,4 +63,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, card, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, card, group-frame, contrast and launcher hierarchy passed.");
