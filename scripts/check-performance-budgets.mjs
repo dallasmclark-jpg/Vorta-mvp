@@ -7,7 +7,9 @@ const budgets = {
   // per-chunk ceiling while allowing its bounded aggregate and responsive CSS.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 157_000,
+  // The shared cross-portal card hierarchy adds one bounded 3.9 KiB stylesheet
+  // while replacing page-by-page surface drift across every responsive route.
+  totalCssBytes: 162_000,
   totalDistBytes: 3_600_000,
 };
 
