@@ -1,3 +1,4 @@
+// Push-trigger marker: workflow is now present on the branch.
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
