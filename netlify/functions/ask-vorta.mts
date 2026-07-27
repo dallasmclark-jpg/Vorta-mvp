@@ -551,6 +551,98 @@ function compactShiftCoverData(value: unknown): unknown {
   };
 }
 
+function textValues(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
+    : [];
+}
+
+function enforceAnswerEvidence(
+  answer: JsonRecord,
+  question: string,
+  shiftCoverEvidence: JsonRecord | null,
+  shiftCoverArguments: JsonRecord | null,
+): void {
+  const writeRequest =
+    /\b(change|update|assign|delete|create|approve|order|schedule|book|cancel)\b/i.test(
+      question,
+    );
+  if (writeRequest) {
+    const directAnswer =
+      typeof answer.directAnswer === "string" ? answer.directAnswer.trim() : "";
+    if (!/\bread-only\b/i.test(directAnswer) || !/\bcannot\b/i.test(directAnswer)) {
+      answer.directAnswer =
+        `Ask Vorta is read-only and cannot change Vorta records. ${directAnswer}`.trim();
+    }
+  }
+
+  if (!shiftCoverEvidence) return;
+  const calendar = Array.isArray(shiftCoverEvidence.calendar)
+    ? shiftCoverEvidence.calendar.filter(
+        (item): item is JsonRecord =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+  const priorityShift = [...calendar].sort(
+    (first, second) =>
+      numberValue(second.labourRiskScore) - numberValue(first.labourRiskScore) ||
+      numberValue(second.missingSkillCount) - numberValue(first.missingSkillCount),
+  )[0];
+  const findings = Array.isArray(answer.findings) ? answer.findings : [];
+  if (priorityShift) {
+    const scheduledNames = textValues(priorityShift.engineerNames);
+    const teamNames = textValues(priorityShift.teamNames);
+    if (scheduledNames.length) {
+      findings.unshift({
+        category: "cover",
+        severity: "high",
+        title: "Priority shift scheduled team",
+        detail: `${String(priorityShift.shiftDate)} ${String(priorityShift.shiftType)} — ${teamNames.join(", ")}. Scheduled engineers: ${scheduledNames.join(", ")}.`,
+      });
+    }
+  }
+
+  const packages = Array.isArray(shiftCoverEvidence.coverPackages)
+    ? shiftCoverEvidence.coverPackages.filter(
+        (item): item is JsonRecord =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+  const requestedDate =
+    typeof shiftCoverArguments?.start_date === "string"
+      ? shiftCoverArguments.start_date
+      : undefined;
+  const requestedType = /\bnight\b/i.test(question)
+    ? "night"
+    : /\bday\b/i.test(question)
+      ? "day"
+      : undefined;
+  const packageEvidence =
+    packages.find(
+      (item) =>
+        (!requestedDate || item.shiftDate === requestedDate) &&
+        (!requestedType || item.shiftType === requestedType),
+    ) ??
+    packages.find(
+      (item) =>
+        item.shiftDate === priorityShift?.shiftDate &&
+        item.shiftType === priorityShift?.shiftType,
+    );
+  if (packageEvidence) {
+    const names = textValues(packageEvidence.engineerNames);
+    findings.push({
+      category: "cover",
+      severity: "medium",
+      title: "Calculated cover-package impact",
+      detail: `${String(packageEvidence.shiftDate)} ${String(packageEvidence.shiftType)} — ${names.join(", ")} closes ${numberValue(packageEvidence.missingSkillsClosed)} of the required-skill exposures; ${numberValue(packageEvidence.remainingMissingSkills)} remain. This is provisional, not assigned: confirm availability, overtime acceptance, fatigue/rest compliance and manager approval.`,
+    });
+  }
+  answer.findings = findings.slice(0, 10);
+}
+
 async function rpcTool(
   supabase: SupabaseClient,
   source: string,
@@ -1396,6 +1488,8 @@ export default async function handler(req: Request, _context: Context): Promise<
   const usedSources = new Set<string>();
   const usedTools = new Set<string>();
   const evidenceLinks = new Map<string, EvidenceLink>();
+  let shiftCoverEvidence: JsonRecord | null = null;
+  let shiftCoverArguments: JsonRecord | null = null;
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
@@ -1424,6 +1518,12 @@ export default async function handler(req: Request, _context: Context): Promise<
       const toolCalls = response.output.filter((item) => item.type === "function_call");
       if (toolCalls.length === 0) {
         const answer = JSON.parse(response.output_text) as JsonRecord;
+        enforceAnswerEvidence(
+          answer,
+          request.question,
+          shiftCoverEvidence,
+          shiftCoverArguments,
+        );
         answer.sources = [...usedSources];
         answer.toolsUsed = [...usedTools];
         answer.evidenceLinks = [...evidenceLinks.values()];
@@ -1465,6 +1565,15 @@ export default async function handler(req: Request, _context: Context): Promise<
               supabase,
               request,
             );
+            if (
+              toolCall.name === "get_shift_cover" &&
+              result.data &&
+              typeof result.data === "object" &&
+              !Array.isArray(result.data)
+            ) {
+              shiftCoverEvidence = result.data as JsonRecord;
+              shiftCoverArguments = toolArguments;
+            }
           } catch (error) {
             result = {
               source: toolCall.name,
