@@ -7,6 +7,11 @@ const agent = read("netlify/functions/ask-vorta.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const evaluationSet = JSON.parse(read("tests/evals/ask-vorta-core.json"));
+const liveGoldenSet = JSON.parse(read("tests/evals/ask-vorta-live-golden.json"));
+const liveEvalRunner = read("scripts/ask-vorta-live-evals.mjs");
+const qualityMigration = read(
+  "supabase/migrations/20260726235315_add_ask_vorta_quality_workflow.sql",
+);
 const rpcManifestMigration = read(
   "supabase/migrations/20260726233000_register_shift_cover_ai_brief_rpc.sql",
 );
@@ -22,6 +27,8 @@ const requiredTools = [
   "get_site_risk",
   "get_equipment_risk",
   "get_shift_cover",
+  "get_shift_handover",
+  "get_contractor_availability",
   "get_site_work_backlog",
   "get_site_maintenance_plan",
   "get_site_spares_risk",
@@ -49,11 +56,30 @@ check(
 );
 
 check(
+  agent.includes("RATE_LIMIT_REQUESTS = 12") &&
+    agent.includes('"ask_vorta_interactions"') &&
+    agent.includes("questionFingerprint") &&
+    agent.includes("evidenceLinks") &&
+    agent.includes("responseId"),
+  "Ask Vorta must enforce user-level capacity, record privacy-preserving telemetry and return traceable evidence links.",
+);
+
+check(
   agent.includes("You may use only the supplied Vorta tools") &&
     agent.includes("never browse the web") &&
     agent.includes("never invent site records") &&
     !agent.includes('type: "web_search'),
   "Ask Vorta must remain bounded to Vorta evidence with no web-search tool.",
+);
+
+check(
+  service.includes("submitAskVortaFeedback") &&
+    service.includes("createAskVortaActionDraft") &&
+    assistant.includes("Prepare action draft") &&
+    assistant.includes("Was this decision pack useful?") &&
+    assistant.includes("Open in Vorta") &&
+    assistant.includes("onFollowUp(question)"),
+  "Ask Vorta must support feedback, approval-only action drafts, evidence navigation and tappable follow-ups.",
 );
 
 check(
@@ -113,12 +139,17 @@ check(
   "The shared assistant must use the agent first and retain its verified deterministic fallback.",
 );
 
+const agentMutationTargets = [
+  ...agent.matchAll(
+    /\.from\("([^"]+)"\)[\s\S]{0,180}?\.(insert|update|upsert|delete)\(/g,
+  ),
+].map((match) => match[1]);
 check(
-  !agent.includes(".insert(") &&
-    !agent.includes(".update(") &&
-    !agent.includes(".upsert(") &&
-    !agent.includes(".delete("),
-  "The first Ask Vorta agent release must remain read-only.",
+  agentMutationTargets.length > 0 &&
+    agentMutationTargets.every((table) => table === "ask_vorta_interactions") &&
+    !agent.includes('.from("work_orders").update(') &&
+    !agent.includes('.from("engineer_availability").update('),
+  "Ask Vorta may write only its own quality telemetry; operational source records must remain read-only.",
 );
 
 check(
@@ -158,5 +189,32 @@ const evaluationTools = new Set(evaluationSet.flatMap((scenario) => scenario.exp
 for (const tool of requiredTools) {
   check(evaluationTools.has(tool), `The evaluation baseline does not exercise ${tool}.`);
 }
+
+check(
+  Array.isArray(liveGoldenSet) &&
+    liveGoldenSet.length >= 10 &&
+    liveGoldenSet.every(
+      (scenario) =>
+        typeof scenario.id === "string" &&
+        typeof scenario.question === "string" &&
+        Array.isArray(scenario.expectedTools) &&
+        Array.isArray(scenario.mustMention) &&
+        Array.isArray(scenario.mustNotMention),
+    ) &&
+    liveEvalRunner.includes("VORTA_EVAL_TOKEN") &&
+    liveEvalRunner.includes("/api/ask-vorta") &&
+    liveEvalRunner.includes("missing tool") &&
+    liveEvalRunner.includes("unsafe phrase"),
+  "Ask Vorta must retain an executable, authenticated golden-answer evaluation suite.",
+);
+
+check(
+  qualityMigration.includes("ask_vorta_interactions") &&
+    qualityMigration.includes("ask_vorta_action_drafts") &&
+    qualityMigration.includes("enable row level security") &&
+    qualityMigration.includes("vorta_rls_has_site_access") &&
+    qualityMigration.includes("grant select, insert, update"),
+  "Ask Vorta telemetry and drafts must remain explicitly granted, RLS protected and site scoped.",
+);
 
 console.log("Ask Vorta authenticated, Vorta-only, evidence and fallback contracts passed.");

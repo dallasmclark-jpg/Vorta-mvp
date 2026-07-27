@@ -31,7 +31,14 @@ export interface VortaAgentAction {
   verification: string;
 }
 
+export interface VortaAgentEvidenceLink {
+  label: string;
+  path: string;
+  recordType: "shift" | "handover" | "equipment" | "work" | "spare" | "skill" | "document" | "risk";
+}
+
 export interface VortaAgentAnswer {
+  responseId: string;
   directAnswer: string;
   evidence: string[];
   findings: VortaAgentFinding[];
@@ -44,6 +51,7 @@ export interface VortaAgentAnswer {
   confidence: number;
   intentLabel: string;
   toolsUsed: string[];
+  evidenceLinks: VortaAgentEvidenceLink[];
 }
 
 interface AskVortaAgentInput {
@@ -55,6 +63,16 @@ interface AskVortaAgentInput {
 }
 
 const REQUEST_TIMEOUT_MS = 55_000;
+
+export class AskVortaAgentError extends Error {
+  responseId?: string;
+
+  constructor(message: string, responseId?: string) {
+    super(message);
+    this.name = "AskVortaAgentError";
+    this.responseId = responseId;
+  }
+}
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -111,6 +129,20 @@ function isActionPlan(value: unknown): value is VortaAgentAction[] {
   );
 }
 
+function isEvidenceLinks(value: unknown): value is VortaAgentEvidenceLink[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.label === "string" &&
+        typeof item.path === "string" &&
+        item.path.startsWith("/") &&
+        typeof item.recordType === "string",
+    )
+  );
+}
+
 function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   if (!isRecord(value)) {
     throw new Error("Ask Vorta returned an invalid response.");
@@ -120,6 +152,8 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   if (
     typeof record.directAnswer !== "string" ||
     !record.directAnswer.trim() ||
+    typeof record.responseId !== "string" ||
+    !record.responseId ||
     !isStringArray(record.evidence) ||
     !isFindings(record.findings) ||
     !isCoverOptions(record.coverOptions) ||
@@ -129,6 +163,7 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
     !isStringArray(record.sources) ||
     !isStringArray(record.missingData) ||
     !isStringArray(record.toolsUsed) ||
+    !isEvidenceLinks(record.evidenceLinks) ||
     typeof record.intentLabel !== "string" ||
     typeof record.confidence !== "number" ||
     !Number.isFinite(record.confidence)
@@ -137,6 +172,7 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   }
 
   return {
+    responseId: record.responseId,
     directAnswer: record.directAnswer.trim(),
     evidence: record.evidence,
     findings: record.findings,
@@ -149,7 +185,76 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
     confidence: Math.max(0, Math.min(100, Math.round(record.confidence))),
     intentLabel: record.intentLabel.trim() || "Vorta analysis",
     toolsUsed: [...new Set(record.toolsUsed)],
+    evidenceLinks: record.evidenceLinks,
   };
+}
+
+export async function submitAskVortaFeedback(
+  responseId: string,
+  feedback: "helpful" | "not_helpful",
+  reason?: string,
+): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session?.user.id) {
+    throw new Error("Your Vorta session has expired.");
+  }
+  const { error } = await supabase
+    .from("ask_vorta_interactions")
+    .update({
+      feedback,
+      feedback_reason: reason?.trim().slice(0, 500) || null,
+      feedback_at: new Date().toISOString(),
+    })
+    .eq("id", responseId)
+    .eq("user_id", sessionData.session.user.id);
+  if (error) throw new Error("Vorta could not save this feedback.");
+}
+
+export async function createAskVortaActionDraft({
+  responseId,
+  siteId,
+  action,
+}: {
+  responseId?: string;
+  siteId: string;
+  action: VortaAgentAction;
+}): Promise<string> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) throw new Error("Your Vorta session has expired.");
+  const { data, error } = await supabase
+    .from("ask_vorta_action_drafts")
+    .insert({
+      interaction_id: responseId || null,
+      site_id: siteId,
+      user_id: userId,
+      priority: action.priority,
+      action: action.action,
+      owner: action.owner,
+      expected_impact: action.expectedImpact,
+      verification: action.verification,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error || !data?.id) {
+    throw new Error("Vorta could not prepare this action draft.");
+  }
+  return String(data.id);
+}
+
+export async function markAskVortaFallback(responseId: string): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return;
+  await supabase
+    .from("ask_vorta_interactions")
+    .update({
+      status: "fallback",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", responseId)
+    .eq("user_id", userId);
 }
 
 export async function askVortaAgent({
@@ -198,7 +303,13 @@ export async function askVortaAgent({
         typeof (payload as Record<string, unknown>).error === "string"
           ? String((payload as Record<string, unknown>).error)
           : "Ask Vorta could not complete the analysis.";
-      throw new Error(message);
+      const responseId =
+        payload &&
+        typeof payload === "object" &&
+        typeof (payload as Record<string, unknown>).responseId === "string"
+          ? String((payload as Record<string, unknown>).responseId)
+          : undefined;
+      throw new AskVortaAgentError(message, responseId);
     }
 
     return parseAgentAnswer(payload);

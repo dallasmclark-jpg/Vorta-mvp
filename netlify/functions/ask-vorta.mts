@@ -31,6 +31,8 @@ interface ToolResult {
 const MODEL = "gpt-5-mini";
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOOL_OUTPUT_CHARACTERS = 35_000;
+const RATE_LIMIT_WINDOW_MINUTES = 5;
+const RATE_LIMIT_REQUESTS = 12;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ALLOWED_ROLES = new Set([
   "maintenance-manager",
@@ -108,6 +110,22 @@ const TOOLS: Tool[] = [
       required: ["start_date", "end_date"],
       additionalProperties: false,
     },
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_shift_handover",
+    description:
+      "Get the latest authenticated maintenance shift-handover evidence from SAP work confirmations, including work completed, temporary repairs, outstanding work, materials, contractor involvement and the next action.",
+    parameters: EMPTY_PARAMETERS,
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_contractor_availability",
+    description:
+      "Get site-scoped contractor engineers and their recorded availability, on-call/remote/onsite support status, disciplines and validated skills. Never infer availability when no current record exists.",
+    parameters: EMPTY_PARAMETERS,
     strict: true,
   },
   {
@@ -567,6 +585,62 @@ function validDateRange(startDate: unknown, endDate: unknown): boolean {
   return Number.isFinite(start) && Number.isFinite(end) && end >= start && end - start <= 31 * 86_400_000;
 }
 
+async function sha256Fingerprint(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+interface EvidenceLink {
+  label: string;
+  path: string;
+  recordType: "shift" | "handover" | "equipment" | "work" | "spare" | "skill" | "document" | "risk";
+}
+
+function evidenceLinkForTool(name: string, args: JsonRecord): EvidenceLink | null {
+  const equipment = equipmentId(args);
+  const equipmentPath = equipment ? `/equipment/${encodeURIComponent(equipment)}` : null;
+  const links: Record<string, EvidenceLink> = {
+    get_site_risk: { label: "Open site risk", path: "/dashboard", recordType: "risk" },
+    get_equipment_risk: { label: "Open equipment", path: "/equipment", recordType: "equipment" },
+    get_shift_cover: { label: "Open Shift Cover", path: "/shift-cover", recordType: "shift" },
+    get_shift_handover: { label: "Open Shift Handover", path: "/shift-handover", recordType: "handover" },
+    get_contractor_availability: { label: "Open Engineers", path: "/engineers", recordType: "skill" },
+    get_site_work_backlog: { label: "Open work plan", path: "/dashboard?focus=work-plan", recordType: "work" },
+    get_site_maintenance_plan: { label: "Open maintenance plan", path: "/dashboard?focus=work-plan", recordType: "work" },
+    get_site_spares_risk: { label: "Open equipment spares", path: "/equipment", recordType: "spare" },
+    get_site_capability_actions: { label: "Open Skills Matrix", path: "/skills-matrix", recordType: "skill" },
+  };
+  if (links[name]) return links[name];
+  if (!equipmentPath) return null;
+  if (name === "get_equipment_work") {
+    return { label: "Open asset work orders", path: `${equipmentPath}/work-orders`, recordType: "work" };
+  }
+  if (name === "get_equipment_calibrations") {
+    return { label: "Open asset PMs", path: `${equipmentPath}/pms`, recordType: "work" };
+  }
+  if (name === "get_equipment_skills") {
+    return { label: "Open asset skills", path: `${equipmentPath}/skills`, recordType: "skill" };
+  }
+  if (name === "get_equipment_spares") {
+    return { label: "Open asset spares", path: `${equipmentPath}/spares`, recordType: "spare" };
+  }
+  if (name === "get_equipment_history") {
+    return { label: "Open asset history", path: `${equipmentPath}/history`, recordType: "work" };
+  }
+  if (name === "get_equipment_documents" || name === "search_maintenance_documents") {
+    return { label: "Open asset documents", path: `${equipmentPath}/documents`, recordType: "document" };
+  }
+  if (name === "get_equipment_risk_actions") {
+    return { label: "Open asset risk", path: `${equipmentPath}/overview`, recordType: "risk" };
+  }
+  return null;
+}
+
 async function getSiteEquipmentIndex(
   supabase: SupabaseClient,
   siteId: string,
@@ -651,6 +725,235 @@ async function executeTool(
       return result.status === "ok"
         ? { ...result, data: compactShiftCoverData(result.data) }
         : result;
+    }
+
+    case "get_shift_handover": {
+      const latestResult = await supabase
+        .from("work_order_confirmations")
+        .select("confirmation_timestamp,created_at")
+        .eq("site_id", request.siteId)
+        .eq("reversal", false)
+        .order("confirmation_timestamp", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestResult.error) {
+        return {
+          source: "Latest shift handover and SAP confirmations",
+          status: "unavailable",
+          message: latestResult.error.message,
+        };
+      }
+      const anchorValue =
+        latestResult.data?.confirmation_timestamp ?? latestResult.data?.created_at;
+      if (!anchorValue) {
+        return {
+          source: "Latest shift handover and SAP confirmations",
+          status: "empty",
+          data: { summary: { itemCount: 0 }, items: [] },
+        };
+      }
+      const anchor = new Date(anchorValue);
+      const windowEnd = new Date(anchor.getTime() + 1).toISOString();
+      const windowStart = new Date(anchor.getTime() - 12 * 60 * 60 * 1_000).toISOString();
+      const confirmationResult = await supabase
+        .from("work_order_confirmations")
+        .select(
+          "id,work_order_id,confirmation_number,confirmation_text,confirmed_by,work_center,confirmation_timestamp,actual_work,work_unit,actual_duration,duration_unit,final_confirmation,source_system",
+        )
+        .eq("site_id", request.siteId)
+        .eq("reversal", false)
+        .gte("confirmation_timestamp", windowStart)
+        .lte("confirmation_timestamp", windowEnd)
+        .order("confirmation_timestamp", { ascending: false })
+        .limit(150);
+      if (confirmationResult.error) {
+        return {
+          source: "Latest shift handover and SAP confirmations",
+          status: "unavailable",
+          message: confirmationResult.error.message,
+        };
+      }
+      const confirmations = confirmationResult.data ?? [];
+      const workOrderIds = [
+        ...new Set(confirmations.map((item) => String(item.work_order_id)).filter(Boolean)),
+      ];
+      const workResult = workOrderIds.length
+        ? await supabase
+            .from("work_orders")
+            .select(
+              "id,equipment_id,wo_number,priority,description,work_type,status,assigned_engineer,outcome,downtime_minutes,fault_code,system_status_codes,user_status_codes,primary_notification_number,updated_at",
+            )
+            .eq("site_id", request.siteId)
+            .in("id", workOrderIds)
+        : { data: [], error: null };
+      if (workResult.error) {
+        return {
+          source: "Latest shift handover and SAP confirmations",
+          status: "unavailable",
+          message: workResult.error.message,
+        };
+      }
+      const equipment = await getSiteEquipmentIndex(supabase, request.siteId);
+      const orderMap = new Map((workResult.data ?? []).map((item) => [String(item.id), item]));
+      const grouped = new Map<string, typeof confirmations>();
+      confirmations.forEach((confirmation) => {
+        const id = String(confirmation.work_order_id);
+        grouped.set(id, [...(grouped.get(id) ?? []), confirmation]);
+      });
+      const items = [...grouped.entries()].map(([workOrderId, orderConfirmations]) => {
+        const order = orderMap.get(workOrderId);
+        const latest = orderConfirmations[0];
+        const evidence = `${order?.status ?? ""} ${order?.outcome ?? ""} ${order?.assigned_engineer ?? ""} ${latest?.confirmation_text ?? ""}`.toLowerCase();
+        const contractor = /contractor|external|vendor|oem support|specialist/.test(evidence);
+        const waitingOnParts = /waiting parts|waiting on parts|awaiting spare|awaiting material|material shortage/.test(evidence);
+        const temporary = /temporary|temporarily|running with restriction|restored pending/.test(evidence);
+        const complete =
+          Boolean(latest?.final_confirmation) ||
+          /completed|closed|teco|returned to service/.test(evidence);
+        return {
+          workOrderNumber: order?.wo_number,
+          notificationNumber: order?.primary_notification_number,
+          ...assetLabel(equipment.get(String(order?.equipment_id))),
+          priority: order?.priority,
+          description: order?.description,
+          faultCode: order?.fault_code,
+          assignedEngineer: order?.assigned_engineer ?? latest?.confirmed_by,
+          latestConfirmation: latest?.confirmation_text,
+          confirmedBy: latest?.confirmed_by,
+          lastActivityAt: latest?.confirmation_timestamp,
+          actualWork: latest?.actual_work,
+          workUnit: latest?.work_unit,
+          downtimeMinutes: order?.downtime_minutes,
+          status: waitingOnParts
+            ? "waiting_on_parts"
+            : contractor
+              ? "external_contractor"
+              : temporary
+                ? "temporarily_restored"
+                : complete
+                  ? "completed"
+                  : "ongoing",
+          contractor,
+          nextAction: waitingOnParts
+            ? "Confirm the required material, reservation and expected issue time."
+            : contractor
+              ? "Confirm contractor attendance, site access and agreed technical scope."
+              : temporary
+                ? "Monitor the next operating cycle and complete the permanent repair plan."
+                : complete
+                  ? "Confirm the repair remains stable on the incoming shift."
+                  : "Review the latest confirmation and continue the outstanding scope.",
+        };
+      });
+      return {
+        source: "Latest shift handover and SAP confirmations",
+        status: items.length ? "ok" : "empty",
+        data: {
+          window: { start: windowStart, end: windowEnd },
+          summary: {
+            itemCount: items.length,
+            completedCount: items.filter((item) => item.status === "completed").length,
+            ongoingCount: items.filter((item) => item.status !== "completed").length,
+            waitingOnPartsCount: items.filter((item) => item.status === "waiting_on_parts").length,
+            contractorCount: items.filter((item) => item.contractor).length,
+          },
+          items: items.slice(0, 30),
+        },
+      };
+    }
+
+    case "get_contractor_availability": {
+      const engineerResult = await supabase
+        .from("engineers")
+        .select(
+          "id,full_name,employment_type,discipline,availability_status,verified,shift_pattern,source_updated_at",
+        )
+        .eq("site_id", request.siteId)
+        .ilike("employment_type", "%contract%")
+        .order("full_name")
+        .limit(100);
+      if (engineerResult.error) {
+        return {
+          source: "Contractor availability and validated capability",
+          status: "unavailable",
+          message: engineerResult.error.message,
+        };
+      }
+      const engineers = engineerResult.data ?? [];
+      const engineerIds = engineers.map((item) => item.id);
+      const [availabilityResult, skillsResult] = await Promise.all([
+        engineerIds.length
+          ? supabase
+              .from("engineer_availability")
+              .select(
+                "engineer_id,availability_status,available_now,available_from,available_until,on_shift,on_call,remote_support_available,onsite_support_available,phone_available,video_available,current_location,notes,last_updated_at",
+              )
+              .eq("site_id", request.siteId)
+              .in("engineer_id", engineerIds)
+          : Promise.resolve({ data: [], error: null }),
+        engineerIds.length
+          ? supabase
+              .from("engineer_skills")
+              .select("engineer_id,validated_rating,verification_status,skills(name,category)")
+              .in("engineer_id", engineerIds)
+              .gte("validated_rating", 3)
+              .limit(300)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      const detailError = availabilityResult.error ?? skillsResult.error;
+      if (detailError) {
+        return {
+          source: "Contractor availability and validated capability",
+          status: "unavailable",
+          message: detailError.message,
+        };
+      }
+      const availability = new Map(
+        (availabilityResult.data ?? []).map((item) => [String(item.engineer_id), item]),
+      );
+      const skills = new Map<string, unknown[]>();
+      (skillsResult.data ?? []).forEach((item) => {
+        const id = String(item.engineer_id);
+        skills.set(id, [...(skills.get(id) ?? []), item]);
+      });
+      const rows = engineers.map((engineer) => {
+        const availabilityRow = availability.get(String(engineer.id));
+        return {
+          engineerName: engineer.full_name,
+          discipline: engineer.discipline,
+          verified: engineer.verified,
+          employmentType: engineer.employment_type,
+          availabilityStatus:
+            availabilityRow?.availability_status ?? engineer.availability_status ?? "not_recorded",
+          availableNow: availabilityRow?.available_now ?? null,
+          availableFrom: availabilityRow?.available_from ?? null,
+          availableUntil: availabilityRow?.available_until ?? null,
+          onShift: availabilityRow?.on_shift ?? null,
+          onCall: availabilityRow?.on_call ?? null,
+          remoteSupport: availabilityRow?.remote_support_available ?? null,
+          onsiteSupport: availabilityRow?.onsite_support_available ?? null,
+          location: availabilityRow?.current_location ?? null,
+          availabilityUpdatedAt: availabilityRow?.last_updated_at ?? null,
+          validatedSkills: (skills.get(String(engineer.id)) ?? []).slice(0, 12),
+        };
+      });
+      return {
+        source: "Contractor availability and validated capability",
+        status: rows.length ? "ok" : "empty",
+        data: {
+          summary: {
+            contractorCount: rows.length,
+            recordedAvailableNowCount: rows.filter((item) => item.availableNow === true).length,
+            missingCurrentAvailabilityCount: rows.filter(
+              (item) => item.availableNow === null,
+            ).length,
+          },
+          contractors: rows,
+          caveat:
+            "Recorded availability is evidence only; confirm acceptance, access, certification and fatigue controls before assignment.",
+        },
+      };
     }
 
     case "get_site_work_backlog": {
@@ -984,6 +1287,8 @@ function systemInstructions(request: AskVortaRequest): string {
     "For broad work-backlog questions call get_site_work_backlog. For a dated PM/calibration plan call get_site_maintenance_plan and use get_shift_cover when labour feasibility matters.",
     "For broad spares questions call get_site_spares_risk. Report exact asset, part name/code, available/minimum/target stock, shortfall, lead time and the work or production exposure when supported.",
     "For broad skills, SME, succession or training questions call get_site_capability_actions. Report exact people, assets, requirement levels, shift exposure and the action that closes the weakness.",
+    "For shift-handover or previous-shift questions call get_shift_handover. Separate completed work, temporary restoration, work waiting on parts, contractor involvement and the next incoming-shift action.",
+    "For contractor availability or external-support questions call get_contractor_availability. Use only recorded current availability and validated skills; explicitly say when availability, acceptance, access or certification still needs confirmation.",
     "When asked what would reduce an equipment risk score, resolve the asset then call get_equipment_risk_actions. Report current score, projected score, calculated reduction and action sequence.",
     "For previous-work questions, distinguish open work from completed history. Give work-order number/date, fault or description, action/outcome, downtime and recurrence where returned.",
     "For equipment-specific questions, call get_equipment_risk first to resolve the exact equipment UUID, then call the required evidence tools.",
@@ -1033,6 +1338,53 @@ export default async function handler(req: Request, _context: Context): Promise<
     return jsonResponse({ error: "You do not have access to the requested Vorta site." }, 403);
   }
 
+  const startedAt = Date.now();
+  const rateWindowStart = new Date(
+    startedAt - RATE_LIMIT_WINDOW_MINUTES * 60_000,
+  ).toISOString();
+  const { count: recentRequestCount, error: rateError } = await supabase
+    .from("ask_vorta_interactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userData.user.id)
+    .gte("created_at", rateWindowStart);
+  if (rateError) {
+    console.error("Ask Vorta rate-limit check failed", {
+      requestId: _context.requestId,
+      error: rateError.message,
+    });
+    return jsonResponse({ error: "Ask Vorta could not verify request capacity." }, 503);
+  }
+  if ((recentRequestCount ?? 0) >= RATE_LIMIT_REQUESTS) {
+    return jsonResponse(
+      {
+        error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.`,
+      },
+      429,
+    );
+  }
+
+  const interactionId = crypto.randomUUID();
+  const questionFingerprint = await sha256Fingerprint(
+    request.question.trim().toLowerCase(),
+  );
+  const { error: interactionError } = await supabase
+    .from("ask_vorta_interactions")
+    .insert({
+      id: interactionId,
+      site_id: request.siteId,
+      user_id: userData.user.id,
+      role: request.role,
+      question_fingerprint: questionFingerprint,
+      status: "started",
+    });
+  if (interactionError) {
+    console.error("Ask Vorta telemetry start failed", {
+      requestId: _context.requestId,
+      error: interactionError.message,
+    });
+    return jsonResponse({ error: "Ask Vorta could not start a traceable analysis." }, 503);
+  }
+
   const client = new OpenAI();
   const input: ResponseInput = [
     ...request.history.map((item) => ({
@@ -1043,6 +1395,7 @@ export default async function handler(req: Request, _context: Context): Promise<
   ];
   const usedSources = new Set<string>();
   const usedTools = new Set<string>();
+  const evidenceLinks = new Map<string, EvidenceLink>();
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
@@ -1074,17 +1427,42 @@ export default async function handler(req: Request, _context: Context): Promise<
         const answer = JSON.parse(response.output_text) as JsonRecord;
         answer.sources = [...usedSources];
         answer.toolsUsed = [...usedTools];
+        answer.evidenceLinks = [...evidenceLinks.values()];
+        answer.responseId = interactionId;
+        await supabase
+          .from("ask_vorta_interactions")
+          .update({
+            intent_label:
+              typeof answer.intentLabel === "string" ? answer.intentLabel : null,
+            tools_used: [...usedTools],
+            sources: [...usedSources],
+            confidence:
+              typeof answer.confidence === "number"
+                ? Math.max(0, Math.min(100, Math.round(answer.confidence)))
+                : null,
+            missing_data_count: Array.isArray(answer.missingData)
+              ? answer.missingData.length
+              : 0,
+            duration_ms: Date.now() - startedAt,
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", interactionId)
+          .eq("user_id", userData.user.id);
         return jsonResponse(answer);
       }
 
       const results = await Promise.all(
         toolCalls.map(async (toolCall) => {
           usedTools.add(toolCall.name);
+          const toolArguments = parseArguments(toolCall.arguments);
+          const link = evidenceLinkForTool(toolCall.name, toolArguments);
+          if (link) evidenceLinks.set(link.path, link);
           let result: ToolResult;
           try {
             result = await executeTool(
               toolCall.name,
-              parseArguments(toolCall.arguments),
+              toolArguments,
               supabase,
               request,
             );
@@ -1106,18 +1484,46 @@ export default async function handler(req: Request, _context: Context): Promise<
       input.push(...results);
     }
 
+    await supabase
+      .from("ask_vorta_interactions")
+      .update({
+        tools_used: [...usedTools],
+        sources: [...usedSources],
+        duration_ms: Date.now() - startedAt,
+        status: "failed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", interactionId)
+      .eq("user_id", userData.user.id);
     return jsonResponse(
-      { error: "Ask Vorta needed too many evidence lookups. Narrow the question and try again." },
+      {
+        error: "Ask Vorta needed too many evidence lookups. Narrow the question and try again.",
+        responseId: interactionId,
+      },
       422,
     );
   } catch (error) {
+    await supabase
+      .from("ask_vorta_interactions")
+      .update({
+        tools_used: [...usedTools],
+        sources: [...usedSources],
+        duration_ms: Date.now() - startedAt,
+        status: "failed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", interactionId)
+      .eq("user_id", userData.user.id);
     console.error("Ask Vorta agent failed", {
       requestId: _context.requestId,
       userId: userData.user.id,
       error: error instanceof Error ? error.message : String(error),
     });
     return jsonResponse(
-      { error: "The Vorta reasoning service is temporarily unavailable. Verified fallback analysis will be used." },
+      {
+        error: "The Vorta reasoning service is temporarily unavailable. Verified fallback analysis will be used.",
+        responseId: interactionId,
+      },
       503,
     );
   }
