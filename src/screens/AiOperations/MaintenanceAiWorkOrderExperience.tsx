@@ -226,7 +226,7 @@ export function MaintenanceAiWorkOrderExperience({
       {isPhone ? (
         <div
           aria-hidden="true"
-          className="h-24 shrink-0"
+          className="h-28 shrink-0"
           data-vorta-mobile-ai-safe-area="true"
         />
       ) : null}
@@ -236,13 +236,16 @@ export function MaintenanceAiWorkOrderExperience({
           data-vorta-shared-mobile-ai-launcher="true"
           data-vorta-ai-context-prompt={mobileAssistantPrompt(location.pathname)}
           aria-label="Ask Vorta"
+          title="Ask Vorta"
           onClick={() => {
             openMaintenanceAiAssistant({ submit: false });
           }}
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-blue-400/30 bg-blue-600 px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(15,23,42,0.55)] transition-colors active:bg-blue-500"
+          className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-3 z-40 inline-flex h-12 w-12 items-center justify-center gap-0 rounded-full border border-blue-400/30 bg-blue-600 p-0 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.5)] transition-colors active:bg-blue-500 min-[420px]:w-auto min-[420px]:gap-2 min-[420px]:px-4"
         >
           <Sparkles className="h-4 w-4" aria-hidden="true" />
-          Ask Vorta
+          <span data-vorta-mobile-ai-launcher-label="true" className="hidden min-[420px]:inline">
+            Ask Vorta
+          </span>
         </button>
       ) : null}
       <GlobalMaintenanceAiAssistantWithFaultsV2
