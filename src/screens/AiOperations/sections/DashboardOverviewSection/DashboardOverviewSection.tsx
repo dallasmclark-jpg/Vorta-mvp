@@ -52,6 +52,28 @@ import {
 const formatSiteRisk = (value: number): string =>
   Number(value).toFixed(1);
 
+const normaliseProjectedRisk = (
+  currentValue: number,
+  projectedValue: number,
+): number => {
+  const current = Number(currentValue);
+  const projected = Number(projectedValue);
+
+  if (!Number.isFinite(current)) {
+    return 0;
+  }
+
+  if (
+    !Number.isFinite(projected) ||
+    projected < 0 ||
+    projected > 100
+  ) {
+    return current;
+  }
+
+  return Math.min(current, projected);
+};
+
 const formatFreshness = (value: string | null): string => {
   if (!value) return "unavailable";
   const timestamp = new Date(value).getTime();
@@ -603,14 +625,36 @@ export const DashboardOverviewSection = (): JSX.Element => {
     activeRiskScope?.childCards ??
     [];
 
+  const safeProjectedSiteRisk = riskReductionPlan
+    ? normaliseProjectedRisk(
+        riskReductionPlan.currentSiteRisk,
+        riskReductionPlan.projectedSiteRisk,
+      )
+    : 0;
+
+  const safeProjectedAreaRisk = riskReductionPlan
+    ? normaliseProjectedRisk(
+        riskReductionPlan.currentAreaRisk,
+        riskReductionPlan.projectedAreaRisk,
+      )
+    : 0;
+
   const siteRiskReduction = riskReductionPlan
     ? Math.max(
         0,
         Math.round(
           (Number(riskReductionPlan.currentSiteRisk) -
-            Number(riskReductionPlan.projectedSiteRisk)) *
+            safeProjectedSiteRisk) *
             10,
         ) / 10,
+      )
+    : 0;
+
+  const areaRiskReduction = riskReductionPlan
+    ? Math.max(
+        0,
+        Number(riskReductionPlan.currentAreaRisk) -
+          safeProjectedAreaRisk,
       )
     : 0;
 
@@ -1448,11 +1492,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                 </p>
                 <p className="text-sm font-semibold leading-snug text-slate-50">
                   {riskReductionPlan
-                    ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce ${
-                      isSiteRiskScope
-                        ? "area"
-                        : "area"
-                    } risk from ${riskReductionPlan.currentAreaRisk} to ${riskReductionPlan.projectedAreaRisk}.`
+                    ? areaRiskReduction > 0
+                      ? `${riskReductionPlan.highestArea}: complete the highest-value work queue to reduce area risk from ${riskReductionPlan.currentAreaRisk} to ${safeProjectedAreaRisk}.`
+                      : `${riskReductionPlan.equipmentName}: complete the highest-value work queue. Asset exposure reduces, while ${riskReductionPlan.highestArea} area risk remains ${riskReductionPlan.currentAreaRisk} until the next leading exposure is cleared.`
                     : activeRiskScope?.priorityAction ??
                       "Review the highest-risk asset and clear the largest leading risk driver."}
                 </p>
@@ -1593,8 +1635,15 @@ export const DashboardOverviewSection = (): JSX.Element => {
                         <p className="mt-1 text-sm font-semibold text-slate-100">
                           {riskReductionPlan.currentAreaRisk}
                           <span className="mx-1.5 text-slate-600">→</span>
-                          <span className="text-emerald-400">
-                            {riskReductionPlan.projectedAreaRisk}
+                          <span
+                            data-vorta-risk-projection="area"
+                            className={
+                              areaRiskReduction > 0
+                                ? "text-emerald-400"
+                                : "text-slate-400"
+                            }
+                          >
+                            {safeProjectedAreaRisk}
                           </span>
                         </p>
                       </div>
@@ -1614,7 +1663,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 : "text-slate-400"
                             }
                           >
-                            {formatSiteRisk(riskReductionPlan.projectedSiteRisk)}
+                            {formatSiteRisk(safeProjectedSiteRisk)}
                           </span>
                         </p>
                       </div>

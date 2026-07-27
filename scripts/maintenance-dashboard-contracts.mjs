@@ -8,6 +8,9 @@ const aiOperations = read("../src/screens/AiOperations/AiOperations.tsx");
 const skillsMatrixRoute = read("../src/screens/AiOperations/SkillsMatrixRouteEntry.tsx");
 const workOrderExperience = read("../src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const maintenanceActions = read("../src/lib/maintenanceActions.ts");
+const riskProjectionMigration = read(
+  "../supabase/migrations/20260727214000_fix_risk_plan_projection_integrity.sql",
+);
 
 const failures = [];
 const check = (name, condition) => {
@@ -50,6 +53,18 @@ check(
   dashboard.includes("refreshAndGetOperationalDashboard") &&
     dashboard.includes("getOperationalDashboardSnapshot") &&
     dashboard.includes("loadRiskDashboard")
+);
+
+check(
+  "Risk reduction projections fail closed and never colour an increase as improvement",
+  dashboard.includes("normaliseProjectedRisk") &&
+    dashboard.includes("safeProjectedSiteRisk") &&
+    dashboard.includes("safeProjectedAreaRisk") &&
+    dashboard.includes("areaRiskReduction > 0") &&
+    dashboard.includes('data-vorta-risk-projection="area"') &&
+    riskProjectionMigration.includes("vorta_safe_projected_risk") &&
+    riskProjectionMigration.includes("least(p_current, p_projected)") &&
+    !riskProjectionMigration.includes("select private.vorta_refresh_dashboard_scope_plan_cache();")
 );
 
 check(

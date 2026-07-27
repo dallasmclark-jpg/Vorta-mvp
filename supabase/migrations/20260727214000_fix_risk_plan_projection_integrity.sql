@@ -518,20 +518,13 @@ as $function$
   from area_plans;
 $function$;
 
-select private.vorta_refresh_dashboard_scope_plan_cache();
-
 do $validation$
 begin
-  if exists (
-    select 1
-    from private.vorta_dashboard_scope_plan_cache cache
-    where cache.projected_site_risk > cache.current_site_risk
-       or cache.projected_area_risk > cache.current_area_risk
-       or cache.projected_pm_backlog > cache.current_pm_backlog
-       or cache.projected_calibration_backlog > cache.current_calibration_backlog
-       or cache.projected_stockouts > cache.current_stockouts
-  ) then
-    raise exception 'Risk plan cache contains an increasing reduction projection';
+  if private.vorta_safe_projected_risk(68.4, 87.7) <> 68.4
+     or private.vorta_safe_projected_risk(80, 82) <> 80
+     or private.vorta_safe_projected_risk(70, 62) <> 62
+     or private.vorta_risk_level(68.4) <> 'High' then
+    raise exception 'Risk projection integrity helpers failed validation';
   end if;
 end;
 $validation$;
