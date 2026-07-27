@@ -3,21 +3,27 @@
   --vorta-surface-card: #ffffff;
   --vorta-surface-raised: #f8fafc;
   --vorta-surface-border: rgba(100, 116, 139, 0.24);
+  --vorta-surface-raised-border: rgba(100, 116, 139, 0.16);
+  --vorta-surface-divider: rgba(100, 116, 139, 0.14);
   --vorta-surface-border-hover: rgba(59, 130, 246, 0.38);
   --vorta-surface-highlight: rgba(255, 255, 255, 0.92);
   --vorta-surface-shadow: 0 12px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 var(--vorta-surface-highlight);
+  --vorta-surface-raised-shadow: 0 5px 14px rgba(15, 23, 42, 0.06), inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-shadow-hover: 0 16px 38px rgba(15, 23, 42, 0.12), inset 0 1px 0 var(--vorta-surface-highlight);
 }
 
 html.dark {
   --vorta-surface-page: #090c12;
   --vorta-surface-card: #141922;
-  --vorta-surface-raised: #1a202b;
+  --vorta-surface-raised: #1d2532;
   --vorta-surface-border: rgba(148, 163, 184, 0.14);
+  --vorta-surface-raised-border: rgba(148, 163, 184, 0.09);
+  --vorta-surface-divider: rgba(148, 163, 184, 0.09);
   --vorta-surface-border-hover: rgba(96, 165, 250, 0.42);
-  --vorta-surface-highlight: rgba(255, 255, 255, 0.045);
+  --vorta-surface-highlight: rgba(255, 255, 255, 0.055);
   --vorta-surface-shadow: 0 14px 34px rgba(0, 0, 0, 0.24), inset 0 1px 0 var(--vorta-surface-highlight);
-  --vorta-surface-shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.065);
+  --vorta-surface-raised-shadow: 0 6px 16px rgba(0, 0, 0, 0.16), inset 0 1px 0 var(--vorta-surface-highlight);
+  --vorta-surface-shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 [data-vorta-portal-shell="true"],
@@ -59,7 +65,7 @@ html.dark {
 }
 
 /* Nested metrics should read as raised controls, not holes cut into the card. */
-[data-vorta-page-content="true"] :where(
+html [data-vorta-page-content="true"] :where(
   .vorta-card,
   [data-vorta-card="true"],
   [class*="rounded-xl"][class*="border"][class*="bg-[#0"],
@@ -67,14 +73,40 @@ html.dark {
   [class*="rounded-2xl"][class*="border"][class*="bg-[#0"],
   [class*="rounded-2xl"][class*="border"][class*="bg-[#1"]
 ) :where(
+  [class*="rounded-lg"][class*="border"][class*="bg-[#0"],
+  [class*="rounded-lg"][class*="border"][class*="bg-[#1"],
   [class*="rounded-xl"][class*="border"][class*="bg-[#0"],
   [class*="rounded-xl"][class*="border"][class*="bg-[#1"],
+  [class*="rounded-lg"][class*="border"][class*="bg-slate-9"],
   [class*="rounded-xl"][class*="border"][class*="bg-slate-9"],
+  [class*="rounded-lg"][class*="border"][class*="bg-gray-9"],
   [class*="rounded-xl"][class*="border"][class*="bg-gray-9"],
+  [class*="rounded-lg"][class*="border"]:not([class*="bg-"]),
   [class*="rounded-xl"][class*="border"]:not([class*="bg-"])
 ) {
+  border-color: var(--vorta-surface-raised-border) !important;
   background-color: var(--vorta-surface-raised) !important;
-  box-shadow: inset 0 1px 0 var(--vorta-surface-highlight) !important;
+  box-shadow: var(--vorta-surface-raised-shadow) !important;
+}
+
+/* Quiet structure should not compete with the operational content. */
+html.dark [data-vorta-page-content="true"] [class~="border-gray-800"] {
+  border-color: var(--vorta-surface-divider) !important;
+}
+
+/* Secondary evidence remains readable in workshops, offices and ageing eyes. */
+html.dark [data-vorta-page-content="true"] :is(
+  [class~="text-slate-500"],
+  [class~="text-gray-500"]
+) {
+  color: #94a3b8 !important;
+}
+
+html.dark [data-vorta-page-content="true"] :is(
+  [class~="text-slate-600"],
+  [class~="text-gray-600"]
+) {
+  color: #7f8da3 !important;
 }
 
 [data-vorta-page-content="true"] :where(
