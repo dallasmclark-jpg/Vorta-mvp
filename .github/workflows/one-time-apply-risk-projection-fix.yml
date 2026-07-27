@@ -1,7 +1,7 @@
 name: One-time apply risk projection integrity fix
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -216,7 +216,7 @@ jobs:
         run: |
           git checkout main
           git pull --ff-only origin main
-          git rm .github/workflows/one-time-apply-risk-projection-fix.yml
+          git rm .github/workflows/one-time-apply-risk-projection-fix.yml .github/risk-projection-main-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Remove one-time risk projection patch runner"
