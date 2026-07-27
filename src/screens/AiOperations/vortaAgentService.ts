@@ -40,6 +40,7 @@ export interface VortaAgentEvidenceLink {
 export interface VortaAgentAnswer {
   responseId: string;
   directAnswer: string;
+  decisionSummary: VortaAgentDecisionSummaryItem[];
   evidence: string[];
   findings: VortaAgentFinding[];
   coverOptions: VortaAgentCoverOption[];
@@ -52,6 +53,11 @@ export interface VortaAgentAnswer {
   intentLabel: string;
   toolsUsed: string[];
   evidenceLinks: VortaAgentEvidenceLink[];
+}
+
+export interface VortaAgentDecisionSummaryItem {
+  label: string;
+  value: string;
 }
 
 interface AskVortaAgentInput {
@@ -92,6 +98,23 @@ function isFindings(value: unknown): value is VortaAgentFinding[] {
         typeof item.severity === "string" &&
         typeof item.title === "string" &&
         typeof item.detail === "string",
+    )
+  );
+}
+
+function isDecisionSummary(
+  value: unknown,
+): value is VortaAgentDecisionSummaryItem[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.label === "string" &&
+        Boolean(item.label.trim()) &&
+        typeof item.value === "string" &&
+        Boolean(item.value.trim()),
     )
   );
 }
@@ -154,6 +177,7 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
     !record.directAnswer.trim() ||
     typeof record.responseId !== "string" ||
     !record.responseId ||
+    !isDecisionSummary(record.decisionSummary) ||
     !isStringArray(record.evidence) ||
     !isFindings(record.findings) ||
     !isCoverOptions(record.coverOptions) ||
@@ -174,6 +198,10 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   return {
     responseId: record.responseId,
     directAnswer: record.directAnswer.trim(),
+    decisionSummary: record.decisionSummary.map((item) => ({
+      label: item.label.trim(),
+      value: item.value.trim(),
+    })),
     evidence: record.evidence,
     findings: record.findings,
     coverOptions: record.coverOptions,
