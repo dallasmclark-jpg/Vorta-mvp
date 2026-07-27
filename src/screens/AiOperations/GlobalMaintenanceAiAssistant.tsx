@@ -53,6 +53,7 @@ import {
   submitAskVortaFeedback,
   type VortaAgentAction,
   type VortaAgentCoverOption,
+  type VortaAgentDecisionSummaryItem,
   type VortaAgentEvidenceLink,
   type VortaAgentFinding,
   type VortaAgentHistoryItem,
@@ -168,6 +169,7 @@ interface GlobalAiPromptEventDetail {
 interface GlobalAiAnswer {
   responseId?: string;
   directAnswer: string;
+  decisionSummary?: VortaAgentDecisionSummaryItem[];
   evidence: string[];
   findings?: VortaAgentFinding[];
   coverOptions?: VortaAgentCoverOption[];
@@ -1203,6 +1205,7 @@ function buildGlobalAnswer(
   const selectedEquipment = mentionedEquipment ?? topEquipment;
 
   const evidence: string[] = [];
+  const decisionSummary: VortaAgentDecisionSummaryItem[] = [];
   const findings: VortaAgentFinding[] = [];
   const coverOptions: VortaAgentCoverOption[] = [];
   const recommendedActions: string[] = [];
@@ -1252,7 +1255,21 @@ function buildGlobalAnswer(
         reducedShifts.length + unavailableExceptions.length + exposedShifts.length;
 
       if (issueCount === 0) {
-        directAnswer = `I checked all ${shiftCoverBrief.calendar.length} day and night shifts for ${shiftCoverRange.label}. No recorded holiday, training or other absence creates a cover issue, and no missing required-skill exposure was returned.`;
+        directAnswer = `No—none of the ${shiftCoverBrief.calendar.length} shifts checked has a cover issue.`;
+        decisionSummary.push(
+          {
+            label: "Period checked",
+            value: shiftCoverRange.label,
+          },
+          {
+            label: "Absence",
+            value: "No holiday, training or other unavailable exception is recorded.",
+          },
+          {
+            label: "Skills risk",
+            value: "No equipment-required skill is below its minimum qualified-engineer threshold.",
+          },
+        );
         evidence.push(
           `${shiftCoverBrief.calendar.length} dated shifts checked; none is marked reduced, partial, gap or contractor cover.`,
         );
@@ -1294,18 +1311,51 @@ function buildGlobalAnswer(
             ? `It is the earliest of ${jointHighestRiskCount} joint-highest shifts at ${highestRiskShift.labourRiskScore.toFixed(1)} labour risk, with ${highestRiskShift.missingSkillCount} skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets.`
             : `It ranks first at ${highestRiskShift.labourRiskScore.toFixed(1)} labour risk, with ${highestRiskShift.missingSkillCount} skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets.`
           : "";
-        directAnswer =
-          `${shiftCoverRange.label} has ${reducedShifts.length} reduced-cover shift${reducedShifts.length === 1 ? "" : "s"}; ` +
-          `${exposedShifts.length} of ${shiftCoverBrief.calendar.length} shifts have at least one required-skill exposure. ` +
-          (highestRiskShift
-            ? `Priority is ${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)}: ${highestRiskShift.teamNames.join(" + ")} with ${highestRiskShift.missingSkillCount} missing required-skill exposures across ${highestRiskShift.equipmentWithMissingCover} assets. `
-            : "") +
-          (unavailableExceptions.length === 0
-            ? "No holiday, training or absence exception is recorded."
-            : `${unavailableExceptions.length} unavailable engineer or team exception${unavailableExceptions.length === 1 ? " is" : "s are"} recorded.`) +
-          (highestRiskPackage
-            ? ` First move: contact ${highestRiskPackage.engineerNames.join(", ")}; this package closes the most priority-shift exposure currently calculated.`
-            : "");
+        directAnswer = `Yes—${reducedShifts.length} of ${shiftCoverBrief.calendar.length} shifts have reduced cover.`;
+        if (highestRiskShift) {
+          decisionSummary.push(
+            {
+              label: "Highest risk",
+              value: `${formatShiftLabel(highestRiskShift.shiftDate, highestRiskShift.shiftType)} — ${highestRiskShift.teamNames.join(" + ")}; ${highestRiskShift.labourRiskScore.toFixed(1)} labour risk, ${highestRiskShift.missingSkillCount} missing-skill gaps across ${highestRiskShift.equipmentWithMissingCover} assets.`,
+            },
+            {
+              label: "Scheduled",
+              value: formatEngineerList(
+                highestRiskShift.engineerNames,
+                "No engineers scheduled",
+              ),
+            },
+          );
+        }
+        decisionSummary.push({
+          label: "Absence",
+          value:
+            unavailableExceptions.length === 0
+              ? "No holiday, training or absence exception is recorded."
+              : unavailableExceptions
+                  .slice(0, 4)
+                  .map(
+                    (exception) =>
+                      `${exception.engineerName ?? exception.teamName ?? "Scheduled team"} — ${readableExceptionType(exception.exceptionType)}`,
+                  )
+                  .join("; "),
+        });
+        if (highestRiskPackage) {
+          decisionSummary.push(
+            {
+              label: "Best provisional cover",
+              value: `${highestRiskPackage.engineerNames.join(", ")} for ${formatShiftLabel(highestRiskPackage.shiftDate, highestRiskPackage.shiftType)}.`,
+            },
+            {
+              label: "Calculated impact",
+              value: `Closes ${highestRiskPackage.missingSkillsClosed} missing-skill gaps; ${highestRiskPackage.remainingMissingSkills} remain.`,
+            },
+            {
+              label: "First action",
+              value: "Confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
+            },
+          );
+        }
 
         unavailableExceptions.slice(0, 3).forEach((exception: ShiftCoverException) => {
           const person = exception.engineerName ?? exception.teamName ?? "Scheduled team";
@@ -1780,6 +1830,7 @@ function buildGlobalAnswer(
 
   return {
     directAnswer: roleAwareAnswer,
+    decisionSummary,
     evidence: unique(evidence),
     findings,
     coverOptions,
@@ -1936,12 +1987,44 @@ function AnswerBlock({
         {answer.directAnswer}
       </p>
 
-      {hasStructuredFindings && (
-        <div>
-          <h4 className="mb-2 text-[15px] font-bold uppercase tracking-wider text-slate-400 sm:text-sm">
-            What Vorta found
+      {answer.decisionSummary && answer.decisionSummary.length > 0 && (
+        <section
+          aria-labelledby="ask-vorta-decision-summary"
+          className="rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-3"
+        >
+          <h4
+            id="ask-vorta-decision-summary"
+            className="mb-2 text-[15px] font-bold uppercase tracking-wider text-blue-200 sm:text-sm"
+          >
+            Decision summary
           </h4>
-          <div className="flex flex-col gap-1.5">
+          <ul className="flex flex-col gap-2.5">
+            {answer.decisionSummary.slice(0, 7).map((item, index) => (
+              <li
+                key={`${item.label}-${index}`}
+                className="flex items-start gap-2 text-[15px] leading-6 text-slate-200 sm:text-sm"
+              >
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                <span>
+                  <span className="font-bold text-slate-100">{item.label}:</span>{" "}
+                  {item.value}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {hasStructuredFindings && (
+        <details className="group rounded-lg border border-gray-800 bg-gray-900/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-[15px] font-bold text-slate-200 sm:text-sm">
+            <span>Detailed cover evidence</span>
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-400">
+              {answer.findings?.length} items
+              <ChevronDown className="h-4 w-4 text-blue-300 transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="flex flex-col gap-1.5 border-t border-gray-800 px-3 py-3">
             {answer.findings?.slice(0, 8).map((finding, index) => (
               <div
                 key={`${finding.category}-${finding.title}-${index}`}
@@ -1959,22 +2042,21 @@ function AnswerBlock({
               </div>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       {answer.coverOptions && answer.coverOptions.length > 0 && (
         <div>
           <h4 className="mb-2 text-[15px] font-bold uppercase tracking-wider text-slate-400 sm:text-sm">
-            Best cover options
+            Cover options
           </h4>
           <div className="flex flex-col gap-1.5">
             {answer.coverOptions.slice(0, 5).map((option, index) => (
               <details
                 key={`${option.shift}-${option.engineerNames.join("-")}-${index}`}
-                open={index === 0 ? true : undefined}
                 className="group rounded-md border border-blue-500/20 bg-blue-500/8 px-3 py-2.5 sm:px-2.5 sm:py-2"
               >
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-2 sm:hidden">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-2">
                   <span>
                     <span className="block text-[15px] font-bold text-blue-200">
                       {index === 0 ? "Recommended — " : ""}
@@ -1986,14 +2068,7 @@ function AnswerBlock({
                   </span>
                   <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-blue-300 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="hidden group-open:block sm:!block">
-                  <p className="hidden text-[15px] font-bold text-blue-200 sm:block sm:text-xs">
-                    {index === 0 ? "Recommended — " : ""}
-                    {option.engineerNames.join(" + ")}
-                  </p>
-                  <p className="mt-1 hidden text-sm font-semibold text-slate-300 sm:block sm:mt-0.5 sm:text-xs">
-                    {option.shift}
-                  </p>
+                <div className="hidden border-t border-blue-500/15 pt-2 group-open:mt-2 group-open:block">
                   <p className="mt-2 text-sm leading-6 text-slate-400 sm:mt-1 sm:text-xs sm:leading-relaxed">
                     {option.reason}
                   </p>
@@ -2047,10 +2122,17 @@ function AnswerBlock({
         </div>
       )}
 
-      <div>
-          <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
-          Risk-reduction plan
-        </h4>
+      <details className="group rounded-lg border border-emerald-500/15 bg-emerald-500/[0.03]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-[15px] font-bold text-slate-200 sm:text-sm">
+          <span>Risk-reduction plan</span>
+          <span className="flex items-center gap-2 text-sm font-medium text-slate-400">
+            {hasStructuredActions
+              ? `${answer.actionPlan?.length ?? 0} actions`
+              : `${answer.recommendedActions.length} actions`}
+            <ChevronDown className="h-4 w-4 text-emerald-300 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="border-t border-emerald-500/15 px-3 py-3">
         {hasStructuredActions ? (
           <div className="flex flex-col gap-1.5">
             {answer.actionPlan?.slice(0, 5).map((item, index) => (
@@ -2109,7 +2191,8 @@ function AnswerBlock({
             ))}
           </ul>
         )}
-      </div>
+        </div>
+      </details>
 
       {answer.followUpQuestions && answer.followUpQuestions.length > 0 && (
         <div>
@@ -2318,6 +2401,7 @@ export function GlobalMaintenanceAiAssistant({
       role: "assistant",
       answer: {
         directAnswer: roleProfile.introAnswer,
+        decisionSummary: [],
         evidence: [],
         recommendedActions: [roleProfile.defaultAction],
         sources: [],
@@ -2663,6 +2747,7 @@ export function GlobalMaintenanceAiAssistant({
           const answer: GlobalAiAnswer = {
             responseId: agentAnswer.responseId,
             directAnswer: agentAnswer.directAnswer,
+            decisionSummary: agentAnswer.decisionSummary,
             evidence: agentAnswer.evidence,
             findings: agentAnswer.findings,
             coverOptions: agentAnswer.coverOptions,

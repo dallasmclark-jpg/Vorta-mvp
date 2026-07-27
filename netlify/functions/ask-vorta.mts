@@ -264,6 +264,20 @@ const ANSWER_SCHEMA = {
   type: "object",
   properties: {
     directAnswer: { type: "string" },
+    decisionSummary: {
+      type: "array",
+      minItems: 3,
+      maxItems: 7,
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          value: { type: "string" },
+        },
+        required: ["label", "value"],
+        additionalProperties: false,
+      },
+    },
     evidence: {
       type: "array",
       items: { type: "string" },
@@ -386,6 +400,7 @@ const ANSWER_SCHEMA = {
   },
   required: [
     "directAnswer",
+    "decisionSummary",
     "evidence",
     "findings",
     "coverOptions",
@@ -822,22 +837,58 @@ function enforceAnswerEvidence(
         jointHighestShifts.flatMap((shift) => textValues(shift.engineerNames)),
       ),
     ];
-    answer.directAnswer =
-      `Yes—${reducedCount} of ${calendar.length} shifts have reduced cover. ` +
-      `Highest risk is ${highestLabels}, both at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets. ` +
-      `Scheduled engineers: ${scheduledForHighestRisk.join(", ")}. ` +
-      (exceptions.length
-        ? `${exceptions.length} holiday, training or absence exception${exceptions.length === 1 ? " is" : "s are"} recorded. `
-        : "No holiday, training or absence exception is recorded. ") +
-      `First move: contact the off-rota package ${packageNames.join(", ")} for ${readableShift(primaryPackage)}; it fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps and leaves ${numberValue(primaryPackage.remainingMissingSkills)}.`;
+    answer.directAnswer = `Yes—${reducedCount} of ${calendar.length} shifts have reduced cover.`;
+    answer.decisionSummary = [
+      {
+        label: "Highest risk",
+        value: `${highestLabels}; ${numberValue(priorityShift.labourRiskScore).toFixed(1)} labour risk, ${numberValue(priorityShift.missingSkillCount)} missing-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets.`,
+      },
+      {
+        label: "Scheduled",
+        value: scheduledForHighestRisk.join(", "),
+      },
+      {
+        label: "Absence",
+        value: exceptions.length
+          ? `${exceptions.length} recorded holiday, training or absence exception${exceptions.length === 1 ? "" : "s"}.`
+          : "No holiday, training or absence exception is recorded.",
+      },
+      {
+        label: "Best provisional cover",
+        value: `${packageNames.join(", ")} for ${readableShift(primaryPackage)}.`,
+      },
+      {
+        label: "Calculated impact",
+        value: `Fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps; ${numberValue(primaryPackage.remainingMissingSkills)} remain.`,
+      },
+      {
+        label: "First action",
+        value: "Confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
+      },
+    ];
   }
 
   if (packageQuestion && primaryPackage) {
     const packageNames = textValues(primaryPackage.engineerNames);
-    answer.directAnswer =
-      `Best provisional cover for ${readableShift(primaryPackage)} is ${packageNames.join(", ")}. ` +
-      `The calculation fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} gaps. ` +
-      "They are off-rota candidates, not confirmed available; confirm overtime acceptance, leave and fatigue/rest compliance.";
+    answer.directAnswer = `Best provisional cover for ${readableShift(primaryPackage)} is ${packageNames.join(", ")}.`;
+    answer.decisionSummary = [
+      {
+        label: "Cover package",
+        value: packageNames.join(", "),
+      },
+      {
+        label: "Calculated impact",
+        value: `Fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} gaps.`,
+      },
+      {
+        label: "Status",
+        value: "Off-rota candidates—not confirmed available or assigned.",
+      },
+      {
+        label: "First action",
+        value: "Confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
+      },
+    ];
   }
 
   if ((broadCoverQuestion || packageQuestion) && primaryPackage) {
@@ -1665,7 +1716,8 @@ function systemInstructions(request: AskVortaRequest): string {
     "When asked what would reduce an equipment risk score, resolve the asset then call get_equipment_risk_actions. Report current score, projected score, calculated reduction and action sequence.",
     "For previous-work questions, distinguish open work from completed history. Give work-order number/date, fault or description, action/outcome, downtime and recurrence where returned.",
     "For equipment-specific questions, call get_equipment_risk first to resolve the exact equipment UUID, then call the required evidence tools.",
-    "Answer the question directly in the first sentence. Use concise maintenance-manager language, exact names/codes/dates and practical next actions. For cover questions, finish the direct answer with the exact package to contact first and why. Put the supporting detail in findings, coverOptions and actionPlan.",
+    "Answer the question directly in one concise opening sentence. Use maintenance-manager language and put exact names, codes, dates, measurable impact and the first action in decisionSummary. Put the supporting proof in findings, coverOptions and actionPlan.",
+    "decisionSummary is the scannable decision layer shown before all detail. Return three to seven short labelled items with exact facts. For cover questions use the labels Highest risk, Scheduled, Absence, Best provisional cover, Calculated impact and First action when that evidence exists. Do not repeat the direct answer or use generic advice.",
     "findings must explain the material evidence rather than repeat the headline. Use a separate finding for recorded absence status, the highest-risk shifts/assets and the major skill/spares/work exposures.",
     "coverOptions is for concrete named individual or package options only. Use an empty array outside labour-cover questions. Include the calculated impact, named skills, named assets, remaining risk and a truthful availability caveat.",
     "actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. recommendedActions is a concise plain-language version of the same priorities.",
