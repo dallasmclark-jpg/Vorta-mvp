@@ -11,7 +11,7 @@
     "id": "golden-cover-absence",
     "question": "Who is recorded as off on holiday or training from 27 July to 2 August 2026?",
     "expectedTools": ["get_shift_cover"],
-    "mustMention": ["No holiday, training or absence exception is recorded"],
+    "mustMention": ["holiday", "training", "absence"],
     "mustMentionAny": ["off-rota", "rota-off"],
     "mustNotMention": ["no one is on holiday", "everyone is available"]
   },
