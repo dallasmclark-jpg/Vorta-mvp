@@ -102,7 +102,7 @@ check(
     agent.includes("Joint-highest-risk shifts") &&
     agent.includes("Off-rota engineers — availability not confirmed") &&
     agent.includes("skill-by-asset exposure points") &&
-    agent.includes("First move: contact") &&
+    agent.includes('label: "First action"') &&
     agent.includes("Calculated cover-package impact") &&
     agent.includes("Ask Vorta is read-only and cannot change Vorta records") &&
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
@@ -143,12 +143,23 @@ check(
     assistant.includes("findings.push({") &&
     assistant.includes("coverOptions.push({") &&
     assistant.includes("actionPlan.push({") &&
+    assistant.includes("Decision summary") &&
+    assistant.includes("Detailed cover evidence") &&
+    assistant.includes("<details") &&
     assistant.includes("Skills covered") &&
     assistant.includes("Assets protected") &&
     assistant.includes("Remaining risk:") &&
     assistant.includes("text-[15px]") &&
     assistant.includes("zero-cover exposures"),
   "The shared assistant must use the agent first and retain its verified deterministic fallback.",
+);
+
+check(
+    agent.includes("decisionSummary") &&
+    service.includes("isDecisionSummary") &&
+    service.includes("record.decisionSummary") &&
+    liveEvalRunner.includes("answer.decisionSummary"),
+  "Ask Vorta must preserve the structured decision summary from the agent through the UI and live quality gate.",
 );
 
 const agentMutationTargets = [
