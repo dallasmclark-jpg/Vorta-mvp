@@ -560,6 +560,40 @@ function textValues(value: unknown): string[] {
     : [];
 }
 
+function coverShiftKey(shift: JsonRecord): string {
+  return `${String(shift.shiftDate)}:${String(shift.shiftType)}`;
+}
+
+function compareCoverPriority(first: JsonRecord, second: JsonRecord): number {
+  return (
+    numberValue(second.labourRiskScore) - numberValue(first.labourRiskScore) ||
+    numberValue(second.missingSkillCount) - numberValue(first.missingSkillCount) ||
+    String(first.shiftDate).localeCompare(String(second.shiftDate)) ||
+    String(first.shiftType).localeCompare(String(second.shiftType))
+  );
+}
+
+function readableShift(shift: JsonRecord): string {
+  const date = new Date(`${String(shift.shiftDate)}T12:00:00Z`);
+  const dateLabel = Number.isNaN(date.getTime())
+    ? String(shift.shiftDate)
+    : new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }).format(date);
+  return `${dateLabel} ${String(shift.shiftType)}`;
+}
+
+function records(value: unknown): JsonRecord[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is JsonRecord =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+}
+
 function enforceAnswerEvidence(
   answer: JsonRecord,
   question: string,
@@ -580,67 +614,242 @@ function enforceAnswerEvidence(
   }
 
   if (!shiftCoverEvidence) return;
-  const calendar = Array.isArray(shiftCoverEvidence.calendar)
-    ? shiftCoverEvidence.calendar.filter(
-        (item): item is JsonRecord =>
-          Boolean(item) && typeof item === "object" && !Array.isArray(item),
-      )
-    : [];
-  const priorityShift = [...calendar].sort(
-    (first, second) =>
-      numberValue(second.labourRiskScore) - numberValue(first.labourRiskScore) ||
-      numberValue(second.missingSkillCount) - numberValue(first.missingSkillCount),
-  )[0];
-  const findings = Array.isArray(answer.findings) ? answer.findings : [];
-  if (priorityShift) {
-    const scheduledNames = textValues(priorityShift.engineerNames);
-    const teamNames = textValues(priorityShift.teamNames);
-    if (scheduledNames.length) {
-      findings.unshift({
-        category: "cover",
-        severity: "high",
-        title: "Priority shift scheduled team",
-        detail: `${String(priorityShift.shiftDate)} ${String(priorityShift.shiftType)} — ${teamNames.join(", ")}. Scheduled engineers: ${scheduledNames.join(", ")}.`,
-      });
-    }
-  }
-
-  const packages = Array.isArray(shiftCoverEvidence.coverPackages)
-    ? shiftCoverEvidence.coverPackages.filter(
-        (item): item is JsonRecord =>
-          Boolean(item) && typeof item === "object" && !Array.isArray(item),
-      )
-    : [];
-  const requestedDate =
+  const calendar = records(shiftCoverEvidence.calendar);
+  const issueShifts = calendar
+    .filter(
+      (shift) =>
+        shift.coverageStatus !== "covered" ||
+        numberValue(shift.missingSkillCount) > 0,
+    )
+    .sort(compareCoverPriority);
+  const priorityShift = issueShifts[0];
+  if (!priorityShift) return;
+  const jointHighestShifts = issueShifts.filter(
+    (shift) =>
+      numberValue(shift.labourRiskScore) ===
+        numberValue(priorityShift.labourRiskScore) &&
+      numberValue(shift.missingSkillCount) ===
+        numberValue(priorityShift.missingSkillCount),
+  );
+  const packages = records(shiftCoverEvidence.coverPackages);
+  const exceptions = records(shiftCoverEvidence.exceptions).filter(
+    (item) => item.isAvailable === false,
+  );
+  const offRota = records(shiftCoverEvidence.offRota);
+  const skillRisks = records(shiftCoverEvidence.skillRisks);
+  const requestedStart =
     typeof shiftCoverArguments?.start_date === "string"
       ? shiftCoverArguments.start_date
       : undefined;
+  const requestedEnd =
+    typeof shiftCoverArguments?.end_date === "string"
+      ? shiftCoverArguments.end_date
+      : undefined;
+  const requestedDate =
+    requestedStart && requestedStart === requestedEnd ? requestedStart : undefined;
   const requestedType = /\bnight\b/i.test(question)
     ? "night"
     : /\bday\b/i.test(question)
       ? "day"
       : undefined;
+  const requestedShift = issueShifts.find(
+    (item) =>
+      (!requestedDate || item.shiftDate === requestedDate) &&
+      (!requestedType || item.shiftType === requestedType),
+  );
   const packageEvidence =
     packages.find(
       (item) =>
         (!requestedDate || item.shiftDate === requestedDate) &&
-        (!requestedType || item.shiftType === requestedType),
+        (!requestedType || item.shiftType === requestedType) &&
+        (requestedDate || requestedType),
     ) ??
     packages.find(
       (item) =>
-        item.shiftDate === priorityShift?.shiftDate &&
-        item.shiftType === priorityShift?.shiftType,
+        item.shiftDate === priorityShift.shiftDate &&
+        item.shiftType === priorityShift.shiftType,
     );
-  if (packageEvidence) {
-    const names = textValues(packageEvidence.engineerNames);
-    findings.push({
+  const broadCoverQuestion =
+    /\b(shift cover|cover issue|coverage issue|labour cover|staffing issue)\b/i.test(
+      question,
+    ) &&
+    !/\b(holiday|training|absence|rest conflict|fatigue)\b/i.test(question);
+  const packageQuestion = /\b(best|strongest|recommended|cover package)\b/i.test(
+    question,
+  );
+
+  const primaryShift = requestedShift ?? priorityShift;
+  const primaryKey = coverShiftKey(primaryShift);
+  const primaryPackage =
+    packages.find((item) => coverShiftKey(item) === primaryKey) ?? packageEvidence;
+  const scheduledNames = textValues(primaryShift.engineerNames);
+  const teamNames = textValues(primaryShift.teamNames);
+  const primaryOffRota = offRota.find((item) => coverShiftKey(item) === primaryKey);
+  const offRotaNames = textValues(primaryOffRota?.engineerNames);
+  const restConflictNames = textValues(primaryOffRota?.restConflictEngineerNames);
+  const primarySkillRisks = skillRisks
+    .filter((item) => coverShiftKey(item) === primaryKey)
+    .sort(
+      (first, second) =>
+        numberValue(first.qualifiedEngineerCount) -
+          numberValue(second.qualifiedEngineerCount) ||
+        String(first.skillName).localeCompare(String(second.skillName)),
+    )
+    .slice(0, 4);
+
+  const deterministicFindings: JsonRecord[] = [];
+  deterministicFindings.push({
+    category: "cover",
+    severity: "high",
+    title:
+      jointHighestShifts.length > 1 && primaryShift === priorityShift
+        ? "Joint-highest-risk shifts"
+        : "Priority shift and scheduled team",
+    detail:
+      jointHighestShifts.length > 1 && primaryShift === priorityShift
+        ? `${jointHighestShifts.map((shift) => `${readableShift(shift)} (${textValues(shift.teamNames).join(" + ")})`).join(" and ")} are joint highest at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} labour risk, with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets. Scheduled engineers: ${scheduledNames.join(", ")}.`
+        : `${readableShift(primaryShift)} — ${teamNames.join(" + ")}. Scheduled engineers: ${scheduledNames.join(", ")}. Labour risk ${numberValue(primaryShift.labourRiskScore).toFixed(1)}; ${numberValue(primaryShift.missingSkillCount)} missing required-skill gaps across ${numberValue(primaryShift.equipmentWithMissingCover)} assets.`,
+  });
+  deterministicFindings.push({
+    category: "absence",
+    severity: exceptions.length ? "high" : "info",
+    title: exceptions.length
+      ? "Recorded holiday, training or absence"
+      : "No recorded holiday, training or absence",
+    detail: exceptions.length
+      ? exceptions
+          .slice(0, 6)
+          .map(
+            (item) =>
+              `${item.engineerName ?? item.teamName ?? "Scheduled team"} — ${String(item.exceptionType)} on ${readableShift(item)}`,
+          )
+          .join("; ")
+      : "No holiday, training or absence exception is recorded for this period. This does not confirm that every off-rota engineer is available.",
+  });
+  if (offRotaNames.length) {
+    deterministicFindings.push({
+      category: "cover",
+      severity: "info",
+      title: "Off-rota engineers — availability not confirmed",
+      detail: `${readableShift(primaryShift)}: ${offRotaNames.join(", ")}. ${restConflictNames.length ? `Rest-conflict review: ${restConflictNames.join(", ")}. ` : ""}Off-rota does not mean available; confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.`,
+    });
+  }
+  if (primarySkillRisks.length) {
+    deterministicFindings.push({
+      category: "skill",
+      severity: "high",
+      title: "Highest missing skills and affected assets",
+      detail: primarySkillRisks
+        .map(
+          (item) =>
+            `${String(item.skillName)} — ${String(item.equipmentCode ?? item.equipmentName)} (${numberValue(item.qualifiedEngineerCount)}/${numberValue(item.minimumQualifiedEngineers)} validated on shift)`,
+        )
+        .join("; "),
+    });
+  }
+  if (primaryPackage) {
+    const names = textValues(primaryPackage.engineerNames);
+    deterministicFindings.push({
       category: "cover",
       severity: "medium",
       title: "Calculated cover-package impact",
-      detail: `${String(packageEvidence.shiftDate)} ${String(packageEvidence.shiftType)} — ${names.join(", ")} closes ${numberValue(packageEvidence.missingSkillsClosed)} of the required-skill exposures; ${numberValue(packageEvidence.remainingMissingSkills)} remain. This is provisional, not assigned: confirm availability, overtime acceptance, fatigue/rest compliance and manager approval.`,
+      detail: `${readableShift(primaryPackage)} — ${names.join(", ")} fully closes ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps, improves ${numberValue(primaryPackage.gapsImproved)} skill-by-asset exposure points and leaves ${numberValue(primaryPackage.remainingMissingSkills)} missing-skill gaps. This is provisional, not assigned.`,
     });
   }
-  answer.findings = findings.slice(0, 10);
+
+  const existingFindings = records(answer.findings).filter(
+    (item) =>
+      ![
+        "Priority shift scheduled team",
+        "Priority shift and scheduled team",
+        "Joint-highest-risk shifts",
+        "Recorded holiday, training or absence",
+        "No recorded holiday, training or absence",
+        "Off-rota engineers — availability not confirmed",
+        "Highest missing skills and affected assets",
+        "Calculated cover-package impact",
+      ].includes(String(item.title)),
+  );
+  answer.findings = [...deterministicFindings, ...existingFindings].slice(0, 10);
+
+  if (broadCoverQuestion || packageQuestion) {
+    const orderedPackageShifts = requestedShift
+      ? [requestedShift]
+      : [...jointHighestShifts, ...issueShifts].filter(
+          (shift, index, list) =>
+            list.findIndex((candidate) => coverShiftKey(candidate) === coverShiftKey(shift)) ===
+            index,
+        );
+    answer.coverOptions = orderedPackageShifts
+      .map((shift) => {
+        const coverPackage = packages.find(
+          (item) => coverShiftKey(item) === coverShiftKey(shift),
+        );
+        if (!coverPackage || textValues(coverPackage.engineerNames).length === 0) {
+          return null;
+        }
+        return {
+          engineerNames: textValues(coverPackage.engineerNames).slice(0, 4),
+          shift: readableShift(coverPackage),
+          reason: `Strongest calculated package for ${textValues(shift.teamNames).join(" + ")} at ${numberValue(shift.labourRiskScore).toFixed(1)} labour risk.`,
+          skillsCovered: textValues(coverPackage.closedSkills).slice(0, 6),
+          assetsProtected: textValues(coverPackage.protectedAssets).slice(0, 6),
+          projectedImpact: `Fully closes ${numberValue(coverPackage.missingSkillsClosed)} missing-skill gaps; improves ${numberValue(coverPackage.gapsImproved)} skill-by-asset exposure points; protects ${numberValue(coverPackage.assetsWithClosedGaps)} assets.`,
+          remainingRisk: `${numberValue(coverPackage.remainingMissingSkills)} missing-skill gaps remain across the shift.`,
+          caveat:
+            "Provisional only—confirm overtime acceptance, unrecorded leave, fatigue/rest compliance and manager approval.",
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 4);
+  }
+
+  if (broadCoverQuestion && primaryPackage) {
+    const reducedCount = calendar.filter(
+      (shift) => shift.coverageStatus !== "covered",
+    ).length;
+    const highestLabels = jointHighestShifts
+      .map(
+        (shift) =>
+          `${textValues(shift.teamNames).join(" + ")} ${readableShift(shift)}`,
+      )
+      .join(" and ");
+    const packageNames = textValues(primaryPackage.engineerNames);
+    answer.directAnswer =
+      `Yes—${reducedCount} of ${calendar.length} shifts have reduced cover. ` +
+      `Highest risk is ${highestLabels}, both at ${numberValue(priorityShift.labourRiskScore).toFixed(1)} with ${numberValue(priorityShift.missingSkillCount)} missing required-skill gaps across ${numberValue(priorityShift.equipmentWithMissingCover)} assets. ` +
+      (exceptions.length
+        ? `${exceptions.length} holiday, training or absence exception${exceptions.length === 1 ? " is" : "s are"} recorded. `
+        : "No holiday, training or absence exception is recorded. ") +
+      `First move: contact ${packageNames.join(", ")} for ${readableShift(primaryPackage)}; the provisional package fully closes ${numberValue(primaryPackage.missingSkillsClosed)} gaps and leaves ${numberValue(primaryPackage.remainingMissingSkills)}.`;
+  }
+
+  if ((broadCoverQuestion || packageQuestion) && primaryPackage) {
+    const packageNames = textValues(primaryPackage.engineerNames);
+    const namedAction = {
+      priority: "now",
+      action: `Contact ${packageNames.join(", ")} for provisional cover of ${readableShift(primaryPackage)}.`,
+      owner: "Maintenance Manager",
+      expectedImpact: `Fully close ${numberValue(primaryPackage.missingSkillsClosed)} missing-skill gaps; ${numberValue(primaryPackage.remainingMissingSkills)} remain.`,
+      verification:
+        "Confirm each engineer's acceptance and rest compliance, update the rota, then re-run Shift Cover.",
+    };
+    answer.actionPlan = [
+      namedAction,
+      ...records(answer.actionPlan).filter(
+        (item) => !/\bcontact\b/i.test(String(item.action)),
+      ),
+    ].slice(0, 6);
+    answer.recommendedActions = [
+      namedAction.action,
+      ...(Array.isArray(answer.recommendedActions)
+        ? answer.recommendedActions.filter(
+            (item): item is string =>
+              typeof item === "string" && !/\bcontact\b/i.test(item),
+          )
+        : []),
+    ].slice(0, 6);
+  }
 }
 
 async function rpcTool(
