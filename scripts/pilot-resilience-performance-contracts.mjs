@@ -38,8 +38,11 @@ for (const slug of [
 }
 mustMatch(resilience, /"vorta_get_shift_cover_snapshot"/, "Shift Cover RPC must use the shared resilience boundary");
 mustMatch(resilience, /statement timeout\|canceling statement/, "Database statement timeouts must be treated as transient evidence failures");
-mustMatch(resilience, /REQUEST_TIMEOUT_MS = 15_000/, "Evidence requests must have a bounded timeout");
-mustMatch(resilience, /MAX_ATTEMPTS = 3/, "Evidence requests must use bounded retry");
+mustMatch(resilience, /REQUEST_TIMEOUT_MS = 8_000/, "Evidence requests must use the reviewed eight-second attempt budget");
+mustMatch(resilience, /MAX_ATTEMPTS = 2/, "Evidence requests must finish within the reviewed sub-20-second UX budget");
+mustMatch(resilience, /const inFlightEvidence = new Map/, "Equivalent evidence requests must be deduplicated");
+mustMatch(resilience, /controller\.abort\(\)/, "Timed-out Edge Function requests must be cancelled");
+mustMatch(resilience, /vorta:evidence-request/, "Retry outcomes must emit privacy-safe telemetry");
 mustMatch(resilience, /TRANSIENT_MESSAGE/, "Only recognised transport failures may be retried");
 mustMatch(resilience, /GENERIC_FUNCTION_ERROR/, "Generic Edge Function failures must be normalised before display");
 mustMatch(resilience, /Secure evidence could not be refreshed\. Tap refresh to try again\./, "Users must not see raw non-2xx Edge Function errors");
