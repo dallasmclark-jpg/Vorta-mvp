@@ -29,7 +29,7 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   await expect(areaTabs).toBeVisible();
   const allSiteTab = areaTabs.getByRole("tab", { name: /All site/ });
   await expect(allSiteTab).toHaveAttribute("aria-selected", "true");
-  await expect(areaTabs.getByRole("tab")).toHaveCountGreaterThan(1);
+  expect(await areaTabs.getByRole("tab").count()).toBeGreaterThan(1);
 
   for (const label of [
     "Critical stock-outs",
@@ -63,9 +63,9 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   await scopedAreaTab.click();
   await expect(scopedAreaTab).toHaveAttribute("aria-selected", "true");
   if (scopedAreaName) {
-    await expect(page).toHaveURL(
-      new RegExp(`area=${encodeURIComponent(scopedAreaName).replace(/%20/g, "(?:%20|\\+)")}`),
-    );
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("area"))
+      .toBe(scopedAreaName);
   }
   await expectNoPageOverflow(page);
 
