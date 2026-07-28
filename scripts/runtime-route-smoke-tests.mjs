@@ -114,6 +114,7 @@ const app = await readFile(new URL("../src/index.tsx", import.meta.url), "utf8")
 for (const route of [
   "dashboard",
   "equipment",
+  "stores-inventory",
   "skills-matrix",
   "pilot-impact",
   "pilot-adoption",
