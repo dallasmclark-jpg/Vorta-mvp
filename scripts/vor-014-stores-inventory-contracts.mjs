@@ -99,6 +99,55 @@ for (const [text, message] of [
   requireText(surfaceSource, text, message);
 }
 
+const mobileRiskSurfaceStart = surfaceSource.indexOf(
+  "/* Mobile inventory risk uses a neutral card with a three-sided severity edge. */",
+);
+const mobileRiskSurfaceEnd = surfaceSource.indexOf(
+  "/* Shift Handover starts with the operational summary cards, not evidence copy. */",
+  mobileRiskSurfaceStart,
+);
+const mobileRiskSurface = surfaceSource.slice(
+  mobileRiskSurfaceStart,
+  mobileRiskSurfaceEnd,
+);
+for (const [text, message] of [
+  ["@media (max-width: 767px)", "The inventory risk edge refinement must remain phone-only."],
+  [
+    '[data-vorta-inventory-risk-card="true"] {',
+    "The mobile inventory risk card must use its semantic hook for styling.",
+  ],
+  [
+    "background-color: var(--vorta-surface-card) !important;",
+    "The mobile inventory risk card must use the neutral Vorta card surface instead of a full severity fill.",
+  ],
+  [
+    "border-color: transparent !important;",
+    "The original full border must be removed before drawing the three-sided severity edge.",
+  ],
+  [
+    '[data-vorta-inventory-risk-card="true"]::before',
+    "The mobile inventory risk card must draw its severity edge without changing content layout.",
+  ],
+  [
+    "padding: 1px 1px 0;",
+    "The severity edge must cover the left, top and right sides without a bottom border.",
+  ],
+  [
+    "background: linear-gradient(",
+    "The severity edge must use a gradient rather than a flat border.",
+  ],
+  [
+    "180deg",
+    "The severity edge gradient must fade from top to bottom.",
+  ],
+  [
+    "rgba(248, 113, 113, 0) 100%",
+    "The severity edge must fade fully transparent at the bottom.",
+  ],
+]) {
+  requireText(mobileRiskSurface, text, message);
+}
+
 for (const [text, message] of [
   [
     'data-vorta-inventory-week-comparison="true"',
