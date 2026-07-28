@@ -1,0 +1,73 @@
+name: One-time VOR-007 to VOR-013 implementation
+
+on:
+  push:
+    branches:
+      - improve/vor-007-013-audit-actions
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: improve/vor-007-013-audit-actions
+
+      - name: Apply focused implementation
+        run: |
+          set +e
+          python scripts/one_time_vor_007_013_audit_actions.py > /tmp/vor-007-013-patch.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "Patch status: $status"
+              cat /tmp/vor-007-013-patch.log
+            } > .github/vor-007-013-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-007-013-error.txt
+            git commit -m "Record VOR-007 to VOR-013 patch diagnostic"
+            git push origin HEAD:improve/vor-007-013-audit-actions
+            exit "$status"
+          fi
+
+      - name: Install and validate
+        run: |
+          set +e
+          npm ci > /tmp/vor-007-013-tests.log 2>&1
+          status=$?
+          if [ "$status" -eq 0 ]; then npm run typecheck >> /tmp/vor-007-013-tests.log 2>&1; status=$?; fi
+          if [ "$status" -eq 0 ]; then node scripts/vor-007-013-audit-improvements-contracts.mjs >> /tmp/vor-007-013-tests.log 2>&1; status=$?; fi
+          if [ "$status" -eq 0 ]; then npm run test:contracts >> /tmp/vor-007-013-tests.log 2>&1; status=$?; fi
+          if [ "$status" -eq 0 ]; then npm run test:smoke >> /tmp/vor-007-013-tests.log 2>&1; status=$?; fi
+          if [ "$status" -eq 0 ]; then npm run build >> /tmp/vor-007-013-tests.log 2>&1; status=$?; fi
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "Test status: $status"
+              tail -n 500 /tmp/vor-007-013-tests.log
+            } > .github/vor-007-013-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "Record VOR-007 to VOR-013 validation diagnostic"
+            git push origin HEAD:improve/vor-007-013-audit-actions
+            exit "$status"
+          fi
+
+      - name: Commit validated implementation
+        run: |
+          rm -f .github/vor-007-013-error.txt
+          git rm scripts/one_time_vor_007_013_audit_actions.py
+          git rm .github/workflows/one-time-vor-007-013-audit-actions.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement VOR-007 through VOR-013 audit improvements"
+          git push origin HEAD:improve/vor-007-013-audit-actions
