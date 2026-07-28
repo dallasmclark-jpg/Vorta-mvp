@@ -44,11 +44,14 @@ type InventoryFilter =
 
 interface MetricCardProps {
   label: string;
+  mobileLabel?: string;
   value: string;
   detail: string;
   icon: LucideIcon;
   active?: boolean;
   onClick?: () => void;
+  accessibleLabel?: string;
+  compactMobileValue?: boolean;
 }
 
 interface FilterOption {
@@ -116,44 +119,83 @@ function stockTone(item: StoresInventoryItem): string {
 
 function MetricCard({
   label,
+  mobileLabel = label,
   value,
   detail,
   icon: Icon,
   active = false,
   onClick,
+  accessibleLabel,
+  compactMobileValue = false,
 }: MetricCardProps): JSX.Element {
   const content = (
     <>
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1117] text-blue-300">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-          {label}
+      <span className="block md:hidden">
+        <span className="flex min-h-8 items-center gap-2">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1117] text-blue-300">
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <span
+            data-vorta-inventory-kpi-mobile-label="true"
+            className="text-[10px] font-semibold uppercase leading-4 tracking-[0.11em] text-slate-500"
+          >
+            {mobileLabel}
+          </span>
         </span>
-        <span className="mt-1 block text-2xl font-semibold tracking-tight text-slate-50">
+        <span
+          className={`mt-2 block font-semibold tracking-tight text-slate-50 ${
+            compactMobileValue ? "text-lg leading-5" : "text-2xl"
+          }`}
+        >
           {value}
         </span>
-        <span className="mt-1 block text-xs leading-5 text-slate-400">
-          {detail}
+      </span>
+
+      <span className="hidden md:contents">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1117] text-blue-300">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-500">
+            {label}
+          </span>
+          <span className="mt-1 block text-2xl font-semibold tracking-tight text-slate-50">
+            {value}
+          </span>
+          <span
+            data-vorta-inventory-kpi-detail="true"
+            className="mt-1 block text-xs leading-5 text-slate-400"
+          >
+            {detail}
+          </span>
         </span>
       </span>
     </>
   );
 
-  const className = `min-h-[132px] rounded-xl border p-4 text-left transition-colors ${
+  const className = `h-[100px] rounded-xl border p-3 text-left transition-colors md:h-auto md:min-h-[132px] md:p-4 ${
     active
       ? "border-blue-500/40 bg-blue-600/[0.12]"
       : "border-gray-800 bg-[#141820] hover:border-gray-700"
   }`;
 
   if (!onClick) {
-    return <article className={className}>{content}</article>;
+    return (
+      <article
+        data-vorta-inventory-kpi="true"
+        aria-label={accessibleLabel}
+        className={className}
+      >
+        {content}
+      </article>
+    );
   }
 
   return (
     <button
       type="button"
+      data-vorta-inventory-kpi="true"
+      aria-label={accessibleLabel}
       onClick={onClick}
       className={`${className} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60`}
     >
@@ -175,7 +217,7 @@ function LoadingState(): JSX.Element {
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="h-32 animate-pulse rounded-xl border border-gray-800 bg-[#141820]"
+            className="h-[100px] animate-pulse rounded-xl border border-gray-800 bg-[#141820] md:h-32"
           />
         ))}
       </div>
@@ -346,15 +388,86 @@ function StockFilterTabs({
   );
 }
 
+interface PreviousWeekComparison {
+  scoreLabel: string;
+  changeLabel: string | null;
+  toneClassName: string;
+  ariaLabel: string;
+}
+
+function getPreviousWeekComparison(
+  currentScore: number,
+  previousWeekScore: number | null,
+): PreviousWeekComparison {
+  if (previousWeekScore === null) {
+    return {
+      scoreLabel: "No prior score",
+      changeLabel: null,
+      toneClassName: "text-slate-300",
+      ariaLabel: "Previous week: no prior inventory risk score is available",
+    };
+  }
+
+  const difference = currentScore - previousWeekScore;
+  if (difference > 0) {
+    return {
+      scoreLabel: `${previousWeekScore}/100`,
+      changeLabel: `↑ ${difference} worse`,
+      toneClassName: "text-red-300",
+      ariaLabel: `Previous week ${previousWeekScore} out of 100, up ${difference}, worse`,
+    };
+  }
+  if (difference < 0) {
+    return {
+      scoreLabel: `${previousWeekScore}/100`,
+      changeLabel: `↓ ${Math.abs(difference)} better`,
+      toneClassName: "text-emerald-300",
+      ariaLabel: `Previous week ${previousWeekScore} out of 100, down ${Math.abs(difference)}, better`,
+    };
+  }
+
+  return {
+    scoreLabel: `${previousWeekScore}/100`,
+    changeLabel: "No change",
+    toneClassName: "text-slate-300",
+    ariaLabel: `Previous week ${previousWeekScore} out of 100, no change`,
+  };
+}
+
+function getPreviousWeekRiskScore(
+  payload: StoresInventoryPayload | null,
+): number | null {
+  if (!payload) return null;
+
+  const candidate = (payload as StoresInventoryPayload & {
+    previousWeekRiskScore?: unknown;
+  }).previousWeekRiskScore;
+
+  return typeof candidate === "number" &&
+    Number.isFinite(candidate) &&
+    candidate >= 0 &&
+    candidate <= 100
+    ? Math.round(candidate)
+    : null;
+}
+
 function RiskSummaryCard({
   summary,
   scopeLabel,
+  previousWeekScore,
 }: {
   summary: StoresInventorySummary;
   scopeLabel: string;
+  previousWeekScore: number | null;
 }): JSX.Element {
+  const comparison = getPreviousWeekComparison(
+    summary.riskScore,
+    previousWeekScore,
+  );
+
   return (
     <article
+      data-vorta-inventory-risk-card="true"
       className={`rounded-xl border p-5 ${riskTone(summary.riskLevel)}`}
       aria-label={`${scopeLabel} inventory risk ${summary.riskScore}, ${summary.riskLevel}`}
     >
@@ -371,7 +484,34 @@ function RiskSummaryCard({
           </div>
           <p className="mt-2 text-sm font-semibold">{summary.riskLevel}</p>
         </div>
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-current/20 bg-black/10">
+
+        <div
+          data-vorta-inventory-week-comparison="true"
+          className="shrink-0 text-right md:hidden"
+          aria-label={comparison.ariaLabel}
+        >
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] opacity-65">
+            Previous week
+          </span>
+          <strong
+            className={`mt-1 block text-xs font-semibold ${comparison.toneClassName}`}
+          >
+            {comparison.scoreLabel}
+          </strong>
+          {comparison.changeLabel && (
+            <span
+              data-vorta-inventory-week-change="true"
+              className={`mt-0.5 block text-[10px] font-semibold ${comparison.toneClassName}`}
+            >
+              {comparison.changeLabel}
+            </span>
+          )}
+        </div>
+
+        <span
+          data-vorta-inventory-risk-icon="true"
+          className="hidden h-11 w-11 items-center justify-center rounded-xl border border-current/20 bg-black/10 md:inline-flex"
+        >
           <Warehouse className="h-5 w-5" aria-hidden="true" />
         </span>
       </div>
@@ -571,6 +711,10 @@ export function StoresInventorySection(): JSX.Element {
     () => summariseStoresInventory(scopedItems),
     [scopedItems],
   );
+  const previousWeekRiskScore = useMemo(
+    () => getPreviousWeekRiskScore(payload),
+    [payload],
+  );
 
   const filterOptions = useMemo<FilterOption[]>(() => {
     const actionRequired = scopedItems.filter((item) => item.exposureScore > 0).length;
@@ -748,13 +892,18 @@ export function StoresInventorySection(): JSX.Element {
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1.15fr_3fr]">
-        <RiskSummaryCard summary={summary} scopeLabel={scopeLabel} />
+        <RiskSummaryCard
+          summary={summary}
+          scopeLabel={scopeLabel}
+          previousWeekScore={previousWeekRiskScore}
+        />
         <div
           data-vorta-group-frame="true"
           className="grid grid-cols-2 gap-3 rounded-xl border border-gray-800 bg-[#141820] p-3 md:grid-cols-3 xl:grid-cols-6"
         >
           <MetricCard
             label="Critical stock-outs"
+            mobileLabel="Critical stock-outs"
             value={integer.format(summary.criticalStockouts)}
             detail="Critical items with zero stock"
             icon={AlertTriangle}
@@ -763,6 +912,7 @@ export function StoresInventorySection(): JSX.Element {
           />
           <MetricCard
             label="Low stock"
+            mobileLabel="Low stock"
             value={integer.format(summary.belowMinimum + summary.belowTarget)}
             detail="Below minimum or target"
             icon={PackageMinus}
@@ -771,6 +921,7 @@ export function StoresInventorySection(): JSX.Element {
           />
           <MetricCard
             label="Long lead"
+            mobileLabel="Long lead 42+ days"
             value={integer.format(summary.longLeadShortages)}
             detail="Shortfall with at least 42 days lead"
             icon={Clock3}
@@ -779,6 +930,7 @@ export function StoresInventorySection(): JSX.Element {
           />
           <MetricCard
             label="Affected assets"
+            mobileLabel="Affected assets"
             value={integer.format(summary.affectedAssets)}
             detail="Equipment exposed to a stock gap"
             icon={Boxes}
@@ -787,6 +939,7 @@ export function StoresInventorySection(): JSX.Element {
           />
           <MetricCard
             label="Stock value"
+            mobileLabel="On-hand stock value"
             value={
               summary.stockValue === null
                 ? "Unavailable"
@@ -799,12 +952,19 @@ export function StoresInventorySection(): JSX.Element {
           />
           <MetricCard
             label="Excess value"
+            mobileLabel="Excess stock value"
             value={
               summary.excessValue === null
-                ? "Unavailable"
+                ? "Not calculated"
                 : currency.format(summary.excessValue)
             }
             detail="Quantity above target where cost exists"
+            accessibleLabel={
+              summary.excessValue === null
+                ? "Excess stock value: not calculated. No calculable excess value is available from the current target-stock and unit-cost evidence."
+                : `Excess stock value: ${currency.format(summary.excessValue)}`
+            }
+            compactMobileValue={summary.excessValue === null}
             icon={Package}
             active={filter === "excess"}
             onClick={() => applyFilter("excess")}
