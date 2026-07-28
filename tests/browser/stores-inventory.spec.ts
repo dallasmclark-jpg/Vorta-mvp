@@ -55,6 +55,81 @@ test("Stores Inventory reuses Vorta dashboard and disclosure patterns across sup
     );
   }
 
+  const phoneViewport = (page.viewportSize()?.width ?? 1280) < 640;
+  const riskCard = workspace.locator(
+    '[data-vorta-inventory-risk-card="true"]',
+  );
+  const previousWeek = riskCard.locator(
+    '[data-vorta-inventory-week-comparison="true"]',
+  );
+  const riskIcon = riskCard.locator(
+    '[data-vorta-inventory-risk-icon="true"]',
+  );
+
+  await expect(riskCard).toBeVisible();
+  if (phoneViewport) {
+    await expect(previousWeek).toBeVisible();
+    await expect(riskIcon).toBeHidden();
+    await expect(
+      previousWeek.getByText("Previous week", { exact: true }),
+    ).toBeVisible();
+    await expect(previousWeek).toContainText(
+      /No prior score|\d+\/100/,
+    );
+  } else {
+    await expect(previousWeek).toBeHidden();
+    await expect(riskIcon).toBeVisible();
+  }
+
+  const inventoryKpis = workspace.locator(
+    '[data-vorta-inventory-kpi="true"]',
+  );
+  await expect(inventoryKpis).toHaveCount(6);
+
+  if (phoneViewport) {
+    for (const label of [
+      "Critical stock-outs",
+      "Low stock",
+      "Long lead 42+ days",
+      "Affected assets",
+      "On-hand stock value",
+      "Excess stock value",
+    ]) {
+      await expect(
+        workspace
+          .locator('[data-vorta-inventory-kpi-mobile-label="true"]')
+          .filter({ hasText: label }),
+      ).toBeVisible();
+    }
+
+    const heights: number[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      const card = inventoryKpis.nth(index);
+      await expect(card).toBeVisible();
+      await expectOperationalTouchTarget(card);
+      const box = await card.boundingBox();
+      expect(box).not.toBeNull();
+      heights.push(box!.height);
+    }
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
+    expect(Math.max(...heights)).toBeLessThanOrEqual(102);
+    await expect(
+      workspace.locator('[data-vorta-inventory-kpi-detail="true"]'),
+    ).toBeHidden();
+  } else {
+    await expect(
+      workspace.locator('[data-vorta-inventory-kpi-detail="true"]').first(),
+    ).toBeVisible();
+  }
+
+  const excessValueKpi = inventoryKpis.nth(5);
+  if ((await excessValueKpi.textContent())?.includes("Not calculated")) {
+    await expect(excessValueKpi).toHaveAttribute(
+      "aria-label",
+      /No calculable excess value/i,
+    );
+  }
+
   const allSiteTab = areaTabs.getByRole("tab", { name: /All site/ });
   await expect(allSiteTab).toHaveAttribute("aria-selected", "true");
   await expect(allSiteTab.locator('[data-vorta-risk-dot="true"]')).toBeVisible();
