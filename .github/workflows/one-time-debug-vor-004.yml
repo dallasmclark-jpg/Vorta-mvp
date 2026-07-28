@@ -1,0 +1,66 @@
+name: One-time debug VOR-004
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch and capture result
+        run: |
+          git fetch origin fix/vor-004-dashboard-deep-links
+          git checkout fix/vor-004-dashboard-deep-links
+          sed -n "/python - <<'PY'/,/^          PY$/p" .github/workflows/one-time-vor-004-dashboard-deep-links.yml \
+            | sed '1d;$d;s/^          //' > /tmp/vor-004-patch.py
+
+          set +e
+          python /tmp/vor-004-patch.py > /tmp/vor-004.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            mkdir -p .github
+            {
+              echo "Patch status: $status"
+              cat /tmp/vor-004.log
+            } > .github/vor-004-patch-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-004-patch-error.txt
+            git commit -m "Record VOR-004 patch diagnostic"
+            git push origin HEAD:fix/vor-004-dashboard-deep-links
+            exit "$status"
+          fi
+
+          npm ci > /tmp/vor-004-tests.log 2>&1
+          node scripts/vor-004-dashboard-deep-links-contract.mjs >> /tmp/vor-004-tests.log 2>&1
+          npm run typecheck >> /tmp/vor-004-tests.log 2>&1
+          npm run build >> /tmp/vor-004-tests.log 2>&1
+
+          rm -f .github/vor-004-patch-error.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement VOR-004 dashboard record deep links"
+          git push origin HEAD:fix/vor-004-dashboard-deep-links
+
+      - name: Remove diagnostic runner
+        if: always()
+        run: |
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/one-time-debug-vor-004.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove diagnostic VOR-004 runner"
+          git push origin main
