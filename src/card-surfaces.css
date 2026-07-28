@@ -66,29 +66,19 @@ html.dark {
 
 /*
  * Group-only frames organise child cards and grouped controls without adding
- * another filled grey slab. This intentionally covers both the shared Card
- * primitive and legacy rounded content surfaces that predate it.
+ * another filled grey slab. Shared Cards and neutral legacy surfaces use the
+ * same hierarchy while operational colour surfaces remain untouched.
  */
 [data-vorta-page-content="true"]
   [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]),
 [data-vorta-page-content="true"]
   :is(
     [data-vorta-card="true"],
-    section[class*="rounded"][class*="border"],
-    article[class*="rounded"][class*="border"],
-    button[class*="rounded"][class*="border"],
-    div[class*="rounded-xl"][class*="border"],
-    div[class*="rounded-2xl"][class*="border"]
-  ):not(
-    [class*="bg-red"],
-    [class*="bg-orange"],
-    [class*="bg-amber"],
-    [class*="bg-yellow"],
-    [class*="bg-emerald"],
-    [class*="bg-green"],
-    [class*="bg-blue"],
-    [class*="bg-violet"],
-    [class*="bg-indigo"]
+    section[class*="rounded"][class*="border"][class*="bg-[#"],
+    article[class*="rounded"][class*="border"][class*="bg-[#"],
+    button[class*="rounded"][class*="border"][class*="bg-[#"],
+    div[class*="rounded-xl"][class*="border"][class*="bg-[#"],
+    div[class*="rounded-2xl"][class*="border"][class*="bg-[#"]
   ):has(
     :is([class*="grid"], [class*="flex"]) >
       :is(
