@@ -9,33 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  patch-and-test:
-    if: github.actor != 'github-actions[bot]'
+  validate-and-finish:
+    if: github.actor != 'github-actions[bot]' && contains(github.event.head_commit.message, '[run-vor-audit]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: improve/vor-007-013-audit-actions
-
-      - name: Apply focused implementation
-        run: |
-          set +e
-          python scripts/one_time_vor_007_013_audit_actions.py > /tmp/vor-007-013-patch.log 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            {
-              echo "Patch status: $status"
-              cat /tmp/vor-007-013-patch.log
-            } > .github/vor-007-013-error.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/vor-007-013-error.txt
-            git commit -m "Record VOR-007 to VOR-013 patch diagnostic"
-            git push origin HEAD:improve/vor-007-013-audit-actions
-            exit "$status"
-          fi
 
       - name: Install and validate
         run: |
