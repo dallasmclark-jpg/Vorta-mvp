@@ -41,6 +41,13 @@ import {
   type ShiftHandoverSnapshot,
   type ShiftHandoverStatus,
 } from "./shiftHandoverService";
+import {
+  acknowledgeShiftHandoverAction,
+  carryForwardShiftHandoverAction,
+  loadShiftHandoverActions,
+  saveShiftHandoverAction,
+  type ShiftHandoverWorkflowAction,
+} from "./shiftHandoverWorkflowService";
 
 type ScopeMode = "site" | "building" | "area";
 type CriticalityFilter = "all" | ShiftHandoverItem["criticality"];
@@ -280,12 +287,225 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
   );
 }
 
+
+function toDateTimeLocal(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function HandoverControlPanel({
+  item,
+  workflow,
+  dataMode,
+  siteId,
+  windowStart,
+  windowEnd,
+  onWorkflowChange,
+}: {
+  item: ShiftHandoverItem;
+  workflow: ShiftHandoverWorkflowAction | null;
+  dataMode: VortaDataMode;
+  siteId: string | null;
+  windowStart: string;
+  windowEnd: string;
+  onWorkflowChange: (action: ShiftHandoverWorkflowAction) => void;
+}): JSX.Element {
+  const [outgoingNote, setOutgoingNote] = useState(workflow?.outgoingNote ?? item.latestConfirmationText ?? "");
+  const [nextAction, setNextAction] = useState(workflow?.nextAction ?? item.nextAction);
+  const [ownerName, setOwnerName] = useState(workflow?.ownerName ?? item.assignedEngineer ?? "");
+  const [dueAt, setDueAt] = useState(toDateTimeLocal(workflow?.dueAt ?? windowEnd));
+  const [busy, setBusy] = useState<"save" | "acknowledge" | "carry" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOutgoingNote(workflow?.outgoingNote ?? item.latestConfirmationText ?? "");
+    setNextAction(workflow?.nextAction ?? item.nextAction);
+    setOwnerName(workflow?.ownerName ?? item.assignedEngineer ?? "");
+    setDueAt(toDateTimeLocal(workflow?.dueAt ?? windowEnd));
+    setMessage(null);
+  }, [item.id, item.assignedEngineer, item.latestConfirmationText, item.nextAction, windowEnd, workflow]);
+
+  const completed = item.status === "completed";
+  const liveControl = dataMode === "live" && Boolean(siteId);
+  const editable = liveControl && !completed && (!workflow || workflow.status === "ready");
+
+  const run = async (operation: "save" | "acknowledge" | "carry"): Promise<void> => {
+    if (!siteId) return;
+    setBusy(operation);
+    setMessage(null);
+    try {
+      if (operation === "save") {
+        if (!outgoingNote.trim() || !nextAction.trim() || !ownerName.trim() || !dueAt) {
+          throw new Error("Note, next action, owner and due time are required.");
+        }
+        const saved = await saveShiftHandoverAction({
+          siteId,
+          workOrderId: item.id,
+          windowStart,
+          windowEnd,
+          outgoingNote: outgoingNote.trim(),
+          nextAction: nextAction.trim(),
+          ownerName: ownerName.trim(),
+          dueAt: new Date(dueAt).toISOString(),
+          expectedVersion: workflow?.version ?? null,
+        });
+        onWorkflowChange(saved);
+        setMessage("Handover control saved with an audit entry.");
+      } else if (operation === "acknowledge" && workflow) {
+        const acknowledged = await acknowledgeShiftHandoverAction(workflow.id, workflow.version);
+        onWorkflowChange(acknowledged);
+        setMessage("Incoming shift acknowledgement recorded.");
+      } else if (operation === "carry" && workflow) {
+        const nextStart = new Date(windowEnd);
+        const nextEnd = new Date(nextStart.getTime() + 12 * 60 * 60 * 1000);
+        const carried = await carryForwardShiftHandoverAction(
+          workflow.id,
+          workflow.version,
+          nextStart.toISOString(),
+          nextEnd.toISOString(),
+          nextEnd.toISOString(),
+        );
+        onWorkflowChange(carried.current);
+        setMessage(`Carried forward to the shift ending ${formatTimestamp(nextEnd.toISOString())}.`);
+      }
+    } catch (operationError) {
+      setMessage(
+        operationError instanceof Error
+          ? operationError.message
+          : "The handover control could not be updated. Refresh and retry.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (completed) {
+    return (
+      <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Handover control locked</p>
+        <p className="mt-2 text-sm leading-6 text-slate-300">This work order is completed in SAP and cannot be reopened through handover.</p>
+      </section>
+    );
+  }
+
+  if (!liveControl) {
+    return (
+      <section className="rounded-xl border border-gray-800 bg-[#10151d] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Handover control</p>
+        <p className="mt-2 text-sm leading-6 text-slate-400">Notes, ownership and acknowledgement are available only against an authorised live site.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-4" data-vorta-handover-control="true">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-300">Controlled handover</p>
+          <p className="mt-1 text-xs text-slate-500">SAP remains read-only. Vorta records accountability and acknowledgement.</p>
+        </div>
+        <span className="rounded-md border border-gray-700 bg-[#0d1117] px-2 py-1 text-[10px] font-semibold uppercase text-slate-300">
+          {workflow?.status.replaceAll("_", " ") ?? "Not saved"}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3">
+        <label className="grid gap-1.5 text-xs text-slate-400">
+          Outgoing shift note
+          <textarea
+            value={outgoingNote}
+            onChange={(event) => setOutgoingNote(event.target.value)}
+            readOnly={!editable}
+            maxLength={1200}
+            rows={3}
+            className="rounded-xl border border-gray-700 bg-[#0d1117] px-3 py-2 text-sm leading-6 text-slate-200 outline-none focus:border-blue-500/60 read-only:opacity-70"
+          />
+        </label>
+        <label className="grid gap-1.5 text-xs text-slate-400">
+          Incoming shift next action
+          <textarea
+            value={nextAction}
+            onChange={(event) => setNextAction(event.target.value)}
+            readOnly={!editable}
+            maxLength={800}
+            rows={2}
+            className="rounded-xl border border-gray-700 bg-[#0d1117] px-3 py-2 text-sm leading-6 text-slate-200 outline-none focus:border-blue-500/60 read-only:opacity-70"
+          />
+        </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-xs text-slate-400">
+            Accountable owner
+            <input
+              value={ownerName}
+              onChange={(event) => setOwnerName(event.target.value)}
+              readOnly={!editable}
+              maxLength={160}
+              className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm text-slate-200 outline-none focus:border-blue-500/60 read-only:opacity-70"
+            />
+          </label>
+          <label className="grid gap-1.5 text-xs text-slate-400">
+            Due by
+            <input
+              type="datetime-local"
+              value={dueAt}
+              onChange={(event) => setDueAt(event.target.value)}
+              readOnly={!editable}
+              className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm text-slate-200 outline-none focus:border-blue-500/60 read-only:opacity-70"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <button type="button" disabled={!editable || Boolean(busy)} onClick={() => void run("save")} className="min-h-11 rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+          {busy === "save" ? "Saving…" : workflow ? "Update handover" : "Save handover"}
+        </button>
+        <button type="button" disabled={!workflow || workflow.status !== "ready" || Boolean(busy)} onClick={() => void run("acknowledge")} className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3 text-sm font-semibold text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
+          {busy === "acknowledge" ? "Recording…" : "Acknowledge"}
+        </button>
+        <button type="button" disabled={!workflow || !["ready", "acknowledged"].includes(workflow.status) || Boolean(busy)} onClick={() => void run("carry")} className="min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3 text-sm font-semibold text-amber-200 disabled:cursor-not-allowed disabled:opacity-50">
+          {busy === "carry" ? "Carrying…" : "Carry forward"}
+        </button>
+      </div>
+
+      {message ? <p className="mt-3 text-xs leading-5 text-slate-300" role="status">{message}</p> : null}
+      {workflow?.events.length ? (
+        <details className="mt-4 border-t border-gray-800 pt-3">
+          <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-blue-300">Audit trail ({workflow.events.length})</summary>
+          <div className="space-y-2 pt-2">
+            {workflow.events.slice(0, 5).map((event) => (
+              <div key={event.id} className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                <span className="capitalize">{event.eventType.replaceAll("_", " ")} · v{event.actionVersion}</span>
+                <span>{formatTimestamp(event.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
 function HandoverDetail({
   item,
+  workflow,
+  dataMode,
+  siteId,
+  windowStart,
+  windowEnd,
+  onWorkflowChange,
   onClose,
   showClose,
 }: {
   item: ShiftHandoverItem;
+  workflow: ShiftHandoverWorkflowAction | null;
+  dataMode: VortaDataMode;
+  siteId: string | null;
+  windowStart: string;
+  windowEnd: string;
+  onWorkflowChange: (action: ShiftHandoverWorkflowAction) => void;
   onClose: () => void;
   showClose: boolean;
 }): JSX.Element {
@@ -322,8 +542,18 @@ function HandoverDetail({
 
         <section className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-300">Incoming shift action</p>
-          <p className="mt-2 text-sm leading-6 text-slate-200">{item.nextAction}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-200">{workflow?.nextAction ?? item.nextAction}</p>
         </section>
+
+        <HandoverControlPanel
+          item={item}
+          workflow={workflow}
+          dataMode={dataMode}
+          siteId={siteId}
+          windowStart={windowStart}
+          windowEnd={windowEnd}
+          onWorkflowChange={onWorkflowChange}
+        />
 
         <DetailSection title="Work order evidence">
           <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
@@ -448,24 +678,54 @@ export function ShiftHandoverSection(): JSX.Element {
   const [sortMode, setSortMode] = useState<SortMode>("priority");
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [workflowActions, setWorkflowActions] = useState<Map<string, ShiftHandoverWorkflowAction>>(new Map());
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
 
   const load = useCallback(async (refresh = false): Promise<void> => {
     setLoading(true);
     setError(null);
+    setWorkflowError(null);
     try {
       const next = await loadShiftHandoverSnapshot(dataMode, refresh);
       setSnapshot(next);
       setSelectedId((current) => current && next.items.some((item) => item.id === current)
         ? current
         : next.items[0]?.id ?? null);
+
+      if (dataMode === "live" && siteContext?.siteId) {
+        try {
+          setWorkflowActions(
+            await loadShiftHandoverActions(
+              siteContext.siteId,
+              next.window.start,
+              next.window.end,
+            ),
+          );
+        } catch (workflowLoadError) {
+          setWorkflowError(
+            workflowLoadError instanceof Error
+              ? workflowLoadError.message
+              : "Shift handover controls could not be loaded.",
+          );
+          if (!refresh) setWorkflowActions(new Map());
+        }
+      } else {
+        setWorkflowActions(new Map());
+      }
     } catch (loadError) {
-      setSnapshot(null);
-      setSelectedId(null);
-      setError(loadError instanceof Error ? loadError.message : "Shift handover could not be loaded.");
+      if (!refresh) {
+        setSnapshot(null);
+        setSelectedId(null);
+      }
+      setError(
+        `${loadError instanceof Error ? loadError.message : "Shift handover could not be loaded."}${
+          refresh ? " Previous verified evidence remains visible." : ""
+        }`,
+      );
     } finally {
       setLoading(false);
     }
-  }, [dataMode]);
+  }, [dataMode, siteContext?.siteId]);
 
   useEffect(() => {
     void load();
@@ -524,6 +784,14 @@ export function ShiftHandoverSection(): JSX.Element {
     if (compactDetail) setDetailOpen(true);
   };
 
+  const updateWorkflow = useCallback((action: ShiftHandoverWorkflowAction): void => {
+    setWorkflowActions((current) => {
+      const next = new Map(current);
+      next.set(action.workOrderId, action);
+      return next;
+    });
+  }, []);
+
   return (
     <section
       className="flex w-full flex-col gap-6 px-4 pb-28 pt-4 md:px-6 md:pb-12 xl:px-8"
@@ -558,6 +826,12 @@ export function ShiftHandoverSection(): JSX.Element {
         </button>
       </header>
 
+      {workflowError && snapshot ? (
+        <div role="status" className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-200">
+          {workflowError} SAP evidence remains available; control actions are withheld until refreshed.
+        </div>
+      ) : null}
+
       {error ? (
         <div role="alert" className="rounded-2xl border border-red-500/30 bg-red-500/[0.08] p-5">
           <div className="flex items-start gap-3">
@@ -590,7 +864,7 @@ export function ShiftHandoverSection(): JSX.Element {
             <MetricCard label="Breakdown" value={formatDuration(snapshot.summary.totalBreakdownMinutes)} detail="Recorded downtime" icon={Gauge} tone="text-orange-300" />
           </div>
 
-          <section className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
+          <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
@@ -718,7 +992,17 @@ export function ShiftHandoverSection(): JSX.Element {
 
               {selectedItem ? (
                 <aside className="hidden max-h-[calc(100vh-120px)] min-h-[640px] overflow-hidden rounded-2xl border border-gray-800 bg-[#0d1117] xl:sticky xl:top-6 xl:flex">
-                  <HandoverDetail item={selectedItem} onClose={() => undefined} showClose={false} />
+                  <HandoverDetail
+                    item={selectedItem}
+                    workflow={workflowActions.get(selectedItem.id) ?? null}
+                    dataMode={dataMode}
+                    siteId={siteContext?.siteId ?? null}
+                    windowStart={snapshot.window.start}
+                    windowEnd={snapshot.window.end}
+                    onWorkflowChange={updateWorkflow}
+                    onClose={() => undefined}
+                    showClose={false}
+                  />
                 </aside>
               ) : null}
             </div>
@@ -737,7 +1021,19 @@ export function ShiftHandoverSection(): JSX.Element {
       ) : null}
 
       <DetailDrawer open={detailOpen && Boolean(selectedItem)} onClose={() => setDetailOpen(false)} maxWidth="max-w-xl">
-        {selectedItem ? <HandoverDetail item={selectedItem} onClose={() => setDetailOpen(false)} showClose /> : null}
+        {selectedItem && snapshot ? (
+          <HandoverDetail
+            item={selectedItem}
+            workflow={workflowActions.get(selectedItem.id) ?? null}
+            dataMode={dataMode}
+            siteId={siteContext?.siteId ?? null}
+            windowStart={snapshot.window.start}
+            windowEnd={snapshot.window.end}
+            onWorkflowChange={updateWorkflow}
+            onClose={() => setDetailOpen(false)}
+            showClose
+          />
+        ) : null}
       </DetailDrawer>
     </section>
   );

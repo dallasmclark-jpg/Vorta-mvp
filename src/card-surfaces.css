@@ -64,18 +64,8 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
-/* Group-only frames organise child cards and controls without another grey slab. */
-[data-vorta-page-content="true"]
-  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]),
-[data-vorta-page-content="true"]
-  [data-vorta-card="true"]:has(
-    [class*="grid"] > [class*="rounded-xl"][class*="border"] ~
-      [class*="rounded-xl"][class*="border"]
-  ),
-[data-vorta-mobile-equipment="true"]
-  button:has(> [class~="grid"][class~="grid-cols-3"]),
-[data-vorta-shift-handover="true"]
-  > section:has([aria-label="Handover scope level"]) {
+/* Group-only frames are declared by component intent, never DOM shape or accessible copy. */
+[data-vorta-page-content="true"] [data-vorta-group-frame="true"] {
   background-color: transparent !important;
   box-shadow: none !important;
 }
@@ -150,8 +140,7 @@ html.dark [data-vorta-page-content="true"] :is(
     transform: translateY(-1px);
   }
 
-  [data-vorta-mobile-equipment="true"]
-    button:has(> [class~="grid"][class~="grid-cols-3"]):hover {
+  [data-vorta-page-content="true"] [data-vorta-group-frame="true"]:hover {
     box-shadow: none !important;
     transform: none;
   }

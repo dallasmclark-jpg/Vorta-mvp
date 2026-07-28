@@ -221,7 +221,7 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   const fileInput = page.locator(
     'input[type="file"][accept*="image/*"]',
   );
-  await expect(fileInput).toHaveAttribute("accept", /image\/\*/);
+  await expect(fileInput).toHaveAttribute("accept", /image\/*/);
   await fileInput.setInputFiles({
     name: "equipment-photo.png",
     mimeType: "image/png",
@@ -233,12 +233,11 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(mobileAssistant).toBeHidden();
 
   await page.goto("/equipment");
-  const equipmentButton = page
-    .locator('[data-vorta-mobile-equipment="true"] button')
-    .filter({ hasText: "Open" })
+  const equipmentOverviewButton = page
+    .locator('[data-vorta-mobile-equipment="true"] button[aria-label^="Open overview for "]')
     .first();
-  await expect(equipmentButton).toBeVisible({ timeout: 30_000 });
-  await equipmentButton.click();
+  await expect(equipmentOverviewButton).toBeVisible({ timeout: 30_000 });
+  await equipmentOverviewButton.click();
   await page.waitForURL(/\/equipment\/[^/]+\/overview(?:\?.*)?$/);
 
   await expect(

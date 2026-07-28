@@ -10,6 +10,7 @@ const contracts = [
   ["Work-order overlays", "scripts/work-order-overlay-contracts.mjs"],
   ["Maintenance dashboard", "scripts/maintenance-dashboard-contracts.mjs"],
   ["Dashboard deep links", "scripts/vor-004-dashboard-deep-links-contract.mjs"],
+  ["VOR-007 to VOR-013 audit improvements", "scripts/vor-007-013-audit-improvements-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
   ["Final mobile portal polish", "scripts/mobile-portal-final-polish-contracts.mjs"],

@@ -29,19 +29,22 @@ import { DEFAULT_EQUIPMENT_ID } from "./equipmentData";
 import type { EquipmentBase } from "./equipmentData";
 import {
   getCachedEquipmentIdentity,
-  getEquipmentComponents,
   getEquipmentIdentityById,
-  getEquipmentRecommendedWorkQueue,
 } from "./equipmentService";
 import type {
   EquipmentComponentsResult,
   EquipmentRecommendedWorkQueue,
 } from "./equipmentService";
+import {
+  getVerifiedEquipmentComponents,
+  getVerifiedEquipmentWorkQueue,
+} from "./sparesIntelligenceService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 type InventoryPart = EquipmentComponentsResult["inventory"][number];
 type ExposureBand = "Critical" | "High" | "Medium" | "Covered";
+type SparesEvidenceState = "loading" | "ready" | "empty" | "error";
 
 interface RankedPart extends InventoryPart {
   gap: number;
@@ -322,6 +325,10 @@ export const EquipmentSpares = (): JSX.Element => {
   const [workQueue, setWorkQueue] =
     useState<EquipmentRecommendedWorkQueue | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [componentsState, setComponentsState] = useState<SparesEvidenceState>("loading");
+  const [queueState, setQueueState] = useState<SparesEvidenceState>("loading");
+  const [componentsSourceUpdatedAt, setComponentsSourceUpdatedAt] = useState<string | null>(null);
+  const [queueCheckedAt, setQueueCheckedAt] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -333,28 +340,55 @@ export const EquipmentSpares = (): JSX.Element => {
   const loadSparesIntelligence = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
+    const [identityResult, componentsResult, queueResult] = await Promise.allSettled([
+      getEquipmentIdentityById(resolvedId),
+      getVerifiedEquipmentComponents(resolvedId),
+      getVerifiedEquipmentWorkQueue(resolvedId),
+    ]);
+    const failures: string[] = [];
 
-    try {
-      const [identity, componentResult, queue] = await Promise.all([
-        getEquipmentIdentityById(resolvedId),
-        getEquipmentComponents(resolvedId),
-        getEquipmentRecommendedWorkQueue(resolvedId),
-      ]);
-
-      setEquipment(identity);
-      setComponents(componentResult);
-      setWorkQueue(queue);
-      setLastUpdated(new Date());
-      setHasLoaded(true);
-    } catch (error) {
-      console.error("Failed to load equipment spares intelligence", error);
-      setLoadError(
-        "Unable to refresh spares intelligence. Showing the latest available data.",
-      );
-      setHasLoaded(true);
-    } finally {
-      setIsRefreshing(false);
+    if (identityResult.status === "fulfilled") {
+      setEquipment(identityResult.value);
+    } else {
+      failures.push("Equipment identity could not be refreshed.");
     }
+
+    if (componentsResult.status === "fulfilled") {
+      setComponents(componentsResult.value);
+      setComponentsSourceUpdatedAt(componentsResult.value.sourceUpdatedAt);
+      setComponentsState(
+        componentsResult.value.inventory.length > 0 ? "ready" : "empty",
+      );
+    } else {
+      setComponentsState("error");
+      failures.push(
+        componentsResult.reason instanceof Error
+          ? componentsResult.reason.message
+          : "Verified spares inventory could not be loaded.",
+      );
+    }
+
+    if (queueResult.status === "fulfilled") {
+      setWorkQueue(queueResult.value.queue);
+      setQueueCheckedAt(queueResult.value.checkedAt);
+      setQueueState(queueResult.value.queue ? "ready" : "empty");
+    } else {
+      setQueueState("error");
+      failures.push(
+        queueResult.reason instanceof Error
+          ? queueResult.reason.message
+          : "Verified spares intervention could not be loaded.",
+      );
+    }
+
+    setLastUpdated(new Date());
+    setHasLoaded(true);
+    setLoadError(
+      failures.length > 0
+        ? `${failures.join(" ")} Existing verified values remain visible where available; missing values are withheld.`
+        : null,
+    );
+    setIsRefreshing(false);
   }, [resolvedId]);
 
   useEffect(() => {
@@ -577,34 +611,51 @@ export const EquipmentSpares = (): JSX.Element => {
   const spareQueueAction = workQueue?.actions.find(
     (action) => action.sparePartNumber || action.partName,
   );
-  const potentialReduction =
-    spareQueueAction?.calculatedReduction ??
-    Math.min(8, Math.max(2, components.stockSummary.outOfStock * 3));
-  const projectedRisk = clamp(currentRisk - potentialReduction);
+  const verifiedPotentialReduction =
+    spareQueueAction && spareQueueAction.calculatedReduction > 0
+      ? spareQueueAction.calculatedReduction
+      : null;
+  const riskProjectionVerified =
+    verifiedPotentialReduction !== null &&
+    Boolean(workQueue) &&
+    (queueState === "ready" || queueState === "error");
+  const projectedRisk = riskProjectionVerified
+    ? clamp(currentRisk - verifiedPotentialReduction)
+    : null;
   const riskBadgeClass = riskTone(eq.riskLevel);
 
-  const lastUpdatedLabel = lastUpdated
+  const evidenceTimestamp =
+    componentsSourceUpdatedAt ?? queueCheckedAt ?? lastUpdated?.toISOString() ?? null;
+  const lastUpdatedLabel = evidenceTimestamp
     ? new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      }).format(lastUpdated)
-    : "Loading latest import";
+      }).format(new Date(evidenceTimestamp))
+    : "Evidence timestamp unavailable";
+  const inventoryUnavailable =
+    componentsState === "error" && components.inventory.length === 0;
+  const inventoryStale =
+    componentsState === "error" && components.inventory.length > 0;
+  const queueStale = queueState === "error" && Boolean(workQueue);
 
-  const briefing =
-    topExposure && topExposure.exposureBand !== "Covered"
-      ? `${eq.name} has ${components.stockSummary.outOfStock} part${
-          components.stockSummary.outOfStock === 1 ? "" : "s"
-        } out of stock and ${components.stockSummary.lowStock} below target. ${
-          topExposure.name
-        } creates the highest current exposure because it is ${
-          topExposure.status.toLowerCase()
-        }, is rated ${topExposure.criticality.toLowerCase()} and has a ${
-          topExposure.leadDays
-        }-day replenishment lead time.`
-      : `${eq.name} currently has full critical-spares coverage. Vorta is monitoring target holdings, supplier lead times and equipment failure consequences for early deterioration.`;
+  const briefing = inventoryUnavailable
+    ? `Verified spare-parts inventory is unavailable for ${eq.name}. No stock coverage, exposure or replenishment result is being substituted.`
+    : componentsState === "empty"
+      ? `No verified equipment-component stock records are configured for ${eq.name}. Risk effects are withheld until SAP inventory evidence is available.`
+      : topExposure && topExposure.exposureBand !== "Covered"
+        ? `${eq.name} has ${components.stockSummary.outOfStock} part${
+            components.stockSummary.outOfStock === 1 ? "" : "s"
+          } out of stock and ${components.stockSummary.lowStock} below target. ${
+            topExposure.name
+          } creates the highest current exposure because it is ${
+            topExposure.status.toLowerCase()
+          }, is rated ${topExposure.criticality.toLowerCase()} and has a ${
+            topExposure.leadDays
+          }-day replenishment lead time.`
+        : `${eq.name} currently has full verified critical-spares coverage. Vorta is monitoring target holdings, supplier lead times and equipment failure consequences for early deterioration.`;
 
   const askVorta = () => {
     const prompt =
@@ -843,7 +894,102 @@ export const EquipmentSpares = (): JSX.Element => {
       </div>
 
       <div className="flex flex-col gap-4 px-4 pt-4 md:px-6">
-        <Card className="overflow-hidden rounded-2xl border border-indigo-500/25 bg-[linear-gradient(135deg,#131923_0%,#10151d_55%,#111525_100%)] shadow-none">
+        <Card
+          data-vorta-group-frame="true"
+          className="rounded-2xl border border-indigo-500/25 bg-transparent shadow-none xl:hidden"
+        >
+          <CardContent className="space-y-4 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Badge className="h-auto rounded bg-indigo-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-300 shadow-none">
+                Spares decision
+              </Badge>
+              <span className={`text-[10px] font-semibold ${
+                inventoryUnavailable || queueState === "error"
+                  ? "text-amber-300"
+                  : "text-slate-500"
+              }`}>
+                {inventoryStale || queueStale ? "Previous verified evidence" : lastUpdatedLabel}
+              </span>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Highest exposure
+              </p>
+              <h2 className="mt-1 line-clamp-2 text-lg font-semibold text-slate-50">
+                {topExposure?.name ?? (inventoryUnavailable ? "Inventory evidence withheld" : "No exposed component")}
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-slate-400">
+                {topExposure?.consequence ?? briefing}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-gray-800 bg-[#0d1117] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Required action</p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">
+                  {topExposure?.recommendation ?? "No verified replenishment action"}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {topExposure ? `${formatCurrency(topExposure.gap * (topExposure.unitCost ?? 0))} stock gap` : "Stock values withheld"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-800 bg-[#0d1117] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Lead time</p>
+                <p className="mt-1 text-xl font-bold text-orange-300">
+                  {topExposure ? `${topExposure.leadDays}d` : "—"}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">Supplier replenishment</p>
+              </div>
+            </div>
+
+            <div className={`rounded-xl border p-3 ${
+              riskProjectionVerified
+                ? "border-emerald-500/25 bg-emerald-500/[0.06]"
+                : "border-gray-800 bg-[#0d1117]"
+            }`}>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Verified risk effect</p>
+              <p className="mt-1 text-lg font-bold text-slate-100">
+                {currentRisk}% <span className="mx-1 text-slate-600">→</span>{" "}
+                <span className={riskProjectionVerified ? "text-emerald-300" : "text-slate-400"}>
+                  {projectedRisk !== null ? `${projectedRisk}%` : "Withheld"}
+                </span>
+              </p>
+              <p className="mt-1 text-[10px] text-slate-500">
+                {riskProjectionVerified
+                  ? `${verifiedPotentialReduction} verified calculated points · checked ${lastUpdatedLabel}`
+                  : "No verified spare intervention is available. No estimate is included in operational risk."}
+              </p>
+            </div>
+
+            <details className="rounded-xl border border-gray-800 bg-[#10151d] p-3">
+              <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60">
+                Supporting stock evidence
+              </summary>
+              <div className="grid grid-cols-2 gap-2 border-t border-gray-800 pt-3">
+                <div><Metric label="Target stock cover" value={inventoryUnavailable ? "—" : `${stockResilience}%`} tone={stockResilience >= 90 ? "text-emerald-300" : stockResilience >= 70 ? "text-yellow-300" : "text-red-300"} /></div>
+                <div><Metric label="Critical exposed" value={inventoryUnavailable ? "—" : criticalAtRisk.length} tone="text-orange-300" /></div>
+                <div><Metric label="Out of stock" value={inventoryUnavailable ? "—" : components.stockSummary.outOfStock} tone="text-red-300" /></div>
+                <div><Metric label="Below target" value={inventoryUnavailable ? "—" : rankedParts.filter((part) => part.gap > 0).length} tone="text-yellow-300" /></div>
+              </div>
+              <p className="mt-3 border-t border-gray-800 pt-3 text-xs leading-5 text-slate-400">{briefing}</p>
+            </details>
+
+            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-gray-700 bg-[#0a0f16] px-3 focus-within:border-blue-500/60">
+              <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
+              <input
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") askVorta(); }}
+                placeholder={`Ask Vorta about ${eq.assetNumber} spare risk...`}
+                className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+              />
+              <button type="button" onClick={askVorta} className="min-h-11 shrink-0 px-2 text-xs font-semibold text-blue-300">Ask</button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-vorta-group-frame="true" className="hidden overflow-hidden rounded-2xl border border-indigo-500/25 bg-[linear-gradient(135deg,#131923_0%,#10151d_55%,#111525_100%)] shadow-none xl:block">
           <CardContent className="p-0">
             <div className="grid xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.55fr)]">
               <div className="p-5 md:p-6">
@@ -853,8 +999,9 @@ export const EquipmentSpares = (): JSX.Element => {
                   </Badge>
                   <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
                     <Database className="h-3.5 w-3.5" />
-                    SAP IH01 · MB52 · equipment BOM · refreshed{" "}
-                    {lastUpdated ? "now" : "pending"}
+                    SAP IH01 · MB52 · equipment BOM · {
+                      inventoryStale ? "previous verified" : componentsState === "error" ? "unavailable" : "verified"
+                    } · {hasLoaded ? lastUpdatedLabel : "pending"}
                   </span>
                 </div>
 
@@ -900,9 +1047,13 @@ export const EquipmentSpares = (): JSX.Element => {
                   <div className="rounded-xl border border-gray-800 bg-[#0c1118]/80 p-3">
                     <Metric
                       label="Risk after action"
-                      value={`${projectedRisk}%`}
-                      note={`-${potentialReduction} calculated points`}
-                      tone="text-emerald-300"
+                      value={projectedRisk !== null ? `${projectedRisk}%` : "Withheld"}
+                      note={
+                        riskProjectionVerified
+                          ? `-${verifiedPotentialReduction} verified calculated points`
+                          : "No verified spare intervention"
+                      }
+                      tone={riskProjectionVerified ? "text-emerald-300" : "text-slate-400"}
                     />
                   </div>
                 </div>

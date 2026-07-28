@@ -9,8 +9,13 @@ export function EquipmentRouteEntry(): JSX.Element {
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const isPhone = useMediaQuery("(max-width: 767px)");
 
-  if (isPhone && dataMode === "demo") {
-    return <MobileEquipmentSection />;
+  if (isPhone) {
+    return (
+      <MobileEquipmentSection
+        dataMode={dataMode}
+        siteId={siteContext?.siteId ?? null}
+      />
+    );
   }
 
   return <EquipmentLiveListEntry />;
