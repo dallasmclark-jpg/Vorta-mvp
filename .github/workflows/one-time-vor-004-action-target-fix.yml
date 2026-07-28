@@ -1,0 +1,79 @@
+name: One-time VOR-004 action target fix
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply and test focused branch
+        run: |
+          git fetch origin fix/vor-004-dashboard-deep-links
+          git checkout fix/vor-004-dashboard-deep-links
+
+          set +e
+          python scripts/one_time_vor_004_action_target_fix.py > /tmp/vor-004-action.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "Patch status: $status"
+              cat /tmp/vor-004-action.log
+            } > .github/vor-004-action-target-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-004-action-target-error.txt
+            git commit -m "Record VOR-004 action-target diagnostic"
+            git push origin HEAD:fix/vor-004-dashboard-deep-links
+            exit "$status"
+          fi
+
+          set +e
+          npm ci > /tmp/vor-004-action-tests.log 2>&1
+          test_status=$?
+          if [ "$test_status" -eq 0 ]; then node scripts/vor-004-dashboard-deep-links-contract.mjs >> /tmp/vor-004-action-tests.log 2>&1; test_status=$?; fi
+          if [ "$test_status" -eq 0 ]; then npm run typecheck >> /tmp/vor-004-action-tests.log 2>&1; test_status=$?; fi
+          if [ "$test_status" -eq 0 ]; then npm run build >> /tmp/vor-004-action-tests.log 2>&1; test_status=$?; fi
+          set -e
+
+          if [ "$test_status" -ne 0 ]; then
+            {
+              echo "Test status: $test_status"
+              tail -n 300 /tmp/vor-004-action-tests.log
+            } > .github/vor-004-action-target-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-004-action-target-error.txt
+            git commit -m "Record VOR-004 action-target test diagnostic"
+            git push origin HEAD:fix/vor-004-dashboard-deep-links
+            exit "$test_status"
+          fi
+
+          rm -f .github/vor-004-action-target-error.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Keep dashboard actions on their source workflow"
+          git push origin HEAD:fix/vor-004-dashboard-deep-links
+
+      - name: Remove one-time runner
+        if: always()
+        run: |
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/one-time-vor-004-action-target-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove VOR-004 action-target runner"
+          git push origin main
