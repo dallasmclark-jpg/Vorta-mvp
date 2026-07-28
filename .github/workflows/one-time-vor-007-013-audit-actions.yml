@@ -18,6 +18,9 @@ jobs:
           fetch-depth: 0
           ref: improve/vor-007-013-audit-actions
 
+      - name: Apply final corrections
+        run: python scripts/one_time_vor_audit_corrections.py
+
       - name: Install and validate
         run: |
           set +e
@@ -46,6 +49,7 @@ jobs:
         run: |
           rm -f .github/vor-007-013-error.txt
           git rm scripts/one_time_vor_007_013_audit_actions.py
+          git rm scripts/one_time_vor_audit_corrections.py
           git rm .github/workflows/one-time-vor-007-013-audit-actions.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
