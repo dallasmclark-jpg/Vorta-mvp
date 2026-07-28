@@ -8,6 +8,7 @@ const page = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
 const service = read("src/screens/ShiftHandover/shiftHandoverService.ts");
 const edge = read("supabase/functions/shift-handover-data/index.ts");
 const transform = read("supabase/functions/shift-handover-data/transform.ts");
+const surfaces = read("src/card-surfaces.css");
 
 const assertions = [
   [route.includes('label: "Shift Handover"') && route.includes('path="shift-handover"'), "Shift Handover must be present in navigation and routing."],
@@ -16,6 +17,7 @@ const assertions = [
   [page.includes("Mechanical") && page.includes("Electrical") && page.includes("Controls") && page.includes("Facilities"), "Discipline selectors are required."],
   [page.includes("Longest breakdown") && page.includes("Criticality") && page.includes("Status"), "Criticality, status and longest-breakdown filtering are required."],
   [page.includes("sparesUsed") && page.includes("outstandingMaterials") && page.includes("confirmedWorkHours"), "Work-order, confirmation and material detail must remain visible."],
+  [/\[data-vorta-shift-handover="true"\]\s*>\s*header\s*\{\s*display:\s*none\s*!important;\s*\}/m.test(surfaces), "Shift Handover must start with the operational summary cards on every viewport."],
   [service.includes('supabase.functions.invoke("shift-handover-data"'), "The page must use the authenticated Shift Handover data function."],
   [service.includes('dataMode === "demo" ? "latest" : "previous"'), "Live mode must use the previous shift while demo mode may use latest imported evidence."],
   [edge.includes('from("work_order_confirmations")'), "The Edge Function must be driven by work-order confirmations."],
@@ -30,4 +32,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover route, SAP evidence, responsive controls and read-only boundary verified.");
+console.log("✓ Shift Handover route, SAP evidence, cards-first layout and responsive controls verified.");
