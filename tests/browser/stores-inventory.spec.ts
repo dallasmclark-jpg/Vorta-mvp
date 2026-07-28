@@ -31,6 +31,30 @@ test("Stores Inventory reuses Vorta dashboard and disclosure patterns across sup
     name: "Inventory area risk",
   });
   await expect(areaTabs).toBeVisible();
+
+  await expect(workspace.locator(":scope > header")).toBeHidden();
+  await expect(
+    workspace.getByText("Site and area risk", { exact: true }),
+  ).toBeHidden();
+  await expect(
+    workspace.getByText("Areas are ordered by current inventory exposure.", {
+      exact: true,
+    }),
+  ).toBeHidden();
+  await expect(workspace.getByText(/^\d+ materials$/)).toBeHidden();
+
+  const evidenceStatus = workspace.locator(':scope > [role="status"]');
+  if ((await evidenceStatus.count()) > 0) {
+    await expect(evidenceStatus).toBeVisible();
+    const areaTabsBox = await areaTabs.boundingBox();
+    const evidenceStatusBox = await evidenceStatus.boundingBox();
+    expect(areaTabsBox).not.toBeNull();
+    expect(evidenceStatusBox).not.toBeNull();
+    expect(evidenceStatusBox!.y).toBeGreaterThan(
+      areaTabsBox!.y + areaTabsBox!.height,
+    );
+  }
+
   const allSiteTab = areaTabs.getByRole("tab", { name: /All site/ });
   await expect(allSiteTab).toHaveAttribute("aria-selected", "true");
   await expect(allSiteTab.locator('[data-vorta-risk-dot="true"]')).toBeVisible();
