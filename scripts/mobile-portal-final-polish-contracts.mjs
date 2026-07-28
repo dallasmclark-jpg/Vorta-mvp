@@ -9,6 +9,7 @@ const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobilePageHeader = read("src/screens/AiOperations/MobilePageHeaderExperience.tsx");
+const portalShell = read("src/components/PortalShell.tsx");
 const aiMatchingEntry = read("src/screens/AiMatching/AiMatchingRouteEntry.tsx");
 const phoneGuard = read("src/screens/AiOperations/TabletDesktopOnly.tsx");
 const polish = read("src/screens/AiOperations/mobilePortalFinalPolish.css");
@@ -56,6 +57,11 @@ assert.match(mobilePageHeader, /title: "Shift Handover"/);
 assert.match(mobilePageHeader, /profile: \{ title: "Equipment", duplicateHeadings: \[\] \}/);
 assert.match(mobilePageHeader, /font-size: 1\.125rem !important/);
 assert.match(mobilePageHeader, /min-height: 4rem !important/);
+assert.match(mobilePageHeader, /data-vorta-mobile-dashboard-logo-link/);
+assert.match(mobilePageHeader, /aria-label", "Go to main dashboard"/);
+assert.match(mobilePageHeader, /navigate\("\/dashboard"\)/);
+assert.match(mobilePageHeader, /event\.key !== "Enter" && event\.key !== " "/);
+assert.match(portalShell, /<NavLink to=\{homeRoute\} aria-label="Vorta home"/);
 
 for (const route of routes) {
   assert.match(route, /max-width: 767px/, "Every explicit phone route must cover the full sub-768px range.");
@@ -85,4 +91,4 @@ assert.match(polish, /href="\/settings\/data-import"/);
 assert.match(polish, /@media \(min-width: 640px\) and \(max-width: 767px\)/);
 assert.match(polish, /height: 100dvh !important/);
 
-console.log("Final mobile portal navigation, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
+console.log("Final mobile portal navigation, dashboard logo routing, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
