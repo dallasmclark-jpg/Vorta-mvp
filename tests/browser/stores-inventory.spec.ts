@@ -5,7 +5,7 @@ import {
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
-test("Stores Inventory loads trusted site evidence across supported layouts", async ({
+test("Stores Inventory reuses Vorta dashboard and disclosure patterns across supported layouts", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -15,13 +15,17 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   const workspace = page.locator('[data-vorta-stores-inventory="true"]');
   await expect(workspace).toBeVisible({ timeout: 30_000 });
   await expect(
-    page.getByRole("heading", { name: "Stores Inventory", exact: true }),
-  ).toBeVisible();
-  await expect(
-    workspace.getByText(
-      /Verified live inventory|Stale inventory evidence|Partial live evidence|Demo inventory evidence/,
-    ),
-  ).toBeVisible();
+    workspace.locator("h1").filter({ hasText: "Stores Inventory" }),
+  ).toHaveCount(1);
+
+  for (const removedCopy of [
+    "Site-wide stock intelligence",
+    "Demo inventory evidence",
+    "Verified live inventory",
+    "Refresh inventory",
+  ]) {
+    await expect(workspace.getByText(removedCopy, { exact: true })).toHaveCount(0);
+  }
 
   const areaTabs = workspace.getByRole("tablist", {
     name: "Inventory area risk",
@@ -29,15 +33,18 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   await expect(areaTabs).toBeVisible();
   const allSiteTab = areaTabs.getByRole("tab", { name: /All site/ });
   await expect(allSiteTab).toHaveAttribute("aria-selected", "true");
+  await expect(allSiteTab.locator('[data-vorta-risk-dot="true"]')).toBeVisible();
   expect(await areaTabs.getByRole("tab").count()).toBeGreaterThan(1);
 
   for (const label of [
     "Critical stock-outs",
-    "Below minimum",
-    "Long-lead shortages",
+    "Low stock",
+    "Long lead",
     "Affected assets",
   ]) {
-    const metric = workspace.getByRole("button", { name: new RegExp(label, "i") });
+    const metric = workspace
+      .getByRole("button", { name: new RegExp(label, "i") })
+      .first();
     await expect(metric).toBeVisible();
     await expectOperationalTouchTarget(metric);
   }
@@ -45,21 +52,43 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   const search = workspace.getByRole("searchbox", {
     name: "Search stores inventory",
   });
-  const filter = workspace.getByRole("combobox", {
-    name: "Filter stores inventory",
-  });
   await expect(search).toBeVisible();
-  await expect(filter).toBeVisible();
   await expectOperationalTouchTarget(search);
-  await expectOperationalTouchTarget(filter);
 
-  const firstItem = workspace.getByRole("button", { name: /^Open .+ for .+$/ }).first();
-  await expect(firstItem).toBeVisible({ timeout: 30_000 });
-  await expectOperationalTouchTarget(firstItem);
+  const stockFilters = workspace.getByRole("tablist", {
+    name: "Inventory stock status",
+  });
+  await expect(stockFilters).toBeVisible();
+  for (const label of [
+    "Action required",
+    "Out of stock",
+    "Low stock",
+    "Long lead",
+    "Excess",
+    "All",
+  ]) {
+    const filterTab = stockFilters.getByRole("tab", { name: new RegExp(`^${label}`) });
+    await expect(filterTab).toBeVisible();
+    await expectOperationalTouchTarget(filterTab);
+  }
+
+  const firstDisclosure = workspace
+    .locator('[data-vorta-inventory-disclosure="true"]')
+    .first();
+  await expect(firstDisclosure).toBeVisible({ timeout: 30_000 });
+  await expect(firstDisclosure).not.toHaveAttribute("open", "");
+  const firstSummary = firstDisclosure.locator("summary");
+  await expect(firstSummary).toBeVisible();
+  await expectOperationalTouchTarget(firstSummary);
+  await expect(
+    firstDisclosure.getByRole("button", { name: /^Open .+ for .+$/ }),
+  ).toBeHidden();
   await expectNoPageOverflow(page);
 
   const scopedAreaTab = areaTabs.getByRole("tab").nth(1);
-  const scopedAreaName = (await scopedAreaTab.textContent())?.split("Risk")[0]?.trim();
+  const scopedAreaName = (await scopedAreaTab.textContent())
+    ?.replace(/\d+\s*$/, "")
+    .trim();
   await scopedAreaTab.click();
   await expect(scopedAreaTab).toHaveAttribute("aria-selected", "true");
   if (scopedAreaName) {
@@ -70,16 +99,26 @@ test("Stores Inventory loads trusted site evidence across supported layouts", as
   await expectNoPageOverflow(page);
 
   await allSiteTab.click();
-  await filter.selectOption("stockout");
+  const outOfStockFilter = stockFilters.getByRole("tab", {
+    name: /^Out of stock/,
+  });
+  await outOfStockFilter.click();
   await expect(page).toHaveURL(/filter=stockout/);
-  await expect(
-    workspace.getByRole("button", { name: /^Open .+ for .+$/ }).first(),
-  ).toBeVisible();
+  await expect(outOfStockFilter).toHaveAttribute("aria-selected", "true");
 
-  await workspace
-    .getByRole("button", { name: /^Open .+ for .+$/ })
-    .first()
-    .click();
+  const filteredDisclosure = workspace
+    .locator('[data-vorta-inventory-disclosure="true"]')
+    .first();
+  await expect(filteredDisclosure).toBeVisible();
+  await filteredDisclosure.locator("summary").click();
+  await expect(filteredDisclosure).toHaveAttribute("open", "");
+
+  const openSpares = filteredDisclosure.getByRole("button", {
+    name: /^Open .+ for .+$/,
+  });
+  await expect(openSpares).toBeVisible();
+  await expectOperationalTouchTarget(openSpares);
+  await openSpares.click();
   await page.waitForURL(
     /\/equipment\/[^/]+\/spares\?[^#]*record=[^&]+[^#]*from=stores-inventory/,
   );

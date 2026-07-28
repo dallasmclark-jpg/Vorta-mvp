@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Boxes,
+  ChevronDown,
   Clock3,
   Database,
   Package,
@@ -9,7 +10,6 @@ import {
   PackageMinus,
   RefreshCw,
   Search,
-  ShieldCheck,
   Warehouse,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -38,7 +38,7 @@ type InventoryFilter =
   | "attention"
   | "all"
   | "stockout"
-  | "below-minimum"
+  | "low-stock"
   | "long-lead"
   | "excess";
 
@@ -51,6 +51,13 @@ interface MetricCardProps {
   onClick?: () => void;
 }
 
+interface FilterOption {
+  key: InventoryFilter;
+  label: string;
+  count: number;
+  dotClassName: string;
+}
+
 const currency = new Intl.NumberFormat("en-GB", {
   style: "currency",
   currency: "GBP",
@@ -61,20 +68,18 @@ const integer = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
 
-function ageLabel(value: string | null): string {
-  if (!value) return "No source timestamp";
-  const milliseconds = Date.now() - new Date(value).getTime();
-  if (!Number.isFinite(milliseconds)) return "Invalid source timestamp";
-  const days = Math.max(0, Math.floor(milliseconds / 86_400_000));
-  if (days === 0) return "Updated today";
-  if (days === 1) return "Updated 1 day ago";
-  return `Updated ${days} days ago`;
-}
-
 function isStale(value: string | null): boolean {
   if (!value) return true;
   const age = Date.now() - new Date(value).getTime();
   return !Number.isFinite(age) || age > 7 * 86_400_000;
+}
+
+function riskDot(score: number): string {
+  if (score >= 85) return "bg-red-400";
+  if (score >= 65) return "bg-orange-400";
+  if (score >= 40) return "bg-yellow-400";
+  if (score >= 20) return "bg-emerald-400";
+  return "bg-cyan-400";
 }
 
 function riskTone(level: InventoryExposureLevel): string {
@@ -119,7 +124,7 @@ function MetricCard({
 }: MetricCardProps): JSX.Element {
   const content = (
     <>
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/80 bg-[#111722] text-blue-300">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1117] text-blue-300">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <span className="min-w-0">
@@ -136,10 +141,10 @@ function MetricCard({
     </>
   );
 
-  const className = `min-h-[132px] rounded-xl border p-4 text-left transition ${
+  const className = `min-h-[132px] rounded-xl border p-4 text-left transition-colors ${
     active
-      ? "border-blue-500/60 bg-blue-500/[0.09] shadow-[0_0_0_1px_rgba(59,130,246,0.14)]"
-      : "border-slate-800 bg-[#11161f] hover:border-slate-700 hover:bg-[#131a25]"
+      ? "border-blue-500/40 bg-blue-600/[0.12]"
+      : "border-gray-800 bg-[#141820] hover:border-gray-700"
   }`;
 
   if (!onClick) {
@@ -150,7 +155,7 @@ function MetricCard({
     <button
       type="button"
       onClick={onClick}
-      className={`${className} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+      className={`${className} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60`}
     >
       {content}
     </button>
@@ -160,21 +165,22 @@ function MetricCard({
 function LoadingState(): JSX.Element {
   return (
     <section
-      className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 sm:px-6 lg:px-8"
+      className="flex w-full flex-col gap-5 px-4 pb-28 pt-4 md:px-6 md:pb-12 xl:px-8"
       role="status"
       aria-live="polite"
     >
-      <div className="h-28 animate-pulse rounded-2xl border border-slate-800 bg-[#11161f]" />
+      <div className="hidden h-16 animate-pulse border-b border-white/10 md:block" />
+      <div className="h-14 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="h-32 animate-pulse rounded-xl border border-slate-800 bg-[#11161f]"
+            className="h-32 animate-pulse rounded-xl border border-gray-800 bg-[#141820]"
           />
         ))}
       </div>
-      <div className="h-80 animate-pulse rounded-2xl border border-slate-800 bg-[#11161f]" />
-      <span className="sr-only">Loading Stores Inventory evidence…</span>
+      <div className="h-72 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
+      <span className="sr-only">Loading Stores Inventory…</span>
     </section>
   );
 }
@@ -190,7 +196,7 @@ function EmptyState({
 }): JSX.Element {
   return (
     <section className="mx-auto flex min-h-[60vh] w-full max-w-2xl items-center px-4 py-12 sm:px-6">
-      <div className="w-full rounded-2xl border border-slate-800 bg-[#11161f] p-6 text-center sm:p-8">
+      <div className="w-full rounded-xl border border-gray-800 bg-[#141820] p-6 text-center sm:p-8">
         <Warehouse className="mx-auto h-9 w-9 text-slate-500" aria-hidden="true" />
         <h1 className="mt-4 text-xl font-semibold text-slate-50">{title}</h1>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-400">
@@ -199,68 +205,50 @@ function EmptyState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#151c27] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-[#18212d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-700 bg-[#0d1117] px-4 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:border-gray-600 hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
         >
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          Retry inventory
+          Try again
         </button>
       </div>
     </section>
   );
 }
 
-function DataTrustBanner({
-  payload,
-  dataMode,
+function DashboardStyleTab({
+  label,
+  value,
+  selected,
+  dotClassName,
+  onClick,
 }: {
-  payload: StoresInventoryPayload;
-  dataMode: "live" | "demo" | "unavailable";
+  label: string;
+  value: string;
+  selected: boolean;
+  dotClassName: string;
+  onClick: () => void;
 }): JSX.Element {
-  const stale = isStale(payload.latestSourceAt);
-  const partial =
-    payload.assetEvidence.status === "unavailable" ||
-    payload.riskEvidence.status === "unavailable";
-  const label =
-    dataMode === "demo"
-      ? "Demo inventory evidence"
-      : stale
-        ? "Stale inventory evidence"
-        : partial
-          ? "Partial live evidence"
-          : "Verified live inventory";
-  const Icon = stale || partial ? AlertTriangle : ShieldCheck;
-
   return (
-    <div
-      className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-        stale || partial
-          ? "border-amber-500/30 bg-amber-500/[0.07]"
-          : "border-emerald-500/25 bg-emerald-500/[0.06]"
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onClick}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
+        selected
+          ? "border-blue-500/40 bg-blue-600 text-white"
+          : "border-gray-800 bg-[#0d1117] text-slate-400 hover:border-gray-700 hover:bg-gray-800 hover:text-slate-200"
       }`}
-      role={stale || partial ? "status" : undefined}
     >
-      <div className="flex min-w-0 items-start gap-3">
-        <Icon
-          className={`mt-0.5 h-4 w-4 shrink-0 ${
-            stale || partial ? "text-amber-300" : "text-emerald-300"
-          }`}
-          aria-hidden="true"
-        />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-100">{label}</p>
-          <p className="mt-0.5 text-xs leading-5 text-slate-400">
-            {ageLabel(payload.latestSourceAt)}
-            {payload.sourceSystems.length > 0
-              ? ` · ${payload.sourceSystems.join(", ")}`
-              : ""}
-          </p>
-        </div>
-      </div>
-      <p className="text-xs leading-5 text-slate-400 sm:max-w-md sm:text-right">
-        Exposure uses verified stock gap, criticality, lead time and available
-        affected-asset risk. Stock value never increases the risk score.
-      </p>
-    </div>
+      <span
+        className={`h-2 w-2 rounded-full ${dotClassName}`}
+        data-vorta-risk-dot="true"
+      />
+      <span>{label}</span>
+      <span className={selected ? "text-blue-100" : "text-slate-600"}>
+        {value}
+      </span>
+    </button>
   );
 }
 
@@ -275,13 +263,12 @@ function AreaTabs({
 }): JSX.Element {
   const areas = useMemo(() => {
     const entries = Array.from(new Set(items.map((item) => item.area))).map(
-      (area) => {
-        const scopedItems = items.filter((item) => item.area === area);
-        return {
-          area,
-          summary: summariseStoresInventory(scopedItems),
-        };
-      },
+      (area) => ({
+        area,
+        summary: summariseStoresInventory(
+          items.filter((item) => item.area === area),
+        ),
+      }),
     );
 
     return entries.sort(
@@ -294,43 +281,65 @@ function AreaTabs({
   const siteSummary = summariseStoresInventory(items);
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
-      <div className="flex min-w-max gap-2" role="tablist" aria-label="Inventory area risk">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={selectedArea === "all"}
+    <div
+      className="overflow-x-auto border-b border-gray-800 pb-2 sm:pb-4"
+      style={{ scrollbarWidth: "none" }}
+    >
+      <div
+        className="flex min-w-max items-center gap-2"
+        role="tablist"
+        aria-label="Inventory area risk"
+      >
+        <DashboardStyleTab
+          label="All site"
+          value={String(siteSummary.riskScore)}
+          selected={selectedArea === "all"}
+          dotClassName={riskDot(siteSummary.riskScore)}
           onClick={() => onSelect("all")}
-          className={`min-h-12 rounded-xl border px-4 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-            selectedArea === "all"
-              ? "border-blue-500/60 bg-blue-500/[0.1]"
-              : "border-slate-800 bg-[#11161f] hover:border-slate-700"
-          }`}
-        >
-          <span className="block text-xs font-semibold text-slate-100">All site</span>
-          <span className="mt-0.5 block text-[11px] text-slate-400">
-            Risk {siteSummary.riskScore} · {siteSummary.riskLevel}
-          </span>
-        </button>
-
+        />
         {areas.map(({ area, summary }) => (
-          <button
+          <DashboardStyleTab
             key={area}
-            type="button"
-            role="tab"
-            aria-selected={selectedArea === area}
+            label={area}
+            value={String(summary.riskScore)}
+            selected={selectedArea === area}
+            dotClassName={riskDot(summary.riskScore)}
             onClick={() => onSelect(area)}
-            className={`min-h-12 rounded-xl border px-4 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-              selectedArea === area
-                ? "border-blue-500/60 bg-blue-500/[0.1]"
-                : "border-slate-800 bg-[#11161f] hover:border-slate-700"
-            }`}
-          >
-            <span className="block text-xs font-semibold text-slate-100">{area}</span>
-            <span className="mt-0.5 block text-[11px] text-slate-400">
-              Risk {summary.riskScore} · {summary.riskLevel}
-            </span>
-          </button>
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StockFilterTabs({
+  options,
+  selectedFilter,
+  onSelect,
+}: {
+  options: FilterOption[];
+  selectedFilter: InventoryFilter;
+  onSelect: (filter: InventoryFilter) => void;
+}): JSX.Element {
+  return (
+    <div
+      className="overflow-x-auto pb-1"
+      style={{ scrollbarWidth: "none" }}
+    >
+      <div
+        className="flex min-w-max items-center gap-2"
+        role="tablist"
+        aria-label="Inventory stock status"
+      >
+        {options.map((option) => (
+          <DashboardStyleTab
+            key={option.key}
+            label={option.label}
+            value={integer.format(option.count)}
+            selected={selectedFilter === option.key}
+            dotClassName={option.dotClassName}
+            onClick={() => onSelect(option.key)}
+          />
         ))}
       </div>
     </div>
@@ -346,7 +355,7 @@ function RiskSummaryCard({
 }): JSX.Element {
   return (
     <article
-      className={`rounded-2xl border p-5 ${riskTone(summary.riskLevel)}`}
+      className={`rounded-xl border p-5 ${riskTone(summary.riskLevel)}`}
       aria-label={`${scopeLabel} inventory risk ${summary.riskScore}, ${summary.riskLevel}`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -380,7 +389,26 @@ function RiskSummaryCard({
   );
 }
 
-function InventoryItemCard({
+function DetailValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): JSX.Element {
+  return (
+    <div>
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium leading-5 text-slate-200">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function InventoryItemDisclosure({
   item,
   onOpen,
 }: {
@@ -388,97 +416,75 @@ function InventoryItemCard({
   onOpen: (item: StoresInventoryItem) => void;
 }): JSX.Element {
   return (
-    <article className="rounded-xl border border-slate-800 bg-[#11161f] p-4">
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(220px,1.4fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_auto] lg:items-center">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stockTone(item)}`}>
-              {item.stockState}
-            </span>
-            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskTone(item.exposureLevel)}`}>
-              Exposure {item.exposureScore}
-            </span>
-            {item.longLeadShortage && (
-              <span className="rounded-full border border-amber-400/30 bg-amber-400/[0.08] px-2.5 py-1 text-[11px] font-semibold text-amber-100">
-                Long lead
-              </span>
-            )}
-          </div>
-          <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-6 text-slate-50">
+    <details
+      data-vorta-inventory-disclosure="true"
+      className="group rounded-xl border border-gray-800 bg-[#141820]"
+    >
+      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-100 sm:text-base">
             {item.partName}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">
-            {item.partNumber} · {item.storageLocation}
-          </p>
+          <p className="mt-1 truncate text-xs text-slate-500">{item.partNumber}</p>
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stockTone(item)}`}
+          >
+            {item.stockState}
+          </span>
+          <ChevronDown
+            className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </div>
+      </summary>
 
-        <div className="grid grid-cols-3 gap-2 lg:block">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-              Stock
+      <div className="border-t border-gray-800 px-4 pb-4 pt-4">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
+          <DetailValue label="Stock" value={integer.format(item.stock)} />
+          <DetailValue label="Minimum" value={integer.format(item.minimum)} />
+          <DetailValue label="Target" value={integer.format(item.target)} />
+          <DetailValue
+            label="Lead time"
+            value={item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
+          />
+          <DetailValue label="Supplier" value={item.supplier} />
+          <DetailValue label="Location" value={item.storageLocation} />
+        </dl>
+
+        <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Affected equipment
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-100">
-              {integer.format(item.stock)}
+            <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">
+              {item.equipmentName}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {item.equipmentCode} · {item.area}
             </p>
           </div>
-          <div className="lg:mt-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-              Minimum
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Recommended action
             </p>
-            <p className="mt-1 text-sm text-slate-300">
-              {integer.format(item.minimum)}
-            </p>
-          </div>
-          <div className="lg:mt-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-              Target
-            </p>
-            <p className="mt-1 text-sm text-slate-300">
-              {integer.format(item.target)}
+            <p className="mt-1 text-sm font-medium leading-5 text-blue-200">
+              {item.recommendedAction}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onOpen(item)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            aria-label={`Open ${item.partName} for ${item.equipmentName}`}
+          >
+            Open spares
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
-
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-            Lead time
-          </p>
-          <p className="mt-1 text-sm font-semibold text-slate-100">
-            {item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
-          </p>
-          <p className="mt-2 text-xs text-slate-400">
-            {item.stockValue === null
-              ? "Value not recorded"
-              : `${currency.format(item.stockValue)} on hand`}
-          </p>
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-            Affected equipment
-          </p>
-          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">
-            {item.equipmentName}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            {item.equipmentCode} · {item.area}
-          </p>
-          <p className="mt-2 text-xs font-medium text-blue-200">
-            {item.recommendedAction}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onOpen(item)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          aria-label={`Open ${item.partName} for ${item.equipmentName}`}
-        >
-          Open spares
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </button>
       </div>
-    </article>
+    </details>
   );
 }
 
@@ -493,18 +499,29 @@ export function StoresInventorySection(): JSX.Element {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const selectedArea = searchParams.get("area") || "all";
-  const filter = (searchParams.get("filter") || "attention") as InventoryFilter;
+  const rawFilter = searchParams.get("filter");
+  const filter: InventoryFilter =
+    rawFilter === "all" ||
+    rawFilter === "stockout" ||
+    rawFilter === "low-stock" ||
+    rawFilter === "long-lead" ||
+    rawFilter === "excess"
+      ? rawFilter
+      : rawFilter === "below-minimum"
+        ? "low-stock"
+        : "attention";
   const search = searchParams.get("search") || "";
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
       const next = new URLSearchParams(searchParams);
       for (const [key, value] of Object.entries(updates)) {
-        if (!value || value === "all") {
-          next.delete(key);
-        } else {
-          next.set(key, value);
-        }
+        const shouldDelete =
+          !value ||
+          (key === "area" && value === "all") ||
+          (key === "filter" && value === "attention");
+        if (shouldDelete) next.delete(key);
+        else next.set(key, value);
       }
       setSearchParams(next, { replace: true });
     },
@@ -555,6 +572,59 @@ export function StoresInventorySection(): JSX.Element {
     [scopedItems],
   );
 
+  const filterOptions = useMemo<FilterOption[]>(() => {
+    const actionRequired = scopedItems.filter((item) => item.exposureScore > 0).length;
+    const outOfStock = scopedItems.filter(
+      (item) => item.stockState === "Out of stock",
+    ).length;
+    const lowStock = scopedItems.filter(
+      (item) =>
+        item.stockState === "Below minimum" ||
+        item.stockState === "Below target",
+    ).length;
+    const longLead = scopedItems.filter((item) => item.longLeadShortage).length;
+    const excess = scopedItems.filter((item) => item.stockState === "Excess").length;
+
+    return [
+      {
+        key: "attention",
+        label: "Action required",
+        count: actionRequired,
+        dotClassName: "bg-orange-400",
+      },
+      {
+        key: "stockout",
+        label: "Out of stock",
+        count: outOfStock,
+        dotClassName: "bg-red-400",
+      },
+      {
+        key: "low-stock",
+        label: "Low stock",
+        count: lowStock,
+        dotClassName: "bg-yellow-400",
+      },
+      {
+        key: "long-lead",
+        label: "Long lead",
+        count: longLead,
+        dotClassName: "bg-amber-400",
+      },
+      {
+        key: "excess",
+        label: "Excess",
+        count: excess,
+        dotClassName: "bg-purple-400",
+      },
+      {
+        key: "all",
+        label: "All",
+        count: scopedItems.length,
+        dotClassName: "bg-cyan-400",
+      },
+    ];
+  }, [scopedItems]);
+
   const filteredItems = useMemo(() => {
     const term = search.trim().toLowerCase();
 
@@ -573,7 +643,12 @@ export function StoresInventorySection(): JSX.Element {
       if (!matchesSearch) return false;
       if (filter === "all") return true;
       if (filter === "stockout") return item.stockState === "Out of stock";
-      if (filter === "below-minimum") return item.stockState === "Below minimum";
+      if (filter === "low-stock") {
+        return (
+          item.stockState === "Below minimum" ||
+          item.stockState === "Below target"
+        );
+      }
       if (filter === "long-lead") return item.longLeadShortage;
       if (filter === "excess") return item.stockState === "Excess";
       return item.exposureScore > 0;
@@ -598,9 +673,7 @@ export function StoresInventorySection(): JSX.Element {
     navigate(`/equipment/${item.equipmentId}/spares?${next.toString()}`);
   };
 
-  if (loading && !payload) {
-    return <LoadingState />;
-  }
+  if (loading && !payload) return <LoadingState />;
 
   if (!payload) {
     return (
@@ -615,67 +688,46 @@ export function StoresInventorySection(): JSX.Element {
   const scopeLabel = selectedArea === "all" ? "Site" : selectedArea;
   const visibleCount = filteredItems.length;
   const stale = isStale(payload.latestSourceAt);
+  const partial =
+    payload.assetEvidence.status === "unavailable" ||
+    payload.riskEvidence.status === "unavailable";
 
   return (
-    <div
+    <section
       data-vorta-stores-inventory="true"
-      className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 pb-28 sm:px-6 sm:py-6 lg:px-8 lg:pb-10"
+      className="flex w-full flex-col gap-5 px-4 pb-28 pt-4 md:px-6 md:pb-12 xl:px-8"
     >
-      <header className="rounded-2xl border border-slate-800 bg-[#0f141d] p-5 sm:p-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-500/25 bg-blue-500/[0.08] text-blue-300">
-                <Warehouse className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-300">
-                Site-wide stock intelligence
-              </p>
-            </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-              Stores Inventory
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Prioritise stock-outs, shortages and long-lead exposure by the
-              operational consequence to equipment and plant areas.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#151c27] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-[#18212d] disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              aria-hidden="true"
-            />
-            Refresh inventory
-          </button>
+      <h1 className="sr-only">Stores Inventory</h1>
+      <header className="hidden w-full flex-col justify-between gap-4 border-b border-white/10 pb-5 md:flex md:flex-row md:items-start">
+        <div className="flex flex-col gap-1">
+          <p className="text-xl font-semibold tracking-tight text-slate-50">
+            Stores Inventory
+          </p>
+          <p className="text-sm text-slate-400">
+            Stock risk, shortages and affected assets by plant area.
+          </p>
         </div>
-
-        <div className="mt-5">
-          <DataTrustBanner payload={payload} dataMode={dataMode} />
-        </div>
-
-        {loadError && payload && (
-          <div
-            className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-4 py-3 text-sm text-amber-100"
-            role="status"
-          >
-            Refresh failed. The previous evidence remains visible and is clearly
-            timestamped. {loadError}
-          </div>
-        )}
       </header>
+
+      {(loadError || stale || partial) && (
+        <div
+          className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 text-sm leading-6 text-amber-100"
+          role="status"
+        >
+          {loadError
+            ? `Inventory could not be updated. Previous verified values remain visible. ${loadError}`
+            : stale
+              ? "Inventory source data may be stale. Values remain visible with their existing source timestamps."
+              : "Some linked equipment or risk context is unavailable. Inventory quantities remain visible; unsupported context is withheld."}
+        </div>
+      )}
 
       <section
         data-vorta-group-frame="true"
-        className="rounded-2xl border border-slate-800/90 bg-transparent p-3 sm:p-4"
+        className="rounded-xl border border-gray-800 bg-[#141820] p-3 sm:p-5"
         aria-labelledby="area-risk-heading"
       >
-        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 id="area-risk-heading" className="text-sm font-semibold text-slate-100">
               Site and area risk
@@ -697,29 +749,28 @@ export function StoresInventorySection(): JSX.Element {
 
       <section className="grid gap-3 xl:grid-cols-[1.15fr_3fr]">
         <RiskSummaryCard summary={summary} scopeLabel={scopeLabel} />
-
         <div
           data-vorta-group-frame="true"
-          className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-800/90 bg-transparent p-3 md:grid-cols-3 xl:grid-cols-6"
+          className="grid grid-cols-2 gap-3 rounded-xl border border-gray-800 bg-[#141820] p-3 md:grid-cols-3 xl:grid-cols-6"
         >
           <MetricCard
             label="Critical stock-outs"
             value={integer.format(summary.criticalStockouts)}
-            detail="Critical exposure with zero stock"
+            detail="Critical items with zero stock"
             icon={AlertTriangle}
             active={filter === "stockout"}
             onClick={() => applyFilter("stockout")}
           />
           <MetricCard
-            label="Below minimum"
-            value={integer.format(summary.belowMinimum)}
-            detail="Available stock below the minimum"
+            label="Low stock"
+            value={integer.format(summary.belowMinimum + summary.belowTarget)}
+            detail="Below minimum or target"
             icon={PackageMinus}
-            active={filter === "below-minimum"}
-            onClick={() => applyFilter("below-minimum")}
+            active={filter === "low-stock"}
+            onClick={() => applyFilter("low-stock")}
           />
           <MetricCard
-            label="Long-lead shortages"
+            label="Long lead"
             value={integer.format(summary.longLeadShortages)}
             detail="Shortfall with at least 42 days lead"
             icon={Clock3}
@@ -763,22 +814,21 @@ export function StoresInventorySection(): JSX.Element {
 
       <section
         ref={registerRef}
-        className="scroll-mt-4 rounded-2xl border border-slate-800 bg-[#0f141d] p-4 sm:p-5"
+        className="scroll-mt-4 rounded-xl border border-gray-800 bg-[#141820] p-4 sm:p-5"
         aria-labelledby="inventory-register-heading"
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 id="inventory-register-heading" className="text-lg font-semibold text-slate-50">
-              Prioritised inventory
-            </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              {visibleCount} {visibleCount === 1 ? "record" : "records"} shown
-              {selectedArea === "all" ? " across the site" : ` for ${selectedArea}`}.
-            </p>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto]">
-            <label className="relative block">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 id="inventory-register-heading" className="text-lg font-semibold text-slate-50">
+                Inventory
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {visibleCount} {visibleCount === 1 ? "record" : "records"} shown
+                {selectedArea === "all" ? " across the site" : ` for ${selectedArea}`}.
+              </p>
+            </div>
+            <label className="relative block w-full lg:max-w-sm">
               <span className="sr-only">Search stores inventory</span>
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
@@ -791,59 +841,45 @@ export function StoresInventorySection(): JSX.Element {
                   updateParams({ search: event.target.value || null })
                 }
                 placeholder="Search part, asset or location"
-                className="min-h-11 w-full rounded-lg border border-slate-700 bg-[#111722] py-2.5 pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#0d1117] py-2.5 pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </label>
-            <select
-              aria-label="Filter stores inventory"
-              value={filter}
-              onChange={(event) =>
-                updateParams({
-                  filter: event.target.value as InventoryFilter,
-                })
-              }
-              className="min-h-11 rounded-lg border border-slate-700 bg-[#111722] px-3 text-sm font-medium text-slate-200 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="attention">Action required</option>
-              <option value="all">All inventory</option>
-              <option value="stockout">Out of stock</option>
-              <option value="below-minimum">Below minimum</option>
-              <option value="long-lead">Long-lead shortages</option>
-              <option value="excess">Excess stock</option>
-            </select>
           </div>
+
+          <StockFilterTabs
+            options={filterOptions}
+            selectedFilter={filter}
+            onSelect={applyFilter}
+          />
         </div>
 
         <div className="mt-5 space-y-3">
           {filteredItems.length > 0 ? (
             filteredItems.map((item) => (
-              <InventoryItemCard
+              <InventoryItemDisclosure
                 key={item.id}
                 item={item}
                 onOpen={openItem}
               />
             ))
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-700 bg-[#11161f] px-5 py-10 text-center">
+            <div className="rounded-xl border border-dashed border-gray-700 bg-[#0d1117] px-5 py-10 text-center">
               <Database className="mx-auto h-8 w-8 text-slate-600" aria-hidden="true" />
               <h3 className="mt-3 text-base font-semibold text-slate-100">
                 No matching inventory records
               </h3>
               <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
-                The current area, search and stock filter do not match any
-                verified inventory evidence.
+                The current area, search and stock filter do not match any inventory records.
               </p>
               <button
                 type="button"
                 onClick={() =>
                   setSearchParams(
-                    selectedArea === "all"
-                      ? {}
-                      : { area: selectedArea },
+                    selectedArea === "all" ? {} : { area: selectedArea },
                     { replace: true },
                   )
                 }
-                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-700 bg-[#151c27] px-4 py-2.5 text-sm font-semibold text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-700 bg-[#141820] px-4 py-2.5 text-sm font-semibold text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
               >
                 Clear inventory filters
               </button>
@@ -851,17 +887,6 @@ export function StoresInventorySection(): JSX.Element {
           )}
         </div>
       </section>
-
-      <footer className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-[#0f141d] px-4 py-3 text-xs leading-5 text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>
-          Checked {new Date(payload.checkedAt).toLocaleString("en-GB")} ·{" "}
-          {stale ? "Source evidence is stale" : "Source evidence is within 7 days"}
-        </span>
-        <span>
-          Equipment context: {payload.assetEvidence.status} · Risk context:{" "}
-          {payload.riskEvidence.status}
-        </span>
-      </footer>
-    </div>
+    </section>
   );
 }
