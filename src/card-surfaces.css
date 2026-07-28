@@ -168,6 +168,7 @@ html.dark [data-vorta-page-content="true"] :is(
 }
 
 /* Mobile inventory risk uses a neutral card with a restrained severity hierarchy. */
+/* VOR-014: refined edge and typography are intentionally protected for production. */
 @media (max-width: 767px) {
   [data-vorta-stores-inventory="true"]
     [data-vorta-inventory-risk-card="true"] {
