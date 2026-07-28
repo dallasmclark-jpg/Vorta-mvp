@@ -24,7 +24,7 @@ assert.match(mobile, /line-clamp-2 text-base font-semibold/);
 assert.match(mobile, /work-orders\?view=pm-backlog/);
 assert.match(mobile, /pms\?view=backlog/);
 assert.ok((mobile.match(/min-h-14 rounded-lg/g) ?? []).length >= 3);
-assert.doesNotMatch(mobile, /<button[\s\S]{0,3000}<button[\s\S]{0,3000}<\/button>[\s\S]{0,3000}<\/button>/);
+assert.match(mobile, /<article[\s\S]*data-vorta-group-frame="true"[\s\S]*<button[\s\S]*Open WOs[\s\S]*<button[\s\S]*PM overdue[\s\S]*<button[\s\S]*Calibration/);
 
 assert.match(sparesService, /getVerifiedEquipmentComponents/);
 assert.match(sparesService, /source_updated_at/);
