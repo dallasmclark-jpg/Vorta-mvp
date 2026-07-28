@@ -1754,7 +1754,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                 type="button"
                                 aria-label={`Open ${action.action} for ${riskReductionPlan.equipmentName}`}
                                 onClick={() => {
-                                  if (workOrder) {
+                                  if (action.target === "work-orders" && workOrder) {
                                     openWorkOrderDetail({
                                       equipmentId: riskReductionPlan.equipmentId,
                                       workOrderNumber: workOrder,

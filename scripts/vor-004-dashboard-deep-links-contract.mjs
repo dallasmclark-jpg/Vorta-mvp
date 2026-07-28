@@ -21,6 +21,7 @@ const liveViews = read("src/screens/Equipment/EquipmentLiveEvidenceViews.tsx");
 
 check("exact calibration and spare references are retained", routing.includes('params.set("record", calibrationReference)') && routing.includes('params.set("record", spareReference)'));
 check("all three backlog summaries are accessible buttons", ["pm", "calibrations", "spares"].every((value) => dashboard.includes(`data-vorta-dashboard-backlog-card="${value}"`)));
+check("calibration and spare actions do not get diverted to linked work orders", dashboard.includes('action.target === "work-orders" && workOrder'));
 check("desktop and mobile PM backlog use preventive filtering", workOrders.includes('requestedBacklogView !== "pm-backlog"') && mobileWorkOrders.includes('setFilter("PREVENTIVE")'));
 check("calibration route supports exact and backlog context", calibrations.includes('requestedRecord') && calibrations.includes('setFilter("ATTENTION")'));
 check("spares route supports exact and stockout context", spares.includes('setStatusFilter("out")') && spares.includes('id="spares-register"'));
