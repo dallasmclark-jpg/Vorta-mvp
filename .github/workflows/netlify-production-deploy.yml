@@ -35,6 +35,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
         run: |
+          # Fail clearly rather than pretending a deployment happened.
           if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
             echo "NETLIFY_AUTH_TOKEN repository secret is not configured."
             exit 1
