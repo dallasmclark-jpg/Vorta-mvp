@@ -1,0 +1,54 @@
+:root {
+  --vorta-tab-selected-surface: #ffffff;
+  --vorta-tab-selected-border: rgba(37, 99, 235, 0.9);
+  --vorta-tab-selected-text: #1d4ed8;
+  --vorta-tab-focus-outline: rgba(37, 99, 235, 0.9);
+}
+
+html.dark {
+  --vorta-tab-selected-surface: #0d1117;
+  --vorta-tab-selected-border: rgba(96, 165, 250, 0.88);
+  --vorta-tab-selected-text: #dbeafe;
+  --vorta-tab-focus-outline: rgba(147, 197, 253, 0.95);
+}
+
+/*
+ * VOR-018: tab selection is a navigation state, not a primary action.
+ * Keep every semantic selected tab on a neutral surface with one blue outline.
+ * The selector deliberately requires tab semantics so cards, filters, sidebar
+ * links and ordinary aria-pressed controls retain their own visual language.
+ */
+:where(
+  [role="tab"][aria-selected="true"],
+  [role="tab"][data-state="active"],
+  [role="tab"][aria-current="page"],
+  [role="tablist"] > :is(button, a)[aria-pressed="true"],
+  [role="tablist"] > :is(button, a)[data-state="active"],
+  [role="tablist"] > :is(button, a)[aria-current="page"]
+) {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--vorta-tab-selected-border) !important;
+  background: var(--vorta-tab-selected-surface) !important;
+  color: var(--vorta-tab-selected-text) !important;
+  box-shadow: none !important;
+}
+
+:where(
+  [role="tab"][aria-selected="true"],
+  [role="tab"][data-state="active"],
+  [role="tab"][aria-current="page"],
+  [role="tablist"] > :is(button, a)[aria-pressed="true"],
+  [role="tablist"] > :is(button, a)[data-state="active"],
+  [role="tablist"] > :is(button, a)[aria-current="page"]
+):focus-visible {
+  outline: 2px solid var(--vorta-tab-focus-outline) !important;
+  outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [role="tab"],
+  [role="tablist"] > :is(button, a) {
+    transition: none !important;
+  }
+}
