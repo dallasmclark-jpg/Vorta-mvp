@@ -16,18 +16,24 @@ const healthManifestMigration = read(
 const askVortaManifestMigration = read(
   "supabase/migrations/20260726233000_register_shift_cover_ai_brief_rpc.sql",
 );
+const handoverManifestMigration = read(
+  "supabase/migrations/20260728140000_register_shift_handover_workflow_rpcs.sql",
+);
+const handoverGrantMigration = read(
+  "supabase/migrations/20260728133000_restrict_shift_handover_rpc_anon.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260726233000");
-assert.equal(manifest.migrationName, "register_shift_cover_ai_brief_rpc");
+assert.equal(manifest.migrationVersion, "20260728140000");
+assert.equal(manifest.migrationName, "register_shift_handover_workflow_rpcs");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 65,
-  reviewedRead: 50,
-  reviewedMutation: 15,
-  securityDefiner: 62,
+  authenticatedCallable: 69,
+  reviewedRead: 51,
+  reviewedMutation: 18,
+  securityDefiner: 66,
   securityInvoker: 3,
   anonymousCallable: 0,
   manifestDrift: 0,
@@ -38,6 +44,61 @@ assert.ok(
     askVortaManifestMigration.includes("'definer'"),
   "Ask Vorta Shift Cover evidence RPC is missing from the reviewed manifest migration",
 );
+
+const shiftHandoverWorkflowRpcs = [
+  {
+    identity: "vorta_get_shift_handover_actions(uuid,timestamp with time zone,timestamp with time zone)",
+    rpcClass: "read",
+  },
+  {
+    identity: "vorta_save_shift_handover_action(uuid,uuid,timestamp with time zone,timestamp with time zone,text,text,text,timestamp with time zone,integer)",
+    rpcClass: "mutation",
+  },
+  {
+    identity: "vorta_acknowledge_shift_handover_action(uuid,integer)",
+    rpcClass: "mutation",
+  },
+  {
+    identity: "vorta_carry_forward_shift_handover_action(uuid,integer,timestamp with time zone,timestamp with time zone,timestamp with time zone)",
+    rpcClass: "mutation",
+  },
+];
+assert.deepEqual(
+  manifest.shiftHandoverWorkflowRpcs.map(({ identity, class: rpcClass }) => ({
+    identity,
+    rpcClass,
+  })),
+  shiftHandoverWorkflowRpcs,
+);
+for (const { identity, rpcClass } of shiftHandoverWorkflowRpcs) {
+  assert.ok(
+    handoverManifestMigration.includes(`'${identity}'`) &&
+      handoverManifestMigration.includes(`'${rpcClass}'`) &&
+      handoverManifestMigration.includes("'definer'") &&
+      handoverManifestMigration.includes("false"),
+    `Shift Handover RPC is missing from the reviewed security manifest: ${identity}`,
+  );
+  const [functionName] = identity.split("(");
+  assert.ok(
+    handoverGrantMigration.includes(`revoke all on function public.${functionName}`) &&
+      handoverGrantMigration.includes(`grant execute on function public.${functionName}`),
+    `Shift Handover RPC grants are incomplete: ${identity}`,
+  );
+}
+for (const expected of [
+  "reviewed_count <> 69",
+  "read_count <> 51",
+  "mutation_count <> 18",
+  "definer_count <> 66",
+  "invoker_count <> 3",
+  "anon_count <> 0",
+  "drift_count <> 0",
+]) {
+  assert.ok(
+    handoverManifestMigration.includes(expected),
+    `Missing Shift Handover RPC manifest invariant: ${expected}`,
+  );
+}
 
 const invokerRpcs = [
   "vorta_get_equipment_history(uuid)",
@@ -136,8 +197,9 @@ for (const expected of [
   "authenticatedSecurityInvokerRpcCount",
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
-  "50",
-  "62",
+  "18",
+  "51",
+  "66",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),
