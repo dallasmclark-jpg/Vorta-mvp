@@ -97,6 +97,20 @@ requireText(
 );
 requireText(
   pageSource,
+  "Refresh failed. The previous evidence remains visible",
+  "A failed refresh must explain that the previous trusted snapshot remains visible.",
+);
+const failureHandling = pageSource.slice(
+  pageSource.indexOf('if (result.status === "empty")'),
+  pageSource.indexOf("  }, [dataMode, siteContext?.siteId]);"),
+);
+if ((failureHandling.match(/setPayload\(null\)/g) ?? []).length !== 1) {
+  failures.push(
+    "Only a verified empty result may clear inventory; an unavailable refresh must preserve the previous snapshot.",
+  );
+}
+requireText(
+  pageSource,
   'data-vorta-group-frame="true"',
   "Nested dashboard groups must use the semantic transparent frame.",
 );
