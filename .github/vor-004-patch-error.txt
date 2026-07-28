@@ -1,0 +1,2 @@
+Patch status: 1
+action card click contract: expected one anchor, found 0
