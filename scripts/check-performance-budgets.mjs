@@ -3,10 +3,10 @@ import { extname, join, relative, resolve } from "node:path";
 
 const distDirectory = resolve(process.cwd(), "dist");
 const budgets = {
-  // Shift Handover and Stores Inventory are route-level lazy workspaces. Preserve
-  // the strict per-chunk ceiling while allowing their bounded aggregate and
-  // responsive CSS. VOR-014 adds a measured 2.3 KiB without changing the
-  // largest-JavaScript or total-distribution ceilings.
+  // Shift Handover and Stores Inventory are route-level lazy workspaces. The
+  // existing reviewed allowance includes the shared nested-surface correction.
+  // VOR-014 adds a measured 2.3 KiB without changing the largest-JavaScript or
+  // total-distribution ceilings.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
   totalCssBytes: 166_000,
