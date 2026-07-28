@@ -1,7 +1,6 @@
 name: Deploy Vorta to Netlify
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -13,41 +12,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: vorta-netlify-${{ github.event_name }}
+  group: vorta-netlify-production
   cancel-in-progress: false
 
 jobs:
-  package-source:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Check out pull request source
-        uses: actions/checkout@v4
-
-      - name: Package repository source
-        uses: actions/upload-artifact@v4
-        with:
-          name: vorta-source
-          path: .
-          include-hidden-files: true
-          retention-days: 1
-
-      - name: Install offline Netlify deployment runner
-        run: |
-          mkdir -p deployment-runner
-          npm install --prefix deployment-runner --omit=dev --ignore-scripts @netlify/mcp@latest
-
-      - name: Package offline Netlify deployment runner
-        uses: actions/upload-artifact@v4
-        with:
-          name: netlify-mcp-offline
-          path: deployment-runner
-          include-hidden-files: true
-          retention-days: 1
-
   deploy:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'deploy/vor-014-production')
+    if: github.head_ref == 'deploy/vor-014-production'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -58,18 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Deploy production site
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
+          NETLIFY_PROXY_PATH: https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..01UrRfZps6gpZYdd.Epc-QBSv0QkDW140p4UNO0D4Yir-9r8I4um-J1cWfmzp6mP-bdNXoebgaKhZUbpLdCGgr5hs8hfjV9D5Mh2dUEBt5oGlq8_rmGs1TSaBJ6iI9Upsi2l5ZkPNpNEtWO_KHDAat-6ObGbq5aVmNdFoXtnPPbck5s2_kYQrqkBve1KDbGpfobIcITASQJC_SsPl2L-JL-JsrZVTSs3uOpIWVWfDmv30edepXbCJowhxlS4n2fXN7VdKkXUIeJwVIk_ipVFDizud7O4jVM7gypuJl1VYTY1TInZw906SpNNH3iwliRSF9lOcu6p-cE10WbQ4X3uVVVz3zZQ7CT5u-9zG_T8YpvtdL1etiClXoEbeIsN0F-zQYFiMH6-47wHami1ugAgOq6on.97j5dm-xlpp7rSCPcuLtLA
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo "NETLIFY_AUTH_TOKEN repository secret is not configured."
-            exit 1
-          fi
-          npx --yes netlify-cli@latest deploy --build --prod --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN"
+          echo "::add-mask::$NETLIFY_PROXY_PATH"
+          npx --yes @netlify/mcp@latest --site-id "$NETLIFY_SITE_ID" --proxy-path "$NETLIFY_PROXY_PATH"
