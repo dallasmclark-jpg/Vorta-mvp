@@ -57,7 +57,7 @@ assert.match(surfaces, /background-color: transparent !important/);
 assert.match(surfaces, /box-shadow: none !important/);
 assert.doesNotMatch(
   surfaces,
-  /\[data-vorta-card="true"\]:has\([\s\S]*\[class\*="grid"\] >/,
+  /\[data-vorta-card="true"\]:has\(\s*\[class\*="grid"\]/,
   "Repeated group detection must not be restricted to the shared Card primitive.",
 );
 
