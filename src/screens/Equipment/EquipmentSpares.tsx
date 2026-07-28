@@ -340,11 +340,6 @@ export const EquipmentSpares = (): JSX.Element => {
   const loadSparesIntelligence = useCallback(async () => {
     setIsRefreshing(true);
     setLoadError(null);
-    if (!hasLoaded) {
-      setComponentsState("loading");
-      setQueueState("loading");
-    }
-
     const [identityResult, componentsResult, queueResult] = await Promise.allSettled([
       getEquipmentIdentityById(resolvedId),
       getVerifiedEquipmentComponents(resolvedId),
@@ -394,7 +389,7 @@ export const EquipmentSpares = (): JSX.Element => {
         : null,
     );
     setIsRefreshing(false);
-  }, [hasLoaded, resolvedId]);
+  }, [resolvedId]);
 
   useEffect(() => {
     void loadSparesIntelligence();
