@@ -48,7 +48,10 @@ test("selected tabs use one outlined state across Stores Inventory and Equipment
 
   const inactiveInventoryTab = page.locator('[role="tab"][aria-selected="false"]').first();
   await expect(inactiveInventoryTab).toBeVisible();
-  await expect(inactiveInventoryTab).not.toHaveCSS("background-color", "rgb(13, 17, 23)");
+  await expect(inactiveInventoryTab).not.toHaveCSS(
+    "border-top-color",
+    "rgba(96, 165, 250, 0.88)",
+  );
 
   await page.goto(`/equipment/${EQUIPMENT_ID}/overview`);
   const equipmentTab = page.getByRole("tab", { name: "Overview", exact: true });
