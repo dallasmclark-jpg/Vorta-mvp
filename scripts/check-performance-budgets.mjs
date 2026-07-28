@@ -3,13 +3,13 @@ import { extname, join, relative, resolve } from "node:path";
 
 const distDirectory = resolve(process.cwd(), "dist");
 const budgets = {
-  // Shift Handover is a route-level lazy workspace. Preserve the strict
-  // per-chunk ceiling while allowing its bounded aggregate and responsive CSS.
+  // Shift Handover and Stores Inventory are route-level lazy workspaces. The
+  // existing reviewed allowance includes the shared nested-surface correction.
+  // VOR-014 adds a measured 2.3 KiB without changing the largest-JavaScript or
+  // total-distribution ceilings.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  // The shared cross-portal card hierarchy and its nested-surface correction
-  // add a reviewed 5.2 KiB in total while replacing page-by-page surface drift.
-  totalCssBytes: 163_000,
+  totalCssBytes: 166_000,
   totalDistBytes: 3_600_000,
 };
 

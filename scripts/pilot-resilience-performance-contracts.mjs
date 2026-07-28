@@ -65,12 +65,13 @@ mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject
 for (const [name, value] of [
   ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "163_000"],
+  ["totalCssBytes", "166_000"],
   ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
 }
-mustMatch(performance, /nested-surface correction/, "The reviewed CSS increase must remain tied to the card correction");
+mustMatch(performance, /nested-surface correction/, "The existing reviewed CSS allowance must remain tied to the card correction");
+mustMatch(performance, /VOR-014 adds a measured 2\.3 KiB/, "The Stores Inventory CSS allowance must remain explicitly measured and reviewed");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
 const packageJson = JSON.parse(packageText);
