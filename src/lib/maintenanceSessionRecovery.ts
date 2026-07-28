@@ -42,8 +42,33 @@ type FunctionInvoke = (
   options?: unknown,
 ) => Promise<unknown>;
 
+type SignOutScope =
+  | "global"
+  | "local"
+  | "others";
+
+type SignOutOptions = {
+  scope?: SignOutScope;
+};
+
+type SignOutResult = Promise<{
+  error: unknown;
+}>;
+
+type SignOut = (
+  options?: SignOutOptions,
+) => SignOutResult;
+
+type SessionVerification = {
+  accessToken: string;
+  promise: Promise<void>;
+};
+
 let recoveryInstalled = false;
 let refreshInFlight: Promise<Session | null> | null = null;
+let localSignOutInFlight: Promise<void> | null = null;
+let sessionVerificationInFlight: SessionVerification | null = null;
+let verifiedAccessToken: string | null = null;
 let hiddenAt: number | null = null;
 
 function sessionNeedsRefresh(session: Session): boolean {
@@ -139,6 +164,17 @@ function errorMessage(value: unknown): string {
   return "";
 }
 
+function authenticationErrorRequiresLocalSignOut(
+  value: unknown,
+): boolean {
+  const status = statusFrom(value);
+  if (status === 401 || status === 403) return true;
+
+  return /session not found|authentication could not be verified|invalid jwt|jwt expired|refresh token.*not found|token.*expired|unauthori[sz]ed/i.test(
+    errorMessage(value),
+  );
+}
+
 function invocationFailedAuthentication(result: unknown): boolean {
   if (!result || typeof result !== "object") return false;
 
@@ -147,7 +183,7 @@ function invocationFailedAuthentication(result: unknown): boolean {
     statusFrom(invocation.response) ?? statusFrom(invocation.error);
   if (status === 401 || status === 403) return true;
 
-  return /authentication required|invalid jwt|jwt expired|token.*expired|session not found|unauthori[sz]ed/i.test(
+  return /authentication required|authentication could not be verified|invalid jwt|jwt expired|token.*expired|session not found|unauthori[sz]ed/i.test(
     errorMessage(invocation.error),
   );
 }
@@ -215,6 +251,113 @@ function expiredSessionResult(
   };
 }
 
+function installLocalSignOutDefault(): SignOut {
+  const originalSignOut = supabase.auth.signOut.bind(
+    supabase.auth,
+  ) as SignOut;
+
+  const signOutLocallyByDefault: SignOut = (
+    options,
+  ) => originalSignOut(
+    options ?? { scope: "local" },
+  );
+
+  (
+    supabase.auth as unknown as {
+      signOut: SignOut;
+    }
+  ).signOut = signOutLocallyByDefault;
+
+  return originalSignOut;
+}
+
+async function clearInvalidLocalSession(
+  originalSignOut: SignOut,
+): Promise<void> {
+  if (localSignOutInFlight) {
+    return localSignOutInFlight;
+  }
+
+  verifiedAccessToken = null;
+  clearMaintenancePortalDataCache();
+
+  localSignOutInFlight = originalSignOut({
+    scope: "local",
+  })
+    .then(({ error }) => {
+      if (error) {
+        console.warn(
+          "Vorta could not clear the invalid local session cleanly.",
+          error,
+        );
+      }
+    })
+    .catch((error) => {
+      console.warn(
+        "Vorta could not clear the invalid local session cleanly.",
+        error,
+      );
+    })
+    .finally(() => {
+      localSignOutInFlight = null;
+    });
+
+  return localSignOutInFlight;
+}
+
+function verifySessionAgainstAuth(
+  session: Session,
+  originalSignOut: SignOut,
+): Promise<void> {
+  const accessToken = session.access_token;
+  if (!accessToken || verifiedAccessToken === accessToken) {
+    return Promise.resolve();
+  }
+
+  if (
+    sessionVerificationInFlight?.accessToken === accessToken
+  ) {
+    return sessionVerificationInFlight.promise;
+  }
+
+  const promise = supabase.auth
+    .getUser(accessToken)
+    .then(async ({ data, error }) => {
+      if (!error && data.user) {
+        verifiedAccessToken = accessToken;
+        return;
+      }
+
+      if (authenticationErrorRequiresLocalSignOut(error)) {
+        await clearInvalidLocalSession(originalSignOut);
+      }
+    })
+    .catch((error) => {
+      if (authenticationErrorRequiresLocalSignOut(error)) {
+        return clearInvalidLocalSession(originalSignOut);
+      }
+
+      console.warn(
+        "Vorta could not complete background session verification.",
+        error,
+      );
+    })
+    .finally(() => {
+      if (
+        sessionVerificationInFlight?.accessToken === accessToken
+      ) {
+        sessionVerificationInFlight = null;
+      }
+    });
+
+  sessionVerificationInFlight = {
+    accessToken,
+    promise,
+  };
+
+  return promise;
+}
+
 function dispatchMaintenanceDataRecovered(
   reason: "online" | "page-restore" | "foreground-resume",
 ): void {
@@ -231,6 +374,7 @@ export function installMaintenanceSessionRecovery(): void {
 
   recoveryInstalled = true;
 
+  const originalSignOut = installLocalSignOutDefault();
   const originalInvoke = supabase.functions.invoke.bind(
     supabase.functions,
   ) as FunctionInvoke;
@@ -250,9 +394,16 @@ export function installMaintenanceSessionRecovery(): void {
       return initialResult;
     }
 
+    const initialAuthenticationFailure =
+      invocationFailedAuthentication(initialResult);
+
     clearMaintenancePortalDataCache(functionName);
     const refreshedSession = await ensureFreshSession(true);
     if (!refreshedSession?.access_token) {
+      if (initialAuthenticationFailure) {
+        await clearInvalidLocalSession(originalSignOut);
+      }
+
       return expiredSessionResult(initialResult);
     }
 
@@ -261,9 +412,12 @@ export function installMaintenanceSessionRecovery(): void {
       optionsWithAccessToken(options, refreshedSession.access_token),
     );
 
-    return invocationFailedAuthentication(retryResult)
-      ? expiredSessionResult(retryResult)
-      : retryResult;
+    if (invocationFailedAuthentication(retryResult)) {
+      await clearInvalidLocalSession(originalSignOut);
+      return expiredSessionResult(retryResult);
+    }
+
+    return retryResult;
   };
 
   (
@@ -272,14 +426,36 @@ export function installMaintenanceSessionRecovery(): void {
     }
   ).invoke = invokeWithSessionRecovery;
 
-  supabase.auth.onAuthStateChange((event) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     if (
       event === "INITIAL_SESSION" ||
       event === "SIGNED_IN" ||
       event === "SIGNED_OUT" ||
+      event === "TOKEN_REFRESHED" ||
       event === "USER_UPDATED"
     ) {
       clearMaintenancePortalDataCache();
+    }
+
+    if (event === "SIGNED_OUT") {
+      verifiedAccessToken = null;
+      sessionVerificationInFlight = null;
+      return;
+    }
+
+    if (
+      session?.access_token &&
+      (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "USER_UPDATED"
+      )
+    ) {
+      void verifySessionAgainstAuth(
+        session,
+        originalSignOut,
+      );
     }
   });
 
