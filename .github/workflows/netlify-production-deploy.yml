@@ -38,14 +38,14 @@ jobs:
 
       - name: Download Netlify MCP package
         run: |
-          mkdir -p .deployment-runner
-          npm pack @netlify/mcp@latest --pack-destination .deployment-runner
+          mkdir -p deployment-runner
+          npm pack @netlify/mcp@latest --pack-destination deployment-runner
 
       - name: Package Netlify deployment runner
         uses: actions/upload-artifact@v4
         with:
           name: netlify-mcp-package
-          path: .deployment-runner/*.tgz
+          path: deployment-runner/*.tgz
           retention-days: 1
 
   deploy:
