@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   Bell,
@@ -301,7 +301,10 @@ function Metric({
 export const EquipmentSpares = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
+  const [searchParams] = useSearchParams();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const requestedRecord = searchParams.get("record")?.trim() ?? "";
+  const requestedView = searchParams.get("view")?.trim() ?? "";
 
   const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
     getCachedEquipmentIdentity(resolvedId),
@@ -357,6 +360,22 @@ export const EquipmentSpares = (): JSX.Element => {
   useEffect(() => {
     void loadSparesIntelligence();
   }, [loadSparesIntelligence]);
+
+  useEffect(() => {
+    if (!requestedRecord && requestedView !== "out-of-stock") return;
+    if (requestedRecord) {
+      setStatusFilter("all");
+      setSearch(requestedRecord);
+    } else {
+      setStatusFilter("out");
+      setSearch("");
+    }
+    requestAnimationFrame(() => {
+      document
+        .getElementById("spares-register")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [hasLoaded, requestedRecord, requestedView]);
 
   const rankedParts = useMemo<RankedPart[]>(() => {
     return components.inventory
@@ -1074,7 +1093,10 @@ export const EquipmentSpares = (): JSX.Element => {
         </Card>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.45fr)]">
-          <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
+          <Card
+            id="spares-register"
+            className="scroll-mt-48 rounded-2xl border border-gray-800 bg-[#141820] shadow-none"
+          >
             <CardContent className="p-5">
               <SectionHeading
                 eyebrow="BOM and inventory intelligence"

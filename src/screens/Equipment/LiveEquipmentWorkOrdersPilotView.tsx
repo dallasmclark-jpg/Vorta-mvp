@@ -5,6 +5,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   loadLiveEquipmentWorkItems,
   type LiveEquipmentRecord,
@@ -56,6 +57,8 @@ function reservationReadiness(history: LiveEquipmentHistoryItem[]): number | nul
 }
 
 export function LiveEquipmentWorkOrdersPilotView({ record }: { record: LiveEquipmentRecord }): JSX.Element {
+  const [searchParams] = useSearchParams();
+  const requestedBacklogView = searchParams.get("view")?.trim() ?? "";
   const workLoader = useCallback(() => loadLiveEquipmentWorkItems(record.id), [record.id]);
   const historyLoader = useCallback(() => loadLiveEquipmentHistory(record.id), [record.id]);
   const work = usePilotEvidence(workLoader);
@@ -69,6 +72,9 @@ export function LiveEquipmentWorkOrdersPilotView({ record }: { record: LiveEquip
     [historyRows],
   );
   const openRows = rows.filter((item) => !isLiveWorkItemCompleted(item));
+  const visibleRows = requestedBacklogView === "pm-backlog"
+    ? openRows.filter((item) => /prevent|\bpm\b/i.test(item.workType))
+    : rows;
   const completedRows = rows.filter(isLiveWorkItemCompleted);
   const overdueRows = openRows.filter((item) => isLiveWorkItemOverdue(item));
   const unassignedRows = openRows.filter(
@@ -210,14 +216,14 @@ export function LiveEquipmentWorkOrdersPilotView({ record }: { record: LiveEquip
         </div>
 
         <div className="space-y-3">
-          {work.state?.status === "ready" && rows.length === 0 ? (
+          {work.state?.status === "ready" && visibleRows.length === 0 ? (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
               <p className="mt-2 text-sm font-semibold text-emerald-200">No work orders recorded</p>
               <p className="mt-1 text-xs text-slate-500">The verified source returned no work-order rows. Readiness is not presented as 100%.</p>
             </div>
           ) : null}
-          {rows.map((item: LiveWorkItem) => {
+          {visibleRows.map((item: LiveWorkItem) => {
             const overdue = isLiveWorkItemOverdue(item);
             const evidence = historyByNumber.get(item.workOrderNumber);
             const expanded = selectedWorkOrder === item.workOrderNumber;

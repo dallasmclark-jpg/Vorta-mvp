@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -27,7 +27,7 @@ import type { CompletedWorkOrder, WorkOrder } from "./equipmentTypes";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
 
 type RegisterView = "OPEN" | "COMPLETED";
-type MobileFilter = "ALL" | "OVERDUE" | "WAITING PARTS" | "UNASSIGNED";
+type MobileFilter = "ALL" | "OVERDUE" | "WAITING PARTS" | "UNASSIGNED" | "PREVENTIVE";
 
 function priorityTone(value: string): string {
   if (value === "CRITICAL") return "border-red-500/30 bg-red-500/10 text-red-300";
@@ -81,7 +81,9 @@ function actionReference(action: EquipmentRecommendedWorkAction): string {
 export function MobileEquipmentWorkOrders(): JSX.Element {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
+  const [searchParams] = useSearchParams();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const requestedBacklogView = searchParams.get("view")?.trim() ?? "";
   const [equipment, setEquipment] = useState<EquipmentBase | null>(() => getCachedEquipmentIdentity(resolvedId));
   const [openOrders, setOpenOrders] = useState<WorkOrder[]>([]);
   const [completedOrders, setCompletedOrders] = useState<CompletedWorkOrder[]>([]);
@@ -131,6 +133,18 @@ export function MobileEquipmentWorkOrders(): JSX.Element {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (requestedBacklogView !== "pm-backlog") return;
+    setView("OPEN");
+    setFilter("PREVENTIVE");
+    setSearch("");
+    requestAnimationFrame(() => {
+      document
+        .getElementById("work-order-register")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [openOrders.length, requestedBacklogView]);
+
   const overdueOrders = useMemo(() => openOrders.filter((order) => Boolean(order.overdue)), [openOrders]);
   const waitingOrders = useMemo(
     () => openOrders.filter((order) => order.status.toUpperCase().includes("WAITING")),
@@ -150,7 +164,8 @@ export function MobileEquipmentWorkOrders(): JSX.Element {
         filter === "ALL" ||
         (filter === "OVERDUE" && Boolean(order.overdue)) ||
         (filter === "WAITING PARTS" && order.status.toUpperCase().includes("WAITING")) ||
-        (filter === "UNASSIGNED" && (!order.engineer || order.engineer === "—"));
+        (filter === "UNASSIGNED" && (!order.engineer || order.engineer === "—")) ||
+        (filter === "PREVENTIVE" && order.type.toLowerCase().includes("prevent"));
       return matchesSearch && matchesFilter;
     });
   }, [filter, openOrders, search]);
@@ -296,6 +311,7 @@ export function MobileEquipmentWorkOrders(): JSX.Element {
             ["OVERDUE", "Overdue"],
             ["WAITING PARTS", "Waiting parts"],
             ["UNASSIGNED", "Unassigned"],
+            ["PREVENTIVE", "PM backlog"],
           ] as Array<[MobileFilter, string]>).map(([value, label]) => (
             <button
               key={value}
@@ -314,7 +330,7 @@ export function MobileEquipmentWorkOrders(): JSX.Element {
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-3">
+      <div id="work-order-register" className="scroll-mt-28 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold text-slate-50">{view === "OPEN" ? "Execution backlog" : "Completed work"}</h2>
           <p className="text-xs text-slate-500">

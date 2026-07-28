@@ -233,6 +233,7 @@ export const EquipmentWorkOrders = (): JSX.Element => {
   const [searchParams, setSearchParams] = useSearchParams();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
   const selectedWorkOrder = searchParams.get("workOrder")?.trim() ?? "";
+  const requestedBacklogView = searchParams.get("view")?.trim() ?? "";
 
   const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
     getCachedEquipmentIdentity(resolvedId),
@@ -339,6 +340,18 @@ export const EquipmentWorkOrders = (): JSX.Element => {
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }, [openWorkOrders.length, selectedWorkOrder]);
+
+  useEffect(() => {
+    if (requestedBacklogView !== "pm-backlog") return;
+    setRegisterView("OPEN");
+    setFilter("PREVENTIVE");
+    setSearch("");
+    requestAnimationFrame(() => {
+      document
+        .getElementById("work-order-register")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [openWorkOrders.length, requestedBacklogView]);
 
   const today = useMemo(() => {
     const date = new Date();
