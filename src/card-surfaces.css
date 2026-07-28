@@ -167,6 +167,49 @@ html.dark [data-vorta-page-content="true"] :is(
   order: 99;
 }
 
+/* Mobile inventory risk uses a neutral card with a three-sided severity edge. */
+@media (max-width: 767px) {
+  [data-vorta-stores-inventory="true"]
+    [data-vorta-inventory-risk-card="true"] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: transparent !important;
+    background-color: var(--vorta-surface-card) !important;
+    box-shadow: var(--vorta-surface-shadow) !important;
+  }
+
+  [data-vorta-stores-inventory="true"]
+    [data-vorta-inventory-risk-card="true"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    padding: 1px 1px 0;
+    background: linear-gradient(
+      180deg,
+      rgba(248, 113, 113, 0.82) 0%,
+      rgba(248, 113, 113, 0.42) 46%,
+      rgba(248, 113, 113, 0.14) 74%,
+      rgba(248, 113, 113, 0) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  [data-vorta-stores-inventory="true"]
+    [data-vorta-inventory-risk-card="true"]
+    > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
 /* Shift Handover starts with the operational summary cards, not evidence copy. */
 [data-vorta-shift-handover="true"] > header {
   display: none !important;
