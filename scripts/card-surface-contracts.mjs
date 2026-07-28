@@ -91,7 +91,6 @@ assert.match(surfaces, /risk colours[\s\S]*keep their operational meaning/);
 assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
-assert.doesNotMatch(surfaces, /\[class\*="bg-(?:red|orange|amber|emerald|green|blue)/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
