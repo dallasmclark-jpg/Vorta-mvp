@@ -16,11 +16,11 @@ async function expectOutlinedSelectedTab(
 
   if (theme === "dark") {
     await expect(tab).toHaveCSS("background-color", "rgb(13, 17, 23)");
-    await expect(tab).toHaveCSS("border-top-color", "rgba(96, 165, 250, 0.88)");
+    await expect(tab).toHaveCSS("border-top-color", "rgb(96, 165, 250)");
     await expect(tab).toHaveCSS("color", "rgb(219, 234, 254)");
   } else {
     await expect(tab).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await expect(tab).toHaveCSS("border-top-color", "rgba(37, 99, 235, 0.9)");
+    await expect(tab).toHaveCSS("border-top-color", "rgb(37, 99, 235)");
     await expect(tab).toHaveCSS("color", "rgb(29, 78, 216)");
   }
 
@@ -50,7 +50,7 @@ test("selected tabs use one outlined state across Stores Inventory and Equipment
   await expect(inactiveInventoryTab).toBeVisible();
   await expect(inactiveInventoryTab).not.toHaveCSS(
     "border-top-color",
-    "rgba(96, 165, 250, 0.88)",
+    "rgb(96, 165, 250)",
   );
 
   await page.goto(`/equipment/${EQUIPMENT_ID}/overview`);
