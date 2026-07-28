@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260726233000",
-  "migrationName": "register_shift_cover_ai_brief_rpc",
+  "migrationVersion": "20260728140000",
+  "migrationName": "register_shift_handover_workflow_rpcs",
   "invariants": {
-    "authenticatedCallable": 65,
-    "reviewedRead": 50,
-    "reviewedMutation": 15,
-    "securityDefiner": 62,
+    "authenticatedCallable": 69,
+    "reviewedRead": 51,
+    "reviewedMutation": 18,
+    "securityDefiner": 66,
     "securityInvoker": 3,
     "anonymousCallable": 0,
     "manifestDrift": 0
@@ -15,6 +15,28 @@
     {
       "identity": "vorta_get_shift_cover_ai_brief(uuid,date,date)",
       "scope": "authenticated requested-site access through vorta_has_site_access"
+    }
+  ],
+  "shiftHandoverWorkflowRpcs": [
+    {
+      "identity": "vorta_get_shift_handover_actions(uuid,timestamp with time zone,timestamp with time zone)",
+      "class": "read",
+      "scope": "authenticated exact-window read through authorised site access"
+    },
+    {
+      "identity": "vorta_save_shift_handover_action(uuid,uuid,timestamp with time zone,timestamp with time zone,text,text,text,timestamp with time zone,integer)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, authorised site and work-order scope, optimistic version and SAP completion guards"
+    },
+    {
+      "identity": "vorta_acknowledge_shift_handover_action(uuid,integer)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, authorised site scope and optimistic version guard"
+    },
+    {
+      "identity": "vorta_carry_forward_shift_handover_action(uuid,integer,timestamp with time zone,timestamp with time zone,timestamp with time zone)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, authorised site scope, optimistic version and duplicate-window guards"
     }
   ],
   "healthEvidenceRpcs": [
