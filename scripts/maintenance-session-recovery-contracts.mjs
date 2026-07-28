@@ -44,6 +44,25 @@ check(
 );
 
 check(
+  recovery.includes("verifySessionAgainstAuth") &&
+    recovery.includes(".getUser(accessToken)") &&
+    recovery.includes("authenticationErrorRequiresLocalSignOut") &&
+    recovery.includes('event === "INITIAL_SESSION"') &&
+    recovery.includes('event === "TOKEN_REFRESHED"'),
+  "Stored browser sessions must be verified against Supabase Auth instead of trusting a locally cached token.",
+);
+
+check(
+  recovery.includes("installLocalSignOutDefault") &&
+    recovery.includes("clearInvalidLocalSession") &&
+    recovery.includes('scope: "local"') &&
+    recovery.includes("initialAuthenticationFailure") &&
+    recovery.includes("await clearInvalidLocalSession(originalSignOut)") &&
+    !recovery.includes('scope: "global"'),
+  "Invalid sessions and ordinary sign-outs must clear only the current browser session and must not revoke other devices or CI sessions.",
+);
+
+check(
   recovery.includes("MAINTENANCE_DATA_RECOVERED_EVENT") &&
     recovery.includes("dispatchMaintenanceDataRecovered") &&
     recovery.includes("clearMaintenancePortalDataCache()") &&
