@@ -18,8 +18,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   const isMobileEquipmentNavigation = (page.viewportSize()?.width ?? 1024) < 640;
   const equipmentButton = isMobileEquipmentNavigation
     ? page
-        .locator('[data-vorta-mobile-equipment="true"] button')
-        .filter({ hasText: "Open" })
+        .locator('[data-vorta-mobile-equipment="true"] button[aria-label^="Open overview for "]')
         .first()
     : page.locator('div[role="button"][aria-expanded] button').first();
   await expect(equipmentButton).toBeVisible();
