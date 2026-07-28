@@ -45,14 +45,22 @@ assert.equal(
   1,
   "The existing dashboard group hook must remain supported exactly once.",
 );
-assert.match(surfaces, /section\[class\*="rounded"\]\[class\*="border"\]/);
-assert.match(surfaces, /button\[class\*="rounded"\]\[class\*="border"\]/);
-assert.match(surfaces, /div\[class\*="rounded-xl"\]\[class\*="border"\]/);
+assert.match(
+  surfaces,
+  /section\[class\*="rounded"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
+);
+assert.match(
+  surfaces,
+  /button\[class\*="rounded"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
+);
+assert.match(
+  surfaces,
+  /div\[class\*="rounded-xl"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
+);
 assert.match(
   surfaces,
   /:is\(\[class\*="grid"\], \[class\*="flex"\]\) >[\s\S]*\) ~[\s\S]*\)/,
 );
-assert.match(surfaces, /:not\([\s\S]*bg-red[\s\S]*bg-indigo[\s\S]*\):has\(/);
 assert.match(surfaces, /background-color: transparent !important/);
 assert.match(surfaces, /box-shadow: none !important/);
 assert.doesNotMatch(
