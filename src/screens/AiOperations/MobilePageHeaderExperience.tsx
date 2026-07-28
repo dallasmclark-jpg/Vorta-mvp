@@ -185,12 +185,25 @@ const MOBILE_PAGE_HEADER_STYLES = `
 
   ${MOBILE_DASHBOARD_LOGO_SELECTOR} {
     cursor: pointer !important;
-    border-radius: 0.5rem !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation;
+  }
+
+  ${MOBILE_DASHBOARD_LOGO_SELECTOR}:focus,
+  ${MOBILE_DASHBOARD_LOGO_SELECTOR}:focus-visible,
+  ${MOBILE_DASHBOARD_LOGO_SELECTOR}:active {
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 
   ${MOBILE_DASHBOARD_LOGO_SELECTOR}:focus-visible {
-    outline: 2px solid rgb(96 165 250) !important;
-    outline-offset: 4px !important;
+    opacity: 0.78;
   }
 
   [data-vorta-mobile-duplicate-page-title="true"] {
