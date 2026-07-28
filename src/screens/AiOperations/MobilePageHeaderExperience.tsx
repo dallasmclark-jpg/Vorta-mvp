@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface MobilePageProfile {
   title: string;
@@ -97,6 +97,8 @@ const PAGE_PROFILES: Array<{
 ];
 
 const THEME_SHORTCUT_LABELS = new Set(["light", "dark", "system"]);
+const MOBILE_DASHBOARD_LOGO_SELECTOR =
+  '[data-vorta-mobile-dashboard-logo-link="true"]';
 
 function normaliseText(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -181,6 +183,16 @@ const MOBILE_PAGE_HEADER_STYLES = `
     pointer-events: none !important;
   }
 
+  ${MOBILE_DASHBOARD_LOGO_SELECTOR} {
+    cursor: pointer !important;
+    border-radius: 0.5rem !important;
+  }
+
+  ${MOBILE_DASHBOARD_LOGO_SELECTOR}:focus-visible {
+    outline: 2px solid rgb(96 165 250) !important;
+    outline-offset: 4px !important;
+  }
+
   [data-vorta-mobile-duplicate-page-title="true"] {
     position: absolute !important;
     width: 1px !important;
@@ -202,6 +214,7 @@ const MOBILE_PAGE_HEADER_STYLES = `
 
 export function MobilePageHeaderExperience(): JSX.Element {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const profile = profileForPath(location.pathname);
@@ -219,6 +232,12 @@ export function MobilePageHeaderExperience(): JSX.Element {
       if (topBar?.dataset.vortaMobileHeaderTitle !== profile.title) {
         topBar?.setAttribute("data-vorta-mobile-header-title", profile.title);
       }
+
+      const dashboardLogo = topBar?.querySelector<HTMLElement>(":scope > :not(button)");
+      dashboardLogo?.setAttribute("data-vorta-mobile-dashboard-logo-link", "true");
+      dashboardLogo?.setAttribute("role", "link");
+      dashboardLogo?.setAttribute("tabindex", "0");
+      dashboardLogo?.setAttribute("aria-label", "Go to main dashboard");
 
       const portal = document.querySelector<HTMLElement>(
         '[data-vorta-maintenance-portal="true"]',
@@ -239,21 +258,42 @@ export function MobilePageHeaderExperience(): JSX.Element {
       removeSettingsHeaderThemeShortcut(location.pathname);
     };
 
+    const handleDashboardLogoClick = (event: Event): void => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (!target.closest(MOBILE_DASHBOARD_LOGO_SELECTOR)) return;
+      navigate("/dashboard");
+    };
+
+    const handleDashboardLogoKeyDown = (event: Event): void => {
+      if (!(event instanceof KeyboardEvent)) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (!target.closest(MOBILE_DASHBOARD_LOGO_SELECTOR)) return;
+      event.preventDefault();
+      navigate("/dashboard");
+    };
+
     const frame = window.requestAnimationFrame(applyHeader);
     const shell = document.querySelector('[data-vorta-portal-shell="true"] > section');
     const observer = new MutationObserver(applyHeader);
     if (shell) {
       observer.observe(shell, { childList: true, subtree: true, characterData: true });
+      shell.addEventListener("click", handleDashboardLogoClick);
+      shell.addEventListener("keydown", handleDashboardLogoKeyDown);
     }
     window.addEventListener("resize", applyHeader);
 
     return () => {
       window.cancelAnimationFrame(frame);
       observer.disconnect();
+      shell?.removeEventListener("click", handleDashboardLogoClick);
+      shell?.removeEventListener("keydown", handleDashboardLogoKeyDown);
       window.removeEventListener("resize", applyHeader);
       clearDuplicateThemeShortcuts();
     };
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   return <style data-vorta-mobile-page-header="true">{MOBILE_PAGE_HEADER_STYLES}</style>;
 }
