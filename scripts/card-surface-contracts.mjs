@@ -35,7 +35,7 @@ assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
 assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
-assert.match(surfaces, /Group-only frames organise child cards and grouped controls/);
+assert.match(surfaces, /Group-only frames organise child cards and controls/);
 assert.match(
   surfaces,
   /\[data-vorta-card="true"\]:has\(\[data-vorta-mobile-risk-scope="true"\]\)/,
@@ -47,26 +47,21 @@ assert.equal(
 );
 assert.match(
   surfaces,
-  /section\[class\*="rounded"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
+  /\[data-vorta-card="true"\]:has\([\s\S]*\[class\*="grid"\] >[\s\S]*rounded-xl[\s\S]*~[\s\S]*rounded-xl/,
 );
 assert.match(
   surfaces,
-  /button\[class\*="rounded"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
+  /\[data-vorta-mobile-equipment="true"\][\s\S]*button:has\(> \[class~="grid"\]\[class~="grid-cols-3"\]\)/,
 );
 assert.match(
   surfaces,
-  /div\[class\*="rounded-xl"\]\[class\*="border"\]\[class\*="bg-\[#"\]/,
-);
-assert.match(
-  surfaces,
-  /:is\(\[class\*="grid"\], \[class\*="flex"\]\) >[\s\S]*\) ~[\s\S]*\)/,
+  /\[data-vorta-shift-handover="true"\][\s\S]*> section:has\(\[aria-label="Handover scope level"\]\)/,
 );
 assert.match(surfaces, /background-color: transparent !important/);
 assert.match(surfaces, /box-shadow: none !important/);
-assert.doesNotMatch(
+assert.match(
   surfaces,
-  /\[data-vorta-card="true"\]:has\(\s*\[class\*="grid"\]/,
-  "Repeated group detection must not be restricted to the shared Card primitive.",
+  /button:has\(> \[class~="grid"\]\[class~="grid-cols-3"\]\):hover[\s\S]*box-shadow: none !important/,
 );
 
 assert.match(equipmentSpares, /Spares Resilience Briefing/);
@@ -107,4 +102,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, card, legacy group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, card, focused group-frame, contrast and launcher hierarchy passed.");
