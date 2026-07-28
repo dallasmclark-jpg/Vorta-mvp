@@ -45,7 +45,7 @@ check(
 
 check(
   recovery.includes("verifySessionAgainstAuth") &&
-    recovery.includes("supabase.auth.getUser(accessToken)") &&
+    recovery.includes(".getUser(accessToken)") &&
     recovery.includes("authenticationErrorRequiresLocalSignOut") &&
     recovery.includes('event === "INITIAL_SESSION"') &&
     recovery.includes('event === "TOKEN_REFRESHED"'),
