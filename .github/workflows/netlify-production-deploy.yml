@@ -2,9 +2,6 @@ name: Deploy Vorta to Netlify
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/netlify-production-deploy.yml"
   pull_request:
     branches:
       - main
@@ -50,11 +47,11 @@ jobs:
           retention-days: 1
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'deploy/vor-014-production')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Check out main
+      - name: Check out deployment source
         uses: actions/checkout@v4
 
       - name: Set up Node.js
