@@ -64,32 +64,18 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
-/*
- * Group-only frames organise child cards and grouped controls without adding
- * another filled grey slab. Shared Cards and neutral legacy surfaces use the
- * same hierarchy while operational colour surfaces remain untouched.
- */
+/* Group-only frames organise child cards and controls without another grey slab. */
 [data-vorta-page-content="true"]
   [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]),
 [data-vorta-page-content="true"]
-  :is(
-    [data-vorta-card="true"],
-    section[class*="rounded"][class*="border"][class*="bg-[#"],
-    article[class*="rounded"][class*="border"][class*="bg-[#"],
-    button[class*="rounded"][class*="border"][class*="bg-[#"],
-    div[class*="rounded-xl"][class*="border"][class*="bg-[#"],
-    div[class*="rounded-2xl"][class*="border"][class*="bg-[#"]
-  ):has(
-    :is([class*="grid"], [class*="flex"]) >
-      :is(
-        [class*="rounded-lg"][class*="border"],
-        [class*="rounded-xl"][class*="border"]
-      ) ~
-      :is(
-        [class*="rounded-lg"][class*="border"],
-        [class*="rounded-xl"][class*="border"]
-      )
-  ) {
+  [data-vorta-card="true"]:has(
+    [class*="grid"] > [class*="rounded-xl"][class*="border"] ~
+      [class*="rounded-xl"][class*="border"]
+  ),
+[data-vorta-mobile-equipment="true"]
+  button:has(> [class~="grid"][class~="grid-cols-3"]),
+[data-vorta-shift-handover="true"]
+  > section:has([aria-label="Handover scope level"]) {
   background-color: transparent !important;
   box-shadow: none !important;
 }
@@ -164,18 +150,8 @@ html.dark [data-vorta-page-content="true"] :is(
     transform: translateY(-1px);
   }
 
-  [data-vorta-page-content="true"]
-    button[class*="rounded"][class*="border"]:has(
-      :is([class*="grid"], [class*="flex"]) >
-        :is(
-          [class*="rounded-lg"][class*="border"],
-          [class*="rounded-xl"][class*="border"]
-        ) ~
-        :is(
-          [class*="rounded-lg"][class*="border"],
-          [class*="rounded-xl"][class*="border"]
-        )
-    ):hover {
+  [data-vorta-mobile-equipment="true"]
+    button:has(> [class~="grid"][class~="grid-cols-3"]):hover {
     box-shadow: none !important;
     transform: none;
   }
