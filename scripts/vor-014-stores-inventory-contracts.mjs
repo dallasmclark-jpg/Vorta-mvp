@@ -99,6 +99,98 @@ for (const [text, message] of [
   requireText(surfaceSource, text, message);
 }
 
+for (const [text, message] of [
+  [
+    'data-vorta-inventory-week-comparison="true"',
+    "The mobile inventory risk card must expose the previous-week comparison.",
+  ],
+  ["Previous week", "The comparison must use the requested Previous week label."],
+  ["No prior score", "Missing compatible history must fail closed with No prior score."],
+  ["`↑ ${difference} worse`", "A higher current inventory risk must be labelled worse."],
+  [
+    "`↓ ${Math.abs(difference)} better`",
+    "A lower current inventory risk must be labelled better.",
+  ],
+  ["text-red-300", "A worsened previous-week comparison must use red styling."],
+  ["text-emerald-300", "An improved previous-week comparison must use green styling."],
+  ["No change", "An unchanged previous-week comparison must use neutral copy."],
+  [
+    'data-vorta-inventory-risk-icon="true"',
+    "The existing risk icon needs a stable tablet/desktop hook.",
+  ],
+  [
+    "md:inline-flex",
+    "The existing risk icon must remain available from tablet layouts upward.",
+  ],
+]) {
+  requireText(pageSource, text, message);
+}
+
+if (/previousWeekRiskScore\s*[:=]\s*\d/.test(pageSource + serviceSource)) {
+  failures.push("The previous-week inventory risk score must never be hardcoded.");
+}
+for (const mismatchedHistorySource of [
+  'maintenance_parts_readiness_snapshots',
+  'site_risk_history',
+]) {
+  rejectText(
+    pageSource + serviceSource,
+    mismatchedHistorySource,
+    `Stores Inventory must not present ${mismatchedHistorySource} as the same inventory-risk metric.`,
+  );
+}
+
+const metricCardStart = pageSource.indexOf("function MetricCard");
+const metricCardEnd = pageSource.indexOf("function LoadingState", metricCardStart);
+const metricCardSource = pageSource.slice(metricCardStart, metricCardEnd);
+for (const [text, message] of [
+  [
+    'data-vorta-inventory-kpi="true"',
+    "Inventory KPI cards need a stable responsive test hook.",
+  ],
+  ["block md:hidden", "Inventory KPI cards must use a dedicated compact phone layout."],
+  ["hidden md:contents", "Tablet and desktop KPI content must retain its current layout."],
+  [
+    "h-[100px] rounded-xl border p-3",
+    "Phone KPI cards must use the reviewed compact equal-height treatment.",
+  ],
+  [
+    "md:h-auto md:min-h-[132px] md:p-4",
+    "Tablet and desktop KPI sizing must remain unchanged.",
+  ],
+  [
+    'data-vorta-inventory-kpi-detail="true"',
+    "Desktop KPI descriptions must retain a stable visibility hook.",
+  ],
+]) {
+  requireText(metricCardSource, text, message);
+}
+
+for (const mobileKpiLabel of [
+  "Critical stock-outs",
+  "Low stock",
+  "Long lead 42+ days",
+  "Affected assets",
+  "On-hand stock value",
+  "Excess stock value",
+]) {
+  requireText(
+    pageSource,
+    `mobileLabel="${mobileKpiLabel}"`,
+    `Missing compact phone KPI label: ${mobileKpiLabel}`,
+  );
+}
+requireText(
+  pageSource,
+  '? "Not calculated"',
+  "Unavailable excess value must display Not calculated.",
+);
+requireText(
+  pageSource,
+  "No calculable excess value is available",
+  "Not-calculated excess value must retain an accessible explanation.",
+);
+
 for (const sharedTabToken of [
   "inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors",
   "border-blue-500/40 bg-blue-600 text-white",
