@@ -27,12 +27,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Deploy production site
         env:
           NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
-          NETLIFY_PROXY_PATH: https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..tgwpqWUBxldxMck3.oQBCEBRYb1WcTJpynYQJyR2DFV_ot-_ptH-mpxu1AnAgKD26-WoggoZw4cEaTeiyMFq5-qNCfssvdJhkWUgZ_yJwpfd3pBrIEi0Qbl_EOIlqOKITs1D9gJ-Te46K2v-_b7XGsEHNnbI8VdWYx6DWOpXDssMNTzL76Wpb-qs61Tlo30LDrS9HXmKIrZ1wGFXOlC94VPmpHPhcUlFUC1DirUmbk-RyhH2HlP1OH52K0C6FVrR7tHi6PXZAcz5gDhb51bWg0NXC2NnJLKTMdLF7goUyyqVgFSPAnW-tYsyYY-uQqA1ENsxn8a48BhWtytfN1Pl2Nv84bi1SV8n_Mfn0OTXv4wQqjICMDqM03-6J37ygBK2PEPNt9b1CHaowP-8EuxF3RYhZ.kI_XFfrt-iyWt9g1D7larw
+          NETLIFY_PROXY_PATH: https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..OlcN_BUoLAweRbcJ.HrQo7NBtIgFNhoC8NwWDbWAKajNMcY9Z3aJ6jjJtEsYpSyNufyIzyRtE3r4djytCiUJjAbA_G4qLaVrBFOVt5NHu7fzvZoWigFe7VPx8XpwbUb0Y8TeNUBxuCdWMfk5goyloDeHDbjSlDfWgD022A49_3TpOADXZHMKLUfBPpbuAlKrrJkynzZc2tj06qGDubKfNB94Y2gD3DQxhszPhaZGgkHjWwcBOmiOKZmLfa1-DaOERTvKIhB6r5gxaA5S5mfbyqWzvNBzb3vzl9Bsww11_kE-8dRc0WKIVt8Lnqx2z9ll_MYQcdUw6NnS3HKbTKae5BA7JgzqdkMzXIzEW4nEPDQSSVAzuvt0jDD97lJCdENyddAqkhrVn6e22-LBEYZai07sl.ZPzMgrqXKU1aWaSKenXquQ
         run: |
           echo "::add-mask::$NETLIFY_PROXY_PATH"
           npx --yes @netlify/mcp@latest --site-id "$NETLIFY_SITE_ID" --proxy-path "$NETLIFY_PROXY_PATH"
