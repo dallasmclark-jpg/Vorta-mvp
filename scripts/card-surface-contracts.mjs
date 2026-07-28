@@ -12,6 +12,9 @@ const card = read("src/components/ui/card.tsx");
 const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
 const mobileEquipment = read("src/screens/Equipment/MobileEquipmentSection.tsx");
 const shiftHandover = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
+const dashboard = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+);
 const maintenanceExperience = read(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
 );
@@ -35,53 +38,26 @@ assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
 assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
-assert.match(surfaces, /Group-only frames organise child cards and controls/);
-assert.match(
-  surfaces,
-  /\[data-vorta-card="true"\]:has\(\[data-vorta-mobile-risk-scope="true"\]\)/,
-);
-assert.equal(
-  (surfaces.match(/:has\(\[data-vorta-mobile-risk-scope="true"\]\)/g) ?? []).length,
-  1,
-  "The existing dashboard group hook must remain supported exactly once.",
-);
-assert.match(
-  surfaces,
-  /\[data-vorta-card="true"\]:has\([\s\S]*\[class\*="grid"\] >[\s\S]*rounded-xl[\s\S]*~[\s\S]*rounded-xl/,
-);
-assert.match(
-  surfaces,
-  /\[data-vorta-mobile-equipment="true"\][\s\S]*button:has\(> \[class~="grid"\]\[class~="grid-cols-3"\]\)/,
-);
-assert.match(
-  surfaces,
-  /\[data-vorta-shift-handover="true"\][\s\S]*> section:has\(\[aria-label="Handover scope level"\]\)/,
-);
+assert.match(surfaces, /Group-only frames are declared by component intent/);
+assert.match(surfaces, /\[data-vorta-group-frame="true"\]/);
 assert.match(surfaces, /background-color: transparent !important/);
 assert.match(surfaces, /box-shadow: none !important/);
-assert.match(
+assert.doesNotMatch(
   surfaces,
-  /button:has\(> \[class~="grid"\]\[class~="grid-cols-3"\]\):hover[\s\S]*box-shadow: none !important/,
+  /:has\(/,
+  "Card hierarchy must not depend on DOM shape, utility classes or accessible copy.",
 );
+assert.doesNotMatch(surfaces, /aria-label="Handover scope level"/);
+assert.doesNotMatch(surfaces, /grid-cols-3/);
 
+assert.match(dashboard, /data-vorta-group-frame="true"/);
+assert.match(equipmentSpares, /data-vorta-group-frame="true"/);
 assert.match(equipmentSpares, /Spares Resilience Briefing/);
-assert.match(equipmentSpares, /mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4/);
-assert.ok(
-  (equipmentSpares.match(/rounded-xl border border-gray-800 bg-\[#0c1118\]\/80 p-3/g) ?? []).length >= 4,
-  "The Spares Resilience Briefing must retain its repeated filled child metric panels.",
-);
-
 assert.match(mobileEquipment, /data-vorta-mobile-equipment="true"/);
-assert.match(mobileEquipment, /w-full rounded-xl border border-gray-800 bg-\[#141820\] p-4/);
-assert.match(mobileEquipment, /mt-3 grid grid-cols-3 gap-2/);
-assert.ok(
-  (mobileEquipment.match(/rounded-lg border border-gray-800 bg-\[#0d1117\] p-2/g) ?? []).length >= 3,
-  "Mobile Equipment records must retain their three filled KPI child panels.",
-);
-
+assert.match(mobileEquipment, /data-vorta-group-frame="true"/);
+assert.match(mobileEquipment, /min-h-14 rounded-lg border border-gray-800 bg-\[#0d1117\]/);
 assert.match(shiftHandover, /data-vorta-shift-handover="true"/);
-assert.match(shiftHandover, /rounded-2xl border border-gray-800 bg-\[#10151d\] p-4 sm:p-5/);
-assert.match(shiftHandover, /aria-label="Handover scope level"/);
+assert.match(shiftHandover, /data-vorta-group-frame="true"/);
 assert.match(shiftHandover, /min-h-11 shrink-0 rounded-lg border/);
 
 assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
@@ -102,4 +78,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, card, focused group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, semantic group-frame, contrast and launcher hierarchy passed.");
