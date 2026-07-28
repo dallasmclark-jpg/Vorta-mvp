@@ -1,0 +1,105 @@
+name: One-time retry VOR-004
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch branch and capture result
+        run: |
+          git fetch origin fix/vor-004-dashboard-deep-links
+          git checkout fix/vor-004-dashboard-deep-links
+          sed -n "/python - <<'PY'/,/^          PY$/p" .github/workflows/one-time-vor-004-dashboard-deep-links.yml \
+            | sed '1d;$d;s/^          //' > /tmp/vor-004-patch.py
+
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard_path = Path("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx")
+          dashboard = dashboard_path.read_text()
+          action_key = '                                key={`${action.priority}-${action.action}`}'
+          start = dashboard.index('                                disabled={riskActionsDisabled}', dashboard.index(action_key))
+          work_order_line = '                                  if (workOrder) {'
+          end = dashboard.index(work_order_line, start) + len(work_order_line)
+          replacement = '''                                aria-label={`Open ${action.action} for ${riskReductionPlan.equipmentName}`}
+                                onClick={() => {
+                                  if (workOrder) {'''
+          dashboard_path.write_text(dashboard[:start] + replacement + dashboard[end:])
+
+          patch_path = Path("/tmp/vor-004-patch.py")
+          patch = patch_path.read_text()
+          label = '              "action card click contract",\n          )\n'
+          label_end = patch.index(label) + len(label)
+          block_start = patch.rfind('          dashboard = replace_once(', 0, label_end)
+          if block_start < 0:
+              raise SystemExit("Could not remove obsolete action-card anchor block")
+          patch_path.write_text(patch[:block_start] + patch[label_end:])
+          PY
+
+          set +e
+          python /tmp/vor-004-patch.py > /tmp/vor-004.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "Patch status: $status"
+              cat /tmp/vor-004.log
+            } > .github/vor-004-patch-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-004-patch-error.txt
+            git commit -m "Update VOR-004 patch diagnostic"
+            git push origin HEAD:fix/vor-004-dashboard-deep-links
+            exit "$status"
+          fi
+
+          set +e
+          npm ci > /tmp/vor-004-tests.log 2>&1
+          test_status=$?
+          if [ "$test_status" -eq 0 ]; then node scripts/vor-004-dashboard-deep-links-contract.mjs >> /tmp/vor-004-tests.log 2>&1; test_status=$?; fi
+          if [ "$test_status" -eq 0 ]; then npm run typecheck >> /tmp/vor-004-tests.log 2>&1; test_status=$?; fi
+          if [ "$test_status" -eq 0 ]; then npm run build >> /tmp/vor-004-tests.log 2>&1; test_status=$?; fi
+          set -e
+
+          if [ "$test_status" -ne 0 ]; then
+            {
+              echo "Test status: $test_status"
+              tail -n 240 /tmp/vor-004-tests.log
+            } > .github/vor-004-patch-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vor-004-patch-error.txt
+            git commit -m "Record VOR-004 test diagnostic"
+            git push origin HEAD:fix/vor-004-dashboard-deep-links
+            exit "$test_status"
+          fi
+
+          rm -f .github/vor-004-patch-error.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement VOR-004 dashboard record deep links"
+          git push origin HEAD:fix/vor-004-dashboard-deep-links
+
+      - name: Remove retry runner
+        if: always()
+        run: |
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/one-time-retry-vor-004.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove VOR-004 retry runner"
+          git push origin main
