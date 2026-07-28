@@ -9,6 +9,7 @@ const index = read("index.html");
 const surfaces = read("src/card-surfaces.css");
 const transition = read("src/components/PageTransition.tsx");
 const card = read("src/components/ui/card.tsx");
+const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
 const maintenanceExperience = read(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
 );
@@ -37,12 +38,27 @@ assert.match(
   surfaces,
   /\[data-vorta-card="true"\]:has\(\[data-vorta-mobile-risk-scope="true"\]\)/,
 );
-assert.match(surfaces, /background-color: transparent !important/);
-assert.match(surfaces, /box-shadow: none !important/);
+assert.match(
+  surfaces,
+  /\[data-vorta-card="true"\]:has\([\s\S]*\[class\*="grid"\] >[\s\S]*~[\s\S]*\)/,
+);
 assert.equal(
   (surfaces.match(/:has\(\[data-vorta-mobile-risk-scope="true"\]\)/g) ?? []).length,
   1,
-  "Only the explicit risk-briefing group may become transparent.",
+  "The existing dashboard group hook must remain supported exactly once.",
+);
+assert.equal(
+  (surfaces.match(/\[class\*="grid"\] >/g) ?? []).length,
+  1,
+  "Repeated nested-panel grids must have one shared site-wide group-frame rule.",
+);
+assert.match(surfaces, /background-color: transparent !important/);
+assert.match(surfaces, /box-shadow: none !important/);
+assert.match(equipmentSpares, /Spares Resilience Briefing/);
+assert.match(equipmentSpares, /mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4/);
+assert.ok(
+  (equipmentSpares.match(/rounded-xl border border-gray-800 bg-\[#0c1118\]\/80 p-3/g) ?? []).length >= 4,
+  "The Spares Resilience Briefing must retain its repeated filled child metric panels.",
 );
 assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
 assert.match(surfaces, /rounded-lg/);
@@ -63,4 +79,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, card, group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, card, site-wide group-frame, contrast and launcher hierarchy passed.");
