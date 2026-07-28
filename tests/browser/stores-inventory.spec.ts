@@ -42,7 +42,9 @@ test("Stores Inventory reuses Vorta dashboard and disclosure patterns across sup
     "Long lead",
     "Affected assets",
   ]) {
-    const metric = workspace.getByRole("button", { name: new RegExp(label, "i") });
+    const metric = workspace
+      .getByRole("button", { name: new RegExp(label, "i") })
+      .first();
     await expect(metric).toBeVisible();
     await expectOperationalTouchTarget(metric);
   }
