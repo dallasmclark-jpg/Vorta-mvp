@@ -10,6 +10,7 @@ const operations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
 const mobilePageHeader = read("src/screens/AiOperations/MobilePageHeaderExperience.tsx");
 const portalShell = read("src/components/PortalShell.tsx");
+const demoSimulationBanner = read("src/components/DemoSimulationBanner.tsx");
 const aiMatchingEntry = read("src/screens/AiMatching/AiMatchingRouteEntry.tsx");
 const phoneGuard = read("src/screens/AiOperations/TabletDesktopOnly.tsx");
 const polish = read("src/screens/AiOperations/mobilePortalFinalPolish.css");
@@ -63,6 +64,14 @@ assert.match(mobilePageHeader, /navigate\("\/dashboard"\)/);
 assert.match(mobilePageHeader, /event\.key !== "Enter" && event\.key !== " "/);
 assert.match(portalShell, /<NavLink to=\{homeRoute\} aria-label="Vorta home"/);
 
+assert.match(demoSimulationBanner, /export function DemoSimulationBanner/);
+assert.match(demoSimulationBanner, /\): null \{\s*return null;\s*\}/s);
+assert.doesNotMatch(
+  demoSimulationBanner,
+  /data-demo-simulation|Demo simulation|FlaskConical|role="note"/,
+  "The shared demo statement boundary must not render visible or accessible content.",
+);
+
 for (const route of routes) {
   assert.match(route, /max-width: 767px/, "Every explicit phone route must cover the full sub-768px range.");
 }
@@ -91,4 +100,4 @@ assert.match(polish, /href="\/settings\/data-import"/);
 assert.match(polish, /@media \(min-width: 640px\) and \(max-width: 767px\)/);
 assert.match(polish, /height: 100dvh !important/);
 
-console.log("Final mobile portal navigation, dashboard logo routing, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
+console.log("Final mobile portal navigation, retired demo statements, dashboard logo routing, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
