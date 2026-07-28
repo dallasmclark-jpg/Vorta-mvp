@@ -12,6 +12,7 @@ const dashboardSource = read(
 );
 const pageSource = read("src/screens/StoresInventory/StoresInventorySection.tsx");
 const serviceSource = read("src/screens/StoresInventory/storesInventoryService.ts");
+const surfaceSource = read("src/card-surfaces.css");
 
 const failures = [];
 
@@ -74,6 +75,28 @@ for (const removedCopy of [
     removedCopy,
     `Stores Inventory must remove the bespoke '${removedCopy}' presentation.`,
   );
+}
+
+for (const [text, message] of [
+  [
+    '[data-vorta-stores-inventory="true"] > header',
+    "Stores Inventory must hide the duplicate desktop content header above the area tabs.",
+  ],
+  [
+    '> section[aria-labelledby="area-risk-heading"]',
+    "Stores Inventory must target the introductory area-risk copy above the tabs.",
+  ],
+  [
+    '> div:first-child',
+    "Stores Inventory must hide the area-risk heading, helper copy and material count.",
+  ],
+  [
+    '[data-vorta-stores-inventory="true"] > [role="status"]',
+    "Stores Inventory must retain evidence status outside the tabs-first opening layout.",
+  ],
+  ["order: 99", "Inventory evidence status must appear after the operational content."],
+]) {
+  requireText(surfaceSource, text, message);
 }
 
 for (const sharedTabToken of [
