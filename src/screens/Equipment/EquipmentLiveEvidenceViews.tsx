@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { EquipmentTabRoute } from "./EquipmentTabNavigation";
 import {
   loadLiveEquipmentCalibrations,
@@ -142,12 +143,25 @@ export function LiveEquipmentOverviewView({ record }: { record: LiveEquipmentRec
 }
 
 export function LiveEquipmentSparesView({ record }: { record: LiveEquipmentRecord }): JSX.Element {
+  const [searchParams] = useSearchParams();
+  const requestedRecord = searchParams.get("record")?.trim().toLowerCase() ?? "";
+  const requestedView = searchParams.get("view")?.trim() ?? "";
   const loader = useCallback(
     () => loadLiveEquipmentComponents(record.siteId, record.id),
     [record.id, record.siteId],
   );
   const { state, loading, reload } = usePilotEvidence(loader);
   const payload = state?.status === "ready" ? state.data : null;
+  const visibleInventory = payload?.inventory.filter((part) => {
+    if (requestedRecord) {
+      return [part.partNumber, part.name].some((value) =>
+        value.toLowerCase().includes(requestedRecord),
+      );
+    }
+    return requestedView === "out-of-stock"
+      ? part.derivedStatus === "Out of stock"
+      : true;
+  }) ?? [];
   return (
     <PageFrame
       record={record}
@@ -182,7 +196,7 @@ export function LiveEquipmentSparesView({ record }: { record: LiveEquipmentRecor
                 </tr>
               </thead>
               <tbody>
-                {payload.inventory.map((part) => (
+                {visibleInventory.map((part) => (
                   <tr key={`${part.partNumber}-${part.name}`} className="border-b border-gray-800 last:border-0">
                     <td className="px-4 py-3"><p className="font-semibold text-slate-200">{part.name}</p><p className="mt-1 text-slate-600">{part.partNumber}</p></td>
                     <td className="px-4 py-3"><span className={`rounded-md border px-2 py-1 font-semibold ${part.derivedStatus === 'Out of stock' ? 'border-red-500/25 bg-red-500/10 text-red-300' : part.derivedStatus === 'Low stock' ? 'border-amber-500/25 bg-amber-500/10 text-amber-300' : part.derivedStatus === 'Below target' ? 'border-blue-500/25 bg-blue-500/10 text-blue-300' : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'}`}>{part.derivedStatus}</span></td>
@@ -203,10 +217,23 @@ export function LiveEquipmentSparesView({ record }: { record: LiveEquipmentRecor
 }
 
 export function LiveEquipmentCalibrationsView({ record }: { record: LiveEquipmentRecord }): JSX.Element {
+  const [searchParams] = useSearchParams();
+  const requestedRecord = searchParams.get("record")?.trim().toLowerCase() ?? "";
+  const requestedView = searchParams.get("view")?.trim() ?? "";
   const loader = useCallback(() => loadLiveEquipmentCalibrations(record.id), [record.id]);
   const { state, loading, reload } = usePilotEvidence(loader);
   const rows = state?.status === "ready" ? state.data : [];
   const overdue = rows.filter((item) => /overdue|critical/i.test(item.riskState ?? item.scheduleStatus));
+  const visibleRows = rows.filter((item) => {
+    if (requestedRecord) {
+      return [item.number, item.title, item.id].some((value) =>
+        value.toLowerCase().includes(requestedRecord),
+      );
+    }
+    return requestedView === "backlog"
+      ? /overdue|critical|due soon/i.test(item.riskState ?? item.scheduleStatus)
+      : true;
+  });
   return (
     <PageFrame record={record} activeTab="pms" title="Calibrations" description="Verified calibration schedules, results, certificates and linked work-order evidence." icon={ShieldCheck} actions={<RefreshButton loading={loading} onClick={reload} />}>
       {loading && !state ? <LoadingEvidence label="Loading verified calibration evidence…" /> : null}
@@ -214,7 +241,7 @@ export function LiveEquipmentCalibrationsView({ record }: { record: LiveEquipmen
       {state?.status === "ready" ? (
         <>
           <div className="grid gap-3 sm:grid-cols-3"><Metric label="Calibration points" value={rows.length} detail="Configured records" /><Metric label="Overdue or critical" value={overdue.length} detail="Requires attention" tone="text-red-300" /><Metric label="Certificates linked" value={rows.filter((item) => item.certificateReference).length} detail="Certificate reference present" /></div>
-          <div className="space-y-3">{rows.map((item: LiveCalibration) => <article key={item.id} className="rounded-xl border border-gray-800 bg-[#141820] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:justify-between"><div><p className="text-sm font-semibold text-slate-100">{item.number} · {item.title}</p><p className="mt-1 text-xs text-slate-500">{item.point ?? 'Calibration point not recorded'} · Next due {formatDate(item.nextDueDate)}</p><p className="mt-2 text-xs text-slate-400">Result: {item.lastResult ?? '—'} · Certificate: {item.certificateReference ?? '—'}</p></div><span className="h-fit rounded-md border border-gray-700 px-2 py-1 text-xs font-semibold text-slate-300">{item.riskState ?? item.scheduleStatus}</span></div></article>)}</div>
+          <div className="space-y-3">{visibleRows.map((item: LiveCalibration) => <article key={item.id} className="rounded-xl border border-gray-800 bg-[#141820] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:justify-between"><div><p className="text-sm font-semibold text-slate-100">{item.number} · {item.title}</p><p className="mt-1 text-xs text-slate-500">{item.point ?? 'Calibration point not recorded'} · Next due {formatDate(item.nextDueDate)}</p><p className="mt-2 text-xs text-slate-400">Result: {item.lastResult ?? '—'} · Certificate: {item.certificateReference ?? '—'}</p></div><span className="h-fit rounded-md border border-gray-700 px-2 py-1 text-xs font-semibold text-slate-300">{item.riskState ?? item.scheduleStatus}</span></div></article>)}</div>
         </>
       ) : null}
     </PageFrame>

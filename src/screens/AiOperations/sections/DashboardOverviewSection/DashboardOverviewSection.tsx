@@ -41,7 +41,10 @@ import {
   type RiskDashboardScopePlanCache,
   type RiskDashboardScopeKpiCache,
 } from "../../../Equipment/equipmentService";
-import { getRiskPlanActionRoute } from "../../riskActionRouting";
+import {
+  getRiskPlanActionRoute,
+  getRiskPlanBacklogRoute,
+} from "../../riskActionRouting";
 import { RiskMeter } from "./RiskMeter";
 import { LabourRiskSection } from "./LabourRiskSection";
 import {
@@ -1749,15 +1752,9 @@ export const DashboardOverviewSection = (): JSX.Element => {
                               <button
                                 key={`${action.priority}-${action.action}`}
                                 type="button"
-                                disabled={riskActionsDisabled}
-                                title={
-                                  riskActionsDisabled
-                                    ? "Projected actions are disabled until the operational snapshot and work plan are verified."
-                                    : undefined
-                                }
+                                aria-label={`Open ${action.action} for ${riskReductionPlan.equipmentName}`}
                                 onClick={() => {
-                                  if (riskActionsDisabled) return;
-                                  if (workOrder) {
+                                  if (action.target === "work-orders" && workOrder) {
                                     openWorkOrderDetail({
                                       equipmentId: riskReductionPlan.equipmentId,
                                       workOrderNumber: workOrder,
@@ -1771,7 +1768,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                                     ),
                                   );
                                 }}
-                                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-gray-800 disabled:hover:bg-[#0d1117]"
+                                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-800 bg-[#0d1117] px-4 py-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1117]"
                               >
                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-300">
                                   {index + 1}
@@ -1835,7 +1832,20 @@ export const DashboardOverviewSection = (): JSX.Element => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            getRiskPlanBacklogRoute(
+                              riskReductionPlan.equipmentId,
+                              "pm",
+                            ),
+                          )
+                        }
+                        aria-label={`Open PM backlog for ${riskReductionPlan.equipmentName}`}
+                        data-vorta-dashboard-backlog-card="pm"
+                        className="rounded-lg border border-gray-800 bg-[#0d1117] p-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1117]"
+                      >
                         <p className="text-xs text-slate-500">
                           PM backlog
                         </p>
@@ -1859,9 +1869,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             No PM action selected
                           </p>
                         )}
-                      </div>
+                      </button>
 
-                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            getRiskPlanBacklogRoute(
+                              riskReductionPlan.equipmentId,
+                              "calibrations",
+                            ),
+                          )
+                        }
+                        aria-label={`Open calibration backlog for ${riskReductionPlan.equipmentName}`}
+                        data-vorta-dashboard-backlog-card="calibrations"
+                        className="rounded-lg border border-gray-800 bg-[#0d1117] p-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1117]"
+                      >
                         <p className="text-xs text-slate-500">
                           Calibration backlog
                         </p>
@@ -1885,9 +1908,22 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             No calibration action selected
                           </p>
                         )}
-                      </div>
+                      </button>
 
-                      <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            getRiskPlanBacklogRoute(
+                              riskReductionPlan.equipmentId,
+                              "spares",
+                            ),
+                          )
+                        }
+                        aria-label={`Open out-of-stock parts for ${riskReductionPlan.equipmentName}`}
+                        data-vorta-dashboard-backlog-card="spares"
+                        className="rounded-lg border border-gray-800 bg-[#0d1117] p-3 text-left transition-colors hover:border-blue-500/30 hover:bg-[#151b26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1117]"
+                      >
                         <p className="text-xs text-slate-500">
                           Out-of-stock parts
                         </p>
@@ -1911,7 +1947,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
                             No stockout action selected
                           </p>
                         )}
-                      </div>
+                      </button>
 
                       {isSiteRiskScope ? (
                       <div

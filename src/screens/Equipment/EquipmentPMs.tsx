@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -264,7 +264,10 @@ function calibrationAction(
 export const EquipmentPMs = (): JSX.Element => {
   const navigate = useNavigate();
   const { equipmentId } = useParams<{ equipmentId?: string }>();
+  const [searchParams] = useSearchParams();
   const resolvedId = equipmentId ?? DEFAULT_EQUIPMENT_ID;
+  const requestedRecord = searchParams.get("record")?.trim() ?? "";
+  const requestedView = searchParams.get("view")?.trim() ?? "";
 
   const [equipment, setEquipment] = useState<EquipmentBase | null>(() =>
     getCachedEquipmentIdentity(resolvedId),
@@ -323,6 +326,22 @@ export const EquipmentPMs = (): JSX.Element => {
   useEffect(() => {
     void loadCalibrationIntelligence();
   }, [loadCalibrationIntelligence]);
+
+  useEffect(() => {
+    if (!requestedRecord && requestedView !== "backlog") return;
+    if (requestedRecord) {
+      setFilter("ALL");
+      setSearch(requestedRecord);
+    } else {
+      setFilter("ATTENTION");
+      setSearch("");
+    }
+    requestAnimationFrame(() => {
+      document
+        .getElementById("calibration-register")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [calibrations.length, requestedRecord, requestedView]);
 
   const calibrationTimelineRecords = useMemo<MaintenanceScheduleRecord[]>(
     () =>
