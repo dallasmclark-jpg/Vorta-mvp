@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useState,
   type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -26,6 +27,8 @@ import { MobilePageHeaderExperience } from "./MobilePageHeaderExperience";
 import { MobileTypographyStyles } from "./MobileTypographyStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
+const MAINTENANCE_DATA_RECOVERED_EVENT =
+  "vorta:maintenance-data-recovered";
 
 interface GlobalAiPromptEventDetail {
   question?: string;
@@ -96,6 +99,7 @@ export function MaintenanceAiWorkOrderExperience({
   const { siteContext } = useAuth();
   const location = useLocation();
   const isPhone = useMediaQuery("(max-width: 767px)");
+  const [dataRecoveryRevision, setDataRecoveryRevision] = useState(0);
   const showDesktopAssistantLauncher =
     !isPhone &&
     location.pathname !== "/dashboard" &&
@@ -103,6 +107,23 @@ export function MaintenanceAiWorkOrderExperience({
 
   useEffect(() => {
     warmMaintenancePortalDataFast();
+  }, []);
+
+  useEffect(() => {
+    const reloadCurrentDataRoute = (): void => {
+      setDataRecoveryRevision((current) => current + 1);
+    };
+
+    window.addEventListener(
+      MAINTENANCE_DATA_RECOVERED_EVENT,
+      reloadCurrentDataRoute,
+    );
+    return () => {
+      window.removeEventListener(
+        MAINTENANCE_DATA_RECOVERED_EVENT,
+        reloadCurrentDataRoute,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -222,7 +243,13 @@ export function MaintenanceAiWorkOrderExperience({
       <MobilePageHeaderExperience />
       <MobileTypographyStyles />
       <DataTrustBanner />
-      {children}
+      <div
+        key={dataRecoveryRevision}
+        className="contents"
+        data-vorta-maintenance-data-revision={dataRecoveryRevision}
+      >
+        {children}
+      </div>
       {isPhone ? (
         <div
           aria-hidden="true"
