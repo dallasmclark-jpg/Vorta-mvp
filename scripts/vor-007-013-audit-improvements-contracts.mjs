@@ -14,6 +14,8 @@ const surfaces = read("src/card-surfaces.css");
 const handover = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
 const handoverService = read("src/screens/ShiftHandover/shiftHandoverWorkflowService.ts");
 const migration = read("supabase/migrations/20260728130000_add_shift_handover_control_workflow.sql");
+const rpcGrantMigration = read("supabase/migrations/20260728133000_restrict_shift_handover_rpc_anon.sql");
+const indexMigration = read("supabase/migrations/20260728134500_index_shift_handover_workflow_foreign_keys.sql");
 
 assert.match(route, /if \(isPhone\)[\s\S]*<MobileEquipmentSection[\s\S]*dataMode=\{dataMode\}/);
 assert.doesNotMatch(route, /isPhone && dataMode === "demo"/);
@@ -63,5 +65,11 @@ assert.match(migration, /Handover changed before this save/);
 assert.match(migration, /Completed SAP work orders cannot be reopened/);
 assert.match(migration, /shift_handover_actions_site_read/);
 assert.match(migration, /grant execute on function public\.vorta_get_shift_handover_actions/);
+assert.match(rpcGrantMigration, /from public, anon/);
+assert.match(rpcGrantMigration, /to authenticated, service_role/);
+assert.match(indexMigration, /shift_handover_actions_acknowledged_by_idx/);
+assert.match(indexMigration, /shift_handover_actions_carry_from_idx/);
+assert.match(indexMigration, /shift_handover_action_events_site_idx/);
+assert.match(indexMigration, /shift_handover_action_events_actor_idx/);
 
 console.log("VOR-007 through VOR-013 engineering, workflow and UI contracts passed.");
