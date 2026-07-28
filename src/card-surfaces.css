@@ -155,6 +155,18 @@ html.dark [data-vorta-page-content="true"] :is(
   outline-offset: 2px;
 }
 
+/* Stores Inventory starts with its operational scope rail, not explanatory copy. */
+[data-vorta-stores-inventory="true"] > header,
+[data-vorta-stores-inventory="true"]
+  > section[aria-labelledby="area-risk-heading"]
+  > div:first-child {
+  display: none !important;
+}
+
+[data-vorta-stores-inventory="true"] > [role="status"] {
+  order: 99;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-vorta-page-content="true"] :where(
     a[aria-label^="View equipment in "],
