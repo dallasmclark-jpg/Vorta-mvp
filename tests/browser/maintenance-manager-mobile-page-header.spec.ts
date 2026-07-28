@@ -88,3 +88,28 @@ test("Settings keeps appearance controls in the page and removes the duplicate h
   ).toBeHidden();
   await expectNoPageOverflow(page);
 });
+
+test("the top-left Vorta logo returns to the main dashboard at every shell breakpoint", async ({
+  page,
+}) => {
+  await signInMaintenanceManager(page);
+  await page.goto("/engineers");
+
+  const isPhone = (page.viewportSize()?.width ?? 1366) < 768;
+  const dashboardLogo = isPhone
+    ? page.getByRole("link", { name: "Go to main dashboard", exact: true })
+    : page
+        .locator('[data-vorta-desktop-sidebar="true"]')
+        .getByRole("link", { name: "Vorta home", exact: true });
+
+  await expect(dashboardLogo).toBeVisible();
+  if (isPhone) {
+    await expect(dashboardLogo).toHaveAttribute("tabindex", "0");
+  } else {
+    await expect(dashboardLogo).toHaveAttribute("href", "/dashboard");
+  }
+
+  await dashboardLogo.click();
+  await page.waitForURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
