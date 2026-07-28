@@ -46,8 +46,8 @@ const [
 const mustMatch = (source, pattern, message) => assert.match(source, pattern, message);
 const mustNotMatch = (source, pattern, message) => assert.doesNotMatch(source, pattern, message);
 
-mustMatch(demoBanner, /data-demo-simulation="true"/, "Demo workflows must have a persistent simulation marker");
-mustMatch(demoBanner, /Demo simulation/, "Demo workflows must be labelled as simulations");
+mustMatch(demoBanner, /\): null \{\s*return null;\s*\}/s, "Demo statements must remain retired at the shared component boundary");
+mustNotMatch(demoBanner, /data-demo-simulation|Demo simulation|role="note"/, "Retired demo statements must not render visible or accessible content");
 
 for (const [label, entry, liveName, publicIndex] of [
   ["Training", trainingEntry, "LiveTrainingSection", trainingIndex],
@@ -56,7 +56,7 @@ for (const [label, entry, liveName, publicIndex] of [
 ]) {
   mustMatch(entry, /VITE_VORTA_DATA_MODE/, `${label} must select its view from explicit data mode`);
   mustMatch(entry, new RegExp(`if \\(isLivePilotMode\\) return <${liveName} \\/>`), `${label} must use its read-only live view`);
-  mustMatch(entry, /DemoSimulationBanner/, `${label} demo mode must display the simulation warning`);
+  mustMatch(entry, /DemoSimulationBanner/, `${label} must keep retired notice compatibility behind the shared non-rendering boundary`);
   mustMatch(publicIndex, /RouteEntry as/, `${label} public export must use the mode-aware entry`);
 }
 

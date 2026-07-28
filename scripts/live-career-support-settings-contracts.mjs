@@ -50,7 +50,8 @@ const [
 const mustMatch = (source, pattern, message) => assert.match(source, pattern, message);
 const mustNotMatch = (source, pattern, message) => assert.doesNotMatch(source, pattern, message);
 
-mustMatch(demoBanner, /data-demo-simulation="true"/, "Demo workflows must retain a persistent simulation marker");
+mustMatch(demoBanner, /\): null \{\s*return null;\s*\}/s, "Demo statements must remain retired at the shared component boundary");
+mustNotMatch(demoBanner, /data-demo-simulation|Demo simulation|role="note"/, "Retired demo statements must not render visible or accessible content");
 mustMatch(invokeEvidence, /attempt < 3/, "Transient evidence transport failures must use a bounded retry");
 mustMatch(invokeEvidence, /TRANSIENT_MESSAGE/, "Only recognised transport failures may be retried");
 mustMatch(invokeEvidence, /supabase\.functions\.invoke\(slug/, "Evidence retries must still use the authenticated Supabase client");
@@ -62,7 +63,7 @@ for (const [label, entry, liveName, publicIndex] of [
 ]) {
   mustMatch(entry, /VITE_VORTA_DATA_MODE/, `${label} must select its view from explicit data mode`);
   mustMatch(entry, new RegExp(`if \\(isLivePilotMode\\) return <${liveName} \\/>`), `${label} must use its read-only live view`);
-  mustMatch(entry, /DemoSimulationBanner/, `${label} demo mode must display the simulation warning`);
+  mustMatch(entry, /DemoSimulationBanner/, `${label} must keep retired notice compatibility behind the shared non-rendering boundary`);
   mustMatch(publicIndex, /RouteEntry as/, `${label} public export must use the mode-aware entry`);
 }
 
@@ -115,7 +116,7 @@ for (const [label, auth, fn] of [
   mustMatch(auth, /from\("user_site_access"\)/, `${label} must resolve active-site access`);
   mustMatch(auth, /eq\("active", true\)/, `${label} must require active site access`);
   mustMatch(auth, /SUPABASE_SERVICE_ROLE_KEY/, `${label} may use privileged reads only after caller verification`);
-  mustMatch(auth, /127\.0\.0\.1:4173/, `${label} must allow the authenticated browser-test origin`);
+  mustMatch(auth, /127\.0\.0\.1:4173/, `${label} must allow the authenticated browser test origin`);
   mustMatch(auth, /deploy-preview-\\d\+--vorta-app/, `${label} must allow Netlify deploy previews without wildcard CORS`);
   mustNotMatch(auth + fn, /Access-Control-Allow-Origin["']?:\s*["']\*["']/, `${label} must not use wildcard CORS`);
   mustMatch(fn, /siteId,\s*organisationId,\s*generatedAt:/, `${label} must return explicit evidence scope metadata`);
