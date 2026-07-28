@@ -114,7 +114,7 @@ test("Stores Inventory reuses Vorta dashboard and disclosure patterns across sup
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
     expect(Math.max(...heights)).toBeLessThanOrEqual(102);
     await expect(
-      workspace.locator('[data-vorta-inventory-kpi-detail="true"]'),
+      workspace.locator('[data-vorta-inventory-kpi-detail="true"]').first(),
     ).toBeHidden();
   } else {
     await expect(
