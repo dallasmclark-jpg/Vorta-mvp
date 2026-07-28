@@ -65,16 +65,32 @@ html.dark {
 }
 
 /*
- * Group-only frames organise child cards without competing with them.
- * The explicit dashboard hook remains supported, while any shared Card that
- * contains a repeated grid of bordered metric panels receives the same quiet
- * frame hierarchy across Equipment and the rest of the portal.
+ * Group-only frames organise child cards and grouped controls without adding
+ * another filled grey slab. This intentionally covers both the shared Card
+ * primitive and legacy rounded content surfaces that predate it.
  */
 [data-vorta-page-content="true"]
   [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]),
 [data-vorta-page-content="true"]
-  [data-vorta-card="true"]:has(
-    [class*="grid"] >
+  :is(
+    [data-vorta-card="true"],
+    section[class*="rounded"][class*="border"],
+    article[class*="rounded"][class*="border"],
+    button[class*="rounded"][class*="border"],
+    div[class*="rounded-xl"][class*="border"],
+    div[class*="rounded-2xl"][class*="border"]
+  )
+  :not([class*="bg-red"])
+  :not([class*="bg-orange"])
+  :not([class*="bg-amber"])
+  :not([class*="bg-yellow"])
+  :not([class*="bg-emerald"])
+  :not([class*="bg-green"])
+  :not([class*="bg-blue"])
+  :not([class*="bg-violet"])
+  :not([class*="bg-indigo"])
+  :has(
+    :is([class*="grid"], [class*="flex"]) >
       :is(
         [class*="rounded-lg"][class*="border"],
         [class*="rounded-xl"][class*="border"]
@@ -156,6 +172,22 @@ html.dark [data-vorta-page-content="true"] :is(
     border-color: var(--vorta-surface-border-hover) !important;
     box-shadow: var(--vorta-surface-shadow-hover) !important;
     transform: translateY(-1px);
+  }
+
+  [data-vorta-page-content="true"]
+    button[class*="rounded"][class*="border"]:has(
+      :is([class*="grid"], [class*="flex"]) >
+        :is(
+          [class*="rounded-lg"][class*="border"],
+          [class*="rounded-xl"][class*="border"]
+        ) ~
+        :is(
+          [class*="rounded-lg"][class*="border"],
+          [class*="rounded-xl"][class*="border"]
+        )
+    ):hover {
+    box-shadow: none !important;
+    transform: none;
   }
 }
 
