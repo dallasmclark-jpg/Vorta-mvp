@@ -529,7 +529,13 @@ export function StoresInventorySection(): JSX.Element {
       return;
     }
 
-    setPayload(null);
+    if (result.status === "empty") {
+      setPayload(null);
+      setLoadError(result.message);
+      setLoading(false);
+      return;
+    }
+
     setLoadError(result.message);
     setLoading(false);
   }, [dataMode, siteContext?.siteId]);
