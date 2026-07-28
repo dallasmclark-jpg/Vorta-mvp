@@ -25,18 +25,18 @@ for (const token of [
   assert.match(tabStates, new RegExp(token), `${token} must remain a shared theme token.`);
 }
 
-assert.match(tabStates, /html\.dark\s*\{[\s\S]*--vorta-tab-selected-surface:\s*#0d1117/, "Dark mode must use a neutral selected surface.");
-assert.match(tabStates, /\[role="tab"\]\[aria-selected="true"\]/, "ARIA-selected tabs must use the shared rule.");
-assert.match(tabStates, /\[role="tab"\]\[data-state="active"\]/, "Data-state tabs must use the shared rule.");
-assert.match(tabStates, /\[role="tablist"\][\s\S]*\[aria-current="page"\]/, "Tab links must use the shared rule.");
-assert.match(tabStates, /border-width:\s*1px\s*!important/, "Selected tabs must use one complete outline.");
-assert.match(tabStates, /background:\s*var\(--vorta-tab-selected-surface\)\s*!important/, "Selected tabs must retain a neutral surface.");
-assert.match(tabStates, /border-color:\s*var\(--vorta-tab-selected-border\)\s*!important/, "Selected tabs must use the shared blue outline.");
-assert.match(tabStates, /box-shadow:\s*none\s*!important/, "Component-specific selected shadows must be normalised.");
-assert.doesNotMatch(tabStates, /background:\s*(?:#(?:1d4ed8|2563eb|3b82f6)|rgb\(37,\s*99,\s*235\)|rgb\(59,\s*130,\s*246\))/i, "Selected tabs must not restore an opaque blue fill.");
+assert.match(tabStates, /html\.dark\{[\s\S]*--vorta-tab-selected-surface:#0d1117/, "Dark mode must use a neutral selected surface.");
+assert.match(tabStates, /\[role=tab\]\[aria-selected=true\]/, "ARIA-selected tabs must use the shared rule.");
+assert.match(tabStates, /\[role=tab\]\[data-state=active\]/, "Data-state tabs must use the shared rule.");
+assert.match(tabStates, /\[role=tablist\][\s\S]*\[aria-current=page\]/, "Tab links must use the shared rule.");
+assert.match(tabStates, /border:1px solid var\(--vorta-tab-selected-border\)!important/, "Selected tabs must use one complete blue outline.");
+assert.match(tabStates, /background:var\(--vorta-tab-selected-surface\)!important/, "Selected tabs must retain a neutral surface.");
+assert.match(tabStates, /box-shadow:none!important/, "Component-specific selected shadows must be normalised.");
+assert.match(tabStates, /:focus-visible\{outline:2px solid var\(--vorta-tab-focus-outline\)!important/, "Tabs must retain a visible keyboard focus outline.");
+assert.doesNotMatch(tabStates, /background:(?:#(?:1d4ed8|2563eb|3b82f6)|rgb\(37,99,235\)|rgb\(59,130,246\))/i, "Selected tabs must not restore an opaque blue fill.");
 
 assert.match(storesInventory, /role="tab"[\s\S]*aria-selected=\{selected\}/, "Stores Inventory tabs must expose semantic selection state.");
 assert.match(equipmentTabs, /role="tab"[\s\S]*aria-selected=\{active\}/, "Equipment tabs must expose semantic selection state.");
-assert.doesNotMatch(tabStates, /^\s*:where\(\s*\[aria-current="page"\]/m, "The shared rule must not style sidebar or ordinary navigation links.");
+assert.doesNotMatch(tabStates, /:where\(\[aria-current=page\]/, "The shared rule must not style sidebar or ordinary navigation links.");
 
 console.log("VOR-018 shared outlined selected-tab contracts passed.");
