@@ -1265,7 +1265,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
       />
 
       {/* ── Site Risk Briefing ───────────────────────────────────────── */}
-      <Card className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
+      <Card data-vorta-group-frame="true" className="w-full rounded-xl border border-gray-800 bg-[#141820] shadow-none">
         <CardContent className="p-3 sm:p-5">
           <div className="flex flex-col gap-5">
 

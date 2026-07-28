@@ -1,0 +1,501 @@
+Test status: 1
+  '        coverage.complete\n' +
+  '          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"\n' +
+  '          : "border-amber-500/25 bg-amber-500/10 text-amber-300"\n' +
+  '      }`}\n' +
+  '      title={`${coverage.componentCount} components · ${coverage.documentCount} documents · ${coverage.faultCodeCount} fault codes · ${coverage.workOrderCount} work orders · ${coverage.maintenanceScheduleCount} maintenance schedules`}\n' +
+  '    >\n' +
+  '      {coverage.complete ? <ShieldCheck className="h-3 w-3" aria-hidden="true" /> : null}\n' +
+  '      {coverage.score}/5 evidence\n' +
+  '    </span>\n' +
+  '  );\n' +
+  '}\n' +
+  '\n' +
+  'export function MobileEquipmentSection({\n' +
+  '  dataMode,\n' +
+  '  siteId,\n' +
+  '}: MobileEquipmentSectionProps): JSX.Element {\n' +
+  '  const navigate = useNavigate();\n' +
+  '  const [searchParams] = useSearchParams();\n' +
+  '  const requestedArea =\n' +
+  '    searchParams.get("area")?.trim() ||\n' +
+  '    searchParams.get("building")?.trim() ||\n' +
+  '    "all";\n' +
+  '  const [items, setItems] = useState<EquipmentListItem[]>([]);\n' +
+  '  const [livePayload, setLivePayload] = useState<LiveEquipmentListPayload | null>(null);\n' +
+  '  const [coverage, setCoverage] = useState<Map<string, EquipmentEvidenceCoverage>>(new Map());\n' +
+  '  const [coverageError, setCoverageError] = useState<string | null>(null);\n' +
+  '  const [search, setSearch] = useState("");\n' +
+  '  const [area, setArea] = useState(requestedArea);\n' +
+  '  const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");\n' +
+  '  const [sortKey, setSortKey] = useState<SortKey>("risk");\n' +
+  '  const [filtersOpen, setFiltersOpen] = useState(false);\n' +
+  '  const [loading, setLoading] = useState(true);\n' +
+  '  const [error, setError] = useState<string | null>(null);\n' +
+  '  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);\n' +
+  '\n' +
+  '  const load = useCallback(async (): Promise<void> => {\n' +
+  '    setLoading(true);\n' +
+  '    setError(null);\n' +
+  '    setEmptyMessage(null);\n' +
+  '\n' +
+  '    try {\n' +
+  '      if (dataMode === "unavailable" || (dataMode === "live" && !siteId)) {\n' +
+  '        throw new Error("Equipment is unavailable because no authorised active site was resolved.");\n' +
+  '      }\n' +
+  '\n' +
+  '      if (dataMode === "live" && siteId) {\n' +
+  '        const nextState = await loadLiveEquipmentList(siteId);\n' +
+  '        if (nextState.status !== "ready") {\n' +
+  '          if (items.length === 0) {\n' +
+  '            setItems([]);\n' +
+  '            setLivePayload(null);\n' +
+  '            setCoverage(new Map());\n' +
+  '            if (nextState.status === "empty") setEmptyMessage(nextState.message);\n' +
+  '            else setError(nextState.message);\n' +
+  '          } else {\n' +
+  '            setError(`${nextState.message} Showing the previous verified list.`);\n' +
+  '          }\n' +
+  '          return;\n' +
+  '        }\n' +
+  '\n' +
+  '        setItems(nextState.data.items);\n' +
+  '        setLivePayload(nextState.data);\n' +
+  '        setCoverageError(null);\n' +
+  '        try {\n' +
+  '          setCoverage(\n' +
+  '            await loadEquipmentEvidenceCoverage(\n' +
+  '              nextState.data.records.map((record) => record.id),\n' +
+  '            ),\n' +
+  '          );\n' +
+  '        } catch (coverageLoadError) {\n' +
+  '          setCoverage(new Map());\n' +
+  '          setCoverageError(\n' +
+  '            coverageLoadError instanceof Error\n' +
+  '              ? coverageLoadError.message\n' +
+  '              : "Equipment evidence coverage could not be loaded.",\n' +
+  '          );\n' +
+  '        }\n' +
+  '        return;\n' +
+  '      }\n' +
+  '\n' +
+  '      const demoItems = await getEquipmentList();\n' +
+  '      setItems(demoItems);\n' +
+  '      setLivePayload(null);\n' +
+  '      setCoverage(new Map());\n' +
+  '      setCoverageError(null);\n' +
+  '      if (demoItems.length === 0) setEmptyMessage("No equipment records are available.");\n' +
+  '    } catch (loadError) {\n' +
+  '      if (items.length === 0) {\n' +
+  '        setItems([]);\n' +
+  '        setLivePayload(null);\n' +
+  '      }\n' +
+  '      setError(\n' +
+  '        loadError instanceof Error\n' +
+  '          ? loadError.message\n' +
+  '          : "Equipment records could not be loaded.",\n' +
+  '      );\n' +
+  '    } finally {\n' +
+  '      setLoading(false);\n' +
+  '    }\n' +
+  '  }, [dataMode, items.length, siteId]);\n' +
+  '\n' +
+  '  useEffect(() => {\n' +
+  '    void load();\n' +
+  '    // load intentionally reacts only to the active data boundary.\n' +
+  '    // eslint-disable-next-line react-hooks/exhaustive-deps\n' +
+  '  }, [dataMode, siteId]);\n' +
+  '\n' +
+  '  const areas = useMemo(\n' +
+  '    () =>\n' +
+  '      Array.from(new Set(items.map((item) => item.area))).sort((left, right) =>\n' +
+  '        left.localeCompare(right),\n' +
+  '      ),\n' +
+  '    [items],\n' +
+  '  );\n' +
+  '\n' +
+  '  const filtered = useMemo(() => {\n' +
+  '    const query = search.trim().toLowerCase();\n' +
+  '    return [...items]\n' +
+  '      .filter((item) => {\n' +
+  '        if (\n' +
+  '          query &&\n' +
+  '          ![item.name, item.assetNumber, item.area, item.type, item.oem]\n' +
+  '            .join(" ")\n' +
+  '            .toLowerCase()\n' +
+  '            .includes(query)\n' +
+  '        ) {\n' +
+  '          return false;\n' +
+  '        }\n' +
+  '        if (area !== "all" && item.area !== area) return false;\n' +
+  '        if (\n' +
+  '          riskFilter === "critical-high" &&\n' +
+  '          !["Critical", "High"].includes(item.riskLevel)\n' +
+  '        ) {\n' +
+  '          return false;\n' +
+  '        }\n' +
+  '        if (\n' +
+  '          riskFilter === "overdue" &&\n' +
+  '          item.overduePmCount + item.calibrationOverdueCount === 0\n' +
+  '        ) {\n' +
+  '          return false;\n' +
+  '        }\n' +
+  '        if (\n' +
+  '          riskFilter === "evidence-gaps" &&\n' +
+  '          dataMode === "live" &&\n' +
+  '          coverage.get(item.id)?.complete !== false\n' +
+  '        ) {\n' +
+  '          return false;\n' +
+  '        }\n' +
+  '        return true;\n' +
+  '      })\n' +
+  '      .sort((left, right) => {\n' +
+  '        if (sortKey === "name") return left.name.localeCompare(right.name);\n' +
+  '        if (sortKey === "backlog") return backlog(right) - backlog(left);\n' +
+  '        if (sortKey === "evidence") {\n' +
+  '          return (coverage.get(left.id)?.score ?? -1) - (coverage.get(right.id)?.score ?? -1);\n' +
+  '        }\n' +
+  '        return right.riskScore - left.riskScore;\n' +
+  '      });\n' +
+  '  }, [area, coverage, dataMode, items, riskFilter, search, sortKey]);\n' +
+  '\n' +
+  '  const atRiskCount = items.filter((item) =>\n' +
+  '    ["Critical", "High"].includes(item.riskLevel),\n' +
+  '  ).length;\n' +
+  '  const overdueCount = items.reduce(\n' +
+  '    (total, item) => total + item.overduePmCount + item.calibrationOverdueCount,\n' +
+  '    0,\n' +
+  '  );\n' +
+  '  const activeFilterCount =\n' +
+  '    Number(area !== "all") +\n' +
+  '    Number(riskFilter !== "all") +\n' +
+  '    Number(sortKey !== "risk");\n' +
+  '\n' +
+  '  return (\n' +
+  '    <section\n' +
+  '      data-vorta-mobile-equipment="true"\n' +
+  '      data-vorta-equipment-mode={dataMode}\n' +
+  '      className="flex w-full flex-col gap-4 overflow-x-hidden px-3 pb-24 pt-4"\n' +
+  '    >\n' +
+  '      <DetailDrawer open={filtersOpen} onClose={() => setFiltersOpen(false)}>\n' +
+  '        <div className="flex items-start justify-between border-b border-gray-800 p-5">\n' +
+  '          <div>\n' +
+  '            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-300">\n' +
+  '              Equipment filters\n' +
+  '            </p>\n' +
+  '            <h2 className="mt-2 text-lg font-semibold text-slate-50">Focus the asset list</h2>\n' +
+  '          </div>\n' +
+  '          <DrawerCloseButton onClose={() => setFiltersOpen(false)} />\n' +
+  '        </div>\n' +
+  '        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">\n' +
+  '          <fieldset>\n' +
+  '            <legend className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">\n' +
+  '              Area\n' +
+  '            </legend>\n' +
+  '            <div className="mt-3 grid gap-2">\n' +
+  '              {["all", ...areas].map((option) => (\n' +
+  '                <button\n' +
+  '                  key={option}\n' +
+  '                  type="button"\n' +
+  '                  aria-pressed={area === option}\n' +
+  '                  onClick={() => setArea(option)}\n' +
+  '                  className={`min-h-11 rounded-xl border px-3 text-left text-sm font-semibold ${\n' +
+  '                    area === option\n' +
+  '                      ? "border-blue-500 bg-blue-500/15 text-blue-200"\n' +
+  '                      : "border-gray-800 bg-[#141820] text-slate-300"\n' +
+  '                  }`}\n' +
+  '       '... 13326 more characters
+
+    at file:///home/runner/work/Vorta-mvp/Vorta-mvp/scripts/vor-007-013-audit-improvements-contracts.mjs:27:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'import { useCallback, useEffect, useMemo, useState } from "react";\n' +
+    'import {\n' +
+    '  AlertTriangle,\n' +
+    '  ArrowRight,\n' +
+    '  Filter,\n' +
+    '  RefreshCw,\n' +
+    '  Search,\n' +
+    '  ShieldCheck,\n' +
+    '  Wrench,\n' +
+    '} from "lucide-react";\n' +
+    'import { useNavigate, useSearchParams } from "react-router-dom";\n' +
+    'import { DetailDrawer, DrawerCloseButton } from "../../components/DetailDrawer";\n' +
+    'import { MobilePageHeader } from "../../components/MobilePageHeader";\n' +
+    'import type { VortaDataMode } from "../../lib/dataTrust";\n' +
+    'import {\n' +
+    '  loadEquipmentEvidenceCoverage,\n' +
+    '  type EquipmentEvidenceCoverage,\n' +
+    '} from "./equipmentEvidenceCoverage";\n' +
+    'import {\n' +
+    '  loadLiveEquipmentList,\n' +
+    '  type LiveEquipmentListPayload,\n' +
+    '} from "./equipmentLiveTrust";\n' +
+    'import { getEquipmentList, type EquipmentListItem } from "./equipmentService";\n' +
+    '\n' +
+    'type RiskFilter = "all" | "critical-high" | "overdue" | "evidence-gaps";\n' +
+    'type SortKey = "risk" | "backlog" | "name" | "evidence";\n' +
+    '\n' +
+    'interface MobileEquipmentSectionProps {\n' +
+    '  dataMode: VortaDataMode;\n' +
+    '  siteId: string | null;\n' +
+    '}\n' +
+    '\n' +
+    'function riskTone(level: EquipmentListItem["riskLevel"]): string {\n' +
+    '  if (level === "Critical") return "border-red-500/30 bg-red-500/10 text-red-300";\n' +
+    '  if (level === "High") return "border-orange-500/30 bg-orange-500/10 text-orange-300";\n' +
+    '  if (level === "Medium") return "border-amber-500/30 bg-amber-500/10 text-amber-300";\n' +
+    '  if (level === "Low") return "border-lime-500/30 bg-lime-500/10 text-lime-300";\n' +
+    '  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";\n' +
+    '}\n' +
+    '\n' +
+    'function backlog(item: EquipmentListItem): number {\n' +
+    '  return item.openWorkOrderCount + item.overduePmCount + item.calibrationOverdueCount;\n' +
+    '}\n' +
+    '\n' +
+    'function equipmentRoute(equipmentId: string, destination: string): string {\n' +
+    '  const separator = destination.includes("?") ? "&" : "?";\n' +
+    '  return `/equipment/${encodeURIComponent(equipmentId)}/${destination}${separator}from=equipment-list`;\n' +
+    '}\n' +
+    '\n' +
+    'function EvidenceBadge({\n' +
+    '  mode,\n' +
+    '  coverage,\n' +
+    '  unavailable,\n' +
+    '}: {\n' +
+    '  mode: VortaDataMode;\n' +
+    '  coverage: EquipmentEvidenceCoverage | undefined;\n' +
+    '  unavailable: boolean;\n' +
+    '}): JSX.Element {\n' +
+    '  if (mode === "demo") {\n' +
+    '    return (\n' +
+    '      <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-200">\n' +
+    '        Demo evidence\n' +
+    '      </span>\n' +
+    '    );\n' +
+    '  }\n' +
+    '  if (unavailable || !coverage) {\n' +
+    '    return (\n' +
+    '      <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-300">\n' +
+    '        Evidence unavailable\n' +
+    '      </span>\n' +
+    '    );\n' +
+    '  }\n' +
+    '  return (\n' +
+    '    <span\n' +
+    '      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold ${\n' +
+    '        coverage.complete\n' +
+    '          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"\n' +
+    '          : "border-amber-500/25 bg-amber-500/10 text-amber-300"\n' +
+    '      }`}\n' +
+    '      title={`${coverage.componentCount} components · ${coverage.documentCount} documents · ${coverage.faultCodeCount} fault codes · ${coverage.workOrderCount} work orders · ${coverage.maintenanceScheduleCount} maintenance schedules`}\n' +
+    '    >\n' +
+    '      {coverage.complete ? <ShieldCheck className="h-3 w-3" aria-hidden="true" /> : null}\n' +
+    '      {coverage.score}/5 evidence\n' +
+    '    </span>\n' +
+    '  );\n' +
+    '}\n' +
+    '\n' +
+    'export function MobileEquipmentSection({\n' +
+    '  dataMode,\n' +
+    '  siteId,\n' +
+    '}: MobileEquipmentSectionProps): JSX.Element {\n' +
+    '  const navigate = useNavigate();\n' +
+    '  const [searchParams] = useSearchParams();\n' +
+    '  const requestedArea =\n' +
+    '    searchParams.get("area")?.trim() ||\n' +
+    '    searchParams.get("building")?.trim() ||\n' +
+    '    "all";\n' +
+    '  const [items, setItems] = useState<EquipmentListItem[]>([]);\n' +
+    '  const [livePayload, setLivePayload] = useState<LiveEquipmentListPayload | null>(null);\n' +
+    '  const [coverage, setCoverage] = useState<Map<string, EquipmentEvidenceCoverage>>(new Map());\n' +
+    '  const [coverageError, setCoverageError] = useState<string | null>(null);\n' +
+    '  const [search, setSearch] = useState("");\n' +
+    '  const [area, setArea] = useState(requestedArea);\n' +
+    '  const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");\n' +
+    '  const [sortKey, setSortKey] = useState<SortKey>("risk");\n' +
+    '  const [filtersOpen, setFiltersOpen] = useState(false);\n' +
+    '  const [loading, setLoading] = useState(true);\n' +
+    '  const [error, setError] = useState<string | null>(null);\n' +
+    '  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);\n' +
+    '\n' +
+    '  const load = useCallback(async (): Promise<void> => {\n' +
+    '    setLoading(true);\n' +
+    '    setError(null);\n' +
+    '    setEmptyMessage(null);\n' +
+    '\n' +
+    '    try {\n' +
+    '      if (dataMode === "unavailable" || (dataMode === "live" && !siteId)) {\n' +
+    '        throw new Error("Equipment is unavailable because no authorised active site was resolved.");\n' +
+    '      }\n' +
+    '\n' +
+    '      if (dataMode === "live" && siteId) {\n' +
+    '        const nextState = await loadLiveEquipmentList(siteId);\n' +
+    '        if (nextState.status !== "ready") {\n' +
+    '          if (items.length === 0) {\n' +
+    '            setItems([]);\n' +
+    '            setLivePayload(null);\n' +
+    '            setCoverage(new Map());\n' +
+    '            if (nextState.status === "empty") setEmptyMessage(nextState.message);\n' +
+    '            else setError(nextState.message);\n' +
+    '          } else {\n' +
+    '            setError(`${nextState.message} Showing the previous verified list.`);\n' +
+    '          }\n' +
+    '          return;\n' +
+    '        }\n' +
+    '\n' +
+    '        setItems(nextState.data.items);\n' +
+    '        setLivePayload(nextState.data);\n' +
+    '        setCoverageError(null);\n' +
+    '        try {\n' +
+    '          setCoverage(\n' +
+    '            await loadEquipmentEvidenceCoverage(\n' +
+    '              nextState.data.records.map((record) => record.id),\n' +
+    '            ),\n' +
+    '          );\n' +
+    '        } catch (coverageLoadError) {\n' +
+    '          setCoverage(new Map());\n' +
+    '          setCoverageError(\n' +
+    '            coverageLoadError instanceof Error\n' +
+    '              ? coverageLoadError.message\n' +
+    '              : "Equipment evidence coverage could not be loaded.",\n' +
+    '          );\n' +
+    '        }\n' +
+    '        return;\n' +
+    '      }\n' +
+    '\n' +
+    '      const demoItems = await getEquipmentList();\n' +
+    '      setItems(demoItems);\n' +
+    '      setLivePayload(null);\n' +
+    '      setCoverage(new Map());\n' +
+    '      setCoverageError(null);\n' +
+    '      if (demoItems.length === 0) setEmptyMessage("No equipment records are available.");\n' +
+    '    } catch (loadError) {\n' +
+    '      if (items.length === 0) {\n' +
+    '        setItems([]);\n' +
+    '        setLivePayload(null);\n' +
+    '      }\n' +
+    '      setError(\n' +
+    '        loadError instanceof Error\n' +
+    '          ? loadError.message\n' +
+    '          : "Equipment records could not be loaded.",\n' +
+    '      );\n' +
+    '    } finally {\n' +
+    '      setLoading(false);\n' +
+    '    }\n' +
+    '  }, [dataMode, items.length, siteId]);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    void load();\n' +
+    '    // load intentionally reacts only to the active data boundary.\n' +
+    '    // eslint-disable-next-line react-hooks/exhaustive-deps\n' +
+    '  }, [dataMode, siteId]);\n' +
+    '\n' +
+    '  const areas = useMemo(\n' +
+    '    () =>\n' +
+    '      Array.from(new Set(items.map((item) => item.area))).sort((left, right) =>\n' +
+    '        left.localeCompare(right),\n' +
+    '      ),\n' +
+    '    [items],\n' +
+    '  );\n' +
+    '\n' +
+    '  const filtered = useMemo(() => {\n' +
+    '    const query = search.trim().toLowerCase();\n' +
+    '    return [...items]\n' +
+    '      .filter((item) => {\n' +
+    '        if (\n' +
+    '          query &&\n' +
+    '          ![item.name, item.assetNumber, item.area, item.type, item.oem]\n' +
+    '            .join(" ")\n' +
+    '            .toLowerCase()\n' +
+    '            .includes(query)\n' +
+    '        ) {\n' +
+    '          return false;\n' +
+    '        }\n' +
+    '        if (area !== "all" && item.area !== area) return false;\n' +
+    '        if (\n' +
+    '          riskFilter === "critical-high" &&\n' +
+    '          !["Critical", "High"].includes(item.riskLevel)\n' +
+    '        ) {\n' +
+    '          return false;\n' +
+    '        }\n' +
+    '        if (\n' +
+    '          riskFilter === "overdue" &&\n' +
+    '          item.overduePmCount + item.calibrationOverdueCount === 0\n' +
+    '        ) {\n' +
+    '          return false;\n' +
+    '        }\n' +
+    '        if (\n' +
+    '          riskFilter === "evidence-gaps" &&\n' +
+    '          dataMode === "live" &&\n' +
+    '          coverage.get(item.id)?.complete !== false\n' +
+    '        ) {\n' +
+    '          return false;\n' +
+    '        }\n' +
+    '        return true;\n' +
+    '      })\n' +
+    '      .sort((left, right) => {\n' +
+    '        if (sortKey === "name") return left.name.localeCompare(right.name);\n' +
+    '        if (sortKey === "backlog") return backlog(right) - backlog(left);\n' +
+    '        if (sortKey === "evidence") {\n' +
+    '          return (coverage.get(left.id)?.score ?? -1) - (coverage.get(right.id)?.score ?? -1);\n' +
+    '        }\n' +
+    '        return right.riskScore - left.riskScore;\n' +
+    '      });\n' +
+    '  }, [area, coverage, dataMode, items, riskFilter, search, sortKey]);\n' +
+    '\n' +
+    '  const atRiskCount = items.filter((item) =>\n' +
+    '    ["Critical", "High"].includes(item.riskLevel),\n' +
+    '  ).length;\n' +
+    '  const overdueCount = items.reduce(\n' +
+    '    (total, item) => total + item.overduePmCount + item.calibrationOverdueCount,\n' +
+    '    0,\n' +
+    '  );\n' +
+    '  const activeFilterCount =\n' +
+    '    Number(area !== "all") +\n' +
+    '    Number(riskFilter !== "all") +\n' +
+    '    Number(sortKey !== "risk");\n' +
+    '\n' +
+    '  return (\n' +
+    '    <section\n' +
+    '      data-vorta-mobile-equipment="true"\n' +
+    '      data-vorta-equipment-mode={dataMode}\n' +
+    '      className="flex w-full flex-col gap-4 overflow-x-hidden px-3 pb-24 pt-4"\n' +
+    '    >\n' +
+    '      <DetailDrawer open={filtersOpen} onClose={() => setFiltersOpen(false)}>\n' +
+    '        <div className="flex items-start justify-between border-b border-gray-800 p-5">\n' +
+    '          <div>\n' +
+    '            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-300">\n' +
+    '              Equipment filters\n' +
+    '            </p>\n' +
+    '            <h2 className="mt-2 text-lg font-semibold text-slate-50">Focus the asset list</h2>\n' +
+    '          </div>\n' +
+    '          <DrawerCloseButton onClose={() => setFiltersOpen(false)} />\n' +
+    '        </div>\n' +
+    '        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">\n' +
+    '          <fieldset>\n' +
+    '            <legend className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">\n' +
+    '              Area\n' +
+    '            </legend>\n' +
+    '            <div className="mt-3 grid gap-2">\n' +
+    '              {["all", ...areas].map((option) => (\n' +
+    '                <button\n' +
+    '                  key={option}\n' +
+    '                  type="button"\n' +
+    '                  aria-pressed={area === option}\n' +
+    '                  onClick={() => setArea(option)}\n' +
+    '                  className={`min-h-11 rounded-xl border px-3 text-left text-sm font-semibold ${\n' +
+    '                    area === option\n' +
+    '                      ? "border-blue-500 bg-blue-500/15 text-blue-200"\n' +
+    '                      : "border-gray-800 bg-[#141820] text-slate-300"\n' +
+    '                  }`}\n' +
+    '       '... 13326 more characters,
+  expected: /<button[\s\S]{0,3000}<button[\s\S]{0,3000}<\/button>[\s\S]{0,3000}<\/button>/,
+  operator: 'doesNotMatch',
+  diff: 'simple'
+}
+
+Node.js v22.23.1
