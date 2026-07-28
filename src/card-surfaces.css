@@ -167,6 +167,11 @@ html.dark [data-vorta-page-content="true"] :is(
   order: 99;
 }
 
+/* Shift Handover starts with the operational summary cards, not evidence copy. */
+[data-vorta-shift-handover="true"] > header {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-vorta-page-content="true"] :where(
     a[aria-label^="View equipment in "],
