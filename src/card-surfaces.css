@@ -167,7 +167,7 @@ html.dark [data-vorta-page-content="true"] :is(
   order: 99;
 }
 
-/* Mobile inventory risk uses a neutral card with a restrained severity hierarchy. */
+/* Mobile inventory risk uses a neutral card with a three-sided severity edge. */
 /* VOR-014: refined edge and typography are intentionally protected for production. */
 @media (max-width: 767px) {
   [data-vorta-stores-inventory="true"]
