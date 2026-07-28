@@ -25,7 +25,7 @@ export function getRiskPlanActionRoute(
 ): string {
   const route = TARGET_ROUTE[action.target];
   const base = `/equipment/${encodeURIComponent(equipmentId)}/${route}`;
-  const params = new URLSearchParams({ from: "dashboard" });
+  const params = new URLSearchParams();
 
   if (action.target === "skills") {
     params.set("returnTo", "/dashboard");
@@ -37,7 +37,8 @@ export function getRiskPlanActionRoute(
     if (spareReference) params.set("record", spareReference);
   }
 
-  return `${base}?${params.toString()}`;
+  const context = params.toString();
+  return `${base}?from=dashboard${context ? `&${context}` : ""}`;
 }
 
 export function getRiskPlanBacklogRoute(
@@ -57,7 +58,6 @@ export function getRiskPlanBacklogRoute(
       : target === "spares"
         ? "out-of-stock"
         : "backlog";
-  const params = new URLSearchParams({ from: "dashboard", view });
 
-  return `/equipment/${encodedEquipmentId}/${destination}?${params.toString()}`;
+  return `/equipment/${encodedEquipmentId}/${destination}?from=dashboard&view=${view}`;
 }
