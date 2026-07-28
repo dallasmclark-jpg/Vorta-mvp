@@ -64,9 +64,26 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
-/* Group-only frames organise child cards without competing with them. */
+/*
+ * Group-only frames organise child cards without competing with them.
+ * The explicit dashboard hook remains supported, while any shared Card that
+ * contains a repeated grid of bordered metric panels receives the same quiet
+ * frame hierarchy across Equipment and the rest of the portal.
+ */
 [data-vorta-page-content="true"]
-  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]) {
+  [data-vorta-card="true"]:has([data-vorta-mobile-risk-scope="true"]),
+[data-vorta-page-content="true"]
+  [data-vorta-card="true"]:has(
+    [class*="grid"] >
+      :is(
+        [class*="rounded-lg"][class*="border"],
+        [class*="rounded-xl"][class*="border"]
+      ) ~
+      :is(
+        [class*="rounded-lg"][class*="border"],
+        [class*="rounded-xl"][class*="border"]
+      )
+  ) {
   background-color: transparent !important;
   box-shadow: none !important;
 }
