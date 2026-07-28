@@ -32,7 +32,7 @@ jobs:
       - name: Deploy production site
         env:
           NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
-          NETLIFY_PROXY_PATH: https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..OlcN_BUoLAweRbcJ.HrQo7NBtIgFNhoC8NwWDbWAKajNMcY9Z3aJ6jjJtEsYpSyNufyIzyRtE3r4djytCiUJjAbA_G4qLaVrBFOVt5NHu7fzvZoWigFe7VPx8XpwbUb0Y8TeNUBxuCdWMfk5goyloDeHDbjSlDfWgD022A49_3TpOADXZHMKLUfBPpbuAlKrrJkynzZc2tj06qGDubKfNB94Y2gD3DQxhszPhaZGgkHjWwcBOmiOKZmLfa1-DaOERTvKIhB6r5gxaA5S5mfbyqWzvNBzb3vzl9Bsww11_kE-8dRc0WKIVt8Lnqx2z9ll_MYQcdUw6NnS3HKbTKae5BA7JgzqdkMzXIzEW4nEPDQSSVAzuvt0jDD97lJCdENyddAqkhrVn6e22-LBEYZai07sl.ZPzMgrqXKU1aWaSKenXquQ
+          NETLIFY_PROXY_PATH: https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..RkvclupRLNh4Y5RJ.dJnNq5JxSmsiNEZbrqYOd_WQzcolPst4d4Klr3MAdJcjUedxWsU1Dp7OhCZmo5RsSjKGAPMWjWH8RDMGAE3WoJjzj8DLapRxBWBFf9vRdwQ-VKbdL85LVhvqiDmkSx2gqaNxF7MKXPBWVL42aDbDmgkXpLGQQYnlr7oKe_CiMGb1YBPl6QTD1kAfaayuyF99cwRtDeAejmznBww8V3pJKOaOcT1GnuAUEz3Kx3N9ANVb0xRFadwbtPl7TYL5gxHjwBVNiDzO4m1g567xZavsWCGY-xG6gFXJPJtUyvNWm6Mwl6UkZhsQHVO6pUZ_iSYVJ-XO0GnVw4ZZPLbPLm3lPXN5iMCQtzmpjHXAyZIuxuS-wMKwRouyzNbpA6gF2S-iqa5KwBJq.JuCOEVCYD2smxwBAdrykkg
         run: |
           echo "::add-mask::$NETLIFY_PROXY_PATH"
           npx --yes @netlify/mcp@latest --site-id "$NETLIFY_SITE_ID" --proxy-path "$NETLIFY_PROXY_PATH"
