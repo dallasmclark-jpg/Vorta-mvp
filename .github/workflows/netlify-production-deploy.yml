@@ -1,0 +1,42 @@
+name: Deploy Vorta to Netlify
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/netlify-production-deploy.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vorta-netlify-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy production site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "NETLIFY_AUTH_TOKEN repository secret is not configured."
+            exit 1
+          fi
+          npx --yes netlify-cli@latest deploy --build --prod --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN"
