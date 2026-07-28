@@ -1,5 +1,8 @@
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "./supabaseClient";
+import {
+  clearMaintenancePortalDataCache,
+  supabase,
+} from "./supabaseClient";
 
 const SESSION_REFRESH_LEEWAY_MS = 90_000;
 const MOBILE_RESUME_REFRESH_AFTER_MS = 5 * 60 * 1_000;
@@ -7,6 +10,8 @@ const SESSION_EXPIRED_MESSAGE =
   "Your secure Vorta session expired. Please sign in again.";
 const HIDDEN_HTTP_ERROR_MESSAGE =
   /edge function returned a non-2xx status code/i;
+const MAINTENANCE_DATA_RECOVERED_EVENT =
+  "vorta:maintenance-data-recovered";
 
 const EVIDENCE_FUNCTIONS = new Set([
   "skills-matrix-data",
@@ -142,9 +147,20 @@ function invocationFailedAuthentication(result: unknown): boolean {
     statusFrom(invocation.response) ?? statusFrom(invocation.error);
   if (status === 401 || status === 403) return true;
 
-  return /authentication required|invalid jwt|jwt expired|token.*expired|unauthori[sz]ed/i.test(
+  return /authentication required|invalid jwt|jwt expired|token.*expired|session not found|unauthori[sz]ed/i.test(
     errorMessage(invocation.error),
   );
+}
+
+function invocationReturnedMissingEvidence(
+  functionName: string,
+  result: unknown,
+): boolean {
+  if (!EVIDENCE_FUNCTIONS.has(functionName)) return false;
+  if (!result || typeof result !== "object") return true;
+
+  const invocation = result as FunctionInvocationResult;
+  return !invocation.error && invocation.data == null;
 }
 
 function invocationMayNeedSessionRefresh(
@@ -152,6 +168,7 @@ function invocationMayNeedSessionRefresh(
   result: unknown,
 ): boolean {
   if (invocationFailedAuthentication(result)) return true;
+  if (invocationReturnedMissingEvidence(functionName, result)) return true;
   if (!EVIDENCE_FUNCTIONS.has(functionName)) return false;
   if (!result || typeof result !== "object") return false;
 
@@ -198,6 +215,17 @@ function expiredSessionResult(
   };
 }
 
+function dispatchMaintenanceDataRecovered(
+  reason: "online" | "page-restore" | "foreground-resume",
+): void {
+  clearMaintenancePortalDataCache();
+  window.dispatchEvent(
+    new CustomEvent(MAINTENANCE_DATA_RECOVERED_EVENT, {
+      detail: { reason },
+    }),
+  );
+}
+
 export function installMaintenanceSessionRecovery(): void {
   if (recoveryInstalled || typeof window === "undefined") return;
 
@@ -222,6 +250,7 @@ export function installMaintenanceSessionRecovery(): void {
       return initialResult;
     }
 
+    clearMaintenancePortalDataCache(functionName);
     const refreshedSession = await ensureFreshSession(true);
     if (!refreshedSession?.access_token) {
       return expiredSessionResult(initialResult);
@@ -243,14 +272,33 @@ export function installMaintenanceSessionRecovery(): void {
     }
   ).invoke = invokeWithSessionRecovery;
 
-  const recoverOnResume = (forceRefresh: boolean): void => {
-    void ensureFreshSession(forceRefresh);
+  supabase.auth.onAuthStateChange((event) => {
+    if (
+      event === "INITIAL_SESSION" ||
+      event === "SIGNED_IN" ||
+      event === "SIGNED_OUT" ||
+      event === "USER_UPDATED"
+    ) {
+      clearMaintenancePortalDataCache();
+    }
+  });
+
+  const recoverOnResume = (
+    forceRefresh: boolean,
+    reason: "online" | "page-restore" | "foreground-resume",
+  ): void => {
+    void ensureFreshSession(forceRefresh).then((session) => {
+      if (!forceRefresh || !session?.access_token) return;
+      dispatchMaintenanceDataRecovered(reason);
+    });
   };
 
   window.addEventListener("pageshow", (event) => {
-    recoverOnResume(event.persisted);
+    recoverOnResume(event.persisted, "page-restore");
   });
-  window.addEventListener("online", () => recoverOnResume(true));
+  window.addEventListener("online", () => {
+    recoverOnResume(true, "online");
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       hiddenAt = Date.now();
@@ -260,7 +308,10 @@ export function installMaintenanceSessionRecovery(): void {
     if (document.visibilityState === "visible") {
       const hiddenDuration = hiddenAt === null ? 0 : Date.now() - hiddenAt;
       hiddenAt = null;
-      recoverOnResume(hiddenDuration >= MOBILE_RESUME_REFRESH_AFTER_MS);
+      recoverOnResume(
+        hiddenDuration >= MOBILE_RESUME_REFRESH_AFTER_MS,
+        "foreground-resume",
+      );
     }
   });
 }
