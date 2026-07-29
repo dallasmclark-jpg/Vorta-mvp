@@ -208,7 +208,10 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(attachButton).toBeVisible();
   await expect(microphoneButton).toBeVisible();
   await expect(sendButton).toBeVisible();
-  await expect(sendButton).toHaveCSS("font-size", "0px");
+  await expect(sendButton).toHaveAttribute("data-vorta-global-ai-send", "true");
+  await expect(sendButton).toHaveAccessibleName("Send");
+  await expect(sendButton.getByText("Send", { exact: true })).toHaveClass(/sr-only/);
+  await expect(sendButton.locator("svg")).toBeVisible();
 
   const attachBox = await attachButton.boundingBox();
   const inputBox = await promptInput.boundingBox();

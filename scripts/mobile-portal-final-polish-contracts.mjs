@@ -100,7 +100,7 @@ assert.match(globalAssistant, /data-vorta-global-ai-messages="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-composer="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-input="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-send="true"/);
-assert.match(globalAssistant, /max-md:text-\[0px\]/);
+assert.match(globalAssistant, /<span className="max-md:sr-only">Send<\/span>/);
 assert.match(globalAssistant, /max-md:h-\[100dvh\]/);
 assert.match(globalAssistant, /max-md:hidden/);
 assert.doesNotMatch(globalAssistant, /max-sm:/);
