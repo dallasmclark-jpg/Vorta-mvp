@@ -38,7 +38,7 @@ mustMatch(functionIndex, /p_site_id: siteId/, "The bundle must receive the activ
 mustMatch(functionIndex, /p_organisation_id: organisationId/, "The bundle must receive the active organisation boundary");
 mustNotMatch(functionIndex, /\.from\("engineers"\)/, "The Edge Function must not restore multi-wave direct table fan-out");
 assert.equal((functionIndex.match(/db\.rpc\(/g) ?? []).length, 1, "Engineers must load its evidence through one RPC call");
-mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt,[\s\S]*evidenceLoadMs/, "Engineers responses must include boundary and timing metadata");
+mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt:[\s\S]*evidenceLoadMs:/, "Engineers responses must include boundary and timing metadata");
 mustMatch(functionIndex, /buildEngineerPayload/, "Engineers payload construction must remain isolated from access control");
 mustMatch(functionTransform, /totalEngineers: engineers\.length/, "Engineer totals must be derived from scoped records");
 
