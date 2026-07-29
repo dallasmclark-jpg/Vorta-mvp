@@ -32,6 +32,7 @@ export function MobilePageHeader({
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <h1
             data-vorta-mobile-page-title="true"
+            aria-hidden="true"
             className="text-xl font-semibold tracking-tight text-slate-50"
           >
             {title}
