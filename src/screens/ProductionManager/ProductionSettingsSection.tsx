@@ -165,7 +165,7 @@ export const ProductionSettingsSection = (): JSX.Element => {
       <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-start">
         <div>
           <p className="text-xs font-medium text-slate-500">Production Manager</p>
-          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Settings</h1>
+          <h1 className="mt-1 text-xl font-semibold text-slate-50">Settings</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
             Manage Production Manager preferences for shift visibility, operator alerts, compliance notifications, AI recommendations and dashboard behaviour.
           </p>
