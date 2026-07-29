@@ -3246,8 +3246,14 @@ export function GlobalMaintenanceAiAssistant({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-500/20 bg-[#10141d] shadow-2xl shadow-black/60">
-      <div className="flex items-center justify-between border-b border-gray-800 bg-[#141820] px-4 py-3">
+    <div
+      data-vorta-global-ai-panel="true"
+      className="fixed bottom-4 right-4 z-40 w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-500/20 bg-[#10141d] shadow-2xl shadow-black/60 max-sm:inset-0 max-sm:flex max-sm:h-[100dvh] max-sm:w-screen max-sm:flex-col max-sm:rounded-none max-sm:border-0 max-sm:bg-[#0b0e14] max-sm:shadow-none"
+    >
+      <div
+        data-vorta-global-ai-header="true"
+        className="flex min-h-14 items-center justify-between border-b border-gray-800 bg-[#141820] px-4 py-3 max-sm:bg-[#0b0e14] max-sm:px-3"
+      >
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
             <Sparkles className="h-4 w-4 text-blue-300" />
@@ -3272,7 +3278,8 @@ export function GlobalMaintenanceAiAssistant({
                 (value) => !value,
               );
             }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+            data-vorta-global-ai-minimise="true"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 max-sm:hidden"
             aria-label="Minimise global assistant"
           >
             <ChevronDown className={`h-4 w-4 transition-transform ${minimised ? "rotate-180" : ""}`} />
@@ -3379,7 +3386,10 @@ export function GlobalMaintenanceAiAssistant({
             </div>
           </div>
 
-          <div className="flex max-h-[380px] flex-col gap-3 overflow-y-auto px-4 py-3">
+          <div
+            data-vorta-global-ai-messages="true"
+            className="flex max-h-[380px] flex-col gap-3 overflow-y-auto px-4 py-3 max-sm:min-h-0 max-sm:max-h-none max-sm:flex-1"
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -3453,8 +3463,14 @@ export function GlobalMaintenanceAiAssistant({
             ))}
           </div>
 
-          <div className="border-t border-gray-800 px-4 py-3">
-            <div className="flex gap-2">
+          <div
+            data-vorta-global-ai-composer="true"
+            className="border-t border-gray-800 px-4 py-3 max-sm:bg-[#0b0e14] max-sm:px-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          >
+            <div
+              data-vorta-global-ai-composer-row="true"
+              className="flex gap-2"
+            >
               <Button
                 type="button"
                 variant="outline"
@@ -3493,6 +3509,7 @@ export function GlobalMaintenanceAiAssistant({
               </Button>
 
               <input
+                data-vorta-global-ai-input="true"
                 type="text"
                 placeholder={
                   listening

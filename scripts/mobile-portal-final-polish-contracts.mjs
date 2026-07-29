@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
+const globalAssistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const mobilePageHeader = read("src/screens/AiOperations/MobilePageHeaderExperience.tsx");
 const portalShell = read("src/components/PortalShell.tsx");
 const demoSimulationBanner = read("src/components/DemoSimulationBanner.tsx");
@@ -47,22 +48,23 @@ assert.match(maintenanceExperience, /const isPhone = useMediaQuery\("\(max-width
 assert.match(maintenanceExperience, /data-vorta-shared-mobile-ai-launcher="true"/);
 assert.match(maintenanceExperience, /<MobilePageHeaderExperience \/>/);
 
-assert.match(mobilePageHeader, /data-vorta-mobile-header-title/);
-assert.match(mobilePageHeader, /content: attr\(data-vorta-mobile-header-title\)/);
-assert.match(mobilePageHeader, /data-vorta-mobile-duplicate-page-title/);
-assert.match(mobilePageHeader, /data-vorta-mobile-settings-duplicate-theme-toggle/);
-assert.match(mobilePageHeader, /removeSettingsHeaderThemeShortcut/);
-assert.match(mobilePageHeader, /THEME_SHORTCUT_LABELS/);
+assert.match(mobilePageHeader, /usePortalMobileHeaderTitle\(title\)/);
 assert.match(mobilePageHeader, /title: "Capability"/);
 assert.match(mobilePageHeader, /title: "Shift Handover"/);
-assert.match(mobilePageHeader, /profile: \{ title: "Equipment", duplicateHeadings: \[\] \}/);
-assert.match(mobilePageHeader, /font-size: 1\.125rem !important/);
-assert.match(mobilePageHeader, /min-height: 4rem !important/);
-assert.match(mobilePageHeader, /data-vorta-mobile-dashboard-logo-link/);
-assert.match(mobilePageHeader, /aria-label", "Go to main dashboard"/);
-assert.match(mobilePageHeader, /navigate\("\/dashboard"\)/);
-assert.match(mobilePageHeader, /event\.key !== "Enter" && event\.key !== " "/);
-assert.match(portalShell, /<NavLink to=\{homeRoute\} aria-label="Vorta home"/);
+assert.match(mobilePageHeader, /title: "Equipment"/);
+assert.doesNotMatch(mobilePageHeader, /querySelector|MutationObserver|content: attr|!important/);
+assert.match(portalShell, /PortalMobileHeaderContext/);
+assert.match(portalShell, /data-vorta-mobile-topbar="true"/);
+assert.match(portalShell, /data-vorta-mobile-header-title="true"/);
+assert.match(portalShell, /data-vorta-mobile-topbar-home="true"/);
+assert.match(portalShell, /aria-label="Go to main dashboard"/);
+assert.match(portalShell, /data-vorta-mobile-topbar-menu="true"/);
+assert.match(portalShell, /grid-cols-\[2\.5rem_minmax\(0,1fr\)_2\.5rem\]/);
+assert.match(portalShell, /data-vorta-mobile-navigation-overlay="true"/);
+assert.match(portalShell, /data-vorta-mobile-navigation-drawer="true"/);
+assert.match(portalShell, /PHONE_HIDDEN_ROUTES/);
+assert.match(portalShell, /filterPhoneNav/);
+assert.match(portalShell, /data-vorta-portal-scroll-container="true"/);
 
 assert.match(demoSimulationBanner, /export function DemoSimulationBanner/);
 assert.match(demoSimulationBanner, /\): null \{\s*return null;\s*\}/s);
@@ -87,17 +89,20 @@ assert.doesNotMatch(capabilitySummary, /insert\(|update\(|delete\(/);
 
 assert.match(requirementsEntry, /MobileRequirementsSection/);
 assert.match(mobileRequirements, /View capability evidence/);
-assert.match(polish, /Remove the retired standalone matching action/);
-assert.match(polish, /data-vorta-mobile-requirements/);
+assert.doesNotMatch(mobileRequirements, /Open AI Matching|navigate\("\/ai-matching"\)/);
+
+assert.match(globalAssistant, /data-vorta-global-ai-panel="true"/);
+assert.match(globalAssistant, /data-vorta-global-ai-header="true"/);
+assert.match(globalAssistant, /data-vorta-global-ai-messages="true"/);
+assert.match(globalAssistant, /data-vorta-global-ai-composer="true"/);
+assert.match(globalAssistant, /data-vorta-global-ai-input="true"/);
+assert.match(globalAssistant, /max-sm:h-\[100dvh\]/);
+assert.match(globalAssistant, /max-sm:hidden/);
 
 assert.match(polish, /@media \(max-width: 767px\)/);
-assert.match(polish, /flex-direction: row-reverse !important/);
-assert.match(polish, /justify-content: space-between/);
-assert.match(polish, /justify-content: flex-end/);
-assert.match(polish, /aria-label="Portal navigation"/);
-assert.match(polish, /href="\/settings\/pilot-setup"/);
-assert.match(polish, /href="\/settings\/data-import"/);
-assert.match(polish, /@media \(min-width: 640px\) and \(max-width: 767px\)/);
-assert.match(polish, /height: 100dvh !important/);
+assert.match(polish, /data-vorta-embedded-ai/);
+assert.match(polish, /data-vorta-mobile-page-title/);
+assert.doesNotMatch(polish, /:has\(|md\\:hidden|href=|aria-label=|>\s|\[class|placeholder\^=/);
+assert.equal((polish.match(/!important/g) ?? []).length, 1);
 
-console.log("Final mobile portal navigation, retired demo statements, dashboard logo routing, page titles, settings controls, breakpoints, capability summary and route restrictions passed.");
+console.log("Semantic mobile portal navigation, shared page titles, AI layout, capability summary and route restrictions passed.");

@@ -1181,7 +1181,7 @@ export const EquipmentSection = (): JSX.Element => {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="flex w-full flex-col justify-between gap-4 md:flex-row md:items-start">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-50">Equipment</h1>
+          <h1 data-vorta-mobile-page-title="true" className="text-xl font-semibold tracking-tight text-slate-50">Equipment</h1>
           <p className="text-sm text-slate-400">
             Monitor asset health, operational risk and maintenance readiness across your site.
           </p>

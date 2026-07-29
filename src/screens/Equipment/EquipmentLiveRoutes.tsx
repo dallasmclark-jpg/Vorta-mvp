@@ -220,7 +220,7 @@ function LiveEquipmentSection({ siteId }: { siteId: string }): JSX.Element {
       <header className="flex flex-col gap-4 border-b border-gray-800 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-50">Equipment</h1>
+            <h1 data-vorta-mobile-page-title="true" className="text-2xl font-bold tracking-tight text-slate-50">Equipment</h1>
             <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold tracking-[0.12em] text-emerald-300">
               ACTIVE-SITE VERIFIED
             </span>

@@ -1,132 +1,22 @@
 @media (max-width: 767px) {
-  /* Keep the Vorta mark on the left and the menu control on the right at every phone width. */
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden {
-    display: flex !important;
-    min-height: 3.25rem;
-    flex-direction: row-reverse !important;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.25rem 0.75rem !important;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden::after {
-    display: none !important;
-    content: none !important;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
-    order: initial !important;
-    margin-left: 0 !important;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
-    order: initial !important;
-    min-width: 0;
-  }
-
-  /* Navigation opens from the same right-hand edge as its trigger. Humanity survives another drawer. */
-  [data-vorta-portal-shell="true"] > div.fixed.inset-0.z-50.flex.md\:hidden {
-    justify-content: flex-end;
-  }
-
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] {
-    width: min(18rem, 88vw) !important;
-  }
-
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] [data-vorta-sidebar="true"] {
-    border-right: 0 !important;
-    border-left: 1px solid rgb(31 41 55) !important;
-  }
-
-  /* Administrative setup stays available on tablet and desktop, not on a phone in a plant corridor. */
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] a[href="/settings/pilot-setup"],
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] a[href="/settings/data-import"],
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] a[href="/design-system"],
-  [data-vorta-portal-shell="true"] div[role="dialog"][aria-label="Portal navigation"] a[href="/ai-matching"] {
+  /* Legacy embedded assistants opt into this semantic boundary. The global
+     assistant owns its responsive layout in React and must remain visible. */
+  [data-vorta-embedded-ai="true"] {
     display: none !important;
   }
 
-  [data-vorta-mobile-capability-summary="true"],
-  [data-vorta-mobile-requirements="true"],
-  [data-vorta-mobile-training-providers="true"],
-  [data-vorta-mobile-training="true"],
-  [data-vorta-mobile-engineers="true"],
-  [data-vorta-mobile-equipment="true"],
-  [data-vorta-mobile-equipment-overview="true"],
-  [data-vorta-mobile-career="true"],
-  [data-vorta-mobile-support="true"],
-  [data-vorta-mobile-settings="true"] {
-    padding-bottom: max(5.5rem, calc(4rem + env(safe-area-inset-bottom))) !important;
-  }
-
-  /* Remove the retired standalone matching action from the compact Requirements drawer. */
-  [data-vorta-mobile-requirements="true"]
-    aside[aria-label="Detail panel"]
-    > div.flex.flex-1.flex-col.gap-4.overflow-y-auto.p-5
-    > div.grid.gap-2
-    > button:last-child {
-    display: none !important;
-  }
-}
-
-/* The earlier mobile assistant pass stopped at 639px. Phones did not, naturally. */
-@media (min-width: 640px) and (max-width: 767px) {
-  [data-vorta-embedded-ai="true"],
-  [data-vorta-maintenance-portal="true"] div:has(> div > input[placeholder^="Ask Vorta about"]) {
-    display: none !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) {
-    inset: 0 !important;
-    display: flex !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    max-height: none !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: rgb(11 14 20) !important;
-    box-shadow: none !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child {
-    min-height: 3.5rem;
-    padding: 0.5rem 0.75rem !important;
-    background: rgb(11 14 20) !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Minimise global assistant"] {
-    display: none !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) {
-    min-height: 0 !important;
-    max-height: none !important;
-    flex: 1 1 auto !important;
-    padding: 1rem !important;
-    overflow-y: auto !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t {
-    padding: 0.625rem 0.75rem max(0.75rem, env(safe-area-inset-bottom)) !important;
-    background: rgb(11 14 20) !important;
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex {
-    align-items: center;
-    gap: 0.25rem !important;
-    padding: 0.3rem 0.35rem 0.3rem 0.45rem;
-    border: 1px solid rgb(51 65 85);
-    border-radius: 1.5rem;
-    background: rgb(20 24 32);
-  }
-
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t input {
-    min-height: 2.5rem;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
+  /* Route components explicitly mark headings duplicated by PortalShell's
+     mobile h1. The title remains accessible once through the shared shell. */
+  [data-vorta-mobile-page-title="true"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 }

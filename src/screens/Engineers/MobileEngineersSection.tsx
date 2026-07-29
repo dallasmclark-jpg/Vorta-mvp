@@ -314,7 +314,7 @@ export function MobileEngineersSection({
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
             {dataMode === "live" ? "Verified workforce" : "Demo workforce"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold text-slate-50">Engineers</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Engineers</h1>
           <p className="mt-1 text-sm text-slate-400">
             Who is available, capable and at risk today.
           </p>

@@ -208,7 +208,7 @@ export const OperatorTrainingSection = (): JSX.Element => (
     <header className="flex w-full flex-col justify-between gap-4 py-5 lg:flex-row lg:items-start">
       <div>
         <p className="text-xs font-medium text-slate-500">Operator Portal</p>
-        <h1 className="mt-1 text-xl font-semibold text-slate-50">Training</h1>
+        <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Training</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-400">
           Track required training, refresher courses, competency actions and recommended development so you stay compliant and ready for future production roles.
         </p>

@@ -306,7 +306,7 @@ export function MobileTrainingSection({ dataMode }: { dataMode: VortaDataMode })
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
             {dataMode === "live" ? "Verified training" : "Demo training"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold text-slate-50">Training Plan</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Training Plan</h1>
           <p className="mt-1 text-sm text-slate-400">Close the highest-risk capability gaps first.</p>
         </div>
         <button

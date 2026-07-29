@@ -599,7 +599,7 @@ export const PilotImpactSection = (): JSX.Element => {
       <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
         <header className="py-5">
           <p className="text-xs font-medium text-slate-400">Pilot evidence</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-50">
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-2xl font-bold tracking-tight text-slate-50">
             Pilot Impact
           </h1>
         </header>
@@ -736,7 +736,7 @@ export const PilotImpactSection = (): JSX.Element => {
           <div>
             <p className="text-xs font-medium text-slate-400">Pilot evidence</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+              <h1 data-vorta-mobile-page-title="true" className="text-2xl font-bold tracking-tight text-slate-50">
                 Pilot Impact
               </h1>
               <Badge

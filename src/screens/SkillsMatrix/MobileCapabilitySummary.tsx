@@ -213,7 +213,7 @@ export function MobileCapabilitySummary({
                 ? "Demo capability"
                 : "Capability unavailable"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold text-slate-50">Capability Summary</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Capability Summary</h1>
           <p className="mt-1 text-sm text-slate-400">
             Current workforce coverage, critical gaps and affected assets.
           </p>

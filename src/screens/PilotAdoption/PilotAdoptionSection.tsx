@@ -353,7 +353,7 @@ export const PilotAdoptionSection = (): JSX.Element => {
       <section className="relative flex min-w-0 w-full max-w-full flex-1 grow flex-col gap-6 overflow-x-hidden px-4 pb-12 pt-0 md:px-6 xl:px-8">
         <header className="py-5">
           <p className="text-xs font-medium text-slate-400">Pilot evidence</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-50">Pilot Adoption</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-2xl font-bold tracking-tight text-slate-50">Pilot Adoption</h1>
         </header>
         <Card className="rounded-xl border border-red-500/20 bg-[#141820] shadow-none">
           <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -397,7 +397,7 @@ export const PilotAdoptionSection = (): JSX.Element => {
         <div>
           <p className="text-xs font-medium text-slate-400">Pilot evidence</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-50">Pilot Adoption</h1>
+            <h1 data-vorta-mobile-page-title="true" className="text-2xl font-bold tracking-tight text-slate-50">Pilot Adoption</h1>
             <Badge className={`h-auto rounded border px-2 py-0.5 text-[10px] font-bold shadow-none ${presentation.classes}`}>
               {presentation.label}
             </Badge>
