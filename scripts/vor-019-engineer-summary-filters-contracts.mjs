@@ -39,7 +39,8 @@ assert.doesNotMatch(
   "The Engineers summary must report at-risk engineers, not weekly rota shifts.",
 );
 
-assert.match(browserCoverage, /Engineer priority filters/);
+assert.match(browserCoverage, /data-vorta-engineer-summary-tabs/);
+assert.match(browserCoverage, /summaryLabels/);
 assert.match(browserCoverage, /data-vorta-engineer-summary-count/);
 assert.match(browserCoverage, /data-vorta-engineer-priority-count/);
 assert.match(browserCoverage, /toHaveAttribute\("aria-selected", "true"\)/);
