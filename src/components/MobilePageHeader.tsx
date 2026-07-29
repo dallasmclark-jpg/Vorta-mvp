@@ -30,7 +30,12 @@ export function MobilePageHeader({
           </p>
         ) : null}
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-50">{title}</h1>
+          <h1
+            data-vorta-mobile-page-title="true"
+            className="text-xl font-semibold tracking-tight text-slate-50"
+          >
+            {title}
+          </h1>
           {badge ? (
             <span className="rounded-md border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300">
               {badge}
