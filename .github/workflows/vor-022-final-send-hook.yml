@@ -1,0 +1,41 @@
+name: VOR-022 Final Semantic Send Hook
+
+on:
+  push:
+    branches:
+      - refactor/vor-022-semantic-responsive-hooks
+    paths:
+      - scripts/apply-vor-022-final-send-hook.mjs
+      - .github/workflows/vor-022-final-send-hook.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/vor-022-semantic-responsive-hooks
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply final semantic hooks
+        run: node scripts/apply-vor-022-final-send-hook.mjs
+
+      - name: Run focused contracts
+        run: node scripts/mobile-portal-final-polish-contracts.mjs
+
+      - name: Commit product changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src scripts/mobile-portal-final-polish-contracts.mjs
+          git commit -m "VOR-022: finish semantic mobile composer hooks"
+          git push origin HEAD:refactor/vor-022-semantic-responsive-hooks
