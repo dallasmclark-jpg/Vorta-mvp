@@ -206,7 +206,7 @@
     box-shadow: none !important;
   }
 
-  [data-vorta-global-ai-composer-row="true"] > button:last-child {
+  [data-vorta-global-ai-send="true"] {
     width: 2.5rem !important;
     height: 2.5rem !important;
     padding: 0 !important;
@@ -215,7 +215,7 @@
     font-size: 0 !important;
   }
 
-  [data-vorta-global-ai-composer-row="true"] > button:last-child svg {
+  [data-vorta-global-ai-send="true"] svg {
     width: 1.125rem;
     height: 1.125rem;
   }

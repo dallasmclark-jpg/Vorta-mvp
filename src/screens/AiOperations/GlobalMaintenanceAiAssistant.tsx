@@ -3555,10 +3555,12 @@ export function GlobalMaintenanceAiAssistant({
                   !input.trim() ||
                   !agentContextReady
                 }
-                className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                data-vorta-global-ai-send="true"
+                aria-label="Send"
+                className="h-8 shrink-0 gap-1 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 max-md:h-10 max-md:w-10 max-md:gap-0 max-md:p-0 max-md:text-[0px]"
               >
-                <Send className="h-3 w-3" />
-                Send
+                <Send className="h-3 w-3 max-md:h-[1.125rem] max-md:w-[1.125rem]" aria-hidden="true" />
+                <span className="max-md:sr-only">Send</span>
               </Button>
             </div>
 
