@@ -26,6 +26,9 @@ const mobileEngineers = read("src/screens/Engineers/MobileEngineersSection.tsx")
 const engineerAvatar = read("src/screens/Engineers/EngineerAvatar.tsx");
 const engineersRuntime = read("src/screens/Engineers/engineersRuntimeContracts.ts");
 const engineersFunction = read("supabase/functions/engineers-data/index.ts");
+const engineersBundle = read(
+  "supabase/migrations/20260729124000_add_engineers_evidence_bundle.sql",
+);
 const requirementsRoute = read("src/screens/Requirements/RequirementsRouteEntry.tsx");
 const trainingRoute = read("src/screens/Training/TrainingRouteEntry.tsx");
 const providersRoute = read("src/screens/TrainingProviders/TrainingProvidersRouteEntry.tsx");
@@ -54,8 +57,9 @@ check(
     engineerAvatar.includes("onError={() => setImageFailed(true)}") &&
     engineersRuntime.includes("avatar_url: string | null") &&
     engineersRuntime.includes("row.avatar_url") &&
-    engineersFunction.includes("site_id,avatar_url"),
-  "Engineer photographs must be returned by live evidence, validated and rendered through the resilient shared avatar.",
+    engineersFunction.includes("vorta_get_engineers_evidence_bundle_internal") &&
+    engineersBundle.includes("engineer.avatar_url"),
+  "Engineer photographs must be returned by bundled live evidence, validated and rendered through the resilient shared avatar.",
 );
 
 check(

@@ -33,9 +33,12 @@ mustMatch(functionAuth, /\.from\("profiles"\)[\s\S]*\.eq\("id", user\.id\)/, "En
 mustMatch(functionAuth, /\.from\("user_site_access"\)[\s\S]*\.eq\("user_id", user\.id\)/, "Engineers context must resolve only the verified user's site access");
 mustMatch(functionAuth, /ALLOWED_ROLES\.has\(role\)/, "Engineers context must restrict Maintenance Manager roles");
 mustNotMatch(functionAuth, /vorta_get_function_context/, "Engineers context must not depend on a non-callable public RPC");
-mustMatch(functionIndex, /\.eq\("site_id", siteId\)/, "Engineer records must be active-site scoped");
-mustMatch(functionIndex, /\.eq\("organisation_id", organisationId\)/, "Engineer records must be organisation scoped");
-mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt/, "Engineers responses must include evidence metadata");
+mustMatch(functionIndex, /vorta_get_engineers_evidence_bundle_internal/, "Engineers must use the reviewed site-scoped bundle RPC");
+mustMatch(functionIndex, /p_site_id: siteId/, "The bundle must receive the active site boundary");
+mustMatch(functionIndex, /p_organisation_id: organisationId/, "The bundle must receive the active organisation boundary");
+mustNotMatch(functionIndex, /\.from\("engineers"\)/, "The Edge Function must not restore multi-wave direct table fan-out");
+assert.equal((functionIndex.match(/db\.rpc\(/g) ?? []).length, 1, "Engineers must load its evidence through one RPC call");
+mustMatch(functionIndex, /siteId,[\s\S]*organisationId,[\s\S]*generatedAt:[\s\S]*evidenceLoadMs:/, "Engineers responses must include boundary and timing metadata");
 mustMatch(functionIndex, /buildEngineerPayload/, "Engineers payload construction must remain isolated from access control");
 mustMatch(functionTransform, /totalEngineers: engineers\.length/, "Engineer totals must be derived from scoped records");
 
@@ -63,4 +66,4 @@ mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public
 mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
 mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the mode-aware entry");
 
-console.log("Engineers live evidence contracts passed.");
+console.log("Engineers live evidence and single-bundle performance contracts passed.");

@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import {
   createContext,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   type KeyboardEvent,
@@ -27,16 +28,30 @@ const EQUIPMENT_TABS = [
 export type EquipmentTabRoute = (typeof EQUIPMENT_TABS)[number]["route"];
 
 const scrollPositionByEquipment = new Map<string, number>();
+const verticalScrollByEquipmentRoute = new Map<string, number>();
 const pendingKeyboardFocusByEquipment = new Map<string, EquipmentTabRoute>();
-const pendingVerticalScrollByEquipment = new Map<
-  string,
-  { route: EquipmentTabRoute; top: number }
->();
 const EquipmentTabNavigationVisibilityContext = createContext(true);
 
 interface EquipmentTabNavigationProps {
   equipmentId: string;
   activeTab: EquipmentTabRoute;
+}
+
+function routeScrollKey(equipmentId: string, route: EquipmentTabRoute): string {
+  return `${equipmentId}:${route}`;
+}
+
+function findPortalScrollContainer(from: Element | null): HTMLElement | null {
+  if (typeof window === "undefined") return null;
+
+  let current = from?.parentElement ?? null;
+  while (current) {
+    const overflowY = window.getComputedStyle(current).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return current;
+    current = current.parentElement;
+  }
+
+  return null;
 }
 
 export function EquipmentTabNavigationVisibilityProvider({
@@ -95,13 +110,16 @@ export function EquipmentTabNavigation({
 
   useLayoutEffect(() => {
     if (!visible || typeof window === "undefined") return;
-    const pending = pendingVerticalScrollByEquipment.get(equipmentId);
-    if (!pending || pending.route !== activeTab) return;
+    const scrollContainer = findPortalScrollContainer(navigationRef.current);
+    const savedTop = verticalScrollByEquipmentRoute.get(
+      routeScrollKey(equipmentId, activeTab),
+    );
+    if (!scrollContainer || savedTop === undefined) return;
 
     const restore = (): void => {
-      window.scrollTo({
-        top: pending.top,
-        left: window.scrollX,
+      scrollContainer.scrollTo({
+        top: savedTop,
+        left: scrollContainer.scrollLeft,
         behavior: "auto",
       });
     };
@@ -112,7 +130,6 @@ export function EquipmentTabNavigation({
       window.requestAnimationFrame(restore);
     });
     const settledTimer = window.setTimeout(restore, 160);
-    pendingVerticalScrollByEquipment.delete(equipmentId);
 
     return () => {
       window.cancelAnimationFrame(firstFrame);
@@ -120,7 +137,28 @@ export function EquipmentTabNavigation({
     };
   }, [activeTab, equipmentId, visible]);
 
-  const rememberScrollPosition = (): void => {
+  useEffect(() => {
+    if (!visible) return;
+    const scrollContainer = findPortalScrollContainer(navigationRef.current);
+    if (!scrollContainer) return;
+
+    const key = routeScrollKey(equipmentId, activeTab);
+    const rememberVerticalPosition = (): void => {
+      verticalScrollByEquipmentRoute.set(key, scrollContainer.scrollTop);
+    };
+
+    rememberVerticalPosition();
+    scrollContainer.addEventListener("scroll", rememberVerticalPosition, {
+      passive: true,
+    });
+
+    return () => {
+      rememberVerticalPosition();
+      scrollContainer.removeEventListener("scroll", rememberVerticalPosition);
+    };
+  }, [activeTab, equipmentId, visible]);
+
+  const rememberHorizontalPosition = (): void => {
     const navigation = navigationRef.current;
     if (navigation) {
       scrollPositionByEquipment.set(equipmentId, navigation.scrollLeft);
@@ -157,10 +195,15 @@ export function EquipmentTabNavigation({
   };
 
   const routeTo = (route: EquipmentTabRoute): void => {
-    pendingVerticalScrollByEquipment.set(equipmentId, {
-      route,
-      top: window.scrollY,
-    });
+    const scrollContainer = findPortalScrollContainer(navigationRef.current);
+    const currentTop = scrollContainer?.scrollTop ?? 0;
+
+    verticalScrollByEquipmentRoute.set(
+      routeScrollKey(equipmentId, activeTab),
+      currentTop,
+    );
+    verticalScrollByEquipmentRoute.set(routeScrollKey(equipmentId, route), currentTop);
+
     navigate(`/equipment/${equipmentId}/${route}`, {
       preventScrollReset: true,
     });
@@ -177,13 +220,14 @@ export function EquipmentTabNavigation({
       </span>
       <nav
         ref={navigationRef}
-        onScroll={rememberScrollPosition}
+        onScroll={rememberHorizontalPosition}
         className="flex gap-1 overflow-x-auto pb-1"
         style={{ scrollbarWidth: "none" }}
         aria-label="Equipment sections"
         role="tablist"
         aria-orientation="horizontal"
         data-vorta-equipment-tablist="true"
+        data-vorta-preserve-portal-scroll="true"
       >
         {visibleTabs.map((tab, index) => {
           const askVorta = dataMode === "live" && "actionInLive" in tab;
@@ -201,11 +245,12 @@ export function EquipmentTabNavigation({
               aria-selected={active}
               aria-current={active ? "page" : undefined}
               tabIndex={active ? 0 : -1}
+              data-vorta-tab-outline="true"
               data-vorta-equipment-tab={tab.route}
               data-vorta-equipment-action={askVorta ? "ask-vorta" : undefined}
               onKeyDown={(event) => handleTabKeyDown(event, index, tab.route)}
               onClick={() => {
-                rememberScrollPosition();
+                rememberHorizontalPosition();
                 routeTo(tab.route);
               }}
               className={`flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-300 sm:rounded-t-lg sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 ${
