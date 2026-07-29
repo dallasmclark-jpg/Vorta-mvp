@@ -801,7 +801,7 @@ export function ShiftHandoverSection(): JSX.Element {
       <header className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-50">Shift Handover</h1>
+            <h1 data-vorta-mobile-page-title="true" className="text-2xl font-bold tracking-tight text-slate-50">Shift Handover</h1>
             <span className={`rounded-md border px-2 py-1 text-[11px] font-bold tracking-[0.12em] ${modePresentation.className}`}>
               {modePresentation.label}
             </span>

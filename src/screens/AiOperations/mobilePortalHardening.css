@@ -1,42 +1,4 @@
 @media (max-width: 639px) {
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden {
-    display: grid !important;
-    grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
-    align-items: center;
-    gap: 0.75rem;
-    min-height: 3rem;
-    padding-inline: 0.75rem;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden::after {
-    grid-column: 2;
-    grid-row: 1;
-    min-width: 0;
-    overflow: hidden;
-    color: rgb(203 213 225);
-    content: attr(data-vorta-mobile-page-title);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    line-height: 1.25rem;
-    text-align: center;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden > button {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-    margin-left: 0 !important;
-  }
-
-  [data-vorta-portal-shell="true"] > section > div.md\:hidden > :not(button) {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    min-width: 0;
-  }
-
   [data-vorta-embedded-ai="true"],
   [data-vorta-maintenance-portal="true"] div:has(> div > input[placeholder^="Ask Vorta about"]) {
     display: none !important;
@@ -59,7 +21,7 @@
   }
 
   /* General Vorta AI becomes a clean full-screen mobile conversation. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) {
+  [data-vorta-global-ai-panel="true"] {
     inset: 0 !important;
     display: flex !important;
     width: 100vw !important;
@@ -73,45 +35,45 @@
     box-shadow: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child {
+  [data-vorta-global-ai-header="true"] {
     min-height: 3.5rem;
     padding: 0.5rem 0.75rem !important;
     background: rgb(11 14 20) !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child > div:first-child > div:first-child,
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child p,
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Minimise global assistant"] {
+  [data-vorta-global-ai-header="true"] > div:first-child > div:first-child,
+  [data-vorta-global-ai-header="true"] p,
+  [data-vorta-global-ai-panel="true"] button[aria-label="Minimise global assistant"] {
     display: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child h3 {
+  [data-vorta-global-ai-header="true"] h3 {
     font-size: 1rem !important;
     font-weight: 600 !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Close global assistant"] {
+  [data-vorta-global-ai-panel="true"] button[aria-label="Close global assistant"] {
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 9999px;
   }
 
   /* Quick-question chips and the verbose verified-context sentence stay out of the default mobile view. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2) {
+  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) {
     display: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2):has(button:not([title])) {
+  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2):has(button:not([title])) {
     display: block !important;
     padding: 0.75rem 1rem !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:has(> div.mb-2):has(button:not([title])) > div.mb-2 {
+  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2):has(button:not([title])) > div.mb-2 {
     display: none !important;
   }
 
   /* Conversation area. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) {
+  [data-vorta-global-ai-messages="true"] {
     min-height: 0 !important;
     max-height: none !important;
     flex: 1 1 auto !important;
@@ -120,7 +82,7 @@
     overflow-y: auto !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-start > div {
+  [data-vorta-global-ai-messages="true"] > div.justify-start > div {
     width: 100% !important;
     max-width: 100% !important;
     padding: 0.25rem 0 !important;
@@ -129,53 +91,53 @@
     background: transparent !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-end > div {
+  [data-vorta-global-ai-messages="true"] > div.justify-end > div {
     max-width: 84% !important;
     padding: 0.625rem 0.875rem !important;
     border-radius: 1.25rem 1.25rem 0.35rem 1.25rem !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-end p,
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div.justify-start > div > p {
+  [data-vorta-global-ai-messages="true"] > div.justify-end p,
+  [data-vorta-global-ai-messages="true"] > div.justify-start > div > p {
     font-size: 0.9375rem !important;
     line-height: 1.5rem !important;
   }
 
   /* Mobile answers show the direct answer and one useful next action, not the entire audit trail by default. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(1),
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(2),
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(n+4) {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(1),
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(2),
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(n+4) {
     display: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > p {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > p {
     color: rgb(226 232 240) !important;
     font-size: 0.9375rem !important;
     line-height: 1.55rem !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) {
     margin-top: 0.75rem;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) h4 {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) h4 {
     margin-bottom: 0.35rem !important;
     color: rgb(100 116 139) !important;
     font-size: 0.6875rem !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li {
     color: rgb(203 213 225) !important;
     font-size: 0.875rem !important;
     line-height: 1.35rem !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li:not(:first-child) {
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) li:not(:first-child) {
     display: none !important;
   }
 
   /* Replace the oversized introduction card with a simple ChatGPT-style welcome. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p {
+  [data-vorta-global-ai-messages="true"] > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p {
     display: flex;
     min-height: calc(100dvh - 10rem);
     flex-direction: column;
@@ -185,7 +147,7 @@
     text-align: center;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p::before {
+  [data-vorta-global-ai-messages="true"] > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p::before {
     display: block;
     color: rgb(241 245 249);
     content: "What can I help with?";
@@ -194,7 +156,7 @@
     line-height: 1.75rem;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p::after {
+  [data-vorta-global-ai-messages="true"] > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > p::after {
     display: block;
     max-width: 18rem;
     margin-top: 0.5rem;
@@ -205,21 +167,21 @@
     line-height: 1.35rem;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)) > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) {
+  [data-vorta-global-ai-messages="true"] > div:only-child.justify-start > div > div.flex.flex-col.gap-2 > div:nth-of-type(3) {
     display: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.flex:not(:first-child):not(:has(> div.mb-2)):not(:has(> div:only-child)) > div:first-child {
+  [data-vorta-global-ai-messages="true"]:not(:has(> div:only-child)) > div:first-child {
     display: none !important;
   }
 
   /* Compact mobile composer with icon-only send. */
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t {
+  [data-vorta-global-ai-composer="true"] {
     padding: 0.625rem 0.75rem max(0.75rem, env(safe-area-inset-bottom)) !important;
     background: rgb(11 14 20) !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex {
+  [data-vorta-global-ai-composer-row="true"] {
     align-items: center;
     gap: 0.25rem !important;
     padding: 0.3rem 0.35rem 0.3rem 0.45rem;
@@ -228,14 +190,14 @@
     background: rgb(20 24 32);
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:first-child {
+  [data-vorta-global-ai-composer-row="true"] > button:first-child {
     width: 2.5rem !important;
     height: 2.5rem !important;
     border: 0 !important;
     border-radius: 9999px !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t input {
+  [data-vorta-global-ai-composer="true"] input {
     min-height: 2.5rem;
     padding: 0.4rem 0.35rem !important;
     border: 0 !important;
@@ -244,7 +206,7 @@
     box-shadow: none !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:last-child {
+  [data-vorta-global-ai-send="true"] {
     width: 2.5rem !important;
     height: 2.5rem !important;
     padding: 0 !important;
@@ -253,7 +215,7 @@
     font-size: 0 !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:last-child svg {
+  [data-vorta-global-ai-send="true"] svg {
     width: 1.125rem;
     height: 1.125rem;
   }

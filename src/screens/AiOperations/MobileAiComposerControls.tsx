@@ -53,8 +53,7 @@ type SpeechWindow = Window & {
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
 };
 
-const GENERAL_PANEL_SELECTOR =
-  '[data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])';
+const GENERAL_PANEL_SELECTOR = '[data-vorta-global-ai-panel="true"]';
 const FAULT_FORM_SELECTOR = '[data-vorta-fault-panel="true"] form';
 
 function isVisible(element: HTMLElement | null): element is HTMLElement {
@@ -70,8 +69,12 @@ function findComposerTarget(): ComposerTarget | null {
   }
 
   const generalPanel = document.querySelector<HTMLElement>(GENERAL_PANEL_SELECTOR);
-  const generalFooter = generalPanel?.querySelector<HTMLElement>(":scope > div.border-t") ?? null;
-  const generalRow = generalFooter?.querySelector<HTMLElement>(":scope > div.flex") ?? null;
+  const generalFooter = generalPanel?.querySelector<HTMLElement>(
+    '[data-vorta-global-ai-composer="true"]',
+  ) ?? null;
+  const generalRow = generalPanel?.querySelector<HTMLElement>(
+    '[data-vorta-global-ai-composer-row="true"]',
+  ) ?? null;
   const generalInput = generalRow?.querySelector<HTMLInputElement>('input[type="text"], input:not([type])') ?? null;
 
   if (isVisible(generalRow) && generalInput) {

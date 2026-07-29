@@ -15,6 +15,7 @@ const mobileHardening = read("src/screens/AiOperations/mobilePortalHardening.css
 const mobileAiPolish = read("src/screens/AiOperations/MobileAiPolishStyles.tsx");
 const mobileComposer = read("src/screens/AiOperations/MobileAiComposerControls.tsx");
 const pageTransition = read("src/components/PageTransition.tsx");
+const portalShell = read("src/components/PortalShell.tsx");
 const equipmentIndex = read("src/screens/Equipment/index.ts");
 const equipmentRoute = read("src/screens/Equipment/EquipmentRouteEntry.tsx");
 const equipmentOverviewRoute = read("src/screens/Equipment/EquipmentOverviewRouteEntry.tsx");
@@ -121,12 +122,13 @@ check(
 );
 
 check(
-  pageTransition.includes("vortaMobilePageTitle") &&
-    pageTransition.includes("mobileRouteLabel") &&
-    mobileHardening.includes("grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem") &&
-    mobileHardening.includes('> div.md\\:hidden > button') &&
-    mobileHardening.includes("grid-column: 3"),
-  "The shared phone header must lock logo-left, title-centre and menu-right positions.",
+  portalShell.includes('data-vorta-mobile-topbar="true"') &&
+    portalShell.includes('data-vorta-mobile-topbar-home="true"') &&
+    portalShell.includes('data-vorta-mobile-header-title="true"') &&
+    portalShell.includes('data-vorta-mobile-topbar-menu="true"') &&
+    portalShell.includes("grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]") &&
+    !mobileHardening.includes('> section > div.md\\:hidden'),
+  "The shared phone header must use semantic logo-left, title-centre and menu-right positions.",
 );
 
 check(
@@ -190,7 +192,10 @@ check(
     browserTest.includes("data-vorta-engineer-avatar-image") &&
     browserTest.includes('toHaveAttribute("src", /^https:') &&
     browserTest.includes("What can I help with?") &&
-    browserTest.includes('toHaveCSS("font-size", "0px")') &&
+    browserTest.includes('data-vorta-global-ai-send') &&
+    browserTest.includes('toHaveAccessibleName("Send")') &&
+    browserTest.includes('toHaveClass(/sr-only/)') &&
+    browserTest.includes('sendButton.locator("svg")') &&
     browserTest.includes('toHaveValue("")') &&
     browserTest.includes('toHaveCSS("outline-width", "0px")') &&
     browserTest.includes("Add photos and files") &&

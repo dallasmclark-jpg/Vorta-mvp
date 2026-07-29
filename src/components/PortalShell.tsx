@@ -10,7 +10,7 @@
  * Pass `accentColor` to override the active-state highlight (defaults to blue).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,6 +40,45 @@ export type NavConfig = NavItem[] | NavGroup[];
 
 function isGrouped(nav: NavConfig): nav is NavGroup[] {
   return nav.length > 0 && "groupLabel" in nav[0];
+}
+
+const PHONE_HIDDEN_ROUTES = new Set([
+  "/settings/pilot-setup",
+  "/settings/data-import",
+  "/design-system",
+  "/ai-matching",
+]);
+
+function filterPhoneItems(items: NavItem[]): NavItem[] {
+  return items
+    .filter((item) => !PHONE_HIDDEN_ROUTES.has(item.to))
+    .map((item) => ({
+      ...item,
+      children: item.children ? filterPhoneItems(item.children) : undefined,
+    }));
+}
+
+function filterPhoneNav(nav: NavConfig): NavConfig {
+  if (!isGrouped(nav)) return filterPhoneItems(nav);
+  return nav
+    .map((group) => ({ ...group, items: filterPhoneItems(group.items) }))
+    .filter((group) => group.items.length > 0);
+}
+
+interface PortalMobileHeaderContextValue {
+  setTitle: (title: string) => void;
+}
+
+const PortalMobileHeaderContext =
+  createContext<PortalMobileHeaderContextValue | null>(null);
+
+export function usePortalMobileHeaderTitle(title: string): void {
+  const setTitle = useContext(PortalMobileHeaderContext)?.setTitle;
+
+  useEffect(() => {
+    setTitle?.(title);
+    return () => setTitle?.("");
+  }, [setTitle, title]);
 }
 
 // ─── Accent colours ───────────────────────────────────────────────────────────
@@ -397,7 +436,13 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
   };
 
   return (
-    <aside data-vorta-sidebar="true" className="relative flex h-full max-h-[100dvh] w-full flex-col border-r border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden">
+    <aside
+      data-vorta-sidebar="true"
+      data-vorta-sidebar-variant={forceLabels ? "mobile" : "desktop"}
+      className={`relative flex h-full max-h-[100dvh] w-full flex-col border-gray-800 bg-[#090b10] px-2 py-5 2xl:px-4 overflow-hidden ${
+        forceLabels ? "border-l border-r-0" : "border-r"
+      }`}
+    >
       {/* Close button (mobile overlay only) */}
       {onClose && (
         <button
@@ -507,7 +552,12 @@ export const PortalShell = ({
   children,
 }: PortalShellProps): JSX.Element => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileTitle, setMobileTitle] = useState("Dashboard");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileNav = filterPhoneNav(nav);
+  const mobileSecondaryNav = secondaryNav
+    ? filterPhoneItems(secondaryNav)
+    : undefined;
   const mobileDrawerRef = useModalFocusTrap<HTMLDivElement>(
     mobileOpen,
     () => setMobileOpen(false),
@@ -525,7 +575,8 @@ export const PortalShell = ({
   }, [location.pathname]);
 
   return (
-    <main data-vorta-portal-shell="true" className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
+    <PortalMobileHeaderContext.Provider value={{ setTitle: setMobileTitle }}>
+      <main data-vorta-portal-shell="true" className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#0b0e14] text-white">
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       {/* w-14 = 56px (icon-only) below xl; w-56 = 224px (expanded) at xl+ */}
       <div data-vorta-desktop-sidebar="true" className="hidden shrink-0 md:flex md:w-14 2xl:w-56 h-[100dvh] max-h-[100dvh] overflow-hidden flex-col">
@@ -539,7 +590,10 @@ export const PortalShell = ({
 
       {/* ── Mobile overlay sidebar ──────────────────────────────────────── */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
+        <div
+          data-vorta-mobile-navigation-overlay="true"
+          className="fixed inset-0 z-50 flex justify-end md:hidden"
+        >
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
@@ -553,12 +607,13 @@ export const PortalShell = ({
             aria-modal="true"
             aria-label="Portal navigation"
             tabIndex={-1}
-            className="relative z-50 flex w-64 shrink-0 flex-col"
+            data-vorta-mobile-navigation-drawer="true"
+            className="relative z-50 flex w-[min(18rem,88vw)] shrink-0 flex-col"
           >
             <Sidebar
               homeRoute={homeRoute}
-              nav={nav}
-              secondaryNav={secondaryNav}
+              nav={mobileNav}
+              secondaryNav={mobileSecondaryNav}
               accent={accentColor}
               forceLabels
               onClose={() => setMobileOpen(false)}
@@ -570,25 +625,47 @@ export const PortalShell = ({
       {/* ── Main content ────────────────────────────────────────────────── */}
       <section className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         {/* Mobile top bar */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-1 md:hidden">
+        <div
+          data-vorta-mobile-topbar="true"
+          className="grid min-h-16 shrink-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 border-b border-gray-800 bg-[#090b10] px-3 md:hidden"
+        >
+          <NavLink
+            to={homeRoute}
+            data-vorta-mobile-topbar-home="true"
+            aria-label="Go to main dashboard"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-200 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+          >
+            <VortaIcon />
+          </NavLink>
+          <h1
+            data-vorta-mobile-header-title="true"
+            className="min-w-0 truncate text-center text-lg font-semibold leading-6 text-slate-200"
+          >
+            {mobileTitle}
+          </h1>
           <button
             type="button"
+            data-vorta-mobile-topbar-menu="true"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <VortaIcon />
         </div>
 
         {/* Scrollable content */}
-        <div ref={scrollRef} className="min-w-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div
+          ref={scrollRef}
+          data-vorta-portal-scroll-container="true"
+          className="min-w-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        >
           <PageTransition>
             {children}
           </PageTransition>
         </div>
       </section>
-    </main>
+      </main>
+    </PortalMobileHeaderContext.Provider>
   );
 };

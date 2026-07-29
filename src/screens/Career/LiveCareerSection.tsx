@@ -170,7 +170,7 @@ export function LiveCareerSection(): JSX.Element {
       <header className="flex flex-col justify-between gap-4 py-5 lg:flex-row lg:items-center">
         <div>
           <p className="text-xs font-medium text-slate-400">Read-only live pilot</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-50">Career Evidence</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-2xl font-bold tracking-tight text-slate-50">Career Evidence</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
             Active-site career paths and development requirements. This is workforce evidence, not a personal profile for the signed-in manager.
           </p>

@@ -489,7 +489,7 @@ export function LiveEngineersSection(): JSX.Element {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
             Read-only live pilot
           </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-50">Engineers</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-2 text-2xl font-bold tracking-tight text-slate-50">Engineers</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             Site-scoped workforce records combined with the verified Shift Cover rota. Availability is
             derived from named rota assignments, not the demonstration calendar or fixed KPI values.

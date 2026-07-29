@@ -7,12 +7,12 @@ import {
 const mobileRoutes = [
   ["/dashboard", "Dashboard"],
   ["/equipment", "Equipment"],
-  ["/skills-matrix", "Skills Matrix"],
+  ["/skills-matrix", "Capability"],
   ["/engineers", "Engineers"],
   ["/requirements", "Requirements"],
   ["/training", "Training"],
   ["/training-providers", "Training Providers"],
-  ["/career", "Workforce Development"],
+  ["/career", "Development"],
   ["/pilot-impact", "Pilot Evidence"],
   ["/pilot-adoption", "Pilot Evidence"],
   ["/support", "Support"],
@@ -45,10 +45,13 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
 
   await signInMaintenanceManager(page);
 
-  const mobileTopBar = page.locator(
-    '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
+  const mobileTopBar = page.locator('[data-vorta-mobile-topbar="true"]');
+  const mobileLogo = mobileTopBar.locator(
+    '[data-vorta-mobile-topbar-home="true"]',
   );
-  const mobileLogo = mobileTopBar.locator(":scope > :not(button)").first();
+  const mobileTitle = mobileTopBar.locator(
+    '[data-vorta-mobile-header-title="true"]',
+  );
   const mobileMenu = mobileTopBar.getByRole("button", { name: "Open menu" });
   const sharedLauncher = page.locator(
     '[data-vorta-shared-mobile-ai-launcher="true"]',
@@ -56,16 +59,19 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
 
   for (const [path, label] of mobileRoutes) {
     await page.goto(path);
-    await expect(mobileTopBar).toHaveAttribute("data-vorta-mobile-page-title", label);
-    await expect(mobileTopBar).toHaveCSS("display", "flex");
+    await expect(mobileTopBar).toHaveCSS("display", "grid");
+    await expect(mobileTitle).toHaveText(label);
     await expect(mobileLogo).toBeVisible();
     await expect(mobileMenu).toBeVisible();
 
     const logoBox = await mobileLogo.boundingBox();
+    const titleBox = await mobileTitle.boundingBox();
     const menuBox = await mobileMenu.boundingBox();
     expect(logoBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
     expect(menuBox).not.toBeNull();
-    expect(logoBox?.x ?? 9999).toBeLessThan(menuBox?.x ?? 0);
+    expect(logoBox?.x ?? 9999).toBeLessThan(titleBox?.x ?? 0);
+    expect(titleBox?.x ?? 9999).toBeLessThan(menuBox?.x ?? 0);
 
     await expect(sharedLauncher).toHaveCount(1);
     await expect(sharedLauncher).toBeVisible();
@@ -78,8 +84,8 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   const navigation = page.getByRole("dialog", { name: "Portal navigation" });
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole("link", { name: "Capability Matching" })).toHaveCount(0);
-  await expect(navigation.getByRole("link", { name: "Pilot Setup" })).toBeHidden();
-  await expect(navigation.getByRole("link", { name: "Data Import" })).toBeHidden();
+  await expect(navigation.getByRole("link", { name: "Pilot Setup" })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Data Import" })).toHaveCount(0);
   const firstNavigationLink = navigation.getByRole("link").first();
   expect(await fontSizePixels(firstNavigationLink), "Mobile typography: navigation links").toBeGreaterThanOrEqual(16);
   const navigationBox = await navigation.boundingBox();
@@ -127,9 +133,7 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   expect(await fontSizePixels(plantAreaHeading), "Mobile typography: dashboard section heading").toBeGreaterThanOrEqual(19);
   await sharedLauncher.click();
 
-  const mobileAssistant = page.locator(
-    '[data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])',
-  );
+  const mobileAssistant = page.locator('[data-vorta-global-ai-panel="true"]');
   const closeAssistant = mobileAssistant.getByRole("button", {
     name: "Close global assistant",
     exact: true,
@@ -145,9 +149,9 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   expect(assistantBox?.width ?? 0).toBeGreaterThanOrEqual((viewport?.width ?? 360) - 2);
   expect(assistantBox?.height ?? 0).toBeGreaterThanOrEqual((viewport?.height ?? 640) - 2);
 
-  const assistantHeaderIcon = mobileAssistant.locator(
-    ":scope > div:first-child > div:first-child > div:first-child svg",
-  );
+  const assistantHeaderIcon = mobileAssistant
+    .locator('[data-vorta-global-ai-header="true"] svg')
+    .first();
   await expect(assistantHeaderIcon).toBeVisible();
   const assistantSubtitle = mobileAssistant.getByText(
     "Site risk and action assistant",
@@ -204,7 +208,10 @@ test("Maintenance Manager mobile routes retain one shell and one Ask Vorta entry
   await expect(attachButton).toBeVisible();
   await expect(microphoneButton).toBeVisible();
   await expect(sendButton).toBeVisible();
-  await expect(sendButton).toHaveCSS("font-size", "0px");
+  await expect(sendButton).toHaveAttribute("data-vorta-global-ai-send", "true");
+  await expect(sendButton).toHaveAccessibleName("Send");
+  await expect(sendButton.getByText("Send", { exact: true })).toHaveClass(/sr-only/);
+  await expect(sendButton.locator("svg")).toBeVisible();
 
   const attachBox = await attachButton.boundingBox();
   const inputBox = await promptInput.boundingBox();
@@ -299,11 +306,9 @@ test("The 640 to 767 phone range uses the same compact workflows", async ({ page
   await page.setViewportSize({ width: 700, height: 900 });
   await signInMaintenanceManager(page);
 
-  const mobileTopBar = page.locator(
-    '[data-vorta-portal-shell="true"] > section > div.md\\:hidden',
-  );
+  const mobileTopBar = page.locator('[data-vorta-mobile-topbar="true"]');
   await expect(mobileTopBar).toBeVisible();
-  await expect(mobileTopBar).toHaveCSS("display", "flex");
+  await expect(mobileTopBar).toHaveCSS("display", "grid");
 
   for (const [path, marker] of [
     ["/skills-matrix", '[data-vorta-mobile-capability-summary="true"]'],
@@ -329,9 +334,7 @@ test("The 640 to 767 phone range uses the same compact workflows", async ({ page
 
   await page.goto("/dashboard");
   await page.locator('[data-vorta-shared-mobile-ai-launcher="true"]').click();
-  const assistant = page.locator(
-    '[data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"])',
-  );
+  const assistant = page.locator('[data-vorta-global-ai-panel="true"]');
   const box = await assistant.boundingBox();
   expect(box).not.toBeNull();
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(698);

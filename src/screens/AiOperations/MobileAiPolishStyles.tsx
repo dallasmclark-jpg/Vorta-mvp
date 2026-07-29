@@ -8,7 +8,7 @@ const MOBILE_AI_POLISH_STYLES = `
 
 @media (max-width: 639px) {
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child,
+    [data-vorta-global-ai-header="true"],
     [data-vorta-fault-panel="true"] header
   ) {
     min-height: 4rem !important;
@@ -18,7 +18,7 @@ const MOBILE_AI_POLISH_STYLES = `
   }
 
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child > div:first-child > div:first-child,
+    [data-vorta-global-ai-header="true"] > div:first-child > div:first-child,
     [data-vorta-fault-panel="true"] header > div:first-child > div:first-child
   ) {
     display: flex !important;
@@ -32,7 +32,7 @@ const MOBILE_AI_POLISH_STYLES = `
   }
 
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div:first-child p,
+    [data-vorta-global-ai-header="true"] p,
     [data-vorta-fault-panel="true"] header p
   ) {
     display: block !important;
@@ -42,7 +42,7 @@ const MOBILE_AI_POLISH_STYLES = `
   }
 
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) button[aria-label="Close global assistant"],
+    [data-vorta-global-ai-panel="true"] button[aria-label="Close global assistant"],
     [data-vorta-fault-panel="true"] button[data-vorta-fault-close="true"]
   ) {
     border: 1px solid rgb(51 65 85 / 0.8) !important;
@@ -52,7 +52,7 @@ const MOBILE_AI_POLISH_STYLES = `
   }
 
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex,
+    [data-vorta-global-ai-composer-row="true"],
     [data-vorta-fault-panel="true"] form > div
   ):focus-within {
     border-color: rgb(71 85 105) !important;
@@ -60,15 +60,15 @@ const MOBILE_AI_POLISH_STYLES = `
   }
 
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t,
+    [data-vorta-global-ai-composer="true"],
     [data-vorta-fault-panel="true"] form
   ) input,
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t,
+    [data-vorta-global-ai-composer="true"],
     [data-vorta-fault-panel="true"] form
   ) input:focus,
   :is(
-    [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t,
+    [data-vorta-global-ai-composer="true"],
     [data-vorta-fault-panel="true"] form
   ) input:focus-visible {
     border: 0 !important;
@@ -79,19 +79,21 @@ const MOBILE_AI_POLISH_STYLES = `
     -webkit-tap-highlight-color: transparent;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > [data-vorta-ai-attach-control="true"] {
+  [data-vorta-global-ai-composer-row="true"] > [data-vorta-ai-attach-control="true"] {
     order: 1;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > input {
+  [data-vorta-global-ai-composer-row="true"] > input {
     order: 2;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button[aria-label$="voice dictation"] {
+  [data-vorta-global-ai-composer-row="true"] > button[aria-label$="voice dictation"] {
     order: 3;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) {
+  /* The native Send action is the only composer button whose accessible name
+     comes from visible text rather than an explicit aria-label. */
+  [data-vorta-global-ai-send="true"] {
     order: 4;
     width: 2.5rem !important;
     height: 2.5rem !important;
@@ -101,13 +103,13 @@ const MOBILE_AI_POLISH_STYLES = `
     font-size: 0 !important;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button:has(svg.lucide-send) svg {
+  [data-vorta-global-ai-send="true"] svg {
     width: 1.125rem;
     height: 1.125rem;
   }
 
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > button[aria-label$="voice dictation"],
-  [data-vorta-maintenance-portal="true"] > div.fixed:has(button[aria-label="Close global assistant"]) > div.border-t > div.flex > [data-vorta-ai-attach-control="true"],
+  [data-vorta-global-ai-composer-row="true"] > button[aria-label$="voice dictation"],
+  [data-vorta-global-ai-composer-row="true"] > [data-vorta-ai-attach-control="true"],
   [data-vorta-fault-panel="true"] [data-vorta-ai-attach-control="true"],
   [data-vorta-fault-panel="true"] [data-vorta-ai-mobile-mic="true"] {
     display: inline-flex !important;

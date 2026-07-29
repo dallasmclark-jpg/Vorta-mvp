@@ -285,13 +285,6 @@ export function MobileRequirementsSection({ dataMode }: { dataMode: VortaDataMod
             >
               Review training <ChevronRight className="h-4 w-4 text-slate-500" />
             </button>
-            <button
-              type="button"
-              onClick={() => navigate("/ai-matching")}
-              className="inline-flex min-h-12 items-center justify-between rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white"
-            >
-              Open AI Matching <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
         </div>
       </DetailDrawer>
@@ -301,7 +294,7 @@ export function MobileRequirementsSection({ dataMode }: { dataMode: VortaDataMod
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
             {dataMode === "live" ? "Verified requirements" : "Demo requirements"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold text-slate-50">Requirements</h1>
+          <h1 data-vorta-mobile-page-title="true" className="mt-1 text-xl font-semibold text-slate-50">Requirements</h1>
           <p className="mt-1 text-sm text-slate-400">Site capabilities that need attention.</p>
         </div>
         <button

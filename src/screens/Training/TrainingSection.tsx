@@ -578,7 +578,7 @@ export const TrainingSection = (): JSX.Element => {
         <div className="flex flex-col items-start gap-1">
           <p className="text-xs font-medium text-slate-500">Alpha Manufacturing</p>
           <div className="flex items-center gap-2">
-            <h1 className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
+            <h1 data-vorta-mobile-page-title="true" className="font-text-xl-semibold text-[length:var(--text-xl-semibold-font-size)] font-[number:var(--text-xl-semibold-font-weight)] leading-[var(--text-xl-semibold-line-height)] tracking-[var(--text-xl-semibold-letter-spacing)] text-slate-50">
               Training
             </h1>
             <ContextHelp content={{
