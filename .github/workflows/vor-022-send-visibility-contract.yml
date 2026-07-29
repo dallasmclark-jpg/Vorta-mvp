@@ -1,0 +1,41 @@
+name: VOR-022 Send Visibility Contract
+
+on:
+  push:
+    branches:
+      - refactor/vor-022-semantic-responsive-hooks
+    paths:
+      - scripts/apply-vor-022-send-visibility-contract.mjs
+      - .github/workflows/vor-022-send-visibility-contract.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/vor-022-semantic-responsive-hooks
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Update Send visibility contract
+        run: node scripts/apply-vor-022-send-visibility-contract.mjs
+
+      - name: Run focused source contracts
+        run: node scripts/mobile-portal-final-polish-contracts.mjs
+
+      - name: Commit product and test changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src tests scripts/mobile-portal-final-polish-contracts.mjs
+          git commit -m "VOR-022: verify icon-only Send through visible semantics"
+          git push origin HEAD:refactor/vor-022-semantic-responsive-hooks
