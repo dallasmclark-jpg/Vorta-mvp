@@ -2,6 +2,27 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { context, preflight, response } from "./auth.ts";
 import { buildEngineerPayload } from "./transform.ts";
 
+type EvidenceBundle = {
+  engineers?: unknown;
+  assignments?: unknown;
+  risks?: unknown;
+  bookings?: unknown;
+  courses?: unknown;
+  departments?: unknown;
+  sites?: unknown;
+  gaps?: unknown;
+  skills?: unknown;
+};
+
+function rows(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (entry): entry is Record<string, unknown> =>
+          Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+      )
+    : [];
+}
+
 Deno.serve(async (req: Request) => {
   const options = preflight(req);
   if (options) return options;
@@ -11,110 +32,38 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { db, siteId, organisationId } = await context(req);
-    const [engineersResult, departmentsResult, sitesResult, gapsResult] = await Promise.all([
-      db
-        .from("engineers")
-        .select(
-          "id,full_name,employment_type,discipline,availability_status,verified,shift_pattern,department_id,site_id,avatar_url",
-        )
-        .eq("site_id", siteId)
-        .eq("organisation_id", organisationId)
-        .order("full_name"),
-      db.from("departments").select("id,name").eq("site_id", siteId),
-      db.from("sites").select("id,name,region").eq("id", siteId),
-      db
-        .from("skill_gap_snapshots")
-        .select(
-          "id,skill_id,department_id,target_rating,current_average_rating,engineers_at_or_above_target,engineers_below_target,single_point_of_failure,risk_level,recommendation,snapshot_date",
-        )
-        .eq("site_id", siteId)
-        .eq("organisation_id", organisationId),
-    ]);
+    const startedAt = performance.now();
+    const { data, error } = await db.rpc(
+      "vorta_get_engineers_evidence_bundle_internal",
+      {
+        p_site_id: siteId,
+        p_organisation_id: organisationId,
+      },
+    );
 
-    const firstError =
-      engineersResult.error ??
-      departmentsResult.error ??
-      sitesResult.error ??
-      gapsResult.error;
-    if (firstError) throw firstError;
-
-    const engineers = engineersResult.data ?? [];
-    const engineerIds = engineers.map((row: { id: string }) => row.id);
-    let assignments: Record<string, unknown>[] = [];
-    let risks: Record<string, unknown>[] = [];
-    let bookings: Record<string, unknown>[] = [];
-
-    if (engineerIds.length > 0) {
-      const [assignmentsResult, risksResult, bookingsResult] = await Promise.all([
-        db
-          .from("engineer_skills")
-          .select(
-            "engineer_id,skill_id,self_rating,manager_rating,validated_rating,training_required,verification_status,last_validated_at,expiry_date,years_experience",
-          )
-          .in("engineer_id", engineerIds),
-        db
-          .from("engineer_risk_profiles")
-          .select("engineer_id,retirement_risk,leaving_risk,critical_knowledge_holder")
-          .in("engineer_id", engineerIds),
-        db
-          .from("training_bookings")
-          .select("engineer_id,course_id,status,booking_date")
-          .eq("organisation_id", organisationId)
-          .in("engineer_id", engineerIds),
-      ]);
-
-      const detailError =
-        assignmentsResult.error ?? risksResult.error ?? bookingsResult.error;
-      if (detailError) throw detailError;
-      assignments = assignmentsResult.data ?? [];
-      risks = risksResult.data ?? [];
-      bookings = bookingsResult.data ?? [];
+    if (error) throw error;
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      throw new Error("Engineer evidence bundle returned no site-scoped payload");
     }
 
-    const skillIds = [
-      ...new Set(
-        [
-          ...assignments.map((row: any) => row.skill_id),
-          ...(gapsResult.data ?? []).map((row: any) => row.skill_id),
-        ].filter(Boolean),
-      ),
-    ];
-    const courseIds = [
-      ...new Set(bookings.map((row: any) => row.course_id).filter(Boolean)),
-    ];
-
-    const [skillsResult, coursesResult] = await Promise.all([
-      skillIds.length > 0
-        ? db
-            .from("skills")
-            .select("id,name,category,is_critical,certification_required,skill_type")
-            .in("id", skillIds)
-        : Promise.resolve({ data: [], error: null }),
-      courseIds.length > 0
-        ? db.from("training_courses").select("id,title").in("id", courseIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-
-    if (skillsResult.error || coursesResult.error) {
-      throw skillsResult.error ?? coursesResult.error;
-    }
-
+    const bundle = data as EvidenceBundle;
     const payload = buildEngineerPayload({
-      engineers,
-      assignments,
-      risks,
-      bookings,
-      courses: coursesResult.data ?? [],
-      departments: departmentsResult.data ?? [],
-      sites: sitesResult.data ?? [],
-      gaps: gapsResult.data ?? [],
-      skills: skillsResult.data ?? [],
+      engineers: rows(bundle.engineers),
+      assignments: rows(bundle.assignments),
+      risks: rows(bundle.risks),
+      bookings: rows(bundle.bookings),
+      courses: rows(bundle.courses),
+      departments: rows(bundle.departments),
+      sites: rows(bundle.sites),
+      gaps: rows(bundle.gaps),
+      skills: rows(bundle.skills),
     });
 
     return response(req, {
       siteId,
       organisationId,
       generatedAt: new Date().toISOString(),
+      evidenceLoadMs: Math.round((performance.now() - startedAt) * 10) / 10,
       ...payload,
     });
   } catch (error) {
