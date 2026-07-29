@@ -36,10 +36,11 @@ inserted as (
     document.id,
     document.equipment_id,
     'VORTA-SUMMARY-001',
-    coalesce(
-      nullif(btrim(document.manual_section), ''),
-      'Document summary (summary-only coverage)'
-    ),
+    case
+      when nullif(btrim(coalesce(document.manual_section, '')), '') is not null
+        then document.manual_section || ' · summary-only coverage'
+      else 'Document summary (summary-only coverage)'
+    end,
     coalesce(document.extracted_summary, document.summary),
     document.page_number,
     array(
