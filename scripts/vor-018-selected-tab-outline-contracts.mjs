@@ -15,17 +15,28 @@ assert.match(
   /<link href="\/src\/card-surfaces\.css" rel="stylesheet" \/>\s*<link href="\/src\/tab-states\.css" rel="stylesheet" \/>/,
   "The selected-tab stylesheet must load after shared surface rules.",
 );
-assert.match(tabStates, /\[role=tab\]\[aria-selected=true\]/, "Semantic selected tabs must use the shared rule.");
-assert.match(tabStates, /border:1px solid #2563eb!important/, "Light selected tabs must use one complete blue outline.");
-assert.match(tabStates, /background:#fff!important/, "Light selected tabs must retain a neutral surface.");
-assert.match(tabStates, /html\.dark \[role=tab\]\[aria-selected=true\]\{border-color:#60a5fa!important/, "Dark selected tabs must use the blue outline.");
-assert.match(tabStates, /background:#0d1117!important/, "Dark selected tabs must retain a neutral surface.");
-assert.match(tabStates, /box-shadow:none!important/, "Component-specific selected shadows must be normalised.");
-assert.match(tabStates, /\[role=tab\]:focus-visible\{outline:2px solid #60a5fa!important/, "Tabs must retain a visible keyboard focus outline.");
-assert.doesNotMatch(tabStates, /background:#(?:1d4ed8|2563eb|3b82f6)!important/i, "Selected tabs must not restore an opaque blue fill.");
-assert.doesNotMatch(tabStates, /\[aria-current=page\]/, "Ordinary current-page navigation must not be styled as a tab.");
+assert.match(
+  tabStates,
+  /\[data-vorta-portal-shell="true"\]/,
+  "Selected tab normalisation must be scoped to the Vorta portal.",
+);
+assert.match(
+  tabStates,
+  /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/,
+  "Portal tabs must retain semantic selected-state styling.",
+);
+assert.match(tabStates, /border: 1px solid #2563eb;/, "Light selected tabs must use one complete blue outline.");
+assert.match(tabStates, /background: #fff;/, "Light selected tabs must retain a neutral surface.");
+assert.match(tabStates, /border-color: #60a5fa;/, "Dark selected tabs must use the blue outline.");
+assert.match(tabStates, /background: #0d1117;/, "Dark selected tabs must retain a neutral surface.");
+assert.match(tabStates, /box-shadow: none;/, "Component-specific selected shadows must be normalised.");
+assert.match(tabStates, /outline: 2px solid #60a5fa;/, "Tabs must retain a visible keyboard focus outline.");
+assert.doesNotMatch(tabStates, /!important/, "Selected tab styling must not depend on global importance escalation.");
+assert.doesNotMatch(tabStates, /background:\s*#(?:1d4ed8|2563eb|3b82f6)/i, "Selected tabs must not restore an opaque blue fill.");
+assert.doesNotMatch(tabStates, /\[aria-current="?page"?\]/, "Ordinary current-page navigation must not be styled as a tab.");
 
 assert.match(storesInventory, /role="tab"[\s\S]*aria-selected=\{selected\}/, "Stores Inventory tabs must expose semantic selection state.");
 assert.match(equipmentTabs, /role="tab"[\s\S]*aria-selected=\{active\}/, "Equipment tabs must expose semantic selection state.");
+assert.match(equipmentTabs, /data-vorta-tab-outline="true"/, "Equipment tabs must declare shared visual intent explicitly.");
 
-console.log("VOR-018 shared outlined selected-tab contracts passed.");
+console.log("VOR-018 and VOR-022 portal-scoped selected-tab contracts passed.");
