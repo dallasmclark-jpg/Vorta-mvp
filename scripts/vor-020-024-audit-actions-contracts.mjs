@@ -90,7 +90,12 @@ assert.doesNotMatch(equipmentTabs, /window\.scrollY|window\.scrollTo/);
 
 assert.match(tabStates, /\[data-vorta-portal-shell="true"\]/);
 assert.match(tabStates, /\[data-vorta-tab-outline="true"\]/);
-assert.doesNotMatch(tabStates, /!important/);
+assert.match(
+  tabStates,
+  /border: 1px solid #2563eb !important;/,
+  "Semantic selected state must outrank legacy shared card normalisation.",
+);
+assert.match(tabStates, /Shared legacy card normalisation uses !important/);
 assert.doesNotMatch(
   tabStates,
   /^\s*\[role=tab\]\[aria-selected=true\]/m,

@@ -25,13 +25,17 @@ assert.match(
   /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/,
   "Portal tabs must retain semantic selected-state styling.",
 );
-assert.match(tabStates, /border: 1px solid #2563eb;/, "Light selected tabs must use one complete blue outline.");
-assert.match(tabStates, /background: #fff;/, "Light selected tabs must retain a neutral surface.");
-assert.match(tabStates, /border-color: #60a5fa;/, "Dark selected tabs must use the blue outline.");
-assert.match(tabStates, /background: #0d1117;/, "Dark selected tabs must retain a neutral surface.");
-assert.match(tabStates, /box-shadow: none;/, "Component-specific selected shadows must be normalised.");
+assert.match(tabStates, /border: 1px solid #2563eb !important;/, "Light selected tabs must visibly outrank shared card normalisation.");
+assert.match(tabStates, /background: #fff !important;/, "Light selected tabs must retain a neutral surface.");
+assert.match(tabStates, /border-color: #60a5fa !important;/, "Dark selected tabs must visibly use the blue outline.");
+assert.match(tabStates, /background: #0d1117 !important;/, "Dark selected tabs must retain a neutral surface.");
+assert.match(tabStates, /box-shadow: none !important;/, "Component and shared card shadows must be normalised.");
+assert.match(
+  tabStates,
+  /Shared legacy card normalisation uses !important/,
+  "The intentional cascade escalation must remain documented.",
+);
 assert.doesNotMatch(tabStates, /:focus-visible/, "Shared selected-state CSS must not override component keyboard focus.");
-assert.doesNotMatch(tabStates, /!important/, "Selected tab styling must not depend on global importance escalation.");
 assert.doesNotMatch(tabStates, /background:\s*#(?:1d4ed8|2563eb|3b82f6)/i, "Selected tabs must not restore an opaque blue fill.");
 assert.doesNotMatch(tabStates, /\[aria-current="?page"?\]/, "Ordinary current-page navigation must not be styled as a tab.");
 

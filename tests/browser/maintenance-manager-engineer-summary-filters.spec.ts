@@ -57,6 +57,25 @@ test("Mobile Engineers summary tabs prioritise matching engineers without hiding
   await selectedTab.click();
   await expect(selectedTab).toHaveAttribute("aria-selected", "true");
 
+  const selectedVisualState = await selectedTab.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      borderTopColor: style.borderTopColor,
+      borderTopWidth: style.borderTopWidth,
+      backgroundColor: style.backgroundColor,
+      boxShadow: style.boxShadow,
+      dark: document.documentElement.classList.contains("dark"),
+    };
+  });
+  expect(selectedVisualState.borderTopColor).toBe(
+    selectedVisualState.dark ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)",
+  );
+  expect(selectedVisualState.borderTopWidth).toBe("1px");
+  expect(selectedVisualState.backgroundColor).toBe(
+    selectedVisualState.dark ? "rgb(13, 17, 23)" : "rgb(255, 255, 255)",
+  );
+  expect(selectedVisualState.boxShadow).toBe("none");
+
   const priorityPanel = engineersPage.locator(
     '[data-vorta-engineer-priority-panel]',
   );

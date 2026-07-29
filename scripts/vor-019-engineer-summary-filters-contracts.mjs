@@ -45,11 +45,11 @@ assert.match(
   /\[data-vorta-engineer-summary-filter\]\[aria-selected="true"\]/,
   "Engineer summary cards must use the shared portal selected-card rule.",
 );
-assert.match(tabStates, /border: 1px solid #2563eb;/);
-assert.match(tabStates, /border-color: #60a5fa;/);
-assert.match(tabStates, /background: #fff;/);
-assert.match(tabStates, /background: #0d1117;/);
-assert.match(tabStates, /box-shadow: none;/);
+assert.match(tabStates, /border: 1px solid #2563eb !important;/);
+assert.match(tabStates, /border-color: #60a5fa !important;/);
+assert.match(tabStates, /background: #fff !important;/);
+assert.match(tabStates, /background: #0d1117 !important;/);
+assert.match(tabStates, /box-shadow: none !important;/);
 assert.doesNotMatch(
   tabStates,
   /background:\s*#(?:1d4ed8|2563eb|3b82f6)/i,
@@ -61,10 +61,15 @@ assert.match(browserCoverage, /summaryLabels/);
 assert.match(browserCoverage, /data-vorta-engineer-summary-count/);
 assert.match(browserCoverage, /data-vorta-engineer-priority-count/);
 assert.match(browserCoverage, /toHaveAttribute\("aria-selected", "true"\)/);
+assert.match(browserCoverage, /getComputedStyle/);
+assert.match(browserCoverage, /rgb\(96, 165, 250\)/);
+assert.match(browserCoverage, /rgb\(37, 99, 235\)/);
+assert.match(browserCoverage, /rgb\(13, 17, 23\)/);
+assert.match(browserCoverage, /boxShadow/);
 assert.match(browserCoverage, /toHaveCount\(initialRegisterCount\)/);
 assert.match(browserCoverage, /\[360, 390, 430\]/);
 assert.match(browserCoverage, /page\.reload\(\)/);
 
 console.log(
-  "VOR-019 mobile engineer summary filters, shared selected-card styling, priority panel and register preservation contracts passed.",
+  "VOR-019 mobile engineer summary filters, rendered shared selected-card styling, priority panel and register preservation contracts passed.",
 );
