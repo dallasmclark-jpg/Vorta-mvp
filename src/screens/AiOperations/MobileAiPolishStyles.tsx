@@ -91,7 +91,9 @@ const MOBILE_AI_POLISH_STYLES = `
     order: 3;
   }
 
-  [data-vorta-global-ai-composer-row="true"] > button:has(svg.lucide-send) {
+  /* The native Send action is the only composer button whose accessible name
+     comes from visible text rather than an explicit aria-label. */
+  [data-vorta-global-ai-composer-row="true"] > button:not([aria-label]) {
     order: 4;
     width: 2.5rem !important;
     height: 2.5rem !important;
@@ -101,7 +103,7 @@ const MOBILE_AI_POLISH_STYLES = `
     font-size: 0 !important;
   }
 
-  [data-vorta-global-ai-composer-row="true"] > button:has(svg.lucide-send) svg {
+  [data-vorta-global-ai-composer-row="true"] > button:not([aria-label]) svg {
     width: 1.125rem;
     height: 1.125rem;
   }
