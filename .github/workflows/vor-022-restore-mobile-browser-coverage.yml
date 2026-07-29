@@ -1,0 +1,34 @@
+name: VOR-022 Restore Mobile Browser Coverage
+
+on:
+  push:
+    branches:
+      - refactor/vor-022-semantic-responsive-hooks
+    paths:
+      - scripts/restore-vor-022-mobile-route-browser-coverage.mjs
+      - .github/workflows/vor-022-restore-mobile-browser-coverage.yml
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: contains(github.event.head_commit.message, 'run full mobile browser coverage restoration')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/vor-022-semantic-responsive-hooks
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore complete semantic browser coverage
+        run: node scripts/restore-vor-022-mobile-route-browser-coverage.mjs
+      - name: Commit restored test
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/browser/maintenance-manager-mobile-routes.spec.ts
+          git commit -m "VOR-022: restore full semantic mobile browser coverage"
+          git push origin HEAD:refactor/vor-022-semantic-responsive-hooks
