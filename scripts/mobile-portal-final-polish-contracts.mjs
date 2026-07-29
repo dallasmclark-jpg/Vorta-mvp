@@ -96,11 +96,13 @@ assert.match(globalAssistant, /data-vorta-global-ai-header="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-messages="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-composer="true"/);
 assert.match(globalAssistant, /data-vorta-global-ai-input="true"/);
-assert.match(globalAssistant, /max-sm:h-\[100dvh\]/);
-assert.match(globalAssistant, /max-sm:hidden/);
+assert.match(globalAssistant, /max-md:h-\[100dvh\]/);
+assert.match(globalAssistant, /max-md:hidden/);
+assert.doesNotMatch(globalAssistant, /max-sm:/);
 
 assert.match(polish, /@media \(max-width: 767px\)/);
 assert.match(polish, /data-vorta-embedded-ai/);
+assert.match(polish, /data-vorta-maintenance-portal/);
 assert.match(polish, /data-vorta-mobile-page-title/);
 assert.doesNotMatch(polish, /:has\(|md\\:hidden|href=|aria-label=|>\s|\[class|placeholder\^=/);
 assert.equal((polish.match(/!important/g) ?? []).length, 1);

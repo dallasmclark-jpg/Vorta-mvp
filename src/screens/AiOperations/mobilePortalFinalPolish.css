@@ -7,7 +7,7 @@
 
   /* Route components explicitly mark headings duplicated by PortalShell's
      mobile h1. The title remains accessible once through the shared shell. */
-  [data-vorta-mobile-page-title="true"] {
+  [data-vorta-maintenance-portal="true"] [data-vorta-mobile-page-title="true"] {
     position: absolute;
     width: 1px;
     height: 1px;
