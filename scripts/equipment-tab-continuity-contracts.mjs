@@ -45,11 +45,15 @@ for (const route of [
   );
 }
 
-assert.match(navigation, /pendingVerticalScrollByEquipment/);
-assert.match(navigation, /top: window\.scrollY/);
+assert.match(navigation, /findPortalScrollContainer/);
+assert.match(navigation, /verticalScrollByEquipmentRoute/);
+assert.match(navigation, /scrollContainer\.scrollTop/);
+assert.match(navigation, /scrollContainer\.scrollTo/);
 assert.match(navigation, /preventScrollReset: true/);
-assert.match(navigation, /window\.scrollTo/);
 assert.match(navigation, /window\.setTimeout\(restore, 160\)/);
+assert.match(navigation, /data-vorta-preserve-portal-scroll="true"/);
+assert.doesNotMatch(navigation, /window\.scrollY/);
+assert.doesNotMatch(navigation, /window\.scrollTo/);
 assert.match(navigation, /max-width: 767px/);
 assert.match(navigation, /EquipmentTabNavigationVisibilityContext/);
 
@@ -58,11 +62,11 @@ assert.match(workOrdersEntry, /max-width: 767px/);
 
 assert.match(browser, /data-vorta-equipment-shared-mobile-hero/);
 assert.match(browser, /Equipment tab changes preserve vertical position/);
-assert.match(browser, /scrollPositionBeforeTabChange/);
+assert.match(browser, /portalScrollPositionBeforeTabChange/);
 assert.match(browser, /Every Equipment section fits the full phone viewport/);
 assert.match(browser, /expectEquipmentContentFitsViewport/);
 assert.match(browser, /wideSurfaces/);
 assert.match(browser, /clipped visible elements/);
 assert.match(browser, /\[360, 700\]/);
 
-console.log("Shared mobile equipment hero, tab continuity and width containment passed.");
+console.log("Shared mobile equipment hero, portal scroll continuity and width containment passed.");
