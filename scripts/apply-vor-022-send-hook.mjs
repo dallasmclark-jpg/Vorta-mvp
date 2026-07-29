@@ -86,4 +86,4 @@ contract = replaceOnce(
 );
 write(contractPath, contract);
 
-console.log("VOR-022 semantic Ask Vorta send hook applied.");
+console.log("VOR-022 semantic Ask Vorta send hook applied. Triggered from an established workflow definition.");
