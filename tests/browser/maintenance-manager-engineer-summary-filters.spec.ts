@@ -33,7 +33,7 @@ test("Mobile Engineers summary tabs prioritise matching engineers without hiding
 
   let populatedTab: (typeof summaryLabels)[number] | null = null;
   for (const label of summaryLabels) {
-    const tab = summaryTabs.getByRole("tab", { name: label, exact: true });
+    const tab = summaryTabs.getByRole("tab", { name: label });
     await expect(tab).toBeVisible();
     await expect(tab).toHaveAttribute("aria-selected", "false");
     const box = await tab.boundingBox();
@@ -49,7 +49,6 @@ test("Mobile Engineers summary tabs prioritise matching engineers without hiding
   expect(populatedTab).not.toBeNull();
   const selectedTab = summaryTabs.getByRole("tab", {
     name: populatedTab ?? "On shift",
-    exact: true,
   });
   const expectedCount = Number(
     await selectedTab.getAttribute("data-vorta-engineer-summary-count"),
@@ -77,7 +76,6 @@ test("Mobile Engineers summary tabs prioritise matching engineers without hiding
 
   const availableTab = summaryTabs.getByRole("tab", {
     name: "Available",
-    exact: true,
   });
   await availableTab.click();
   await expect(availableTab).toHaveAttribute("aria-selected", "true");
