@@ -104,13 +104,16 @@ check(
 );
 
 check(
-  portalShell.includes("px-4 py-1 md:hidden") &&
+  portalShell.includes('data-vorta-mobile-topbar="true"') &&
+    portalShell.includes("min-h-16") &&
+    portalShell.includes("grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]") &&
+    portalShell.includes("px-3 md:hidden") &&
     aiCommandBar.includes("px-2 py-1 sm:py-1.5") &&
     dashboardOverview.includes('className="p-3 sm:p-5"') &&
     dashboardOverview.includes("p-2.5 sm:p-4") &&
     dashboardWrapper.includes("0.75rem 0.75rem 1.5rem") &&
     !dashboardWrapper.includes("0.75rem 0.75rem 8rem"),
-  "Phone dashboard polish must retain compact spacing without obsolete bottom-navigation clearance.",
+  "Phone dashboard polish must retain the semantic compact topbar and avoid obsolete bottom-navigation clearance.",
 );
 
 console.log("Mobile dashboard scanability contracts passed.");
