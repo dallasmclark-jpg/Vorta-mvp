@@ -192,7 +192,10 @@ check(
     browserTest.includes("data-vorta-engineer-avatar-image") &&
     browserTest.includes('toHaveAttribute("src", /^https:') &&
     browserTest.includes("What can I help with?") &&
-    browserTest.includes('toHaveCSS("font-size", "0px")') &&
+    browserTest.includes('data-vorta-global-ai-send') &&
+    browserTest.includes('toHaveAccessibleName("Send")') &&
+    browserTest.includes('toHaveClass(/sr-only/)') &&
+    browserTest.includes('sendButton.locator("svg")') &&
     browserTest.includes('toHaveValue("")') &&
     browserTest.includes('toHaveCSS("outline-width", "0px")') &&
     browserTest.includes("Add photos and files") &&
