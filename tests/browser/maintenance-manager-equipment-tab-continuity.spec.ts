@@ -96,6 +96,40 @@ async function expectEquipmentContentFitsViewport(
   expect(layout.offenders, `${label}: clipped visible elements`).toEqual([]);
 }
 
+async function setPortalScrollTop(page: Page, requestedTop: number): Promise<number> {
+  return page
+    .locator('[data-vorta-equipment-tablist="true"]')
+    .evaluate((element, top) => {
+      let current = element.parentElement;
+      while (current) {
+        const overflowY = window.getComputedStyle(current).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll") {
+          const maximum = Math.max(0, current.scrollHeight - current.clientHeight);
+          current.scrollTo({ top: Math.min(top, maximum), behavior: "auto" });
+          return current.scrollTop;
+        }
+        current = current.parentElement;
+      }
+      return -1;
+    }, requestedTop);
+}
+
+async function getPortalScrollTop(page: Page): Promise<number> {
+  return page
+    .locator('[data-vorta-equipment-tablist="true"]')
+    .evaluate((element) => {
+      let current = element.parentElement;
+      while (current) {
+        const overflowY = window.getComputedStyle(current).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll") {
+          return current.scrollTop;
+        }
+        current = current.parentElement;
+      }
+      return -1;
+    });
+}
+
 test("Equipment tab changes preserve vertical position and one mobile hero", async ({
   page,
 }) => {
@@ -127,15 +161,8 @@ test("Equipment tab changes preserve vertical position and one mobile hero", asy
   const equipmentName = (await sharedHero.locator("h1").textContent())?.trim();
   expect(equipmentName).toBeTruthy();
 
-  await page.evaluate(() => {
-    const maximum = Math.max(
-      0,
-      document.documentElement.scrollHeight - window.innerHeight,
-    );
-    window.scrollTo(0, Math.min(320, maximum));
-  });
-  const scrollPositionBeforeTabChange = await page.evaluate(() => window.scrollY);
-  expect(scrollPositionBeforeTabChange).toBeGreaterThan(0);
+  const portalScrollPositionBeforeTabChange = await setPortalScrollTop(page, 320);
+  expect(portalScrollPositionBeforeTabChange).toBeGreaterThan(0);
 
   await sharedHero
     .getByRole("tab", { name: "Work Orders", exact: true })
@@ -145,9 +172,9 @@ test("Equipment tab changes preserve vertical position and one mobile hero", asy
   await expect(sharedHero.locator("h1")).toHaveText(equipmentName ?? "");
   await page.waitForTimeout(220);
 
-  const workOrderScrollPosition = await page.evaluate(() => window.scrollY);
+  const workOrderScrollPosition = await getPortalScrollTop(page);
   expect(
-    Math.abs(workOrderScrollPosition - scrollPositionBeforeTabChange),
+    Math.abs(workOrderScrollPosition - portalScrollPositionBeforeTabChange),
   ).toBeLessThanOrEqual(4);
 
   await sharedHero
@@ -158,10 +185,25 @@ test("Equipment tab changes preserve vertical position and one mobile hero", asy
   await expect(sharedHero.locator("h1")).toHaveText(equipmentName ?? "");
   await page.waitForTimeout(220);
 
-  const calibrationScrollPosition = await page.evaluate(() => window.scrollY);
+  const calibrationScrollPosition = await getPortalScrollTop(page);
   expect(
     Math.abs(calibrationScrollPosition - workOrderScrollPosition),
   ).toBeLessThanOrEqual(4);
+
+  await page.goBack();
+  await page.waitForURL(/\/equipment\/[^/]+\/work-orders(?:\?.*)?$/);
+  await page.waitForTimeout(220);
+  const backScrollPosition = await getPortalScrollTop(page);
+  expect(Math.abs(backScrollPosition - workOrderScrollPosition)).toBeLessThanOrEqual(4);
+
+  await page.goForward();
+  await page.waitForURL(/\/equipment\/[^/]+\/pms(?:\?.*)?$/);
+  await page.waitForTimeout(220);
+  const forwardScrollPosition = await getPortalScrollTop(page);
+  expect(
+    Math.abs(forwardScrollPosition - calibrationScrollPosition),
+  ).toBeLessThanOrEqual(4);
+
   await expectEquipmentContentFitsViewport(page, "Calibrations at 700px");
   await expectNoPageOverflow(page);
 });
