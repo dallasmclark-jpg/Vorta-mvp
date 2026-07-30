@@ -32,7 +32,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   await expect(reviewListbox).toBeVisible();
   await expect(reviewListbox.getByRole("option")).toHaveCount(5);
   await expect(reviewListbox.locator('[data-vorta-select-supporting-items="true"]')).toHaveCount(5);
-  await expect(reviewListbox.getByText("Day", { exact: true }).or(reviewListbox.getByText("Night", { exact: true })).first()).toBeVisible();
+  await expect(reviewListbox.locator('[data-vorta-select-supporting-items="true"] span').filter({ hasText: /(?:Yellow|Red|Green|Blue|Days) · (?:Day|Night)/ }).first()).toBeVisible();
   await expect(reviewListbox).toHaveAttribute("data-vorta-select-placement", /top|bottom/);
   await expect(page.locator("html")).toHaveAttribute("data-vorta-select-open", "true");
   const openingViewportWidth = page.viewportSize()?.width ?? 1366;

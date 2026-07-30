@@ -1132,7 +1132,11 @@ export function ShiftHandoverSection(): JSX.Element {
     return {
       ...option,
       supportingItems: period?.shifts.map((shift) => {
-        const presentation = getVortaShiftPresentation(shift.type, shift.label);
+        const presentation = getVortaShiftPresentation({
+          teamCode: shift.rotaTeamCode,
+          teamName: shift.rotaTeamName,
+          shiftLabel: shift.label,
+        });
         return {
           label: presentation.label,
           dotClassName: presentation.dotClassName,
