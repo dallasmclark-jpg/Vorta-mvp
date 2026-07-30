@@ -23,7 +23,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   DetailDrawer,
   DrawerCloseButton,
@@ -35,9 +35,11 @@ import {
   type VortaDataMode,
 } from "../../lib/dataTrust";
 import {
+  isShiftHandoverReviewHours,
   loadShiftHandoverSnapshot,
   type ShiftHandoverDiscipline,
   type ShiftHandoverItem,
+  type ShiftHandoverReviewHours,
   type ShiftHandoverSnapshot,
   type ShiftHandoverStatus,
 } from "./shiftHandoverService";
@@ -53,6 +55,114 @@ type ScopeMode = "site" | "building" | "area";
 type CriticalityFilter = "all" | ShiftHandoverItem["criticality"];
 type StatusFilter = "all" | "active" | "completed" | "waiting" | "contractor";
 type SortMode = "priority" | "breakdown" | "recent";
+type ActivityGroup = {
+  key: string;
+  label: string | null;
+  items: ShiftHandoverItem[];
+};
+
+const REVIEW_STORAGE_KEY = "vorta.shift-handover.review-period";
+const REVIEW_PERIOD_OPTIONS: Array<{
+  value: ShiftHandoverReviewHours;
+  label: string;
+}> = [
+  { value: 12, label: "Last 12 hours" },
+  { value: 24, label: "Last 24 hours" },
+  { value: 36, label: "Last 36 hours" },
+  { value: 48, label: "Last 48 hours" },
+  { value: 96, label: "Last 4 days" },
+];
+
+function reviewPeriodLabel(reviewHours: ShiftHandoverReviewHours): string {
+  return REVIEW_PERIOD_OPTIONS.find((option) => option.value === reviewHours)?.label
+    ?? "Last 12 hours";
+}
+
+function reviewPeriodHeading(reviewHours: ShiftHandoverReviewHours): string {
+  if (reviewHours === 12) return "Previous shift activity for Last 12 hours";
+  if (reviewHours === 96) return "Activity from the last 4 days";
+  return `Activity from the last ${reviewHours} hours`;
+}
+
+function reviewPeriodEmptyState(reviewHours: ShiftHandoverReviewHours): string {
+  return reviewHours === 96
+    ? "No handover activity recorded in the last 4 days."
+    : `No handover activity recorded in the last ${reviewHours} hours.`;
+}
+
+function localDateParts(value: string, timeZone: string): {
+  year: string;
+  month: string;
+  day: string;
+} {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const map = new Map(parts.map((part) => [part.type, part.value]));
+  return {
+    year: map.get("year") ?? "0000",
+    month: map.get("month") ?? "00",
+    day: map.get("day") ?? "00",
+  };
+}
+
+function localDateKey(value: string, timeZone: string): string {
+  const parts = localDateParts(value, timeZone);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function previousLocalDateKey(value: string, timeZone: string): string {
+  const parts = localDateParts(value, timeZone);
+  const previous = new Date(Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day) - 1,
+  ));
+  return [
+    String(previous.getUTCFullYear()).padStart(4, "0"),
+    String(previous.getUTCMonth() + 1).padStart(2, "0"),
+    String(previous.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function activityDateLabel(
+  value: string,
+  referenceEnd: string,
+  timeZone: string,
+): string {
+  const key = localDateKey(value, timeZone);
+  if (key === localDateKey(referenceEnd, timeZone)) return "Today";
+  if (key === previousLocalDateKey(referenceEnd, timeZone)) return "Yesterday";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(value));
+}
+
+function summariseItems(
+  items: ShiftHandoverItem[],
+): ShiftHandoverSnapshot["summary"] {
+  return {
+    total: items.length,
+    ongoing: items.filter((item) => item.status !== "completed").length,
+    completed: items.filter((item) => item.status === "completed").length,
+    waitingOnParts: items.filter((item) => item.status === "waiting_on_parts").length,
+    externalContractor: items.filter((item) => item.status === "external_contractor").length,
+    unavailableEquipment: items.filter(
+      (item) => item.breakdownMinutes > 0 && item.status !== "completed",
+    ).length,
+    totalBreakdownMinutes: items.reduce(
+      (sum, item) => sum + item.breakdownMinutes,
+      0,
+    ),
+    sparesUsed: items.reduce((sum, item) => sum + item.sparesUsed.length, 0),
+  };
+}
 
 const MODE_PRESENTATION: Record<
   VortaDataMode,
@@ -163,7 +273,10 @@ function MetricCard({
   tone?: string;
 }): JSX.Element {
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141820] p-4">
+    <div
+      className="rounded-xl border border-gray-800 bg-[#141820] p-4"
+      data-vorta-shift-handover-metric={label.toLowerCase().replace(/\s+/g, "-")}
+    >
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
           {label}
@@ -664,6 +777,17 @@ export function ShiftHandoverSection(): JSX.Element {
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const modePresentation = MODE_PRESENTATION[dataMode];
   const compactDetail = useMediaQuery("(max-width: 1279px)");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [reviewHours, setReviewHours] = useState<ShiftHandoverReviewHours>(() => {
+    const queryValue = searchParams.get("review");
+    if (isShiftHandoverReviewHours(queryValue)) return Number(queryValue) as ShiftHandoverReviewHours;
+    const storedValue = typeof window !== "undefined"
+      ? window.sessionStorage.getItem(REVIEW_STORAGE_KEY)
+      : null;
+    return isShiftHandoverReviewHours(storedValue)
+      ? Number(storedValue) as ShiftHandoverReviewHours
+      : 12;
+  });
 
   const [snapshot, setSnapshot] = useState<ShiftHandoverSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -686,7 +810,7 @@ export function ShiftHandoverSection(): JSX.Element {
     setError(null);
     setWorkflowError(null);
     try {
-      const next = await loadShiftHandoverSnapshot(dataMode, refresh);
+      const next = await loadShiftHandoverSnapshot(dataMode, reviewHours, refresh);
       setSnapshot(next);
       setSelectedId((current) => current && next.items.some((item) => item.id === current)
         ? current
@@ -725,7 +849,7 @@ export function ShiftHandoverSection(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [dataMode, siteContext?.siteId]);
+  }, [dataMode, reviewHours, siteContext?.siteId]);
 
   useEffect(() => {
     void load();
@@ -734,6 +858,21 @@ export function ShiftHandoverSection(): JSX.Element {
   useEffect(() => {
     setScopeValue("all");
   }, [scopeMode]);
+
+  const changeReviewPeriod = (value: string): void => {
+    if (!isShiftHandoverReviewHours(value)) return;
+    const next = Number(value) as ShiftHandoverReviewHours;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("review", String(next));
+    setSearchParams(nextParams, { replace: true });
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(REVIEW_STORAGE_KEY, String(next));
+    }
+    if (next > 12) setSortMode("recent");
+    setSelectedId(null);
+    setDetailOpen(false);
+    setReviewHours(next);
+  };
 
   const filteredItems = useMemo(() => {
     const searchTerm = query.trim().toLowerCase();
@@ -766,13 +905,54 @@ export function ShiftHandoverSection(): JSX.Element {
         ].join(" ").toLowerCase().includes(searchTerm);
       })
       .sort((a, b) => {
+        if (reviewHours > 12 || sortMode === "recent") {
+          return new Date(b.lastActivityAt ?? 0).getTime()
+            - new Date(a.lastActivityAt ?? 0).getTime();
+        }
         if (sortMode === "breakdown") return b.breakdownMinutes - a.breakdownMinutes;
-        if (sortMode === "recent") return new Date(b.lastActivityAt ?? 0).getTime() - new Date(a.lastActivityAt ?? 0).getTime();
         return b.criticalityRank - a.criticalityRank || b.breakdownMinutes - a.breakdownMinutes;
       });
-  }, [criticality, discipline, query, scopeMode, scopeValue, snapshot?.items, sortMode, status]);
+  }, [criticality, discipline, query, reviewHours, scopeMode, scopeValue, snapshot?.items, sortMode, status]);
 
-  const selectedItem = snapshot?.items.find((item) => item.id === selectedId) ?? filteredItems[0] ?? null;
+  const filteredSummary = useMemo(
+    () => summariseItems(filteredItems),
+    [filteredItems],
+  );
+
+  const activityGroups = useMemo<ActivityGroup[]>(() => {
+    if (!snapshot || reviewHours === 12) {
+      return [{ key: "review-period", label: null, items: filteredItems }];
+    }
+
+    const ordered = [...filteredItems].sort(
+      (a, b) => new Date(b.lastActivityAt ?? 0).getTime()
+        - new Date(a.lastActivityAt ?? 0).getTime(),
+    );
+    const grouped = new Map<string, ShiftHandoverItem[]>();
+    for (const item of ordered) {
+      const activityAt = item.lastActivityAt ?? snapshot.window.start;
+      const key = localDateKey(activityAt, snapshot.site.timezone);
+      const current = grouped.get(key) ?? [];
+      current.push(item);
+      grouped.set(key, current);
+    }
+
+    return [...grouped.entries()]
+      .sort(([left], [right]) => right.localeCompare(left))
+      .map(([key, items]) => ({
+        key,
+        label: activityDateLabel(
+          items[0]?.lastActivityAt ?? snapshot.window.start,
+          snapshot.window.end,
+          snapshot.site.timezone,
+        ),
+        items,
+      }));
+  }, [filteredItems, reviewHours, snapshot]);
+
+  const selectedItem = filteredItems.find((item) => item.id === selectedId)
+    ?? filteredItems[0]
+    ?? null;
   const scopeOptions = scopeMode === "building"
     ? snapshot?.scopeOptions.buildings ?? []
     : scopeMode === "area"
@@ -848,7 +1028,7 @@ export function ShiftHandoverSection(): JSX.Element {
         <div className="flex min-h-[45vh] items-center justify-center" role="status">
           <span className="inline-flex items-center gap-2 text-sm text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin text-blue-400" aria-hidden="true" />
-            Building the previous-shift handover from SAP evidence…
+            Loading {reviewPeriodLabel(reviewHours).toLowerCase()} from SAP evidence…
           </span>
         </div>
       ) : null}
@@ -856,12 +1036,12 @@ export function ShiftHandoverSection(): JSX.Element {
       {snapshot ? (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
-            <MetricCard label="Handover items" value={String(snapshot.summary.total)} detail="Confirmed this shift" icon={Wrench} />
-            <MetricCard label="Ongoing" value={String(snapshot.summary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
-            <MetricCard label="Completed" value={String(snapshot.summary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
-            <MetricCard label="Waiting parts" value={String(snapshot.summary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
-            <MetricCard label="Contractor" value={String(snapshot.summary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
-            <MetricCard label="Breakdown" value={formatDuration(snapshot.summary.totalBreakdownMinutes)} detail="Recorded downtime" icon={Gauge} tone="text-orange-300" />
+            <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
+            <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
+            <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
+            <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
+            <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
+            <MetricCard label="Breakdown" value={formatDuration(filteredSummary.totalBreakdownMinutes)} detail="Recorded downtime" icon={Gauge} tone="text-orange-300" />
           </div>
 
           <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
@@ -957,9 +1137,10 @@ export function ShiftHandoverSection(): JSX.Element {
               <label className="grid gap-1 text-xs text-slate-500">
                 Sort by
                 <select
-                  value={sortMode}
+                  value={reviewHours > 12 ? "recent" : sortMode}
                   onChange={(event) => setSortMode(event.target.value as SortMode)}
-                  className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
+                  disabled={reviewHours > 12}
+                  className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="priority">Criticality</option>
                   <option value="breakdown">Longest breakdown</option>
@@ -969,24 +1150,67 @@ export function ShiftHandoverSection(): JSX.Element {
             </div>
           </section>
 
+          <div
+            data-vorta-shift-handover-review-period="true"
+            className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+          >
+            <label className="grid w-full gap-1 text-xs font-medium text-slate-500 sm:max-w-xs">
+              Review period
+              <select
+                value={reviewHours}
+                onChange={(event) => changeReviewPeriod(event.target.value)}
+                disabled={loading}
+                className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
+              >
+                {REVIEW_PERIOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {loading ? (
+              <span role="status" className="inline-flex items-center gap-2 text-xs text-blue-300">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                Loading {reviewPeriodLabel(reviewHours).toLowerCase()}…
+              </span>
+            ) : null}
+          </div>
+
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-slate-50">Previous shift activity</h2>
-              <p className="mt-1 text-sm text-slate-500">{filteredItems.length} of {snapshot.items.length} work orders</p>
+              <h2 className="text-xl font-semibold text-slate-50">{reviewPeriodHeading(reviewHours)}</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {filteredItems.length} of {snapshot.items.length} work orders
+              </p>
             </div>
             <span className="hidden text-xs text-slate-600 sm:inline">SAP confirmations · work orders · goods movements · reservations</span>
           </div>
 
           {filteredItems.length > 0 ? (
             <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_430px] xl:gap-5">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
-                {filteredItems.map((item) => (
-                  <HandoverCard
-                    key={item.id}
-                    item={item}
-                    selected={selectedItem?.id === item.id}
-                    onOpen={() => openItem(item)}
-                  />
+              <div className="space-y-5">
+                {activityGroups.map((group) => (
+                  <section
+                    key={group.key}
+                    data-vorta-shift-handover-date-group={group.key}
+                  >
+                    {group.label ? (
+                      <h3 className="mb-3 text-sm font-semibold text-slate-300">
+                        {group.label}
+                      </h3>
+                    ) : null}
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+                      {group.items.map((item) => (
+                        <HandoverCard
+                          key={item.id}
+                          item={item}
+                          selected={selectedItem?.id === item.id}
+                          onOpen={() => openItem(item)}
+                        />
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
 
@@ -997,8 +1221,8 @@ export function ShiftHandoverSection(): JSX.Element {
                     workflow={workflowActions.get(selectedItem.id) ?? null}
                     dataMode={dataMode}
                     siteId={siteContext?.siteId ?? null}
-                    windowStart={snapshot.window.start}
-                    windowEnd={snapshot.window.end}
+                    windowStart={selectedItem.handoverWindowStart}
+                    windowEnd={selectedItem.handoverWindowEnd}
                     onWorkflowChange={updateWorkflow}
                     onClose={() => undefined}
                     showClose={false}
@@ -1009,8 +1233,12 @@ export function ShiftHandoverSection(): JSX.Element {
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-800 bg-[#10151d] px-6 py-14 text-center">
               <PackageCheck className="mx-auto h-8 w-8 text-slate-600" aria-hidden="true" />
-              <h2 className="mt-4 font-semibold text-slate-300">No handover items match these filters</h2>
-              <p className="mt-1 text-sm text-slate-600">Return to the site scope or remove a discipline, status or criticality filter.</p>
+              <h2 className="mt-4 font-semibold text-slate-300">
+                {reviewPeriodEmptyState(reviewHours)}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Return to the site scope or remove a discipline, status or criticality filter.
+              </p>
             </div>
           )}
 
@@ -1027,8 +1255,8 @@ export function ShiftHandoverSection(): JSX.Element {
             workflow={workflowActions.get(selectedItem.id) ?? null}
             dataMode={dataMode}
             siteId={siteContext?.siteId ?? null}
-            windowStart={snapshot.window.start}
-            windowEnd={snapshot.window.end}
+            windowStart={selectedItem.handoverWindowStart}
+            windowEnd={selectedItem.handoverWindowEnd}
             onWorkflowChange={updateWorkflow}
             onClose={() => setDetailOpen(false)}
             showClose

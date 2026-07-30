@@ -20,6 +20,16 @@ export type ShiftHandoverDiscipline =
   | "controls"
   | "facilities";
 
+export type ShiftHandoverReviewHours = 12 | 24 | 36 | 48 | 96;
+
+const REVIEW_HOURS = new Set<number>([12, 24, 36, 48, 96]);
+
+export function isShiftHandoverReviewHours(
+  value: unknown,
+): value is ShiftHandoverReviewHours {
+  return REVIEW_HOURS.has(Number(value));
+}
+
 export interface ShiftHandoverConfirmation {
   id: string;
   timestamp: string | null;
@@ -83,6 +93,8 @@ export interface ShiftHandoverItem {
   actualStartAt: string | null;
   actualFinishAt: string | null;
   lastActivityAt: string | null;
+  handoverWindowStart: string;
+  handoverWindowEnd: string;
   latestConfirmationText: string | null;
   confirmations: ShiftHandoverConfirmation[];
   sparesUsed: ShiftHandoverSpareUsed[];
@@ -106,6 +118,7 @@ export interface ShiftHandoverSnapshot {
     end: string;
     label: string;
     mode: "previous" | "latest";
+    reviewHours: ShiftHandoverReviewHours;
   };
   items: ShiftHandoverItem[];
   scopeOptions: {
@@ -256,6 +269,8 @@ function parseItem(value: unknown): ShiftHandoverItem | null {
     actualStartAt: stringValue(row.actualStartAt) || null,
     actualFinishAt: stringValue(row.actualFinishAt) || null,
     lastActivityAt: stringValue(row.lastActivityAt) || null,
+    handoverWindowStart: stringValue(row.handoverWindowStart),
+    handoverWindowEnd: stringValue(row.handoverWindowEnd),
     latestConfirmationText: stringValue(row.latestConfirmationText) || null,
     confirmations,
     sparesUsed,
@@ -295,6 +310,9 @@ function parseSnapshot(value: unknown): ShiftHandoverSnapshot {
       end: stringValue(window.end),
       label: stringValue(window.label),
       mode: window.mode === "latest" ? "latest" : "previous",
+      reviewHours: isShiftHandoverReviewHours(window.reviewHours)
+        ? Number(window.reviewHours) as ShiftHandoverReviewHours
+        : 12,
     },
     items,
     scopeOptions: {
@@ -321,6 +339,7 @@ function parseSnapshot(value: unknown): ShiftHandoverSnapshot {
 
 export async function loadShiftHandoverSnapshot(
   dataMode: VortaDataMode,
+  reviewHours: ShiftHandoverReviewHours = 12,
   refresh = false,
 ): Promise<ShiftHandoverSnapshot> {
   if (dataMode === "unavailable") {
@@ -332,7 +351,7 @@ export async function loadShiftHandoverSnapshot(
   const { data, error } = await supabase.functions.invoke("shift-handover-data", {
     body: {
       windowMode: dataMode === "demo" ? "latest" : "previous",
-      limit: 100,
+      reviewHours,
     },
   });
 
