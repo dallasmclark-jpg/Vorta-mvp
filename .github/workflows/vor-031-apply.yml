@@ -6,15 +6,13 @@ on:
       - main
     types:
       - opened
-      - synchronize
-      - reopened
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: ${{ github.event.pull_request.head.ref == 'vorta/vor-031-finalise' && !contains(github.event.pull_request.head.sha, '[skip vor-031 apply]') }}
+    if: ${{ github.event.pull_request.head.ref == 'vorta/vor-031-finalise' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,5 +43,5 @@ jobs:
           git config user.name "Vorta automation"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "VOR-031: add maintenance team handover filtering [skip vor-031 apply]"
+          git commit -m "VOR-031: add maintenance team handover filtering"
           git push origin "HEAD:${TARGET_BRANCH}"
