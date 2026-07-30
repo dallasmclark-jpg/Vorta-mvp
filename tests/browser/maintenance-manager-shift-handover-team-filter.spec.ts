@@ -10,6 +10,17 @@ const TEAM_LABELS = [
   "Calibration Team",
 ] as const;
 
+async function chooseSingleSelect(
+  page: Page,
+  label: string,
+  optionLabel: string,
+): Promise<void> {
+  await page.getByRole("button", { name: label, exact: true }).click();
+  const listbox = page.getByRole("listbox", { name: `${label} options` });
+  await expect(listbox).toBeVisible();
+  await listbox.getByRole("option", { name: optionLabel, exact: true }).click();
+}
+
 async function exposeTeamFilter(page: Page): Promise<void> {
   const teamTrigger = page.getByRole("button", { name: "Maintenance team", exact: true });
   if (!(await teamTrigger.isVisible())) {
@@ -67,10 +78,16 @@ async function expectUniqueFilteredCards(
 }
 
 test("Maintenance team multi-select filters unique Shift Handover work orders", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   await signInMaintenanceManager(page);
   await page.goto("/shift-handover");
   await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
+
+  // The full eight-shift fixture contains evidence for every approved team.
+  // Individual review periods are covered by the main Shift Handover regression.
+  await chooseSingleSelect(page, "Review period", "Previous 8 shifts · 4 days");
+  await expect(page.getByRole("heading", { name: "Activity from the previous 8 shifts", exact: true })).toBeVisible();
+  await expect(page.locator('[data-vorta-shift-handover-card="true"]').first()).toBeVisible({ timeout: 30_000 });
   await exposeTeamFilter(page);
 
   const initialListbox = await openTeamListbox(page);
