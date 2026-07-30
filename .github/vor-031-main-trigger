@@ -1,0 +1,1 @@
+trigger VOR-031 apply workflow after workflow reached default branch
