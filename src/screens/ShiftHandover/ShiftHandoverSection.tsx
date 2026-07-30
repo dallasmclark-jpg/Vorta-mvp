@@ -28,6 +28,7 @@ import {
   DetailDrawer,
   DrawerCloseButton,
 } from "../../components/DetailDrawer";
+import { VortaSelect } from "../../components/VortaSelect";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import {
@@ -70,6 +71,28 @@ const REVIEW_PERIOD_OPTIONS: Array<{
   { value: 36, label: "Last 36 hours" },
   { value: 48, label: "Last 48 hours" },
   { value: 96, label: "Last 4 days" },
+];
+
+const CRITICALITY_OPTIONS: Array<{ value: CriticalityFilter; label: string }> = [
+  { value: "all", label: "All criticalities" },
+  { value: "critical", label: "Critical" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+
+const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All statuses" },
+  { value: "active", label: "Active / ongoing" },
+  { value: "waiting", label: "Waiting / deferred" },
+  { value: "contractor", label: "External contractor" },
+  { value: "completed", label: "Completed" },
+];
+
+const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
+  { value: "priority", label: "Criticality" },
+  { value: "breakdown", label: "Longest breakdown" },
+  { value: "recent", label: "Most recent" },
 ];
 
 function reviewPeriodLabel(reviewHours: ShiftHandoverReviewHours): string {
@@ -1260,21 +1283,14 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
     data-vorta-shift-handover-review-period="true"
     className="mt-4 border-t border-gray-800 pt-4"
   >
-    <label className="grid w-full gap-1 text-xs font-medium text-slate-500 sm:max-w-xs">
-      Review period
-      <select
-        value={reviewHours}
-        onChange={(event) => changeReviewPeriod(event.target.value)}
-        disabled={loading}
-        className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
-      >
-        {REVIEW_PERIOD_OPTIONS.map((option) => (
-<option key={option.value} value={option.value}>
-  {option.label}
-</option>
-        ))}
-      </select>
-    </label>
+    <VortaSelect
+      label="Review period"
+      value={reviewHours}
+      options={REVIEW_PERIOD_OPTIONS}
+      onChange={(nextValue) => changeReviewPeriod(String(nextValue))}
+      disabled={loading}
+      className="w-full sm:max-w-xs"
+    />
     {loading ? (
       <span role="status" className="mt-2 inline-flex items-center gap-2 text-xs text-blue-300">
         <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -1310,49 +1326,27 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
       id="shift-handover-advanced-filters"
       className={`${filtersOpen ? "grid" : "hidden"} gap-3 lg:contents`}
     >
-      <label className="grid gap-1 text-xs text-slate-500">
-        Criticality
-        <select
-          value={criticality}
-          onChange={(event) => setCriticality(event.target.value as CriticalityFilter)}
-          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
-        >
-          <option value="all">All criticalities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </label>
+      <VortaSelect
+        label="Criticality"
+        value={criticality}
+        options={CRITICALITY_OPTIONS}
+        onChange={setCriticality}
+      />
 
-      <label className="grid gap-1 text-xs text-slate-500">
-        Status
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value as StatusFilter)}
-          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
-        >
-          <option value="all">All statuses</option>
-          <option value="active">Active / ongoing</option>
-          <option value="waiting">Waiting / deferred</option>
-          <option value="contractor">External contractor</option>
-          <option value="completed">Completed</option>
-        </select>
-      </label>
+      <VortaSelect
+        label="Status"
+        value={status}
+        options={STATUS_OPTIONS}
+        onChange={setStatus}
+      />
 
-      <label className="grid gap-1 text-xs text-slate-500">
-        Sort by
-        <select
-          value={reviewHours > 12 ? "recent" : sortMode}
-          onChange={(event) => setSortMode(event.target.value as SortMode)}
-          disabled={reviewHours > 12}
-          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <option value="priority">Criticality</option>
-          <option value="breakdown">Longest breakdown</option>
-          <option value="recent">Most recent</option>
-        </select>
-      </label>
+      <VortaSelect
+        label="Sort by"
+        value={reviewHours > 12 ? "recent" : sortMode}
+        options={SORT_OPTIONS}
+        onChange={setSortMode}
+        disabled={reviewHours > 12}
+      />
     </div>
   </div>
 </section>

@@ -1,8 +1,20 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   expectNoPageOverflow,
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
+
+async function chooseVortaSelect(
+  page: Page,
+  label: string,
+  optionLabel: string,
+): Promise<void> {
+  const trigger = page.getByRole("button", { name: label, exact: true });
+  await trigger.click();
+  const listbox = page.getByRole("listbox", { name: `${label} options` });
+  await expect(listbox).toBeVisible();
+  await listbox.getByRole("option", { name: optionLabel, exact: true }).click();
+}
 
 test("Shift Handover renders SAP evidence across responsive layouts", async ({ page }) => {
   test.setTimeout(150_000);
@@ -11,16 +23,21 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   await expect(page.getByRole("heading", { name: "Shift Handover", exact: true })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
-  const reviewPeriod = page.getByLabel("Review period");
+  const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
   await expect(reviewPeriod).toBeVisible();
-  await expect(reviewPeriod).toHaveValue("12");
-  await expect(reviewPeriod.locator("option")).toHaveCount(5);
+  await expect(reviewPeriod).toHaveAttribute("data-value", "12");
+  await reviewPeriod.click();
+  const reviewListbox = page.getByRole("listbox", { name: "Review period options" });
+  await expect(reviewListbox).toBeVisible();
+  await expect(reviewListbox.getByRole("option")).toHaveCount(5);
+  await page.keyboard.press("Escape");
+  await expect(reviewListbox).toBeHidden();
 
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   const searchInput = page.getByPlaceholder("Search work order or equipment");
-  const criticalitySelect = page.getByLabel("Criticality");
-  const statusSelect = page.getByLabel("Status");
-  const sortSelect = page.getByLabel("Sort by");
+  const criticalitySelect = page.getByRole("button", { name: "Criticality", exact: true });
+  const statusSelect = page.getByRole("button", { name: "Status", exact: true });
+  const sortSelect = page.getByRole("button", { name: "Sort by", exact: true });
   const scopeTabs = page.locator('[data-vorta-shift-handover-scope-tabs="true"]');
   await expect(scopeTabs).toBeVisible();
   await expect(scopeTabs.getByRole("tab", { name: "Site", exact: true })).toBeVisible();
@@ -87,7 +104,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   await scrollContainer.evaluate((element) => { element.scrollTop = 320; });
   const scrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
-  await reviewPeriod.selectOption("24");
+  await chooseVortaSelect(page, "Review period", "Last 24 hours");
   await expect(page).toHaveURL(/review=24/);
   await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-date-group]').first()).toBeVisible();
@@ -102,7 +119,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await page.getByRole("button", { name: "Filters", exact: true }).click();
   }
 
-  await reviewPeriod.selectOption("12");
+  await chooseVortaSelect(page, "Review period", "Last 12 hours");
   await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(criticalitySelect).toBeVisible();
@@ -110,24 +127,24 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   await expect(sortSelect).toBeVisible();
 
   const sortScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
-  await sortSelect.selectOption("breakdown");
+  await chooseVortaSelect(page, "Sort by", "Longest breakdown");
   const sortScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
   expect(sortScrollAfter).toBeGreaterThanOrEqual(Math.max(0, sortScrollBefore - 80));
 
   if (viewportWidth < 1024) {
-    await criticalitySelect.selectOption("high");
+    await chooseVortaSelect(page, "Criticality", "High");
     await expect(page.getByRole("button", { name: "Filters · 1", exact: true })).toBeVisible();
-    await statusSelect.selectOption("completed");
+    await chooseVortaSelect(page, "Status", "Completed");
     await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
-    await sortSelect.selectOption("priority");
+    await chooseVortaSelect(page, "Sort by", "Criticality");
     await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
-    await criticalitySelect.selectOption("all");
-    await statusSelect.selectOption("all");
+    await chooseVortaSelect(page, "Criticality", "All criticalities");
+    await chooseVortaSelect(page, "Status", "All statuses");
     await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
   }
   await expect(cards.first()).toBeVisible();
 
-  await reviewPeriod.selectOption("24");
+  await chooseVortaSelect(page, "Review period", "Last 24 hours");
   await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible();
@@ -171,7 +188,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await expect(detailPanel).toBeHidden();
   }
 
-  await expect(reviewPeriod).toHaveValue("24");
+  await expect(reviewPeriod).toHaveAttribute("data-value", "24");
   await expect(searchInput).toBeVisible();
   await expectNoPageOverflow(page);
 });
@@ -184,14 +201,14 @@ test("Shift Handover sends every approved review period to the evidence boundary
   await signInMaintenanceManager(page);
   await page.goto("/shift-handover");
 
-  const reviewPeriod = page.getByLabel("Review period");
+  const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
   await expect(reviewPeriod).toBeVisible();
-  for (const [value, heading] of [
-    ["24", "Activity from the last 24 hours"],
-    ["36", "Activity from the last 36 hours"],
-    ["48", "Activity from the last 48 hours"],
-    ["96", "Activity from the last 4 days"],
-    ["12", "Previous shift activity for Last 12 hours"],
+  for (const [value, optionLabel, heading] of [
+    ["24", "Last 24 hours", "Activity from the last 24 hours"],
+    ["36", "Last 36 hours", "Activity from the last 36 hours"],
+    ["48", "Last 48 hours", "Activity from the last 48 hours"],
+    ["96", "Last 4 days", "Activity from the last 4 days"],
+    ["12", "Last 12 hours", "Previous shift activity for Last 12 hours"],
   ] as const) {
     const evidenceRequest = page.waitForRequest((request) => {
       if (!/\/functions\/v1\/shift-handover-data(?:\?.*)?$/.test(request.url())) return false;
@@ -202,10 +219,10 @@ test("Shift Handover sends every approved review period to the evidence boundary
         return false;
       }
     });
-    await reviewPeriod.selectOption(value);
+    await chooseVortaSelect(page, "Review period", optionLabel);
     await evidenceRequest;
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
-    await expect(reviewPeriod).toHaveValue(value);
+    await expect(reviewPeriod).toHaveAttribute("data-value", value);
     await expectNoPageOverflow(page);
   }
 });
