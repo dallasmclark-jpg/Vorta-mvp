@@ -24,27 +24,38 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Repair the one-use UI patch runner
+      - name: Repair the one-use patch runners
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('scripts/vor-031-ui.py')
-          content = path.read_text()
-          old = '''for _ in range(2):
+
+          ui_path = Path('scripts/vor-031-ui.py')
+          ui_content = ui_path.read_text()
+          ui_old = '''for _ in range(2):
               replace_once(
                   path,
                   '{reviewPeriodLoadingState(reviewHours)}',
                   '{reviewPeriodLoadingState(reviewHours, maintenanceTeams)}',
               )'''
-          new = '''target = ROOT / path
+          ui_new = '''target = ROOT / path
           content = target.read_text()
           marker = '{reviewPeriodLoadingState(reviewHours)}'
           if content.count(marker) != 2:
               raise RuntimeError(f"{path}: expected two loading-state markers, found {content.count(marker)}")
           target.write_text(content.replace(marker, '{reviewPeriodLoadingState(reviewHours, maintenanceTeams)}'))'''
-          if old not in content:
+          if ui_old not in ui_content:
               raise RuntimeError('UI patch runner repair marker was not found')
-          path.write_text(content.replace(old, new, 1))
+          ui_path.write_text(ui_content.replace(ui_old, ui_new, 1))
+
+          test_path = Path('scripts/vor-031-tests.py')
+          test_content = test_path.read_text()
+          test_old = '''    if count != 1:
+                  raise RuntimeError(f"{path}: expected one replacement, found {count}: {old[:100]!r}")'''
+          test_new = '''    if count < 1:
+                  raise RuntimeError(f"{path}: replacement marker was not found: {old[:100]!r}")'''
+          if test_old not in test_content:
+              raise RuntimeError('Test patch runner multiplicity repair marker was not found')
+          test_path.write_text(test_content.replace(test_old, test_new, 1))
           PY
       - name: Apply focused VOR-031 patches
         run: |
