@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - vor-027-simplify-shift-handover-scope
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
