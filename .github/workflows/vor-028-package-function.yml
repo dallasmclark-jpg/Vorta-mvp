@@ -1,0 +1,26 @@
+name: Package VOR-028 function source
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/vor-028-package-function.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package Shift Handover function
+        run: |
+          mkdir function-source
+          cp supabase/functions/shift-handover-data/index.ts function-source/index.ts
+          cp supabase/functions/shift-handover-data/auth.ts function-source/auth.ts
+          cp supabase/functions/shift-handover-data/transform.ts function-source/transform.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vor-028-shift-handover-function
+          path: function-source
+          if-no-files-found: error
