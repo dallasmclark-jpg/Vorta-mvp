@@ -22,7 +22,7 @@ search_anchor = page.find('<div className="mt-4 grid gap-3 border-t border-gray-
 if search_anchor < 0:
     raise SystemExit('The Handover search/filter block could not be located.')
 search_start = page.rfind("\\n", 0, search_anchor) + 1'''
-script, marker_count = marker_pattern.subn(marker_replacement, script, count=1)
+script, marker_count = marker_pattern.subn(lambda _: marker_replacement, script, count=1)
 if marker_count != 1:
     raise SystemExit(f'Expected one scope marker block, found {marker_count}.')
 exec(compile(script, 'vor-027-apply.py', 'exec'))
