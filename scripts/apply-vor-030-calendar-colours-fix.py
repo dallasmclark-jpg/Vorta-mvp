@@ -197,4 +197,12 @@ replace_once(
 ''',
 )
 
+replace_once(
+    "scripts/shift-handover-contracts.mjs",
+    '''  [shiftPresentation.includes('bg-yellow-400') && shiftPresentation.includes('bg-blue-400') && shiftPresentation.includes("colour alone"), "Shift Handover must reuse the established yellow Day and blue Night rota palette with text labels."],
+''',
+    '''  [shiftPresentation.includes("SHIFT_TEAM_PRESENTATION") && shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE"), "Shift Handover must use the established Shift Calendar team palette."],
+''',
+)
+
 print("VOR-030 calendar-colour transformation hardening applied successfully.")
