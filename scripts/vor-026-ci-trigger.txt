@@ -1,0 +1,1 @@
+Trigger final VOR-026 quality gates after the focused implementation commit.
