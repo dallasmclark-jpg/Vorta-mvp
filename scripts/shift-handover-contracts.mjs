@@ -7,12 +7,14 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const route = read("src/screens/AiOperations/AiOperations.tsx");
 const page = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
 const vortaSelect = read("src/components/VortaSelect.tsx");
+const vortaMultiSelect = read("src/components/VortaMultiSelect.tsx");
 const service = read("src/screens/ShiftHandover/shiftHandoverService.ts");
 const workflow = read("src/screens/ShiftHandover/shiftHandoverWorkflowService.ts");
 const edge = read("supabase/functions/shift-handover-data/index.ts");
 const transform = read("supabase/functions/shift-handover-data/transform.ts");
 const shiftWindows = read("supabase/functions/shift-handover-data/shiftWindows.ts");
 const rotaAssignments = read("supabase/functions/shift-handover-data/rotaAssignments.ts");
+const teamAttribution = read("supabase/functions/shift-handover-data/teamAttribution.ts");
 const shiftPresentation = read("src/lib/shiftPresentation.ts");
 const surfaces = read("src/card-surfaces.css");
 const browser = read("tests/browser/maintenance-manager-shift-handover.spec.ts");
@@ -198,7 +200,7 @@ const assertions = [
   [page.includes("sparesUsed") && page.includes("outstandingMaterials") && page.includes("confirmedWorkHours"), "Work-order, confirmation and material detail must remain visible."],
   [/\[data-vorta-shift-handover="true"\]\s*>\s*header\s*\{\s*display:\s*none\s*!important;\s*\}/m.test(surfaces), "Shift Handover must start with the operational summary cards on every viewport."],
   [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("<VortaSelect") && page.includes('label="Review period"'), "One shared Vorta Review period control is required."],
-  [!page.includes("<select") && (page.match(/<VortaSelect/g) ?? []).length === 4, "Shift Handover must not invoke native browser select dialogs."],
+  [!page.includes("<select") && (page.match(/<VortaSelect/g) ?? []).length === 4 && (page.match(/<VortaMultiSelect/g) ?? []).length === 1, "Shift Handover must use the shared styled selectors and one maintenance-team multi-select."],
   [vortaSelect.includes('role="listbox"') && vortaSelect.includes('role="option"') && vortaSelect.includes('data-vorta-select-listbox="true"'), "The shared Vorta selector must render a styled accessible listbox."],
   [vortaSelect.includes("ArrowDown") && vortaSelect.includes("ArrowUp") && vortaSelect.includes("Home") && vortaSelect.includes("End") && vortaSelect.includes("Escape"), "The Vorta selector must retain keyboard navigation and dismissal."],
   [vortaSelect.includes("createPortal") && vortaSelect.includes("visualViewport") && vortaSelect.includes('data-vorta-select-placement') && vortaSelect.includes('data-vorta-select-backdrop'), "Vorta selectors must use viewport-aware portalled placement above floating controls."],
@@ -206,7 +208,7 @@ const assertions = [
   [vortaSelect.includes('data-vorta-select-supporting-items="true"') && vortaSelect.includes('aria-describedby') && vortaSelect.includes("Included shifts:"), "Shift sequences must be visible and available to assistive technology."],
   [vortaSelect.includes("data-vortaSelectOpen") || vortaSelect.includes("vortaSelectOpen"), "Open selectors must expose a global stacking state."],
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
-  [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
+  [page.includes("activeAdvancedFilterCount") && page.includes("maintenanceTeams.length > 0") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must count Maintenance team, Criticality and Status."],
   [page.includes("hasActiveAdvancedFilters") && page.includes("clearAdvancedFilters") && page.includes('data-vorta-shift-handover-clear-filters="true"') && page.includes('setSortMode("recent")'), "Mobile advanced filters need a selective Clear filters action with Most recent as the default sort."],
   [page.includes('id="shift-handover-advanced-filters"') && page.includes("lg:contents"), "Criticality, Status and Sort must collapse on mobile without duplicating wider-layout logic."],
   [page.includes('data-vorta-shift-handover-status-disclosure="true"') && page.includes("How handover statuses are calculated") && page.includes("statusInfoOpen"), "SAP status guidance must be retained in a closed-by-default disclosure."],
@@ -218,8 +220,14 @@ const assertions = [
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
-  [page.includes('return "Previous shift: Previous shift activity"') && page.includes("Activity from the previous ${count} shifts"), "Activity headings must use completed-shift terminology."],
+  [page.includes('return "Previous shift activity"') && page.includes("Activity from the previous ${count} shifts"), "Activity headings must be concise and use completed-shift terminology."],
   [service.includes("ShiftHandoverReviewHours") && service.includes("reviewHours"), "The service contract must carry the selected review period."],
+  [service.includes("ShiftHandoverMaintenanceTeam") && service.includes("hasUnassignedActivity"), "The service contract must carry confirmation-level and work-order team attribution."],
+  [vortaMultiSelect.includes('aria-multiselectable="true"') && vortaMultiSelect.includes("visualViewport") && vortaMultiSelect.includes('data-vorta-multi-select-trigger="true"'), "Maintenance team selection must be accessible, viewport-aware and mobile safe."],
+  [page.includes('label="Maintenance team"') && page.includes("All maintenance teams") && shiftPresentation.includes("Calibration Team"), "All six approved maintenance teams must be available."],
+  [page.includes("MaintenanceTeamBadges") && page.includes("confirmation.maintenanceTeams"), "Cards and confirmation history must expose team badges."],
+  [edge.includes("attachMaintenanceTeamAttribution") && edge.includes("personnel_number") && edge.includes("engineer_source_identities") && edge.includes("maintenance_shift_team_members"), "Historical team attribution must use confirmation identity and effective-dated membership evidence."],
+  [teamAttribution.includes("validOnDate") && teamAttribution.includes("historical_membership") && teamAttribution.includes("specialist_scope"), "Team attribution must support historical membership and the established calibration specialist scope."],
   [service.includes("rotaTeamCode") && service.includes("rotaTeamName") && service.includes("shift_calendar"), "The client contract must retain the resolved Shift Calendar team assignment."],
   [edge.includes('db.rpc("vorta_get_shift_calendar_internal"') && edge.includes('.from("maintenance_shift_teams")'), "Shift Handover must resolve each completed shift through the authoritative Shift Calendar evidence path."],
   [rotaAssignments.includes('patternType === "continental"') && rotaAssignments.includes("shift_calendar"), "The rotating calendar team must take precedence over the weekday Days support team."],
@@ -231,7 +239,7 @@ const assertions = [
   [shiftWindows.includes("new Set<number>([12, 24, 36, 48, 96])"), "The completed-shift module must allow only the approved review periods."],
   [edge.includes("buildReviewPeriods(anchor, timeZone, windowMode)") && edge.includes("site.timezone") && shiftWindows.includes("previousCompletedShift") && shiftWindows.includes("shiftContaining"), "Review windows must be assembled from completed site-timezone shift boundaries."],
   [service.includes("reviewPeriods") && service.includes("ShiftHandoverReviewShift"), "The client contract must retain the authoritative shift sequence."],
-  [shiftPresentation.includes("SHIFT_TEAM_PRESENTATION") && shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE"), "Shift Handover must use the established Shift Calendar team palette."],
+  [shiftPresentation.includes("VORTA_MAINTENANCE_TEAM_PRESENTATION") && shiftPresentation.includes("CALIBRATION") && shiftPresentation.includes("bg-violet-400") && shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE"), "Shift Handover must use the canonical Vorta maintenance-team palette, including violet Calibration."],
   [edge.includes('.from("work_order_confirmations")') && edge.includes(".range(offset, offset + PAGE_SIZE - 1)"), "Confirmation evidence must be paginated for complete longer-period results."],
   [!edge.includes("slice(0, limit)") && !edge.includes("limit * 5"), "Review-period evidence must not be silently truncated by the old fixed limit."],
   [edge.includes('.from("work_order_goods_movements")') && edge.includes('.from("work_order_material_reservations")'), "The Edge Function must include SAP material evidence."],
