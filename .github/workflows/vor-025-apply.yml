@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/vor-025-shift-handover-review-period
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
