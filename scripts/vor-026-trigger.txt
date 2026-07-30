@@ -1,1 +1,0 @@
-Apply the staged VOR-026 Shift Handover mobile refinement.
