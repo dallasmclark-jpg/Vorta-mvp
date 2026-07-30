@@ -21,4 +21,13 @@ if (windowEnd < 0) throw new Error("Workflow window patch end not found");
 const windowReplacement = `  content = content.replace(\n    /windowStart=\\{snapshot\\.window\\.start\\}\\n(\\s*)windowEnd=\\{snapshot\\.window\\.end\\}/g,\n    (_match, indentation) => \`windowStart={selectedItem.handoverWindowStart}\\n\${indentation}windowEnd={selectedItem.handoverWindowEnd}\`,\n  );\n  if (content.includes(\"windowStart={snapshot.window.start}\")) {\n    throw new Error(\"VOR-025 page still writes workflow actions against the aggregate review window\");\n  }\n`;
 content = content.slice(0, windowStart) + windowReplacement + content.slice(windowEnd);
 
+const loadingLabel = '    "page initial loading message",\n  );';
+const loadingLabelIndex = content.indexOf(loadingLabel);
+if (loadingLabelIndex < 0) throw new Error("Loading patch label not found");
+const loadingCallStart = content.lastIndexOf("  content = replaceOnce(", loadingLabelIndex);
+if (loadingCallStart < 0) throw new Error("Loading patch call start not found");
+const loadingCallEnd = loadingLabelIndex + loadingLabel.length;
+const loadingReplacement = `  content = replaceOnce(\n    content,\n    \`Building the previous-shift handover from SAP evidence…\`,\n    \`Loading {reviewPeriodLabel(reviewHours).toLowerCase()} from SAP evidence…\`,\n    \"page initial loading message\",\n  );`;
+content = content.slice(0, loadingCallStart) + loadingReplacement + content.slice(loadingCallEnd);
+
 writeFileSync(path, content);
