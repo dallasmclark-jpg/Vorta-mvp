@@ -154,7 +154,7 @@ function summariseItems(
 ): ShiftHandoverSnapshot["summary"] {
   return {
     total: items.length,
-    ongoing: items.filter((item) => item.status !== "completed").length,
+    ongoing: items.filter((item) => item.status === "ongoing").length,
     completed: items.filter((item) => item.status === "completed").length,
     waitingOnParts: items.filter((item) => item.status === "waiting_on_parts").length,
     externalContractor: items.filter((item) => item.status === "external_contractor").length,
@@ -265,6 +265,46 @@ function formatTimestamp(value: string | null): string {
   }).format(date);
 }
 
+function latestConfirmationSummary(item: ShiftHandoverItem): string {
+  const latest = item.confirmations[0] ?? null;
+
+  if (item.status === "completed") {
+    return latest?.finalConfirmation
+      ? "Work was completed and a final confirmation was posted. The recorded scope and completion details are shown below."
+      : "The work order is recorded as completed or closed. The latest recorded confirmation is shown below.";
+  }
+  if (item.status === "waiting_on_parts") {
+    return latest?.finalConfirmation
+      ? "A final confirmation was posted, but outstanding material evidence keeps this item open for follow-up."
+      : "The order remains open with outstanding material requirements. The latest confirmation is shown below.";
+  }
+  if (!latest) {
+    return "No work confirmation has been posted. The order remains open for planned execution.";
+  }
+  if (item.status === "ongoing") {
+    return "A partial confirmation was posted. The order remains open for planned execution.";
+  }
+  return `The work order is ${item.statusLabel.toLowerCase()}. The latest confirmation is shown below.`;
+}
+
+function formatConfirmationMeasure(value: number, unit: string | null): string | null {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return `${formatted} ${unit?.trim() || "hr"}`;
+}
+
+function confirmationMetadata(
+  confirmation: ShiftHandoverItem["confirmations"][number],
+): string[] {
+  return [
+    confirmation.finalConfirmation ? "Final confirmation" : "Partial confirmation",
+    confirmation.workCenter ? `Work centre ${confirmation.workCenter}` : null,
+    formatConfirmationMeasure(confirmation.actualWork, confirmation.workUnit),
+    confirmation.actualDuration > 0
+      ? `Duration ${formatConfirmationMeasure(confirmation.actualDuration, confirmation.durationUnit)}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+}
 function MetricCard({
   label,
   value,
@@ -364,7 +404,10 @@ function HandoverCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}>
+        <span
+          data-vorta-shift-handover-card-status={item.status}
+          className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}
+        >
           {item.statusLabel}
         </span>
         <span className="rounded-md border border-gray-700 bg-[#0d1117] px-2 py-1 text-xs text-slate-400">
@@ -632,24 +675,29 @@ function HandoverDetail({
 }): JSX.Element {
   const navigate = useNavigate();
   const tone = STATUS_TONE[item.status];
+  const latestConfirmation = item.confirmations[0] ?? null;
+  const latestConfirmationNote = latestConfirmation?.text || item.latestConfirmationText;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-vorta-shift-handover-detail="true">
       <div className="flex items-start justify-between gap-4 border-b border-gray-800 px-5 py-5">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-blue-300">{item.workOrderNumber}</span>
-            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}>
+            <span
+              data-vorta-shift-handover-detail-status={item.status}
+              className={`rounded-md border px-2 py-1 text-xs font-semibold ${tone.badge}`}
+            >
               {item.statusLabel}
             </span>
           </div>
-          <h2 className="mt-3 text-xl font-semibold text-slate-50">{item.equipmentName}</h2>
+          <h2 className="mt-3 break-words text-xl font-semibold text-slate-50 [overflow-wrap:anywhere]">{item.equipmentName}</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">{item.description}</p>
         </div>
         {showClose ? <DrawerCloseButton onClose={onClose} /> : null}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+      <div className="min-h-0 min-w-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-5 py-5">
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-gray-800 bg-[#10151d] p-3">
             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-600">Breakdown</p>
@@ -697,38 +745,116 @@ function HandoverDetail({
         </DetailSection>
 
         <DetailSection title="Location">
-          <div className="space-y-2 text-sm text-slate-300">
-            <p className="flex items-start gap-2"><Building2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />{item.building}</p>
-            <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />{item.area}{item.line ? ` · ${item.line}` : ""}</p>
-            <p className="flex items-start gap-2"><Gauge className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />{item.functionalLocation ?? "Functional location not supplied"}</p>
-          </div>
+          <dl className="space-y-3 text-sm" data-vorta-shift-handover-location="true">
+            <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-800 bg-[#10151d] px-3 py-2.5">
+              <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-600">Building</dt>
+                <dd className="mt-1 break-words font-medium text-slate-300 [overflow-wrap:anywhere]">{item.building}</dd>
+              </div>
+            </div>
+            <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-800 bg-[#10151d] px-3 py-2.5">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-600">Area</dt>
+                <dd className="mt-1 break-words font-medium text-slate-300 [overflow-wrap:anywhere]">{item.area}{item.line ? ` · ${item.line}` : ""}</dd>
+              </div>
+            </div>
+            <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-800 bg-[#10151d] px-3 py-2.5">
+              <Gauge className={`mt-0.5 h-4 w-4 shrink-0 ${item.functionalLocation ? "text-slate-500" : "text-slate-600"}`} aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-600">Functional location</dt>
+                <dd
+                  data-vorta-shift-handover-functional-location={item.functionalLocation ? "supplied" : "unavailable"}
+                  className={`mt-1 break-words [overflow-wrap:anywhere] ${item.functionalLocation ? "font-medium text-slate-300" : "text-slate-500"}`}
+                >
+                  {item.functionalLocation ?? "Functional location not supplied"}
+                </dd>
+              </div>
+            </div>
+            <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-800 bg-[#10151d] px-3 py-2.5">
+              <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-600">Equipment</dt>
+                <dd className="mt-1 break-words font-medium text-slate-300 [overflow-wrap:anywhere]">
+                  {item.equipmentName}{item.equipmentCode ? ` · ${item.equipmentCode}` : ""}
+                </dd>
+              </div>
+            </div>
+          </dl>
         </DetailSection>
 
         <DetailSection title="Latest confirmation">
-          {item.latestConfirmationText ? (
-            <div className="rounded-xl border border-gray-800 bg-[#10151d] p-4">
-              <p className="text-sm leading-6 text-slate-300">{item.latestConfirmationText}</p>
-              <p className="mt-3 text-xs text-slate-600">
-                {item.confirmations[0]?.confirmedBy ?? "Unknown engineer"} · {formatTimestamp(item.confirmations[0]?.timestamp ?? null)}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No confirmation text was supplied for this shift.</p>
-          )}
+          <div
+            className="min-w-0 rounded-xl border border-gray-800 bg-[#10151d] p-4 sm:p-5"
+            data-vorta-shift-handover-latest-confirmation="true"
+          >
+            <p
+              className="break-words text-sm leading-6 text-slate-300 [overflow-wrap:anywhere]"
+              data-vorta-shift-handover-confirmation-summary="true"
+            >
+              {latestConfirmationSummary(item)}
+            </p>
+            {latestConfirmationNote ? (
+              <div className="mt-4 border-t border-gray-800 pt-4">
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-400 [overflow-wrap:anywhere]">
+                  {latestConfirmationNote}
+                </p>
+              </div>
+            ) : null}
+            {latestConfirmation ? (
+              <div className="mt-4 grid min-w-0 gap-1 text-xs text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-3">
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{latestConfirmation.confirmedBy ?? "Unknown engineer"}</span>
+                <time className="whitespace-nowrap" dateTime={latestConfirmation.timestamp ?? undefined}>{formatTimestamp(latestConfirmation.timestamp)}</time>
+              </div>
+            ) : null}
+          </div>
         </DetailSection>
 
         <DetailSection title={`Confirmation history (${item.confirmations.length})`}>
-          <div className="space-y-3">
-            {item.confirmations.map((confirmation) => (
-              <article key={confirmation.id} className="rounded-xl border border-gray-800 bg-[#10151d] p-4">
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-                  <span>{confirmation.confirmedBy ?? "Unknown engineer"}</span>
-                  <span>{formatTimestamp(confirmation.timestamp)}</span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{confirmation.text || "No confirmation text"}</p>
-              </article>
-            ))}
-          </div>
+          {item.confirmations.length > 0 ? (
+            <div className="space-y-3">
+              {item.confirmations.map((confirmation) => {
+                const metadata = confirmationMetadata(confirmation);
+                return (
+                  <article
+                    key={confirmation.id}
+                    className="min-w-0 rounded-xl border border-gray-800 bg-[#10151d] p-4 sm:p-5"
+                    data-vorta-shift-handover-confirmation-history-item="true"
+                  >
+                    <header className="grid min-w-0 gap-1 text-xs text-slate-500 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-3">
+                      <span className="min-w-0 break-words font-medium text-slate-300 [overflow-wrap:anywhere]">
+                        {confirmation.confirmedBy ?? "Unknown engineer"}
+                      </span>
+                      <time className="whitespace-nowrap" dateTime={confirmation.timestamp ?? undefined}>
+                        {formatTimestamp(confirmation.timestamp)}
+                      </time>
+                    </header>
+                    {metadata.length > 0 ? (
+                      <div
+                        className="mt-3 flex min-w-0 flex-wrap gap-2"
+                        data-vorta-shift-handover-confirmation-metadata="true"
+                      >
+                        {metadata.map((entry) => (
+                          <span key={entry} className="max-w-full break-words rounded-md border border-gray-700 bg-[#0d1117] px-2 py-1 text-xs text-slate-400 [overflow-wrap:anywhere]">
+                            {entry}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p
+                      className="mt-4 whitespace-pre-wrap break-words border-t border-gray-800 pt-4 text-sm leading-6 text-slate-300 [overflow-wrap:anywhere]"
+                      data-vorta-shift-handover-confirmation-body="true"
+                    >
+                      {confirmation.text || "No confirmation text was supplied."}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No confirmations have been posted against this work order.</p>
+          )}
         </DetailSection>
 
         <DetailSection title={`Spares used (${item.sparesUsed.length})`}>

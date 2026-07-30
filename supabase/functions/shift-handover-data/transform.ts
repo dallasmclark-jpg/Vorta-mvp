@@ -110,13 +110,54 @@ function workHours(confirmations: AnyRow[]): number {
   }, 0);
 }
 
+function hasFinalCompletionEvidence(
+  order: AnyRow,
+  confirmations: AnyRow[],
+): boolean {
+  const hasFinalConfirmation = confirmations.some(
+    (row) => Boolean(row.final_confirmation) && !Boolean(row.reversal),
+  );
+  const statusCodes = lowerJoined([
+    order.system_status_codes,
+    order.user_status_codes,
+    order.status,
+  ]);
+  const hasExplicitClosureCode = /\b(teco|clsd)\b/.test(statusCodes);
+  const orderStatus = text(order.status)
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const hasExplicitClosedState = new Set([
+    "complete",
+    "completed",
+    "closed",
+    "technically complete",
+    "technically completed",
+    "business complete",
+    "business completed",
+  ]).has(orderStatus);
+  const hasCompletionTimestamp = Boolean(
+    order.technical_completion_at
+    || order.business_completion_at
+    || order.completed_at
+    || order.completed_date
+    || order.closed_at,
+  );
+
+  return hasFinalConfirmation
+    || hasExplicitClosureCode
+    || hasExplicitClosedState
+    || hasCompletionTimestamp;
+}
+
 function statusFor(
   order: AnyRow,
   confirmations: AnyRow[],
   outstandingReservationCount: number,
 ): HandoverStatus {
   const latestText = confirmations[0]?.confirmation_text;
-  const evidence = lowerJoined([
+  const operationalEvidence = lowerJoined([
     order.status,
     order.outcome,
     order.system_status_codes,
@@ -125,33 +166,29 @@ function statusFor(
     order.main_work_center,
     latestText,
   ]);
-  const hasFinalConfirmation = confirmations.some((row) => row.final_confirmation && !row.reversal);
 
   if (
     outstandingReservationCount > 0 ||
-    /waiting parts|waiting on parts|parts required|material shortage|\bmspt\b|awaiting spare|awaiting material/.test(evidence)
+    /waiting parts|waiting on parts|parts required|material shortage|\bmspt\b|awaiting spare|awaiting material/.test(operationalEvidence)
   ) {
     return "waiting_on_parts";
   }
-  if (/contractor|external|vendor|oem support|specialist/.test(evidence)) {
+  if (/contractor|external|vendor|oem support|specialist/.test(operationalEvidence)) {
     return "external_contractor";
   }
-  if (/waiting production|awaiting production|production access|line release|permit to work/.test(evidence)) {
+  if (/waiting production|awaiting production|production access|line release|permit to work/.test(operationalEvidence)) {
     return "waiting_on_production";
   }
-  if (/temporary|temporarily|temporary repair|running with restriction|restored pending/.test(evidence)) {
+  if (/temporary|temporarily|temporary repair|running with restriction|restored pending/.test(operationalEvidence)) {
     return "temporarily_restored";
   }
-  if (/monitor|observation|watching|trend/.test(evidence)) {
+  if (/monitor|observation|watching|trend/.test(operationalEvidence)) {
     return "monitoring";
   }
-  if (/defer|deferred|postponed|shutdown scope/.test(evidence)) {
+  if (/defer|deferred|postponed|shutdown scope/.test(operationalEvidence)) {
     return "deferred";
   }
-  if (
-    hasFinalConfirmation ||
-    /completed|complete|closed|\bteco\b|\bclsd\b|returned to service/.test(evidence)
-  ) {
+  if (hasFinalCompletionEvidence(order, confirmations)) {
     return "completed";
   }
   return "ongoing";
@@ -385,7 +422,7 @@ export function buildShiftHandoverPayload(input: {
     },
     summary: {
       total: items.length,
-      ongoing: items.filter((item) => item.status !== "completed").length,
+      ongoing: items.filter((item) => item.status === "ongoing").length,
       completed: items.filter((item) => item.status === "completed").length,
       waitingOnParts: items.filter((item) => item.status === "waiting_on_parts").length,
       externalContractor: items.filter((item) => item.status === "external_contractor").length,

@@ -131,18 +131,44 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible();
+  const visibleStatuses = await cards.evaluateAll((nodes) => nodes.map((node) =>
+    node.querySelector<HTMLElement>("[data-vorta-shift-handover-card-status]")?.dataset.vortaShiftHandoverCardStatus ?? "",
+  ));
+  const completedCount = visibleStatuses.filter((status) => status === "completed").length;
+  const ongoingCount = visibleStatuses.filter((status) => status === "ongoing").length;
+  const waitingCount = visibleStatuses.filter((status) => status === "waiting_on_parts").length;
+  await expect(page.locator('[data-vorta-shift-handover-metric="completed"] > p').first()).toHaveText(String(completedCount));
+  await expect(page.locator('[data-vorta-shift-handover-metric="ongoing"] > p').first()).toHaveText(String(ongoingCount));
+  await expect(page.locator('[data-vorta-shift-handover-metric="waiting-parts"] > p').first()).toHaveText(String(waitingCount));
+
+  const selectedCardStatus = await cards.first().locator("[data-vorta-shift-handover-card-status]").getAttribute("data-vorta-shift-handover-card-status");
   await cards.first().click();
+  const detailPanel = viewportWidth < 1280
+    ? page.getByRole("dialog", { name: "Detail panel" })
+    : page.locator('aside [data-vorta-shift-handover-detail="true"]').first();
+  await expect(detailPanel).toBeVisible();
+  await expect(detailPanel.locator('[data-vorta-shift-handover-detail="true"]')).toBeVisible();
+  await expect(detailPanel.getByText("Incoming shift action", { exact: true })).toBeVisible();
+  await expect(detailPanel.getByRole("button", { name: "Open equipment work orders" })).toBeVisible();
+  await expect(detailPanel.locator("[data-vorta-shift-handover-detail-status]")).toHaveAttribute(
+    "data-vorta-shift-handover-detail-status",
+    selectedCardStatus ?? "",
+  );
+  const detailStatus = await detailPanel.locator("[data-vorta-shift-handover-detail-status]").getAttribute("data-vorta-shift-handover-detail-status");
+  const summaryText = (await detailPanel.locator("[data-vorta-shift-handover-confirmation-summary]").textContent())?.toLowerCase() ?? "";
+  if (detailStatus === "completed") {
+    expect(summaryText).not.toContain("remains open");
+  }
+  const historyItems = detailPanel.locator("[data-vorta-shift-handover-confirmation-history-item]");
+  for (let index = 0; index < await historyItems.count(); index += 1) {
+    const historyItem = historyItems.nth(index);
+    await expect(historyItem.locator("[data-vorta-shift-handover-confirmation-body]")).toHaveCount(1);
+    expect(await historyItem.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  }
+  await expect(detailPanel.locator('[data-vorta-shift-handover-location="true"]')).toBeVisible();
   if (viewportWidth < 1280) {
-    const detailDialog = page.getByRole("dialog", { name: "Detail panel" });
-    await expect(detailDialog).toBeVisible();
-    await expect(detailDialog.locator('[data-vorta-shift-handover-detail="true"]')).toBeVisible();
-    await expect(detailDialog.getByText("Incoming shift action", { exact: true })).toBeVisible();
-    await expect(detailDialog.getByRole("button", { name: "Open equipment work orders" })).toBeVisible();
-    await detailDialog.getByRole("button", { name: "Close", exact: true }).click();
-    await expect(detailDialog).toBeHidden();
-  } else {
-    await expect(page.locator('aside [data-vorta-shift-handover-detail="true"]')).toBeVisible();
-    await expect(page.getByText("Incoming shift action", { exact: true })).toBeVisible();
+    await detailPanel.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(detailPanel).toBeHidden();
   }
 
   await expect(reviewPeriod).toHaveValue("24");

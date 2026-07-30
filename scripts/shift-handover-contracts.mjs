@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { transform as transpile } from "esbuild";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -11,6 +12,113 @@ const edge = read("supabase/functions/shift-handover-data/index.ts");
 const transform = read("supabase/functions/shift-handover-data/transform.ts");
 const surfaces = read("src/card-surfaces.css");
 const browser = read("tests/browser/maintenance-manager-shift-handover.spec.ts");
+
+
+const compiledTransform = await transpile(transform, {
+  loader: "ts",
+  format: "esm",
+  target: "es2022",
+});
+const transformModule = await import(
+  `data:text/javascript;base64,${Buffer.from(compiledTransform.code).toString("base64")}`
+);
+const buildPayload = transformModule.buildShiftHandoverPayload;
+const baseOrder = (id, overrides = {}) => ({
+  id,
+  wo_number: `WO-${id}`,
+  description: `Work order ${id}`,
+  work_type: "PM01",
+  priority: "2",
+  status: "REL",
+  system_status_codes: ["REL"],
+  user_status_codes: [],
+  equipment_id: "eq-1",
+  assigned_engineer: "Engineer One",
+  main_work_center: "MECH",
+  updated_at: "2026-07-30T08:00:00Z",
+  ...overrides,
+});
+const confirmation = (id, workOrderId, overrides = {}) => ({
+  id,
+  work_order_id: workOrderId,
+  confirmation_timestamp: "2026-07-30T09:00:00Z",
+  confirmation_text: "Inspection completed. The order remains open for planned execution.",
+  confirmed_by: "Engineer With A Deliberately Long Name",
+  work_center: "MECH",
+  actual_work: 0.25,
+  work_unit: "HR",
+  final_confirmation: false,
+  reversal: false,
+  ...overrides,
+});
+const longNote = "Long confirmation note ".repeat(40).trim();
+const fixturePayload = buildPayload({
+  site: { id: "site-1", name: "Test Site", timezone: "Europe/London" },
+  window: {
+    start: "2026-07-29T18:00:00Z",
+    end: "2026-07-30T10:00:00Z",
+    label: "Test window",
+    mode: "latest",
+  },
+  workOrders: [
+    baseOrder("partial"),
+    baseOrder("final"),
+    baseOrder("teco", { system_status_codes: ["REL", "TECO"] }),
+    baseOrder("waiting"),
+    baseOrder("none"),
+    baseOrder("multiple"),
+  ],
+  confirmations: [
+    confirmation("c-partial", "partial"),
+    confirmation("c-final", "final", {
+      confirmation_text: "Work completed and returned to service.",
+      final_confirmation: true,
+    }),
+    confirmation("c-waiting", "waiting", {
+      confirmation_text: "Partial work completed; replacement seal is still required.",
+    }),
+    confirmation("c-multiple-new", "multiple", {
+      confirmation_timestamp: "2026-07-30T09:30:00Z",
+      confirmation_text: longNote,
+    }),
+    confirmation("c-multiple-old", "multiple", {
+      confirmation_timestamp: "2026-07-30T07:30:00Z",
+      confirmation_text: "Earlier inspection note.",
+    }),
+  ],
+  equipment: [{
+    id: "eq-1",
+    name: "Equipment With A Deliberately Long Operational Name",
+    equipment_code: "EQ-001",
+    area: "Fill Finish",
+    line: "Line One",
+    criticality: "high",
+  }],
+  departments: [],
+  movements: [],
+  reservations: [{
+    id: "r-waiting",
+    work_order_id: "waiting",
+    material_number: "MAT-001",
+    required_quantity: 1,
+    withdrawn_quantity: 0,
+    final_issue: false,
+    base_unit: "EA",
+    reservation_status: "Open",
+  }],
+});
+const fixtureById = new Map(fixturePayload.items.map((item) => [item.id, item]));
+const statusFixtureChecks = [
+  [fixtureById.get("partial")?.status === "ongoing", "Generic words such as completed in a partial confirmation must not complete an open work order."],
+  [fixtureById.get("final")?.status === "completed", "A genuine final confirmation must complete the work order."],
+  [fixtureById.get("teco")?.status === "completed", "An explicit TECO closure code must complete the work order."],
+  [fixtureById.get("waiting")?.status === "waiting_on_parts", "Outstanding material evidence must retain Waiting on parts precedence."],
+  [fixtureById.get("none")?.status === "ongoing", "An open work order with no confirmations must remain ongoing."],
+  [fixtureById.get("multiple")?.confirmations.length === 2 && fixtureById.get("multiple")?.confirmations[0]?.text === longNote, "Multiple confirmations and long notes must remain complete and newest-first."],
+  [fixturePayload.summary.completed === 2, "Completed summary count must include only genuinely completed records."],
+  [fixturePayload.summary.ongoing === 3, "Ongoing summary count must include only normalised ongoing records."],
+  [fixturePayload.summary.waitingOnParts === 1, "Waiting-parts summary count must match the normalised activity status."],
+];
 
 const reviewOptions = [
   "Last 12 hours",
@@ -50,6 +158,12 @@ const assertions = [
   [!edge.includes("slice(0, limit)") && !edge.includes("limit * 5"), "Review-period evidence must not be silently truncated by the old fixed limit."],
   [edge.includes('.from("work_order_goods_movements")') && edge.includes('.from("work_order_material_reservations")'), "The Edge Function must include SAP material evidence."],
   [transform.includes("waiting_on_parts") && transform.includes("external_contractor") && transform.includes("temporarily_restored"), "Normalised handover statuses are incomplete."],
+  [transform.includes("hasFinalCompletionEvidence") && transform.includes("hasExplicitClosureCode"), "Completion must be derived from explicit SAP closure evidence rather than generic confirmation prose."],
+  [page.includes("data-vorta-shift-handover-card-status") && page.includes("data-vorta-shift-handover-detail-status"), "List and detail statuses need a shared normalised-state contract."],
+  [page.includes("latestConfirmationSummary") && page.includes("data-vorta-shift-handover-confirmation-summary"), "Latest confirmation wording must be state-aware."],
+  [page.includes("data-vorta-shift-handover-confirmation-history-item") && page.includes("whitespace-pre-wrap") && page.includes("[overflow-wrap:anywhere]"), "Confirmation history must expand and wrap without clipping or overlap."],
+  [page.includes("data-vorta-shift-handover-functional-location") && page.includes(">Equipment</dt>"), "The neutral location hierarchy must include functional location and equipment."],
+  ...statusFixtureChecks,
   [browser.includes('getByLabel("Review period")') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
   [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, the area rail and retired summary cards."],
   [!page.includes("insert(") && !page.includes("delete("), "Shift Handover SAP evidence must remain read-only."],
@@ -61,4 +175,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover review periods, four-card summary, relevant-area rail and responsive state verified.");
+console.log("✓ Shift Handover review periods, status truth, confirmation detail layout and responsive state verified.");
