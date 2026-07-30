@@ -15,7 +15,9 @@ async function chooseSingleSelect(
   label: string,
   optionLabel: string,
 ): Promise<void> {
-  await page.getByRole("button", { name: label, exact: true }).click();
+  const trigger = page.getByRole("button", { name: label, exact: true });
+  await expect(trigger).toBeVisible({ timeout: 45_000 });
+  await trigger.click();
   const listbox = page.getByRole("listbox", { name: `${label} options` });
   await expect(listbox).toBeVisible();
   await listbox.getByRole("option", { name: optionLabel, exact: true }).click();
