@@ -31,6 +31,33 @@ jobs:
             capture && /^          PY$/ { capture=0; exit }
             capture { sub(/^          /, ""); print }
           ' .github/workflows/vor-026-pr-apply-v2.yml > /tmp/vor-026-apply.py
+          python <<'PATCH'
+          from pathlib import Path
+          path = Path('/tmp/vor-026-apply.py')
+          script = path.read_text()
+          start = script.index("old_empty = '''")
+          end = script.index("page_path.write_text(page)", start)
+          replacement = '''empty_start = page.index(
+              '              <h2 className="mt-4 font-semibold text-slate-300">',
+              page.index('<PackageCheck className="mx-auto h-8 w-8 text-slate-600"'),
+          )
+          empty_end = page.index('            </div>\\n          )}', empty_start)
+          new_empty = \'''              <h2 className="mt-4 font-semibold text-slate-300">
+                {snapshot.items.length === 0
+                  ? reviewPeriodEmptyState(reviewHours)
+                  : "No work orders match the selected filters."}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {snapshot.items.length === 0
+                  ? "No work orders were confirmed in this review period."
+                  : "Return to the site scope or remove a discipline, status or criticality filter."}
+              </p>
+          \'''
+          page = page[:empty_start] + new_empty + "\\n" + page[empty_end:]
+          '''
+          script = script[:start] + replacement + script[end:]
+          path.write_text(script)
+          PATCH
           python /tmp/vor-026-apply.py
 
       - name: Install dependencies
