@@ -48,12 +48,17 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await filtersButton.click();
   }
 
+  await reviewPeriod.selectOption("12");
+  await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
   await expect(page.getByLabel("Criticality")).toBeVisible();
   await expect(page.getByLabel("Status")).toBeVisible();
   await expect(page.getByLabel("Sort by")).toBeVisible();
   await page.getByLabel("Sort by").selectOption("breakdown");
   await expect(cards.first()).toBeVisible();
 
+  await reviewPeriod.selectOption("24");
+  await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
+  await expect(cards.first()).toBeVisible();
   await cards.first().click();
   if (viewportWidth < 1280) {
     const detailDialog = page.getByRole("dialog", { name: "Detail panel" });
