@@ -85,14 +85,26 @@ async function expectUniqueFilteredCards(
   ).toHaveText(String(count));
 }
 
+async function expectEmptyTeamResult(page: Page, team: string): Promise<void> {
+  await expect(page.locator('[data-vorta-shift-handover-card="true"]')).toHaveCount(0);
+  await expect(page.getByText(
+    `No ${team} activity was recorded during the previous 8 shifts.`,
+    { exact: true },
+  )).toBeVisible();
+  await expect(
+    page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first(),
+  ).toHaveText("0");
+}
+
 test("Maintenance team multi-select filters unique Shift Handover work orders", async ({ page }) => {
   test.setTimeout(240_000);
   await signInMaintenanceManager(page);
   await page.goto("/shift-handover");
   await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
 
-  // The full eight-shift fixture contains evidence for every approved team.
-  // Individual review periods are covered by the main Shift Handover regression.
+  // Use the latest imported SAP evidence window. Day Shift currently has no
+  // confirmation in this window, so its individual selection validates the
+  // team-aware empty state rather than inventing a fixture.
   await chooseSingleSelect(page, "Review period", "96");
   await expect(page.getByRole("heading", { name: "Activity from the previous 8 shifts", exact: true })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-card="true"]').first()).toBeVisible({ timeout: 30_000 });
@@ -128,7 +140,8 @@ test("Maintenance team multi-select filters unique Shift Handover work orders", 
     await clearTeams(page);
     await selectTeams(page, [team]);
     await expect(page.getByRole("button", { name: "Maintenance team", exact: true })).toContainText(team);
-    await expectUniqueFilteredCards(page, [team]);
+    if (team === "Day Shift") await expectEmptyTeamResult(page, team);
+    else await expectUniqueFilteredCards(page, [team]);
   }
 
   await clearTeams(page);
