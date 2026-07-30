@@ -70,6 +70,7 @@ export function VortaMultiSelect<TValue extends string>({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const menuReady = menuPosition !== null;
   const selectedSet = useMemo(() => new Set(values), [values]);
   const summary = selectedSummary(values, options, allLabel);
   const selectedOptions = options.filter((option) => selectedSet.has(option.value));
@@ -139,14 +140,19 @@ export function VortaMultiSelect<TValue extends string>({
 
     updateMenuPosition();
     const visualViewport = window.visualViewport;
+    const handleWindowScroll = (event: Event): void => {
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      updateMenuPosition();
+    };
     window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
+    window.addEventListener("scroll", handleWindowScroll, true);
     visualViewport?.addEventListener("resize", updateMenuPosition);
     visualViewport?.addEventListener("scroll", updateMenuPosition);
 
     return () => {
       window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
+      window.removeEventListener("scroll", handleWindowScroll, true);
       visualViewport?.removeEventListener("resize", updateMenuPosition);
       visualViewport?.removeEventListener("scroll", updateMenuPosition);
     };
@@ -165,7 +171,7 @@ export function VortaMultiSelect<TValue extends string>({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !menuPosition) return undefined;
+    if (!open || !menuReady) return undefined;
     const frame = window.requestAnimationFrame(() => {
       const option = optionRefs.current[activeIndex];
       const menu = menuRef.current;
@@ -179,7 +185,7 @@ export function VortaMultiSelect<TValue extends string>({
       option.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeIndex, menuPosition, open]);
+  }, [activeIndex, menuReady, open]);
 
   const closeAndFocusTrigger = (): void => {
     setOpen(false);
@@ -294,12 +300,15 @@ export function VortaMultiSelect<TValue extends string>({
           role="listbox"
           aria-label={`${label} options`}
           aria-multiselectable="true"
-          className="fixed z-[120] overscroll-contain overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1.5 shadow-2xl shadow-black/45"
+          className="fixed z-[120] touch-pan-y overscroll-contain overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1.5 shadow-2xl shadow-black/45"
           style={{
             left: menuPosition.left,
             top: menuPosition.top,
             width: menuPosition.width,
             maxHeight: menuPosition.maxHeight,
+            overscrollBehavior: "contain",
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
           }}
           data-vorta-select-listbox="true"
           data-vorta-multi-select-listbox="true"
