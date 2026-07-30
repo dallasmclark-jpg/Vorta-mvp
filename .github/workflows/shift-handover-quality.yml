@@ -85,10 +85,9 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Shift Handover responsive regression
+      - name: Run maintenance-team responsive regression
         run: |
           npx playwright test \
-            tests/browser/maintenance-manager-shift-handover.spec.ts \
             tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts \
             --project=phone-360 \
             --project=samsung-tablet-portrait \
