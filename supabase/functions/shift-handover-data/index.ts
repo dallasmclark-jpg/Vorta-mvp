@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { context, preflight, response } from "./auth.ts";
 import { buildShiftHandoverPayload } from "./transform.ts";
+import { attachMaintenanceTeamAttribution } from "./teamAttribution.ts";
 import {
   attachShiftCalendarAssignments,
   reviewCalendarDateRange,
@@ -47,7 +48,7 @@ async function loadConfirmations(
   for (let offset = 0; offset < MAX_CONFIRMATIONS; offset += PAGE_SIZE) {
     const { data, error } = await db
       .from("work_order_confirmations")
-      .select("id,site_id,work_order_id,confirmation_number,operation_number,confirmation_text,confirmed_by,work_center,posting_date,confirmation_timestamp,actual_work,work_unit,actual_duration,duration_unit,final_confirmation,reversal,reason_code,source_system,source_updated_at,created_at")
+      .select("id,site_id,work_order_id,confirmation_number,operation_number,confirmation_text,confirmed_by,personnel_number,work_center,posting_date,confirmation_timestamp,actual_work,work_unit,actual_duration,duration_unit,final_confirmation,reversal,reason_code,source_system,source_updated_at,created_at")
       .eq("site_id", siteId)
       .eq("reversal", false)
       .gte("confirmation_timestamp", windowStart)
@@ -126,9 +127,8 @@ Deno.serve(async (req: Request) => {
       }),
       db
         .from("maintenance_shift_teams")
-        .select("code,name,pattern_type")
-        .eq("site_id", siteId)
-        .eq("active", true),
+        .select("id,code,name,pattern_type,active")
+        .eq("site_id", siteId),
     ]);
     if (calendarResult.error) throw calendarResult.error;
     if (teamResult.error) throw teamResult.error;
@@ -136,15 +136,15 @@ Deno.serve(async (req: Request) => {
     const reviewPeriods = attachShiftCalendarAssignments(
       baseReviewPeriods,
       calendarResult.data ?? [],
-      teamResult.data ?? [],
+      (teamResult.data ?? []).filter((row: AnyRow) => row.active),
       timeZone,
     );
     const window = reviewPeriods.find((period) => period.reviewHours === reviewHours)
       ?? reviewPeriods[0];
     if (!window) throw new Error("Shift handover review period could not be resolved");
-    const confirmations = await loadConfirmations(db, siteId, window.start, window.end);
+    const rawConfirmations = await loadConfirmations(db, siteId, window.start, window.end);
     const workOrderIds = [...new Set(
-      confirmations
+      rawConfirmations
         .map((row: AnyRow) => String(row.work_order_id ?? ""))
         .filter(Boolean),
     )];
@@ -230,6 +230,40 @@ Deno.serve(async (req: Request) => {
         .eq("site_id", siteId)
         .in("id", batch);
       return result as { data: AnyRow[] | null; error: unknown };
+    });
+
+    const { data: engineers, error: engineersError } = await db
+      .from("engineers")
+      .select("id,site_id,organisation_id,full_name,discipline")
+      .eq("site_id", siteId)
+      .eq("organisation_id", organisationId);
+    if (engineersError) throw engineersError;
+
+    const engineerIds = (engineers ?? []).map((row: AnyRow) => String(row.id));
+    const [identityResult, membershipResult] = await Promise.all([
+      db
+        .from("engineer_source_identities")
+        .select("engineer_id,site_id,source_system,identity_type,source_identity,mapping_status,confidence_score,valid_from,valid_until,verified_at")
+        .eq("site_id", siteId)
+        .eq("source_system", "SAP")
+        .eq("identity_type", "personnel_number")
+        .eq("mapping_status", "verified"),
+      engineerIds.length
+        ? db
+            .from("maintenance_shift_team_members")
+            .select("team_id,engineer_id,active_from,active_to")
+            .in("engineer_id", engineerIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (identityResult.error) throw identityResult.error;
+    if (membershipResult.error) throw membershipResult.error;
+
+    const confirmations = attachMaintenanceTeamAttribution({
+      confirmations: rawConfirmations,
+      engineers: engineers ?? [],
+      identities: identityResult.data ?? [],
+      memberships: membershipResult.data ?? [],
+      teams: teamResult.data ?? [],
     });
 
     const payload = buildShiftHandoverPayload({

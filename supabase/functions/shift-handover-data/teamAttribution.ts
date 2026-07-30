@@ -150,9 +150,13 @@ export function attachMaintenanceTeamAttribution(input: {
     const engineerId = engineer ? String(engineer.id) : "";
     const attributions = new Map<TeamCode, MaintenanceTeamAttribution>();
     const direct = directAttribution(row);
-    if (direct) attributions.set(direct.code, direct);
 
-    if (engineerId) {
+    // A stable team recorded on the confirmation is authoritative. Historical
+    // membership and specialist scope are fallbacks only, not extra teams to
+    // append to an already-attributed confirmation.
+    if (direct) {
+      attributions.set(direct.code, direct);
+    } else if (engineerId) {
       for (const membership of membershipsByEngineer.get(engineerId) ?? []) {
         if (!validOnDate(date, membership.active_from, membership.active_to)) continue;
         const team = teamsById.get(String(membership.team_id));

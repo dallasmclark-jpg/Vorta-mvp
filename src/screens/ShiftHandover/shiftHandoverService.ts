@@ -1,4 +1,5 @@
 import type { VortaDataMode } from "../../lib/dataTrust";
+import type { VortaMaintenanceTeamCode } from "../../lib/shiftPresentation";
 import {
   clearMaintenancePortalDataCache,
   supabase,
@@ -51,6 +52,12 @@ export function isShiftHandoverReviewHours(
   return REVIEW_HOURS.has(Number(value));
 }
 
+export interface ShiftHandoverMaintenanceTeam {
+  code: Exclude<VortaMaintenanceTeamCode, "UNASSIGNED">;
+  name: string;
+  source: "recorded" | "historical_membership" | "specialist_scope";
+}
+
 export interface ShiftHandoverConfirmation {
   id: string;
   timestamp: string | null;
@@ -62,6 +69,7 @@ export interface ShiftHandoverConfirmation {
   actualDuration: number;
   durationUnit: string | null;
   finalConfirmation: boolean;
+  maintenanceTeams: ShiftHandoverMaintenanceTeam[];
 }
 
 export interface ShiftHandoverSpareUsed {
@@ -108,6 +116,8 @@ export interface ShiftHandoverItem {
   functionalLocation: string | null;
   discipline: ShiftHandoverDiscipline;
   assignedEngineer: string | null;
+  maintenanceTeams: ShiftHandoverMaintenanceTeam[];
+  hasUnassignedActivity: boolean;
   mainWorkCenter: string | null;
   breakdownMinutes: number;
   confirmedWorkHours: number;
@@ -176,6 +186,28 @@ function stringArray(value: unknown): string[] {
     : [];
 }
 
+function parseMaintenanceTeam(value: unknown): ShiftHandoverMaintenanceTeam | null {
+  const row = objectValue(value);
+  const code = stringValue(row?.code).toUpperCase();
+  const source = stringValue(row?.source);
+  if (
+    !row
+    || !["BLUE", "RED", "GREEN", "YELLOW", "DAYS", "CALIBRATION"].includes(code)
+    || !["recorded", "historical_membership", "specialist_scope"].includes(source)
+  ) return null;
+  return {
+    code: code as ShiftHandoverMaintenanceTeam["code"],
+    name: stringValue(row.name),
+    source: source as ShiftHandoverMaintenanceTeam["source"],
+  };
+}
+
+function parseMaintenanceTeams(value: unknown): ShiftHandoverMaintenanceTeam[] {
+  return Array.isArray(value)
+    ? value.map(parseMaintenanceTeam).filter((item): item is ShiftHandoverMaintenanceTeam => Boolean(item))
+    : [];
+}
+
 function parseConfirmation(value: unknown): ShiftHandoverConfirmation | null {
   const row = objectValue(value);
   if (!row || !stringValue(row.id)) return null;
@@ -190,6 +222,7 @@ function parseConfirmation(value: unknown): ShiftHandoverConfirmation | null {
     actualDuration: numberValue(row.actualDuration),
     durationUnit: stringValue(row.durationUnit) || null,
     finalConfirmation: Boolean(row.finalConfirmation),
+    maintenanceTeams: parseMaintenanceTeams(row.maintenanceTeams),
   };
 }
 
@@ -279,6 +312,8 @@ function parseItem(value: unknown): ShiftHandoverItem | null {
     functionalLocation: stringValue(row.functionalLocation) || null,
     discipline: allowedDiscipline,
     assignedEngineer: stringValue(row.assignedEngineer) || null,
+    maintenanceTeams: parseMaintenanceTeams(row.maintenanceTeams),
+    hasUnassignedActivity: Boolean(row.hasUnassignedActivity),
     mainWorkCenter: stringValue(row.mainWorkCenter) || null,
     breakdownMinutes: numberValue(row.breakdownMinutes),
     confirmedWorkHours: numberValue(row.confirmedWorkHours),

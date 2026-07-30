@@ -68,6 +68,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   const searchInput = page.getByPlaceholder("Search work order or equipment");
+  const maintenanceTeamSelect = page.getByRole("button", { name: "Maintenance team", exact: true });
   const criticalitySelect = page.getByRole("button", { name: "Criticality", exact: true });
   const statusSelect = page.getByRole("button", { name: "Status", exact: true });
   const sortSelect = page.getByRole("button", { name: "Sort by", exact: true });
@@ -87,6 +88,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   if (viewportWidth < 1024) {
     const filtersButton = page.getByRole("button", { name: "Filters", exact: true });
     await expect(filtersButton).toBeVisible();
+    await expect(maintenanceTeamSelect).toBeHidden();
     await expect(criticalitySelect).toBeHidden();
     await expect(statusSelect).toBeHidden();
     await expect(sortSelect).toBeHidden();
@@ -97,6 +99,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     expect(reviewBox?.y ?? 0).toBeLessThan(searchBox?.y ?? Number.MAX_SAFE_INTEGER);
     expect(searchBox?.y ?? 0).toBeLessThan(filtersBox?.y ?? Number.MAX_SAFE_INTEGER);
   } else {
+    await expect(maintenanceTeamSelect).toBeVisible();
     await expect(criticalitySelect).toBeVisible();
     await expect(statusSelect).toBeVisible();
     await expect(sortSelect).toBeVisible();
@@ -139,7 +142,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   const scrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
   await chooseVortaSelect(page, "Review period", "Previous 2 shifts · 24 hours");
   await expect(page).toHaveURL(/review=24/);
-  await expect(page.getByRole("heading", { name: "Previous 2 shifts: Activity from the previous 2 shifts" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Activity from the previous 2 shifts", exact: true })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-date-group]').first()).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
@@ -153,7 +156,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   }
 
   await chooseVortaSelect(page, "Review period", "Previous shift · 12 hours");
-  await expect(page.getByRole("heading", { name: "Previous shift: Previous shift activity", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Previous shift activity", exact: true })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(criticalitySelect).toBeVisible();
   await expect(statusSelect).toBeVisible();
@@ -181,9 +184,10 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await expect(clearFilters).toBeHidden();
   }
   await expect(cards.first()).toBeVisible();
+  await expect(cards.first().locator('[data-vorta-shift-handover-team-badges="true"]')).toBeVisible();
 
   await chooseVortaSelect(page, "Review period", "Previous 2 shifts · 24 hours");
-  await expect(page.getByRole("heading", { name: "Previous 2 shifts: Activity from the previous 2 shifts" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Activity from the previous 2 shifts", exact: true })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible();
   const visibleStatuses = await cards.evaluateAll((nodes) => nodes.map((node) =>

@@ -330,6 +330,24 @@ export function buildShiftHandoverPayload(input: {
     const latestConfirmation = orderConfirmations[0];
     const contractor = status === "external_contractor";
     const equipmentName = text(equipmentRow?.name) || "Unknown equipment";
+    const maintenanceTeamMap = new Map<string, AnyRow>();
+    let hasUnassignedActivity = false;
+    for (const confirmation of orderConfirmations) {
+      const teams = Array.isArray(confirmation.maintenance_teams)
+        ? confirmation.maintenance_teams
+        : [];
+      if (teams.length === 0) hasUnassignedActivity = true;
+      for (const team of teams) {
+        const code = text(team.code).toUpperCase();
+        if (!code || maintenanceTeamMap.has(code)) continue;
+        maintenanceTeamMap.set(code, {
+          code,
+          name: text(team.name),
+          source: text(team.source),
+        });
+      }
+    }
+    const maintenanceTeams = [...maintenanceTeamMap.values()];
 
     return {
       id: order.id,
@@ -355,6 +373,8 @@ export function buildShiftHandoverPayload(input: {
       functionalLocation: text(order.functional_location_code) || null,
       discipline,
       assignedEngineer: text(order.assigned_engineer) || text(latestConfirmation?.confirmed_by) || null,
+      maintenanceTeams,
+      hasUnassignedActivity,
       mainWorkCenter: text(order.main_work_center) || text(latestConfirmation?.work_center) || null,
       breakdownMinutes,
       confirmedWorkHours: Number(workHours(orderConfirmations).toFixed(2)),
@@ -373,6 +393,13 @@ export function buildShiftHandoverPayload(input: {
         actualDuration: numeric(row.actual_duration),
         durationUnit: text(row.duration_unit) || null,
         finalConfirmation: Boolean(row.final_confirmation),
+        maintenanceTeams: Array.isArray(row.maintenance_teams)
+          ? row.maintenance_teams.map((team: AnyRow) => ({
+              code: text(team.code).toUpperCase(),
+              name: text(team.name),
+              source: text(team.source),
+            })).filter((team: AnyRow) => Boolean(team.code && team.name))
+          : [],
       })),
       sparesUsed: spares.used,
       outstandingMaterials: spares.outstanding,
