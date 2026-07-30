@@ -1,0 +1,52 @@
+name: Apply VOR-029 mobile dropdown refinement
+
+on:
+  push:
+    branches:
+      - feature/vor-029-mobile-dropdown-refinement
+    paths:
+      - scripts/apply-vor-029-mobile-refinement.py
+      - .github/workflows/apply-vor-029-mobile-refinement.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out refinement branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/vor-029-mobile-dropdown-refinement
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused refinement
+        run: python scripts/apply-vor-029-mobile-refinement.py
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run focused contracts and production build
+        run: |
+          npm run typecheck
+          node scripts/shift-handover-contracts.mjs
+          npm run test:smoke
+          npm run build
+
+      - name: Commit validated implementation
+        shell: bash
+        run: |
+          rm .github/workflows/apply-vor-029-mobile-refinement.yml
+          rm scripts/apply-vor-029-mobile-refinement.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-029: refine mobile Shift Handover dropdowns and filters"
+          git push origin HEAD:feature/vor-029-mobile-dropdown-refinement
