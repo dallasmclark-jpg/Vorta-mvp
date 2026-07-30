@@ -21,6 +21,24 @@ export type ShiftHandoverDiscipline =
   | "facilities";
 
 export type ShiftHandoverReviewHours = 12 | 24 | 36 | 48 | 96;
+export type ShiftHandoverReviewShiftType = "day" | "night";
+
+export interface ShiftHandoverReviewShift {
+  type: ShiftHandoverReviewShiftType;
+  label: string;
+  start: string;
+  end: string;
+}
+
+export interface ShiftHandoverReviewPeriod {
+  start: string;
+  end: string;
+  label: string;
+  mode: "previous" | "latest";
+  reviewHours: ShiftHandoverReviewHours;
+  shiftCount: number;
+  shifts: ShiftHandoverReviewShift[];
+}
 
 const REVIEW_HOURS = new Set<number>([12, 24, 36, 48, 96]);
 
@@ -113,13 +131,8 @@ export interface ShiftHandoverSnapshot {
     name: string;
     timezone: string;
   };
-  window: {
-    start: string;
-    end: string;
-    label: string;
-    mode: "previous" | "latest";
-    reviewHours: ShiftHandoverReviewHours;
-  };
+  window: ShiftHandoverReviewPeriod;
+  reviewPeriods: ShiftHandoverReviewPeriod[];
   items: ShiftHandoverItem[];
   scopeOptions: {
     buildings: string[];
@@ -282,6 +295,42 @@ function parseItem(value: unknown): ShiftHandoverItem | null {
   };
 }
 
+function parseReviewShift(value: unknown): ShiftHandoverReviewShift | null {
+  const row = objectValue(value);
+  const type = stringValue(row?.type).toLowerCase();
+  if (!row || !["day", "night"].includes(type)) return null;
+  const start = stringValue(row.start);
+  const end = stringValue(row.end);
+  if (!start || !end) return null;
+  return {
+    type: type as ShiftHandoverReviewShiftType,
+    label: stringValue(row.label) || (type === "day" ? "Day" : "Night"),
+    start,
+    end,
+  };
+}
+
+function parseReviewPeriod(value: unknown): ShiftHandoverReviewPeriod | null {
+  const row = objectValue(value);
+  if (!row || !isShiftHandoverReviewHours(row.reviewHours)) return null;
+  const reviewHours = Number(row.reviewHours) as ShiftHandoverReviewHours;
+  const shifts = Array.isArray(row.shifts)
+    ? row.shifts.map(parseReviewShift).filter((shift): shift is ShiftHandoverReviewShift => Boolean(shift))
+    : [];
+  const start = stringValue(row.start) || shifts[0]?.start || "";
+  const end = stringValue(row.end) || shifts.at(-1)?.end || "";
+  if (!start || !end) return null;
+  return {
+    start,
+    end,
+    label: stringValue(row.label),
+    mode: row.mode === "latest" ? "latest" : "previous",
+    reviewHours,
+    shiftCount: numberValue(row.shiftCount) || reviewHours / 12,
+    shifts,
+  };
+}
+
 function parseSnapshot(value: unknown): ShiftHandoverSnapshot {
   const root = objectValue(value);
   const site = objectValue(root?.site);
@@ -296,6 +345,11 @@ function parseSnapshot(value: unknown): ShiftHandoverSnapshot {
   const items = Array.isArray(root.items)
     ? root.items.map(parseItem).filter((item): item is ShiftHandoverItem => Boolean(item))
     : [];
+  const parsedWindow = parseReviewPeriod(window);
+  if (!parsedWindow) throw new Error("Shift handover returned an invalid completed-shift window.");
+  const reviewPeriods = Array.isArray(root.reviewPeriods)
+    ? root.reviewPeriods.map(parseReviewPeriod).filter((period): period is ShiftHandoverReviewPeriod => Boolean(period))
+    : [];
 
   return {
     siteId: stringValue(root.siteId) || stringValue(site.id),
@@ -305,15 +359,8 @@ function parseSnapshot(value: unknown): ShiftHandoverSnapshot {
       name: stringValue(site.name),
       timezone: stringValue(site.timezone) || "Europe/London",
     },
-    window: {
-      start: stringValue(window.start),
-      end: stringValue(window.end),
-      label: stringValue(window.label),
-      mode: window.mode === "latest" ? "latest" : "previous",
-      reviewHours: isShiftHandoverReviewHours(window.reviewHours)
-        ? Number(window.reviewHours) as ShiftHandoverReviewHours
-        : 12,
-    },
+    window: parsedWindow,
+    reviewPeriods: reviewPeriods.length > 0 ? reviewPeriods : [parsedWindow],
     items,
     scopeOptions: {
       buildings: stringArray(scopeOptions.buildings),

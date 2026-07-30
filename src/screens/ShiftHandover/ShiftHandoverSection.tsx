@@ -31,6 +31,7 @@ import {
 import { VortaSelect } from "../../components/VortaSelect";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
+import { getVortaShiftPresentation } from "../../lib/shiftPresentation";
 import {
   getEffectiveDataMode,
   type VortaDataMode,
@@ -66,11 +67,11 @@ const REVIEW_PERIOD_OPTIONS: Array<{
   value: ShiftHandoverReviewHours;
   label: string;
 }> = [
-  { value: 12, label: "Last 12 hours" },
-  { value: 24, label: "Last 24 hours" },
-  { value: 36, label: "Last 36 hours" },
-  { value: 48, label: "Last 48 hours" },
-  { value: 96, label: "Last 4 days" },
+  { value: 12, label: "Previous shift · 12 hours" },
+  { value: 24, label: "Previous 2 shifts · 24 hours" },
+  { value: 36, label: "Previous 3 shifts · 36 hours" },
+  { value: 48, label: "Previous 4 shifts · 48 hours" },
+  { value: 96, label: "Previous 8 shifts · 4 days" },
 ];
 
 const CRITICALITY_OPTIONS: Array<{ value: CriticalityFilter; label: string }> = [
@@ -95,27 +96,28 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: "recent", label: "Most recent" },
 ];
 
-function reviewPeriodLabel(reviewHours: ShiftHandoverReviewHours): string {
-  return REVIEW_PERIOD_OPTIONS.find((option) => option.value === reviewHours)?.label
-    ?? "Last 12 hours";
+function reviewShiftCount(reviewHours: ShiftHandoverReviewHours): number {
+  return reviewHours / 12;
 }
 
 function reviewPeriodHeading(reviewHours: ShiftHandoverReviewHours): string {
-  if (reviewHours === 12) return "Previous shift activity";
-  if (reviewHours === 96) return "Activity from the last 4 days";
-  return `Activity from the last ${reviewHours} hours`;
+  const count = reviewShiftCount(reviewHours);
+  if (count === 1) return "Previous shift: Previous shift activity";
+  return `Previous ${count} shifts: Activity from the previous ${count} shifts`;
 }
 
 function reviewPeriodEmptyState(reviewHours: ShiftHandoverReviewHours): string {
-  return reviewHours === 96
-    ? "No handover activity recorded in the last 4 days."
-    : `No handover activity recorded in the last ${reviewHours} hours.`;
+  const count = reviewShiftCount(reviewHours);
+  return count === 1
+    ? "No handover activity was recorded during the previous shift."
+    : `No work orders were recorded during the previous ${count} shifts.`;
 }
 
 function reviewPeriodLoadingState(reviewHours: ShiftHandoverReviewHours): string {
-  return reviewHours === 96
-    ? "Loading activity from the last 4 days…"
-    : `Loading activity from the last ${reviewHours} hours…`;
+  const count = reviewShiftCount(reviewHours);
+  return count === 1
+    ? "Loading activity from the previous shift…"
+    : `Loading activity from the previous ${count} shifts…`;
 }
 
 function localDateParts(value: string, timeZone: string): {
@@ -1125,6 +1127,21 @@ export function ShiftHandoverSection(): JSX.Element {
     ));
   }, [snapshot?.items]);
 
+  const reviewPeriodOptions = useMemo(() => REVIEW_PERIOD_OPTIONS.map((option) => {
+    const period = snapshot?.reviewPeriods.find((candidate) => candidate.reviewHours === option.value);
+    return {
+      ...option,
+      supportingItems: period?.shifts.map((shift) => {
+        const presentation = getVortaShiftPresentation(shift.type, shift.label);
+        return {
+          label: presentation.label,
+          dotClassName: presentation.dotClassName,
+          textClassName: presentation.textClassName,
+        };
+      }),
+    };
+  }), [snapshot?.reviewPeriods]);
+
   const activeAdvancedFilterCount = Number(criticality !== "all")
     + Number(status !== "all");
   const hasActiveAdvancedFilters = criticality !== "all"
@@ -1252,7 +1269,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
       {snapshot ? (
         <>
           <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-  <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
+  <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected shift period" icon={Wrench} />
   <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
   <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
   <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
@@ -1261,7 +1278,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
           <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
   <div>
     <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
-    <p className="mt-1 text-xs text-slate-500">Site and areas with activity in the selected review period.</p>
+    <p className="mt-1 text-xs text-slate-500">Site and areas with activity in the selected shift period.</p>
   </div>
 
   <div className="relative mt-4">
@@ -1296,7 +1313,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
     <VortaSelect
       label="Review period"
       value={reviewHours}
-      options={REVIEW_PERIOD_OPTIONS}
+      options={reviewPeriodOptions}
       onChange={(nextValue) => changeReviewPeriod(String(nextValue))}
       disabled={loading}
       className="w-full sm:max-w-xs"
@@ -1435,7 +1452,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
     </h2>
     <p className="mt-1 text-sm text-slate-600">
       {snapshot.items.length === 0
-        ? "No work orders were confirmed in this review period."
+        ? "No work orders were confirmed in the selected completed shifts."
         : "Return to Site or clear the search, status or criticality filters."}
     </p>
 
