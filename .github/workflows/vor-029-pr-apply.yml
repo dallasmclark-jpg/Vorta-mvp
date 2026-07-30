@@ -1,0 +1,48 @@
+name: Apply VOR-029 on pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/vor-029-vorta-shift-handover-dropdowns'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/vor-029-vorta-shift-handover-dropdowns
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused dropdown migration
+        run: python scripts/apply-vor-029.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run focused validation
+        run: |
+          npm run typecheck
+          node scripts/shift-handover-contracts.mjs
+          npm run build
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          rm .github/workflows/vor-029-apply.yml
+          rm .github/workflows/vor-029-pr-apply.yml
+          rm scripts/apply-vor-029.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-029: use Vorta dropdowns in Shift Handover"
+          git push origin HEAD:feature/vor-029-vorta-shift-handover-dropdowns
