@@ -1,22 +1,25 @@
 name: Apply VOR-031 maintenance team filter
 
 on:
-  push:
+  pull_request:
     branches:
       - main
-      - vorta/vor-031-maintenance-team-filter
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: ${{ !contains(github.event.head_commit.message, '[skip vor-031 apply]') }}
+    if: ${{ github.event.pull_request.head.ref == 'vorta/vor-031-finalise' && !contains(github.event.pull_request.head.sha, '[skip vor-031 apply]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -32,10 +35,12 @@ jobs:
           rm scripts/vor-031-ui.py
           rm scripts/vor-031-tests.py
           rm -f .github/vor-031-trigger
+          rm -f .github/vor-031-main-trigger
+          rm -f .github/vor-031-finalise-trigger
           rm .github/workflows/vor-031-apply.yml
       - name: Commit implementation
         env:
-          TARGET_BRANCH: ${{ github.ref_name }}
+          TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           git config user.name "Vorta automation"
           git config user.email "actions@users.noreply.github.com"
