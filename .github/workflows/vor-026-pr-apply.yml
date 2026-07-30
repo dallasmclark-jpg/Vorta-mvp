@@ -23,14 +23,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Extract and run focused transformation
+      - name: Extract and run corrected transformation
         shell: bash
         run: |
           awk '
             /python <<'"'"'PY'"'"'/ { capture=1; next }
             capture && /^          PY$/ { capture=0; exit }
             capture { sub(/^          /, ""); print }
-          ' .github/workflows/vor-026-apply.yml > /tmp/vor-026-apply.py
+          ' .github/workflows/vor-026-pr-apply-v2.yml > /tmp/vor-026-apply.py
           python /tmp/vor-026-apply.py
 
       - name: Install dependencies
@@ -45,9 +45,14 @@ jobs:
       - name: Commit focused implementation
         shell: bash
         run: |
-          rm .github/workflows/vor-026-apply.yml .github/workflows/vor-026-pr-apply.yml
+          rm -f \
+            .github/workflows/vor-026-apply.yml \
+            .github/workflows/vor-026-pr-apply.yml \
+            .github/workflows/vor-026-pr-apply-v2.yml \
+            scripts/vor-026-trigger.txt \
+            scripts/vor-026-acceptance.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/screens/ShiftHandover/ShiftHandoverSection.tsx tests/browser/maintenance-manager-shift-handover.spec.ts scripts/shift-handover-contracts.mjs .github/workflows/vor-026-apply.yml .github/workflows/vor-026-pr-apply.yml
+          git add -A
           git commit -m "VOR-026: refine mobile Shift Handover layout"
           git push origin HEAD:feature/vor-026-shift-handover-mobile-refinement
