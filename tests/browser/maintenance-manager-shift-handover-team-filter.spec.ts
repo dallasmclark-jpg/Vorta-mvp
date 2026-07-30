@@ -67,9 +67,9 @@ async function expectUniqueFilteredCards(
   const count = await cards.count();
   expect(count).toBeGreaterThan(0);
 
-  const workOrders = (await cards.allTextContents())
-    .map((text) => text.match(/WO-\d+/)?.[0] ?? "")
-    .filter(Boolean);
+  const workOrders = await cards.locator("span.text-blue-300").allTextContents();
+  expect(workOrders).toHaveLength(count);
+  expect(workOrders.every((workOrder) => workOrder.trim().length > 0)).toBe(true);
   expect(new Set(workOrders).size).toBe(workOrders.length);
 
   for (const cardText of await cards.allTextContents()) {
