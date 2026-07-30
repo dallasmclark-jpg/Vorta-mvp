@@ -1,11 +1,14 @@
 import { Check, ChevronDown } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 export interface VortaSelectOption<TValue extends string | number> {
   value: TValue;
@@ -21,6 +24,30 @@ interface VortaSelectProps<TValue extends string | number> {
   className?: string;
 }
 
+type MenuPlacement = "top" | "bottom";
+type MenuPosition = {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+  placement: MenuPlacement;
+  compact: boolean;
+};
+
+let openVortaSelectCount = 0;
+
+function updateGlobalSelectState(open: boolean): () => void {
+  if (typeof document === "undefined" || !open) return () => undefined;
+  openVortaSelectCount += 1;
+  document.documentElement.dataset.vortaSelectOpen = "true";
+  return () => {
+    openVortaSelectCount = Math.max(0, openVortaSelectCount - 1);
+    if (openVortaSelectCount === 0) {
+      delete document.documentElement.dataset.vortaSelectOpen;
+    }
+  };
+}
+
 export function VortaSelect<TValue extends string | number>({
   label,
   value,
@@ -32,20 +59,103 @@ export function VortaSelect<TValue extends string | number>({
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
 
   useEffect(() => {
     setActiveIndex(selectedIndex);
   }, [selectedIndex]);
 
   useEffect(() => {
+    if (disabled && open) setOpen(false);
+  }, [disabled, open]);
+
+  useEffect(() => updateGlobalSelectState(open), [open]);
+
+  const updateMenuPosition = useCallback((): void => {
+    if (typeof window === "undefined") return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const visualViewport = window.visualViewport;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+    const viewportLeft = visualViewport?.offsetLeft ?? 0;
+    const viewportWidth = visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
+    const viewportBottom = viewportTop + viewportHeight;
+    const compact = window.matchMedia("(max-width: 639px)").matches;
+    const margin = 12;
+    const gap = 8;
+    const optionHeight = compact ? 38 : 44;
+    const containerPadding = compact ? 8 : 12;
+    const desiredHeight = Math.min(
+      options.length * optionHeight + containerPadding,
+      compact ? 248 : 288,
+    );
+    const spaceBelow = Math.max(0, viewportBottom - rect.bottom - gap - margin);
+    const spaceAbove = Math.max(0, rect.top - viewportTop - gap - margin);
+    const placement: MenuPlacement =
+      spaceBelow >= Math.min(desiredHeight, 160) || spaceBelow >= spaceAbove
+        ? "bottom"
+        : "top";
+    const availableHeight = Math.max(
+      72,
+      Math.min(
+        placement === "bottom" ? spaceBelow : spaceAbove,
+        viewportHeight - margin * 2,
+      ),
+    );
+    const maxHeight = Math.min(desiredHeight, availableHeight);
+    const availableWidth = Math.max(0, viewportWidth - margin * 2);
+    const width = Math.min(rect.width, availableWidth);
+    const left = Math.min(
+      Math.max(rect.left, viewportLeft + margin),
+      viewportLeft + viewportWidth - margin - width,
+    );
+    const top = placement === "bottom"
+      ? Math.min(rect.bottom + gap, viewportBottom - margin - maxHeight)
+      : Math.max(viewportTop + margin, rect.top - gap - maxHeight);
+
+    setMenuPosition({ left, top, width, maxHeight, placement, compact });
+  }, [options.length]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPosition(null);
+      return undefined;
+    }
+
+    updateMenuPosition();
+    const visualViewport = window.visualViewport;
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    visualViewport?.addEventListener("resize", updateMenuPosition);
+    visualViewport?.addEventListener("scroll", updateMenuPosition);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      visualViewport?.removeEventListener("resize", updateMenuPosition);
+      visualViewport?.removeEventListener("scroll", updateMenuPosition);
+    };
+  }, [open, updateMenuPosition]);
+
+  useEffect(() => {
     if (!open) return undefined;
 
     const closeOnOutsidePress = (event: PointerEvent): void => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (
+        !rootRef.current?.contains(target)
+        && !menuRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
     };
 
     document.addEventListener("pointerdown", closeOnOutsidePress);
@@ -53,12 +163,22 @@ export function VortaSelect<TValue extends string | number>({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || !menuPosition) return undefined;
     const frame = window.requestAnimationFrame(() => {
-      optionRefs.current[activeIndex]?.focus({ preventScroll: true });
+      const option = optionRefs.current[activeIndex];
+      const menu = menuRef.current;
+      if (!option || !menu) return;
+      const optionTop = option.offsetTop;
+      const optionBottom = optionTop + option.offsetHeight;
+      if (optionTop < menu.scrollTop) {
+        menu.scrollTop = Math.max(0, optionTop - 4);
+      } else if (optionBottom > menu.scrollTop + menu.clientHeight) {
+        menu.scrollTop = optionBottom - menu.clientHeight + 4;
+      }
+      option.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeIndex, open]);
+  }, [activeIndex, menuPosition, open]);
 
   const closeAndFocusTrigger = (): void => {
     setOpen(false);
@@ -116,6 +236,64 @@ export function VortaSelect<TValue extends string | number>({
   };
 
   const selectedOption = options[selectedIndex] ?? options[0];
+  const menu = open && menuPosition && typeof document !== "undefined"
+    ? createPortal(
+      <>
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[110] bg-transparent"
+          data-vorta-select-backdrop="true"
+          onPointerDown={closeAndFocusTrigger}
+        />
+        <div
+          ref={menuRef}
+          id={listboxId}
+          role="listbox"
+          aria-label={`${label} options`}
+          className="fixed z-[120] overscroll-contain overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1 shadow-2xl shadow-black/45 sm:p-1.5"
+          style={{
+            left: menuPosition.left,
+            top: menuPosition.top,
+            width: menuPosition.width,
+            maxHeight: menuPosition.maxHeight,
+          }}
+          data-vorta-select-listbox="true"
+          data-vorta-select-placement={menuPosition.placement}
+          data-vorta-select-compact={menuPosition.compact ? "true" : "false"}
+        >
+          {options.map((option, index) => {
+            const selected = option.value === value;
+            const active = index === activeIndex;
+            return (
+              <button
+                key={String(option.value)}
+                ref={(node) => { optionRefs.current[index] = node; }}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                tabIndex={active ? 0 : -1}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => selectIndex(index)}
+                onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                className={`flex min-h-[38px] w-full items-center justify-between gap-2.5 rounded-lg border px-2.5 py-1 text-left text-[13px] font-medium leading-5 transition-colors sm:min-h-11 sm:gap-3 sm:px-3 sm:py-2 sm:text-sm ${
+                  selected
+                    ? "border-blue-500/60 bg-[#10151d] text-blue-200"
+                    : active
+                      ? "border-gray-700 bg-[#1a202a] text-slate-100"
+                      : "border-transparent text-slate-300 hover:bg-[#1a202a]"
+                }`}
+                data-value={String(option.value)}
+              >
+                <span className="min-w-0 break-words">{option.label}</span>
+                {selected ? <Check className="h-4 w-4 shrink-0 text-blue-300" aria-hidden="true" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </>,
+      document.body,
+    )
+    : null;
 
   return (
     <div
@@ -149,45 +327,7 @@ export function VortaSelect<TValue extends string | number>({
           aria-hidden="true"
         />
       </button>
-
-      {open ? (
-        <div
-          id={listboxId}
-          role="listbox"
-          aria-label={`${label} options`}
-          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1.5 shadow-2xl shadow-black/45"
-          data-vorta-select-listbox="true"
-        >
-          {options.map((option, index) => {
-            const selected = option.value === value;
-            const active = index === activeIndex;
-            return (
-              <button
-                key={String(option.value)}
-                ref={(node) => { optionRefs.current[index] = node; }}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                tabIndex={active ? 0 : -1}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => selectIndex(index)}
-                onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
-                  selected
-                    ? "border-blue-500/60 bg-[#10151d] text-blue-200"
-                    : active
-                      ? "border-gray-700 bg-[#1a202a] text-slate-100"
-                      : "border-transparent text-slate-300 hover:bg-[#1a202a]"
-                }`}
-                data-value={String(option.value)}
-              >
-                <span className="min-w-0 break-words">{option.label}</span>
-                {selected ? <Check className="h-4 w-4 shrink-0 text-blue-300" aria-hidden="true" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      {menu}
     </div>
   );
 }

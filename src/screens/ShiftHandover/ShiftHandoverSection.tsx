@@ -101,7 +101,7 @@ function reviewPeriodLabel(reviewHours: ShiftHandoverReviewHours): string {
 }
 
 function reviewPeriodHeading(reviewHours: ShiftHandoverReviewHours): string {
-  if (reviewHours === 12) return "Previous shift activity for Last 12 hours";
+  if (reviewHours === 12) return "Previous shift activity";
   if (reviewHours === 96) return "Activity from the last 4 days";
   return `Activity from the last ${reviewHours} hours`;
 }
@@ -954,9 +954,10 @@ export function ShiftHandoverSection(): JSX.Element {
   const [scopeValue, setScopeValue] = useState("all");
   const [criticality, setCriticality] = useState<CriticalityFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [sortMode, setSortMode] = useState<SortMode>("priority");
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const scopeOptionsRef = useRef<HTMLDivElement>(null);
   const [scopeOptionsCanScrollRight, setScopeOptionsCanScrollRight] = useState(false);
   const [workflowActions, setWorkflowActions] = useState<Map<string, ShiftHandoverWorkflowAction>>(new Map());
@@ -1126,6 +1127,15 @@ export function ShiftHandoverSection(): JSX.Element {
 
   const activeAdvancedFilterCount = Number(criticality !== "all")
     + Number(status !== "all");
+  const hasActiveAdvancedFilters = criticality !== "all"
+    || status !== "all"
+    || sortMode !== "recent";
+
+  const clearAdvancedFilters = (): void => {
+    setCriticality("all");
+    setStatus("all");
+    setSortMode("recent");
+  };
 
   useEffect(() => {
     if (scopeValue !== "all" && !scopeAreas.includes(scopeValue)) {
@@ -1324,7 +1334,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
 
     <div
       id="shift-handover-advanced-filters"
-      className={`${filtersOpen ? "grid" : "hidden"} gap-3 lg:contents`}
+      className={`${filtersOpen ? "grid" : "hidden"} gap-2 sm:gap-3 lg:contents`}
     >
       <VortaSelect
         label="Criticality"
@@ -1347,6 +1357,17 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
         onChange={setSortMode}
         disabled={reviewHours > 12}
       />
+
+      {hasActiveAdvancedFilters ? (
+        <button
+          type="button"
+          onClick={clearAdvancedFilters}
+          className="inline-flex min-h-9 items-center justify-center justify-self-start rounded-lg px-2.5 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/10 hover:text-blue-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 lg:hidden"
+          data-vorta-shift-handover-clear-filters="true"
+        >
+          Clear filters
+        </button>
+      ) : null}
     </div>
   </div>
 </section>
@@ -1421,8 +1442,31 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
             </div>
           )}
 
-          <div className="rounded-xl border border-gray-800 bg-[#10151d] px-4 py-3 text-xs leading-5 text-slate-500">
-            Handover status is normalised from SAP work-order status, confirmation text, final confirmations, goods movements and open material reservations. The original SAP status codes remain visible in each detail panel.
+          <div
+            className="rounded-xl border border-gray-800 bg-[#10151d] px-4 py-3"
+            data-vorta-shift-handover-status-disclosure="true"
+          >
+            <button
+              type="button"
+              onClick={() => setStatusInfoOpen((open) => !open)}
+              className="flex min-h-9 w-full items-center justify-between gap-3 text-left text-sm font-medium text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+              aria-expanded={statusInfoOpen}
+              aria-controls="shift-handover-status-explanation"
+            >
+              <span>How handover statuses are calculated</span>
+              <ChevronRight
+                className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${statusInfoOpen ? "rotate-90" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            {statusInfoOpen ? (
+              <p
+                id="shift-handover-status-explanation"
+                className="mt-2 border-t border-gray-800 pt-3 text-xs leading-5 text-slate-500"
+              >
+                Handover status is normalised from SAP work-order status, confirmation text, final confirmations, goods movements and open material reservations. The original SAP status codes remain visible in each detail panel.
+              </p>
+            ) : null}
           </div>
         </>
       ) : null}

@@ -262,6 +262,17 @@ html.dark [data-vorta-page-content="true"] :is(
   display: none !important;
 }
 
+/* Open listboxes own the foreground so floating AI launchers cannot cover options. */
+html[data-vorta-select-open="true"] :is(
+  [data-vorta-shared-mobile-ai-launcher="true"],
+  [data-vorta-ask-vorta-launcher="true"],
+  [data-vorta-floating-ai-launcher="true"]
+) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-vorta-page-content="true"] :where(
     a[aria-label^="View equipment in "],
