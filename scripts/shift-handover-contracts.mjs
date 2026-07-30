@@ -141,9 +141,14 @@ const assertions = [
   [!page.includes("<select") && (page.match(/<VortaSelect/g) ?? []).length === 4, "Shift Handover must not invoke native browser select dialogs."],
   [vortaSelect.includes('role="listbox"') && vortaSelect.includes('role="option"') && vortaSelect.includes('data-vorta-select-listbox="true"'), "The shared Vorta selector must render a styled accessible listbox."],
   [vortaSelect.includes("ArrowDown") && vortaSelect.includes("ArrowUp") && vortaSelect.includes("Home") && vortaSelect.includes("End") && vortaSelect.includes("Escape"), "The Vorta selector must retain keyboard navigation and dismissal."],
+  [vortaSelect.includes("createPortal") && vortaSelect.includes("visualViewport") && vortaSelect.includes('data-vorta-select-placement') && vortaSelect.includes('data-vorta-select-backdrop'), "Vorta selectors must use viewport-aware portalled placement above floating controls."],
+  [vortaSelect.includes('min-h-[38px]') && vortaSelect.includes('sm:min-h-11') && vortaSelect.includes('data-vorta-select-compact'), "Mobile selector options must be compact without changing wider-layout sizing."],
+  [vortaSelect.includes("data-vortaSelectOpen") || vortaSelect.includes("vortaSelectOpen"), "Open selectors must expose a global stacking state."],
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
   [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
+  [page.includes("hasActiveAdvancedFilters") && page.includes("clearAdvancedFilters") && page.includes('data-vorta-shift-handover-clear-filters="true"') && page.includes('setSortMode("recent")'), "Mobile advanced filters need a selective Clear filters action with Most recent as the default sort."],
   [page.includes('id="shift-handover-advanced-filters"') && page.includes("lg:contents"), "Criticality, Status and Sort must collapse on mobile without duplicating wider-layout logic."],
+  [page.includes('data-vorta-shift-handover-status-disclosure="true"') && page.includes("How handover statuses are calculated") && page.includes("statusInfoOpen"), "SAP status guidance must be retained in a closed-by-default disclosure."],
   [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "The shared area rail needs selected-item scrolling and an overflow cue."],
   [(page.match(/<MetricCard/g) ?? []).length === 4 && !page.includes('<MetricCard label="Contractor"') && !page.includes('label="Breakdown"'), "Only the four approved operational summary cards may render."],
   [page.includes("reviewPeriodLoadingState") && page.includes("No work orders match the selected filters."), "Period-aware loading and filter-aware empty states are required."],
@@ -151,7 +156,7 @@ const assertions = [
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
-  [page.includes("Previous shift activity for Last 12 hours") && page.includes("Activity from the last 4 days"), "Activity headings must describe the selected period."],
+  [page.includes('return "Previous shift activity"') && !page.includes("Previous shift activity for Last 12 hours") && page.includes("Activity from the last 4 days"), "Activity headings must describe each period without embedding the dropdown label in a sentence."],
   [service.includes("ShiftHandoverReviewHours") && service.includes("reviewHours"), "The service contract must carry the selected review period."],
   [service.includes('dataMode === "demo" ? "latest" : "previous"'), "Live mode must use the previous completed shift anchor while demo mode may use latest imported evidence."],
   [service.includes("handoverWindowStart") && service.includes("handoverWindowEnd"), "Each item must retain its source 12-hour handover window for workflow writes."],
@@ -169,7 +174,9 @@ const assertions = [
   [page.includes("data-vorta-shift-handover-functional-location") && page.includes(">Equipment</dt>"), "The neutral location hierarchy must include functional location and equipment."],
   ...statusFixtureChecks,
   [browser.includes('getByRole("button", { name: "Review period", exact: true })') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
-  [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, the area rail and retired summary cards."],
+  [browser.includes("Filters · 2") && browser.includes("Clear filters") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, selective clearing, the area rail and retired summary cards."],
+  [browser.includes('data-vorta-select-placement') && browser.includes("visualViewport") && browser.includes('data-vorta-shared-mobile-ai-launcher="true"'), "Browser coverage must verify visual-viewport placement and Ask Vorta stacking."],
+  [surfaces.includes('html[data-vorta-select-open="true"]') && surfaces.includes('data-vorta-shared-mobile-ai-launcher="true"'), "Open dropdowns must suppress the shared floating Ask Vorta launcher."],
   [!page.includes("insert(") && !page.includes("delete("), "Shift Handover SAP evidence must remain read-only."],
 ];
 
@@ -179,4 +186,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover Vorta dropdowns, review periods, status truth, confirmation detail layout and responsive state verified.");
+console.log("✓ Shift Handover compact viewport-safe dropdowns, filters, disclosures, review periods and status truth verified.");

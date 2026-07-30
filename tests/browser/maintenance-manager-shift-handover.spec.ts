@@ -30,8 +30,38 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   const reviewListbox = page.getByRole("listbox", { name: "Review period options" });
   await expect(reviewListbox).toBeVisible();
   await expect(reviewListbox.getByRole("option")).toHaveCount(5);
+  await expect(reviewListbox).toHaveAttribute("data-vorta-select-placement", /top|bottom/);
+  await expect(page.locator("html")).toHaveAttribute("data-vorta-select-open", "true");
+  const openingViewportWidth = page.viewportSize()?.width ?? 1366;
+  const viewportBounds = await page.evaluate(() => {
+    const visualViewport = window.visualViewport;
+    return {
+      top: visualViewport?.offsetTop ?? 0,
+      bottom: (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight),
+    };
+  });
+  const reviewMenuBox = await reviewListbox.boundingBox();
+  expect(reviewMenuBox?.y ?? -1).toBeGreaterThanOrEqual(viewportBounds.top - 1);
+  expect((reviewMenuBox?.y ?? 0) + (reviewMenuBox?.height ?? 0)).toBeLessThanOrEqual(viewportBounds.bottom + 1);
+  if (openingViewportWidth < 640) {
+    await expect(reviewListbox).toHaveAttribute("data-vorta-select-compact", "true");
+    expect(reviewMenuBox?.height ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(210);
+    for (const option of await reviewListbox.getByRole("option").all()) {
+      const optionBox = await option.boundingBox();
+      expect(optionBox?.height ?? 0).toBeGreaterThanOrEqual(36);
+      expect(optionBox?.height ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(40);
+    }
+  }
+  const askVortaLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
+  if (await askVortaLauncher.count()) {
+    await expect(askVortaLauncher).toHaveCSS("visibility", "hidden");
+  }
   await page.keyboard.press("Escape");
   await expect(reviewListbox).toBeHidden();
+  await expect(page.locator("html")).not.toHaveAttribute("data-vorta-select-open", "true");
+  if (await askVortaLauncher.count()) {
+    await expect(askVortaLauncher).not.toHaveCSS("visibility", "hidden");
+  }
 
   const viewportWidth = page.viewportSize()?.width ?? 1366;
   const searchInput = page.getByPlaceholder("Search work order or equipment");
@@ -120,7 +150,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   }
 
   await chooseVortaSelect(page, "Review period", "Last 12 hours");
-  await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Previous shift activity", exact: true })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(criticalitySelect).toBeVisible();
   await expect(statusSelect).toBeVisible();
@@ -138,9 +168,14 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
     await chooseVortaSelect(page, "Sort by", "Criticality");
     await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
-    await chooseVortaSelect(page, "Criticality", "All criticalities");
-    await chooseVortaSelect(page, "Status", "All statuses");
+    const clearFilters = page.getByRole("button", { name: "Clear filters", exact: true });
+    await expect(clearFilters).toBeVisible();
+    await clearFilters.click();
+    await expect(criticalitySelect).toHaveAttribute("data-value", "all");
+    await expect(statusSelect).toHaveAttribute("data-value", "all");
+    await expect(sortSelect).toHaveAttribute("data-value", "recent");
     await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+    await expect(clearFilters).toBeHidden();
   }
   await expect(cards.first()).toBeVisible();
 
@@ -208,7 +243,7 @@ test("Shift Handover sends every approved review period to the evidence boundary
     ["36", "Last 36 hours", "Activity from the last 36 hours"],
     ["48", "Last 48 hours", "Activity from the last 48 hours"],
     ["96", "Last 4 days", "Activity from the last 4 days"],
-    ["12", "Last 12 hours", "Previous shift activity for Last 12 hours"],
+    ["12", "Last 12 hours", "Previous shift activity"],
   ] as const) {
     const evidenceRequest = page.waitForRequest((request) => {
       if (!/\/functions\/v1\/shift-handover-data(?:\?.*)?$/.test(request.url())) return false;
@@ -225,6 +260,131 @@ test("Shift Handover sends every approved review period to the evidence boundary
     await expect(reviewPeriod).toHaveAttribute("data-value", value);
     await expectNoPageOverflow(page);
   }
+});
+
+
+test("Shift Handover mobile dropdowns remain compact, viewport safe and fully clearable", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "phone-360", "Exercise compact Android-sized controls once; responsive presence is covered elsewhere.");
+  test.setTimeout(180_000);
+  await signInMaintenanceManager(page);
+  await page.goto("/shift-handover");
+
+  const scrollContainer = page.locator('[data-vorta-portal-scroll-container="true"]');
+  const filtersButton = page.getByRole("button", { name: "Filters", exact: true });
+  const criticalitySelect = page.getByRole("button", { name: "Criticality", exact: true });
+  const statusSelect = page.getByRole("button", { name: "Status", exact: true });
+  const sortSelect = page.getByRole("button", { name: "Sort by", exact: true });
+  const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
+  const searchInput = page.getByPlaceholder("Search work order or equipment");
+
+  await filtersButton.click();
+  await expect(criticalitySelect).toBeVisible();
+  await expect(statusSelect).toBeVisible();
+  await expect(sortSelect).toBeVisible();
+
+  await criticalitySelect.evaluate((element) => {
+    const container = document.querySelector<HTMLElement>('[data-vorta-portal-scroll-container="true"]');
+    if (!container) return;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const rect = element.getBoundingClientRect();
+    container.scrollTop += rect.bottom - viewportHeight + 24;
+  });
+  await page.waitForTimeout(100);
+  const triggerBox = await criticalitySelect.boundingBox();
+  const visualHeight = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight);
+  expect(triggerBox?.y ?? 0).toBeGreaterThan(visualHeight * 0.45);
+  const scrollBeforeOpen = await scrollContainer.evaluate((element) => element.scrollTop);
+  await criticalitySelect.click();
+  const criticalityListbox = page.getByRole("listbox", { name: "Criticality options" });
+  await expect(criticalityListbox).toBeVisible();
+  await expect(criticalityListbox).toHaveAttribute("data-vorta-select-placement", "top");
+  const listboxBox = await criticalityListbox.boundingBox();
+  const viewport = await page.evaluate(() => ({
+    top: window.visualViewport?.offsetTop ?? 0,
+    bottom: (window.visualViewport?.offsetTop ?? 0) + (window.visualViewport?.height ?? window.innerHeight),
+  }));
+  expect(listboxBox?.y ?? -1).toBeGreaterThanOrEqual(viewport.top - 1);
+  expect((listboxBox?.y ?? 0) + (listboxBox?.height ?? 0)).toBeLessThanOrEqual(viewport.bottom + 1);
+  expect(listboxBox?.height ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(210);
+  const selectedOption = criticalityListbox.getByRole("option", { name: "All criticalities", exact: true });
+  await expect(selectedOption).toBeFocused();
+  const selectedBox = await selectedOption.boundingBox();
+  expect(selectedBox?.y ?? -1).toBeGreaterThanOrEqual((listboxBox?.y ?? 0) - 1);
+  expect((selectedBox?.y ?? 0) + (selectedBox?.height ?? 0)).toBeLessThanOrEqual((listboxBox?.y ?? 0) + (listboxBox?.height ?? 0) + 1);
+  const scrollAfterOpen = await scrollContainer.evaluate((element) => element.scrollTop);
+  expect(Math.abs(scrollAfterOpen - scrollBeforeOpen)).toBeLessThanOrEqual(2);
+  const askVortaLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
+  if (await askVortaLauncher.count()) {
+    await expect(askVortaLauncher).toHaveCSS("visibility", "hidden");
+  }
+  await criticalityListbox.getByRole("option", { name: "High", exact: true }).click();
+  if (await askVortaLauncher.count()) {
+    await expect(askVortaLauncher).not.toHaveCSS("visibility", "hidden");
+  }
+
+  for (const [label, value] of [
+    ["Critical", "critical"],
+    ["High", "high"],
+    ["Medium", "medium"],
+    ["Low", "low"],
+    ["All criticalities", "all"],
+  ] as const) {
+    await chooseVortaSelect(page, "Criticality", label);
+    await expect(criticalitySelect).toHaveAttribute("data-value", value);
+  }
+  for (const [label, value] of [
+    ["Active / ongoing", "active"],
+    ["Waiting / deferred", "waiting"],
+    ["External contractor", "contractor"],
+    ["Completed", "completed"],
+    ["All statuses", "all"],
+  ] as const) {
+    await chooseVortaSelect(page, "Status", label);
+    await expect(statusSelect).toHaveAttribute("data-value", value);
+  }
+  for (const [label, value] of [
+    ["Criticality", "priority"],
+    ["Longest breakdown", "breakdown"],
+    ["Most recent", "recent"],
+  ] as const) {
+    await chooseVortaSelect(page, "Sort by", label);
+    await expect(sortSelect).toHaveAttribute("data-value", value);
+  }
+
+  await searchInput.fill("VF");
+  await chooseVortaSelect(page, "Criticality", "High");
+  await expect(page.getByRole("button", { name: "Filters · 1", exact: true })).toBeVisible();
+  await chooseVortaSelect(page, "Status", "Completed");
+  await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
+  await chooseVortaSelect(page, "Sort by", "Criticality");
+  const clearFilters = page.getByRole("button", { name: "Clear filters", exact: true });
+  await expect(clearFilters).toBeVisible();
+  const scrollBeforeClear = await scrollContainer.evaluate((element) => element.scrollTop);
+  await clearFilters.click();
+  await expect(criticalitySelect).toHaveAttribute("data-value", "all");
+  await expect(statusSelect).toHaveAttribute("data-value", "all");
+  await expect(sortSelect).toHaveAttribute("data-value", "recent");
+  await expect(searchInput).toHaveValue("VF");
+  await expect(reviewPeriod).toHaveAttribute("data-value", "12");
+  await expect(clearFilters).toBeHidden();
+  const scrollAfterClear = await scrollContainer.evaluate((element) => element.scrollTop);
+  expect(scrollAfterClear).toBeGreaterThanOrEqual(Math.max(0, scrollBeforeClear - 80));
+
+  await searchInput.fill("");
+  const statusDisclosure = page.getByRole("button", { name: "How handover statuses are calculated", exact: true });
+  await statusDisclosure.scrollIntoViewIfNeeded();
+  await expect(statusDisclosure).toHaveAttribute("aria-expanded", "false");
+  const disclosureScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
+  await statusDisclosure.click();
+  await expect(statusDisclosure).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText("Handover status is normalised from SAP work-order status", { exact: false })).toBeVisible();
+  const disclosureScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
+  expect(disclosureScrollAfter).toBeGreaterThanOrEqual(Math.max(0, disclosureScrollBefore - 20));
+  await statusDisclosure.click();
+  await expect(statusDisclosure).toHaveAttribute("aria-expanded", "false");
+  await expectNoPageOverflow(page);
 });
 
 test("Shift Handover refreshes the session after a wrapped 401", async ({
