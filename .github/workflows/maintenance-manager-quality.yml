@@ -32,6 +32,14 @@ jobs:
           from pathlib import Path
 
           workflow = Path('.github/workflows/vor-027-apply.yml').read_text()
+          workflow = workflow.replace(
+              "          scope_start = page.index('          <section data-vorta-group-frame=\"true\" className=\"rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5\">')",
+              "          scope_start = page.index('          <section data-vorta-group-frame=\"true\"', page.index('<MetricCard label=\"Waiting parts\"'))",
+          )
+          workflow = workflow.replace(
+              "          search_marker = '  <div className=\"mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(150px,0.45fr))]\">'",
+              "          search_marker = '  <div className=\"mt-4 grid gap-3 border-t border-gray-800 pt-4'",
+          )
           opening = "          python <<'PY'\n"
           closing = "\n          PY\n\n          git diff --check"
           start = workflow.index(opening) + len(opening)
