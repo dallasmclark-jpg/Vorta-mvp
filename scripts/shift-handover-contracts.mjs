@@ -11,6 +11,8 @@ const service = read("src/screens/ShiftHandover/shiftHandoverService.ts");
 const workflow = read("src/screens/ShiftHandover/shiftHandoverWorkflowService.ts");
 const edge = read("supabase/functions/shift-handover-data/index.ts");
 const transform = read("supabase/functions/shift-handover-data/transform.ts");
+const shiftWindows = read("supabase/functions/shift-handover-data/shiftWindows.ts");
+const shiftPresentation = read("src/lib/shiftPresentation.ts");
 const surfaces = read("src/card-surfaces.css");
 const browser = read("tests/browser/maintenance-manager-shift-handover.spec.ts");
 
@@ -24,6 +26,15 @@ const transformModule = await import(
   `data:text/javascript;base64,${Buffer.from(compiledTransform.code).toString("base64")}`
 );
 const buildPayload = transformModule.buildShiftHandoverPayload;
+const compiledShiftWindows = await transpile(shiftWindows, {
+  loader: "ts",
+  format: "esm",
+  target: "es2022",
+});
+const shiftWindowModule = await import(
+  `data:text/javascript;base64,${Buffer.from(compiledShiftWindows.code).toString("base64")}`
+);
+const reviewWindow = shiftWindowModule.reviewWindow;
 const baseOrder = (id, overrides = {}) => ({
   id,
   wo_number: `WO-${id}`,
@@ -122,11 +133,32 @@ const statusFixtureChecks = [
 ];
 
 const reviewOptions = [
-  "Last 12 hours",
-  "Last 24 hours",
-  "Last 36 hours",
-  "Last 48 hours",
-  "Last 4 days",
+  "Previous shift · 12 hours",
+  "Previous 2 shifts · 24 hours",
+  "Previous 3 shifts · 36 hours",
+  "Previous 4 shifts · 48 hours",
+  "Previous 8 shifts · 4 days",
+];
+
+const london = "Europe/London";
+const beforeSix = reviewWindow(new Date("2026-07-30T04:59:00Z"), london, "previous", 12);
+const afterSix = reviewWindow(new Date("2026-07-30T05:01:00Z"), london, "previous", 12);
+const beforeEighteen = reviewWindow(new Date("2026-07-30T16:59:00Z"), london, "previous", 12);
+const afterEighteen = reviewWindow(new Date("2026-07-30T17:01:00Z"), london, "previous", 12);
+const daytimeSequence = reviewWindow(new Date("2026-07-30T11:00:00Z"), london, "previous", 48);
+const nightSequence = reviewWindow(new Date("2026-07-30T19:00:00Z"), london, "previous", 36);
+const londonMismatch = reviewWindow(new Date("2026-07-30T05:30:00Z"), london, "previous", 12);
+const newYorkMismatch = reviewWindow(new Date("2026-07-30T05:30:00Z"), "America/New_York", "previous", 12);
+const boundaryChecks = [
+  [beforeSix.shifts[0]?.type === "day", "Immediately before 06:00 local, the last completed shift must be Day."],
+  [afterSix.shifts[0]?.type === "night", "Immediately after 06:00 local, the last completed shift must be Night."],
+  [beforeEighteen.shifts[0]?.type === "night", "Immediately before 18:00 local, the last completed shift must remain Night."],
+  [afterEighteen.shifts[0]?.type === "day", "Immediately after 18:00 local, the last completed shift must be Day."],
+  [daytimeSequence.shifts.map((shift) => shift.label).join(" · ") === "Day · Night · Day · Night", "Four completed shifts must be chronological oldest-to-newest during the day shift."],
+  [nightSequence.shifts.map((shift) => shift.label).join(" · ") === "Day · Night · Day", "Three completed shifts must dynamically alternate when the current shift is Night."],
+  [daytimeSequence.start === daytimeSequence.shifts[0]?.start && daytimeSequence.end === daytimeSequence.shifts.at(-1)?.end, "The evidence range must use the first and last completed shift boundaries."],
+  [new Date(daytimeSequence.start).getUTCDate() !== new Date(daytimeSequence.end).getUTCDate(), "Longer shift periods must cross calendar dates without losing boundaries."],
+  [londonMismatch.shifts[0]?.type !== newYorkMismatch.shifts[0]?.type, "Shift boundaries must use the site timezone rather than the browser timezone."],
 ];
 
 const assertions = [
@@ -142,7 +174,8 @@ const assertions = [
   [vortaSelect.includes('role="listbox"') && vortaSelect.includes('role="option"') && vortaSelect.includes('data-vorta-select-listbox="true"'), "The shared Vorta selector must render a styled accessible listbox."],
   [vortaSelect.includes("ArrowDown") && vortaSelect.includes("ArrowUp") && vortaSelect.includes("Home") && vortaSelect.includes("End") && vortaSelect.includes("Escape"), "The Vorta selector must retain keyboard navigation and dismissal."],
   [vortaSelect.includes("createPortal") && vortaSelect.includes("visualViewport") && vortaSelect.includes('data-vorta-select-placement') && vortaSelect.includes('data-vorta-select-backdrop'), "Vorta selectors must use viewport-aware portalled placement above floating controls."],
-  [vortaSelect.includes('min-h-[38px]') && vortaSelect.includes('sm:min-h-11') && vortaSelect.includes('data-vorta-select-compact'), "Mobile selector options must be compact without changing wider-layout sizing."],
+  [vortaSelect.includes('min-h-[38px]') && vortaSelect.includes('min-h-[48px]') && vortaSelect.includes('sm:min-h-11') && vortaSelect.includes('data-vorta-select-compact'), "Mobile selector options must remain compact while supporting shift sequences."],
+  [vortaSelect.includes('data-vorta-select-supporting-items="true"') && vortaSelect.includes('aria-describedby') && vortaSelect.includes("Included shifts:"), "Shift sequences must be visible and available to assistive technology."],
   [vortaSelect.includes("data-vortaSelectOpen") || vortaSelect.includes("vortaSelectOpen"), "Open selectors must expose a global stacking state."],
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
   [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
@@ -156,13 +189,15 @@ const assertions = [
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
-  [page.includes('return "Previous shift activity"') && !page.includes("Previous shift activity for Last 12 hours") && page.includes("Activity from the last 4 days"), "Activity headings must describe each period without embedding the dropdown label in a sentence."],
+  [page.includes('return "Previous shift: Previous shift activity"') && page.includes("Activity from the previous ${count} shifts"), "Activity headings must use completed-shift terminology."],
   [service.includes("ShiftHandoverReviewHours") && service.includes("reviewHours"), "The service contract must carry the selected review period."],
   [service.includes('dataMode === "demo" ? "latest" : "previous"'), "Live mode must use the previous completed shift anchor while demo mode may use latest imported evidence."],
   [service.includes("handoverWindowStart") && service.includes("handoverWindowEnd"), "Each item must retain its source 12-hour handover window for workflow writes."],
   [workflow.includes("p_window_start") && workflow.includes("p_window_end"), "Controlled workflow actions must remain bound to explicit handover windows."],
-  [edge.includes("new Set<number>([12, 24, 36, 48, 96])"), "The Edge Function must allow only the approved review periods."],
-  [edge.includes("addLocalHours(endParts, -reviewHours)") && edge.includes("site.timezone"), "Review windows must be calculated in the site timezone."],
+  [shiftWindows.includes("new Set<number>([12, 24, 36, 48, 96])"), "The completed-shift module must allow only the approved review periods."],
+  [edge.includes("buildReviewPeriods(anchor, timeZone, windowMode)") && edge.includes("site.timezone") && shiftWindows.includes("previousCompletedShift") && shiftWindows.includes("shiftContaining"), "Review windows must be assembled from completed site-timezone shift boundaries."],
+  [service.includes("reviewPeriods") && service.includes("ShiftHandoverReviewShift"), "The client contract must retain the authoritative shift sequence."],
+  [shiftPresentation.includes('bg-yellow-400') && shiftPresentation.includes('bg-blue-400') && shiftPresentation.includes("colour alone"), "Shift Handover must reuse the established yellow Day and blue Night rota palette with text labels."],
   [edge.includes('.from("work_order_confirmations")') && edge.includes(".range(offset, offset + PAGE_SIZE - 1)"), "Confirmation evidence must be paginated for complete longer-period results."],
   [!edge.includes("slice(0, limit)") && !edge.includes("limit * 5"), "Review-period evidence must not be silently truncated by the old fixed limit."],
   [edge.includes('.from("work_order_goods_movements")') && edge.includes('.from("work_order_material_reservations")'), "The Edge Function must include SAP material evidence."],
@@ -173,6 +208,7 @@ const assertions = [
   [page.includes("data-vorta-shift-handover-confirmation-history-item") && page.includes("whitespace-pre-wrap") && page.includes("[overflow-wrap:anywhere]"), "Confirmation history must expand and wrap without clipping or overlap."],
   [page.includes("data-vorta-shift-handover-functional-location") && page.includes(">Equipment</dt>"), "The neutral location hierarchy must include functional location and equipment."],
   ...statusFixtureChecks,
+  ...boundaryChecks,
   [browser.includes('getByRole("button", { name: "Review period", exact: true })') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
   [browser.includes("Filters · 2") && browser.includes("Clear filters") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, selective clearing, the area rail and retired summary cards."],
   [browser.includes('data-vorta-select-placement') && browser.includes("visualViewport") && browser.includes('data-vorta-shared-mobile-ai-launcher="true"'), "Browser coverage must verify visual-viewport placement and Ask Vorta stacking."],
@@ -186,4 +222,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover compact viewport-safe dropdowns, filters, disclosures, review periods and status truth verified.");
+console.log("✓ Shift Handover completed-shift periods, compact viewport-safe dropdowns, filters, disclosures, review periods and status truth verified.");
