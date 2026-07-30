@@ -1,6 +1,9 @@
 name: Apply VOR-026 final refinement
 
 on:
+  push:
+    branches:
+      - feature/vor-026-shift-handover-mobile-refinement-final
   pull_request:
     branches:
       - main
@@ -10,7 +13,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.head_ref == 'feature/vor-026-shift-handover-mobile-refinement-final'
+    if: github.event_name == 'push' || github.head_ref == 'feature/vor-026-shift-handover-mobile-refinement-final'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
