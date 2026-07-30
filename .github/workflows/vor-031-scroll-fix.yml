@@ -24,11 +24,12 @@ jobs:
           fetch-depth: 0
 
       - name: Apply focused dropdown scroll correction
-        run: python3 scripts/vor-031-scroll-fix.py
+        run: python3 scripts/vor-031-scroll-fix-wrapper.py
 
       - name: Remove one-use patch machinery
         run: |
           rm scripts/vor-031-scroll-fix.py
+          rm scripts/vor-031-scroll-fix-wrapper.py
           rm .github/workflows/vor-031-scroll-fix.yml
 
       - name: Commit corrected components and regression
