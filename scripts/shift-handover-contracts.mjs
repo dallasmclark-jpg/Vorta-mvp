@@ -12,6 +12,7 @@ const workflow = read("src/screens/ShiftHandover/shiftHandoverWorkflowService.ts
 const edge = read("supabase/functions/shift-handover-data/index.ts");
 const transform = read("supabase/functions/shift-handover-data/transform.ts");
 const shiftWindows = read("supabase/functions/shift-handover-data/shiftWindows.ts");
+const rotaAssignments = read("supabase/functions/shift-handover-data/rotaAssignments.ts");
 const shiftPresentation = read("src/lib/shiftPresentation.ts");
 const surfaces = read("src/card-surfaces.css");
 const browser = read("tests/browser/maintenance-manager-shift-handover.spec.ts");
@@ -35,6 +36,15 @@ const shiftWindowModule = await import(
   `data:text/javascript;base64,${Buffer.from(compiledShiftWindows.code).toString("base64")}`
 );
 const reviewWindow = shiftWindowModule.reviewWindow;
+const compiledRotaAssignments = await transpile(rotaAssignments, {
+  loader: "ts",
+  format: "esm",
+  target: "es2022",
+});
+const rotaAssignmentsModule = await import(
+  `data:text/javascript;base64,${Buffer.from(compiledRotaAssignments.code).toString("base64")}`
+);
+const attachShiftCalendarAssignments = rotaAssignmentsModule.attachShiftCalendarAssignments;
 const baseOrder = (id, overrides = {}) => ({
   id,
   wo_number: `WO-${id}`,
@@ -149,6 +159,22 @@ const daytimeSequence = reviewWindow(new Date("2026-07-30T11:00:00Z"), london, "
 const nightSequence = reviewWindow(new Date("2026-07-30T19:00:00Z"), london, "previous", 36);
 const londonMismatch = reviewWindow(new Date("2026-07-30T05:30:00Z"), london, "previous", 12);
 const newYorkMismatch = reviewWindow(new Date("2026-07-30T05:30:00Z"), "America/New_York", "previous", 12);
+const rotaFixturePeriod = reviewWindow(new Date("2026-07-30T17:01:00Z"), london, "previous", 36);
+const rotaFixture = attachShiftCalendarAssignments(
+  [rotaFixturePeriod],
+  [
+    { shift_date: "2026-07-29", shift_type: "day", team_names: ["Days", "Green Shift"] },
+    { shift_date: "2026-07-29", shift_type: "night", team_names: ["Blue Shift"] },
+    { shift_date: "2026-07-30", shift_type: "day", team_names: ["Days", "Green Shift"] },
+  ],
+  [
+    { code: "DAYS", name: "Days", pattern_type: "days" },
+    { code: "GREEN", name: "Green Shift", pattern_type: "continental" },
+    { code: "BLUE", name: "Blue Shift", pattern_type: "continental" },
+  ],
+  london,
+)[0];
+
 const boundaryChecks = [
   [beforeSix.shifts[0]?.type === "day", "Immediately before 06:00 local, the last completed shift must be Day."],
   [afterSix.shifts[0]?.type === "night", "Immediately after 06:00 local, the last completed shift must be Night."],
@@ -159,6 +185,8 @@ const boundaryChecks = [
   [daytimeSequence.start === daytimeSequence.shifts[0]?.start && daytimeSequence.end === daytimeSequence.shifts.at(-1)?.end, "The evidence range must use the first and last completed shift boundaries."],
   [new Date(daytimeSequence.start).getUTCDate() !== new Date(daytimeSequence.end).getUTCDate(), "Longer shift periods must cross calendar dates without losing boundaries."],
   [londonMismatch.shifts[0]?.type !== newYorkMismatch.shifts[0]?.type, "Shift boundaries must use the site timezone rather than the browser timezone."],
+  [rotaFixture.shifts.map((shift) => shift.rotaTeamCode).join(" · ") === "GREEN · BLUE · GREEN", "Completed shifts must use the actual Shift Calendar rota assignment rather than a fixed Day/Night colour."],
+  [rotaFixture.shifts.every((shift) => shift.rotaSource === "shift_calendar"), "Resolved handover shifts must disclose the Shift Calendar as their rota source."],
 ];
 
 const assertions = [
@@ -185,19 +213,25 @@ const assertions = [
   [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "The shared area rail needs selected-item scrolling and an overflow cue."],
   [(page.match(/<MetricCard/g) ?? []).length === 4 && !page.includes('<MetricCard label="Contractor"') && !page.includes('label="Breakdown"'), "Only the four approved operational summary cards may render."],
   [page.includes("reviewPeriodLoadingState") && page.includes("No work orders match the selected filters."), "Period-aware loading and filter-aware empty states are required."],
-  [browser.includes('toHaveAttribute("data-value", "12")') && browser.includes("Review period options"), "The responsive browser contract must verify the styled Last 12 hours selector as the default."],
+  [browser.includes('toHaveAttribute("data-value", "12")') && browser.includes("Review period options"), "The responsive browser contract must verify the styled Previous shift selector as the default."],
+  [browser.includes("Yellow|Red|Green|Blue|Days") && browser.includes("Day|Night"), "Responsive browser coverage must require visible calendar-team and Day/Night text together."],
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
   [page.includes('return "Previous shift: Previous shift activity"') && page.includes("Activity from the previous ${count} shifts"), "Activity headings must use completed-shift terminology."],
   [service.includes("ShiftHandoverReviewHours") && service.includes("reviewHours"), "The service contract must carry the selected review period."],
+  [service.includes("rotaTeamCode") && service.includes("rotaTeamName") && service.includes("shift_calendar"), "The client contract must retain the resolved Shift Calendar team assignment."],
+  [edge.includes('db.rpc("vorta_get_shift_calendar_internal"') && edge.includes('.from("maintenance_shift_teams")'), "Shift Handover must resolve each completed shift through the authoritative Shift Calendar evidence path."],
+  [rotaAssignments.includes('patternType === "continental"') && rotaAssignments.includes("shift_calendar"), "The rotating calendar team must take precedence over the weekday Days support team."],
+  [shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE") && !shiftPresentation.includes("yellow for day") && !shiftPresentation.includes("SHIFT_TYPE_PRESENTATION"), "Shift colours must use the calendar team palette and must not be inferred from Day/Night."],
+  [page.includes("teamCode: shift.rotaTeamCode") && page.includes("teamName: shift.rotaTeamName"), "The selector must render the actual scheduled rota team for each completed shift."],
   [service.includes('dataMode === "demo" ? "latest" : "previous"'), "Live mode must use the previous completed shift anchor while demo mode may use latest imported evidence."],
   [service.includes("handoverWindowStart") && service.includes("handoverWindowEnd"), "Each item must retain its source 12-hour handover window for workflow writes."],
   [workflow.includes("p_window_start") && workflow.includes("p_window_end"), "Controlled workflow actions must remain bound to explicit handover windows."],
   [shiftWindows.includes("new Set<number>([12, 24, 36, 48, 96])"), "The completed-shift module must allow only the approved review periods."],
   [edge.includes("buildReviewPeriods(anchor, timeZone, windowMode)") && edge.includes("site.timezone") && shiftWindows.includes("previousCompletedShift") && shiftWindows.includes("shiftContaining"), "Review windows must be assembled from completed site-timezone shift boundaries."],
   [service.includes("reviewPeriods") && service.includes("ShiftHandoverReviewShift"), "The client contract must retain the authoritative shift sequence."],
-  [shiftPresentation.includes('bg-yellow-400') && shiftPresentation.includes('bg-blue-400') && shiftPresentation.includes("colour alone"), "Shift Handover must reuse the established yellow Day and blue Night rota palette with text labels."],
+  [shiftPresentation.includes("SHIFT_TEAM_PRESENTATION") && shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE"), "Shift Handover must use the established Shift Calendar team palette."],
   [edge.includes('.from("work_order_confirmations")') && edge.includes(".range(offset, offset + PAGE_SIZE - 1)"), "Confirmation evidence must be paginated for complete longer-period results."],
   [!edge.includes("slice(0, limit)") && !edge.includes("limit * 5"), "Review-period evidence must not be silently truncated by the old fixed limit."],
   [edge.includes('.from("work_order_goods_movements")') && edge.includes('.from("work_order_material_reservations")'), "The Edge Function must include SAP material evidence."],

@@ -2,6 +2,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { context, preflight, response } from "./auth.ts";
 import { buildShiftHandoverPayload } from "./transform.ts";
 import {
+  attachShiftCalendarAssignments,
+  reviewCalendarDateRange,
+} from "./rotaAssignments.ts";
+import {
   buildReviewPeriods,
   REVIEW_HOURS,
   reviewWindow,
@@ -112,9 +116,32 @@ Deno.serve(async (req: Request) => {
       if (latestValue) anchor = new Date(latestValue);
     }
 
-    const reviewPeriods = buildReviewPeriods(anchor, timeZone, windowMode);
+    const baseReviewPeriods = buildReviewPeriods(anchor, timeZone, windowMode);
+    const calendarRange = reviewCalendarDateRange(baseReviewPeriods, timeZone);
+    const [calendarResult, teamResult] = await Promise.all([
+      db.rpc("vorta_get_shift_calendar_internal", {
+        p_site_id: siteId,
+        p_start_date: calendarRange.startDate,
+        p_end_date: calendarRange.endDate,
+      }),
+      db
+        .from("maintenance_shift_teams")
+        .select("code,name,pattern_type")
+        .eq("site_id", siteId)
+        .eq("active", true),
+    ]);
+    if (calendarResult.error) throw calendarResult.error;
+    if (teamResult.error) throw teamResult.error;
+
+    const reviewPeriods = attachShiftCalendarAssignments(
+      baseReviewPeriods,
+      calendarResult.data ?? [],
+      teamResult.data ?? [],
+      timeZone,
+    );
     const window = reviewPeriods.find((period) => period.reviewHours === reviewHours)
-      ?? reviewWindow(anchor, timeZone, windowMode, reviewHours);
+      ?? reviewPeriods[0];
+    if (!window) throw new Error("Shift handover review period could not be resolved");
     const confirmations = await loadConfirmations(db, siteId, window.start, window.end);
     const workOrderIds = [...new Set(
       confirmations

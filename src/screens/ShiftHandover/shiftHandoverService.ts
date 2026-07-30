@@ -28,6 +28,9 @@ export interface ShiftHandoverReviewShift {
   label: string;
   start: string;
   end: string;
+  rotaTeamCode: string | null;
+  rotaTeamName: string | null;
+  rotaSource: "shift_calendar" | "unavailable";
 }
 
 export interface ShiftHandoverReviewPeriod {
@@ -307,6 +310,9 @@ function parseReviewShift(value: unknown): ShiftHandoverReviewShift | null {
     label: stringValue(row.label) || (type === "day" ? "Day" : "Night"),
     start,
     end,
+    rotaTeamCode: stringValue(row.rotaTeamCode) || null,
+    rotaTeamName: stringValue(row.rotaTeamName) || null,
+    rotaSource: row.rotaSource === "shift_calendar" ? "shift_calendar" : "unavailable",
   };
 }
 

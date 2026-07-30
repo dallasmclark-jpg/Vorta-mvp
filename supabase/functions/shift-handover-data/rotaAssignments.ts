@@ -1,27 +1,4 @@
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def read(path: str) -> str:
-    return (ROOT / path).read_text()
-
-
-def write(path: str, content: str) -> None:
-    target = ROOT / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content)
-
-
-def replace_once(path: str, old: str, new: str) -> None:
-    content = read(path)
-    count = content.count(old)
-    if count != 1:
-        raise RuntimeError(f"Expected one match in {path}, found {count}: {old[:120]!r}")
-    write(path, content.replace(old, new, 1))
-
-
-write("supabase/functions/shift-handover-data/rotaAssignments.ts", '''export type RotaSource = "shift_calendar" | "unavailable";
+export type RotaSource = "shift_calendar" | "unavailable";
 
 export interface ReviewShiftLike {
   type: string;
@@ -165,44 +142,3 @@ export function attachShiftCalendarAssignments(
     }),
   }));
 }
-''')
-
-replace_once(
-    "supabase/functions/shift-handover-data/index.ts",
-    '''    const window = reviewPeriods.find((period) => period.reviewHours === reviewHours)
-      ?? attachShiftCalendarAssignments(
-        [reviewWindow(anchor, timeZone, windowMode, reviewHours)],
-        calendarResult.data ?? [],
-        teamResult.data ?? [],
-        timeZone,
-      )[0];
-    const confirmations = await loadConfirmations(db, siteId, window.start, window.end);
-''',
-    '''    const window = reviewPeriods.find((period) => period.reviewHours === reviewHours)
-      ?? reviewPeriods[0];
-    if (!window) throw new Error("Shift handover review period could not be resolved");
-    const confirmations = await loadConfirmations(db, siteId, window.start, window.end);
-''',
-)
-
-replace_once(
-    "scripts/shift-handover-contracts.mjs",
-    '''const rotaAssignmentsModule = await import(
-  `data:text/javascript;base64,${Buffer.from(compiledRotaAssignments.code.replace('./shiftWindows.ts', `data:text/javascript;base64,${Buffer.from(compiledShiftWindows.code).toString('base64')}`)).toString("base64")}`
-);
-''',
-    '''const rotaAssignmentsModule = await import(
-  `data:text/javascript;base64,${Buffer.from(compiledRotaAssignments.code).toString("base64")}`
-);
-''',
-)
-
-replace_once(
-    "scripts/shift-handover-contracts.mjs",
-    '''  [shiftPresentation.includes('bg-yellow-400') && shiftPresentation.includes('bg-blue-400') && shiftPresentation.includes("colour alone"), "Shift Handover must reuse the established yellow Day and blue Night rota palette with text labels."],
-''',
-    '''  [shiftPresentation.includes("SHIFT_TEAM_PRESENTATION") && shiftPresentation.includes("YELLOW") && shiftPresentation.includes("RED") && shiftPresentation.includes("GREEN") && shiftPresentation.includes("BLUE"), "Shift Handover must use the established Shift Calendar team palette."],
-''',
-)
-
-print("VOR-030 calendar-colour transformation hardening applied successfully.")
