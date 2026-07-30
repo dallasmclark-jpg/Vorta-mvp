@@ -1,0 +1,635 @@
+name: Apply VOR-026 Shift Handover refinement
+
+on:
+  push:
+    branches:
+      - feature/vor-026-shift-handover-mobile-refinement
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/vor-026-shift-handover-mobile-refinement
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused source changes
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          page_path = Path("src/screens/ShiftHandover/ShiftHandoverSection.tsx")
+          page = page_path.read_text()
+
+          page = replace_once(
+              page,
+              "  useMemo,\n  useState,",
+              "  useMemo,\n  useRef,\n  useState,",
+              "React useRef import",
+          )
+
+          page = replace_once(
+              page,
+              '''function reviewPeriodEmptyState(reviewHours: ShiftHandoverReviewHours): string {
+            return reviewHours === 96
+              ? "No handover activity recorded in the last 4 days."
+              : `No handover activity recorded in the last ${reviewHours} hours.`;
+          }
+          ''',
+              '''function reviewPeriodEmptyState(reviewHours: ShiftHandoverReviewHours): string {
+            return reviewHours === 96
+              ? "No handover activity recorded in the last 4 days."
+              : `No handover activity recorded in the last ${reviewHours} hours.`;
+          }
+
+          function reviewPeriodLoadingState(reviewHours: ShiftHandoverReviewHours): string {
+            return reviewHours === 96
+              ? "Loading activity from the last 4 days…"
+              : `Loading activity from the last ${reviewHours} hours…`;
+          }
+          ''',
+              "period loading helper",
+          )
+
+          page = replace_once(
+              page,
+              '''function formatDuration(minutes: number): string {
+            if (minutes <= 0) return "No recorded downtime";
+            const hours = Math.floor(minutes / 60);
+            const remainder = minutes % 60;
+            if (hours === 0) return `${remainder} min`;
+            if (remainder === 0) return `${hours} hr`;
+            return `${hours} hr ${remainder} min`;
+          }
+          ''',
+              '''function formatDuration(minutes: number): string {
+            if (minutes <= 0) return "No recorded downtime";
+            const hours = Math.floor(minutes / 60);
+            const remainder = minutes % 60;
+            if (hours === 0) return `${remainder} min`;
+            if (remainder === 0) return `${hours} hr`;
+            return `${hours} hr ${remainder} min`;
+          }
+
+          function formatSummaryDowntime(minutes: number): string {
+            if (minutes <= 0) return "0 hrs";
+            const hours = minutes / 60;
+            const rounded = Number(hours.toFixed(1));
+            return `${rounded} hrs`;
+          }
+          ''',
+              "summary downtime helper",
+          )
+
+          page = replace_once(
+              page,
+              'className="rounded-xl border border-gray-800 bg-[#141820] p-4"',
+              'className="rounded-xl border border-gray-800 bg-[#141820] p-3 sm:p-4"',
+              "metric card padding",
+          )
+          page = replace_once(
+              page,
+              '<p className={`mt-3 text-2xl font-bold tabular-nums ${tone}`}>{value}</p>',
+              '<p className={`mt-2 text-xl font-bold tabular-nums sm:mt-3 sm:text-2xl ${tone}`}>{value}</p>',
+              "metric value spacing",
+          )
+          page = replace_once(
+              page,
+              'className={`min-h-11 shrink-0 rounded-lg border px-4 text-sm font-semibold transition-colors ${',
+              'className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg border px-4 text-sm font-semibold transition-colors ${',
+              "selector no-wrap",
+          )
+
+          page = replace_once(
+              page,
+              '''  const [query, setQuery] = useState("");
+            const [filtersOpen, setFiltersOpen] = useState(false);
+            const [workflowActions, setWorkflowActions] = useState<Map<string, ShiftHandoverWorkflowAction>>(new Map());
+          ''',
+              '''  const [query, setQuery] = useState("");
+            const [filtersOpen, setFiltersOpen] = useState(false);
+            const scopeOptionsRef = useRef<HTMLDivElement>(null);
+            const [scopeOptionsCanScrollRight, setScopeOptionsCanScrollRight] = useState(false);
+            const [workflowActions, setWorkflowActions] = useState<Map<string, ShiftHandoverWorkflowAction>>(new Map());
+          ''',
+              "scope overflow state",
+          )
+
+          page = replace_once(
+              page,
+              '''  useEffect(() => {
+            setScopeValue("all");
+          }, [scopeMode]);
+
+          const changeReviewPeriod = (value: string): void => {
+          ''',
+              '''  useEffect(() => {
+            setScopeValue("all");
+          }, [scopeMode]);
+
+          const updateScopeOptionsOverflow = useCallback((): void => {
+            const node = scopeOptionsRef.current;
+            setScopeOptionsCanScrollRight(Boolean(
+              node && node.scrollLeft + node.clientWidth < node.scrollWidth - 1,
+            ));
+          }, []);
+
+          const changeReviewPeriod = (value: string): void => {
+          ''',
+              "scope overflow callback",
+          )
+
+          page = replace_once(
+              page,
+              '''  const scopeOptions = scopeMode === "building"
+            ? snapshot?.scopeOptions.buildings ?? []
+            : scopeMode === "area"
+              ? snapshot?.scopeOptions.areas ?? []
+              : [];
+
+          const openItem = (item: ShiftHandoverItem): void => {
+          ''',
+              '''  const scopeOptions = scopeMode === "building"
+            ? snapshot?.scopeOptions.buildings ?? []
+            : scopeMode === "area"
+              ? snapshot?.scopeOptions.areas ?? []
+              : [];
+          const activeAdvancedFilterCount = Number(criticality !== "all")
+            + Number(status !== "all");
+
+          useEffect(() => {
+            const node = scopeOptionsRef.current;
+            if (!node) {
+              setScopeOptionsCanScrollRight(false);
+              return undefined;
+            }
+
+            const frame = window.requestAnimationFrame(() => {
+              const selected = node.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+              if (selected) {
+                const selectedLeft = selected.offsetLeft;
+                const selectedRight = selectedLeft + selected.offsetWidth;
+                const viewportLeft = node.scrollLeft;
+                const viewportRight = viewportLeft + node.clientWidth;
+                if (selectedLeft < viewportLeft + 8) {
+                  node.scrollLeft = Math.max(0, selectedLeft - 8);
+                } else if (selectedRight > viewportRight - 8) {
+                  node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
+                }
+              }
+              updateScopeOptionsOverflow();
+            });
+
+            return () => window.cancelAnimationFrame(frame);
+          }, [scopeMode, scopeOptions.length, scopeValue, updateScopeOptionsOverflow]);
+
+          useEffect(() => {
+            window.addEventListener("resize", updateScopeOptionsOverflow);
+            return () => window.removeEventListener("resize", updateScopeOptionsOverflow);
+          }, [updateScopeOptionsOverflow]);
+
+          const openItem = (item: ShiftHandoverItem): void => {
+          ''',
+              "scope overflow effects and active filter count",
+          )
+
+          page = replace_once(
+              page,
+              'Loading {reviewPeriodLabel(reviewHours).toLowerCase()} from SAP evidence…',
+              '{reviewPeriodLoadingState(reviewHours)}',
+              "initial loading copy",
+          )
+
+          page = replace_once(
+              page,
+              '''          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
+            <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
+            <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
+            <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
+            <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
+            <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
+            <MetricCard label="Breakdown" value={formatDuration(filteredSummary.totalBreakdownMinutes)} detail="Recorded downtime" icon={Gauge} tone="text-orange-300" />
+          </div>
+          ''',
+              '''          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
+            <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
+            <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
+            <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
+            <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
+            <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
+            <MetricCard
+              label="Breakdown"
+              value={formatSummaryDowntime(filteredSummary.totalBreakdownMinutes)}
+              detail="Recorded downtime"
+              icon={Gauge}
+              tone={filteredSummary.totalBreakdownMinutes > 0 ? "text-orange-300" : "text-slate-50"}
+            />
+          </div>
+          ''',
+              "summary cards",
+          )
+
+          scope_start = page.index('          <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">')
+          activity_start = page.index('          <div className="flex items-end justify-between gap-4">', scope_start)
+          new_scope = '''          <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
+              <p className="mt-1 text-xs text-slate-500">Filter by site scope and discipline.</p>
+            </div>
+
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Handover scope level">
+              <SelectorTab active={scopeMode === "site"} onClick={() => setScopeMode("site")}>Site</SelectorTab>
+              <SelectorTab active={scopeMode === "building"} onClick={() => setScopeMode("building")}>Building</SelectorTab>
+              <SelectorTab active={scopeMode === "area"} onClick={() => setScopeMode("area")}>Area</SelectorTab>
+            </div>
+
+            {scopeMode !== "site" ? (
+              <div className="relative mt-3">
+                <div
+                  ref={scopeOptionsRef}
+                  onScroll={updateScopeOptionsOverflow}
+                  className="flex gap-2 overflow-x-auto pb-1 pr-10"
+                  aria-label={`${scopeMode} options`}
+                  data-vorta-shift-handover-scope-options="true"
+                >
+                  <SelectorTab active={scopeValue === "all"} onClick={() => setScopeValue("all")}>
+                    All {scopeMode === "building" ? "buildings" : "areas"}
+                  </SelectorTab>
+                  {scopeOptions.map((option) => (
+                    <SelectorTab key={option} active={scopeValue === option} onClick={() => setScopeValue(option)}>
+                      {option}
+                    </SelectorTab>
+                  ))}
+                </div>
+                {scopeOptionsCanScrollRight ? (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#10151d] to-transparent"
+                    data-vorta-shift-handover-scope-fade="true"
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
+            <div
+              data-vorta-shift-handover-review-period="true"
+              className="mt-4 border-t border-gray-800 pt-4"
+            >
+              <label className="grid w-full gap-1 text-xs font-medium text-slate-500 sm:max-w-xs">
+                Review period
+                <select
+                  value={reviewHours}
+                  onChange={(event) => changeReviewPeriod(event.target.value)}
+                  disabled={loading}
+                  className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
+                >
+                  {REVIEW_PERIOD_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {loading ? (
+                <span role="status" className="mt-2 inline-flex items-center gap-2 text-xs text-blue-300">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  {reviewPeriodLoadingState(reviewHours)}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4 border-t border-gray-800 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">Discipline</p>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Maintenance discipline">
+                <SelectorTab active={discipline === "all"} onClick={() => setDiscipline("all")}>All</SelectorTab>
+                {(Object.keys(DISCIPLINE_LABELS) as ShiftHandoverDiscipline[]).map((value) => (
+                  <SelectorTab key={value} active={discipline === value} onClick={() => setDiscipline(value)}>
+                    {DISCIPLINE_LABELS[value]}
+                  </SelectorTab>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(150px,0.45fr))]">
+              <label className="flex min-h-11 items-center gap-2 rounded-xl border border-gray-700 bg-[#0d1117] px-3">
+                <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                <span className="sr-only">Search handover</span>
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search work order or equipment"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-700 px-3 text-sm font-semibold text-slate-300 lg:hidden"
+                aria-expanded={filtersOpen}
+                aria-controls="shift-handover-advanced-filters"
+              >
+                <Filter className="h-4 w-4" aria-hidden="true" />
+                Filters{activeAdvancedFilterCount > 0 ? ` · ${activeAdvancedFilterCount}` : ""}
+              </button>
+
+              <div
+                id="shift-handover-advanced-filters"
+                className={`${filtersOpen ? "grid" : "hidden"} gap-3 lg:contents`}
+              >
+                <label className="grid gap-1 text-xs text-slate-500">
+                  Criticality
+                  <select
+                    value={criticality}
+                    onChange={(event) => setCriticality(event.target.value as CriticalityFilter)}
+                    className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
+                  >
+                    <option value="all">All criticalities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1 text-xs text-slate-500">
+                  Status
+                  <select
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value as StatusFilter)}
+                    className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="active">Active / ongoing</option>
+                    <option value="waiting">Waiting / deferred</option>
+                    <option value="contractor">External contractor</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1 text-xs text-slate-500">
+                  Sort by
+                  <select
+                    value={reviewHours > 12 ? "recent" : sortMode}
+                    onChange={(event) => setSortMode(event.target.value as SortMode)}
+                    disabled={reviewHours > 12}
+                    className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="priority">Criticality</option>
+                    <option value="breakdown">Longest breakdown</option>
+                    <option value="recent">Most recent</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </section>'''
+          page = page[:scope_start] + new_scope + "\n\n" + page[activity_start:]
+
+          page = replace_once(
+              page,
+              '''              <h2 className="mt-4 font-semibold text-slate-300">
+                {reviewPeriodEmptyState(reviewHours)}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Return to the site scope or remove a discipline, status or criticality filter.
+              </p>
+          ''',
+              '''              <h2 className="mt-4 font-semibold text-slate-300">
+                {snapshot.items.length === 0
+                  ? reviewPeriodEmptyState(reviewHours)
+                  : "No work orders match the selected filters."}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {snapshot.items.length === 0
+                  ? "No work orders were confirmed in this review period."
+                  : "Return to the site scope or remove a discipline, status or criticality filter."}
+              </p>
+          ''',
+              "empty state",
+          )
+
+          page_path.write_text(page)
+
+          test_path = Path("tests/browser/maintenance-manager-shift-handover.spec.ts")
+          test = test_path.read_text()
+
+          test = replace_once(
+              test,
+              '''  await expect(reviewPeriod).toHaveValue("12");
+            await expect(reviewPeriod.locator("option")).toHaveCount(5);
+            await expect(page.getByRole("button", { name: "Site", exact: true })).toBeVisible();
+          ''',
+              '''  await expect(reviewPeriod).toHaveValue("12");
+            await expect(reviewPeriod.locator("option")).toHaveCount(5);
+            const viewportWidth = page.viewportSize()?.width ?? 1366;
+            const searchInput = page.getByPlaceholder("Search work order or equipment");
+            const criticalitySelect = page.getByLabel("Criticality");
+            const statusSelect = page.getByLabel("Status");
+            const sortSelect = page.getByLabel("Sort by");
+            await expect(page.getByRole("button", { name: "Site", exact: true })).toBeVisible();
+          ''',
+              "browser shared locators",
+          )
+
+          test = replace_once(
+              test,
+              '''  await expect(page.getByRole("button", { name: "Facilities", exact: true })).toBeVisible();
+
+            const cards = page.locator('[data-vorta-shift-handover-card="true"]');
+          ''',
+              '''  await expect(page.getByRole("button", { name: "Facilities", exact: true })).toBeVisible();
+            await expect(searchInput).toBeVisible();
+
+            if (viewportWidth < 1024) {
+              const filtersButton = page.getByRole("button", { name: "Filters", exact: true });
+              await expect(filtersButton).toBeVisible();
+              await expect(criticalitySelect).toBeHidden();
+              await expect(statusSelect).toBeHidden();
+              await expect(sortSelect).toBeHidden();
+
+              const reviewBox = await reviewPeriod.boundingBox();
+              const disciplineBox = await page.getByText("Discipline", { exact: true }).boundingBox();
+              const searchBox = await searchInput.boundingBox();
+              const filtersBox = await filtersButton.boundingBox();
+              expect(reviewBox?.y ?? 0).toBeLessThan(disciplineBox?.y ?? Number.MAX_SAFE_INTEGER);
+              expect(disciplineBox?.y ?? 0).toBeLessThan(searchBox?.y ?? Number.MAX_SAFE_INTEGER);
+              expect(searchBox?.y ?? 0).toBeLessThan(filtersBox?.y ?? Number.MAX_SAFE_INTEGER);
+            } else {
+              await expect(criticalitySelect).toBeVisible();
+              await expect(statusSelect).toBeVisible();
+              await expect(sortSelect).toBeVisible();
+            }
+
+            const cards = page.locator('[data-vorta-shift-handover-card="true"]');
+          ''',
+              "mobile visible order",
+          )
+
+          test = replace_once(
+              test,
+              '''  const scrollContainer = page.locator('[data-vorta-portal-scroll-container="true"]');
+            await scrollContainer.evaluate((element) => { element.scrollTop = 320; });
+          ''',
+              '''  const scrollContainer = page.locator('[data-vorta-portal-scroll-container="true"]');
+
+            if (viewportWidth < 1024) {
+              await scrollContainer.evaluate((element) => { element.scrollTop = 280; });
+              const scopeScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
+              await page.getByRole("button", { name: "Building", exact: true }).click();
+              const scopeOptions = page.locator('[data-vorta-shift-handover-scope-options="true"]');
+              await expect(scopeOptions).toBeVisible();
+              const optionButtons = scopeOptions.getByRole("button");
+              if (await optionButtons.count() > 1) {
+                const selectedOption = optionButtons.last();
+                await selectedOption.click();
+                const containerBox = await scopeOptions.boundingBox();
+                const selectedBox = await selectedOption.boundingBox();
+                expect(selectedBox?.x ?? 0).toBeGreaterThanOrEqual((containerBox?.x ?? 0) - 1);
+                expect((selectedBox?.x ?? 0) + (selectedBox?.width ?? 0)).toBeLessThanOrEqual(
+                  (containerBox?.x ?? 0) + (containerBox?.width ?? 0) + 1,
+                );
+              }
+              await page.getByRole("button", { name: "Site", exact: true }).click();
+              const scopeScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
+              expect(scopeScrollAfter).toBeGreaterThanOrEqual(Math.max(0, scopeScrollBefore - 80));
+            }
+
+            await scrollContainer.evaluate((element) => { element.scrollTop = 320; });
+          ''',
+              "scope overflow and scroll check",
+          )
+
+          test = replace_once(
+              test,
+              '''  const totalMetric = page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first();
+            await expect(totalMetric).toHaveText(String(await cards.count()));
+
+            const viewportWidth = page.viewportSize()?.width ?? 1366;
+            if (viewportWidth < 1024) {
+          ''',
+              '''  const totalMetric = page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first();
+            await expect(totalMetric).toHaveText(String(await cards.count()));
+            const breakdownMetric = page.locator('[data-vorta-shift-handover-metric="breakdown"]');
+            const breakdownValue = breakdownMetric.locator("p").first();
+            const breakdownText = (await breakdownValue.textContent())?.trim() ?? "";
+            if (breakdownText === "0 hrs") {
+              await expect(breakdownValue).not.toHaveClass(/text-orange-300/);
+            } else {
+              expect(breakdownText).toMatch(/^\d+(?:\.\d)? hrs$/);
+              await expect(breakdownValue).toHaveClass(/text-orange-300/);
+            }
+
+            if (viewportWidth < 1024) {
+          ''',
+              "breakdown metric and duplicate viewport removal",
+          )
+
+          test = replace_once(
+              test,
+              '''  await reviewPeriod.selectOption("12");
+            await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
+            await expect(page.getByLabel("Criticality")).toBeVisible();
+            await expect(page.getByLabel("Status")).toBeVisible();
+            await expect(page.getByLabel("Sort by")).toBeVisible();
+            await page.getByLabel("Sort by").selectOption("breakdown");
+            await expect(cards.first()).toBeVisible();
+          ''',
+              '''  await reviewPeriod.selectOption("12");
+            await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
+            await expect(criticalitySelect).toBeVisible();
+            await expect(statusSelect).toBeVisible();
+            await expect(sortSelect).toBeVisible();
+
+            const sortScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
+            if (viewportWidth < 1024) {
+              await criticalitySelect.selectOption("high");
+              await expect(page.getByRole("button", { name: "Filters · 1", exact: true })).toBeVisible();
+              await statusSelect.selectOption("completed");
+              await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
+              await sortSelect.selectOption("breakdown");
+              await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
+              await criticalitySelect.selectOption("all");
+              await statusSelect.selectOption("all");
+              await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+            } else {
+              await sortSelect.selectOption("breakdown");
+            }
+            const sortScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
+            expect(sortScrollAfter).toBeGreaterThanOrEqual(Math.max(0, sortScrollBefore - 80));
+            await expect(cards.first()).toBeVisible();
+          ''',
+              "advanced filter count and sort scroll",
+          )
+
+          test_path.write_text(test)
+
+          contract_path = Path("scripts/shift-handover-contracts.mjs")
+          contract = contract_path.read_text()
+          contract = replace_once(
+              contract,
+              '''  [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("Review period"), "One shared Review period control is required."],
+            [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
+          ''',
+              '''  [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("Review period"), "One shared Review period control is required."],
+            [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
+            [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
+            [page.includes('id="shift-handover-advanced-filters"') && page.includes("lg:contents"), "Criticality, Status and Sort must collapse on mobile without duplicating wider-layout logic."],
+            [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "Long scope names need selected-item scrolling and an overflow cue."],
+            [page.includes("formatSummaryDowntime") && page.includes('return "0 hrs"') && page.includes('totalBreakdownMinutes > 0 ? "text-orange-300" : "text-slate-50"'), "Zero downtime must render neutrally as 0 hrs while positive downtime retains warning emphasis."],
+            [page.includes("reviewPeriodLoadingState") && page.includes("No work orders match the selected filters."), "Period-aware loading and filter-aware empty states are required."],
+          ''',
+              "VOR-026 contracts",
+          )
+          contract = replace_once(
+              contract,
+              '''  [browser.includes('getByLabel("Review period")') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
+          ''',
+              '''  [browser.includes('getByLabel("Review period")') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
+            [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-options="true"') && browser.includes('breakdownText === "0 hrs"'), "Responsive browser coverage must verify mobile filter count, scope overflow and neutral zero downtime."],
+          ''',
+              "VOR-026 browser contract",
+          )
+          contract = replace_once(
+              contract,
+              'console.log("✓ Shift Handover review periods, complete evidence, filtered totals, date grouping and responsive state verified.");',
+              'console.log("✓ Shift Handover review periods, compact mobile filters, neutral downtime and responsive state verified.");',
+              "contract message",
+          )
+          contract_path.write_text(contract)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run Shift Handover contracts
+        run: node scripts/shift-handover-contracts.mjs
+
+      - name: Commit focused implementation
+        shell: bash
+        run: |
+          rm .github/workflows/vor-026-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/screens/ShiftHandover/ShiftHandoverSection.tsx tests/browser/maintenance-manager-shift-handover.spec.ts scripts/shift-handover-contracts.mjs .github/workflows/vor-026-apply.yml
+          git commit -m "VOR-026: refine mobile Shift Handover layout"
+          git push origin HEAD:feature/vor-026-shift-handover-mobile-refinement
