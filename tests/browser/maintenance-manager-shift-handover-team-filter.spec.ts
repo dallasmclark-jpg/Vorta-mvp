@@ -13,14 +13,16 @@ const TEAM_LABELS = [
 async function chooseSingleSelect(
   page: Page,
   label: string,
-  optionLabel: string,
+  optionValue: string,
 ): Promise<void> {
   const trigger = page.getByRole("button", { name: label, exact: true });
   await expect(trigger).toBeVisible({ timeout: 45_000 });
   await trigger.click();
   const listbox = page.getByRole("listbox", { name: `${label} options` });
   await expect(listbox).toBeVisible();
-  await listbox.getByRole("option", { name: optionLabel, exact: true }).click();
+  const option = listbox.locator(`[role="option"][data-value="${optionValue}"]`);
+  await expect(option).toBeAttached();
+  await option.click();
 }
 
 async function exposeTeamFilter(page: Page): Promise<void> {
@@ -87,7 +89,7 @@ test("Maintenance team multi-select filters unique Shift Handover work orders", 
 
   // The full eight-shift fixture contains evidence for every approved team.
   // Individual review periods are covered by the main Shift Handover regression.
-  await chooseSingleSelect(page, "Review period", "Previous 8 shifts · 4 days");
+  await chooseSingleSelect(page, "Review period", "96");
   await expect(page.getByRole("heading", { name: "Activity from the previous 8 shifts", exact: true })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-card="true"]').first()).toBeVisible({ timeout: 30_000 });
   await exposeTeamFilter(page);
