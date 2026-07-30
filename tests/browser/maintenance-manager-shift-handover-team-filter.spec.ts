@@ -67,9 +67,13 @@ async function expectUniqueFilteredCards(
   const count = await cards.count();
   expect(count).toBeGreaterThan(0);
 
-  const workOrders = await cards.locator("span.text-blue-300").allTextContents();
+  const workOrders = await cards.evaluateAll((elements) =>
+    elements.map((element) =>
+      element.querySelector("span.text-blue-300")?.textContent?.trim() ?? ""
+    ),
+  );
   expect(workOrders).toHaveLength(count);
-  expect(workOrders.every((workOrder) => workOrder.trim().length > 0)).toBe(true);
+  expect(workOrders.every(Boolean)).toBe(true);
   expect(new Set(workOrders).size).toBe(workOrders.length);
 
   for (const cardText of await cards.allTextContents()) {
