@@ -1,0 +1,39 @@
+name: Apply VOR-031 mobile select scroll fix
+
+on:
+  push:
+    branches:
+      - vorta/vor-031-mobile-select-scroll
+    paths:
+      - "scripts/vor-031-scroll-fix.py"
+      - ".github/workflows/vor-031-scroll-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[skip vor-031 scroll apply]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: vorta/vor-031-mobile-select-scroll
+          fetch-depth: 0
+
+      - name: Apply focused dropdown scroll correction
+        run: python3 scripts/vor-031-scroll-fix.py
+
+      - name: Remove one-use patch machinery
+        run: |
+          rm scripts/vor-031-scroll-fix.py
+          rm .github/workflows/vor-031-scroll-fix.yml
+
+      - name: Commit corrected components and regression
+        run: |
+          git config user.name "Vorta automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-031: fix mobile dropdown scrolling [skip vor-031 scroll apply]"
+          git push origin HEAD:vorta/vor-031-mobile-select-scroll
