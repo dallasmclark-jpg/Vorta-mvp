@@ -7,7 +7,6 @@ import {
   Clock3,
   Filter,
   Gauge,
-  HardHat,
   MapPin,
   PackageCheck,
   RefreshCw,
@@ -52,7 +51,6 @@ import {
   type ShiftHandoverWorkflowAction,
 } from "./shiftHandoverWorkflowService";
 
-type ScopeMode = "site" | "building" | "area";
 type CriticalityFilter = "all" | ShiftHandoverItem["criticality"];
 type StatusFilter = "all" | "active" | "completed" | "waiting" | "contractor";
 type SortMode = "priority" | "breakdown" | "recent";
@@ -254,11 +252,6 @@ function formatDuration(minutes: number): string {
   return `${hours} hr ${remainder} min`;
 }
 
-function formatSummaryDowntime(minutes: number): string {
-  if (minutes <= 0) return "0 hrs";
-  const hours = minutes / 60;
-  return `${Number(hours.toFixed(1))} hrs`;
-}
 
 function formatTimestamp(value: string | null): string {
   if (!value) return "No timestamp";
@@ -315,10 +308,12 @@ function SelectorTab({
     <button
       type="button"
       onClick={onClick}
+      role="tab"
+      aria-selected={active}
       aria-pressed={active}
       className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg border px-4 text-sm font-semibold transition-colors ${
         active
-          ? "border-blue-500/50 bg-blue-500/15 text-blue-200"
+          ? "border-blue-500/60 bg-[#10151d] text-blue-200"
           : "border-gray-800 bg-[#10151d] text-slate-400 hover:border-gray-700 hover:text-slate-200"
       }`}
     >
@@ -807,9 +802,7 @@ export function ShiftHandoverSection(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [scopeMode, setScopeMode] = useState<ScopeMode>("site");
   const [scopeValue, setScopeValue] = useState("all");
-  const [discipline, setDiscipline] = useState<"all" | ShiftHandoverDiscipline>("all");
   const [criticality, setCriticality] = useState<CriticalityFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("priority");
@@ -870,10 +863,6 @@ export function ShiftHandoverSection(): JSX.Element {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    setScopeValue("all");
-  }, [scopeMode]);
-
   const updateScopeOptionsOverflow = useCallback((): void => {
     const node = scopeOptionsRef.current;
     setScopeOptionsCanScrollRight(Boolean(
@@ -908,9 +897,7 @@ export function ShiftHandoverSection(): JSX.Element {
 
     return [...(snapshot?.items ?? [])]
       .filter((item) => {
-        if (scopeMode === "building" && scopeValue !== "all" && item.building !== scopeValue) return false;
-        if (scopeMode === "area" && scopeValue !== "all" && item.area !== scopeValue) return false;
-        if (discipline !== "all" && item.discipline !== discipline) return false;
+        if (scopeValue !== "all" && item.area !== scopeValue) return false;
         if (criticality !== "all" && item.criticality !== criticality) return false;
         if (!statusMatch(item)) return false;
         if (!searchTerm) return true;
@@ -934,7 +921,7 @@ export function ShiftHandoverSection(): JSX.Element {
         if (sortMode === "breakdown") return b.breakdownMinutes - a.breakdownMinutes;
         return b.criticalityRank - a.criticalityRank || b.breakdownMinutes - a.breakdownMinutes;
       });
-  }, [criticality, discipline, query, reviewHours, scopeMode, scopeValue, snapshot?.items, sortMode, status]);
+  }, [criticality, query, reviewHours, scopeValue, snapshot?.items, sortMode, status]);
 
   const filteredSummary = useMemo(
     () => summariseItems(filteredItems),
@@ -975,14 +962,27 @@ export function ShiftHandoverSection(): JSX.Element {
   const selectedItem = filteredItems.find((item) => item.id === selectedId)
     ?? filteredItems[0]
     ?? null;
-  const scopeOptions = scopeMode === "building"
-    ? snapshot?.scopeOptions.buildings ?? []
-    : scopeMode === "area"
-      ? snapshot?.scopeOptions.areas ?? []
-      : [];
+  const scopeAreas = useMemo(() => {
+    const areas = new Set<string>();
+    for (const item of snapshot?.items ?? []) {
+      const area = item.area.trim();
+      if (area) areas.add(area);
+    }
+    return [...areas].sort((left, right) => left.localeCompare(
+      right,
+      "en-GB",
+      { sensitivity: "base", numeric: true },
+    ));
+  }, [snapshot?.items]);
 
   const activeAdvancedFilterCount = Number(criticality !== "all")
     + Number(status !== "all");
+
+  useEffect(() => {
+    if (scopeValue !== "all" && !scopeAreas.includes(scopeValue)) {
+      setScopeValue("all");
+    }
+  }, [scopeAreas, scopeValue]);
 
   useEffect(() => {
     const node = scopeOptionsRef.current;
@@ -1008,7 +1008,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [scopeMode, scopeOptions.length, scopeValue, updateScopeOptionsOverflow]);
+  }, [scopeAreas.length, scopeValue, updateScopeOptionsOverflow]);
 
   useEffect(() => {
     window.addEventListener("resize", updateScopeOptionsOverflow);
@@ -1092,60 +1092,43 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
 
       {snapshot ? (
         <>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
   <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
   <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
   <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
   <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
-  <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
-  <MetricCard
-    label="Breakdown"
-    value={formatSummaryDowntime(filteredSummary.totalBreakdownMinutes)}
-    detail="Recorded downtime"
-    icon={Gauge}
-    tone={filteredSummary.totalBreakdownMinutes > 0 ? "text-orange-300" : "text-slate-50"}
-  />
 </div>
 
           <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
   <div>
     <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
-    <p className="mt-1 text-xs text-slate-500">Filter by site scope and discipline.</p>
+    <p className="mt-1 text-xs text-slate-500">Site and areas with activity in the selected review period.</p>
   </div>
 
-  <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Handover scope level">
-    <SelectorTab active={scopeMode === "site"} onClick={() => setScopeMode("site")}>Site</SelectorTab>
-    <SelectorTab active={scopeMode === "building"} onClick={() => setScopeMode("building")}>Building</SelectorTab>
-    <SelectorTab active={scopeMode === "area"} onClick={() => setScopeMode("area")}>Area</SelectorTab>
-  </div>
-
-  {scopeMode !== "site" ? (
-    <div className="relative mt-3">
-      <div
-        ref={scopeOptionsRef}
-        onScroll={updateScopeOptionsOverflow}
-        className="flex gap-2 overflow-x-auto pb-1 pr-10"
-        aria-label={`${scopeMode} options`}
-        data-vorta-shift-handover-scope-options="true"
-      >
-        <SelectorTab active={scopeValue === "all"} onClick={() => setScopeValue("all")}>
-          All {scopeMode === "building" ? "buildings" : "areas"}
+  <div className="relative mt-4">
+    <div
+      ref={scopeOptionsRef}
+      onScroll={updateScopeOptionsOverflow}
+      role="tablist"
+      aria-label="Handover scope"
+      className="flex gap-2 overflow-x-auto pb-1 pr-10"
+      data-vorta-shift-handover-scope-tabs="true"
+    >
+      <SelectorTab active={scopeValue === "all"} onClick={() => setScopeValue("all")}>Site</SelectorTab>
+      {scopeAreas.map((area) => (
+        <SelectorTab key={area} active={scopeValue === area} onClick={() => setScopeValue(area)}>
+{area}
         </SelectorTab>
-        {scopeOptions.map((option) => (
-          <SelectorTab key={option} active={scopeValue === option} onClick={() => setScopeValue(option)}>
-            {option}
-          </SelectorTab>
-        ))}
-      </div>
-      {scopeOptionsCanScrollRight ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#10151d] to-transparent"
-          data-vorta-shift-handover-scope-fade="true"
-        />
-      ) : null}
+      ))}
     </div>
-  ) : null}
+    {scopeOptionsCanScrollRight ? (
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#10151d] to-transparent"
+        data-vorta-shift-handover-scope-fade="true"
+      />
+    ) : null}
+  </div>
 
   <div
     data-vorta-shift-handover-review-period="true"
@@ -1160,9 +1143,9 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
         className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
       >
         {REVIEW_PERIOD_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
+<option key={option.value} value={option.value}>
+  {option.label}
+</option>
         ))}
       </select>
     </label>
@@ -1172,18 +1155,6 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
         {reviewPeriodLoadingState(reviewHours)}
       </span>
     ) : null}
-  </div>
-
-  <div className="mt-4 border-t border-gray-800 pt-4">
-    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">Discipline</p>
-    <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Maintenance discipline">
-      <SelectorTab active={discipline === "all"} onClick={() => setDiscipline("all")}>All</SelectorTab>
-      {(Object.keys(DISCIPLINE_LABELS) as ShiftHandoverDiscipline[]).map((value) => (
-        <SelectorTab key={value} active={discipline === value} onClick={() => setDiscipline(value)}>
-          {DISCIPLINE_LABELS[value]}
-        </SelectorTab>
-      ))}
-    </div>
   </div>
 
   <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(150px,0.45fr))]">
@@ -1324,7 +1295,7 @@ node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
     <p className="mt-1 text-sm text-slate-600">
       {snapshot.items.length === 0
         ? "No work orders were confirmed in this review period."
-        : "Return to the site scope or remove a discipline, status or criticality filter."}
+        : "Return to Site or clear the search, status or criticality filters."}
     </p>
 
             </div>

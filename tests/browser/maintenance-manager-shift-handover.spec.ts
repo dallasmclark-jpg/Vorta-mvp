@@ -21,13 +21,17 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   const criticalitySelect = page.getByLabel("Criticality");
   const statusSelect = page.getByLabel("Status");
   const sortSelect = page.getByLabel("Sort by");
-  await expect(page.getByRole("button", { name: "Site", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Building", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Area", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Mechanical", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Electrical", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Controls", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Facilities", exact: true })).toBeVisible();
+  const scopeTabs = page.locator('[data-vorta-shift-handover-scope-tabs="true"]');
+  await expect(scopeTabs).toBeVisible();
+  await expect(scopeTabs.getByRole("tab", { name: "Site", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Building", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Area", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Mechanical", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Electrical", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Controls", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Facilities", exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-vorta-shift-handover-metric="contractor"]')).toHaveCount(0);
+  await expect(page.locator('[data-vorta-shift-handover-metric="breakdown"]')).toHaveCount(0);
   await expect(searchInput).toBeVisible();
 
   if (viewportWidth < 1024) {
@@ -38,11 +42,9 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await expect(sortSelect).toBeHidden();
 
     const reviewBox = await reviewPeriod.boundingBox();
-    const disciplineBox = await page.getByText("Discipline", { exact: true }).boundingBox();
     const searchBox = await searchInput.boundingBox();
     const filtersBox = await filtersButton.boundingBox();
-    expect(reviewBox?.y ?? 0).toBeLessThan(disciplineBox?.y ?? Number.MAX_SAFE_INTEGER);
-    expect(disciplineBox?.y ?? 0).toBeLessThan(searchBox?.y ?? Number.MAX_SAFE_INTEGER);
+    expect(reviewBox?.y ?? 0).toBeLessThan(searchBox?.y ?? Number.MAX_SAFE_INTEGER);
     expect(searchBox?.y ?? 0).toBeLessThan(filtersBox?.y ?? Number.MAX_SAFE_INTEGER);
   } else {
     await expect(criticalitySelect).toBeVisible();
@@ -58,22 +60,27 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   if (viewportWidth < 1024) {
     await scrollContainer.evaluate((element) => { element.scrollTop = 280; });
     const scopeScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
-    await page.getByRole("button", { name: "Building", exact: true }).click();
-    const scopeOptions = page.locator('[data-vorta-shift-handover-scope-options="true"]');
-    await expect(scopeOptions).toBeVisible();
-    const optionButtons = scopeOptions.getByRole("button");
-    if (await optionButtons.count() > 1) {
-      const selectedOption = optionButtons.last();
+    const optionTabs = scopeTabs.getByRole("tab");
+    const optionCount = await optionTabs.count();
+    expect(optionCount).toBeGreaterThan(0);
+    if (optionCount > 1) {
+      const selectedOption = optionTabs.last();
+      const selectedArea = (await selectedOption.textContent())?.trim() ?? "";
+      expect(selectedArea).not.toBe("");
       await selectedOption.click();
+      await expect(selectedOption).toHaveAttribute("aria-selected", "true");
       await expect.poll(async () => {
-        const containerBox = await scopeOptions.boundingBox();
+        const containerBox = await scopeTabs.boundingBox();
         const selectedBox = await selectedOption.boundingBox();
         if (!containerBox || !selectedBox) return false;
         return selectedBox.x >= containerBox.x - 1
 && selectedBox.x + selectedBox.width <= containerBox.x + containerBox.width + 1;
       }).toBe(true);
+      for (const cardText of await cards.allTextContents()) {
+        expect(cardText).toContain(selectedArea);
+      }
     }
-    await page.getByRole("button", { name: "Site", exact: true }).click();
+    await scopeTabs.getByRole("tab", { name: "Site", exact: true }).click();
     const scopeScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
     expect(scopeScrollAfter).toBeGreaterThanOrEqual(Math.max(0, scopeScrollBefore - 80));
   }
@@ -91,16 +98,6 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   const totalMetric = page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first();
   await expect(totalMetric).toHaveText(String(await cards.count()));
-  const breakdownMetric = page.locator('[data-vorta-shift-handover-metric="breakdown"]');
-  const breakdownValue = breakdownMetric.locator("p").first();
-  const breakdownText = (await breakdownValue.textContent())?.trim() ?? "";
-  if (breakdownText === "0 hrs") {
-    await expect(breakdownValue).not.toHaveClass(/text-orange-300/);
-  } else {
-    expect(breakdownText).toMatch(/^\d+(?:\.\d)? hrs$/);
-    await expect(breakdownValue).toHaveClass(/text-orange-300/);
-  }
-
   if (viewportWidth < 1024) {
     await page.getByRole("button", { name: "Filters", exact: true }).click();
   }
