@@ -11,6 +11,7 @@ on:
       - "supabase/functions/shift-handover-data/**"
       - "scripts/shift-handover-contracts.mjs"
       - "tests/browser/maintenance-manager-shift-handover.spec.ts"
+      - "tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts"
       - "playwright.config.ts"
       - ".github/workflows/shift-handover-quality.yml"
   push:
@@ -23,6 +24,7 @@ on:
       - "supabase/functions/shift-handover-data/**"
       - "scripts/shift-handover-contracts.mjs"
       - "tests/browser/maintenance-manager-shift-handover.spec.ts"
+      - "tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts"
       - "playwright.config.ts"
       - ".github/workflows/shift-handover-quality.yml"
   workflow_dispatch:
@@ -84,6 +86,7 @@ jobs:
         run: |
           npx playwright test \
             tests/browser/maintenance-manager-shift-handover.spec.ts \
+            tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts \
             --project=phone-360 \
             --project=samsung-tablet-portrait \
             --project=samsung-tablet-landscape \
