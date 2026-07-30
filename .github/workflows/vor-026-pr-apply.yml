@@ -1,0 +1,111 @@
+name: Apply VOR-026 on pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/vor-026-shift-handover-mobile-refinement'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/vor-026-shift-handover-mobile-refinement
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Correct focused formatting and shared contract
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path("src/screens/ShiftHandover/ShiftHandoverSection.tsx")
+          page = path.read_text()
+
+          old_class = "min-h-11 shrink-0 whitespace-nowrap rounded-lg border px-4"
+          new_class = "min-h-11 shrink-0 rounded-lg border whitespace-nowrap px-4"
+          if page.count(old_class) != 1:
+              raise SystemExit(f"selector class: expected 1 match, found {page.count(old_class)}")
+          page = page.replace(old_class, new_class, 1)
+
+          page = page.replace(
+              "\nnode.scrollLeft = Math.max(0, selectedLeft - 8);",
+              "\n          node.scrollLeft = Math.max(0, selectedLeft - 8);",
+              1,
+          )
+          page = page.replace(
+              "\nnode.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);",
+              "\n          node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);",
+              1,
+          )
+          page = page.replace("\n\n\n  const openItem", "\n\n  const openItem", 1)
+
+          summary_start = page.index('          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">')
+          scope_start = page.index('          <section data-vorta-group-frame="true"', summary_start)
+          summary_block = page[summary_start:scope_start].rstrip()
+          summary_lines = summary_block.splitlines()
+          summary_block = "\n".join(
+              [summary_lines[0]]
+              + [("          " + line) if line else "" for line in summary_lines[1:]]
+          )
+          page = page[:summary_start] + summary_block + "\n\n" + page[scope_start:]
+
+          scope_start = page.index('          <section data-vorta-group-frame="true"')
+          activity_start = page.index('          <div className="flex items-end justify-between gap-4">', scope_start)
+          scope_block = page[scope_start:activity_start].rstrip()
+          scope_lines = scope_block.splitlines()
+          scope_block = "\n".join(
+              [scope_lines[0]]
+              + [("          " + line) if line else "" for line in scope_lines[1:]]
+          )
+          page = page[:scope_start] + scope_block + "\n\n" + page[activity_start:]
+
+          empty_start = page.index(
+              '              <h2 className="mt-4 font-semibold text-slate-300">',
+              page.index('<PackageCheck className="mx-auto h-8 w-8 text-slate-600"'),
+          )
+          empty_end = page.index('            </div>\n          )}', empty_start)
+          empty_block = '''              <h2 className="mt-4 font-semibold text-slate-300">
+                {snapshot.items.length === 0
+                  ? reviewPeriodEmptyState(reviewHours)
+                  : "No work orders match the selected filters."}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {snapshot.items.length === 0
+                  ? "No work orders were confirmed in this review period."
+                  : "Return to the site scope or remove a discipline, status or criticality filter."}
+              </p>
+'''
+          page = page[:empty_start] + empty_block + page[empty_end:]
+
+          path.write_text(page)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run focused checks
+        run: |
+          npm run typecheck
+          node scripts/card-surface-contracts.mjs
+          node scripts/shift-handover-contracts.mjs
+
+      - name: Commit correction
+        shell: bash
+        run: |
+          rm .github/workflows/vor-026-pr-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-026: align mobile refinement with shared contracts"
+          git push origin HEAD:feature/vor-026-shift-handover-mobile-refinement
