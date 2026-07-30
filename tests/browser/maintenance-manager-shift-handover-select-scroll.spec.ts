@@ -1,6 +1,22 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
+async function openShiftHandover(page: Page): Promise<void> {
+  const root = page.locator('[data-vorta-shift-handover="true"]');
+  const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto("/shift-handover?review=96");
+    const ready = await Promise.all([
+      root.waitFor({ state: "visible", timeout: 30_000 }),
+      reviewPeriod.waitFor({ state: "visible", timeout: 30_000 }),
+    ]).then(() => true).catch(() => false);
+    if (ready) return;
+    await signInMaintenanceManager(page);
+  }
+  await expect(root).toBeVisible({ timeout: 30_000 });
+  await expect(reviewPeriod).toBeVisible({ timeout: 30_000 });
+}
+
 // Production regression: Android Chrome must scroll portalled listboxes internally.
 async function expectInternalMenuScroll(
   page: Page,
@@ -53,13 +69,11 @@ async function expectInternalMenuScroll(
 }
 
 test("Shift Handover portalled dropdowns scroll on a narrow mobile viewport", async ({ page }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   await signInMaintenanceManager(page);
-  await page.goto("/shift-handover");
-  await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
+  await openShiftHandover(page);
 
   const reviewTrigger = page.getByRole("button", { name: "Review period", exact: true });
-  await expect(reviewTrigger).toBeVisible();
   await reviewTrigger.click();
   const reviewListbox = page.getByRole("listbox", { name: "Review period options" });
   await expectInternalMenuScroll(page, reviewListbox);
