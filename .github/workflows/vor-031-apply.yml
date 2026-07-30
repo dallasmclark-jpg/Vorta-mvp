@@ -1,0 +1,40 @@
+name: Apply VOR-031 maintenance team filter
+
+on:
+  push:
+    branches:
+      - vorta/vor-031-maintenance-team-filter
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[skip vor-031 apply]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: vorta/vor-031-maintenance-team-filter
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply focused VOR-031 patches
+        run: |
+          python scripts/vor-031-backend.py
+          python scripts/vor-031-ui.py
+          python scripts/vor-031-tests.py
+      - name: Remove one-use patch machinery
+        run: |
+          rm scripts/vor-031-backend.py
+          rm scripts/vor-031-ui.py
+          rm scripts/vor-031-tests.py
+          rm .github/workflows/vor-031-apply.yml
+      - name: Commit implementation
+        run: |
+          git config user.name "Vorta automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-031: add maintenance team handover filtering [skip vor-031 apply]"
+          git push origin HEAD:vorta/vor-031-maintenance-team-filter
