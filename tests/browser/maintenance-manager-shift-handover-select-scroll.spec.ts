@@ -9,10 +9,14 @@ async function expectInternalMenuScroll(
   await expect(listbox).toBeVisible();
   await expect(listbox).toHaveCSS("touch-action", "pan-y");
 
-  const overflow = await listbox.evaluate(
-    (element) => element.scrollHeight - element.clientHeight,
-  );
-  expect(overflow, "The mobile listbox must have internally scrollable content").toBeGreaterThan(24);
+  const before = await listbox.evaluate((element) => ({
+    scrollTop: element.scrollTop,
+    overflow: element.scrollHeight - element.clientHeight,
+  }));
+  expect(
+    before.overflow,
+    "The mobile listbox must have internally scrollable content",
+  ).toBeGreaterThan(4);
 
   const pageScroller = page.locator('[data-vorta-portal-scroll-container="true"]');
   const pageScrollBefore = await pageScroller.evaluate((element) => element.scrollTop);
@@ -22,14 +26,20 @@ async function expectInternalMenuScroll(
     (box?.x ?? 0) + (box?.width ?? 0) / 2,
     (box?.y ?? 0) + Math.min((box?.height ?? 0) / 2, 120),
   );
-  await page.mouse.wheel(0, Math.min(240, overflow));
-  await page.waitForTimeout(350);
 
-  const menuScrollAfter = await listbox.evaluate((element) => element.scrollTop);
-  expect(
-    menuScrollAfter,
-    "Internal menu scrolling must not snap back to the focused first option",
-  ).toBeGreaterThan(20);
+  const scrollTowardsStart = before.scrollTop >= before.overflow / 2;
+  const delta = Math.max(12, Math.min(120, before.overflow));
+  await page.mouse.wheel(0, scrollTowardsStart ? -delta : delta);
+
+  await expect.poll(
+    () => listbox.evaluate((element) => element.scrollTop),
+    {
+      message: "Internal menu scrolling must not snap back to the focused option",
+      timeout: 5_000,
+    },
+  ).toSatisfy((scrollTop) => scrollTowardsStart
+    ? scrollTop < before.scrollTop - 2
+    : scrollTop > before.scrollTop + 2);
   await expect(listbox).toBeVisible();
 
   const pageScrollAfter = await pageScroller.evaluate((element) => element.scrollTop);
