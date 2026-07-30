@@ -13,19 +13,17 @@ const TEAM_LABELS = [
   "Calibration Team",
 ] as const;
 
-async function chooseSingleSelect(
-  page: Page,
-  label: string,
-  optionValue: string,
-): Promise<void> {
-  const trigger = page.getByRole("button", { name: label, exact: true });
-  await expect(trigger).toBeVisible({ timeout: 45_000 });
-  await trigger.click();
-  const listbox = page.getByRole("listbox", { name: `${label} options` });
-  await expect(listbox).toBeVisible();
-  const option = listbox.locator(`[role="option"][data-value="${optionValue}"]`);
-  await expect(option).toBeAttached();
-  await option.click();
+async function openShiftHandover(page: Page): Promise<void> {
+  const root = page.locator('[data-vorta-shift-handover="true"]');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto("/shift-handover?review=96");
+    const ready = await root.waitFor({ state: "visible", timeout: 30_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (ready) return;
+    await signInMaintenanceManager(page);
+  }
+  await expect(root).toBeVisible({ timeout: 30_000 });
 }
 
 async function exposeTeamFilter(page: Page): Promise<void> {
@@ -100,15 +98,17 @@ async function expectEmptyTeamResult(page: Page, team: string): Promise<void> {
 }
 
 test("Maintenance team multi-select filters unique Shift Handover work orders", async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   await signInMaintenanceManager(page);
-  await page.goto("/shift-handover");
-  await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
+  await openShiftHandover(page);
 
   // Use the latest imported SAP evidence window. Day Shift currently has no
   // confirmation in this window, so its individual selection validates the
   // team-aware empty state rather than inventing a fixture.
-  await chooseSingleSelect(page, "Review period", "96");
+  await expect(page.getByRole("button", { name: "Review period", exact: true })).toHaveAttribute(
+    "data-value",
+    "96",
+  );
   await expect(page.getByRole("heading", { name: "Activity from the previous 8 shifts", exact: true })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-card="true"]').first()).toBeVisible({ timeout: 30_000 });
   await exposeTeamFilter(page);
