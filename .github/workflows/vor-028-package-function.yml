@@ -13,14 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Package Shift Handover function
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Bundle and minify Shift Handover function
         run: |
           mkdir function-source
-          cp supabase/functions/shift-handover-data/index.ts function-source/index.ts
-          cp supabase/functions/shift-handover-data/auth.ts function-source/auth.ts
-          cp supabase/functions/shift-handover-data/transform.ts function-source/transform.ts
+          npx esbuild supabase/functions/shift-handover-data/index.ts \
+            --bundle \
+            --minify \
+            --format=esm \
+            --platform=neutral \
+            --external:jsr:* \
+            --outfile=function-source/index.ts
       - uses: actions/upload-artifact@v4
         with:
-          name: vor-028-shift-handover-function
-          path: function-source
+          name: vor-028-shift-handover-function-minified
+          path: function-source/index.ts
           if-no-files-found: error
