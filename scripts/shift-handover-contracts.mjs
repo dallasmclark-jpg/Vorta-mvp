@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 const route = read("src/screens/AiOperations/AiOperations.tsx");
 const page = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
+const vortaSelect = read("src/components/VortaSelect.tsx");
 const service = read("src/screens/ShiftHandover/shiftHandoverService.ts");
 const workflow = read("src/screens/ShiftHandover/shiftHandoverWorkflowService.ts");
 const edge = read("supabase/functions/shift-handover-data/index.ts");
@@ -136,14 +137,17 @@ const assertions = [
   [page.includes("Longest breakdown") && page.includes("Criticality") && page.includes("Status"), "Criticality, status and longest-breakdown filtering are required."],
   [page.includes("sparesUsed") && page.includes("outstandingMaterials") && page.includes("confirmedWorkHours"), "Work-order, confirmation and material detail must remain visible."],
   [/\[data-vorta-shift-handover="true"\]\s*>\s*header\s*\{\s*display:\s*none\s*!important;\s*\}/m.test(surfaces), "Shift Handover must start with the operational summary cards on every viewport."],
-  [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("Review period"), "One shared Review period control is required."],
+  [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("<VortaSelect") && page.includes('label="Review period"'), "One shared Vorta Review period control is required."],
+  [!page.includes("<select") && (page.match(/<VortaSelect/g) ?? []).length === 4, "Shift Handover must not invoke native browser select dialogs."],
+  [vortaSelect.includes('role="listbox"') && vortaSelect.includes('role="option"') && vortaSelect.includes('data-vorta-select-listbox="true"'), "The shared Vorta selector must render a styled accessible listbox."],
+  [vortaSelect.includes("ArrowDown") && vortaSelect.includes("ArrowUp") && vortaSelect.includes("Home") && vortaSelect.includes("End") && vortaSelect.includes("Escape"), "The Vorta selector must retain keyboard navigation and dismissal."],
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
   [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
   [page.includes('id="shift-handover-advanced-filters"') && page.includes("lg:contents"), "Criticality, Status and Sort must collapse on mobile without duplicating wider-layout logic."],
   [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "The shared area rail needs selected-item scrolling and an overflow cue."],
   [(page.match(/<MetricCard/g) ?? []).length === 4 && !page.includes('<MetricCard label="Contractor"') && !page.includes('label="Breakdown"'), "Only the four approved operational summary cards may render."],
   [page.includes("reviewPeriodLoadingState") && page.includes("No work orders match the selected filters."), "Period-aware loading and filter-aware empty states are required."],
-  [browser.includes('toHaveValue("12")'), "The responsive browser contract must verify Last 12 hours as the default."],
+  [browser.includes('toHaveAttribute("data-value", "12")') && browser.includes("Review period options"), "The responsive browser contract must verify the styled Last 12 hours selector as the default."],
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
@@ -164,7 +168,7 @@ const assertions = [
   [page.includes("data-vorta-shift-handover-confirmation-history-item") && page.includes("whitespace-pre-wrap") && page.includes("[overflow-wrap:anywhere]"), "Confirmation history must expand and wrap without clipping or overlap."],
   [page.includes("data-vorta-shift-handover-functional-location") && page.includes(">Equipment</dt>"), "The neutral location hierarchy must include functional location and equipment."],
   ...statusFixtureChecks,
-  [browser.includes('getByLabel("Review period")') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
+  [browser.includes('getByRole("button", { name: "Review period", exact: true })') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
   [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, the area rail and retired summary cards."],
   [!page.includes("insert(") && !page.includes("delete("), "Shift Handover SAP evidence must remain read-only."],
 ];
@@ -175,4 +179,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover review periods, status truth, confirmation detail layout and responsive state verified.");
+console.log("✓ Shift Handover Vorta dropdowns, review periods, status truth, confirmation detail layout and responsive state verified.");
