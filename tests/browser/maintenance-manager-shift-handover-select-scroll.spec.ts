@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
+// Production regression: Android Chrome must scroll portalled listboxes internally.
 async function expectInternalMenuScroll(
   page: Page,
   listbox: Locator,
