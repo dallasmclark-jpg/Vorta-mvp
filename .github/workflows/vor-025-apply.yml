@@ -1,0 +1,30 @@
+name: VOR-025 Apply Shift Handover Review Period
+
+on:
+  push:
+    branches:
+      - feature/vor-025-shift-handover-review-period
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply VOR-025 implementation') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/vor-025-shift-handover-review-period
+          fetch-depth: 0
+      - name: Apply deterministic source transformation
+        run: node scripts/vor-025-apply.mjs
+      - name: Verify focused source contract
+        run: node scripts/shift-handover-contracts.mjs
+      - name: Commit implementation
+        run: |
+          git config user.name "Vorta Engineering Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply VOR-025 implementation"
+          git push origin HEAD:feature/vor-025-shift-handover-review-period
