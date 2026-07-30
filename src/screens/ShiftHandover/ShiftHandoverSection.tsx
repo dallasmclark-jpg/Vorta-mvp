@@ -20,6 +20,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -88,6 +89,12 @@ function reviewPeriodEmptyState(reviewHours: ShiftHandoverReviewHours): string {
   return reviewHours === 96
     ? "No handover activity recorded in the last 4 days."
     : `No handover activity recorded in the last ${reviewHours} hours.`;
+}
+
+function reviewPeriodLoadingState(reviewHours: ShiftHandoverReviewHours): string {
+  return reviewHours === 96
+    ? "Loading activity from the last 4 days…"
+    : `Loading activity from the last ${reviewHours} hours…`;
 }
 
 function localDateParts(value: string, timeZone: string): {
@@ -247,6 +254,12 @@ function formatDuration(minutes: number): string {
   return `${hours} hr ${remainder} min`;
 }
 
+function formatSummaryDowntime(minutes: number): string {
+  if (minutes <= 0) return "0 hrs";
+  const hours = minutes / 60;
+  return `${Number(hours.toFixed(1))} hrs`;
+}
+
 function formatTimestamp(value: string | null): string {
   if (!value) return "No timestamp";
   const date = new Date(value);
@@ -274,7 +287,7 @@ function MetricCard({
 }): JSX.Element {
   return (
     <div
-      className="rounded-xl border border-gray-800 bg-[#141820] p-4"
+      className="rounded-xl border border-gray-800 bg-[#141820] p-3 sm:p-4"
       data-vorta-shift-handover-metric={label.toLowerCase().replace(/\s+/g, "-")}
     >
       <div className="flex items-center justify-between gap-3">
@@ -283,7 +296,7 @@ function MetricCard({
         </span>
         <Icon className={`h-4 w-4 ${tone}`} aria-hidden="true" />
       </div>
-      <p className={`mt-3 text-2xl font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className={`mt-2 text-xl font-bold tabular-nums sm:mt-3 sm:text-2xl ${tone}`}>{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
     </div>
   );
@@ -303,7 +316,7 @@ function SelectorTab({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`min-h-11 shrink-0 rounded-lg border px-4 text-sm font-semibold transition-colors ${
+      className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg border px-4 text-sm font-semibold transition-colors ${
         active
           ? "border-blue-500/50 bg-blue-500/15 text-blue-200"
           : "border-gray-800 bg-[#10151d] text-slate-400 hover:border-gray-700 hover:text-slate-200"
@@ -802,6 +815,8 @@ export function ShiftHandoverSection(): JSX.Element {
   const [sortMode, setSortMode] = useState<SortMode>("priority");
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const scopeOptionsRef = useRef<HTMLDivElement>(null);
+  const [scopeOptionsCanScrollRight, setScopeOptionsCanScrollRight] = useState(false);
   const [workflowActions, setWorkflowActions] = useState<Map<string, ShiftHandoverWorkflowAction>>(new Map());
   const [workflowError, setWorkflowError] = useState<string | null>(null);
 
@@ -858,6 +873,13 @@ export function ShiftHandoverSection(): JSX.Element {
   useEffect(() => {
     setScopeValue("all");
   }, [scopeMode]);
+
+  const updateScopeOptionsOverflow = useCallback((): void => {
+    const node = scopeOptionsRef.current;
+    setScopeOptionsCanScrollRight(Boolean(
+      node && node.scrollLeft + node.clientWidth < node.scrollWidth - 1,
+    ));
+  }, []);
 
   const changeReviewPeriod = (value: string): void => {
     if (!isShiftHandoverReviewHours(value)) return;
@@ -959,6 +981,41 @@ export function ShiftHandoverSection(): JSX.Element {
       ? snapshot?.scopeOptions.areas ?? []
       : [];
 
+  const activeAdvancedFilterCount = Number(criticality !== "all")
+    + Number(status !== "all");
+
+  useEffect(() => {
+    const node = scopeOptionsRef.current;
+    if (!node) {
+      setScopeOptionsCanScrollRight(false);
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const selected = node.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+      if (selected) {
+        const selectedLeft = selected.offsetLeft;
+        const selectedRight = selectedLeft + selected.offsetWidth;
+        const viewportLeft = node.scrollLeft;
+        const viewportRight = viewportLeft + node.clientWidth;
+        if (selectedLeft < viewportLeft + 8) {
+node.scrollLeft = Math.max(0, selectedLeft - 8);
+        } else if (selectedRight > viewportRight - 8) {
+node.scrollLeft = Math.max(0, selectedRight - node.clientWidth + 8);
+        }
+      }
+      updateScopeOptionsOverflow();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [scopeMode, scopeOptions.length, scopeValue, updateScopeOptionsOverflow]);
+
+  useEffect(() => {
+    window.addEventListener("resize", updateScopeOptionsOverflow);
+    return () => window.removeEventListener("resize", updateScopeOptionsOverflow);
+  }, [updateScopeOptionsOverflow]);
+
+
   const openItem = (item: ShiftHandoverItem): void => {
     setSelectedId(item.id);
     if (compactDetail) setDetailOpen(true);
@@ -1028,154 +1085,180 @@ export function ShiftHandoverSection(): JSX.Element {
         <div className="flex min-h-[45vh] items-center justify-center" role="status">
           <span className="inline-flex items-center gap-2 text-sm text-slate-400">
             <RefreshCw className="h-4 w-4 animate-spin text-blue-400" aria-hidden="true" />
-            Loading {reviewPeriodLabel(reviewHours).toLowerCase()} from SAP evidence…
+            {reviewPeriodLoadingState(reviewHours)}
           </span>
         </div>
       ) : null}
 
       {snapshot ? (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
-            <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
-            <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
-            <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
-            <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
-            <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
-            <MetricCard label="Breakdown" value={formatDuration(filteredSummary.totalBreakdownMinutes)} detail="Recorded downtime" icon={Gauge} tone="text-orange-300" />
-          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
+  <MetricCard label="Handover items" value={String(filteredSummary.total)} detail="In selected review period" icon={Wrench} />
+  <MetricCard label="Ongoing" value={String(filteredSummary.ongoing)} detail="Needs incoming action" icon={Timer} tone="text-blue-300" />
+  <MetricCard label="Completed" value={String(filteredSummary.completed)} detail="Returned or closed" icon={CheckCircle2} tone="text-emerald-300" />
+  <MetricCard label="Waiting parts" value={String(filteredSummary.waitingOnParts)} detail="Open material need" icon={Boxes} tone="text-amber-300" />
+  <MetricCard label="Contractor" value={String(filteredSummary.externalContractor)} detail="External support" icon={HardHat} tone="text-violet-300" />
+  <MetricCard
+    label="Breakdown"
+    value={formatSummaryDowntime(filteredSummary.totalBreakdownMinutes)}
+    detail="Recorded downtime"
+    icon={Gauge}
+    tone={filteredSummary.totalBreakdownMinutes > 0 ? "text-orange-300" : "text-slate-50"}
+  />
+</div>
 
           <section data-vorta-group-frame="true" className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
-                <p className="mt-1 text-xs text-slate-500">Move from the full site into a building or operating area.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((open) => !open)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-700 px-3 text-sm font-semibold text-slate-300 lg:hidden"
-                aria-expanded={filtersOpen}
-              >
-                <Filter className="h-4 w-4" aria-hidden="true" />
-                Filters
-              </button>
-            </div>
+  <div>
+    <h2 className="text-sm font-semibold text-slate-100">Handover scope</h2>
+    <p className="mt-1 text-xs text-slate-500">Filter by site scope and discipline.</p>
+  </div>
 
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Handover scope level">
-              <SelectorTab active={scopeMode === "site"} onClick={() => setScopeMode("site")}>Site</SelectorTab>
-              <SelectorTab active={scopeMode === "building"} onClick={() => setScopeMode("building")}>Building</SelectorTab>
-              <SelectorTab active={scopeMode === "area"} onClick={() => setScopeMode("area")}>Area</SelectorTab>
-            </div>
+  <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Handover scope level">
+    <SelectorTab active={scopeMode === "site"} onClick={() => setScopeMode("site")}>Site</SelectorTab>
+    <SelectorTab active={scopeMode === "building"} onClick={() => setScopeMode("building")}>Building</SelectorTab>
+    <SelectorTab active={scopeMode === "area"} onClick={() => setScopeMode("area")}>Area</SelectorTab>
+  </div>
 
-            {scopeMode !== "site" ? (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label={`${scopeMode} options`}>
-                <SelectorTab active={scopeValue === "all"} onClick={() => setScopeValue("all")}>
-                  All {scopeMode === "building" ? "buildings" : "areas"}
-                </SelectorTab>
-                {scopeOptions.map((option) => (
-                  <SelectorTab key={option} active={scopeValue === option} onClick={() => setScopeValue(option)}>
-                    {option}
-                  </SelectorTab>
-                ))}
-              </div>
-            ) : null}
+  {scopeMode !== "site" ? (
+    <div className="relative mt-3">
+      <div
+        ref={scopeOptionsRef}
+        onScroll={updateScopeOptionsOverflow}
+        className="flex gap-2 overflow-x-auto pb-1 pr-10"
+        aria-label={`${scopeMode} options`}
+        data-vorta-shift-handover-scope-options="true"
+      >
+        <SelectorTab active={scopeValue === "all"} onClick={() => setScopeValue("all")}>
+          All {scopeMode === "building" ? "buildings" : "areas"}
+        </SelectorTab>
+        {scopeOptions.map((option) => (
+          <SelectorTab key={option} active={scopeValue === option} onClick={() => setScopeValue(option)}>
+            {option}
+          </SelectorTab>
+        ))}
+      </div>
+      {scopeOptionsCanScrollRight ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#10151d] to-transparent"
+          data-vorta-shift-handover-scope-fade="true"
+        />
+      ) : null}
+    </div>
+  ) : null}
 
-            <div className="mt-4 border-t border-gray-800 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">Discipline</p>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Maintenance discipline">
-                <SelectorTab active={discipline === "all"} onClick={() => setDiscipline("all")}>All</SelectorTab>
-                {(Object.keys(DISCIPLINE_LABELS) as ShiftHandoverDiscipline[]).map((value) => (
-                  <SelectorTab key={value} active={discipline === value} onClick={() => setDiscipline(value)}>
-                    {DISCIPLINE_LABELS[value]}
-                  </SelectorTab>
-                ))}
-              </div>
-            </div>
+  <div
+    data-vorta-shift-handover-review-period="true"
+    className="mt-4 border-t border-gray-800 pt-4"
+  >
+    <label className="grid w-full gap-1 text-xs font-medium text-slate-500 sm:max-w-xs">
+      Review period
+      <select
+        value={reviewHours}
+        onChange={(event) => changeReviewPeriod(event.target.value)}
+        disabled={loading}
+        className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
+      >
+        {REVIEW_PERIOD_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+    {loading ? (
+      <span role="status" className="mt-2 inline-flex items-center gap-2 text-xs text-blue-300">
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        {reviewPeriodLoadingState(reviewHours)}
+      </span>
+    ) : null}
+  </div>
 
-            <div className={`${filtersOpen ? "grid" : "hidden"} mt-4 gap-3 border-t border-gray-800 pt-4 lg:grid lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(150px,0.45fr))]`}>
-              <label className="flex min-h-11 items-center gap-2 rounded-xl border border-gray-700 bg-[#0d1117] px-3">
-                <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                <span className="sr-only">Search handover</span>
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search work order or equipment"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
-                />
-              </label>
+  <div className="mt-4 border-t border-gray-800 pt-4">
+    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">Discipline</p>
+    <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Maintenance discipline">
+      <SelectorTab active={discipline === "all"} onClick={() => setDiscipline("all")}>All</SelectorTab>
+      {(Object.keys(DISCIPLINE_LABELS) as ShiftHandoverDiscipline[]).map((value) => (
+        <SelectorTab key={value} active={discipline === value} onClick={() => setDiscipline(value)}>
+          {DISCIPLINE_LABELS[value]}
+        </SelectorTab>
+      ))}
+    </div>
+  </div>
 
-              <label className="grid gap-1 text-xs text-slate-500">
-                Criticality
-                <select
-                  value={criticality}
-                  onChange={(event) => setCriticality(event.target.value as CriticalityFilter)}
-                  className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
-                >
-                  <option value="all">All criticalities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </label>
+  <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(150px,0.45fr))]">
+    <label className="flex min-h-11 items-center gap-2 rounded-xl border border-gray-700 bg-[#0d1117] px-3">
+      <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
+      <span className="sr-only">Search handover</span>
+      <input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search work order or equipment"
+        className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+      />
+    </label>
 
-              <label className="grid gap-1 text-xs text-slate-500">
-                Status
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value as StatusFilter)}
-                  className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
-                >
-                  <option value="all">All statuses</option>
-                  <option value="active">Active / ongoing</option>
-                  <option value="waiting">Waiting / deferred</option>
-                  <option value="contractor">External contractor</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </label>
+    <button
+      type="button"
+      onClick={() => setFiltersOpen((open) => !open)}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-700 px-3 text-sm font-semibold text-slate-300 lg:hidden"
+      aria-expanded={filtersOpen}
+      aria-controls="shift-handover-advanced-filters"
+    >
+      <Filter className="h-4 w-4" aria-hidden="true" />
+      Filters{activeAdvancedFilterCount > 0 ? ` · ${activeAdvancedFilterCount}` : ""}
+    </button>
 
-              <label className="grid gap-1 text-xs text-slate-500">
-                Sort by
-                <select
-                  value={reviewHours > 12 ? "recent" : sortMode}
-                  onChange={(event) => setSortMode(event.target.value as SortMode)}
-                  disabled={reviewHours > 12}
-                  className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="priority">Criticality</option>
-                  <option value="breakdown">Longest breakdown</option>
-                  <option value="recent">Most recent</option>
-                </select>
-              </label>
-            </div>
-          </section>
+    <div
+      id="shift-handover-advanced-filters"
+      className={`${filtersOpen ? "grid" : "hidden"} gap-3 lg:contents`}
+    >
+      <label className="grid gap-1 text-xs text-slate-500">
+        Criticality
+        <select
+          value={criticality}
+          onChange={(event) => setCriticality(event.target.value as CriticalityFilter)}
+          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
+        >
+          <option value="all">All criticalities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </label>
 
-          <div
-            data-vorta-shift-handover-review-period="true"
-            className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
-          >
-            <label className="grid w-full gap-1 text-xs font-medium text-slate-500 sm:max-w-xs">
-              Review period
-              <select
-                value={reviewHours}
-                onChange={(event) => changeReviewPeriod(event.target.value)}
-                disabled={loading}
-                className="min-h-11 w-full rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-200 outline-none focus:border-blue-500/60 disabled:opacity-60"
-              >
-                {REVIEW_PERIOD_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {loading ? (
-              <span role="status" className="inline-flex items-center gap-2 text-xs text-blue-300">
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                Loading {reviewPeriodLabel(reviewHours).toLowerCase()}…
-              </span>
-            ) : null}
-          </div>
+      <label className="grid gap-1 text-xs text-slate-500">
+        Status
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60"
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active / ongoing</option>
+          <option value="waiting">Waiting / deferred</option>
+          <option value="contractor">External contractor</option>
+          <option value="completed">Completed</option>
+        </select>
+      </label>
+
+      <label className="grid gap-1 text-xs text-slate-500">
+        Sort by
+        <select
+          value={reviewHours > 12 ? "recent" : sortMode}
+          onChange={(event) => setSortMode(event.target.value as SortMode)}
+          disabled={reviewHours > 12}
+          className="min-h-11 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-sm font-medium text-slate-200 outline-none focus:border-blue-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="priority">Criticality</option>
+          <option value="breakdown">Longest breakdown</option>
+          <option value="recent">Most recent</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</section>
 
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -1234,11 +1317,16 @@ export function ShiftHandoverSection(): JSX.Element {
             <div className="rounded-2xl border border-dashed border-gray-800 bg-[#10151d] px-6 py-14 text-center">
               <PackageCheck className="mx-auto h-8 w-8 text-slate-600" aria-hidden="true" />
               <h2 className="mt-4 font-semibold text-slate-300">
-                {reviewPeriodEmptyState(reviewHours)}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Return to the site scope or remove a discipline, status or criticality filter.
-              </p>
+      {snapshot.items.length === 0
+        ? reviewPeriodEmptyState(reviewHours)
+        : "No work orders match the selected filters."}
+    </h2>
+    <p className="mt-1 text-sm text-slate-600">
+      {snapshot.items.length === 0
+        ? "No work orders were confirmed in this review period."
+        : "Return to the site scope or remove a discipline, status or criticality filter."}
+    </p>
+
             </div>
           )}
 

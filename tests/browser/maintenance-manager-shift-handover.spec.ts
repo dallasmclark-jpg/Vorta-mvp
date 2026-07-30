@@ -15,6 +15,12 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   await expect(reviewPeriod).toBeVisible();
   await expect(reviewPeriod).toHaveValue("12");
   await expect(reviewPeriod.locator("option")).toHaveCount(5);
+
+  const viewportWidth = page.viewportSize()?.width ?? 1366;
+  const searchInput = page.getByPlaceholder("Search work order or equipment");
+  const criticalitySelect = page.getByLabel("Criticality");
+  const statusSelect = page.getByLabel("Status");
+  const sortSelect = page.getByLabel("Sort by");
   await expect(page.getByRole("button", { name: "Site", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Building", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Area", exact: true })).toBeVisible();
@@ -22,42 +28,111 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   await expect(page.getByRole("button", { name: "Electrical", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Controls", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Facilities", exact: true })).toBeVisible();
+  await expect(searchInput).toBeVisible();
+
+  if (viewportWidth < 1024) {
+    const filtersButton = page.getByRole("button", { name: "Filters", exact: true });
+    await expect(filtersButton).toBeVisible();
+    await expect(criticalitySelect).toBeHidden();
+    await expect(statusSelect).toBeHidden();
+    await expect(sortSelect).toBeHidden();
+
+    const reviewBox = await reviewPeriod.boundingBox();
+    const disciplineBox = await page.getByText("Discipline", { exact: true }).boundingBox();
+    const searchBox = await searchInput.boundingBox();
+    const filtersBox = await filtersButton.boundingBox();
+    expect(reviewBox?.y ?? 0).toBeLessThan(disciplineBox?.y ?? Number.MAX_SAFE_INTEGER);
+    expect(disciplineBox?.y ?? 0).toBeLessThan(searchBox?.y ?? Number.MAX_SAFE_INTEGER);
+    expect(searchBox?.y ?? 0).toBeLessThan(filtersBox?.y ?? Number.MAX_SAFE_INTEGER);
+  } else {
+    await expect(criticalitySelect).toBeVisible();
+    await expect(statusSelect).toBeVisible();
+    await expect(sortSelect).toBeVisible();
+  }
 
   const cards = page.locator('[data-vorta-shift-handover-card="true"]');
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
   expect(await cards.count()).toBeGreaterThan(0);
-
   const scrollContainer = page.locator('[data-vorta-portal-scroll-container="true"]');
+
+  if (viewportWidth < 1024) {
+    await scrollContainer.evaluate((element) => { element.scrollTop = 280; });
+    const scopeScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
+    await page.getByRole("button", { name: "Building", exact: true }).click();
+    const scopeOptions = page.locator('[data-vorta-shift-handover-scope-options="true"]');
+    await expect(scopeOptions).toBeVisible();
+    const optionButtons = scopeOptions.getByRole("button");
+    if (await optionButtons.count() > 1) {
+      const selectedOption = optionButtons.last();
+      await selectedOption.click();
+      await expect.poll(async () => {
+        const containerBox = await scopeOptions.boundingBox();
+        const selectedBox = await selectedOption.boundingBox();
+        if (!containerBox || !selectedBox) return false;
+        return selectedBox.x >= containerBox.x - 1
+&& selectedBox.x + selectedBox.width <= containerBox.x + containerBox.width + 1;
+      }).toBe(true);
+    }
+    await page.getByRole("button", { name: "Site", exact: true }).click();
+    const scopeScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
+    expect(scopeScrollAfter).toBeGreaterThanOrEqual(Math.max(0, scopeScrollBefore - 80));
+  }
+
   await scrollContainer.evaluate((element) => { element.scrollTop = 320; });
   const scrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
   await reviewPeriod.selectOption("24");
   await expect(page).toHaveURL(/review=24/);
-  await expect(reviewPeriod).toHaveValue("24");
   await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-date-group]').first()).toBeVisible();
+  await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
   const scrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
   expect(scrollAfter).toBeGreaterThanOrEqual(Math.max(0, scrollBefore - 80));
+
   const totalMetric = page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first();
   await expect(totalMetric).toHaveText(String(await cards.count()));
+  const breakdownMetric = page.locator('[data-vorta-shift-handover-metric="breakdown"]');
+  const breakdownValue = breakdownMetric.locator("p").first();
+  const breakdownText = (await breakdownValue.textContent())?.trim() ?? "";
+  if (breakdownText === "0 hrs") {
+    await expect(breakdownValue).not.toHaveClass(/text-orange-300/);
+  } else {
+    expect(breakdownText).toMatch(/^\d+(?:\.\d)? hrs$/);
+    await expect(breakdownValue).toHaveClass(/text-orange-300/);
+  }
 
-  const viewportWidth = page.viewportSize()?.width ?? 1366;
   if (viewportWidth < 1024) {
-    const filtersButton = page.getByRole("button", { name: "Filters", exact: true });
-    await expect(filtersButton).toBeVisible();
-    await filtersButton.click();
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
   }
 
   await reviewPeriod.selectOption("12");
   await expect(page.getByRole("heading", { name: "Previous shift activity for Last 12 hours" })).toBeVisible();
-  await expect(page.getByLabel("Criticality")).toBeVisible();
-  await expect(page.getByLabel("Status")).toBeVisible();
-  await expect(page.getByLabel("Sort by")).toBeVisible();
-  await page.getByLabel("Sort by").selectOption("breakdown");
+  await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
+  await expect(criticalitySelect).toBeVisible();
+  await expect(statusSelect).toBeVisible();
+  await expect(sortSelect).toBeVisible();
+
+  const sortScrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
+  await sortSelect.selectOption("breakdown");
+  const sortScrollAfter = await scrollContainer.evaluate((element) => element.scrollTop);
+  expect(sortScrollAfter).toBeGreaterThanOrEqual(Math.max(0, sortScrollBefore - 80));
+
+  if (viewportWidth < 1024) {
+    await criticalitySelect.selectOption("high");
+    await expect(page.getByRole("button", { name: "Filters · 1", exact: true })).toBeVisible();
+    await statusSelect.selectOption("completed");
+    await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
+    await sortSelect.selectOption("priority");
+    await expect(page.getByRole("button", { name: "Filters · 2", exact: true })).toBeVisible();
+    await criticalitySelect.selectOption("all");
+    await statusSelect.selectOption("all");
+    await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+  }
   await expect(cards.first()).toBeVisible();
 
   await reviewPeriod.selectOption("24");
   await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
+  await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible();
   await cards.first().click();
   if (viewportWidth < 1280) {
@@ -74,6 +149,7 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   }
 
   await expect(reviewPeriod).toHaveValue("24");
+  await expect(searchInput).toBeVisible();
   await expectNoPageOverflow(page);
 });
 

@@ -58,7 +58,10 @@ assert.match(mobileEquipment, /data-vorta-group-frame="true"/);
 assert.match(mobileEquipment, /min-h-14 rounded-lg border border-gray-800 bg-\[#0d1117\]/);
 assert.match(shiftHandover, /data-vorta-shift-handover="true"/);
 assert.match(shiftHandover, /data-vorta-group-frame="true"/);
-assert.match(shiftHandover, /min-h-11 shrink-0 rounded-lg border/);
+assert.match(
+  shiftHandover,
+  /min-h-11 shrink-0(?: whitespace-nowrap)? rounded-lg border/,
+);
 
 assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
 assert.match(surfaces, /rounded-lg/);
