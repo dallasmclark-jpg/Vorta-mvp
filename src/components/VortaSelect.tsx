@@ -73,6 +73,7 @@ export function VortaSelect<TValue extends string | number>({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const menuReady = menuPosition !== null;
 
   useEffect(() => {
     setActiveIndex(selectedIndex);
@@ -142,14 +143,19 @@ export function VortaSelect<TValue extends string | number>({
 
     updateMenuPosition();
     const visualViewport = window.visualViewport;
+    const handleWindowScroll = (event: Event): void => {
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      updateMenuPosition();
+    };
     window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
+    window.addEventListener("scroll", handleWindowScroll, true);
     visualViewport?.addEventListener("resize", updateMenuPosition);
     visualViewport?.addEventListener("scroll", updateMenuPosition);
 
     return () => {
       window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
+      window.removeEventListener("scroll", handleWindowScroll, true);
       visualViewport?.removeEventListener("resize", updateMenuPosition);
       visualViewport?.removeEventListener("scroll", updateMenuPosition);
     };
@@ -173,7 +179,7 @@ export function VortaSelect<TValue extends string | number>({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !menuPosition) return undefined;
+    if (!open || !menuReady) return undefined;
     const frame = window.requestAnimationFrame(() => {
       const option = optionRefs.current[activeIndex];
       const menu = menuRef.current;
@@ -188,7 +194,7 @@ export function VortaSelect<TValue extends string | number>({
       option.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeIndex, menuPosition, open]);
+  }, [activeIndex, menuReady, open]);
 
   const closeAndFocusTrigger = (): void => {
     setOpen(false);
@@ -261,12 +267,15 @@ export function VortaSelect<TValue extends string | number>({
           id={listboxId}
           role="listbox"
           aria-label={`${label} options`}
-          className="fixed z-[120] overscroll-contain overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1 shadow-2xl shadow-black/45 sm:p-1.5"
+          className="fixed z-[120] touch-pan-y overscroll-contain overflow-y-auto rounded-xl border border-gray-700 bg-[#141820] p-1 shadow-2xl shadow-black/45 sm:p-1.5"
           style={{
             left: menuPosition.left,
             top: menuPosition.top,
             width: menuPosition.width,
             maxHeight: menuPosition.maxHeight,
+            overscrollBehavior: "contain",
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
           }}
           data-vorta-select-listbox="true"
           data-vorta-select-placement={menuPosition.placement}

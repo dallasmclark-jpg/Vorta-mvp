@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - "src/screens/ShiftHandover/**"
+      - "src/components/VortaSelect.tsx"
       - "src/components/VortaMultiSelect.tsx"
       - "src/lib/shiftPresentation.ts"
       - "supabase/functions/shift-handover-data/**"
       - "scripts/shift-handover-contracts.mjs"
       - "tests/browser/maintenance-manager-shift-handover.spec.ts"
       - "tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts"
+      - "tests/browser/maintenance-manager-shift-handover-select-scroll.spec.ts"
       - "playwright.config.ts"
       - ".github/workflows/shift-handover-quality.yml"
   push:
@@ -19,12 +21,14 @@ on:
       - main
     paths:
       - "src/screens/ShiftHandover/**"
+      - "src/components/VortaSelect.tsx"
       - "src/components/VortaMultiSelect.tsx"
       - "src/lib/shiftPresentation.ts"
       - "supabase/functions/shift-handover-data/**"
       - "scripts/shift-handover-contracts.mjs"
       - "tests/browser/maintenance-manager-shift-handover.spec.ts"
       - "tests/browser/maintenance-manager-shift-handover-team-filter.spec.ts"
+      - "tests/browser/maintenance-manager-shift-handover-select-scroll.spec.ts"
       - "playwright.config.ts"
       - ".github/workflows/shift-handover-quality.yml"
   workflow_dispatch:
@@ -84,6 +88,13 @@ jobs:
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+
+      - name: Run mobile dropdown scroll regression
+        run: |
+          npx playwright test \
+            tests/browser/maintenance-manager-shift-handover-select-scroll.spec.ts \
+            --project=phone-360 \
+            --config=playwright.config.ts
 
       - name: Run maintenance-team responsive regression
         run: |
