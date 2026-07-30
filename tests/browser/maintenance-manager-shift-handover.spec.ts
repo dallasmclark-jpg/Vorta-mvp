@@ -26,10 +26,13 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
   await expect(reviewPeriod).toBeVisible();
   await expect(reviewPeriod).toHaveAttribute("data-value", "12");
+  await expect(page.locator('[data-vorta-shift-handover-review-period="true"] [data-vorta-select-selected-supporting-items="true"]')).toBeVisible();
   await reviewPeriod.click();
   const reviewListbox = page.getByRole("listbox", { name: "Review period options" });
   await expect(reviewListbox).toBeVisible();
   await expect(reviewListbox.getByRole("option")).toHaveCount(5);
+  await expect(reviewListbox.locator('[data-vorta-select-supporting-items="true"]')).toHaveCount(5);
+  await expect(reviewListbox.getByText("Day", { exact: true }).or(reviewListbox.getByText("Night", { exact: true })).first()).toBeVisible();
   await expect(reviewListbox).toHaveAttribute("data-vorta-select-placement", /top|bottom/);
   await expect(page.locator("html")).toHaveAttribute("data-vorta-select-open", "true");
   const openingViewportWidth = page.viewportSize()?.width ?? 1366;
@@ -134,9 +137,9 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
 
   await scrollContainer.evaluate((element) => { element.scrollTop = 320; });
   const scrollBefore = await scrollContainer.evaluate((element) => element.scrollTop);
-  await chooseVortaSelect(page, "Review period", "Last 24 hours");
+  await chooseVortaSelect(page, "Review period", "Previous 2 shifts · 24 hours");
   await expect(page).toHaveURL(/review=24/);
-  await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Previous 2 shifts: Activity from the previous 2 shifts" })).toBeVisible();
   await expect(page.locator('[data-vorta-shift-handover-date-group]').first()).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
@@ -149,8 +152,8 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
     await page.getByRole("button", { name: "Filters", exact: true }).click();
   }
 
-  await chooseVortaSelect(page, "Review period", "Last 12 hours");
-  await expect(page.getByRole("heading", { name: "Previous shift activity", exact: true })).toBeVisible();
+  await chooseVortaSelect(page, "Review period", "Previous shift · 12 hours");
+  await expect(page.getByRole("heading", { name: "Previous shift: Previous shift activity", exact: true })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(criticalitySelect).toBeVisible();
   await expect(statusSelect).toBeVisible();
@@ -179,8 +182,8 @@ test("Shift Handover renders SAP evidence across responsive layouts", async ({ p
   }
   await expect(cards.first()).toBeVisible();
 
-  await chooseVortaSelect(page, "Review period", "Last 24 hours");
-  await expect(page.getByRole("heading", { name: "Activity from the last 24 hours" })).toBeVisible();
+  await chooseVortaSelect(page, "Review period", "Previous 2 shifts · 24 hours");
+  await expect(page.getByRole("heading", { name: "Previous 2 shifts: Activity from the previous 2 shifts" })).toBeVisible();
   await expect(reviewPeriod).toBeEnabled({ timeout: 30_000 });
   await expect(cards.first()).toBeVisible();
   const visibleStatuses = await cards.evaluateAll((nodes) => nodes.map((node) =>
@@ -239,11 +242,11 @@ test("Shift Handover sends every approved review period to the evidence boundary
   const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
   await expect(reviewPeriod).toBeVisible();
   for (const [value, optionLabel, heading] of [
-    ["24", "Last 24 hours", "Activity from the last 24 hours"],
-    ["36", "Last 36 hours", "Activity from the last 36 hours"],
-    ["48", "Last 48 hours", "Activity from the last 48 hours"],
-    ["96", "Last 4 days", "Activity from the last 4 days"],
-    ["12", "Last 12 hours", "Previous shift activity"],
+    ["24", "Previous 2 shifts · 24 hours", "Previous 2 shifts: Activity from the previous 2 shifts"],
+    ["36", "Previous 3 shifts · 36 hours", "Previous 3 shifts: Activity from the previous 3 shifts"],
+    ["48", "Previous 4 shifts · 48 hours", "Previous 4 shifts: Activity from the previous 4 shifts"],
+    ["96", "Previous 8 shifts · 4 days", "Previous 8 shifts: Activity from the previous 8 shifts"],
+    ["12", "Previous shift · 12 hours", "Previous shift: Previous shift activity"],
   ] as const) {
     const evidenceRequest = page.waitForRequest((request) => {
       if (!/\/functions\/v1\/shift-handover-data(?:\?.*)?$/.test(request.url())) return false;

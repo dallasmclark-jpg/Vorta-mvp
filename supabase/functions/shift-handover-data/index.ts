@@ -1,161 +1,19 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { context, preflight, response } from "./auth.ts";
 import { buildShiftHandoverPayload } from "./transform.ts";
+import {
+  buildReviewPeriods,
+  REVIEW_HOURS,
+  reviewWindow,
+  shiftContaining,
+  type ReviewHours,
+  type WindowMode,
+} from "./shiftWindows.ts";
 
-type WindowMode = "previous" | "latest";
-type ReviewHours = 12 | 24 | 36 | 48 | 96;
 type AnyRow = Record<string, any>;
-type LocalParts = {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-};
-
-const REVIEW_HOURS = new Set<number>([12, 24, 36, 48, 96]);
 const PAGE_SIZE = 500;
 const MAX_CONFIRMATIONS = 10_000;
 const ID_BATCH_SIZE = 200;
-
-function localParts(value: Date, timeZone: string): LocalParts {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(value);
-  const map = new Map(parts.map((part) => [part.type, part.value]));
-  return {
-    year: Number(map.get("year")),
-    month: Number(map.get("month")),
-    day: Number(map.get("day")),
-    hour: Number(map.get("hour")),
-    minute: Number(map.get("minute")),
-    second: Number(map.get("second")),
-  };
-}
-
-function timezoneOffsetMs(value: Date, timeZone: string): number {
-  const parts = localParts(value, timeZone);
-  const representedUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-  return representedUtc - value.getTime();
-}
-
-function zonedToUtc(parts: LocalParts, timeZone: string): Date {
-  const localAsUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-    0,
-  );
-  let candidate = localAsUtc;
-  for (let index = 0; index < 3; index += 1) {
-    candidate = localAsUtc - timezoneOffsetMs(new Date(candidate), timeZone);
-  }
-  return new Date(candidate);
-}
-
-function addLocalHours(parts: LocalParts, hours: number): LocalParts {
-  const next = new Date(Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour + hours,
-    parts.minute,
-    parts.second,
-  ));
-  return {
-    year: next.getUTCFullYear(),
-    month: next.getUTCMonth() + 1,
-    day: next.getUTCDate(),
-    hour: next.getUTCHours(),
-    minute: next.getUTCMinutes(),
-    second: next.getUTCSeconds(),
-  };
-}
-
-function shiftContaining(anchor: Date, timeZone: string) {
-  const parts = localParts(anchor, timeZone);
-  let startParts: LocalParts;
-  let endParts: LocalParts;
-
-  if (parts.hour >= 18) {
-    startParts = { ...parts, hour: 18, minute: 0, second: 0 };
-    endParts = { ...addLocalHours(startParts, 12), minute: 0, second: 0 };
-  } else if (parts.hour >= 6) {
-    startParts = { ...parts, hour: 6, minute: 0, second: 0 };
-    endParts = { ...addLocalHours(startParts, 12), minute: 0, second: 0 };
-  } else {
-    endParts = { ...parts, hour: 6, minute: 0, second: 0 };
-    startParts = { ...addLocalHours(endParts, -12), minute: 0, second: 0 };
-  }
-
-  return {
-    start: zonedToUtc(startParts, timeZone),
-    end: zonedToUtc(endParts, timeZone),
-  };
-}
-
-function previousCompletedShift(anchor: Date, timeZone: string) {
-  const current = shiftContaining(anchor, timeZone);
-  return shiftContaining(new Date(current.start.getTime() - 1), timeZone);
-}
-
-function formatWindowLabel(
-  start: Date,
-  end: Date,
-  timeZone: string,
-  reviewHours: ReviewHours,
-): string {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const reviewLabel = reviewHours === 96 ? "Last 4 days" : `Last ${reviewHours} hours`;
-  return `${reviewLabel} · ${formatter.format(start)} to ${formatter.format(end)}`;
-}
-
-function reviewWindow(
-  anchor: Date,
-  timeZone: string,
-  windowMode: WindowMode,
-  reviewHours: ReviewHours,
-) {
-  const anchorShift = windowMode === "latest"
-    ? shiftContaining(anchor, timeZone)
-    : previousCompletedShift(anchor, timeZone);
-  const endParts = localParts(anchorShift.end, timeZone);
-  const startParts = addLocalHours(endParts, -reviewHours);
-  const start = zonedToUtc(startParts, timeZone);
-  const end = anchorShift.end;
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-    label: formatWindowLabel(start, end, timeZone, reviewHours),
-    mode: windowMode,
-    reviewHours,
-  } as const;
-}
 
 async function requestBody(
   req: Request,
@@ -254,7 +112,9 @@ Deno.serve(async (req: Request) => {
       if (latestValue) anchor = new Date(latestValue);
     }
 
-    const window = reviewWindow(anchor, timeZone, windowMode, reviewHours);
+    const reviewPeriods = buildReviewPeriods(anchor, timeZone, windowMode);
+    const window = reviewPeriods.find((period) => period.reviewHours === reviewHours)
+      ?? reviewWindow(anchor, timeZone, windowMode, reviewHours);
     const confirmations = await loadConfirmations(db, siteId, window.start, window.end);
     const workOrderIds = [...new Set(
       confirmations
@@ -268,6 +128,7 @@ Deno.serve(async (req: Request) => {
         organisationId,
         site: { id: site.id, name: site.name, timezone: timeZone },
         window,
+        reviewPeriods,
         items: [],
         scopeOptions: {
           buildings: [],
@@ -371,6 +232,7 @@ Deno.serve(async (req: Request) => {
       siteId,
       organisationId,
       ...payload,
+      reviewPeriods,
       items,
     });
   } catch (error) {

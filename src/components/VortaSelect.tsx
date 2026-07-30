@@ -10,9 +10,16 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+export interface VortaSelectSupportItem {
+  label: string;
+  dotClassName: string;
+  textClassName?: string;
+}
+
 export interface VortaSelectOption<TValue extends string | number> {
   value: TValue;
   label: string;
+  supportingItems?: readonly VortaSelectSupportItem[];
 }
 
 interface VortaSelectProps<TValue extends string | number> {
@@ -62,6 +69,7 @@ export function VortaSelect<TValue extends string | number>({
   const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  const hasSupportingItems = options.some((option) => Boolean(option.supportingItems?.length));
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -91,11 +99,13 @@ export function VortaSelect<TValue extends string | number>({
     const compact = window.matchMedia("(max-width: 639px)").matches;
     const margin = 12;
     const gap = 8;
-    const optionHeight = compact ? 38 : 44;
+    const optionHeight = compact
+      ? (hasSupportingItems ? 48 : 38)
+      : (hasSupportingItems ? 56 : 44);
     const containerPadding = compact ? 8 : 12;
     const desiredHeight = Math.min(
       options.length * optionHeight + containerPadding,
-      compact ? 248 : 288,
+      compact ? (hasSupportingItems ? 256 : 248) : (hasSupportingItems ? 336 : 288),
     );
     const spaceBelow = Math.max(0, viewportBottom - rect.bottom - gap - margin);
     const spaceAbove = Math.max(0, rect.top - viewportTop - gap - margin);
@@ -122,7 +132,7 @@ export function VortaSelect<TValue extends string | number>({
       : Math.max(viewportTop + margin, rect.top - gap - maxHeight);
 
     setMenuPosition({ left, top, width, maxHeight, placement, compact });
-  }, [options.length]);
+  }, [hasSupportingItems, options.length]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -236,6 +246,7 @@ export function VortaSelect<TValue extends string | number>({
   };
 
   const selectedOption = options[selectedIndex] ?? options[0];
+  const selectedDescriptionId = `${listboxId}-selected-description`;
   const menu = open && menuPosition && typeof document !== "undefined"
     ? createPortal(
       <>
@@ -271,11 +282,14 @@ export function VortaSelect<TValue extends string | number>({
                 type="button"
                 role="option"
                 aria-selected={selected}
+                aria-describedby={option.supportingItems?.length ? `${listboxId}-option-${index}-description` : undefined}
                 tabIndex={active ? 0 : -1}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => selectIndex(index)}
                 onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                className={`flex min-h-[38px] w-full items-center justify-between gap-2.5 rounded-lg border px-2.5 py-1 text-left text-[13px] font-medium leading-5 transition-colors sm:min-h-11 sm:gap-3 sm:px-3 sm:py-2 sm:text-sm ${
+                className={`flex w-full items-center justify-between gap-2.5 rounded-lg border px-2.5 text-left text-[13px] font-medium leading-5 transition-colors sm:gap-3 sm:px-3 sm:text-sm ${
+                  option.supportingItems?.length ? "min-h-[48px] py-1.5 sm:min-h-14 sm:py-2" : "min-h-[38px] py-1 sm:min-h-11 sm:py-2"
+                } ${
                   selected
                     ? "border-blue-500/60 bg-[#10151d] text-blue-200"
                     : active
@@ -284,7 +298,27 @@ export function VortaSelect<TValue extends string | number>({
                 }`}
                 data-value={String(option.value)}
               >
-                <span className="min-w-0 break-words">{option.label}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words">{option.label}</span>
+                  {option.supportingItems?.length ? (
+                    <span
+                      className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-medium leading-4 sm:text-xs"
+                      data-vorta-select-supporting-items="true"
+                    >
+                      {option.supportingItems.map((item, supportIndex) => (
+                        <span key={`${item.label}-${supportIndex}`} className={`inline-flex items-center gap-1 ${item.textClassName ?? "text-slate-400"}`}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.dotClassName}`} aria-hidden="true" />
+                          {item.label}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                  {option.supportingItems?.length ? (
+                    <span id={`${listboxId}-option-${index}-description`} className="sr-only">
+                      Included shifts: {option.supportingItems.map((item) => item.label).join(", ")}
+                    </span>
+                  ) : null}
+                </span>
                 {selected ? <Check className="h-4 w-4 shrink-0 text-blue-300" aria-hidden="true" /> : null}
               </button>
             );
@@ -309,6 +343,7 @@ export function VortaSelect<TValue extends string | number>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
+        aria-describedby={selectedOption?.supportingItems?.length ? selectedDescriptionId : undefined}
         disabled={disabled}
         onClick={() => {
           if (!disabled && options.length > 0) {
@@ -317,16 +352,36 @@ export function VortaSelect<TValue extends string | number>({
           }
         }}
         onKeyDown={handleTriggerKeyDown}
-        className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-gray-700 bg-[#0d1117] px-3 text-left text-sm font-medium text-slate-200 outline-none transition-colors hover:border-gray-600 focus-visible:border-blue-500/70 focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-gray-700 bg-[#0d1117] px-3 py-2 text-left text-sm font-medium text-slate-200 outline-none transition-colors hover:border-gray-600 focus-visible:border-blue-500/70 focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60"
         data-vorta-select-trigger="true"
         data-value={String(value)}
       >
-        <span className="min-w-0 truncate">{selectedOption?.label ?? String(value)}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{selectedOption?.label ?? String(value)}</span>
+          {selectedOption?.supportingItems?.length ? (
+            <span
+              className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-medium leading-4"
+              data-vorta-select-selected-supporting-items="true"
+            >
+              {selectedOption.supportingItems.map((item, supportIndex) => (
+                <span key={`${item.label}-${supportIndex}`} className={`inline-flex items-center gap-1 ${item.textClassName ?? "text-slate-400"}`}>
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.dotClassName}`} aria-hidden="true" />
+                  {item.label}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
       </button>
+      {selectedOption?.supportingItems?.length ? (
+        <span id={selectedDescriptionId} className="sr-only">
+          Included shifts: {selectedOption.supportingItems.map((item) => item.label).join(", ")}
+        </span>
+      ) : null}
       {menu}
     </div>
   );
