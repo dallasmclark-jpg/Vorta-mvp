@@ -10,12 +10,12 @@ permissions:
 
 jobs:
   apply:
-    if: github.head_ref == 'feature/vor-026-shift-handover-mobile-refinement'
+    if: github.head_ref == 'feature/vor-026-shift-handover-mobile-refinement-v2'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/vor-026-shift-handover-mobile-refinement
+          ref: feature/vor-026-shift-handover-mobile-refinement-v2
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -108,4 +108,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "VOR-026: align mobile refinement with shared contracts"
-          git push origin HEAD:feature/vor-026-shift-handover-mobile-refinement
+          git push origin HEAD:feature/vor-026-shift-handover-mobile-refinement-v2
