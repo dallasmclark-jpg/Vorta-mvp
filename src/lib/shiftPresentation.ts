@@ -87,6 +87,9 @@ export const VORTA_MAINTENANCE_TEAM_PRESENTATION: Record<
   },
 };
 
+// Compatibility alias for completed-shift review-period presentation contracts.
+export const SHIFT_TEAM_PRESENTATION = VORTA_MAINTENANCE_TEAM_PRESENTATION;
+
 export const VORTA_MAINTENANCE_TEAM_CODES: readonly VortaMaintenanceTeamCode[] = [
   "BLUE",
   "RED",
