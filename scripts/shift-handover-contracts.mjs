@@ -30,6 +30,7 @@ const assertions = [
   [/\[data-vorta-shift-handover="true"\]\s*>\s*header\s*\{\s*display:\s*none\s*!important;\s*\}/m.test(surfaces), "Shift Handover must start with the operational summary cards on every viewport."],
   [page.includes('data-vorta-shift-handover-review-period="true"') && page.includes("Review period"), "One shared Review period control is required."],
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
+  [browser.includes('toHaveValue("12")'), "The responsive browser contract must verify Last 12 hours as the default."],
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
   [page.includes("summariseItems(filteredItems)"), "Summary cards must be derived from the displayed filtered activity."],
   [page.includes("data-vorta-shift-handover-date-group") && page.includes("activityDateLabel"), "Longer review periods must group activity by site-local date."],
