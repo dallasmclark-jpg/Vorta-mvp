@@ -35,7 +35,9 @@ jobs:
         run: npm ci
 
       - name: Apply focused VOR-030 changes
-        run: python3 scripts/apply-vor-030.py
+        run: |
+          python3 scripts/apply-vor-030.py
+          python3 scripts/fix-vor-030-application.py
 
       - name: Run Shift Handover contracts
         run: node scripts/shift-handover-contracts.mjs
@@ -52,6 +54,7 @@ jobs:
       - name: Commit validated implementation
         run: |
           rm scripts/apply-vor-030.py
+          rm scripts/fix-vor-030-application.py
           rm .github/workflows/vor-030-apply.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
