@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
+import {
+  expectNoPageOverflow,
+  signInMaintenanceManager,
+} from "./maintenance-manager-test-helpers";
 
 const TEAM_LABELS = [
   "Blue Shift",
@@ -111,12 +114,23 @@ test("Maintenance team multi-select filters unique Shift Handover work orders", 
   await exposeTeamFilter(page);
 
   const initialListbox = await openTeamListbox(page);
+  await expect(initialListbox).toHaveAttribute("aria-multiselectable", "true");
   await expect(initialListbox.getByRole("option", { name: "All maintenance teams", exact: true })).toHaveAttribute(
     "aria-selected",
     "true",
   );
   for (const team of TEAM_LABELS) {
     await expect(initialListbox.getByRole("option", { name: team, exact: true })).toBeVisible();
+  }
+  const viewport = page.viewportSize();
+  const listboxBox = await initialListbox.boundingBox();
+  expect(listboxBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+  expect(listboxBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+  expect((listboxBox?.x ?? 0) + (listboxBox?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 1920);
+  expect((listboxBox?.y ?? 0) + (listboxBox?.height ?? 0)).toBeLessThanOrEqual(viewport?.height ?? 1080);
+  const askVortaLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
+  if (await askVortaLauncher.count()) {
+    await expect(askVortaLauncher).toHaveCSS("visibility", "hidden");
   }
   await page.keyboard.press("Escape");
 
@@ -150,4 +164,5 @@ test("Maintenance team multi-select filters unique Shift Handover work orders", 
   await expect(
     page.locator('[data-vorta-shift-handover-metric="handover-items"] > p').first(),
   ).toHaveText(String(await finalCards.count()));
+  await expectNoPageOverflow(page);
 });
