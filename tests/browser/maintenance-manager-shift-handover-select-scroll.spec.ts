@@ -32,14 +32,17 @@ async function expectInternalMenuScroll(
   await page.mouse.wheel(0, scrollTowardsStart ? -delta : delta);
 
   await expect.poll(
-    () => listbox.evaluate((element) => element.scrollTop),
+    async () => {
+      const scrollTop = await listbox.evaluate((element) => element.scrollTop);
+      return scrollTowardsStart
+        ? scrollTop < before.scrollTop - 2
+        : scrollTop > before.scrollTop + 2;
+    },
     {
       message: "Internal menu scrolling must not snap back to the focused option",
       timeout: 5_000,
     },
-  ).toSatisfy((scrollTop) => scrollTowardsStart
-    ? scrollTop < before.scrollTop - 2
-    : scrollTop > before.scrollTop + 2);
+  ).toBe(true);
   await expect(listbox).toBeVisible();
 
   const pageScrollAfter = await pageScroller.evaluate((element) => element.scrollTop);
