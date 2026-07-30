@@ -1,0 +1,1 @@
+Mobile Shift Handover refinement only: compact visible controls, advanced filter panel count, neutral zero downtime, compact summary cards, selected scope overflow handling and responsive regression coverage. Review-period, Supabase and SAP-normalisation logic remain unchanged.
