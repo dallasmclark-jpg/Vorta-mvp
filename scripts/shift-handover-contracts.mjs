@@ -23,8 +23,8 @@ const reviewOptions = [
 const assertions = [
   [route.includes('label: "Shift Handover"') && route.includes('path="shift-handover"'), "Shift Handover must be present in navigation and routing."],
   [page.includes('data-vorta-shift-handover="true"'), "The responsive Shift Handover workspace marker is missing."],
-  [page.includes("Site") && page.includes("Building") && page.includes("Area"), "Site, building and area scope controls are required."],
-  [page.includes("Mechanical") && page.includes("Electrical") && page.includes("Controls") && page.includes("Facilities"), "Discipline selectors are required."],
+  [page.includes('data-vorta-shift-handover-scope-tabs="true"') && page.includes("scopeAreas.map") && page.includes("snapshot?.items"), "Scope must be one Site-plus-relevant-areas rail derived from the selected review-period jobs."],
+  [!page.includes("type ScopeMode") && !page.includes("setScopeMode") && !page.includes('aria-label="Maintenance discipline"') && !page.includes("setDiscipline"), "Building hierarchy and Discipline list filtering must be removed."],
   [page.includes("Longest breakdown") && page.includes("Criticality") && page.includes("Status"), "Criticality, status and longest-breakdown filtering are required."],
   [page.includes("sparesUsed") && page.includes("outstandingMaterials") && page.includes("confirmedWorkHours"), "Work-order, confirmation and material detail must remain visible."],
   [/\[data-vorta-shift-handover="true"\]\s*>\s*header\s*\{\s*display:\s*none\s*!important;\s*\}/m.test(surfaces), "Shift Handover must start with the operational summary cards on every viewport."],
@@ -32,8 +32,8 @@ const assertions = [
   [reviewOptions.every((option) => page.includes(option)), "All approved review-period labels must be available."],
   [page.includes("activeAdvancedFilterCount") && page.includes("Filters{activeAdvancedFilterCount"), "Mobile advanced filters must expose the active Criticality and Status count."],
   [page.includes('id="shift-handover-advanced-filters"') && page.includes("lg:contents"), "Criticality, Status and Sort must collapse on mobile without duplicating wider-layout logic."],
-  [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "Long scope names need selected-item scrolling and an overflow cue."],
-  [page.includes("formatSummaryDowntime") && page.includes('return "0 hrs"') && page.includes('totalBreakdownMinutes > 0 ? "text-orange-300" : "text-slate-50"'), "Zero downtime must render neutrally as 0 hrs while positive downtime retains warning emphasis."],
+  [page.includes("scopeOptionsRef") && page.includes("scopeOptionsCanScrollRight") && page.includes('data-vorta-shift-handover-scope-fade="true"'), "The shared area rail needs selected-item scrolling and an overflow cue."],
+  [(page.match(/<MetricCard/g) ?? []).length === 4 && !page.includes('<MetricCard label="Contractor"') && !page.includes('label="Breakdown"'), "Only the four approved operational summary cards may render."],
   [page.includes("reviewPeriodLoadingState") && page.includes("No work orders match the selected filters."), "Period-aware loading and filter-aware empty states are required."],
   [browser.includes('toHaveValue("12")'), "The responsive browser contract must verify Last 12 hours as the default."],
   [page.includes("useSearchParams") && page.includes("vorta.shift-handover.review-period"), "Review period must persist through URL and session state."],
@@ -51,7 +51,7 @@ const assertions = [
   [edge.includes('.from("work_order_goods_movements")') && edge.includes('.from("work_order_material_reservations")'), "The Edge Function must include SAP material evidence."],
   [transform.includes("waiting_on_parts") && transform.includes("external_contractor") && transform.includes("temporarily_restored"), "Normalised handover statuses are incomplete."],
   [browser.includes('getByLabel("Review period")') && browser.includes("review=24") && browser.includes("data-vorta-portal-scroll-container"), "Responsive browser coverage must validate period selection and scroll preservation."],
-  [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-options="true"') && browser.includes('breakdownText === "0 hrs"'), "Responsive browser coverage must verify mobile filter count, scope overflow and neutral zero downtime."],
+  [browser.includes("Filters · 2") && browser.includes('data-vorta-shift-handover-scope-tabs="true"') && browser.includes('data-vorta-shift-handover-metric="contractor"'), "Responsive browser coverage must verify mobile filter count, the area rail and retired summary cards."],
   [!page.includes("insert(") && !page.includes("delete("), "Shift Handover SAP evidence must remain read-only."],
 ];
 
@@ -61,4 +61,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✓ Shift Handover review periods, compact mobile filters, neutral downtime and responsive state verified.");
+console.log("✓ Shift Handover review periods, four-card summary, relevant-area rail and responsive state verified.");
