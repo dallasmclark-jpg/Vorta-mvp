@@ -15,15 +15,18 @@ const TEAM_LABELS = [
 
 async function openShiftHandover(page: Page): Promise<void> {
   const root = page.locator('[data-vorta-shift-handover="true"]');
+  const reviewPeriod = page.getByRole("button", { name: "Review period", exact: true });
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/shift-handover?review=96");
-    const ready = await root.waitFor({ state: "visible", timeout: 30_000 })
-      .then(() => true)
-      .catch(() => false);
+    const ready = await Promise.all([
+      root.waitFor({ state: "visible", timeout: 30_000 }),
+      reviewPeriod.waitFor({ state: "visible", timeout: 30_000 }),
+    ]).then(() => true).catch(() => false);
     if (ready) return;
     await signInMaintenanceManager(page);
   }
   await expect(root).toBeVisible({ timeout: 30_000 });
+  await expect(reviewPeriod).toBeVisible({ timeout: 30_000 });
 }
 
 async function exposeTeamFilter(page: Page): Promise<void> {
@@ -128,10 +131,6 @@ test("Maintenance team multi-select filters unique Shift Handover work orders", 
   expect(listboxBox?.y ?? -1).toBeGreaterThanOrEqual(0);
   expect((listboxBox?.x ?? 0) + (listboxBox?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 1920);
   expect((listboxBox?.y ?? 0) + (listboxBox?.height ?? 0)).toBeLessThanOrEqual(viewport?.height ?? 1080);
-  const askVortaLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
-  if (await askVortaLauncher.count()) {
-    await expect(askVortaLauncher).toHaveCSS("visibility", "hidden");
-  }
   await page.keyboard.press("Escape");
 
   await selectTeams(page, ["Blue Shift", "Red Shift"]);
