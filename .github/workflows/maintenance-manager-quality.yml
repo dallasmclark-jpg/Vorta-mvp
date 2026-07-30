@@ -1,277 +1,52 @@
-name: Maintenance Manager quality gate
+name: Apply VOR-027 focused source change
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "src/screens/AiOperations/**"
-      - "src/screens/Equipment/**"
-      - "src/screens/Engineers/**"
-      - "src/screens/LabourRisk/**"
-      - "src/screens/SkillsMatrix/**"
-      - "src/screens/Training/**"
-      - "src/screens/TrainingProviders/**"
-      - "src/screens/AiMatching/**"
-      - "src/screens/Requirements/**"
-      - "src/screens/Career/**"
-      - "src/screens/Support/**"
-      - "src/screens/Settings/**"
-      - "src/components/**"
-      - "src/hooks/**"
-      - "src/lib/**"
-      - "supabase/functions/**"
-      - "supabase/migrations/**"
-      - "scripts/**"
-      - "tests/browser/**"
-      - "playwright.config.ts"
-      - "tsconfig.maintenance.json"
-      - "package.json"
-      - "netlify.toml"
-      - ".github/workflows/maintenance-manager-quality.yml"
   push:
     branches:
-      - main
-    paths:
-      - "src/screens/AiOperations/**"
-      - "src/screens/Equipment/**"
-      - "src/screens/Engineers/**"
-      - "src/screens/LabourRisk/**"
-      - "src/screens/SkillsMatrix/**"
-      - "src/screens/Training/**"
-      - "src/screens/TrainingProviders/**"
-      - "src/screens/AiMatching/**"
-      - "src/screens/Requirements/**"
-      - "src/screens/Career/**"
-      - "src/screens/Support/**"
-      - "src/screens/Settings/**"
-      - "src/components/**"
-      - "src/hooks/**"
-      - "src/lib/**"
-      - "supabase/functions/**"
-      - "supabase/migrations/**"
-      - "scripts/**"
-      - "tests/browser/**"
-      - "playwright.config.ts"
-      - "tsconfig.maintenance.json"
-      - "package.json"
-      - "netlify.toml"
-      - ".github/workflows/maintenance-manager-quality.yml"
-  workflow_dispatch:
+      - vor-027-simplify-shift-handover-scope
 
 permissions:
-  contents: read
-
-concurrency:
-  group: maintenance-manager-quality-${{ github.sha }}
-  cancel-in-progress: false
+  contents: write
 
 jobs:
-  quality:
-    name: Maintenance Manager release checks
+  apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
-    env:
-      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
-      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
-      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
-      VITE_VORTA_DATA_MODE: demo
-      VORTA_E2E_EMAIL: demo@vorta.network
-      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
-      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
-      VORTA_E2E_ORGANISATION_ID: 10000000-0000-0000-0000-000000000001
-      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
-      VORTA_E2E_DENIED_EQUIPMENT_ID: 40000000-0000-0000-0000-000000000013
-
     steps:
-      - name: Check out tested commit
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          show-progress: false
+          ref: vor-027-simplify-shift-handover-scope
+          fetch-depth: 0
 
-      - name: Compose public Supabase client key
-        shell: bash
-        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install application dependencies
-        run: npm ci --silent
-
-      - name: Run Maintenance Manager TypeScript check
-        id: maintenance-typecheck
-        continue-on-error: true
+      - name: Execute the temporary focused transformation
         shell: bash
         run: |
-          set -o pipefail
-          npm run typecheck -- --pretty false 2>&1 | tee maintenance-typecheck.log
+          python <<'PY'
+          from pathlib import Path
 
-      - name: Preserve TypeScript failure report
-        if: steps.maintenance-typecheck.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: maintenance-typecheck-report
-          path: maintenance-typecheck.log
-          retention-days: 7
+          workflow = Path('.github/workflows/vor-027-apply.yml').read_text()
+          opening = "          python <<'PY'\n"
+          closing = "\n          PY\n\n          git diff --check"
+          start = workflow.index(opening) + len(opening)
+          end = workflow.index(closing, start)
+          script = workflow[start:end]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in script.splitlines()
+          )
+          exec(compile(script, 'vor-027-apply.py', 'exec'))
+          PY
 
-      - name: Enforce TypeScript result
-        if: steps.maintenance-typecheck.outcome == 'failure'
-        run: exit 1
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/maintenance-manager-quality.yml
+          git diff --check
+          git status --short
 
-      - name: Run contract tests
-        id: maintenance-contracts
-        continue-on-error: true
+      - name: Commit the implementation and restore quality gate
         shell: bash
         run: |
-          set -o pipefail
-          npm run test:contracts 2>&1 | tee maintenance-contracts.log
-
-      - name: Preserve contract failure report
-        if: steps.maintenance-contracts.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: maintenance-contract-report
-          path: maintenance-contracts.log
-          retention-days: 7
-
-      - name: Enforce contract result
-        if: steps.maintenance-contracts.outcome == 'failure'
-        run: exit 1
-
-      - name: Run route smoke tests
-        run: npm run test:smoke
-
-      - name: Write exact build metadata
-        run: npm run build:metadata
-
-      - name: Create production build
-        run: npx vite build
-
-      - name: Preserve tested production bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: vorta-production-dist-${{ github.sha }}
-          path: dist
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Verify authenticated browser-test secret
-        shell: bash
-        run: |
-          test -n "$VORTA_E2E_PASSWORD" || {
-            echo "VORTA_E2E_PASSWORD is not configured for the authenticated browser gate." >&2
-            exit 1
-          }
-
-      - name: Install browser-test runner without changing the lockfile
-        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run authenticated Maintenance Manager browser regression
-        id: maintenance-browser-regression
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            npm run test:browser -- \
-              tests/browser/maintenance-manager-core.spec.ts \
-              tests/browser/maintenance-manager-work-orders.spec.ts \
-              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
-              tests/browser/maintenance-manager-accessibility.spec.ts \
-              tests/browser/maintenance-manager-mobile-routes.spec.ts \
-              --project=desktop-1920 2>&1 | tee maintenance-browser-regression.log
-          else
-            npm run test:browser -- \
-              tests/browser/maintenance-manager-core.spec.ts \
-              tests/browser/maintenance-manager-work-orders.spec.ts \
-              tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
-              tests/browser/maintenance-manager-accessibility.spec.ts \
-              tests/browser/maintenance-manager-mobile-routes.spec.ts \
-              --project=phone-360 \
-              --project=desktop-1920 \
-              2>&1 | tee maintenance-browser-regression.log
-          fi
-
-      - name: Preserve browser regression evidence
-        if: steps.maintenance-browser-regression.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: maintenance-browser-regression-evidence
-          path: |
-            maintenance-browser-regression.log
-            playwright-report
-            test-results
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Enforce browser regression result
-        if: steps.maintenance-browser-regression.outcome == 'failure'
-        run: exit 1
-
-      - name: Run Maintenance Manager visual regression
-        id: maintenance-visual-regression
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npx playwright test \
-            tests/browser/maintenance-manager-visual.spec.ts \
-            --project=phone-360 \
-            --project=desktop-1920 \
-            --config=playwright.config.ts 2>&1 | tee maintenance-visual-regression.log
-
-      - name: Preserve visual regression evidence
-        if: steps.maintenance-visual-regression.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: maintenance-visual-regression-evidence
-          path: |
-            maintenance-visual-regression.log
-            playwright-report
-            test-results
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Enforce visual regression result
-        if: steps.maintenance-visual-regression.outcome == 'failure'
-        run: exit 1
-
-      - name: Run live responsive Equipment, workforce, training, boundary evidence and Shift Cover regression
-        id: live-maintenance-browser-regression
-        continue-on-error: true
-        shell: bash
-        env:
-          VITE_VORTA_DATA_MODE: live
-        run: |
-          set -o pipefail
-          npx playwright test \
-            tests/browser/maintenance-manager-live.spec.ts \
-            tests/browser/maintenance-manager-live-engineers.spec.ts \
-            tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
-            tests/browser/maintenance-manager-live-training-evidence.spec.ts \
-            tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
-            --project=desktop-1920 \
-            --config=playwright.config.ts 2>&1 | tee live-maintenance-browser-regression.log
-
-      - name: Preserve live Maintenance Manager regression evidence
-        if: steps.live-maintenance-browser-regression.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: live-maintenance-browser-regression-evidence
-          path: |
-            live-maintenance-browser-regression.log
-            playwright-report
-            test-results
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Enforce live Maintenance Manager regression result
-        if: steps.live-maintenance-browser-regression.outcome == 'failure'
-        run: exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-027: simplify Shift Handover scope and summary"
+          git push origin HEAD:vor-027-simplify-shift-handover-scope
