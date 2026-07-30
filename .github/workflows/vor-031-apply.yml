@@ -6,13 +6,15 @@ on:
       - main
     types:
       - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: ${{ github.event.pull_request.head.ref == 'vorta/vor-031-finalise' }}
+    if: ${{ github.event.pull_request.head.ref == 'vorta/vor-031-finalise' && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +24,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Repair the one-use UI patch runner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/vor-031-ui.py')
+          content = path.read_text()
+          old = '''for _ in range(2):
+              replace_once(
+                  path,
+                  '{reviewPeriodLoadingState(reviewHours)}',
+                  '{reviewPeriodLoadingState(reviewHours, maintenanceTeams)}',
+              )'''
+          new = '''target = ROOT / path
+          content = target.read_text()
+          marker = '{reviewPeriodLoadingState(reviewHours)}'
+          if content.count(marker) != 2:
+              raise RuntimeError(f"{path}: expected two loading-state markers, found {content.count(marker)}")
+          target.write_text(content.replace(marker, '{reviewPeriodLoadingState(reviewHours, maintenanceTeams)}'))'''
+          if old not in content:
+              raise RuntimeError('UI patch runner repair marker was not found')
+          path.write_text(content.replace(old, new, 1))
+          PY
       - name: Apply focused VOR-031 patches
         run: |
           python scripts/vor-031-backend.py
