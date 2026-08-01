@@ -20,7 +20,7 @@ const checks = [
   [dashboard.includes("riskReductionPlan={riskReductionPlan}"), "The live risk-reduction plan must be passed into the combined spares and labour section."],
   [labour.includes('"Spares & Labour Risks"') && labour.includes("Spares & Labour Risks`"), "The dashboard section heading must be renamed for site and area scopes."],
   [labourRailIndex >= 0 && spareCardIndex > labourRailIndex && spareCardIndex < labourRailClosingIndex, "The critical spare card must be a direct compact item inside the existing labour-risk card rail, not a separate full-width panel."],
-  [opportunities.includes('data-vorta-dashboard-card="spare-risk"') && opportunities.includes('className="flex h-full flex-col gap-3 p-4"'), "The spare card must reuse the labour-card height, spacing and content hierarchy."],
+  [opportunities.includes('data-vorta-dashboard-card="labour-risk"') && opportunities.includes('data-vorta-labour-risk-card="critical-spare"') && opportunities.includes('className="flex h-full flex-col gap-3 p-4"'), "The spare card must inherit the exact labour-card rail sizing, height, spacing and content hierarchy."],
   [!opportunities.includes("<dl") && !opportunities.includes("Operational consequence"), "The compact spare card must not contain the previous multi-panel detailed breakdown."],
   [opportunities.includes("getLeadingRiskAction") && opportunities.includes("right.calculatedReduction - left.calculatedReduction"), "The leading opportunity must be selected dynamically by calculated reduction."],
   [opportunities.includes('action.target === "spares"') && opportunities.includes("getLeadingSpareRiskAction"), "The compact card must select the highest calculated spare intervention."],
