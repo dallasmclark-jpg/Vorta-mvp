@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const dashboard = read("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx");
 const labour = read("src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx");
 const opportunities = read("src/screens/AiOperations/sections/DashboardOverviewSection/RiskOpportunityCards.tsx");
+const scrollState = read("src/screens/AiOperations/sections/DashboardOverviewSection/dashboardScrollState.ts");
 
 const checks = [
   [dashboard.includes("<BiggestReductionOpportunity") && dashboard.includes("plan={riskReductionPlan}"), "The expanded dashboard work plan must render the compact biggest-reduction opportunity from the live plan."],
@@ -19,6 +20,8 @@ const checks = [
   [opportunities.includes('action.target === "spares"') && opportunities.includes("getLeadingSpareRiskAction"), "The detailed card must select the highest calculated spare intervention."],
   [opportunities.includes("data-vorta-biggest-reduction-opportunity") && opportunities.includes("data-vorta-critical-spare-risk-card"), "Both new dashboard surfaces need stable semantic test hooks."],
   [opportunities.includes("getRiskPlanActionRoute") && opportunities.includes("openWorkOrderDetail"), "Opportunity navigation must reuse the established Vorta intervention routes."],
+  [opportunities.includes("saveDashboardScrollPosition") && opportunities.includes("restoreDashboardScrollPosition"), "Dashboard action links must preserve and restore the previous scroll position."],
+  [scrollState.includes("sessionStorage") && scrollState.includes("requestAnimationFrame") && scrollState.includes("data-vorta-portal-scroll-container"), "Scroll restoration must wait for the asynchronous dashboard content inside the portal scroller."],
   [opportunities.includes("text-emerald-400") && opportunities.includes("Potential site-risk reduction"), "The calculated reduction must remain visibly green without opening the card."],
   [opportunities.includes("[overflow-wrap:anywhere]") && opportunities.includes("min-h-11"), "Long spare descriptions and touch targets must remain usable on narrow layouts."],
   [!opportunities.includes("RABS-01") && !opportunities.includes("control I/O module"), "The dashboard must not hard-code the current demonstration spare or equipment."],

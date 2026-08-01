@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useEffect, type KeyboardEvent } from "react";
 import { ArrowRight, PackageX, TrendingDown } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Card, CardContent } from "../../../../components/ui/card";
@@ -8,6 +8,10 @@ import type {
   SiteRiskReductionPlan,
 } from "../../../Equipment/equipmentService";
 import { getRiskPlanActionRoute } from "../../riskActionRouting";
+import {
+  restoreDashboardScrollPosition,
+  saveDashboardScrollPosition,
+} from "./dashboardScrollState";
 
 const ACTION_CATEGORY: Record<SiteRiskReductionAction["target"], string> = {
   spares: "Spare availability",
@@ -75,6 +79,7 @@ function openAction(
   action: SiteRiskReductionAction,
   onNavigate: (path: string) => void,
 ): void {
+  saveDashboardScrollPosition();
   const workOrderNumber = action.workOrderNumbers[0] ?? null;
   if (action.target === "work-orders" && workOrderNumber) {
     openWorkOrderDetail({
@@ -87,6 +92,13 @@ function openAction(
   onNavigate(getRiskPlanActionRoute(plan.equipmentId, action));
 }
 
+function useDashboardScrollRestoration(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    return restoreDashboardScrollPosition();
+  }, [enabled]);
+}
+
 interface RiskOpportunityProps {
   plan: SiteRiskReductionPlan | null;
   onNavigate: (path: string) => void;
@@ -97,6 +109,7 @@ export function BiggestReductionOpportunity({
   onNavigate,
 }: RiskOpportunityProps): JSX.Element | null {
   const action = getLeadingRiskAction(plan);
+  useDashboardScrollRestoration(Boolean(plan && action));
   if (!plan || !action) return null;
 
   return (
@@ -147,6 +160,7 @@ export function CriticalSpareRiskCard({
   onNavigate,
 }: RiskOpportunityProps): JSX.Element | null {
   const action = getLeadingSpareRiskAction(plan);
+  useDashboardScrollRestoration(Boolean(plan && action));
   if (!plan || !action) return null;
 
   const partReference = action.sparePartNumbers[0] ?? null;
