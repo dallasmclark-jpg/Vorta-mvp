@@ -24,6 +24,9 @@ for (const expected of [
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
   "largestIdenticalSignatureGroup",
+  "healthAttempts = 2",
+  "error?.code === \"57014\"",
+  "await delay(2_000)",
   "signOut",
 ]) {
   assert.ok(gate.includes(expected), `Missing live health gate contract: ${expected}`);
@@ -32,6 +35,7 @@ for (const expected of [
 assert.doesNotMatch(gate, /supabase\s*\.\s*from\s*\(/);
 assert.doesNotMatch(gate, /vorta_(refresh|recalculate|sync)_/);
 assert.doesNotMatch(gate, /\.(insert|update|upsert|delete)\s*\(/);
+assert.doesNotMatch(gate, /healthAttempts\s*=\s*[3-9]/, "The health check may retry only once.");
 assert.ok(
   contractRunner.includes(
     '"scripts/live-backend-health-gate-contracts.mjs"',

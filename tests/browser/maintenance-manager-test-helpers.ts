@@ -64,7 +64,7 @@ export async function expectOperationalTouchTarget(locator: Locator): Promise<vo
   ).toBeGreaterThanOrEqual(39.5);
 }
 
-async function getStoredSupabaseAccessToken(page: Page): Promise<string> {
+export async function getStoredSupabaseAccessToken(page: Page): Promise<string> {
   const accessToken = await page.evaluate(() => {
     for (const value of Object.values(localStorage)) {
       try {

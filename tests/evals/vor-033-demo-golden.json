@@ -1,0 +1,194 @@
+[
+  {
+    "id": "vor033-fd03-risk",
+    "question": "Why is FD-03 one of the highest-risk assets and what should we do first?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_spares", "get_equipment_risk_actions"],
+    "mustMention": ["FD-03", "FD-03-PLC-01"],
+    "mustMentionAny": ["18.6", "vacuum", "condenser", "stock"],
+    "mustNotMention": ["DEMO-FD", "invented", "definitely ordered"]
+  },
+  {
+    "id": "vor033-fd03-blocker",
+    "question": "What is blocking the leading FD-03 intervention and how long is the exposure?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_spares", "get_equipment_risk_actions"],
+    "mustMention": ["FD-03-PLC-01"],
+    "mustMentionAny": ["90", "lead time", "out of stock", "stockout"],
+    "mustNotMention": ["available now", "purchase order placed"]
+  },
+  {
+    "id": "vor033-fd03-skills",
+    "question": "Who is qualified to diagnose the FD-03 vacuum system and what capability evidence supports that?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["Nia Roberts", "Vacuum Systems"],
+    "mustMentionAny": ["validated", "qualified", "rating"],
+    "mustNotMention": ["random engineer", "unverified"]
+  },
+  {
+    "id": "vor033-fd03-evidence",
+    "question": "Which FD-03 work history and approved document should the engineer use before acting?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_history", "get_equipment_documents", "search_maintenance_documents"],
+    "mustMention": ["FD-03 Approved Fault-Finding Guide"],
+    "mustMentionAny": ["WO-260706", "18.6", "15.0", "vacuum-pump"],
+    "mustNotMention": ["unapproved document", "generic manual only"]
+  },
+  {
+    "id": "vor033-rabs-risk",
+    "question": "What is driving RABS-01 risk and what is the safest next action?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_spares", "get_equipment_risk_actions"],
+    "mustMention": ["RABS-01", "RABS-01-PLC-01"],
+    "mustMentionAny": ["interlock", "airflow", "safety I/O"],
+    "mustNotMention": ["safe to release without testing", "definitely available"]
+  },
+  {
+    "id": "vor033-rabs-release",
+    "question": "Can RABS-01 be released for the next campaign, and what evidence is still required?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_documents"],
+    "mustMention": ["RABS-01"],
+    "mustMentionAny": ["interlock", "validated", "challenge", "airflow"],
+    "mustNotMention": ["released", "no further checks"]
+  },
+  {
+    "id": "vor033-rabs-skills",
+    "question": "Who can authorise the RABS-01 airflow and interlock verification?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["Natalie Morgan", "HVAC Validation"],
+    "mustMentionAny": ["validated", "qualified", "required level"],
+    "mustNotMention": ["any technician"]
+  },
+  {
+    "id": "vor033-rabs-reduction",
+    "question": "Which RABS-01 action gives the largest immediate risk reduction and what remains afterwards?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_risk_actions", "get_equipment_spares"],
+    "mustMention": ["RABS-01-PLC-01"],
+    "mustMentionAny": ["risk reduction", "remaining risk", "procure", "stock"],
+    "mustNotMention": ["risk becomes zero"]
+  },
+  {
+    "id": "vor033-vf02-repeat-fault",
+    "question": "Why does VF-02 keep generating false rejects and what evidence supports the diagnosis?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_history", "search_maintenance_documents"],
+    "mustMention": ["VF-02", "F-204"],
+    "mustMentionAny": ["false reject", "sensor", "repeat"],
+    "mustNotMention": ["unknown asset", "no history"]
+  },
+  {
+    "id": "vor033-vf02-spare",
+    "question": "Which spare is preventing a permanent VF-02 repair and what is the required action?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_spares", "get_equipment_work"],
+    "mustMention": ["VF02-SENS-014", "WO-250467"],
+    "mustMentionAny": ["out of stock", "stock", "replace"],
+    "mustNotMention": ["part is available"]
+  },
+  {
+    "id": "vor033-vf02-skills",
+    "question": "Which engineer can lead the VF-02 reject-system intervention?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["James Mitchell", "Bosch Vial Fillers"],
+    "mustMentionAny": ["validated", "qualified"],
+    "mustNotMention": ["unverified"]
+  },
+  {
+    "id": "vor033-vf02-verification",
+    "question": "What must be verified after replacing the VF-02 reject sensor before production restarts?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_calibrations", "get_equipment_documents"],
+    "mustMention": ["ten-vial", "VF02-SENS-014"],
+    "mustMentionAny": ["challenge", "calibration", "reject confirmation"],
+    "mustNotMention": ["restart immediately"]
+  },
+  {
+    "id": "vor033-wfi01-cause",
+    "question": "What caused the WFI-01 conductivity excursion and which reading is more credible?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_history", "search_maintenance_documents"],
+    "mustMention": ["WFI-01"],
+    "mustMentionAny": ["positive bias", "grab sample", "conductivity sensor"],
+    "mustNotMention": ["water quality definitely failed"]
+  },
+  {
+    "id": "vor033-wfi01-spare",
+    "question": "What is blocking permanent correction of WFI-01 and which part is required?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_spares", "get_equipment_work"],
+    "mustMention": ["WFI1-COND-001", "WO-250414"],
+    "mustMentionAny": ["stock", "sensor", "replace"],
+    "mustNotMention": ["part available now"]
+  },
+  {
+    "id": "vor033-wfi01-skills",
+    "question": "Who can replace and verify the WFI-01 conductivity sensor?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["Priya Shah", "Conductivity Monitoring"],
+    "mustMentionAny": ["validated", "qualified"],
+    "mustNotMention": ["any engineer"]
+  },
+  {
+    "id": "vor033-wfi01-return",
+    "question": "What checks are required before returning WFI-01 to normal monitoring?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_calibrations", "get_equipment_documents"],
+    "mustMention": ["USP"],
+    "mustMentionAny": ["recalibrate", "alarm response", "grab sample", "conductivity"],
+    "mustNotMention": ["no verification required"]
+  },
+  {
+    "id": "vor033-ahu01-diagnosis",
+    "question": "Is the Grade B room currently at risk, or is AHU-01 showing an instrument fault?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_history", "get_equipment_calibrations"],
+    "mustMention": ["AHU-01"],
+    "mustMentionAny": ["calibrated reference", "transmitter drift", "pressure cascade"],
+    "mustNotMention": ["room definitely failed"]
+  },
+  {
+    "id": "vor033-ahu01-spare",
+    "question": "What is blocking permanent correction of AHU-01?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_spares", "get_equipment_work"],
+    "mustMention": ["HVAC-DP-001", "WO-250447"],
+    "mustMentionAny": ["transmitter", "stock", "replace"],
+    "mustNotMention": ["available now"]
+  },
+  {
+    "id": "vor033-ahu01-skills",
+    "question": "Who can calibrate and verify the replacement AHU-01 differential-pressure transmitter?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["Nia Roberts", "Pressure Instrument Calibration"],
+    "mustMentionAny": ["validated", "qualified"],
+    "mustNotMention": ["unverified"]
+  },
+  {
+    "id": "vor033-ahu01-verification",
+    "question": "What evidence is required to confirm AHU-01 after repair?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_calibrations", "get_equipment_documents"],
+    "mustMention": ["BMS"],
+    "mustMentionAny": ["pressure cascade", "calibrated reference", "Grade B"],
+    "mustNotMention": ["repair complete without testing"]
+  },
+  {
+    "id": "vor033-cold01-handover",
+    "question": "What should the next shift know about COLD-01?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_calibrations", "get_equipment_spares"],
+    "mustMention": ["COLD-01", "1.3"],
+    "mustMentionAny": ["defrost recovery", "probe", "calibration"],
+    "mustNotMention": ["temperature excursion confirmed"]
+  },
+  {
+    "id": "vor033-cold01-measurement",
+    "question": "How large was the COLD-01 probe disagreement and what should be checked next?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_history", "get_equipment_calibrations"],
+    "mustMention": ["1.3"],
+    "mustMentionAny": ["calibrated reference", "both channels", "defrost"],
+    "mustNotMention": ["no further action"]
+  },
+  {
+    "id": "vor033-cold01-skills",
+    "question": "Who can verify the COLD-01 monitoring system?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
+    "mustMention": ["Gareth Owen", "Environmental Monitoring Systems"],
+    "mustMentionAny": ["validated", "qualified"],
+    "mustNotMention": ["any operator"]
+  },
+  {
+    "id": "vor033-cold01-next-action",
+    "question": "What is the next safe action if the COLD-01 probe deviation repeats?",
+    "expectedTools": ["get_equipment_risk", "get_equipment_spares", "get_equipment_work", "get_equipment_documents"],
+    "mustMention": ["COLD-01-SEN-C01"],
+    "mustMentionAny": ["calibrated reference", "replace", "repeat"],
+    "mustNotMention": ["ignore the deviation"]
+  }
+]
