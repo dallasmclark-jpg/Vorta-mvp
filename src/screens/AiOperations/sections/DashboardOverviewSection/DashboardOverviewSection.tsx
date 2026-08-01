@@ -47,6 +47,7 @@ import {
 } from "../../riskActionRouting";
 import { RiskMeter } from "./RiskMeter";
 import { LabourRiskSection } from "./LabourRiskSection";
+import { BiggestReductionOpportunity } from "./RiskOpportunityCards";
 import {
   DashboardEvidenceNotice,
   type DashboardEvidenceState,
@@ -1715,6 +1716,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
                     </div>
 
+                    <BiggestReductionOpportunity
+                      plan={riskReductionPlan}
+                      onNavigate={navigate}
+                    />
+
                     <div>
                       <div className="mb-3 flex items-center justify-between">
                         <div>
@@ -2788,6 +2794,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
         isSiteRiskScope={isSiteRiskScope}
         activeScopeLabel={activeScopeLabel}
         activeScopeArea={activeScopeArea}
+        riskReductionPlan={riskReductionPlan}
         onNavigate={navigate}
       />
 
