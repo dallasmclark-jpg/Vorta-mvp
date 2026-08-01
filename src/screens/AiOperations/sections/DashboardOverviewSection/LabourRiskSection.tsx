@@ -246,12 +246,12 @@ export function LabourRiskSection({
             </CardContent>
           </Card>
         ))}
-      </div>
 
-      <CriticalSpareRiskCard
-        plan={riskReductionPlan}
-        onNavigate={onNavigate}
-      />
+        <CriticalSpareRiskCard
+          plan={riskReductionPlan}
+          onNavigate={onNavigate}
+        />
+      </div>
     </section>
   );
 }
