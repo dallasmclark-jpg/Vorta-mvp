@@ -1,0 +1,48 @@
+name: VOR-034 production bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/vor-034-production-bundle.yml"
+      - "src/screens/Equipment/**"
+      - "supabase/migrations/2026080121*.sql"
+      - "supabase/migrations/2026080122*.sql"
+      - "scripts/vor-034-verified-images-contract.mjs"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Record source commit
+        run: echo "${GITHUB_SHA}" > dist/vorta-source-commit.txt
+
+      - name: Upload production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-034-production-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 3
