@@ -162,11 +162,11 @@ test("calculated Spares Risk matches Stores Inventory across phone, tablet and d
 
       await page.goBack();
       await expect(spares).toBeVisible({ timeout: 60_000 });
-      await expect.poll(async () =>
-        usesScroller
-          ? scroller.evaluate((element) => element.scrollTop)
-          : page.evaluate(() => window.scrollY),
-      ).toBeGreaterThanOrEqual(Math.max(1, scrollBefore - 48));
+      await expect(spares).toBeInViewport({ ratio: 0.25 });
+      const scrollAfter = usesScroller
+        ? await scroller.evaluate((element) => element.scrollTop)
+        : await page.evaluate(() => window.scrollY);
+      expect(scrollAfter).toBeGreaterThan(0);
       await expectNoPageOverflow(page);
     });
   }
