@@ -14,9 +14,17 @@ function currentScrollTop(): number {
   return container ? container.scrollTop : window.scrollY;
 }
 
+function restoreAfterHistoryNavigation(): void {
+  window.removeEventListener("popstate", restoreAfterHistoryNavigation);
+  window.requestAnimationFrame(() => {
+    restoreDashboardScrollPosition();
+  });
+}
+
 function clearDashboardReturnState(): void {
   window.sessionStorage.removeItem(DASHBOARD_SCROLL_KEY);
   window.sessionStorage.removeItem(DASHBOARD_WORK_PLAN_KEY);
+  window.removeEventListener("popstate", restoreAfterHistoryNavigation);
 }
 
 export function saveDashboardScrollPosition(): void {
@@ -31,6 +39,8 @@ export function saveDashboardScrollPosition(): void {
   if (!Number.isFinite(scrollTop) || scrollTop <= 0) return;
 
   window.sessionStorage.setItem(DASHBOARD_SCROLL_KEY, String(scrollTop));
+  window.removeEventListener("popstate", restoreAfterHistoryNavigation);
+  window.addEventListener("popstate", restoreAfterHistoryNavigation);
 }
 
 export function restoreDashboardWorkPlanExpanded(): boolean {
@@ -44,6 +54,7 @@ export function restoreDashboardScrollPosition(): () => void {
   const stored = Number(window.sessionStorage.getItem(DASHBOARD_SCROLL_KEY));
   if (!Number.isFinite(stored) || stored <= 0) {
     window.sessionStorage.removeItem(DASHBOARD_WORK_PLAN_KEY);
+    window.removeEventListener("popstate", restoreAfterHistoryNavigation);
     return () => undefined;
   }
 
