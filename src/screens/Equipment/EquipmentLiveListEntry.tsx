@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Select } from "../../components/Select";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
-import { Select } from "../../components/Select";
 import { EquipmentSection } from "./EquipmentSection";
 import {
   loadEquipmentEvidenceCoverage,
@@ -22,6 +22,7 @@ import {
   type LiveEquipmentListPayload,
 } from "./equipmentLiveTrust";
 import type { EquipmentListItem } from "./equipmentService";
+import { VerifiedEquipmentImage } from "./VerifiedEquipmentImage";
 
 type SortKey = "risk" | "name" | "backlog" | "evidence";
 type RiskFilter = "all" | "high" | "overdue" | "evidence-gaps";
@@ -112,6 +113,7 @@ function EvidenceBadge({
       </span>
     );
   }
+
   if (unavailable || !coverage) {
     return (
       <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-300">
@@ -119,6 +121,7 @@ function EvidenceBadge({
       </span>
     );
   }
+
   return (
     <span
       className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${
@@ -165,7 +168,9 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
       );
     } catch (error) {
       setCoverageError(
-        error instanceof Error ? error.message : "Equipment evidence coverage could not be loaded.",
+        error instanceof Error
+          ? error.message
+          : "Equipment evidence coverage could not be loaded.",
       );
     } finally {
       setCoverageLoading(false);
@@ -177,8 +182,22 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
   }, [load]);
 
   const items = state?.status === "ready" ? state.data.items : [];
+  const recordById = useMemo(
+    () =>
+      new Map(
+        (state?.status === "ready" ? state.data.records : []).map((record) => [
+          record.id,
+          record,
+        ]),
+      ),
+    [state],
+  );
+
   const areas = useMemo(
-    () => Array.from(new Set(items.map((item) => item.area))).sort((left, right) => left.localeCompare(right)),
+    () =>
+      Array.from(new Set(items.map((item) => item.area))).sort((left, right) =>
+        left.localeCompare(right),
+      ),
     [items],
   );
 
@@ -202,7 +221,10 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
       ) {
         return false;
       }
-      if (riskFilter === "evidence-gaps" && coverage.get(item.id)?.complete !== false) {
+      if (
+        riskFilter === "evidence-gaps" &&
+        coverage.get(item.id)?.complete !== false
+      ) {
         return false;
       }
       return true;
@@ -212,8 +234,12 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
       if (sortKey === "name") return left.name.localeCompare(right.name);
       if (sortKey === "backlog") {
         return (
-          right.openWorkOrderCount + right.overduePmCount + right.calibrationOverdueCount -
-          (left.openWorkOrderCount + left.overduePmCount + left.calibrationOverdueCount)
+          right.openWorkOrderCount +
+          right.overduePmCount +
+          right.calibrationOverdueCount -
+          (left.openWorkOrderCount +
+            left.overduePmCount +
+            left.calibrationOverdueCount)
         );
       }
       if (sortKey === "evidence") {
@@ -228,7 +254,11 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
   if (state && state.status !== "ready") {
     return (
       <EvidenceState
-        title={state.status === "unavailable" ? "Equipment data unavailable" : "Equipment risk not configured"}
+        title={
+          state.status === "unavailable"
+            ? "Equipment data unavailable"
+            : "Equipment risk not configured"
+        }
         message={state.message}
         unavailable={state.status === "unavailable"}
         onRetry={() => void load()}
@@ -246,13 +276,18 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 data-vorta-mobile-page-title="true" className="text-2xl font-bold tracking-tight text-slate-50">Equipment</h1>
+              <h1
+                data-vorta-mobile-page-title="true"
+                className="text-2xl font-bold tracking-tight text-slate-50"
+              >
+                Equipment
+              </h1>
               <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold tracking-[0.12em] text-emerald-300">
                 ACTIVE-SITE VERIFIED
               </span>
             </div>
             <p className="mt-2 text-sm text-slate-400">
-              Date-verified risk, backlog and evidence records scoped to the authorised active site.
+              Date-verified risk, backlog, imagery and evidence scoped to the authorised active site.
             </p>
             <p className="mt-2 text-xs text-slate-500">
               Showing {filtered.length} of {items.length} verified assets
@@ -264,7 +299,10 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
             disabled={loading}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-700 px-4 text-sm font-semibold text-slate-200 hover:bg-gray-800 disabled:opacity-60"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw
+              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
             Refresh
           </button>
         </div>
@@ -285,10 +323,7 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
             onChange={setArea}
             options={[
               { value: "all", label: "All areas" },
-              ...areas.map((areaName) => ({
-                value: areaName,
-                label: areaName,
-              })),
+              ...areas.map((areaName) => ({ value: areaName, label: areaName })),
             ]}
             placeholder="Filter by area"
             className="h-10 w-full"
@@ -322,7 +357,10 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
         </div>
 
         {coverageError ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-200" role="status">
+          <div
+            className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-200"
+            role="status"
+          >
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{coverageError} Risk and backlog records remain available.</span>
           </div>
@@ -332,60 +370,92 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((item) => {
           const itemCoverage = coverage.get(item.id);
+          const record = recordById.get(item.id);
+
           return (
-            <article key={item.id} className="flex flex-col rounded-xl border border-gray-800 bg-[#141820] p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-slate-100">{item.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{item.assetNumber} · {item.area}</p>
-                </div>
-                <span className={`rounded-md border px-2 py-1 text-xs font-bold ${riskTone(item.riskLevel)}`}>
-                  {item.riskScore.toFixed(1)}
-                </span>
-              </div>
+            <article
+              key={item.id}
+              className="flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-[#141820]"
+            >
+              <VerifiedEquipmentImage
+                src={record?.imageUrl}
+                equipmentName={item.name}
+                equipmentType={item.type}
+                equipmentCode={item.assetNumber}
+                className="h-44 w-full rounded-none border-0 border-b border-gray-800"
+              />
 
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <EvidenceBadge coverage={itemCoverage} loading={coverageLoading} unavailable={Boolean(coverageError)} />
-                {itemCoverage?.complete ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                    Complete path
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                  <p className="text-lg font-bold text-slate-100">{item.openWorkOrderCount}</p>
-                  <p className="text-[11px] text-slate-500">Open WOs</p>
-                </div>
-                <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                  <p className="text-lg font-bold text-orange-300">{item.overduePmCount}</p>
-                  <p className="text-[11px] text-slate-500">Overdue PMs</p>
-                </div>
-                <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
-                  <p className="text-lg font-bold text-cyan-300">{item.calibrationOverdueCount}</p>
-                  <p className="text-[11px] text-slate-500">Calibrations</p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {item.breakdown.slice(0, 3).map((driver) => (
-                  <div key={driver.label} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-slate-400">{driver.label}</span>
-                    <span className="font-semibold tabular-nums text-slate-200">{driver.pct.toFixed(1)}%</span>
+              <div className="flex flex-1 flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-slate-100">{item.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.assetNumber} · {item.area}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <span
+                    className={`rounded-md border px-2 py-1 text-xs font-bold ${riskTone(
+                      item.riskLevel,
+                    )}`}
+                  >
+                    {item.riskScore.toFixed(1)}
+                  </span>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => navigate(`/equipment/${item.id}/overview`)}
-                className="mt-5 inline-flex min-h-10 items-center justify-end gap-2 border-t border-gray-800 pt-4 text-sm font-semibold text-blue-300 hover:text-blue-200"
-              >
-                Open verified equipment
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <EvidenceBadge
+                    coverage={itemCoverage}
+                    loading={coverageLoading}
+                    unavailable={Boolean(coverageError)}
+                  />
+                  {itemCoverage?.complete ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                      Complete path
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
+                    <p className="text-lg font-bold text-slate-100">{item.openWorkOrderCount}</p>
+                    <p className="text-[11px] text-slate-500">Open WOs</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
+                    <p className="text-lg font-bold text-orange-300">{item.overduePmCount}</p>
+                    <p className="text-[11px] text-slate-500">Overdue PMs</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-2">
+                    <p className="text-lg font-bold text-cyan-300">
+                      {item.calibrationOverdueCount}
+                    </p>
+                    <p className="text-[11px] text-slate-500">Calibrations</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {item.breakdown.slice(0, 3).map((driver) => (
+                    <div
+                      key={driver.label}
+                      className="flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="text-slate-400">{driver.label}</span>
+                      <span className="font-semibold tabular-nums text-slate-200">
+                        {driver.pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate(`/equipment/${item.id}/overview`)}
+                  className="mt-5 inline-flex min-h-10 items-center justify-end gap-2 border-t border-gray-800 pt-4 text-sm font-semibold text-blue-300 hover:text-blue-200"
+                >
+                  Open verified equipment
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </article>
           );
         })}
@@ -394,8 +464,12 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-800 bg-[#10151d] px-6 py-12 text-center">
           <Database className="mx-auto h-7 w-7 text-slate-600" aria-hidden="true" />
-          <p className="mt-3 text-sm font-semibold text-slate-300">No matching verified equipment</p>
-          <p className="mt-1 text-xs text-slate-500">Clear one or more filters to restore the equipment list.</p>
+          <p className="mt-3 text-sm font-semibold text-slate-300">
+            No matching verified equipment
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Clear one or more filters to restore the equipment list.
+          </p>
         </div>
       ) : null}
     </section>
