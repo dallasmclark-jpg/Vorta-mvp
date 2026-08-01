@@ -62,7 +62,7 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
   );
 });
 
-test("critical spare evidence remains actionable across phone, tablet and desktop", async ({
+test("calculated Spares Risk matches Stores Inventory across phone, tablet and desktop", async ({
   page,
 }) => {
   test.setTimeout(300_000);
@@ -111,9 +111,13 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
       await expect(opportunity).toContainText(/−\d+(?:\.\d+)? points/);
 
       const rail = page.locator('[data-vorta-card-rail="labour-risk"]');
-      const labourCard = rail.locator('[data-vorta-labour-risk-card]').first();
+      const labourCard = rail
+        .locator(
+          '[data-vorta-labour-risk-card]:not([data-vorta-spares-risk-card])',
+        )
+        .first();
       const spareCard = rail.locator(
-        '[data-vorta-critical-spare-risk-card="true"]',
+        '[data-vorta-spares-risk-card="true"]',
       );
 
       await expect(rail).toBeVisible({ timeout: 60_000 });
@@ -124,13 +128,30 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
           (element) => element.parentElement?.dataset.vortaCardRail,
         ),
       ).toBe("labour-risk");
-      await expect(spareCard).toContainText("Critical spare shortage");
-      await expect(spareCard).toContainText(/Potential site-risk reduction/i);
-      await expect(spareCard).toContainText(/−\d+(?:\.\d+)? points/);
-      await expect(spareCard.locator("dl")).toHaveCount(0);
-      await expect(spareCard.getByText("Operational consequence", { exact: true })).toHaveCount(0);
 
-      const mobileAction = spareCard.getByText("View spare →", { exact: true });
+      await expect(spareCard).toContainText("Spares Risk");
+      const scoreMetric = spareCard.locator(
+        '[data-vorta-primary-metric="true"]',
+      );
+      await expect(scoreMetric).toContainText("Overall risk score");
+      await expect(scoreMetric).toContainText(/\b\d+\.\d\b/, {
+        timeout: 60_000,
+      });
+      const dashboardScoreText = await scoreMetric.locator("p").nth(1).textContent();
+      const dashboardScore = Number.parseFloat(dashboardScoreText ?? "");
+      expect(Number.isFinite(dashboardScore)).toBe(true);
+
+      await expect(spareCard).toContainText(/Affected assets\s+\d+/);
+      await expect(spareCard).toContainText(/Action-required parts\s+\d+/);
+      await expect(
+        spareCard.getByText("Potential site-risk reduction", { exact: true }),
+      ).toHaveCount(0);
+      await expect(spareCard.getByText(/^Part\s/)).toHaveCount(0);
+      await expect(spareCard.getByText("View spare →", { exact: true })).toHaveCount(0);
+
+      const mobileAction = spareCard.getByText("Open inventory →", {
+        exact: true,
+      });
       if (viewport.width < 640) {
         await expect(mobileAction).toBeVisible();
       }
@@ -173,8 +194,19 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
       expect(scrollBefore).toBeGreaterThan(0);
 
       await spareCard.click();
-      await page.waitForURL(/\/equipment\/[^/]+\/spares\?[^#]*from=dashboard/);
-      expect(page.url()).toMatch(/[?&]record=/);
+      await page.waitForURL(/\/stores-inventory(?:\?|$)/);
+      const inventoryUrl = new URL(page.url());
+      expect(inventoryUrl.searchParams.get("from")).toBe("dashboard");
+      expect(inventoryUrl.searchParams.get("filter")).toBe("attention");
+
+      const inventoryRiskCard = page.locator(
+        '[data-vorta-inventory-risk-card="true"]',
+      );
+      await expect(inventoryRiskCard).toBeVisible({ timeout: 60_000 });
+      const inventoryRiskText = await inventoryRiskCard.textContent();
+      const inventoryScoreMatch = inventoryRiskText?.match(/(\d+)\s*\/100/);
+      expect(inventoryScoreMatch).not.toBeNull();
+      expect(Number(inventoryScoreMatch?.[1])).toBe(Math.round(dashboardScore));
 
       await page.goBack();
       await expect(combinedHeading).toBeVisible({ timeout: 60_000 });
