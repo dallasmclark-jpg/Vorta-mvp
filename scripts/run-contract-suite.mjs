@@ -17,6 +17,7 @@ const contracts = [
   ["VOR-032 dashboard critical spares", "scripts/vor-032-dashboard-critical-spares-contracts.mjs"],
   ["VOR-033 demo dataset credibility", "scripts/vor-033-demo-dataset-credibility-contracts.mjs"],
   ["VOR-033 connected demo storylines", "scripts/vor-033-demo-storyline-contracts.mjs"],
+  ["VOR-033 Ask Vorta golden suite", "scripts/vor-033-ask-vorta-golden-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
