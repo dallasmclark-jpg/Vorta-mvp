@@ -32,7 +32,7 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
     // workflow through the rendered desktop control, then return to the phone layout to
     // verify that stale evidence remains honest and projected actions stay disabled.
     await expect(refresh).toHaveCount(0);
-    await page.setViewportSize({ width: 800, height: Math.max(800, originalViewport.height) });
+    await page.setViewportSize({ width: 1280, height: Math.max(800, originalViewport.height) });
     await expect(refresh).toBeVisible();
     await refresh.click();
     await expect(stale).toBeVisible();
