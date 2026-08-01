@@ -4,6 +4,7 @@ const baseURL = process.env.VORTA_E2E_BASE_URL ?? "http://127.0.0.1:4173";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const maintenanceManagerAuthState =
   "playwright/.auth/maintenance-manager.json";
+const askVortaLiveEval = /vor-033-ask-vorta-live-eval\.spec\.ts/;
 
 const authenticatedProject = hasAuthenticatedTestUser
   ? {
@@ -46,11 +47,21 @@ export default defineConfig({
             name: "auth-setup",
             testMatch: /maintenance-manager-auth\.setup\.ts/,
           },
+          {
+            name: "ask-vorta-live",
+            dependencies: ["auth-setup"],
+            testMatch: askVortaLiveEval,
+            use: {
+              storageState: maintenanceManagerAuthState,
+              viewport: { width: 1366, height: 768 },
+            },
+          },
         ]
       : []),
     {
       name: "phone-360",
       ...authenticatedProject,
+      testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
         viewport: { width: 360, height: 800 },
@@ -59,6 +70,7 @@ export default defineConfig({
     {
       name: "samsung-tablet-portrait",
       ...authenticatedProject,
+      testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
         viewport: { width: 800, height: 1280 },
@@ -67,6 +79,7 @@ export default defineConfig({
     {
       name: "samsung-tablet-landscape",
       ...authenticatedProject,
+      testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
         viewport: { width: 1280, height: 800 },
@@ -75,6 +88,7 @@ export default defineConfig({
     {
       name: "laptop-1366",
       ...authenticatedProject,
+      testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
         viewport: { width: 1366, height: 768 },
@@ -83,6 +97,7 @@ export default defineConfig({
     {
       name: "desktop-1920",
       ...authenticatedProject,
+      testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
         viewport: { width: 1920, height: 1080 },
