@@ -8,41 +8,39 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const dashboard = read("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx");
 const labour = read("src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx");
 const opportunities = read("src/screens/AiOperations/sections/DashboardOverviewSection/RiskOpportunityCards.tsx");
+const inventory = read("src/screens/StoresInventory/storesInventoryService.ts");
 const scrollState = read("src/screens/AiOperations/sections/DashboardOverviewSection/dashboardScrollState.ts");
 
-const labourRailIndex = labour.indexOf('data-vorta-card-rail="labour-risk"');
-const spareCardIndex = labour.indexOf("<CriticalSpareRiskCard");
-const labourRailClosingIndex = labour.indexOf("\n      </div>\n    </section>", labourRailIndex);
-
 const checks = [
-  [dashboard.includes("<BiggestReductionOpportunity") && dashboard.includes("plan={riskReductionPlan}"), "The expanded dashboard work plan must render the compact biggest-reduction opportunity from the live plan."],
-  [dashboard.indexOf("<BiggestReductionOpportunity") < dashboard.indexOf("Recommended Work Queue"), "The compact opportunity must appear before the full recommended work queue."],
-  [dashboard.includes("riskReductionPlan={riskReductionPlan}"), "The live risk-reduction plan must be passed into the combined spares and labour section."],
-  [labour.includes('"Spares & Labour Risks"') && labour.includes("Spares & Labour Risks`"), "The dashboard section heading must be renamed for site and area scopes."],
-  [labourRailIndex >= 0 && spareCardIndex > labourRailIndex && spareCardIndex < labourRailClosingIndex, "The critical spare card must be a direct compact item inside the existing labour-risk card rail, not a separate full-width panel."],
-  [opportunities.includes('data-vorta-dashboard-card="labour-risk"') && opportunities.includes('data-vorta-labour-risk-card="critical-spare"') && opportunities.includes('className="flex h-full flex-col gap-3 p-4"'), "The spare card must inherit the exact labour-card rail sizing, height, spacing and content hierarchy."],
-  [!opportunities.includes("<dl") && !opportunities.includes("Operational consequence"), "The compact spare card must not contain the previous multi-panel detailed breakdown."],
-  [opportunities.includes("getLeadingRiskAction") && opportunities.includes("right.calculatedReduction - left.calculatedReduction"), "The leading opportunity must be selected dynamically by calculated reduction."],
-  [opportunities.includes('action.target === "spares"') && opportunities.includes("getLeadingSpareRiskAction"), "The compact card must select the highest calculated spare intervention."],
-  [opportunities.includes("data-vorta-biggest-reduction-opportunity") && opportunities.includes("data-vorta-critical-spare-risk-card"), "Both dashboard surfaces need stable semantic test hooks."],
-  [opportunities.includes("getRiskPlanActionRoute") && opportunities.includes("openWorkOrderDetail"), "Opportunity navigation must reuse the established Vorta intervention routes."],
-  [opportunities.includes("saveDashboardScrollPosition") && opportunities.includes("restoreDashboardScrollPosition"), "Dashboard action links must preserve and restore the previous scroll position."],
-  [scrollState.includes("sessionStorage") && scrollState.includes("requestAnimationFrame") && scrollState.includes("data-vorta-portal-scroll-container"), "Scroll restoration must wait for the asynchronous dashboard content inside the portal scroller."],
-  [dashboard.includes("restoreDashboardWorkPlanExpanded") && dashboard.includes("useState(isRiskDetailOpen)"), "Returning from an intervention must reopen the expanded work plan before restoring its previous scroll position."],
-  [scrollState.includes("DASHBOARD_WORK_PLAN_KEY") && scrollState.includes("data-vorta-biggest-reduction-opportunity"), "Dashboard return state must preserve whether the risk work plan was expanded."],
-  [opportunities.includes("text-emerald-400") && opportunities.includes("Potential site-risk reduction"), "The calculated reduction must remain visibly green without opening the card."],
-  [opportunities.includes("line-clamp-3") && opportunities.includes("[overflow-wrap:anywhere]") && opportunities.includes("min-h-11"), "Long spare descriptions and mobile touch targets must remain usable on narrow layouts."],
-  [opportunities.includes('data-vorta-mobile-card-action="true"') && opportunities.includes("View spare →"), "The compact spare card must expose the same mobile action treatment as the labour cards."],
-  [!opportunities.includes("RABS-01") && !opportunities.includes("control I/O module"), "The dashboard must not hard-code the current demonstration spare or equipment."],
-  [!labour.includes("No current spare") && !opportunities.includes("No current spare"), "No empty spare-risk placeholder may be displayed when the live plan has no spare intervention."],
-  [(labour.match(/data-vorta-labour-risk-card/g) ?? []).length >= 1, "Existing labour-risk cards and navigation must remain present."],
+  [dashboard.includes("<BiggestReductionOpportunity") && dashboard.includes("plan={riskReductionPlan}"), "The expanded work plan must retain the leading calculated intervention."],
+  [dashboard.indexOf("<BiggestReductionOpportunity") < dashboard.indexOf("Recommended Work Queue"), "The leading intervention must remain above the full recommended work queue."],
+  [dashboard.includes("riskReductionPlan={riskReductionPlan}"), "The verified risk-reduction plan must remain available to the combined risk section."],
+  [labour.includes('"Spares & Labour Risks"') && labour.includes("Spares & Labour Risks`"), "The combined section heading must remain correct for site and area scopes."],
+  [labour.includes("loadStoresInventorySnapshot") && labour.includes("summariseStoresInventory"), "Dashboard Spares Risk must reuse the canonical Stores Inventory reader and summary calculation."],
+  [inventory.includes("function calculateExposureScore") && inventory.includes("stockState") && inventory.includes("componentCriticality") && inventory.includes("equipmentCriticality") && inventory.includes("leadDays") && inventory.includes("assetRiskScore"), "Part exposure must continue to use stock state, component and equipment criticality, lead time and linked asset risk."],
+  [inventory.includes("maximum * 0.7") && inventory.includes("topAverage * 0.3") && inventory.includes(".slice(0, 5)"), "Scoped inventory risk must remain 70% of maximum exposure plus 30% of the top-five average."],
+  [labour.includes("isSiteRiskScope || !activeScopeArea") && labour.includes("item.area.trim().toLowerCase() === normalisedArea"), "Spares Risk must use all site inventory for site scope and only selected-area inventory for area scope."],
+  [labour.includes('title: "Spares Risk"') && labour.includes('metricLabel: "Affected assets"') && labour.includes('extraLabel: "Action-required parts"'), "The card must present a score-first category summary rather than one spare-part record."],
+  [labour.includes('data-vorta-spares-risk-card=') && labour.includes('data-vorta-dashboard-card="labour-risk"') && labour.includes('data-vorta-labour-risk-card={item.slug}'), "Spares Risk must inherit the same rail-card sizing and responsive hooks as labour cards."],
+  [labour.includes("Overall risk score") && labour.includes("<RiskMeter") && labour.includes("spareSummary?.riskScore"), "Spares Risk must expose its calculated score and the standard risk meter."],
+  [labour.includes('displayScore: spareScore === null ? "Not calculated"') && !labour.includes('displayScore: spareScore === null ? "0'), "Unavailable evidence must never be converted into a misleading zero score."],
+  [labour.includes('"loading"') && labour.includes('"partial"') && labour.includes('"stale"') && labour.includes('"empty"') && labour.includes('"unavailable"'), "Loading, partial, stale, empty and unavailable inventory evidence states must remain explicit."],
+  [labour.includes("trustedInventoryRef") && labour.includes('window.addEventListener("online"'), "The last trusted inventory snapshot must be preserved and network recovery must retry the calculation."],
+  [labour.includes('filter: "attention"') && labour.includes('return `/stores-inventory?') && labour.includes('params.set("area", activeScopeArea)'), "Opening Spares Risk must retain dashboard origin, action-required filtering and selected-area scope."],
+  [labour.includes("saveDashboardScrollPosition") && scrollState.includes("sessionStorage") && scrollState.includes("requestAnimationFrame"), "Dashboard return position and asynchronous restoration must remain intact."],
+  [labour.includes("getLeadingSpareRiskAction") && opportunities.includes('action.target === "spares"'), "The current leading spare intervention must remain available as supporting action context."],
+  [opportunities.includes("data-vorta-biggest-reduction-opportunity") && opportunities.includes("Site-risk reduction") && opportunities.includes("text-emerald-400"), "The detailed leading intervention must still show its calculated reduction in the expanded work plan."],
+  [!labour.includes("Critical spare shortage") && !labour.includes("Potential site-risk reduction") && !labour.includes("partReference"), "The rail card must not regress to a featured spare-part detail card."],
+  [!opportunities.includes("CriticalSpareRiskCard") && !opportunities.includes("data-vorta-critical-spare-risk-card"), "The obsolete spare-detail rail component must remain removed."],
+  [!labour.includes("RABS-01") && !opportunities.includes("RABS-01") && !inventory.includes("RABS-01"), "The dashboard and risk calculation must not hard-code the current demonstration spare."],
+  [(labour.match(/kind: "labour"/g) ?? []).length >= 1 && labour.includes("[...labourItems, spareItem].sort"), "Existing labour cards must remain present and all category cards must be ordered by calculated score."],
 ];
 
 const failures = checks.filter(([passed]) => !passed).map(([, message]) => message);
 if (failures.length) {
-  console.error("VOR-032 dashboard critical-spares contracts failed:");
+  console.error("VOR-032 calculated dashboard Spares Risk contracts failed:");
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
-console.log(`VOR-032 dashboard critical-spares contracts passed (${checks.length} checks).`);
+console.log(`VOR-032 calculated dashboard Spares Risk contracts passed (${checks.length} checks).`);
