@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
 const required = (name) => {
@@ -12,6 +13,7 @@ const supabaseKey = required("VITE_SUPABASE_ANON_KEY");
 const email = required("VORTA_E2E_EMAIL");
 const password = required("VORTA_E2E_PASSWORD");
 const expectedSiteId = required("VORTA_E2E_SITE_ID");
+const healthAttempts = 2;
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -27,7 +29,20 @@ assert.ifError(signInError);
 assert.ok(signIn.user, "Authenticated health gate did not receive a user");
 
 try {
-  const { data, error } = await supabase.rpc("vorta_get_demo_backend_health");
+  let data;
+  let error;
+
+  for (let attempt = 1; attempt <= healthAttempts; attempt += 1) {
+    ({ data, error } = await supabase.rpc("vorta_get_demo_backend_health"));
+    const isStatementTimeout = error?.code === "57014";
+    if (!isStatementTimeout || attempt === healthAttempts) break;
+
+    console.warn(
+      `Live backend health RPC hit a transient statement timeout on attempt ${attempt}; retrying once after database contention settles.`,
+    );
+    await delay(2_000);
+  }
+
   assert.ifError(error);
   assert.ok(data && typeof data === "object", "Health RPC returned no report");
 
