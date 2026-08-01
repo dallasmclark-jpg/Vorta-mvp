@@ -64,3 +64,21 @@ jobs:
           path: release
           if-no-files-found: error
           retention-days: 3
+
+      - name: Deploy verified build to Netlify production
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
+        run: |
+          if [ -z "${NETLIFY_AUTH_TOKEN}" ]; then
+            echo "NETLIFY_AUTH_TOKEN is not configured for this repository." >&2
+            exit 1
+          fi
+          npx -y netlify-cli@latest deploy \
+            --dir=dist \
+            --prod \
+            --site="${NETLIFY_SITE_ID}" \
+            --auth="${NETLIFY_AUTH_TOKEN}" \
+            --message="VOR-034 verified equipment image visibility ${GITHUB_SHA}" \
+            --json
