@@ -212,7 +212,8 @@ export function CriticalSpareRiskCard({
     <Card
       role="link"
       tabIndex={0}
-      data-vorta-dashboard-card="spare-risk"
+      data-vorta-dashboard-card="labour-risk"
+      data-vorta-labour-risk-card="critical-spare"
       data-vorta-critical-spare-risk-card="true"
       aria-label={`View spare risk: ${action.action}`}
       onClick={openSpare}
