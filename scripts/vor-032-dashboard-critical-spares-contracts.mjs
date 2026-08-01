@@ -22,6 +22,8 @@ const checks = [
   [opportunities.includes("getRiskPlanActionRoute") && opportunities.includes("openWorkOrderDetail"), "Opportunity navigation must reuse the established Vorta intervention routes."],
   [opportunities.includes("saveDashboardScrollPosition") && opportunities.includes("restoreDashboardScrollPosition"), "Dashboard action links must preserve and restore the previous scroll position."],
   [scrollState.includes("sessionStorage") && scrollState.includes("requestAnimationFrame") && scrollState.includes("data-vorta-portal-scroll-container"), "Scroll restoration must wait for the asynchronous dashboard content inside the portal scroller."],
+  [dashboard.includes("restoreDashboardWorkPlanExpanded") && dashboard.includes("useState(isRiskDetailOpen)"), "Returning from an intervention must reopen the expanded work plan before restoring its previous scroll position."],
+  [scrollState.includes("DASHBOARD_WORK_PLAN_KEY") && scrollState.includes("data-vorta-biggest-reduction-opportunity"), "Dashboard return state must preserve whether the risk work plan was expanded."],
   [opportunities.includes("text-emerald-400") && opportunities.includes("Potential site-risk reduction"), "The calculated reduction must remain visibly green without opening the card."],
   [opportunities.includes("[overflow-wrap:anywhere]") && opportunities.includes("min-h-11"), "Long spare descriptions and touch targets must remain usable on narrow layouts."],
   [!opportunities.includes("RABS-01") && !opportunities.includes("control I/O module"), "The dashboard must not hard-code the current demonstration spare or equipment."],

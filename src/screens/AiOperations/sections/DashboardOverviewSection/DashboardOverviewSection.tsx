@@ -48,6 +48,7 @@ import {
 import { RiskMeter } from "./RiskMeter";
 import { LabourRiskSection } from "./LabourRiskSection";
 import { BiggestReductionOpportunity } from "./RiskOpportunityCards";
+import { restoreDashboardWorkPlanExpanded } from "./dashboardScrollState";
 import {
   DashboardEvidenceNotice,
   type DashboardEvidenceState,
@@ -471,11 +472,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [areaRiskCards, setAreaRiskCards] =
     useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
-  const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
+  const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(
+    restoreDashboardWorkPlanExpanded,
+  );
   const [
     hasOpenedRiskPlan,
     setHasOpenedRiskPlan,
-  ] = useState(false);
+  ] = useState(isRiskDetailOpen);
   const [
     hasUsedNextEquipment,
     setHasUsedNextEquipment,
