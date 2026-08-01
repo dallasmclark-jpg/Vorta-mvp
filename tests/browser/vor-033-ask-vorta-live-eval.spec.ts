@@ -88,8 +88,7 @@ function percentile(values: number[], percentileValue: number): number {
   return sorted[index];
 }
 
-test("VOR-033 live Ask Vorta answers stay grounded across all six demo storylines", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "laptop-1366", "Run the live model suite once per exact head.");
+test("VOR-033 live Ask Vorta answers stay grounded across all six demo storylines", async ({ page }) => {
   test.setTimeout(1_200_000);
 
   await signInMaintenanceManager(page);
