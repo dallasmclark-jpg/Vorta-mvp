@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const scenarioFile = process.env.VORTA_EVAL_SCENARIOS || "tests/evals/ask-vorta-live-golden.json";
+const scenarioFile = process.argv[2] || process.env.VORTA_EVAL_SCENARIOS || "tests/evals/ask-vorta-live-golden.json";
 const scenarios = JSON.parse(readFileSync(resolve(root, scenarioFile), "utf8"));
 const baseUrl = process.env.VORTA_EVAL_BASE_URL || "https://vorta-app.netlify.app";
 let token = process.env.VORTA_EVAL_TOKEN;
