@@ -110,14 +110,43 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
       await expect(opportunity).toContainText(/Site-risk reduction/i);
       await expect(opportunity).toContainText(/−\d+(?:\.\d+)? points/);
 
-      const spareCard = page.locator(
+      const rail = page.locator('[data-vorta-card-rail="labour-risk"]');
+      const labourCard = rail.locator('[data-vorta-labour-risk-card]').first();
+      const spareCard = rail.locator(
         '[data-vorta-critical-spare-risk-card="true"]',
       );
+
+      await expect(rail).toBeVisible({ timeout: 60_000 });
+      await expect(labourCard).toBeVisible({ timeout: 60_000 });
       await expect(spareCard).toBeVisible({ timeout: 60_000 });
+      expect(
+        await spareCard.evaluate(
+          (element) => element.parentElement?.dataset.vortaCardRail,
+        ),
+      ).toBe("labour-risk");
       await expect(spareCard).toContainText("Critical spare shortage");
       await expect(spareCard).toContainText(/Potential site-risk reduction/i);
       await expect(spareCard).toContainText(/−\d+(?:\.\d+)? points/);
-      await expect(spareCard.getByText("View spare", { exact: true })).toBeVisible();
+      await expect(spareCard.locator("dl")).toHaveCount(0);
+      await expect(spareCard.getByText("Operational consequence", { exact: true })).toHaveCount(0);
+
+      const mobileAction = spareCard.getByText("View spare →", { exact: true });
+      if (viewport.width < 640) {
+        await expect(mobileAction).toBeVisible();
+      }
+
+      const labourSize = await labourCard.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+      }));
+      const spareSize = await spareCard.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+      }));
+      expect(Math.abs(spareSize.width - labourSize.width)).toBeLessThanOrEqual(2);
+      if (viewport.width < 640) {
+        expect(Math.abs(spareSize.height - labourSize.height)).toBeLessThanOrEqual(24);
+      }
 
       await spareCard.scrollIntoViewIfNeeded();
       const cardBounds = await spareCard.boundingBox();
