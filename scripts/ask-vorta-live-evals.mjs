@@ -2,17 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const scenarios = JSON.parse(
-  readFileSync(resolve(root, "tests/evals/ask-vorta-live-golden.json"), "utf8"),
-);
+const scenarioFile = process.env.VORTA_EVAL_SCENARIOS || "tests/evals/ask-vorta-live-golden.json";
+const scenarios = JSON.parse(readFileSync(resolve(root, scenarioFile), "utf8"));
 const baseUrl = process.env.VORTA_EVAL_BASE_URL || "https://vorta-app.netlify.app";
 let token = process.env.VORTA_EVAL_TOKEN;
-const siteId =
-  process.env.VORTA_EVAL_SITE_ID || "11000000-0000-0000-0000-000000000001";
-const limit = Math.max(
-  1,
-  Math.min(scenarios.length, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)),
-);
+const siteId = process.env.VORTA_EVAL_SITE_ID || "11000000-0000-0000-0000-000000000001";
+const limit = Math.max(1, Math.min(scenarios.length, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
 
 if (!token) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -27,10 +22,7 @@ if (!token) {
   }
   const signIn = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      apikey: anonKey,
-    },
+    headers: { "content-type": "application/json", apikey: anonKey },
     body: JSON.stringify({ email, password }),
   });
   const session = await signIn.json().catch(() => null);
@@ -63,10 +55,7 @@ function answerText(answer) {
       item.expectedImpact,
       item.verification,
     ]),
-  ]
-    .filter(Boolean)
-    .join("\n")
-    .toLowerCase();
+  ].filter(Boolean).join("\n").toLowerCase();
 }
 
 const results = [];
@@ -74,10 +63,7 @@ for (const scenario of scenarios.slice(0, limit)) {
   const startedAt = Date.now();
   const response = await fetch(`${baseUrl}/api/ask-vorta`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
-    },
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({
       question: scenario.question,
       role: "maintenance-manager",
@@ -117,12 +103,7 @@ for (const scenario of scenarios.slice(0, limit)) {
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
   }
-  results.push({
-    id: scenario.id,
-    passed: failures.length === 0,
-    durationMs: Date.now() - startedAt,
-    failures,
-  });
+  results.push({ id: scenario.id, passed: failures.length === 0, durationMs: Date.now() - startedAt, failures });
   console.log(
     `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${Date.now() - startedAt}ms)${
       failures.length ? ` — ${failures.join("; ")}` : ""
@@ -131,5 +112,5 @@ for (const scenario of scenarios.slice(0, limit)) {
 }
 
 const passed = results.filter((item) => item.passed).length;
-console.log(`Ask Vorta live eval: ${passed}/${results.length} passed.`);
+console.log(`Ask Vorta live eval (${scenarioFile}): ${passed}/${results.length} passed.`);
 if (passed !== results.length) process.exit(1);
