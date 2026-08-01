@@ -158,7 +158,7 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
               : page.evaluate(() => window.scrollY),
           { timeout: 15_000 },
         )
-        .toBeGreaterThan(0);
+        .toBeGreaterThanOrEqual(Math.max(1, scrollBefore - 2));
       await expectNoPageOverflow(page);
     });
   }
