@@ -134,10 +134,11 @@ test("calculated Spares Risk matches Stores Inventory across phone, tablet and d
         '[data-vorta-primary-metric="true"]',
       );
       await expect(scoreMetric).toContainText("Overall risk score");
-      await expect(scoreMetric).toContainText(/\b\d+\.\d\b/, {
+      const scoreValue = scoreMetric.locator("p").nth(1);
+      await expect(scoreValue).toHaveText(/\d+\.\d/, {
         timeout: 60_000,
       });
-      const dashboardScoreText = await scoreMetric.locator("p").nth(1).textContent();
+      const dashboardScoreText = await scoreValue.textContent();
       const dashboardScore = Number.parseFloat(dashboardScoreText ?? "");
       expect(Number.isFinite(dashboardScore)).toBe(true);
 
