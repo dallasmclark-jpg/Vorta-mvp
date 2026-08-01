@@ -14,6 +14,7 @@ const contracts = [
   ["VOR-014 Stores Inventory", "scripts/vor-014-stores-inventory-contracts.mjs"],
   ["VOR-018 selected tab outlines", "scripts/vor-018-selected-tab-outline-contracts.mjs"],
   ["VOR-019 engineer summary filters", "scripts/vor-019-engineer-summary-filters-contracts.mjs"],
+  ["VOR-032 dashboard critical spares", "scripts/vor-032-dashboard-critical-spares-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],

@@ -47,6 +47,8 @@ import {
 } from "../../riskActionRouting";
 import { RiskMeter } from "./RiskMeter";
 import { LabourRiskSection } from "./LabourRiskSection";
+import { BiggestReductionOpportunity } from "./RiskOpportunityCards";
+import { restoreDashboardWorkPlanExpanded } from "./dashboardScrollState";
 import {
   DashboardEvidenceNotice,
   type DashboardEvidenceState,
@@ -470,11 +472,13 @@ export const DashboardOverviewSection = (): JSX.Element => {
   const [areaRiskCards, setAreaRiskCards] =
     useState<AreaRiskProfile[]>([]);
   const [siteRisk, setSiteRisk] = useState<SiteRiskProfile | null>(null);
-  const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(false);
+  const [isRiskDetailOpen, setIsRiskDetailOpen] = useState(
+    restoreDashboardWorkPlanExpanded,
+  );
   const [
     hasOpenedRiskPlan,
     setHasOpenedRiskPlan,
-  ] = useState(false);
+  ] = useState(isRiskDetailOpen);
   const [
     hasUsedNextEquipment,
     setHasUsedNextEquipment,
@@ -1715,6 +1719,11 @@ export const DashboardOverviewSection = (): JSX.Element => {
                       </div>
                     </div>
 
+                    <BiggestReductionOpportunity
+                      plan={riskReductionPlan}
+                      onNavigate={navigate}
+                    />
+
                     <div>
                       <div className="mb-3 flex items-center justify-between">
                         <div>
@@ -2788,6 +2797,7 @@ export const DashboardOverviewSection = (): JSX.Element => {
         isSiteRiskScope={isSiteRiskScope}
         activeScopeLabel={activeScopeLabel}
         activeScopeArea={activeScopeArea}
+        riskReductionPlan={riskReductionPlan}
         onNavigate={navigate}
       />
 

@@ -4,8 +4,10 @@ import { Card, CardContent } from "../../../../components/ui/card";
 import type {
   RiskDashboardLabourCard,
   RiskDashboardScope,
+  SiteRiskReductionPlan,
 } from "../../../Equipment/equipmentService";
 import { RiskMeter } from "./RiskMeter";
+import { CriticalSpareRiskCard } from "./RiskOpportunityCards";
 
 function riskPresentation(score: number, noEngineerOverride: boolean) {
   if (noEngineerOverride || score >= 85) {
@@ -92,6 +94,7 @@ interface LabourRiskSectionProps {
   isSiteRiskScope: boolean;
   activeScopeLabel: string;
   activeScopeArea: string | null;
+  riskReductionPlan: SiteRiskReductionPlan | null;
   onNavigate: (path: string) => void;
 }
 
@@ -100,6 +103,7 @@ export function LabourRiskSection({
   isSiteRiskScope,
   activeScopeLabel,
   activeScopeArea,
+  riskReductionPlan,
   onNavigate,
 }: LabourRiskSectionProps): JSX.Element {
   const items = (scope?.labourCards ?? [])
@@ -152,7 +156,9 @@ export function LabourRiskSection({
     >
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-slate-50">
-          {isSiteRiskScope ? "Labour Risk" : `${activeScopeLabel} Labour Risk`}
+          {isSiteRiskScope
+            ? "Spares & Labour Risks"
+            : `${activeScopeLabel} Spares & Labour Risks`}
         </h2>
         <button
           type="button"
@@ -241,6 +247,11 @@ export function LabourRiskSection({
           </Card>
         ))}
       </div>
+
+      <CriticalSpareRiskCard
+        plan={riskReductionPlan}
+        onNavigate={onNavigate}
+      />
     </section>
   );
 }
