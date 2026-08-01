@@ -1,5 +1,5 @@
 import { useEffect, type KeyboardEvent } from "react";
-import { ArrowRight, PackageX, TrendingDown } from "lucide-react";
+import { ArrowRight, TrendingDown } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { Card, CardContent } from "../../../../components/ui/card";
 import { openWorkOrderDetail } from "../../../../lib/maintenanceActions";
@@ -68,6 +68,40 @@ function spareStatus(action: SiteRiskReductionAction): string {
     return "Low stock";
   }
   return "Stock risk";
+}
+
+function stockPresentation(status: string): {
+  badgeClassName: string;
+  barClassName: string;
+  barWidthClassName: string;
+  label: string;
+} {
+  const normalised = status.toLowerCase();
+
+  if (normalised.includes("out of stock")) {
+    return {
+      badgeClassName: "bg-red-500/20 text-red-400 hover:bg-red-500/20",
+      barClassName: "bg-red-500",
+      barWidthClassName: "w-full",
+      label: "No stock available",
+    };
+  }
+
+  if (normalised.includes("low stock")) {
+    return {
+      badgeClassName: "bg-orange-500/20 text-orange-400 hover:bg-orange-500/20",
+      barClassName: "bg-orange-500",
+      barWidthClassName: "w-2/3",
+      label: "Low stock requires action",
+    };
+  }
+
+  return {
+    badgeClassName: "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20",
+    barClassName: "bg-yellow-400",
+    barWidthClassName: "w-1/2",
+    label: "Spare availability requires review",
+  };
 }
 
 function formatReduction(value: number): string {
@@ -165,6 +199,7 @@ export function CriticalSpareRiskCard({
 
   const partReference = action.sparePartNumbers[0] ?? null;
   const status = spareStatus(action);
+  const presentation = stockPresentation(status);
 
   const openSpare = (): void => openAction(plan, action, onNavigate);
   const handleKey = (event: KeyboardEvent<HTMLElement>): void => {
@@ -177,89 +212,93 @@ export function CriticalSpareRiskCard({
     <Card
       role="link"
       tabIndex={0}
+      data-vorta-dashboard-card="spare-risk"
       data-vorta-critical-spare-risk-card="true"
       aria-label={`View spare risk: ${action.action}`}
       onClick={openSpare}
       onKeyDown={handleKey}
-      className="cursor-pointer overflow-hidden rounded-xl border border-red-500/25 bg-[#141820] shadow-none transition-colors hover:border-red-400/40 hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+      className="h-full cursor-pointer rounded-xl border border-gray-800 bg-[#141820] shadow-none transition-colors hover:border-gray-700 hover:bg-[#181e2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
     >
-      <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-300">
-                <PackageX className="h-4 w-4" aria-hidden="true" />
-                Critical spare shortage
-              </span>
-              <Badge className="rounded border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-300 shadow-none">
-                {status}
-              </Badge>
-            </div>
-
-            <h3 className="mt-2 break-words text-[15px] font-semibold leading-5 text-slate-50 [overflow-wrap:anywhere] sm:text-base">
-              {action.action}
-            </h3>
-            {partReference && (
-              <p className="mt-1 break-all text-xs font-medium text-slate-400">
-                Part {partReference}
-              </p>
-            )}
-          </div>
-
-          <div className="shrink-0 text-right">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              Potential site-risk reduction
-            </p>
-            <p className="mt-1 whitespace-nowrap text-lg font-semibold text-emerald-400">
-              {formatReduction(action.calculatedReduction)}
-            </p>
-          </div>
+      <CardContent className="flex h-full flex-col gap-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 flex-1 text-[15px] font-semibold leading-5 text-slate-50 sm:text-sm">
+            Critical spare shortage
+          </h3>
+          <Badge
+            variant="secondary"
+            className={`shrink-0 rounded px-2 py-1 text-xs font-medium shadow-none ${presentation.badgeClassName}`}
+          >
+            {status}
+          </Badge>
         </div>
 
-        <dl className="grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <div className="min-w-0 rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-            <dt className="text-xs text-slate-500">Related equipment</dt>
-            <dd className="mt-1 break-words font-medium text-slate-100 [overflow-wrap:anywhere]">
-              {plan.equipmentName}
-              {plan.equipmentCode ? ` · ${plan.equipmentCode}` : ""}
-            </dd>
-          </div>
-
-          {plan.highestArea && (
-            <div className="min-w-0 rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-              <dt className="text-xs text-slate-500">Area</dt>
-              <dd className="mt-1 break-words font-medium text-slate-100 [overflow-wrap:anywhere]">
-                {plan.highestArea}
-              </dd>
-            </div>
-          )}
-
-          <div className="min-w-0 rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-            <dt className="text-xs text-slate-500">Risk category</dt>
-            <dd className="mt-1 break-words font-medium text-slate-100 [overflow-wrap:anywhere]">
-              {actionCategory(action)}
-            </dd>
-          </div>
-        </dl>
-
-        {action.rankingReason.trim() && (
-          <div className="rounded-lg border border-orange-500/15 bg-orange-500/[0.045] px-3 py-2.5">
-            <p className="text-xs font-medium text-orange-300">Operational consequence</p>
-            <p className="mt-1 break-words text-xs leading-5 text-slate-400 [overflow-wrap:anywhere]">
-              {action.rankingReason}
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-3 border-t border-gray-800 pt-3">
-          <p className="min-w-0 break-words text-xs leading-5 text-slate-500 [overflow-wrap:anywhere]">
-            {action.detail || "Open the linked spare record to review stock evidence and replenishment action."}
+        <div className="min-w-0">
+          <p
+            data-vorta-mobile-secondary="true"
+            className="line-clamp-3 break-words text-[13px] leading-[18px] text-slate-400 [overflow-wrap:anywhere] sm:text-xs"
+          >
+            {action.action}
           </p>
-          <span className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 text-sm font-semibold text-blue-300">
-            View spare
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          {partReference && (
+            <p className="mt-1 truncate text-xs font-medium text-slate-500" title={partReference}>
+              Part {partReference}
+            </p>
+          )}
+        </div>
+
+        <div data-vorta-primary-metric="true" className="flex flex-col gap-0.5">
+          <p className="text-[13px] text-slate-400 sm:text-xs">
+            Potential site-risk reduction
+          </p>
+          <p className="whitespace-nowrap text-2xl font-semibold text-emerald-400 sm:text-xl">
+            {formatReduction(action.calculatedReduction)}
+          </p>
+        </div>
+
+        <div className="flex items-start justify-between gap-3">
+          <span className="shrink-0 text-[13px] text-slate-400 sm:text-xs">
+            Related equipment
+          </span>
+          <span
+            className="line-clamp-2 min-w-0 text-right text-[13px] font-semibold leading-[18px] text-slate-50 [overflow-wrap:anywhere] sm:text-xs"
+            title={plan.equipmentName}
+          >
+            {plan.equipmentName}
           </span>
         </div>
+
+        <div
+          data-vorta-mobile-secondary="true"
+          className="flex items-center justify-between gap-3"
+        >
+          <span className="text-xs text-slate-400">Area</span>
+          <span className="truncate text-right text-xs font-semibold text-slate-50">
+            {plan.highestArea || "Site-wide"}
+          </span>
+        </div>
+
+        <div className="mt-auto flex flex-col gap-1.5 pt-1">
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800"
+            role="img"
+            aria-label={`${status}: ${presentation.label}`}
+          >
+            <div
+              className={`h-full rounded-full ${presentation.barClassName} ${presentation.barWidthClassName}`}
+            />
+          </div>
+          <p className="text-[13px] leading-[18px] text-slate-400 sm:text-xs">
+            {presentation.label}
+          </p>
+        </div>
+
+        <span
+          data-vorta-mobile-card-action="true"
+          aria-hidden="true"
+          className="hidden min-h-11 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 text-sm font-semibold text-blue-300"
+        >
+          View spare →
+        </span>
       </CardContent>
     </Card>
   );
