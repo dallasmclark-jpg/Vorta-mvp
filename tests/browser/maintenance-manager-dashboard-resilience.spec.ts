@@ -149,6 +149,7 @@ test("critical spare evidence remains actionable across phone, tablet and deskto
 
       await page.goBack();
       await expect(combinedHeading).toBeVisible({ timeout: 60_000 });
+      await expect(opportunity).toBeVisible({ timeout: 60_000 });
       await expect(spareCard).toBeVisible({ timeout: 60_000 });
       await expect
         .poll(
