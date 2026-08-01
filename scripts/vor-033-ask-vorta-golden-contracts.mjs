@@ -7,6 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const scenarios = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-033-demo-golden.json"), "utf8"));
 const evaluator = readFileSync(resolve(root, "scripts/ask-vorta-live-evals.mjs"), "utf8");
 const askVorta = readFileSync(resolve(root, "netlify/functions/ask-vorta.mts"), "utf8");
+const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
 assert.ok(Array.isArray(scenarios), "The VOR-033 golden suite must be a JSON array.");
 assert.ok(scenarios.length >= 20, "The Maintenance Manager golden suite must contain at least twenty questions.");
@@ -53,9 +54,15 @@ for (const evidence of requiredEvidence) {
   assert.ok(encoded.includes(evidence), `Golden suite must verify ${evidence}.`);
 }
 
-assert.ok(evaluator.includes("VORTA_EVAL_SCENARIOS"), "The live evaluator must support an explicit scenario file.");
+assert.ok(evaluator.includes("process.argv[2]"), "The live evaluator must accept a direct scenario-file argument.");
+assert.ok(evaluator.includes("VORTA_EVAL_SCENARIOS"), "The live evaluator must also support an environment-selected scenario file.");
 assert.ok(evaluator.includes("VORTA_EVAL_LIMIT"), "The live evaluator must support bounded diagnostic runs.");
 assert.ok(evaluator.includes("no traceable response ID"), "Every live answer must remain traceable.");
 assert.ok(evaluator.includes("no evidence links"), "Every live answer must expose evidence links.");
+assert.equal(
+  packageJson.scripts?.["eval:ask-vorta:vor033"],
+  "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json",
+  "The repository must expose a dedicated VOR-033 live evaluation command.",
+);
 
 console.log(`VOR-033 Ask Vorta golden-suite contracts passed (${scenarios.length} questions).`);
