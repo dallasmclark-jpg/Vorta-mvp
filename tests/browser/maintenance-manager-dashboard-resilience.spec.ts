@@ -6,7 +6,8 @@ import {
 
 test("a failed dashboard refresh preserves the previous snapshot and disables projected actions", async ({ page }) => {
   await signInMaintenanceManager(page);
-  const isPhone = (page.viewportSize()?.width ?? 1366) < 640;
+  const originalViewport = page.viewportSize() ?? { width: 1366, height: 768 };
+  const isPhone = originalViewport.width < 640;
   const heading = isPhone
     ? page.locator('[data-vorta-mobile-risk-scope="true"]').getByText("Today's Risk", { exact: true })
     : page.getByRole("heading", { name: "Site Risk Briefing", exact: true });
@@ -23,16 +24,24 @@ test("a failed dashboard refresh preserves the previous snapshot and disables pr
   const refresh = page.getByRole("button", {
     name: "Refresh risk intelligence",
     exact: true,
-    includeHidden: true,
   });
+  const stale = page.locator('[data-vorta-dashboard-evidence-state="stale"]');
+
   if (isPhone) {
-    await expect(refresh).toBeHidden();
-    await refresh.evaluate((button: HTMLButtonElement) => button.click());
+    // Mobile deliberately omits the manual refresh control. Trigger the same application
+    // workflow through the rendered desktop control, then return to the phone layout to
+    // verify that stale evidence remains honest and projected actions stay disabled.
+    await expect(refresh).toHaveCount(0);
+    await page.setViewportSize({ width: 800, height: Math.max(800, originalViewport.height) });
+    await expect(refresh).toBeVisible();
+    await refresh.click();
+    await expect(stale).toBeVisible();
+    await page.setViewportSize(originalViewport);
+    await expect(heading).toBeVisible();
   } else {
     await refresh.click();
   }
 
-  const stale = page.locator('[data-vorta-dashboard-evidence-state="stale"]');
   await expect(stale).toContainText(/last successful snapshot/i);
   await expect(stale).toContainText(/projected actions are disabled/i);
   const workPlan = page.getByRole("button", { name: "View work plan", exact: true });
