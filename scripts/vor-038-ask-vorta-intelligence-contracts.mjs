@@ -9,7 +9,7 @@ const checks = [
   [source.includes('const MODEL = "gpt-5.6-terra"'), "balanced GPT-5.6 reasoning model is the backend default"],
   [source.includes('const PLANNER_MODEL = "gpt-5.6-luna"'), "separate efficient semantic planner exists"],
   [source.includes('reasoning: { effort: "low" }'), "planner reasoning effort is explicit"],
-  [source.includes('reasoning: { effort: "medium" }'), "answer reasoning effort is explicit"],
+  [source.includes("answerReasoningEffort(questionPlan)"), "answer reasoning effort is adaptive"],
   [source.includes("buildQuestionPlan"), "semantic planning stage is called"],
   [source.includes("get_site_operational_snapshot"), "broad cross-domain site tool exists"],
   [source.includes("get_equipment_decision_pack"), "broad cross-domain equipment tool exists"],

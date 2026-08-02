@@ -61,25 +61,47 @@ function answerText(answer) {
 const results = [];
 for (const scenario of scenarios.slice(0, limit)) {
   const startedAt = Date.now();
-  const response = await fetch(`${baseUrl}/api/ask-vorta`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      question: scenario.question,
-      role: "maintenance-manager",
-      siteId,
-      history: scenario.history || [],
-      pageContext: {
-        path: scenario.path || "/dashboard",
-        timezone: scenario.timezone || "Europe/London",
-      },
-    }),
-  });
-  const payload = await response.json().catch(() => null);
+  const controller = new AbortController();
+  const requestTimeoutMs = Math.max(
+    5_000,
+    Number(scenario.requestTimeoutMs || 45_000),
+  );
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response;
+  let payload = null;
   const failures = [];
-  if (!response.ok || !payload) {
+  try {
+    response = await fetch(`${baseUrl}/api/ask-vorta`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        question: scenario.question,
+        role: "maintenance-manager",
+        siteId,
+        history: scenario.history || [],
+        pageContext: {
+          path: scenario.path || "/dashboard",
+          timezone: scenario.timezone || "Europe/London",
+        },
+      }),
+      signal: controller.signal,
+    });
+    payload = await response.json().catch(() => null);
+  } catch (error) {
+    failures.push(
+      error instanceof Error
+        ? `request failed: ${error.message}`
+        : "request failed",
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (response && (!response.ok || !payload)) {
     failures.push(`HTTP ${response.status}: ${payload?.error || "invalid JSON"}`);
-  } else {
+  } else if (!response && failures.length === 0) {
+    failures.push("request failed without a response");
+  }
+  if (response?.ok && payload) {
     const text = answerText(payload);
     const usedTools = new Set(payload.toolsUsed || []);
     for (const tool of scenario.expectedTools || []) {
@@ -103,11 +125,32 @@ for (const scenario of scenarios.slice(0, limit)) {
     for (const phrase of scenario.mustNotMention || []) {
       if (text.includes(phrase.toLowerCase())) failures.push(`unsafe phrase "${phrase}"`);
     }
-    if (!Array.isArray(payload.findings) || payload.findings.length === 0) {
+    if (
+      scenario.requireFindings !== false &&
+      (!Array.isArray(payload.findings) || payload.findings.length === 0)
+    ) {
       failures.push("no structured findings");
     }
-    if (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0) {
+    if (
+      scenario.requireActionPlan !== false &&
+      (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0)
+    ) {
       failures.push("no action plan");
+    }
+    if (Number.isFinite(scenario.confidenceMin) && Number(payload.confidence) < Number(scenario.confidenceMin)) {
+      failures.push(`confidence ${payload.confidence}; expected at least ${scenario.confidenceMin}`);
+    }
+    if (Number.isFinite(scenario.maxToolCount) && usedTools.size > Number(scenario.maxToolCount)) {
+      failures.push(`used ${usedTools.size} tools; expected at most ${scenario.maxToolCount}`);
+    }
+    if (Number.isFinite(scenario.maxDecisionSummaryItems) && (payload.decisionSummary || []).length > Number(scenario.maxDecisionSummaryItems)) {
+      failures.push(`decision summary has ${(payload.decisionSummary || []).length} items; expected at most ${scenario.maxDecisionSummaryItems}`);
+    }
+    if (Number.isFinite(scenario.maxFollowUpQuestions) && (payload.followUpQuestions || []).length > Number(scenario.maxFollowUpQuestions)) {
+      failures.push(`follow-ups have ${(payload.followUpQuestions || []).length} items; expected at most ${scenario.maxFollowUpQuestions}`);
+    }
+    if (Number.isFinite(scenario.maxDurationMs) && Date.now() - startedAt > Number(scenario.maxDurationMs)) {
+      failures.push(`duration ${Date.now() - startedAt}ms; expected at most ${scenario.maxDurationMs}ms`);
     }
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
