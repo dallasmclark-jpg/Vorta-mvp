@@ -104,14 +104,6 @@ html [data-vorta-page-content="true"] :where(
 .border-t-violet-400 { --vorta-capability-edge: #a78bfa; }
 .border-t-cyan-400 { --vorta-capability-edge: #22d3ee; }
 
-button[aria-pressed][class~="rounded-xl"][class*="border-t-"] {
-  border-top-width: 2px !important;
-  border-top-color: var(--vorta-capability-edge) !important;
-  border-left-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
-  border-right-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
-  border-bottom-color: var(--vorta-surface-border) !important;
-}
-
 /* Quiet structure should not compete with the operational content. */
 html.dark [data-vorta-page-content="true"] [class~="border-gray-800"] {
   border-color: var(--vorta-surface-divider) !important;
