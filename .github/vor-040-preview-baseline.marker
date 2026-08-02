@@ -1,6 +1,6 @@
 preview=https://deploy-preview-191--vorta-app.netlify.app
-batch=backlog-latency
-revision=2c372136644c2fdae4802f3bd4941a7df15e9607
+batch=backlog-edge-latency
 offset=7
 limit=1
 delay_ms=0
+edge_middleware=true
