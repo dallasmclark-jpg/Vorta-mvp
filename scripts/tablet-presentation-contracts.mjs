@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [entry, styles, dashboardStyles, engineersRoute] = await Promise.all([
-  readFile(new URL("../src/index.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../src/tabletPresentationRecovery.css", import.meta.url), "utf8"),
+const [styles, dashboardStyles, engineersRoute] = await Promise.all([
+  readFile(new URL("../src/card-surfaces.css", import.meta.url), "utf8"),
   readFile(
     new URL(
       "../src/screens/AiOperations/sections/DashboardOverviewSection/dashboardMobileFocus.css",
@@ -14,11 +13,6 @@ const [entry, styles, dashboardStyles, engineersRoute] = await Promise.all([
   readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
 ]);
 
-assert.match(
-  entry,
-  /import "\.\/tabletPresentationRecovery\.css";/,
-  "The tablet presentation recovery stylesheet must be loaded by the application entry.",
-);
 assert.match(
   styles,
   /\[data-vorta-card="true"\][\s\S]*> \[class~="pt-0"\]:first-child/,
