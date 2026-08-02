@@ -34,15 +34,15 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
 
 async function expectContentOnlyCardPadding(page: Page, pageName: string): Promise<void> {
   const content = page
-    .locator('[data-vorta-card="true"] > [class~="pt-0"]:first-child')
+    .locator('[data-vorta-card="true"] > [class*="pt-0"]:first-child')
     .first();
-  await expect(content, `${pageName} must expose a content-only card`).toBeVisible();
+  await expect(content, `${pageName} must expose responsive CardContent`).toBeVisible();
   const paddingTop = await content.evaluate((element) =>
     Number.parseFloat(window.getComputedStyle(element).paddingTop),
   );
   expect(
     paddingTop,
-    `${pageName} content-only cards must retain visible top breathing room`,
+    `${pageName} card content must retain visible top breathing room`,
   ).toBeGreaterThanOrEqual(20);
 }
 
