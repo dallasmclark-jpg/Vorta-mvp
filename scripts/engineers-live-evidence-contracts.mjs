@@ -74,16 +74,15 @@ mustMatch(shiftRota, /Contractor Involved/, "The original rota must retain contr
 
 mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain the shared data-trust mode for the phone presentation");
 mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers route must preserve the explicit phone boundary");
-mustMatch(routeEntry, /\(min-width: 768px\) and \(max-width: 1600px\)/, "The original rota must cover the real 1536px Samsung landscape width without device detection");
 mustMatch(routeEntry, /<MobileEngineersSection dataMode=\{dataMode\} \/>/, "Phone Engineers must retain the working mobile presentation");
-mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Tablet-width Engineers must expose the restored original rota marker");
-mustMatch(routeEntry, /location="\/engineers\/shift-cover"/, "Tablet-width Engineers must render the existing approved Shift Cover route within the Engineers route context");
-mustMatch(routeEntry, /<LabourRiskDetailPage \/>/, "Tablet-width Engineers must reuse the approved full shift-cover implementation");
-mustMatch(routeEntry, /<LiveEngineersSection \/>/, "Wide desktop Engineers must retain the established verified presentation");
-mustNotMatch(routeEntry, /navigator\.|pointer: coarse|any-pointer: coarse|Android/i, "The 1536px route must not depend on user-agent, touch or pointer detection");
+mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Every non-phone Engineers view must expose the restored original rota marker");
+mustMatch(routeEntry, /location="\/engineers\/shift-cover"/, "Every non-phone Engineers view must render the approved Shift Cover route within the Engineers route context");
+mustMatch(routeEntry, /<LabourRiskDetailPage \/>/, "Every non-phone Engineers view must reuse the approved full shift-cover implementation");
+mustNotMatch(routeEntry, /LiveEngineersSection/, "The Engineers route must not fall back to the replacement workforce summary at any non-phone width");
+mustNotMatch(routeEntry, /min-width|max-width: 1600|navigator\.|pointer: coarse|any-pointer: coarse|Android/i, "The non-phone rota route must not depend on guessed widths, user-agent, touch or pointer detection");
 mustNotMatch(routeEntry, /TabletEngineersSection/, "Engineers must not return to the simplified weekly coverage replacement");
 mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the responsive route");
 mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
 mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the responsive entry");
 
-console.log("Engineers live evidence, width-only original rota routing and single-bundle performance contracts passed.");
+console.log("Engineers live evidence, all-non-phone original rota routing and single-bundle performance contracts passed.");
