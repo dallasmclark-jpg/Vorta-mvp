@@ -25,11 +25,11 @@ export function EngineersRouteEntry(): JSX.Element {
   const isPhone = useMediaQuery("(max-width: 767px)");
   const isNarrowTablet = useMediaQuery("(min-width: 768px) and (max-width: 1439px)");
   const isWideTabletViewport = useMediaQuery("(min-width: 1440px) and (max-width: 1600px)");
-  const isAndroidTouchDevice =
-    typeof navigator !== "undefined" &&
-    /Android/i.test(navigator.userAgent) &&
-    navigator.maxTouchPoints > 0;
-  const isTablet = isNarrowTablet || (isWideTabletViewport && isAndroidTouchDevice);
+  const hasCoarsePointer = useMediaQuery("(any-pointer: coarse)");
+  const isTouchDevice =
+    typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+  const isTablet =
+    isNarrowTablet || (isWideTabletViewport && isTouchDevice && hasCoarsePointer);
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>

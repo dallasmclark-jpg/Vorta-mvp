@@ -45,13 +45,19 @@ test("VOR-035 real Tab S9 Ultra journey keeps the original rota", async ({
   const deviceProfile = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     maxTouchPoints: navigator.maxTouchPoints,
+    coarsePointer: window.matchMedia("(any-pointer: coarse)").matches,
     width: window.innerWidth,
     height: window.innerHeight,
   }));
-  expect(deviceProfile.userAgent).toContain("Android");
   expect(deviceProfile.maxTouchPoints).toBeGreaterThan(0);
+  expect(deviceProfile.coarsePointer).toBe(true);
   expect(deviceProfile.width).toBe(viewport?.width);
   expect(deviceProfile.height).toBe(viewport?.height);
+  if (viewportWidth > 1439) {
+    expect(deviceProfile.userAgent).not.toContain("Android");
+  } else {
+    expect(deviceProfile.userAgent).toContain("Android");
+  }
 
   await signInMaintenanceManager(page);
 
