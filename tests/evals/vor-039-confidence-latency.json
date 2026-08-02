@@ -8,6 +8,7 @@
     "maxToolCount": 1,
     "confidenceMin": 55,
     "maxDurationMs": 18000,
+    "requestTimeoutMs": 40000,
     "mustMentionAny": [
       "risk",
       "work",
@@ -28,6 +29,7 @@
     "maxDecisionSummaryItems": 3,
     "maxFollowUpQuestions": 1,
     "maxDurationMs": 15000,
+    "requestTimeoutMs": 40000,
     "mustMentionAny": [
       "completed",
       "ongoing",
@@ -47,6 +49,7 @@
     "maxDecisionSummaryItems": 3,
     "maxFollowUpQuestions": 1,
     "maxDurationMs": 15000,
+    "requestTimeoutMs": 40000,
     "mustMentionAny": [
       "PLC",
       "contractor",
@@ -63,6 +66,7 @@
     "confidenceMin": 55,
     "requireActionPlan": true,
     "maxDurationMs": 18000,
+    "requestTimeoutMs": 40000,
     "mustMentionAny": [
       "stock",
       "lead",
