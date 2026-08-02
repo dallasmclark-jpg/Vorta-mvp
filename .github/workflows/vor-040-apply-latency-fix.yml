@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           message="$(git log -1 --pretty=%s)"
-          if [ "$message" = "VOR-040: execute factual latency repair" ]; then
+          if [ "$message" = "VOR-040: execute deterministic backlog repair" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -43,7 +43,7 @@ jobs:
         if: steps.guard.outputs.run == 'true'
         run: npm ci --silent
 
-      - name: Apply measured factual latency repair
+      - name: Apply deterministic backlog response
         if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
@@ -52,22 +52,194 @@ jobs:
 
           path = Path('netlify/functions/ask-vorta.mts')
           source = path.read_text()
-          old = '''function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
-            if (questionPlan?.routingMode === "deterministic") return 2_200;
-            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
-          }'''
-          new = '''function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
-            if (questionPlan?.routingMode === "deterministic") {
-              const scope =
-                typeof questionPlan.scope === "string" ? questionPlan.scope : "";
-              if (scope === "site_risk" || scope === "work") return 1_400;
-              return questionPlan.forceActionPlan === true ? 2_000 : 1_700;
-            }
-            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
-          }'''
-          if source.count(old) != 1:
-              raise SystemExit('Expected one deterministic output-budget function')
-          path.write_text(source.replace(old, new, 1))
+
+          helper_anchor = '\nexport default async function handler(req: Request, _context: Context): Promise<Response> {'
+          if source.count(helper_anchor) != 1:
+              raise SystemExit('Handler anchor was not unique')
+
+          helper = r'''
+function formatEvidenceDate(value: unknown, timezone: string): string {
+  if (typeof value !== "string" || !value.trim()) return "date not recorded";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function workOrderAssetLabel(order: JsonRecord): string {
+  const code = typeof order.equipmentCode === "string" ? order.equipmentCode.trim() : "";
+  const name = typeof order.equipmentName === "string" ? order.equipmentName.trim() : "";
+  return code || name || "an unidentified asset";
+}
+
+function buildDeterministicWorkBacklogAnswer(
+  result: ToolResult,
+  request: AskVortaRequest,
+  interactionId: string,
+  evidenceLink: EvidenceLink | null,
+): JsonRecord | null {
+  if (result.status === "unavailable") return null;
+
+  const data =
+    result.data && typeof result.data === "object" && !Array.isArray(result.data)
+      ? (result.data as JsonRecord)
+      : {};
+  const summary =
+    data.summary && typeof data.summary === "object" && !Array.isArray(data.summary)
+      ? (data.summary as JsonRecord)
+      : {};
+  const workOrders = records(data.workOrders);
+  const overdueOrders = workOrders.filter((order) => order.overdue === true);
+  const rankedOrders = (overdueOrders.length ? overdueOrders : workOrders).slice(0, 4);
+  const openCount = numberValue(summary.openCount || workOrders.length);
+  const overdueCount = numberValue(summary.overdueCount || overdueOrders.length);
+  const unassignedCount = numberValue(
+    summary.unassignedCount || workOrders.filter((order) => !order.assignedEngineer).length,
+  );
+  const criticalOrHighCount = numberValue(summary.criticalOrHighCount);
+  const top = rankedOrders[0];
+  const topOrderNumber =
+    typeof top?.workOrderNumber === "string" ? top.workOrderNumber : "the highest-ranked order";
+  const topAsset = top ? workOrderAssetLabel(top) : "the affected asset";
+  const topPriority =
+    typeof top?.priority === "string" && top.priority.trim()
+      ? top.priority.trim()
+      : "unclassified";
+  const topDueDate = top
+    ? formatEvidenceDate(top.dueDate, request.pageContext.timezone)
+    : "date not recorded";
+
+  const directAnswer = top
+    ? `${overdueCount} overdue work order${overdueCount === 1 ? "" : "s"} need management attention; start with ${topOrderNumber} on ${topAsset}, a ${topPriority} priority order due ${topDueDate}.`
+    : "No open maintenance work orders are recorded in the authorised site backlog.";
+
+  const decisionSummary: JsonRecord[] = top
+    ? [
+        {
+          label: "Highest priority",
+          value: `${topOrderNumber} · ${topAsset} · ${topPriority} · due ${topDueDate}.`,
+        },
+        ...(rankedOrders[1]
+          ? [
+              {
+                label: "Next overdue",
+                value: `${String(rankedOrders[1].workOrderNumber ?? "Order number not recorded")} · ${workOrderAssetLabel(rankedOrders[1])} · ${String(rankedOrders[1].priority ?? "priority not recorded")} · due ${formatEvidenceDate(rankedOrders[1].dueDate, request.pageContext.timezone)}.`,
+              },
+            ]
+          : []),
+        {
+          label: "Backlog",
+          value: `${openCount} open; ${overdueCount} overdue; ${criticalOrHighCount} critical or high priority.`,
+        },
+        {
+          label: "Assignment",
+          value: unassignedCount
+            ? `${unassignedCount} open work order${unassignedCount === 1 ? " is" : "s are"} unassigned.`
+            : "Every returned open work order has a recorded assignee.",
+        },
+      ].slice(0, 4)
+    : [
+        {
+          label: "Backlog",
+          value: "No open work orders are present in the returned site evidence.",
+        },
+      ];
+
+  const findings = rankedOrders.map((order) => ({
+    category: "work",
+    severity: /critical/i.test(String(order.priority))
+      ? "critical"
+      : /high/i.test(String(order.priority))
+        ? "high"
+        : "medium",
+    title: `${String(order.workOrderNumber ?? "Work order")} · ${workOrderAssetLabel(order)}`,
+    detail: `${String(order.description ?? "Description not recorded")}. Priority ${String(order.priority ?? "not recorded")}; due ${formatEvidenceDate(order.dueDate, request.pageContext.timezone)}; assigned to ${String(order.assignedEngineer ?? "no engineer recorded")}.`,
+  }));
+
+  const evidence = rankedOrders.map(
+    (order) =>
+      `${String(order.workOrderNumber ?? "Work order number not recorded")} on ${workOrderAssetLabel(order)}: ${String(order.status ?? "status not recorded")}, ${order.overdue === true ? "overdue" : "not marked overdue"}, due ${formatEvidenceDate(order.dueDate, request.pageContext.timezone)}.`,
+  );
+  const missingData = [
+    ...(unassignedCount > 0
+      ? [`${unassignedCount} open work order${unassignedCount === 1 ? " has" : "s have"} no recorded assignee.`]
+      : []),
+    ...(rankedOrders.some((order) => !order.dueDate)
+      ? ["At least one ranked work order has no recorded due date."]
+      : []),
+  ].slice(0, 5);
+  const updatedTimes = workOrders
+    .map((order) => (typeof order.updatedAt === "string" ? Date.parse(order.updatedAt) : NaN))
+    .filter(Number.isFinite);
+
+  return {
+    directAnswer,
+    decisionSummary,
+    evidence,
+    findings,
+    coverOptions: [],
+    recommendedActions: [],
+    actionPlan: [],
+    followUpQuestions: [],
+    sources: [result.source],
+    missingData,
+    confidence: result.status === "ok" ? (missingData.length ? 78 : 83) : 60,
+    intentLabel: "work_backlog",
+    toolsUsed: ["get_site_work_backlog"],
+    evidenceGeneratedAt: updatedTimes.length
+      ? new Date(Math.max(...updatedTimes)).toISOString()
+      : undefined,
+    evidenceLinks: evidenceLink ? [evidenceLink] : [],
+    responseId: interactionId,
+  };
+}
+'''
+          source = source.replace(helper_anchor, '\n' + helper + helper_anchor, 1)
+
+          block = '''    input.push({
+      role: "user",
+      content:
+        `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:\\n${trimToolResult(deterministicResult)}`,
+    });
+  }
+'''
+          if source.count(block) != 1:
+              raise SystemExit('Deterministic evidence block was not unique')
+          replacement = block + '''
+    if (deterministicToolName === "get_site_work_backlog") {
+      const directBacklogAnswer = buildDeterministicWorkBacklogAnswer(
+        deterministicResult,
+        request,
+        interactionId,
+        deterministicLink,
+      );
+      if (directBacklogAnswer) {
+        await supabase
+          .from("ask_vorta_interactions")
+          .update({
+            intent_label: "work_backlog",
+            tools_used: [...usedTools],
+            sources: [...usedSources],
+            confidence: directBacklogAnswer.confidence,
+            missing_data_count: Array.isArray(directBacklogAnswer.missingData)
+              ? directBacklogAnswer.missingData.length
+              : 0,
+            duration_ms: Date.now() - startedAt,
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", interactionId)
+          .eq("user_id", userData.user.id);
+        return jsonResponse(directBacklogAnswer);
+      }
+    }
+'''
+          source = source.replace(block, replacement, 1)
+          path.write_text(source)
           PY
 
       - name: Verify focused Ask Vorta checks
@@ -85,5 +257,5 @@ jobs:
           git config user.name "Vorta Engineering"
           git config user.email "actions@users.noreply.github.com"
           git add netlify/functions/ask-vorta.mts
-          git commit -m "VOR-040: reduce factual fast-route latency"
+          git commit -m "VOR-040: answer factual backlog directly from evidence"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
