@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
@@ -90,7 +91,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
   }, testInfo) => {
     test.skip(isPhoneProject(testInfo.project.name));
     await mockAskVorta(page);
-    await page.goto("/dashboard");
+    await signInMaintenanceManager(page);
 
     await page
       .getByRole("button", { name: "Ask Vorta AI", exact: true })
@@ -160,7 +161,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     page,
   }, testInfo) => {
     test.skip(!isPhoneProject(testInfo.project.name));
-    await page.goto("/dashboard");
+    await signInMaintenanceManager(page);
 
     const phoneLauncher = page.locator(
       '[data-vorta-shared-mobile-ai-launcher="true"]',
