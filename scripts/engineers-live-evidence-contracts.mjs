@@ -9,6 +9,7 @@ const [
   functionTransform,
   runtimeContract,
   liveEngineers,
+  tabletEngineers,
   routeEntry,
   engineersIndex,
   operations,
@@ -18,6 +19,7 @@ const [
   read("../supabase/functions/engineers-data/transform.ts"),
   read("../src/screens/Engineers/engineersRuntimeContracts.ts"),
   read("../src/screens/Engineers/LiveEngineersSection.tsx"),
+  read("../src/screens/Engineers/TabletEngineersSection.tsx"),
   read("../src/screens/Engineers/EngineersRouteEntry.tsx"),
   read("../src/screens/Engineers/index.ts"),
   read("../src/screens/AiOperations/AiOperations.tsx"),
@@ -60,10 +62,21 @@ mustNotMatch(liveEngineers, /MM_CALENDAR_EVENTS|At-Risk Shifts This Month|Traini
 mustNotMatch(liveEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Live Engineers must not expose demo-only actions or tenant labels");
 mustNotMatch(liveEngineers, /availability_status === "on_shift"|availability_status === "available"/, "Live rota KPIs must not use the legacy availability flag");
 
-mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route selection must use the shared data-trust mode");
-mustMatch(routeEntry, /dataMode === "demo" \? <DemoEngineersSection \/> : <LiveEngineersSection \/>/, "Demo and live Engineers must remain explicitly separated");
-mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the mode-aware route");
-mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
-mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the mode-aware entry");
+mustMatch(tabletEngineers, /validateEngineersPayload\(engineersResult\.data\)/, "Tablet Engineers must validate workforce evidence");
+mustMatch(tabletEngineers, /getShiftCoverSnapshot\(siteId, startDate, endDate\)/, "Tablet Engineers must use the authoritative Shift Cover snapshot");
+mustMatch(tabletEngineers, /getVortaMaintenanceTeamPresentation/, "Tablet Engineers must use the canonical rotating-team colour presentation");
+mustMatch(tabletEngineers, /snapshot\.teams\.map/, "Tablet Engineers must render the authorised rota teams");
+mustMatch(tabletEngineers, /shift\.shiftDate === key/, "Tablet calendar dates must be derived from returned shift dates");
+mustMatch(tabletEngineers, /data-vorta-tablet-engineers="true"/, "Tablet Engineers must expose a browser-test marker");
+mustNotMatch(tabletEngineers, /MM_CALENDAR_EVENTS|Weekend Coverage|At-Risk Shifts This Month|Training Conflicts|Contractor Cover Required/, "Tablet Engineers must not contain the obsolete fixed-date demo calendar");
+mustNotMatch(tabletEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Tablet Engineers must not expose demo-only actions or tenant labels");
 
-console.log("Engineers live evidence and single-bundle performance contracts passed.");
+mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain the shared data-trust mode for the phone presentation");
+mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers route must preserve the explicit phone boundary");
+mustMatch(routeEntry, /isPhone \? \([\s\S]*<MobileEngineersSection dataMode=\{dataMode\} \/>[\s\S]*\) : \([\s\S]*<TabletEngineersSection \/>/, "Phone and tablet Engineers must use explicit responsive experiences");
+mustNotMatch(routeEntry, /DemoEngineersSection/, "Tablet Engineers must not return to the obsolete demo-only route");
+mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the responsive route");
+mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
+mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the responsive entry");
+
+console.log("Engineers live evidence, authoritative tablet rota and single-bundle performance contracts passed.");
