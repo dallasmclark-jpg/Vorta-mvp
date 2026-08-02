@@ -1973,14 +1973,22 @@ function findingTone(severity: VortaAgentFinding["severity"]): string {
 function AnswerBlock({
   answer,
   onFollowUp,
+  presentation = "compact",
 }: {
   answer: GlobalAiAnswer;
   onFollowUp: (question: string) => void;
+  presentation?: "compact" | "workspace";
 }) {
   const navigate = useNavigate();
   const { siteContext } = useAuth();
   const hasStructuredFindings = Boolean(answer.findings?.length);
   const hasStructuredActions = Boolean(answer.actionPlan?.length);
+  const workspacePresentation = presentation === "workspace";
+  const wideCompactPresentation =
+    !workspacePresentation &&
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 769px)").matches;
+  const decisionSummaryLimit = wideCompactPresentation ? 4 : 7;
   const decisionSeverity = answer.findings?.some(
     (finding) => finding.severity === "critical",
   )
@@ -2034,19 +2042,29 @@ function AnswerBlock({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
-          {answer.responseBadge}
-        </Badge>
-        <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-xs font-medium text-slate-400 shadow-none">
-          {answer.roleLabel}
-        </Badge>
-        <Badge className="h-auto rounded bg-gray-800/80 px-1.5 py-0 text-xs font-medium text-slate-500 shadow-none">
-          {answer.intentLabel}
-        </Badge>
-      </div>
+      {!workspacePresentation && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
+            {answer.responseBadge}
+          </Badge>
+          <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-xs font-medium text-slate-400 shadow-none">
+            {answer.roleLabel}
+          </Badge>
+          {!wideCompactPresentation && (
+            <Badge className="h-auto rounded bg-gray-800/80 px-1.5 py-0 text-xs font-medium text-slate-500 shadow-none">
+              {answer.intentLabel}
+            </Badge>
+          )}
+        </div>
+      )}
 
-      <p className="text-base leading-7 text-slate-200 sm:text-sm sm:leading-6">
+      <p
+        className={
+          workspacePresentation
+            ? "border-l-2 border-blue-400/70 pl-4 text-lg font-semibold leading-8 text-slate-100"
+            : "text-base leading-7 text-slate-200 sm:text-sm sm:leading-6"
+        }
+      >
         {answer.directAnswer}
       </p>
 
@@ -2067,7 +2085,7 @@ function AnswerBlock({
             )}
           </h4>
           <ul className="flex flex-col gap-2.5">
-            {answer.decisionSummary.slice(0, 7).map((item, index) => (
+            {answer.decisionSummary.slice(0, decisionSummaryLimit).map((item, index) => (
               <li
                 key={`${item.label}-${index}`}
                 className="flex items-start gap-2 text-[15px] leading-6 text-slate-200 sm:text-sm"
@@ -3307,6 +3325,7 @@ export function GlobalMaintenanceAiAssistant({
           <AnswerBlock
             answer={answer as GlobalAiAnswer}
             onFollowUp={submitQuestion}
+            presentation="workspace"
           />
         )}
       />
@@ -3487,10 +3506,12 @@ export function GlobalMaintenanceAiAssistant({
             data-vorta-global-ai-messages="true"
             className="flex max-h-[min(56vh,560px)] flex-col gap-3 overflow-y-auto px-4 py-3 max-md:min-h-0 max-md:max-h-none max-md:flex-1"
           >
-            {messages.map((message) => (
+            {messages.map((message, messageIndex) => (
               <div
                 key={message.id}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} ${
+                  hasActiveConversation && messageIndex === 0 ? "md:hidden" : ""
+                }`}
               >
                 <div
                   className={`max-w-[92%] rounded-lg px-3 py-2 ${message.role === "user" ? "bg-blue-600 text-white" : "border border-gray-800 bg-gray-900/70 text-slate-200"}`}

@@ -239,6 +239,16 @@ export function AskVortaWorkspace({
   const hasUserQuestion = messages.some(
     (message) => message.role === "user" && message.text?.trim(),
   );
+  const visibleConversationMessages = hasUserQuestion
+    ? messages.filter(
+        (message, index) =>
+          !(
+            index === 0 &&
+            message.role === "assistant" &&
+            Boolean(message.answer)
+          ),
+      )
+    : messages;
 
   useEffect(() => {
     writeActiveConversationId(currentConversationId);
@@ -404,7 +414,9 @@ export function AskVortaWorkspace({
               ) : (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
               )}
-              <span className="max-w-sm truncate">{contextLine}</span>
+              <span className="max-w-sm truncate">
+                {contextReady ? "Live evidence loaded" : contextLine}
+              </span>
             </div>
           </div>
 
@@ -435,7 +447,7 @@ export function AskVortaWorkspace({
               data-vorta-ai-workspace-conversation="true"
               className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-6 py-7 xl:px-10"
             >
-              {messages.map((message) => (
+              {visibleConversationMessages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${
