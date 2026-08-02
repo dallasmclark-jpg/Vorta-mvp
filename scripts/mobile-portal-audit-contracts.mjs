@@ -47,11 +47,12 @@ check(
     engineersRoute.includes('data-vorta-original-shift-rota="true"') &&
     engineersRoute.includes('location="/engineers/shift-cover"') &&
     engineersRoute.includes('useMediaQuery("(max-width: 767px)")') &&
-    engineersRoute.includes("(min-width: 768px) and (max-width: 1600px)") &&
+    !engineersRoute.includes("LiveEngineersSection") &&
+    !engineersRoute.includes("min-width") &&
     !engineersRoute.includes("navigator.") &&
     !engineersRoute.includes("any-pointer: coarse") &&
     !engineersRoute.includes("TabletEngineersSection"),
-  "Engineers must preserve the phone presentation while every 768-1600px viewport reuses the original full shift-cover rota.",
+  "Engineers must preserve the phone presentation while every non-phone viewport reuses the original full shift-cover rota.",
 );
 
 check(
