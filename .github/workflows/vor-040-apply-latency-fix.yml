@@ -1,0 +1,89 @@
+name: VOR-040 apply factual latency repair
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/vor-040-latency-fix.marker
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Guard exact repair commit
+        id: guard
+        shell: bash
+        run: |
+          message="$(git log -1 --pretty=%s)"
+          if [ "$message" = "VOR-040: execute factual latency repair" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping repair for commit: $message"
+          fi
+
+      - name: Use Node.js
+        if: steps.guard.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.guard.outputs.run == 'true'
+        run: npm ci --silent
+
+      - name: Apply measured factual latency repair
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('netlify/functions/ask-vorta.mts')
+          source = path.read_text()
+          old = '''function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+            if (questionPlan?.routingMode === "deterministic") return 2_200;
+            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+          }'''
+          new = '''function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+            if (questionPlan?.routingMode === "deterministic") {
+              const scope =
+                typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+              if (scope === "site_risk" || scope === "work") return 1_400;
+              return questionPlan.forceActionPlan === true ? 2_000 : 1_700;
+            }
+            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+          }'''
+          if source.count(old) != 1:
+              raise SystemExit('Expected one deterministic output-budget function')
+          path.write_text(source.replace(old, new, 1))
+          PY
+
+      - name: Verify focused Ask Vorta checks
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          npm run typecheck:functions
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/vor-040-natural-question-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Commit verified repair
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          git config user.name "Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git add netlify/functions/ask-vorta.mts
+          git commit -m "VOR-040: reduce factual fast-route latency"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
