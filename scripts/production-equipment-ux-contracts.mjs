@@ -5,6 +5,9 @@ const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const equipmentSection = read("src/screens/Equipment/EquipmentSection.tsx");
+const mobileEquipment = read(
+  "src/screens/Equipment/MobileEquipmentSection.tsx",
+);
 const evidenceCoverage = read(
   "src/screens/Equipment/equipmentEvidenceCoverage.ts",
 );
@@ -53,10 +56,22 @@ assert.ok(equipmentSection.includes('itemEvidence &&'));
 assert.ok(equipmentSection.includes('!itemEvidence.complete'));
 assert.ok(!equipmentSection.includes('>5/5 evidence<'));
 assert.ok(
-  dataTrustBanner.includes(
-    'const mobileVisibility = mode === "demo" ? "hidden sm:flex" : "flex"',
+  dataTrustBanner.includes('if (mode !== "unavailable")'),
+  "The global data-trust banner must render only for unavailable data.",
+);
+assert.ok(
+  !dataTrustBanner.includes('data-vorta-data-mode="demo"'),
+  "Demo trust messaging must remain absent from operational pages.",
+);
+assert.ok(
+  !mobileEquipment.includes("VerifiedEquipmentImage"),
+  "Phone Equipment cards must not render equipment images or unavailable-image placeholders.",
+);
+assert.ok(
+  mobileEquipment.includes(
+    'className="flex min-h-16 w-full items-start justify-between',
   ),
-  "Demo trust messaging must be removed from every phone route without hiding live or unavailable warnings.",
+  "Phone Equipment card content must start at the top without retained image spacing.",
 );
 
 for (const [label, source] of [
