@@ -168,12 +168,11 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
       fullPage: true,
     });
 
-    await workspace
-      .getByRole("button", {
-        name: "Return to compact Ask Vorta panel",
-        exact: true,
-      })
-      .click();
+    const collapse = workspace.getByRole("button", {
+      name: "Return to compact Ask Vorta panel",
+      exact: true,
+    });
+    await collapse.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeHidden();
     await expect(panel).toBeVisible();
     await expect(panel.getByText(mockedAnswer.directAnswer)).toBeVisible();
