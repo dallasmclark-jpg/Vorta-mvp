@@ -1,0 +1,33 @@
+[
+  {
+    "id": "vor040-rabs-follow-up-pronoun",
+    "question": "What spare blocks that one?",
+    "history": [
+      {"role": "user", "content": "What is driving RABS-01 risk?"},
+      {"role": "assistant", "content": "RABS-01 risk is driven by the interlock and airflow verification evidence."}
+    ],
+    "expectedAnyTools": ["get_equipment_decision_pack", "get_equipment_spares"],
+    "mustMention": ["RABS-01-PLC-01"],
+    "mustMentionAny": ["stock", "lead time", "part"],
+    "mustNotMention": ["which asset", "available now"],
+    "requireActionPlan": false,
+    "confidenceMin": 50,
+    "maxToolCount": 2,
+    "maxDecisionSummaryItems": 4,
+    "maxFollowUpQuestions": 1,
+    "maxDurationMs": 25000
+  },
+  {
+    "id": "vor040-calibration-typo",
+    "question": "Whats overdue on calabrations this week and what is due next?",
+    "expectedTools": ["get_site_maintenance_plan"],
+    "mustMentionAny": ["calibration", "overdue", "due", "asset"],
+    "mustNotMention": ["shift handover", "contractor booking"],
+    "requireActionPlan": false,
+    "confidenceMin": 55,
+    "maxToolCount": 1,
+    "maxDecisionSummaryItems": 4,
+    "maxFollowUpQuestions": 1,
+    "maxDurationMs": 18000
+  }
+]
