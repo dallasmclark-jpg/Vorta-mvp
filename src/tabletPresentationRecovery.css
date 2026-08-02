@@ -1,134 +1,25 @@
-/*
- * VOR-035 physical Samsung recovery.
- * Presentation-only overrides. Do not place routing, data or rota behaviour here.
- */
-
-/* CardContent defaults to pt-0 because most cards have a CardHeader. When it is
- * the first child, that removes the card's top breathing room entirely. */
 @media (min-width: 768px) {
-  [data-vorta-page-content="true"]
-    [data-vorta-card="true"]
-    > [class~="pt-0"]:first-child {
+  [data-vorta-page-content="true"] [data-vorta-card="true"] > [class~="pt-0"]:first-child {
     padding-top: 1.25rem !important;
   }
 }
 
 @media (min-width: 1024px) {
-  [data-vorta-page-content="true"]
-    [data-vorta-card="true"]
-    > [class~="pt-0"]:first-child {
+  [data-vorta-page-content="true"] [data-vorta-card="true"] > [class~="pt-0"]:first-child {
     padding-top: 1.5rem !important;
   }
 }
 
-/* Restore the approved embedded Ask Vorta command bar at every non-phone
- * width. Chrome desktop-site mode must not bypass the tablet presentation. */
-@media (min-width: 768px) {
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] {
-    min-width: 0;
-    padding: 0.375rem;
-    overflow: visible;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    border-radius: 1rem;
-    background: linear-gradient(
-      135deg,
-      rgba(30, 41, 59, 0.88),
-      rgba(15, 23, 42, 0.96)
-    );
-    box-shadow:
-      0 14px 32px rgba(0, 0, 0, 0.26),
-      inset 0 1px 0 rgba(255, 255, 255, 0.055);
-  }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-400"] { --vorta-capability-edge: 96 165 250; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-red-500"] { --vorta-capability-edge: 239 68 68; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-emerald-500"] { --vorta-capability-edge: 16 185 129; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-500"] { --vorta-capability-edge: 59 130 246; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-yellow-400"] { --vorta-capability-edge: 250 204 21; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-slate-300"] { --vorta-capability-edge: 203 213 225; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-violet-400"] { --vorta-capability-edge: 167 139 250; }
+[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-cyan-400"] { --vorta-capability-edge: 34 211 238; }
 
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    .flex.min-w-0.flex-1.items-center {
-    min-height: 3rem;
-    border-color: rgba(148, 163, 184, 0.2) !important;
-    border-radius: 0.75rem;
-    background: rgba(9, 12, 18, 0.84) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    input[type="text"] {
-    min-height: 2.75rem;
-    color: rgb(226 232 240);
-    font-size: 0.875rem;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    input[type="text"]::placeholder {
-    color: rgb(148 163 184);
-    opacity: 0.78;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    button:has(> svg.lucide-send) {
-    min-width: 6rem;
-    min-height: 3rem;
-    border: 1px solid rgba(147, 197, 253, 0.22);
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgb(37 99 235), rgb(29 78 216));
-    box-shadow:
-      0 8px 20px rgba(29, 78, 216, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    button:has(> svg.lucide-send):hover {
-    background: linear-gradient(135deg, rgb(59 130 246), rgb(37 99 235));
-  }
-}
-
-/* Skills Matrix capability cards originally identify their team on the left,
- * top and right edges. The global neutral card surface must not erase that
- * operational colour. The bottom edge deliberately remains neutral. */
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-400"] {
-  --vorta-capability-edge: 96 165 250;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-red-500"] {
-  --vorta-capability-edge: 239 68 68;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-emerald-500"] {
-  --vorta-capability-edge: 16 185 129;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-500"] {
-  --vorta-capability-edge: 59 130 246;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-yellow-400"] {
-  --vorta-capability-edge: 250 204 21;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-slate-300"] {
-  --vorta-capability-edge: 203 213 225;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-violet-400"] {
-  --vorta-capability-edge: 167 139 250;
-}
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-cyan-400"] {
-  --vorta-capability-edge: 34 211 238;
-}
-
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-400"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-red-500"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-emerald-500"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-500"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-yellow-400"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-slate-300"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-violet-400"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-cyan-400"],
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-400"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-red-500"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-emerald-500"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-blue-500"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-yellow-400"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-slate-300"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-violet-400"]:hover,
-[data-vorta-page-content="true"] button[aria-pressed][class~="border-t-cyan-400"]:hover {
+[data-vorta-page-content="true"] button[aria-pressed][class~="rounded-xl"][class*="border-t-"] {
   border-top-width: 2px !important;
   border-top-color: rgb(var(--vorta-capability-edge)) !important;
   border-left-color: rgb(var(--vorta-capability-edge) / 0.68) !important;
