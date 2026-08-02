@@ -67,19 +67,18 @@ test("Maintenance Manager priority pages retain their approved responsive layout
     name: "User profile",
     includeHidden: true,
   });
-  const demoDataBanner = page.locator('[data-vorta-data-mode="demo"]');
+  const dataModeBanner = page.locator("[data-vorta-data-mode]");
 
   if (isPhone) {
     await expect(dashboardHeading).toBeHidden();
     await expect(refreshRiskButton).toBeHidden();
     await expect(profileButton).toBeHidden();
-    await expect(demoDataBanner).toBeHidden();
   } else {
     await expect(dashboardHeading).toBeVisible();
     await expect(refreshRiskButton).toBeVisible();
     await expect(profileButton).toBeVisible();
-    await expect(demoDataBanner).toBeVisible();
   }
+  await expect(dataModeBanner).toHaveCount(0);
 
   await capture(page, "maintenance-dashboard");
 

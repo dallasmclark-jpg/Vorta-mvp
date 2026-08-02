@@ -60,9 +60,12 @@ assert.match(dataTrust, /VITE_VORTA_DATA_MODE/);
 assert.match(dataTrust, /demoFallbacksAllowed/);
 assert.match(dataTrust, /PROD \? "unavailable" : "demo"/);
 
-assert.match(banner, /LIVE SITE DATA/);
-assert.match(banner, /DEMO DATA/);
+assert.match(banner, /if \(mode !== "unavailable"\)/);
+assert.match(banner, /return null/);
 assert.match(banner, /DATA UNAVAILABLE/);
+assert.match(banner, /data-vorta-data-mode="unavailable"/);
+assert.doesNotMatch(banner, /LIVE SITE DATA/);
+assert.doesNotMatch(banner, /DEMO DATA/);
 assert.match(portal, /<DataTrustBanner \/>/);
 
 assert.match(

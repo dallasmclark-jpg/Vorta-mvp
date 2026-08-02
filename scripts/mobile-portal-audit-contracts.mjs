@@ -24,6 +24,7 @@ const mobileEquipment = read("src/screens/Equipment/MobileEquipmentSection.tsx")
 const mobileEquipmentOverview = read("src/screens/Equipment/MobileEquipmentOverview.tsx");
 const engineersRoute = read("src/screens/Engineers/EngineersRouteEntry.tsx");
 const mobileEngineers = read("src/screens/Engineers/MobileEngineersSection.tsx");
+const tabletEngineers = read("src/screens/Engineers/TabletEngineersSection.tsx");
 const engineerAvatar = read("src/screens/Engineers/EngineerAvatar.tsx");
 const engineersRuntime = read("src/screens/Engineers/engineersRuntimeContracts.ts");
 const engineersFunction = read("supabase/functions/engineers-data/index.ts");
@@ -44,8 +45,11 @@ const browserTest = read("tests/browser/maintenance-manager-mobile-routes.spec.t
 
 check(
   engineersRoute.includes("<MobileEngineersSection dataMode={dataMode}") &&
-    engineersRoute.includes('dataMode !== "unavailable"'),
-  "Engineers must share the phone presentation across demo and live evidence.",
+    engineersRoute.includes("<TabletEngineersSection />") &&
+    engineersRoute.includes('useMediaQuery("(max-width: 767px)")') &&
+    !engineersRoute.includes("DemoEngineersSection") &&
+    tabletEngineers.includes('data-vorta-tablet-engineers="true"'),
+  "Engineers must preserve the phone presentation while tablet uses the authoritative rota experience.",
 );
 
 check(
