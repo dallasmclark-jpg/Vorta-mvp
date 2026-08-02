@@ -4,6 +4,8 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
+const isTabletPortraitProject = (projectName: string): boolean =>
+  projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -92,6 +94,11 @@ async function openAskVorta(
     await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
     return;
   }
+
+  const readinessControl = isTabletPortraitProject(projectName)
+    ? page.getByRole("button", { name: "Ask", exact: true })
+    : page.getByRole("button", { name: "Ask Vorta AI", exact: true });
+  await expect(readinessControl).toBeVisible();
 
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt"));
