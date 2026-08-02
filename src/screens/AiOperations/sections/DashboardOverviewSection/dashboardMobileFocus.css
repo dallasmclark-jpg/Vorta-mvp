@@ -126,28 +126,8 @@
   }
 }
 
-/* Keep the approved slim embedded command bar. Focus must not draw a blue box. */
-@media (min-width: 768px) {
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] {
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    .flex.min-w-0.flex-1.items-center:focus-within {
-    border-color: rgb(55 65 81) !important;
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    input[type="text"]:focus {
-    outline: none !important;
-    box-shadow: none !important;
-  }
+@media (min-width:768px){
+[data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+[data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] .flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(55 65 81)!important;outline:none!important;box-shadow:none!important}
+[data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"]:focus{outline:none!important;box-shadow:none!important}
 }
