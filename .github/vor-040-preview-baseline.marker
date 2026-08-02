@@ -2,3 +2,4 @@ preview=https://deploy-preview-191--vorta-app.netlify.app
 baseline=first-eight
 offset=0
 limit=8
+run=guarded-pr
