@@ -1,5 +1,5 @@
-mode=patch-natural-routing
-batch=second-batch-repair
-baseline=0-of-8
-fixes=equipment-reference-normalisation,multi-tool-plan-cover,decision-facts,response-shaping
-attempt=3
+mode=evaluate
+batch=natural-questions-09-16-repaired
+offset=8
+limit=8
+delay_ms=500
