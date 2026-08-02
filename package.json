@@ -21,7 +21,8 @@
     "postbuild": "npm run test:performance",
     "check": "npm run build",
     "eval:ask-vorta:vor038": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-038-intelligence.json",
-    "eval:ask-vorta:vor039": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-039-confidence-latency.json"
+    "eval:ask-vorta:vor039": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-039-confidence-latency.json",
+    "eval:ask-vorta:vor040": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-040-natural-questions.json"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",
