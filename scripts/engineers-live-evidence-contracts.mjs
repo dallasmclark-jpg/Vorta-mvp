@@ -9,7 +9,7 @@ const [
   functionTransform,
   runtimeContract,
   liveEngineers,
-  tabletEngineers,
+  shiftRota,
   routeEntry,
   engineersIndex,
   operations,
@@ -19,7 +19,7 @@ const [
   read("../supabase/functions/engineers-data/transform.ts"),
   read("../src/screens/Engineers/engineersRuntimeContracts.ts"),
   read("../src/screens/Engineers/LiveEngineersSection.tsx"),
-  read("../src/screens/Engineers/TabletEngineersSection.tsx"),
+  read("../src/screens/LabourRisk/LabourRiskDetailPage.tsx"),
   read("../src/screens/Engineers/EngineersRouteEntry.tsx"),
   read("../src/screens/Engineers/index.ts"),
   read("../src/screens/AiOperations/AiOperations.tsx"),
@@ -62,24 +62,27 @@ mustNotMatch(liveEngineers, /MM_CALENDAR_EVENTS|At-Risk Shifts This Month|Traini
 mustNotMatch(liveEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Live Engineers must not expose demo-only actions or tenant labels");
 mustNotMatch(liveEngineers, /availability_status === "on_shift"|availability_status === "available"/, "Live rota KPIs must not use the legacy availability flag");
 
-mustMatch(tabletEngineers, /validateEngineersPayload\(engineersResult\.data\)/, "Tablet Engineers must validate workforce evidence");
-mustMatch(tabletEngineers, /getShiftCoverSnapshot\(siteId, startDate, endDate\)/, "Tablet Engineers must use the authoritative Shift Cover snapshot");
-mustMatch(tabletEngineers, /getVortaMaintenanceTeamPresentation/, "Tablet Engineers must use the canonical rotating-team colour presentation");
-mustMatch(tabletEngineers, /snapshot\.teams\.map/, "Tablet Engineers must render the authorised rota teams");
-mustMatch(tabletEngineers, /shift\.shiftDate === key/, "Tablet calendar dates must be derived from returned shift dates");
-mustMatch(tabletEngineers, /data-vorta-tablet-engineers="true"/, "Tablet Engineers must expose a browser-test marker");
-mustNotMatch(tabletEngineers, /MM_CALENDAR_EVENTS|Weekend Coverage|At-Risk Shifts This Month|Training Conflicts|Contractor Cover Required/, "Tablet Engineers must not contain the obsolete fixed-date demo calendar");
-mustNotMatch(tabletEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Tablet Engineers must not expose demo-only actions or tenant labels");
+mustMatch(shiftRota, /CONTINENTAL_CYCLE: ShiftPatternType\[\] = \["day", "day", "night", "night", "off", "off", "off", "off"\]/, "The original rota must preserve the exact 2D/2N/4O cycle");
+for (const team of ["Yellow Shift", "Red Shift", "Green Shift", "Blue Shift", "Days"]) {
+  mustMatch(shiftRota, new RegExp(team), `The original rota must retain ${team}`);
+}
+mustMatch(shiftRota, /Tonight's Risk Summary/, "The original rota must retain the Tonight's Risk drawer");
+mustMatch(shiftRota, /Missing Skill/, "The original rota must retain missing-skill risk indicators");
+mustMatch(shiftRota, /Reduced Resilience/, "The original rota must retain resilience risk indicators");
+mustMatch(shiftRota, /SME Dependency/, "The original rota must retain SME risk indicators");
+mustMatch(shiftRota, /Contractor Involved/, "The original rota must retain contractor risk indicators");
 
 mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain the shared data-trust mode for the phone presentation");
 mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers route must preserve the explicit phone boundary");
 mustMatch(routeEntry, /useMediaQuery\("\(min-width: 768px\) and \(max-width: 1439px\)"\)/, "Engineers route must isolate the tablet boundary");
 mustMatch(routeEntry, /<MobileEngineersSection dataMode=\{dataMode\} \/>/, "Phone Engineers must retain the working mobile presentation");
-mustMatch(routeEntry, /<TabletEngineersSection \/>/, "Tablet Engineers must use the authoritative tablet presentation");
+mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Tablet Engineers must expose the restored original rota marker");
+mustMatch(routeEntry, /location="\/labour-risk\/shift-cover"/, "Tablet Engineers must render the existing approved Shift Cover route without copying or redesigning it");
+mustMatch(routeEntry, /<LabourRiskDetailPage \/>/, "Tablet Engineers must reuse the approved full shift-cover implementation");
 mustMatch(routeEntry, /<LiveEngineersSection \/>/, "Desktop Engineers must retain the established verified presentation");
-mustNotMatch(routeEntry, /DemoEngineersSection/, "Engineers must not return to the obsolete demo-only route");
+mustNotMatch(routeEntry, /TabletEngineersSection/, "Tablet Engineers must not return to the simplified weekly coverage replacement");
 mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the responsive route");
 mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
 mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the responsive entry");
 
-console.log("Engineers live evidence, authoritative tablet rota and single-bundle performance contracts passed.");
+console.log("Engineers live evidence, restored original tablet rota and single-bundle performance contracts passed.");
