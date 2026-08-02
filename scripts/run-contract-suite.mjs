@@ -23,6 +23,7 @@ const contracts = [
   ["VOR-037 unified Ask Vorta", "scripts/vor-037-unified-ask-vorta-contracts.mjs"],
   ["VOR-038 Ask Vorta intelligence", "scripts/vor-038-ask-vorta-intelligence-contracts.mjs"],
   ["VOR-039 Ask Vorta confidence and latency", "scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs"],
+  ["VOR-040 natural Ask Vorta questions", "scripts/vor-040-natural-question-contracts.mjs"],
   ["VOR-041 Ask Vorta workspace", "scripts/vor-041-ask-vorta-workspace-contracts.mjs"],
   ["VOR-042 Ask Vorta response hierarchy", "scripts/vor-042-ask-vorta-polish-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
@@ -78,31 +79,24 @@ const suiteStartedAt = Date.now();
 for (const [label, path] of selectedContracts) {
   const startedAt = Date.now();
   console.log(`\n▶ ${label}`);
-
-  const result = spawnSync(process.execPath, [resolve(repositoryRoot, path)], {
+  const result = spawnSync(process.execPath, [path], {
     cwd: repositoryRoot,
-    env: process.env,
     stdio: "inherit",
   });
-
-  const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-  if (result.status === 0) {
-    console.log(`✓ ${label} (${seconds}s)`);
-    continue;
+  const duration = Date.now() - startedAt;
+  if (result.status !== 0) {
+    failures.push(label);
+    console.error(`✗ ${label} failed in ${duration}ms`);
+  } else {
+    console.log(`✓ ${label} passed in ${duration}ms`);
   }
-
-  failures.push({ label, path, status: result.status, signal: result.signal });
-  console.error(`✗ ${label} (${seconds}s)`);
 }
 
-const suiteSeconds = ((Date.now() - suiteStartedAt) / 1000).toFixed(1);
-console.log(`\nContract suite finished: ${selectedContracts.length - failures.length}/${selectedContracts.length} passed in ${suiteSeconds}s.`);
-
+const totalDuration = Date.now() - suiteStartedAt;
 if (failures.length > 0) {
-  console.error("\nFailed contract groups:");
-  for (const failure of failures) {
-    const reason = failure.signal ? `signal ${failure.signal}` : `exit ${failure.status ?? "unknown"}`;
-    console.error(`- ${failure.label}: ${failure.path} (${reason})`);
-  }
+  console.error(`\n${failures.length} contract group(s) failed after ${totalDuration}ms:`);
+  for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
+
+console.log(`\n${selectedContracts.length}/${selectedContracts.length} contract groups passed in ${totalDuration}ms.`);
