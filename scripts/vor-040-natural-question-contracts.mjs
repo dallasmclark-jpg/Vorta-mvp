@@ -7,6 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const golden = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-033-demo-golden.json"), "utf8"));
 const natural = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-040-natural-questions.json"), "utf8"));
 const evaluator = readFileSync(resolve(root, "scripts/ask-vorta-live-evals.mjs"), "utf8");
+const assistant = readFileSync(resolve(root, "netlify/functions/ask-vorta.mts"), "utf8");
 const backlogEdge = readFileSync(resolve(root, "netlify/edge-functions/ask-vorta-work-backlog.ts"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
@@ -92,22 +93,42 @@ for (const evaluatorFeature of [
   assert.ok(evaluator.includes(evaluatorFeature), `Live evaluator must retain ${evaluatorFeature}.`);
 }
 
+for (const assistantFeature of [
+  "normaliseEquipmentReference",
+  "excludedAcronyms",
+  "relevantEquipmentDecisionFacts",
+  "retainEquipmentDecisionFacts",
+  "retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes)",
+  "decisionFacts: equipmentDecisionFacts(selected, domains)",
+]) {
+  assert.ok(assistant.includes(assistantFeature), `Ask Vorta must retain ${assistantFeature}.`);
+}
+assert.ok(
+  assistant.includes('value.match(/\\b[A-Z]{3,5}\\b/g)') && assistant.includes('"WFI"') === false,
+  "Acronym-only equipment resolution must be generic rather than hardcoded to WFI.",
+);
+
 for (const edgeFeature of [
   "OPEN_WORK_PATTERN",
   "isFactualBacklogRequest",
+  "CAPABILITY_PATTERN",
+  "isCapabilityRequest",
+  "vorta_get_capability_reconciliation_report",
   "context.next(request)",
   "ask_vorta_interactions",
   'toolsUsed: ["get_site_work_backlog"]',
+  'toolsUsed: ["get_site_capability_actions"]',
   'intentLabel: "work_backlog"',
+  'intentLabel: "capability_risk"',
   'path: "/api/ask-vorta"',
   'method: "POST"',
 ]) {
-  assert.ok(backlogEdge.includes(edgeFeature), `Backlog edge fast path must retain ${edgeFeature}.`);
+  assert.ok(backlogEdge.includes(edgeFeature), `Ask Vorta edge fast paths must retain ${edgeFeature}.`);
 }
-assert.ok(!backlogEdge.includes('from "openai"'), "The factual backlog fast path must not call the language model.");
+assert.ok(!backlogEdge.includes('from "openai"'), "The factual fast paths must not call the language model.");
 assert.ok(
   backlogEdge.includes("MIXED_DECISION_PATTERN") && backlogEdge.includes("EQUIPMENT_CODE_PATTERN"),
-  "The backlog middleware must delegate mixed and equipment-specific questions to the main assistant.",
+  "The edge middleware must delegate mixed and equipment-specific questions to the main assistant.",
 );
 
 assert.equal(
