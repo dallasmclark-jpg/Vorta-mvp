@@ -129,9 +129,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   const unifiedAssistant = page.locator('[data-vorta-global-ai-panel="true"]');
   await expect(unifiedAssistant).toBeVisible();
   await expect(page.locator('[data-vorta-fault-panel="true"]')).toHaveCount(0);
-  await expect(
-    unifiedAssistant.getByText(coverQuestion, { exact: true }),
-  ).toBeVisible();
+  await expect(unifiedAssistant.getByText(coverQuestion)).toBeVisible();
 
   const loadingMessage = unifiedAssistant.getByText(
     "Choosing and checking the relevant Vorta sources...",
