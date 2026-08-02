@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [entry, styles, engineersRoute] = await Promise.all([
+const [entry, styles, dashboardStyles, engineersRoute] = await Promise.all([
   readFile(new URL("../src/index.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/tabletPresentationRecovery.css", import.meta.url), "utf8"),
+  readFile(
+    new URL(
+      "../src/screens/AiOperations/sections/DashboardOverviewSection/dashboardMobileFocus.css",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
   readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
 ]);
 
@@ -18,9 +25,14 @@ assert.match(
   "Content-only cards must recover their top padding.",
 );
 assert.match(
-  styles,
-  /@media \(min-width: 768px\)[\s\S]*\[data-vorta-embedded-ai="true"\]/,
+  dashboardStyles,
+  /@media \(min-width: 768px\) \{[\s\S]*\[data-vorta-embedded-ai="true"\]/,
   "The approved embedded Ask Vorta presentation must apply at every non-phone width.",
+);
+assert.doesNotMatch(
+  dashboardStyles,
+  /@media \(min-width: 768px\) and \(max-width: 1439px\)/,
+  "Chrome desktop-site mode must not bypass the approved Ask Vorta presentation.",
 );
 for (const teamClass of [
   "border-t-red-500",
