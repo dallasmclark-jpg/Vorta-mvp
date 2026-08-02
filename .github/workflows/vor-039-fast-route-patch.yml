@@ -1,0 +1,418 @@
+name: VOR-039 deterministic fast route patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+    paths:
+      - .github/workflows/vor-039-fast-route-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/vor-039-ask-vorta-confidence-latency
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply deterministic Ask Vorta fast route
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          agent_path = Path("netlify/functions/ask-vorta.mts")
+          agent = agent_path.read_text()
+
+          deterministic_plan = r'''function deterministicQuestionPlan(
+            request: AskVortaRequest,
+          ): JsonRecord | null {
+            if (request.history.length > 0) return null;
+
+            const question = request.question
+              .trim()
+              .toLowerCase()
+              .replace(/[’']/g, "'");
+
+            const fastPlan = (
+              scope: string,
+              intentLabel: string,
+              toolName: string,
+              answerFocus: string,
+            ): JsonRecord => ({
+              intentLabel,
+              decisionGoal: request.question,
+              scope,
+              shouldUseTools: true,
+              requiredTools: [toolName],
+              optionalTools: [],
+              equipmentQuery: "",
+              startDate: "",
+              endDate: "",
+              ambiguity: "none",
+              answerFocus,
+              verificationChecks: ["Use only current authorised Vorta evidence."],
+              routingMode: "deterministic",
+            });
+
+            if (
+              /\b(?:handover|hand over|previous shift|last shift|nights? (?:leave|left)|days? (?:leave|left)|left us|incoming shift)\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "handover",
+                "shift_handover",
+                "get_shift_handover",
+                "Summarise what the previous shift completed, left ongoing or waiting, and the next action.",
+              );
+            }
+
+            if (
+              /\b(?:contractors?|external support|on[- ]call|remote support|onsite support|plc support)\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "contractor",
+                "contractor_support",
+                "get_contractor_availability",
+                "Report only recorded contractor skills and availability, with any confirmation caveat.",
+              );
+            }
+
+            if (
+              /\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order)\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "spares",
+                "spares_priority",
+                "get_site_spares_risk",
+                "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time.",
+              );
+            }
+
+            if (
+              /\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "work",
+                "work_backlog",
+                "get_site_work_backlog",
+                "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence.",
+              );
+            }
+
+            if (
+              /\b(?:skills?|sme|single[- ]point|single person|succession|capability|training priorit(?:y|ies))\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "skills",
+                "capability_risk",
+                "get_site_capability_actions",
+                "Identify the highest capability dependency and the evidence-backed action that reduces it.",
+              );
+            }
+
+            if (
+              /\b(?:biggest (?:maintenance )?(?:risks?|threats?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what could stop (?:the )?site)\b/.test(
+                question,
+              )
+            ) {
+              return fastPlan(
+                "site_priorities",
+                "site_threat_prioritization",
+                "get_site_operational_snapshot",
+                "Rank the main current maintenance threats and state the first executable action.",
+              );
+            }
+
+            return null;
+          }
+
+          '''
+          agent = replace_once(
+              agent,
+              "async function buildQuestionPlan(\n",
+              deterministic_plan + "async function buildQuestionPlan(\n",
+              "insert deterministic question planner",
+          )
+
+          old_effort = '''function answerReasoningEffort(
+            questionPlan: JsonRecord | null,
+          ): "low" | "medium" {
+            const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
+            return new Set([
+              "site_priorities",
+              "equipment",
+              "shift_cover",
+              "maintenance_plan",
+              "mixed",
+            ]).has(scope)
+              ? "medium"
+              : "low";
+          }
+
+          function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+          }'''
+          new_effort = '''function answerReasoningEffort(
+            questionPlan: JsonRecord | null,
+          ): "low" | "medium" {
+            if (questionPlan?.routingMode === "deterministic") return "low";
+            const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
+            return new Set([
+              "site_priorities",
+              "equipment",
+              "shift_cover",
+              "maintenance_plan",
+              "mixed",
+            ]).has(scope)
+              ? "medium"
+              : "low";
+          }
+
+          function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+            if (questionPlan?.routingMode === "deterministic") return 2_200;
+            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+          }'''
+          agent = replace_once(agent, old_effort, new_effort, "adaptive fast-route budget")
+
+          old_planner = '''  const client = new OpenAI();
+            let questionPlan: JsonRecord | null = null;
+            try {
+              questionPlan = await buildQuestionPlan(client, request);
+            } catch (error) {
+              console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
+                requestId: _context.requestId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }'''
+          new_planner = '''  const client = new OpenAI();
+            let questionPlan: JsonRecord | null = deterministicQuestionPlan(request);
+            if (!questionPlan) {
+              try {
+                questionPlan = await buildQuestionPlan(client, request);
+              } catch (error) {
+                console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
+                  requestId: _context.requestId,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+              }
+            }'''
+          agent = replace_once(agent, old_planner, new_planner, "deterministic planner before model planner")
+
+          old_state = '''  let shiftCoverEvidence: JsonRecord | null = null;
+            let shiftCoverArguments: JsonRecord | null = null;
+
+            try {
+              for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {'''
+          new_state = '''  let shiftCoverEvidence: JsonRecord | null = null;
+            let shiftCoverArguments: JsonRecord | null = null;
+            const deterministicToolName =
+              questionPlan?.routingMode === "deterministic"
+                ? textValues(questionPlan.requiredTools)[0] ?? null
+                : null;
+
+            try {
+              if (deterministicToolName) {
+                usedTools.add(deterministicToolName);
+                let deterministicResult: ToolResult;
+                try {
+                  deterministicResult = await executeTool(
+                    deterministicToolName,
+                    {},
+                    supabase,
+                    request,
+                  );
+                } catch (error) {
+                  deterministicResult = {
+                    source: deterministicToolName,
+                    status: "unavailable",
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : "The deterministic evidence lookup could not be completed.",
+                  };
+                }
+                toolOutcomes.set(deterministicToolName, deterministicResult);
+                if (deterministicResult.status !== "unavailable") {
+                  usedSources.add(deterministicResult.source);
+                }
+                const deterministicLink = evidenceLinkForTool(
+                  deterministicToolName,
+                  {},
+                );
+                if (deterministicLink) {
+                  evidenceLinks.set(deterministicLink.path, deterministicLink);
+                }
+                input.push({
+                  role: "user",
+                  content:
+                    `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:\n${trimToolResult(deterministicResult)}`,
+                });
+              }
+
+              for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {'''
+          agent = replace_once(agent, old_state, new_state, "pre-execute deterministic evidence")
+
+          old_tool_choice = '''        input,
+                tools: TOOLS,
+                tool_choice:
+                  round === 0 && questionPlan?.shouldUseTools === true
+                    ? "required"
+                    : "auto",
+                parallel_tool_calls: true,'''
+          new_tool_choice = '''        input,
+                tools: deterministicToolName ? [] : TOOLS,
+                tool_choice: deterministicToolName
+                  ? "none"
+                  : round === 0 && questionPlan?.shouldUseTools === true
+                    ? "required"
+                    : "auto",
+                parallel_tool_calls: !deterministicToolName,'''
+          agent = replace_once(agent, old_tool_choice, new_tool_choice, "disable tools after deterministic evidence")
+
+          agent = replace_once(
+              agent,
+              '''    "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",''',
+              '''    "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",
+              "When deterministic routing has already preloaded verified Vorta evidence, use that evidence directly and do not request another tool.",''',
+              "deterministic evidence instruction",
+          )
+
+          agent_path.write_text(agent)
+
+          runner_path = Path("scripts/ask-vorta-live-evals.mjs")
+          runner = runner_path.read_text()
+          old_fetch = '''  const startedAt = Date.now();
+            const response = await fetch(`${baseUrl}/api/ask-vorta`, {
+              method: "POST",
+              headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                question: scenario.question,
+                role: "maintenance-manager",
+                siteId,
+                history: scenario.history || [],
+                pageContext: {
+                  path: scenario.path || "/dashboard",
+                  timezone: scenario.timezone || "Europe/London",
+                },
+              }),
+            });
+            const payload = await response.json().catch(() => null);
+            const failures = [];
+            if (!response.ok || !payload) {
+              failures.push(`HTTP ${response.status}: ${payload?.error || "invalid JSON"}`);
+            } else {'''
+          new_fetch = '''  const startedAt = Date.now();
+            const controller = new AbortController();
+            const requestTimeoutMs = Math.max(
+              5_000,
+              Number(scenario.requestTimeoutMs || 45_000),
+            );
+            const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+            let response;
+            let payload = null;
+            const failures = [];
+            try {
+              response = await fetch(`${baseUrl}/api/ask-vorta`, {
+                method: "POST",
+                headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  question: scenario.question,
+                  role: "maintenance-manager",
+                  siteId,
+                  history: scenario.history || [],
+                  pageContext: {
+                    path: scenario.path || "/dashboard",
+                    timezone: scenario.timezone || "Europe/London",
+                  },
+                }),
+                signal: controller.signal,
+              });
+              payload = await response.json().catch(() => null);
+            } catch (error) {
+              failures.push(
+                error instanceof Error
+                  ? `request failed: ${error.message}`
+                  : "request failed",
+              );
+            } finally {
+              clearTimeout(timeoutId);
+            }
+            if (response && (!response.ok || !payload)) {
+              failures.push(`HTTP ${response.status}: ${payload?.error || "invalid JSON"}`);
+            } else if (!response && failures.length === 0) {
+              failures.push("request failed without a response");
+            }
+            if (response?.ok && payload) {'''
+          runner = replace_once(runner, old_fetch, new_fetch, "bounded live evaluation request")
+          runner_path.write_text(runner)
+
+          contract_path = Path("scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs")
+          contract = contract_path.read_text()
+          contract = replace_once(
+              contract,
+              '''  [source.includes("answerOutputTokenBudget(questionPlan)"), "answer output budget is scope-aware"],''',
+              '''  [source.includes("answerOutputTokenBudget(questionPlan)"), "answer output budget is scope-aware"],
+              [source.includes("deterministicQuestionPlan") && source.includes('routingMode: "deterministic"'), "clear maintenance intents bypass the model planner"],
+              [source.includes("deterministicToolName ? [] : TOOLS") && source.includes('? "none"'), "deterministic evidence is preloaded before one tool-free answer call"],''',
+              "fast-route contracts",
+          )
+          contract = replace_once(
+              contract,
+              '''  [runner.includes("scenario.maxDurationMs") && runner.includes("scenario.maxFollowUpQuestions"), "live evaluations enforce latency and answer density"],''',
+              '''  [runner.includes("scenario.maxDurationMs") && runner.includes("scenario.maxFollowUpQuestions"), "live evaluations enforce latency and answer density"],
+              [runner.includes("AbortController") && runner.includes("requestTimeoutMs") && runner.includes("request failed:"), "live evaluation network failures are bounded and recorded"],''',
+              "evaluation resilience contract",
+          )
+          contract_path.write_text(contract)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify focused implementation
+        run: |
+          npm run typecheck:functions
+          node scripts/vor-038-ask-vorta-intelligence-contracts.mjs
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          rm .github/workflows/vor-039-fast-route-patch.yml
+          git config user.name "Vorta Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add netlify/functions/ask-vorta.mts \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs \
+            .github/workflows/vor-039-fast-route-patch.yml
+          git commit -m "VOR-039: add deterministic Ask Vorta fast route [vor-039 fast route]"
+          git push origin HEAD:agent/vor-039-ask-vorta-confidence-latency
