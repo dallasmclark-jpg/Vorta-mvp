@@ -1,7 +1,6 @@
 preview=https://deploy-preview-191--vorta-app.netlify.app
-baseline=first-eight
-offset=0
-limit=8
-run=guarded-pr
-attempt=2
-session_recovery=enabled
+batch=backlog-latency
+revision=2c372136644c2fdae4802f3bd4941a7df15e9607
+offset=7
+limit=1
+delay_ms=0
