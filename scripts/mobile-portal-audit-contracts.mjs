@@ -47,12 +47,15 @@ check(
     engineersRoute.includes('data-vorta-original-shift-rota="true"') &&
     engineersRoute.includes('location="/engineers/shift-cover"') &&
     engineersRoute.includes('useMediaQuery("(max-width: 767px)")') &&
-    !engineersRoute.includes("LiveEngineersSection") &&
-    !engineersRoute.includes("min-width") &&
-    !engineersRoute.includes("navigator.") &&
-    !engineersRoute.includes("any-pointer: coarse") &&
+    engineersRoute.includes('useMediaQuery("(any-pointer: coarse)")') &&
+    engineersRoute.includes('useMediaQuery("(hover: none)")') &&
+    engineersRoute.includes("navigator.maxTouchPoints > 0") &&
+    engineersRoute.includes("isNarrowTablet || hasTouchPoints || hasCoarsePointer || hasNoHover") &&
+    engineersRoute.includes("<LiveEngineersSection />") &&
+    !engineersRoute.includes("max-width: 1600") &&
+    !engineersRoute.includes("hasTouchPoints && hasCoarsePointer") &&
     !engineersRoute.includes("TabletEngineersSection"),
-  "Engineers must preserve the phone presentation while every non-phone viewport reuses the original full shift-cover rota.",
+  "Engineers must preserve phone and genuine desktop presentations while any touch-capable Samsung view reuses the original full shift-cover rota.",
 );
 
 check(
