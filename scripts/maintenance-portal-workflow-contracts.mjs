@@ -26,7 +26,7 @@ const [
   read("../src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx"),
   read("../src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx"),
   read("../src/screens/Equipment/EquipmentWorkOrders.tsx"),
-  read("../src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx"),
+  read("../src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx"),
   read("../src/screens/PilotImpact/PilotImpactSection.tsx"),
   read("../src/screens/PilotAdoption/PilotAdoptionSection.tsx"),
   read("../src/screens/PilotSetup/PilotSetupSection.tsx"),
@@ -154,6 +154,8 @@ mustNotMatch(maintenanceExperience, /WORK_ORDER_NUMBER/, "Portal root must not p
 mustNotMatch(maintenanceExperience, /stopImmediatePropagation/, "Portal root must not suppress native interactions");
 mustMatch(dashboard, /openWorkOrderDetail/, "Dashboard work orders must open explicitly");
 mustMatch(equipmentWorkOrders, /openWorkOrderDetail/, "Equipment work orders must open explicitly");
-mustMatch(aiAssistant, /openWorkOrderDetail/, "Ask Vorta history must open explicitly");
+mustMatch(aiAssistant, /answer\.evidenceLinks/, "Ask Vorta must retain explicit evidence links");
+mustMatch(aiAssistant, /navigate\(link\.path\)/, "Ask Vorta evidence must open explicitly");
+mustMatch(aiAssistant, /Open in Vorta/, "Ask Vorta evidence navigation must remain visible");
 
 console.log("Maintenance portal workflow contracts passed.");
