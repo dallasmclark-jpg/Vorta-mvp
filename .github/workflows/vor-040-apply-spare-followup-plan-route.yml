@@ -42,7 +42,22 @@ jobs:
 
       - name: Apply routing repair
         if: steps.state.outputs.skip != 'true'
-        run: python3 scripts/vor-040-spare-followup-plan-route-patch.py
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/vor-040-spare-followup-plan-route-patch.py')
+          source = path.read_text()
+          old = '''    '  "MIXED_DECISION_PATTERN",\\n  "EQUIPMENT_CODE_PATTERN",',
+              '  "MIXED_DECISION_PATTERN",\\n  "EQUIPMENT_CODE_PATTERN",\\n  "EQUIPMENT_SPARE_FOLLOW_UP_PATTERN",\\n  "isEquipmentSpareFollowUp",\\n  "equipmentReferenceFromRequest",\\n  "componentConstraintScore",\\n  \\'toolsUsed: ["get_equipment_spares"]\\',\\n  \\'intentLabel: "equipment_spare_blocker"\\',',
+              "edge spare route contracts",'''
+          new = '''    '  "CAPABILITY_PATTERN",\\n  "isCapabilityRequest",',
+              '  "CAPABILITY_PATTERN",\\n  "isCapabilityRequest",\\n  "EQUIPMENT_SPARE_FOLLOW_UP_PATTERN",\\n  "isEquipmentSpareFollowUp",\\n  "equipmentReferenceFromRequest",\\n  "componentConstraintScore",\\n  \\'toolsUsed: ["get_equipment_spares"]\\',\\n  \\'intentLabel: "equipment_spare_blocker"\\',',
+              "edge spare route contracts",'''
+          if old not in source:
+              raise SystemExit('VOR-040 patch-script contract migration anchor missing')
+          path.write_text(source.replace(old, new, 1))
+          PY
+          python3 scripts/vor-040-spare-followup-plan-route-patch.py
 
       - name: Verify backend and edge TypeScript
         if: steps.state.outputs.skip != 'true'
