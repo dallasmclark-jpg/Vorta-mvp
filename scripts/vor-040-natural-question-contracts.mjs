@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const golden = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-033-demo-golden.json"), "utf8"));
 const natural = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-040-natural-questions.json"), "utf8"));
 const evaluator = readFileSync(resolve(root, "scripts/ask-vorta-live-evals.mjs"), "utf8");
-const backend = readFileSync(resolve(root, "netlify/functions/ask-vorta.mts"), "utf8");
+const backlogEdge = readFileSync(resolve(root, "netlify/edge-functions/ask-vorta-work-backlog.ts"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
 assert.equal(golden.length, 24, "The established VOR-033 manager suite must retain 24 questions.");
@@ -92,15 +92,23 @@ for (const evaluatorFeature of [
   assert.ok(evaluator.includes(evaluatorFeature), `Live evaluator must retain ${evaluatorFeature}.`);
 }
 
-for (const backendFeature of [
-  "buildDeterministicWorkBacklogAnswer",
-  'deterministicToolName === "get_site_work_backlog"',
-  "return jsonResponse(directBacklogAnswer)",
-  'intentLabel: "work_backlog"',
+for (const edgeFeature of [
+  "OPEN_WORK_PATTERN",
+  "isFactualBacklogRequest",
+  "context.next(request)",
+  "ask_vorta_interactions",
   'toolsUsed: ["get_site_work_backlog"]',
+  'intentLabel: "work_backlog"',
+  'path: "/api/ask-vorta"',
+  'method: "POST"',
 ]) {
-  assert.ok(backend.includes(backendFeature), `Backlog fast path must retain ${backendFeature}.`);
+  assert.ok(backlogEdge.includes(edgeFeature), `Backlog edge fast path must retain ${edgeFeature}.`);
 }
+assert.ok(!backlogEdge.includes('from "openai"'), "The factual backlog fast path must not call the language model.");
+assert.ok(
+  backlogEdge.includes("MIXED_DECISION_PATTERN") && backlogEdge.includes("EQUIPMENT_CODE_PATTERN"),
+  "The backlog middleware must delegate mixed and equipment-specific questions to the main assistant.",
+);
 
 assert.equal(
   packageJson.scripts?.["eval:ask-vorta:vor040"],
