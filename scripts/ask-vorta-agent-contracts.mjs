@@ -119,9 +119,9 @@ check(
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
     agent.includes("store: false") &&
     agent.includes('reasoning: { effort: "low" }') &&
-    agent.includes('reasoning: { effort: "medium" }') &&
+    agent.includes("answerReasoningEffort(questionPlan)") &&
     agent.includes('verbosity: "low"') &&
-    agent.includes("max_output_tokens: 5_000"),
+    agent.includes("answerOutputTokenBudget(questionPlan)"),
   "The planner, reasoning loop, provider storage and response size must remain explicitly bounded for serverless latency.",
 );
 

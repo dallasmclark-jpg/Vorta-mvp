@@ -1,0 +1,73 @@
+[
+  {
+    "id": "vor039-broad-pack-no-duplicate-tools",
+    "question": "What are the three biggest maintenance threats today and what should I do first?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "maxDurationMs": 18000,
+    "mustMentionAny": [
+      "risk",
+      "work",
+      "spare",
+      "skill",
+      "handover"
+    ]
+  },
+  {
+    "id": "vor039-handover-concise",
+    "question": "What did nights leave us?",
+    "expectedTools": [
+      "get_shift_handover"
+    ],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "requireActionPlan": false,
+    "maxDecisionSummaryItems": 3,
+    "maxFollowUpQuestions": 1,
+    "maxDurationMs": 15000,
+    "mustMentionAny": [
+      "completed",
+      "ongoing",
+      "waiting",
+      "next"
+    ]
+  },
+  {
+    "id": "vor039-contractor-factual",
+    "question": "Which contractors have recorded PLC support?",
+    "expectedTools": [
+      "get_contractor_availability"
+    ],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "requireActionPlan": false,
+    "maxDecisionSummaryItems": 3,
+    "maxFollowUpQuestions": 1,
+    "maxDurationMs": 15000,
+    "mustMentionAny": [
+      "PLC",
+      "contractor",
+      "availability",
+      "support"
+    ]
+  },
+  {
+    "id": "vor039-spares-action-remains-complete",
+    "question": "What should we order first and why?",
+    "expectedTools": [
+      "get_site_spares_risk"
+    ],
+    "confidenceMin": 55,
+    "requireActionPlan": true,
+    "maxDurationMs": 18000,
+    "mustMentionAny": [
+      "stock",
+      "lead",
+      "shortfall",
+      "part"
+    ]
+  }
+]

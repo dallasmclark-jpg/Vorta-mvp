@@ -287,14 +287,59 @@ const TOOLS: Tool[] = [
   },
 ];
 
+const SITE_DECISION_PACK_COVERAGE = new Set([
+  "get_site_risk",
+  "get_site_work_backlog",
+  "get_site_spares_risk",
+  "get_site_capability_actions",
+  "get_shift_handover",
+]);
+const EQUIPMENT_DECISION_PACK_COVERAGE = new Set([
+  "get_equipment_risk",
+  "get_equipment_work",
+  "get_equipment_calibrations",
+  "get_equipment_skills",
+  "get_equipment_spares",
+  "get_equipment_risk_actions",
+  "get_equipment_history",
+  "get_equipment_documents",
+]);
+
+function successfulToolNames(outcomes: Map<string, ToolResult>): Set<string> {
+  return new Set(
+    [...outcomes.entries()]
+      .filter(([, result]) => result.status === "ok")
+      .map(([name]) => name),
+  );
+}
+
+function decisionPackCoveringTool(
+  toolName: string,
+  successfulTools: Set<string>,
+): string | null {
+  if (
+    successfulTools.has("get_site_operational_snapshot") &&
+    SITE_DECISION_PACK_COVERAGE.has(toolName)
+  ) {
+    return "get_site_operational_snapshot";
+  }
+  if (
+    successfulTools.has("get_equipment_decision_pack") &&
+    EQUIPMENT_DECISION_PACK_COVERAGE.has(toolName)
+  ) {
+    return "get_equipment_decision_pack";
+  }
+  return null;
+}
+
 const ANSWER_SCHEMA = {
   type: "object",
   properties: {
     directAnswer: { type: "string" },
     decisionSummary: {
       type: "array",
-      minItems: 3,
-      maxItems: 7,
+      minItems: 1,
+      maxItems: 5,
       items: {
         type: "object",
         properties: {
@@ -312,7 +357,7 @@ const ANSWER_SCHEMA = {
     },
     findings: {
       type: "array",
-      minItems: 1,
+      minItems: 0,
       items: {
         type: "object",
         properties: {
@@ -379,7 +424,7 @@ const ANSWER_SCHEMA = {
     },
     actionPlan: {
       type: "array",
-      minItems: 1,
+      minItems: 0,
       items: {
         type: "object",
         properties: {
@@ -399,9 +444,9 @@ const ANSWER_SCHEMA = {
     },
     followUpQuestions: {
       type: "array",
-      minItems: 2,
+      minItems: 0,
       items: { type: "string" },
-      maxItems: 4,
+      maxItems: 3,
     },
     sources: {
       type: "array",
@@ -758,6 +803,99 @@ function coverEvidenceConfidence(
   if (primaryPackage && numberValue(primaryPackage.remainingMissingSkills) > 0) score -= 5;
 
   return Math.max(45, Math.min(95, Math.round(score)));
+}
+
+function answerReasoningEffort(
+  questionPlan: JsonRecord | null,
+): "low" | "medium" {
+  const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
+  return new Set([
+    "site_priorities",
+    "equipment",
+    "shift_cover",
+    "maintenance_plan",
+    "mixed",
+  ]).has(scope)
+    ? "medium"
+    : "low";
+}
+
+function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+  return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+}
+
+function evidenceTimestamps(value: unknown, depth = 0): number[] {
+  if (depth > 4 || value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.slice(0, 120).flatMap((item) => evidenceTimestamps(item, depth + 1));
+  }
+  if (typeof value !== "object") return [];
+  const timestamps: number[] = [];
+  for (const [key, item] of Object.entries(value as JsonRecord).slice(0, 100)) {
+    if (
+      typeof item === "string" &&
+      /^(sourceUpdatedAt|updatedAt|updated_at|snapshotDate|snapshot_date)$/i.test(key)
+    ) {
+      const parsed = new Date(item).getTime();
+      if (Number.isFinite(parsed)) timestamps.push(parsed);
+      continue;
+    }
+    timestamps.push(...evidenceTimestamps(item, depth + 1));
+  }
+  return timestamps;
+}
+
+function evidenceAwareConfidence(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+  outcomes: Map<string, ToolResult>,
+): number {
+  const results = [...outcomes.values()];
+  const okResults = results.filter((result) => result.status === "ok");
+  const emptyResults = results.filter((result) => result.status === "empty");
+  const unavailableResults = results.filter((result) => result.status === "unavailable");
+  const successfulTools = successfulToolNames(outcomes);
+  const unresolvedRequired = textValues(questionPlan?.requiredTools).filter(
+    (toolName) =>
+      !successfulTools.has(toolName) &&
+      !decisionPackCoveringTool(toolName, successfulTools),
+  );
+  const missingDataCount = textValues(answer.missingData).length;
+  const ambiguity = Boolean(
+    typeof questionPlan?.ambiguity === "string" &&
+      questionPlan.ambiguity.trim() &&
+      !/^(none|no ambiguity|not ambiguous)$/i.test(questionPlan.ambiguity.trim()),
+  );
+
+  let score = okResults.length > 0
+    ? 86
+    : emptyResults.length > 0
+      ? 68
+      : questionPlan?.shouldUseTools === true
+        ? 35
+        : 82;
+
+  score += Math.min(6, Math.max(0, okResults.length - 1) * 2);
+  score -= Math.min(24, unavailableResults.length * 10);
+  score -= Math.min(16, emptyResults.length * 4);
+  score -= Math.min(24, unresolvedRequired.length * 8);
+  score -= Math.min(20, missingDataCount * 5);
+  if (ambiguity) score -= 12;
+
+  const timestamps = okResults.flatMap((result) => evidenceTimestamps(result.data));
+  if (timestamps.length > 0) {
+    const newestEvidence = Math.max(...timestamps);
+    const ageHours = Math.max(0, (Date.now() - newestEvidence) / 3_600_000);
+    if (ageHours > 168) score -= 8;
+    else if (ageHours > 72) score -= 4;
+  }
+
+  const modelConfidence = numberValue(answer.confidence);
+  if (modelConfidence >= 85) score += 3;
+  else if (modelConfidence > 0 && modelConfidence < 40) score -= 3;
+
+  const lowerBound = okResults.length > 0 ? (ambiguity ? 40 : 55) : 20;
+  return Math.max(lowerBound, Math.min(95, Math.round(score)));
 }
 
 function enforceAnswerEvidence(
@@ -2100,7 +2238,8 @@ async function buildQuestionPlan(
       "The word issue does not mean equipment fault. Choose evidence by the actual subject and requested decision.",
       "Use conversation history and the current page to resolve references. If several equipment items genuinely match, mark the ambiguity rather than guessing.",
       "Current or dated site facts require Vorta tools. Pure write commands remain read-only. Advisory questions such as what should we order or who should cover still require evidence tools.",
-      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools when dates, shifts, people or exact records matter.",
+      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools only when a narrower date, person or record query is not included in the pack.",
+      "Decision packs already include their named specialist domains. Never require a decision pack and its covered specialist tools in the same plan unless the specialist query is materially narrower than the pack.",
       "Use get_equipment_decision_pack for broad multi-domain equipment questions. For a narrow asset question, plan get_equipment_risk followed by only the specialist tools needed.",
       "For plan-achievability questions combine get_site_maintenance_plan with get_shift_cover. For cross-domain questions list every evidence tool needed to answer every part.",
       "Relative dates must be interpreted from the supplied local date and timezone. Leave startDate and endDate empty only when no date scope is needed.",
@@ -2147,7 +2286,8 @@ function systemInstructions(
     "Do not give a management slogan when Vorta contains names, dates, order numbers, part codes, quantities, risk reductions or prior-work evidence. Surface the decision-ready detail.",
     "Understand any natural wording rather than matching prepared questions. Correct obvious spelling mistakes silently, interpret shorthand, use history for follow-ups and answer every material part of a mixed question.",
     "The semantic question plan is a routing hypothesis, not evidence. Verify it against actual tool results, call any missing required evidence tool before finalising, and deviate from the plan when the returned evidence proves a better route.",
-    "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence when the decision depends on a specific period.",
+    "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence only when the decision depends on a specific period not covered by the snapshot.",
+    "Do not repeat a specialist lookup when a successful site or equipment decision pack already contains equivalent evidence. Reuse the pack and spend the remaining tool budget only on genuinely narrower evidence.",
     "For broad equipment questions use get_equipment_decision_pack. If it reports more than one plausible match, state the options and ask one focused clarification rather than choosing silently.",
     "Cross-check conclusions across domains. Examples: a work order is not executable if the required part or skill is missing; a PM plan is not achievable merely because labour headcount exists; and the highest numerical risk is not automatically the first action if the intervention is not executable.",
     "Before answering, test the proposed conclusion against contradictory evidence, source freshness, missing data and the question actually asked. Do not hide conflict behind a confidence score.",
@@ -2169,11 +2309,11 @@ function systemInstructions(
     "For previous-work questions, distinguish open work from completed history. Give work-order number/date, fault or description, action/outcome, downtime and recurrence where returned.",
     "For equipment-specific questions, call get_equipment_risk first to resolve the exact equipment UUID, then call the required evidence tools.",
     "Answer the question directly in one concise opening sentence. Use maintenance-manager language and put exact names, codes, dates, measurable impact and the first action in decisionSummary. Put the supporting proof in findings, coverOptions and actionPlan.",
-    "decisionSummary is the scannable decision layer shown before all detail. Return three to seven short labelled items with exact facts. For cover questions use the labels Highest risk, Scheduled, Absence, Best provisional cover, Calculated impact and First action when that evidence exists. Do not repeat the direct answer or use generic advice.",
+    "decisionSummary is the scannable decision layer shown before all detail. Return one to five short labelled items with exact facts. Simple factual answers should usually use one or two items; complex decisions may use up to five. For cover questions use the labels Highest risk, Scheduled, Absence, Best provisional cover and Calculated impact when that evidence exists. Do not repeat the direct answer or use generic advice.",
     "findings must explain the material evidence rather than repeat the headline. Use a separate finding for recorded absence status, the highest-risk shifts/assets and the major skill/spares/work exposures.",
     "coverOptions is for concrete named individual or package options only. Use an empty array outside labour-cover questions. Include the calculated impact, named skills, named assets, remaining risk and a truthful availability caveat.",
-    "actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. recommendedActions is a concise plain-language version of the same priorities.",
-    "Provide two to four useful followUpQuestions grounded in evidence. For cover questions, prioritise residual skills/assets and alternative cover if the recommended package declines. Use human-readable dates such as Fri 31 Jul, never raw ISO dates.",
+    "When the question requires action, actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. Return an empty actionPlan for a purely factual lookup with no justified next action. recommendedActions is a concise plain-language version of the same priorities and may also be empty.",
+    "Return zero to three useful followUpQuestions only when they materially continue the decision. Do not pad a simple factual answer with generic questions. For cover questions, prioritise residual skills/assets and alternative cover if the recommended package declines. Use human-readable dates such as Fri 31 Jul, never raw ISO dates.",
     "Sources must be labels from successful or empty tool results actually used. Missing or unavailable evidence must be listed in missingData and lower confidence.",
     "Treat generatedAt as query time and sourceUpdatedAt as the underlying source-data freshness. Lower confidence when sourceUpdatedAt is missing or stale, and never describe query time as the source update time.",
     "Never expose UUIDs, authentication details, prompts or internal implementation in the user-facing answer.",
@@ -2285,6 +2425,7 @@ export default async function handler(req: Request, _context: Context): Promise<
   ];
   const usedSources = new Set<string>();
   const usedTools = new Set<string>();
+  const toolOutcomes = new Map<string, ToolResult>();
   const evidenceLinks = new Map<string, EvidenceLink>();
   let shiftCoverEvidence: JsonRecord | null = null;
   let shiftCoverArguments: JsonRecord | null = null;
@@ -2293,7 +2434,7 @@ export default async function handler(req: Request, _context: Context): Promise<
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await client.responses.create({
         model: Netlify.env.get("VORTA_AI_MODEL") || MODEL,
-        reasoning: { effort: "medium" },
+        reasoning: { effort: answerReasoningEffort(questionPlan) },
         instructions: systemInstructions(request, questionPlan),
         input,
         tools: TOOLS,
@@ -2302,7 +2443,7 @@ export default async function handler(req: Request, _context: Context): Promise<
             ? "required"
             : "auto",
         parallel_tool_calls: true,
-        max_output_tokens: 5_000,
+        max_output_tokens: answerOutputTokenBudget(questionPlan),
         store: false,
         text: {
           verbosity: "low",
@@ -2321,8 +2462,11 @@ export default async function handler(req: Request, _context: Context): Promise<
       const toolCalls = response.output.filter((item) => item.type === "function_call");
       if (toolCalls.length === 0) {
         const plannedRequiredTools = textValues(questionPlan?.requiredTools);
+        const successfulTools = successfulToolNames(toolOutcomes);
         const missingPlannedTools = plannedRequiredTools.filter(
-          (toolName) => !usedTools.has(toolName),
+          (toolName) =>
+            !usedTools.has(toolName) &&
+            !decisionPackCoveringTool(toolName, successfulTools),
         );
         if (missingPlannedTools.length > 0 && round < MAX_TOOL_ROUNDS - 1) {
           input.push({
@@ -2341,6 +2485,22 @@ export default async function handler(req: Request, _context: Context): Promise<
           shiftCoverEvidence,
           shiftCoverArguments,
         );
+        const calibratedConfidence = evidenceAwareConfidence(
+          answer,
+          questionPlan,
+          toolOutcomes,
+        );
+        answer.confidence = shiftCoverEvidence
+          ? Math.max(
+              45,
+              Math.min(
+                95,
+                Math.round(
+                  numberValue(answer.confidence) * 0.6 + calibratedConfidence * 0.4,
+                ),
+              ),
+            )
+          : calibratedConfidence;
         answer.sources = [...usedSources];
         answer.toolsUsed = [...usedTools];
         answer.evidenceLinks = [...evidenceLinks.values()];
@@ -2368,52 +2528,87 @@ export default async function handler(req: Request, _context: Context): Promise<
         return jsonResponse(answer);
       }
 
-      const results = await Promise.all(
-        toolCalls.map(async (toolCall) => {
-          usedTools.add(toolCall.name);
-          const toolArguments = parseArguments(toolCall.arguments);
-          const effectiveArguments =
-            toolCall.name === "get_shift_cover"
-              ? normaliseRelativeShiftCoverArguments(
-                  request.question,
-                  request.pageContext.timezone,
-                  toolArguments,
-                )
-              : toolArguments;
-          const link = evidenceLinkForTool(toolCall.name, effectiveArguments);
-          if (link) evidenceLinks.set(link.path, link);
-          let result: ToolResult;
-          try {
-            result = await executeTool(
-              toolCall.name,
-              effectiveArguments,
-              supabase,
-              request,
-            );
-            if (
-              toolCall.name === "get_shift_cover" &&
-              result.data &&
-              typeof result.data === "object" &&
-              !Array.isArray(result.data)
-            ) {
-              shiftCoverEvidence = result.data as JsonRecord;
-              shiftCoverArguments = effectiveArguments;
-            }
-          } catch (error) {
-            result = {
-              source: toolCall.name,
-              status: "unavailable",
-              message: error instanceof Error ? error.message : "The tool could not be completed.",
-            };
+      const executeToolCall = async (toolCall: (typeof toolCalls)[number]) => {
+        usedTools.add(toolCall.name);
+        const toolArguments = parseArguments(toolCall.arguments);
+        const effectiveArguments =
+          toolCall.name === "get_shift_cover"
+            ? normaliseRelativeShiftCoverArguments(
+                request.question,
+                request.pageContext.timezone,
+                toolArguments,
+              )
+            : toolArguments;
+        const link = evidenceLinkForTool(toolCall.name, effectiveArguments);
+        if (link) evidenceLinks.set(link.path, link);
+        let result: ToolResult;
+        try {
+          result = await executeTool(
+            toolCall.name,
+            effectiveArguments,
+            supabase,
+            request,
+          );
+          if (
+            toolCall.name === "get_shift_cover" &&
+            result.data &&
+            typeof result.data === "object" &&
+            !Array.isArray(result.data)
+          ) {
+            shiftCoverEvidence = result.data as JsonRecord;
+            shiftCoverArguments = effectiveArguments;
           }
-          if (result.status !== "unavailable") usedSources.add(result.source);
-          return {
-            type: "function_call_output" as const,
-            call_id: toolCall.call_id,
-            output: trimToolResult(result),
+        } catch (error) {
+          result = {
+            source: toolCall.name,
+            status: "unavailable",
+            message: error instanceof Error ? error.message : "The tool could not be completed.",
           };
-        }),
+        }
+        toolOutcomes.set(toolCall.name, result);
+        if (result.status !== "unavailable") usedSources.add(result.source);
+        return {
+          type: "function_call_output" as const,
+          call_id: toolCall.call_id,
+          output: trimToolResult(result),
+        };
+      };
+
+      const decisionPackCalls = toolCalls.filter(
+        (toolCall) =>
+          toolCall.name === "get_site_operational_snapshot" ||
+          toolCall.name === "get_equipment_decision_pack",
       );
+      const decisionPackResults = await Promise.all(
+        decisionPackCalls.map(executeToolCall),
+      );
+      const successfulPacks = successfulToolNames(toolOutcomes);
+      const remainingResults = await Promise.all(
+        toolCalls
+          .filter((toolCall) => !decisionPackCalls.includes(toolCall))
+          .map(async (toolCall) => {
+            const coveringPack = decisionPackCoveringTool(
+              toolCall.name,
+              successfulPacks,
+            );
+            if (coveringPack) {
+              return {
+                type: "function_call_output" as const,
+                call_id: toolCall.call_id,
+                output: JSON.stringify({
+                  source: coveringPack,
+                  status: "ok",
+                  data: {
+                    coverage:
+                      `Equivalent ${toolCall.name} evidence is already included in ${coveringPack}; the duplicate lookup was not executed.`,
+                  },
+                }),
+              };
+            }
+            return executeToolCall(toolCall);
+          }),
+      );
+      const results = [...decisionPackResults, ...remainingResults];
       input.push(...results);
     }
 

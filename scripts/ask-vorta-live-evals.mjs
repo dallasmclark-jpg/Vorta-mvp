@@ -103,11 +103,32 @@ for (const scenario of scenarios.slice(0, limit)) {
     for (const phrase of scenario.mustNotMention || []) {
       if (text.includes(phrase.toLowerCase())) failures.push(`unsafe phrase "${phrase}"`);
     }
-    if (!Array.isArray(payload.findings) || payload.findings.length === 0) {
+    if (
+      scenario.requireFindings !== false &&
+      (!Array.isArray(payload.findings) || payload.findings.length === 0)
+    ) {
       failures.push("no structured findings");
     }
-    if (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0) {
+    if (
+      scenario.requireActionPlan !== false &&
+      (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0)
+    ) {
       failures.push("no action plan");
+    }
+    if (Number.isFinite(scenario.confidenceMin) && Number(payload.confidence) < Number(scenario.confidenceMin)) {
+      failures.push(`confidence ${payload.confidence}; expected at least ${scenario.confidenceMin}`);
+    }
+    if (Number.isFinite(scenario.maxToolCount) && usedTools.size > Number(scenario.maxToolCount)) {
+      failures.push(`used ${usedTools.size} tools; expected at most ${scenario.maxToolCount}`);
+    }
+    if (Number.isFinite(scenario.maxDecisionSummaryItems) && (payload.decisionSummary || []).length > Number(scenario.maxDecisionSummaryItems)) {
+      failures.push(`decision summary has ${(payload.decisionSummary || []).length} items; expected at most ${scenario.maxDecisionSummaryItems}`);
+    }
+    if (Number.isFinite(scenario.maxFollowUpQuestions) && (payload.followUpQuestions || []).length > Number(scenario.maxFollowUpQuestions)) {
+      failures.push(`follow-ups have ${(payload.followUpQuestions || []).length} items; expected at most ${scenario.maxFollowUpQuestions}`);
+    }
+    if (Number.isFinite(scenario.maxDurationMs) && Date.now() - startedAt > Number(scenario.maxDurationMs)) {
+      failures.push(`duration ${Date.now() - startedAt}ms; expected at most ${scenario.maxDurationMs}ms`);
     }
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
