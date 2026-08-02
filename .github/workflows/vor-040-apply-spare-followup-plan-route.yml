@@ -58,6 +58,16 @@ jobs:
           path.write_text(source.replace(old, new, 1))
           PY
           python3 scripts/vor-040-spare-followup-plan-route-patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/vor-040-natural-question-contracts.mjs')
+          source = path.read_text()
+          old = '  \'intentLabel: "maintenance_plan"\','
+          new = '  \'"maintenance_plan"\','
+          if old not in source:
+              raise SystemExit('VOR-040 maintenance-plan contract signature anchor missing')
+          path.write_text(source.replace(old, new, 1))
+          PY
 
       - name: Verify backend and edge TypeScript
         if: steps.state.outputs.skip != 'true'
