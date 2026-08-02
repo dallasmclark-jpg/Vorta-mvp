@@ -460,7 +460,7 @@ export function MobileEquipmentSection({
       <div className="flex flex-col gap-3">
         {loading && items.length === 0
           ? Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
+              <div key={index} className="h-56 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
             ))
           : filtered.map((item) => {
               const driver = item.breakdown[0];
@@ -473,38 +473,44 @@ export function MobileEquipmentSection({
                   data-vorta-group-frame="true"
                   className="w-full rounded-xl border border-gray-800 bg-[#141820] p-3"
                 >
-                  <VerifiedEquipmentImage
-                    src={record?.imageUrl}
-                    equipmentName={item.name}
-                    equipmentType={item.type}
-                    equipmentCode={item.assetNumber}
-                    className="h-40 w-full"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => navigate(equipmentRoute(item.id, "overview"))}
-                    aria-label={`Open overview for ${item.name}, ${item.assetNumber}`}
-                    className="mt-3 flex min-h-16 w-full items-start justify-between gap-3 rounded-lg px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                  <div
+                    className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-3"
+                    data-vorta-mobile-equipment-media="compact"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-base font-semibold leading-6 text-slate-100">{item.name}</p>
-                      <p className="mt-0.5 truncate text-xs text-slate-500">{item.assetNumber} · {item.area}</p>
-                      <div className="mt-2">
-                        <EvidenceBadge
-                          mode={dataMode}
-                          coverage={coverage.get(item.id)}
-                          unavailable={Boolean(coverageError)}
-                        />
+                    <VerifiedEquipmentImage
+                      src={record?.imageUrl}
+                      equipmentName={item.name}
+                      equipmentType={item.type}
+                      equipmentCode={item.assetNumber}
+                      className="h-[88px] w-[88px]"
+                      compact
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(equipmentRoute(item.id, "overview"))}
+                      aria-label={`Open overview for ${item.name}, ${item.assetNumber}`}
+                      className="flex min-h-[88px] w-full items-start justify-between gap-2 rounded-lg py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-base font-semibold leading-5 text-slate-100">{item.name}</p>
+                        <p className="mt-1 truncate text-xs text-slate-500">{item.assetNumber} · {item.area}</p>
+                        <div className="mt-2">
+                          <EvidenceBadge
+                            mode={dataMode}
+                            coverage={coverage.get(item.id)}
+                            unavailable={Boolean(coverageError)}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-xl font-semibold tabular-nums ${tone.split(" ").at(-1)}`}>{item.riskScore.toFixed(1)}</p>
-                      <span className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${tone}`}>
-                        {item.riskLevel}
-                      </span>
-                    </div>
-                  </button>
+                      <div className="shrink-0 text-right">
+                        <p className={`text-xl font-semibold tabular-nums ${tone.split(" ").at(-1)}`}>{item.riskScore.toFixed(1)}</p>
+                        <span className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${tone}`}>
+                          {item.riskLevel}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
 
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     <button

@@ -13,6 +13,12 @@ const seedMigration = read(
   "supabase/migrations/20260801214500_classify_and_seed_verified_equipment_images.sql",
 );
 const equipmentImages = read("src/screens/Equipment/equipmentImages.ts");
+const verifiedEquipmentImage = read(
+  "src/screens/Equipment/VerifiedEquipmentImage.tsx",
+);
+const mobileEquipment = read(
+  "src/screens/Equipment/MobileEquipmentSection.tsx",
+);
 
 const checks = [
   {
@@ -59,6 +65,22 @@ const checks = [
       seedMigration.includes("'FD-01','FD-02'") &&
       seedMigration.includes("image_verification_status = 'blocked_identity'") &&
       seedMigration.includes("approved site photograph or exact model"),
+  },
+  {
+    label: "phone equipment imagery uses a compact fixed thumbnail",
+    pass:
+      mobileEquipment.includes('data-vorta-mobile-equipment-media="compact"') &&
+      mobileEquipment.includes('className="h-[88px] w-[88px]"') &&
+      mobileEquipment.includes("compact") &&
+      !mobileEquipment.includes('className="h-40 w-full"'),
+  },
+  {
+    label: "compact unavailable imagery avoids the full fallback panel",
+    pass:
+      verifiedEquipmentImage.includes('data-vorta-equipment-image-layout="compact"') &&
+      verifiedEquipmentImage.includes("No verified image") &&
+      verifiedEquipmentImage.includes('role={hasVerifiedImage ? undefined : "img"}') &&
+      verifiedEquipmentImage.includes('data-vorta-equipment-image-layout="full"'),
   },
 ];
 
