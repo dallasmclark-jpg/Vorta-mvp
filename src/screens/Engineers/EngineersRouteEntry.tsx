@@ -7,6 +7,9 @@ import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
 
 function OriginalShiftCoverRota(): JSX.Element {
+  // The invalid nested route location="/labour-risk/shift-cover" sits outside
+  // the Engineers route context and renders nothing. Keep the synthetic child
+  // location beneath /engineers so LabourRiskDetailPage receives riskType.
   return (
     <div className="contents" data-vorta-original-shift-rota="true">
       <Routes location="/engineers/shift-cover">
