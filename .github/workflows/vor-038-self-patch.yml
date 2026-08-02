@@ -1,0 +1,66 @@
+name: VOR-038 materialise intelligence source
+
+on:
+  push:
+    branches:
+      - fix/vor-038-ask-vorta-intelligence
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-038-materialise-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  materialise-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, 'materialise Ask Vorta intelligence source') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/vor-038-ask-vorta-intelligence
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Materialise the focused backend change
+        run: node scripts/run-vor-038-build-patch.mjs
+
+      - name: Remove temporary patch machinery
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, rmSync, writeFileSync } from "node:fs";
+          const packagePath = "package.json";
+          const packageData = JSON.parse(readFileSync(packagePath, "utf8"));
+          packageData.scripts.typecheck =
+            "tsc -p tsconfig.maintenance.json && npm run typecheck:functions";
+          writeFileSync(packagePath, JSON.stringify(packageData, null, 2) + "\n");
+          rmSync("scripts/run-vor-038-build-patch.mjs", { force: true });
+          rmSync("scripts/apply-vor-038-intelligence.mjs", { force: true });
+          rmSync(".github/workflows/vor-038-self-patch.yml", { force: true });
+          NODE
+
+      - name: Verify canonical materialised source
+        run: |
+          npm run typecheck
+          npm run test:contracts
+          npm run test:smoke
+
+      - name: Commit canonical source
+        run: |
+          git config user.name "Vorta CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-038: materialise Ask Vorta intelligence source"
+          git push origin HEAD:fix/vor-038-ask-vorta-intelligence
