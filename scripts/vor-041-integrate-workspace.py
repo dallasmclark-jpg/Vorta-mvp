@@ -131,10 +131,11 @@ if "const resetWorkspaceConversation" not in assistant:
   }
 
 '''
+    render_anchor = "  }, [open, agentContextReady, pendingPrompt]);\n\n  if (!open) {\n"
     assistant = replace_once(
         assistant,
-        "  if (!open) {\n",
-        insertion + "  if (!open) {\n",
+        render_anchor,
+        "  }, [open, agentContextReady, pendingPrompt]);\n\n" + insertion + "  if (!open) {\n",
         "workspace render insertion",
     )
 
