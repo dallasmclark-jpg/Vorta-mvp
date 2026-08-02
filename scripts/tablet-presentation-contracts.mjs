@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const [entry, styles, engineersRoute] = await Promise.all([
+  readFile(new URL("../src/index.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/tabletPresentationRecovery.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
+]);
+
+assert.match(
+  entry,
+  /import "\.\/tabletPresentationRecovery\.css";/,
+  "The tablet presentation recovery stylesheet must be loaded by the application entry.",
+);
+assert.match(
+  styles,
+  /\[data-vorta-card="true"\][\s\S]*> \[class~="pt-0"\]:first-child/,
+  "Content-only cards must recover their top padding.",
+);
+assert.match(
+  styles,
+  /@media \(min-width: 768px\)[\s\S]*\[data-vorta-embedded-ai="true"\]/,
+  "The approved embedded Ask Vorta presentation must apply at every non-phone width.",
+);
+for (const teamClass of [
+  "border-t-red-500",
+  "border-t-emerald-500",
+  "border-t-blue-500",
+  "border-t-yellow-400",
+  "border-t-slate-300",
+  "border-t-violet-400",
+  "border-t-cyan-400",
+]) {
+  assert.match(
+    styles,
+    new RegExp(teamClass),
+    `Skills Matrix must retain the ${teamClass} capability edge.`,
+  );
+}
+assert.match(
+  styles,
+  /border-left-color:[\s\S]*border-right-color:[\s\S]*border-bottom-color:/,
+  "Skills Matrix capability cards must use team colour on left, top and right while keeping a neutral bottom edge.",
+);
+assert.match(
+  engineersRoute,
+  /data-vorta-original-shift-rota="true"/,
+  "The original Engineers rota route must remain intact.",
+);
+assert.doesNotMatch(
+  engineersRoute,
+  /TabletEngineersSection/,
+  "Presentation recovery must not restore the rejected Engineers replacement.",
+);
+
+console.log("Tablet card spacing, Ask Vorta and Skills Matrix team-edge contracts passed.");
