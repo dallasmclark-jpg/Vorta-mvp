@@ -7,7 +7,10 @@ const scenarios = JSON.parse(readFileSync(resolve(root, scenarioFile), "utf8"));
 const baseUrl = process.env.VORTA_EVAL_BASE_URL || "https://vorta-app.netlify.app";
 let token = process.env.VORTA_EVAL_TOKEN;
 const siteId = process.env.VORTA_EVAL_SITE_ID || "11000000-0000-0000-0000-000000000001";
-const limit = Math.max(1, Math.min(scenarios.length, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
+const offset = Math.max(0, Math.min(scenarios.length, Number(process.env.VORTA_EVAL_OFFSET || 0)));
+const limit = Math.max(1, Math.min(scenarios.length - offset || 1, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
+const delayMs = Math.max(0, Number(process.env.VORTA_EVAL_DELAY_MS || 0));
+const selectedScenarios = scenarios.slice(offset, offset + limit);
 
 if (!token) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -49,6 +52,7 @@ function answerText(answer) {
       item.remainingRisk,
       item.caveat,
     ]),
+    ...(answer.recommendedActions || []),
     ...(answer.actionPlan || []).flatMap((item) => [
       item.action,
       item.owner,
@@ -58,8 +62,15 @@ function answerText(answer) {
   ].filter(Boolean).join("\n").toLowerCase();
 }
 
+function sleep(milliseconds) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}
+
 const results = [];
-for (const scenario of scenarios.slice(0, limit)) {
+let blockedByRateLimit = false;
+for (const [batchIndex, scenario] of selectedScenarios.entries()) {
+  if (batchIndex > 0 && delayMs > 0) await sleep(delayMs);
+
   const startedAt = Date.now();
   const controller = new AbortController();
   const requestTimeoutMs = Math.max(
@@ -96,11 +107,17 @@ for (const scenario of scenarios.slice(0, limit)) {
   } finally {
     clearTimeout(timeoutId);
   }
-  if (response && (!response.ok || !payload)) {
+
+  if (response?.status === 429) {
+    const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
+    blockedByRateLimit = true;
+    failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
+  } else if (response && (!response.ok || !payload)) {
     failures.push(`HTTP ${response.status}: ${payload?.error || "invalid JSON"}`);
   } else if (!response && failures.length === 0) {
     failures.push("request failed without a response");
   }
+
   if (response?.ok && payload) {
     const text = answerText(payload);
     const usedTools = new Set(payload.toolsUsed || []);
@@ -155,14 +172,38 @@ for (const scenario of scenarios.slice(0, limit)) {
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
   }
-  results.push({ id: scenario.id, passed: failures.length === 0, durationMs: Date.now() - startedAt, failures });
+
+  const durationMs = Date.now() - startedAt;
+  const observed = {
+    intent: payload?.intent || payload?.questionPlan?.intent || null,
+    tools: payload?.toolsUsed || [],
+    sources: payload?.sources || [],
+    confidence: Number.isFinite(Number(payload?.confidence)) ? Number(payload.confidence) : null,
+    missingDataCount: Array.isArray(payload?.missingData) ? payload.missingData.length : null,
+    decisionSummaryItems: Array.isArray(payload?.decisionSummary) ? payload.decisionSummary.length : null,
+    followUpQuestions: Array.isArray(payload?.followUpQuestions) ? payload.followUpQuestions.length : null,
+  };
+  results.push({
+    index: offset + batchIndex,
+    id: scenario.id,
+    passed: failures.length === 0,
+    durationMs,
+    failures,
+    observed,
+  });
   console.log(
-    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${Date.now() - startedAt}ms)${
-      failures.length ? ` — ${failures.join("; ")}` : ""
-    }`,
+    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms) ` +
+      `${JSON.stringify(observed)}${failures.length ? ` — ${failures.join("; ")}` : ""}`,
   );
+
+  if (blockedByRateLimit) {
+    console.error("Evaluation stopped because the authenticated test account reached the production rate limit.");
+    break;
+  }
 }
 
 const passed = results.filter((item) => item.passed).length;
-console.log(`Ask Vorta live eval (${scenarioFile}): ${passed}/${results.length} passed.`);
+console.log(`Ask Vorta live eval (${scenarioFile}, offset ${offset}): ${passed}/${results.length} passed.`);
+console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, results }, null, 2));
+if (blockedByRateLimit) process.exit(3);
 if (passed !== results.length) process.exit(1);
