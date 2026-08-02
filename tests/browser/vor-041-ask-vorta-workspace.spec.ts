@@ -1,3 +1,4 @@
+// Final VOR-041 device verification covers phone, tablet portrait, tablet landscape and desktop.
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
