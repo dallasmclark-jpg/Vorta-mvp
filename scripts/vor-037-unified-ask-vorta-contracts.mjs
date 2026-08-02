@@ -15,6 +15,10 @@ const experience = read(
 const mobilePresentation = read(
   "src/screens/AiOperations/mobilePortalHardening.css",
 );
+const workOrderBrowser = read(
+  "tests/browser/maintenance-manager-work-orders.spec.ts",
+);
+const liveGolden = read("tests/evals/ask-vorta-live-golden.json");
 const agent = read("netlify/functions/ask-vorta.mts");
 
 const check = (condition, message) => {
@@ -71,6 +75,24 @@ check(
     agent.includes("get_equipment_history") &&
     agent.includes("search_maintenance_documents"),
   "One agent must select shift-cover or specialist equipment evidence according to the actual question.",
+);
+
+check(
+  workOrderBrowser.includes("What are the shift cover issues today?") &&
+    workOrderBrowser.includes('data-vorta-global-ai-panel="true"') &&
+    workOrderBrowser.includes('data-vorta-fault-panel="true"') &&
+    workOrderBrowser.includes("Recent matching history") &&
+    workOrderBrowser.includes("Equipment SME") &&
+    workOrderBrowser.includes("Corresponding documentation"),
+  "The authenticated browser regression must use the reported wording and reject the retired fault presentation.",
+);
+
+check(
+  liveGolden.includes('"id": "golden-cover-today-unified"') &&
+    liveGolden.includes('"question": "What are the shift cover issues today?"') &&
+    liveGolden.includes('"expectedTools": ["get_shift_cover"]') &&
+    liveGolden.includes("FD-03 Approved Fault-Finding Guide"),
+  "The live agent evaluation must prove the reported wording selects Shift Cover and excludes unrelated fault evidence.",
 );
 
 console.log(
