@@ -27,6 +27,9 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
     page.getByText("Edge Function returned a non-2xx status code", { exact: true }),
   ).toHaveCount(0);
   await expect(page.getByText(/Failed to load|could not be loaded/i)).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Vorta could not verify your access", exact: true }),
+  ).toHaveCount(0);
 }
 
 test("VOR-035 Samsung tablet demo journey remains authoritative and polished", async ({
@@ -45,6 +48,9 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   await expect(
     page.getByRole("heading", { name: "Operations Overview", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Refresh risk intelligence/i }),
+  ).toBeVisible({ timeout: 30_000 });
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   await expect(embeddedAi).toBeVisible();
   await expect(embeddedAi).toHaveCSS("border-top-style", "solid");
@@ -59,6 +65,12 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   await page.goto("/shift-handover");
   await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
   await expect(
+    page.getByText(/Loading activity from the previous/i),
+  ).toHaveCount(0, { timeout: 30_000 });
+  await expect(
+    page.locator("[data-vorta-shift-handover-metric]").first(),
+  ).toBeVisible();
+  await expect(
     page.getByText("Shift handover unavailable", { exact: true }),
   ).toHaveCount(0);
   await expectNoGenericDataFailure(page);
@@ -70,6 +82,12 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
     page.getByRole("heading", { name: /Skills Matrix/i }).first(),
   ).toBeVisible();
   await expect(
+    page.getByText("Loading capability data", { exact: true }),
+  ).toHaveCount(0, { timeout: 30_000 });
+  await expect(
+    page.locator('button[aria-pressed="true"]').first(),
+  ).toBeVisible();
+  await expect(
     page.getByText("Skills capability data could not be loaded", { exact: true }),
   ).toHaveCount(0);
   await expectNoGenericDataFailure(page);
@@ -78,7 +96,10 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
 
   await page.goto("/engineers");
   const tabletEngineers = page.locator('[data-vorta-tablet-engineers="true"]');
-  await expect(tabletEngineers).toBeVisible();
+  await expect(tabletEngineers).toBeVisible({ timeout: 30_000 });
+  await expect(
+    page.getByText("Loading workforce and rota evidence…", { exact: true }),
+  ).toHaveCount(0, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", { name: "Engineers", exact: true }),
   ).toBeVisible();
@@ -86,7 +107,9 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   await expect(page.getByText("Weekend", { exact: true })).toHaveCount(0);
   await expect
     .poll(async () =>
-      page.getByText(/^(Blue|Red|Green|Yellow)( Shift)?$/i).count())
+      page.getByText(/^(Blue|Red|Green|Yellow)( Shift)?$/i).count(),
+      { timeout: 30_000 },
+    )
     .toBeGreaterThanOrEqual(4);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
@@ -94,6 +117,9 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
 
   await page.goto("/stores-inventory");
   await expect(page.locator('[data-vorta-stores-inventory="true"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inventory", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.locator("[data-vorta-data-mode]")).toHaveCount(0);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
@@ -102,7 +128,10 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   await page.goto("/equipment");
   await expect(
     page.getByRole("heading", { name: "Equipment", exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Loading equipment/i)).toHaveCount(0, {
+    timeout: 30_000,
+  });
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
   await captureEvidence(page, testInfo, "equipment-tablet");
