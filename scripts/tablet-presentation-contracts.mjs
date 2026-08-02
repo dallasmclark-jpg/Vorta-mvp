@@ -22,15 +22,21 @@ assert.match(
 );
 assert.ok(
   compactDashboardStyles.includes(
-    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}',
+    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;',
   ),
   "The embedded Ask Vorta control must retain the approved slim, flat outer treatment.",
 );
 assert.ok(
   compactDashboardStyles.includes(
-    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"].flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;box-shadow:none!important}',
+    '&.flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;box-shadow:none!important}',
   ),
   "The embedded Ask Vorta input frame must not draw the rejected blue focus rectangle.",
+);
+assert.ok(
+  compactDashboardStyles.includes(
+    '&input[type="text"]:focus{outline:none!important;box-shadow:none!important}',
+  ),
+  "The Ask Vorta textbox itself must not draw a focus outline or shadow.",
 );
 assert.doesNotMatch(
   dashboardStyles,
