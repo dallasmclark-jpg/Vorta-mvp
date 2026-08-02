@@ -52,3 +52,36 @@ if (!generatedSource.includes(untypedDomains)) {
 }
 generatedSource = generatedSource.replace(untypedDomains, typedDomains);
 writeFileSync(sourcePath, generatedSource);
+
+const latencyContractPath = "scripts/ask-vorta-agent-contracts.mjs";
+let latencyContract = readFileSync(latencyContractPath, "utf8");
+const latencyReplacements = [
+  ['agent.includes("MAX_TOOL_ROUNDS = 5")', 'agent.includes("MAX_TOOL_ROUNDS = 8")'],
+  [
+    'agent.includes(\'const MODEL = "gpt-4.1-mini"\')',
+    'agent.includes(\'const MODEL = "gpt-5.6-terra"\') &&\n    agent.includes(\'const PLANNER_MODEL = "gpt-5.6-luna"\')',
+  ],
+  [
+    '!agent.includes("reasoning: { effort:")',
+    'agent.includes(\'reasoning: { effort: "low" }\') &&\n    agent.includes(\'reasoning: { effort: "medium" }\')',
+  ],
+  [
+    '!agent.includes(\'verbosity: "low"\')',
+    'agent.includes(\'verbosity: "low"\')',
+  ],
+  [
+    'agent.includes("max_output_tokens: 3_000")',
+    'agent.includes("max_output_tokens: 5_000")',
+  ],
+  [
+    '"The agent loop, low-latency model, provider storage and response size must remain bounded for serverless latency."',
+    '"The planner, reasoning loop, provider storage and response size must remain explicitly bounded for serverless latency."',
+  ],
+];
+for (const [search, replacement] of latencyReplacements) {
+  if (!latencyContract.includes(search)) {
+    throw new Error(`The Ask Vorta latency contract marker was not found: ${search}`);
+  }
+  latencyContract = latencyContract.replace(search, replacement);
+}
+writeFileSync(latencyContractPath, latencyContract);
