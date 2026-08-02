@@ -10,6 +10,7 @@ const [
   labourRiskSection,
   riskRouting,
   assistant,
+  agent,
   skills,
   packageText,
   hardenedMigration,
@@ -20,7 +21,8 @@ const [
   read("src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx"),
   read("src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx"),
   read("src/screens/AiOperations/riskActionRouting.ts"),
-  read("src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx"),
+  read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx"),
+  read("netlify/functions/ask-vorta.mts"),
   read("src/screens/SkillsMatrix/SkillsMatrixNative.tsx"),
   read("package.json"),
   read("supabase/migrations/20260718102000_harden_equipment_skill_evidence_showcase.sql"),
@@ -67,10 +69,12 @@ assert.match(labourRiskSection, /\/skills-matrix\?/);
 assert.match(labourRiskSection, /\/training\?/);
 assert.match(labourRiskSection + riskRouting, /from=dashboard/);
 
-assert.match(assistant, /equipmentWorkflowRoute/);
-assert.match(assistant, /Open capability risk/);
-assert.match(assistant, /engineer=\$\{encodeURIComponent\(sme\.id\)\}/);
-assert.match(assistant, /equipmentId=\{result\.primaryEquipment\?\.id \?\? null\}/);
+assert.match(agent, /name: "get_equipment_skills"/);
+assert.match(agent, /SME/);
+assert.match(agent, /backup/);
+assert.match(assistant, /answer\.evidenceLinks/);
+assert.match(assistant, /navigate\(link\.path\)/);
+assert.match(assistant, /Open in Vorta/);
 
 assert.match(skills, /equipmentFilterId/);
 assert.match(skills, /equipmentPriorityRisks/);

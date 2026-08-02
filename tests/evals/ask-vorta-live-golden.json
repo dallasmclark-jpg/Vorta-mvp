@@ -8,6 +8,14 @@
     "mustNotMention": ["23 Jul", "24 Jul", "25 Jul", "26 Jul", "highest priority issues are on the July 29", "definitely available", "has been assigned", "closes 88 missing-skill gaps"]
   },
   {
+    "id": "golden-cover-today-unified",
+    "question": "What are the shift cover issues today?",
+    "expectedTools": ["get_shift_cover"],
+    "mustMention": ["shift"],
+    "mustMentionAny": ["cover", "scheduled", "absence", "skill"],
+    "mustNotMention": ["FD-03 Approved Fault-Finding Guide", "Recent matching history", "Corresponding documentation", "Equipment SME"]
+  },
+  {
     "id": "golden-cover-absence",
     "question": "Who is recorded as off on holiday or training from 27 July to 2 August 2026?",
     "expectedTools": ["get_shift_cover"],

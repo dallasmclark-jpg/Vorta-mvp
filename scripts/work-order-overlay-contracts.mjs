@@ -25,7 +25,7 @@ const aiNavigationSource = readSource(
   "../src/screens/Equipment/EquipmentWorkOrdersWithAiNavigation.tsx",
 );
 const aiAssistantSource = readSource(
-  "../src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx",
+  "../src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
 );
 const maintenanceActionsSource = readSource(
   "../src/lib/maintenanceActions.ts",
@@ -79,8 +79,10 @@ check(
   workOrderPageSource.includes("openWorkOrderDetail"),
 );
 check(
-  "AI fault history opens records explicitly",
-  aiAssistantSource.includes("openWorkOrderDetail"),
+  "Ask Vorta evidence opens records explicitly",
+  aiAssistantSource.includes("answer.evidenceLinks") &&
+    aiAssistantSource.includes("navigate(link.path)") &&
+    aiAssistantSource.includes("Open in Vorta"),
 );
 check(
   "Query-linked work orders open without DOM polling",
