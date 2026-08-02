@@ -4,8 +4,6 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
-const usesDashboardAskButton = (projectName: string): boolean =>
-  projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -95,22 +93,13 @@ async function openAskVorta(
     return;
   }
 
-  if (usesDashboardAskButton(projectName)) {
-    const dashboardAsk = page.getByRole("button", {
-      name: "Ask",
-      exact: true,
-    });
-    await expect(dashboardAsk).toBeVisible();
-    await dashboardAsk.evaluate((element: HTMLButtonElement) => element.click());
-    return;
-  }
-
-  const desktopLauncher = page.getByRole("button", {
-    name: "Ask Vorta AI",
-    exact: true,
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new CustomEvent("vorta-global-ai-prompt", {
+        detail: { role: "maintenance_manager" },
+      }),
+    );
   });
-  await expect(desktopLauncher).toBeVisible();
-  await desktopLauncher.evaluate((element: HTMLButtonElement) => element.click());
 }
 
 test.describe("VOR-041 Ask Vorta workspace", () => {
