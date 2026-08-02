@@ -1,0 +1,28 @@
+name: VOR-036 equipment risk trend gate
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20260802144500_backfill_equipment_risk_trend_buckets.sql"
+      - "scripts/vor-036-equipment-risk-trend-contracts.mjs"
+      - ".github/workflows/vor-036-equipment-risk-trend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  equipment-risk-trend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify VOR-036 migration contract
+        run: node scripts/vor-036-equipment-risk-trend-contracts.mjs
