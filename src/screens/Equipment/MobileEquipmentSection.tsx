@@ -21,7 +21,6 @@ import {
   type LiveEquipmentListPayload,
 } from "./equipmentLiveTrust";
 import { getEquipmentList, type EquipmentListItem } from "./equipmentService";
-import { VerifiedEquipmentImage } from "./VerifiedEquipmentImage";
 
 type RiskFilter = "all" | "critical-high" | "overdue" | "evidence-gaps";
 type SortKey = "risk" | "backlog" | "name" | "evidence";
@@ -175,11 +174,6 @@ export function MobileEquipmentSection({
   useEffect(() => {
     void load();
   }, [load]);
-
-  const recordById = useMemo(
-    () => new Map((livePayload?.records ?? []).map((record) => [record.id, record])),
-    [livePayload],
-  );
 
   const areas = useMemo(
     () =>
@@ -460,12 +454,11 @@ export function MobileEquipmentSection({
       <div className="flex flex-col gap-3">
         {loading && items.length === 0
           ? Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
+              <div key={index} className="h-48 animate-pulse rounded-xl border border-gray-800 bg-[#141820]" />
             ))
           : filtered.map((item) => {
               const driver = item.breakdown[0];
               const tone = riskTone(item.riskLevel);
-              const record = recordById.get(item.id);
 
               return (
                 <article
@@ -473,19 +466,11 @@ export function MobileEquipmentSection({
                   data-vorta-group-frame="true"
                   className="w-full rounded-xl border border-gray-800 bg-[#141820] p-3"
                 >
-                  <VerifiedEquipmentImage
-                    src={record?.imageUrl}
-                    equipmentName={item.name}
-                    equipmentType={item.type}
-                    equipmentCode={item.assetNumber}
-                    className="h-40 w-full"
-                  />
-
                   <button
                     type="button"
                     onClick={() => navigate(equipmentRoute(item.id, "overview"))}
                     aria-label={`Open overview for ${item.name}, ${item.assetNumber}`}
-                    className="mt-3 flex min-h-16 w-full items-start justify-between gap-3 rounded-lg px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                    className="flex min-h-16 w-full items-start justify-between gap-3 rounded-lg px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-base font-semibold leading-6 text-slate-100">{item.name}</p>
