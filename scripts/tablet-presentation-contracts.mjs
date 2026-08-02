@@ -15,8 +15,8 @@ const [styles, dashboardStyles, engineersRoute] = await Promise.all([
 
 assert.match(
   styles,
-  /\[data-vorta-card="true"\][\s\S]*> \[class~="pt-0"\]:first-child/,
-  "Content-only cards must recover their top padding.",
+  /\[data-vorta-card="true"\][\s\S]*> \[class\*="pt-0"\]:first-child/,
+  "Responsive content-only cards must recover their top padding.",
 );
 assert.match(
   dashboardStyles,
