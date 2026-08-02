@@ -1,16 +1,19 @@
 name: VOR-039 agent patch v2
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/vor-039-ask-vorta-confidence-latency
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   patch-and-verify:
-    if: ${{ !contains(github.event.head_commit.message, '[vor-039 patched]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
