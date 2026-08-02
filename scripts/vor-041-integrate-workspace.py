@@ -28,11 +28,16 @@ if 'type AskVortaWorkspaceMessage' not in assistant:
         "workspace import",
     )
 
-if "const navigate = useNavigate();\n  const { siteContext }" not in assistant:
+main_navigate = (
+    "  const roleProfile = getRoleProfile(role);\n"
+    "  const navigate = useNavigate();\n"
+    "  const { siteContext } = useAuth();"
+)
+if main_navigate not in assistant:
     assistant = replace_once(
         assistant,
         "  const roleProfile = getRoleProfile(role);\n  const { siteContext } = useAuth();",
-        "  const roleProfile = getRoleProfile(role);\n  const navigate = useNavigate();\n  const { siteContext } = useAuth();",
+        main_navigate,
         "main navigate hook",
     )
 
