@@ -7,8 +7,6 @@ import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
 
 function OriginalShiftCoverRota(): JSX.Element {
-  // Keep the synthetic child location beneath /engineers so
-  // LabourRiskDetailPage receives the shift-cover risk type.
   return (
     <div className="contents" data-vorta-original-shift-rota="true">
       <Routes location="/engineers/shift-cover">
@@ -22,9 +20,13 @@ export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const isPhone = useMediaQuery("(max-width: 767px)");
-  const usesOriginalRota = useMediaQuery(
-    "(min-width: 768px) and (max-width: 1600px)",
-  );
+  const isNarrowTablet = useMediaQuery("(min-width: 768px) and (max-width: 1439px)");
+  const hasCoarsePointer = useMediaQuery("(any-pointer: coarse)");
+  const hasNoHover = useMediaQuery("(hover: none)");
+  const hasTouchPoints =
+    typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+  const usesOriginalRota =
+    isNarrowTablet || hasTouchPoints || hasCoarsePointer || hasNoHover;
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>

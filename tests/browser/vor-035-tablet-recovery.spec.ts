@@ -32,29 +32,31 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
   ).toHaveCount(0);
 }
 
-test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async ({
+test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   page,
 }, testInfo) => {
-  const viewport = page.viewportSize();
-  const viewportWidth = viewport?.width ?? 0;
   test.skip(
-    viewportWidth < 768 || viewportWidth > 1600,
-    "VOR-035 recovery evidence is tablet-width only.",
+    !testInfo.project.name.startsWith("samsung-tablet"),
+    "VOR-035 recovery evidence is Samsung tablet-only.",
   );
 
+  const viewport = page.viewportSize();
   const browserProfile = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     maxTouchPoints: navigator.maxTouchPoints,
+    coarsePointer: window.matchMedia("(any-pointer: coarse)").matches,
+    noHover: window.matchMedia("(hover: none)").matches,
     width: window.innerWidth,
     height: window.innerHeight,
   }));
   expect(browserProfile.width).toBe(viewport?.width);
   expect(browserProfile.height).toBe(viewport?.height);
+  expect(browserProfile.maxTouchPoints).toBeGreaterThan(0);
 
-  if (viewportWidth === 1536) {
+  if (testInfo.project.name === "samsung-tablet-landscape") {
+    expect(browserProfile.width).toBe(1536);
     expect(browserProfile.height).toBe(959);
     expect(browserProfile.userAgent).not.toContain("Android");
-    expect(browserProfile.maxTouchPoints).toBe(0);
   }
 
   await signInMaintenanceManager(page);
@@ -75,7 +77,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   ).toBeVisible();
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "dashboard-tablet");
+  await captureEvidence(page, testInfo, "dashboard-samsung");
 
   await page.goto("/shift-handover");
   await expect(page.locator('[data-vorta-shift-handover="true"]')).toBeVisible();
@@ -90,7 +92,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   ).toHaveCount(0);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "shift-handover-tablet");
+  await captureEvidence(page, testInfo, "shift-handover-samsung");
 
   await page.goto("/skills-matrix");
   await expect(
@@ -107,7 +109,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   ).toHaveCount(0);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "skills-matrix-tablet");
+  await captureEvidence(page, testInfo, "skills-matrix-samsung");
 
   await page.goto("/engineers");
   const originalRota = page.locator('[data-vorta-original-shift-rota="true"]');
@@ -119,6 +121,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
     page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Verified weekly coverage", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-vorta-live-engineers="true"]')).toHaveCount(0);
 
   for (const team of [
     "Yellow Shift",
@@ -147,7 +150,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   await expect(page.getByText("Tonight's Risk", { exact: true })).toBeVisible();
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "engineers-original-rota-tablet");
+  await captureEvidence(page, testInfo, "engineers-original-rota-samsung");
 
   await page
     .getByRole("button", { name: "Resolve Tonight's Cover", exact: true })
@@ -165,7 +168,7 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   await expect(page.locator("[data-vorta-data-mode]")).toHaveCount(0);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "stores-inventory-tablet");
+  await captureEvidence(page, testInfo, "stores-inventory-samsung");
 
   await page.goto("/equipment");
   await expect(
@@ -176,5 +179,5 @@ test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async
   });
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "equipment-tablet");
+  await captureEvidence(page, testInfo, "equipment-samsung");
 });
