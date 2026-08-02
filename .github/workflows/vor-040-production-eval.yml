@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     env:
-      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-      VORTA_SUPABASE_KEY_PREFIX: ${{ vars.VORTA_SUPABASE_KEY_PREFIX }}
-      VORTA_SUPABASE_KEY_SUFFIX: ${{ vars.VORTA_SUPABASE_KEY_SUFFIX }}
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
