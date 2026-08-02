@@ -9,11 +9,8 @@ import { MobileEngineersSection } from "./MobileEngineersSection";
 function OriginalShiftCoverRota(): JSX.Element {
   return (
     <div className="contents" data-vorta-original-shift-rota="true">
-      <Routes location="/labour-risk/shift-cover">
-        <Route
-          path="/labour-risk/:riskType"
-          element={<LabourRiskDetailPage />}
-        />
+      <Routes location="/engineers/shift-cover">
+        <Route path=":riskType" element={<LabourRiskDetailPage />} />
       </Routes>
     </div>
   );
