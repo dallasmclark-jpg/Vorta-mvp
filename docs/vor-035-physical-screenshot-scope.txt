@@ -1,0 +1,6 @@
+Reviewed physical Samsung landscape screenshots:
+- Dashboard: content-only KPI text is too close to card tops; embedded Ask Vorta presentation is downgraded.
+- Equipment: content-only KPI text is too close to card tops.
+- Skills Matrix: team-colour left/top/right card edges are missing.
+- Engineers: original full rota is correct and must remain untouched.
+- Training Providers: content-only KPI text is too close to card tops.
