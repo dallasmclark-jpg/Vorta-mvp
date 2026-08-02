@@ -93,9 +93,10 @@ check(
 );
 
 check(
-  agent.includes("MAX_TOOL_ROUNDS = 5") &&
+  agent.includes("MAX_TOOL_ROUNDS = 8") &&
     agent.includes("MAX_TOOL_OUTPUT_CHARACTERS") &&
-    agent.includes('const MODEL = "gpt-4.1-mini"') &&
+    agent.includes('const MODEL = "gpt-5.6-terra"') &&
+    agent.includes('const PLANNER_MODEL = "gpt-5.6-luna"') &&
     agent.includes("compactShiftCoverData") &&
     agent.includes("normaliseRelativeShiftCoverArguments") &&
     agent.includes("start_date: formatUtcDate(start)") &&
@@ -117,10 +118,11 @@ check(
     agent.includes("Ask Vorta is read-only and cannot change Vorta records") &&
     agent.includes("priorityShiftCountWithDetailedEvidence") &&
     agent.includes("store: false") &&
-    !agent.includes("reasoning: { effort:") &&
-    !agent.includes('verbosity: "low"') &&
-    agent.includes("max_output_tokens: 3_000"),
-  "The agent loop, low-latency model, provider storage and response size must remain bounded for serverless latency.",
+    agent.includes('reasoning: { effort: "low" }') &&
+    agent.includes('reasoning: { effort: "medium" }') &&
+    agent.includes('verbosity: "low"') &&
+    agent.includes("max_output_tokens: 5_000"),
+  "The planner, reasoning loop, provider storage and response size must remain explicitly bounded for serverless latency.",
 );
 
 check(

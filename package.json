@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
-    "typecheck": "node scripts/run-vor-038-build-patch.mjs && tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
+    "typecheck": "tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
     "typecheck:functions": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 --lib ES2022,DOM netlify/functions/ask-vorta.mts",
     "test:contracts": "node scripts/run-contract-suite.mjs",
     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
@@ -19,7 +19,8 @@
     "build:metadata": "node scripts/write-build-metadata.mjs",
     "build": "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
     "postbuild": "npm run test:performance",
-    "check": "npm run build"
+    "check": "npm run build",
+    "eval:ask-vorta:vor038": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-038-intelligence.json"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",

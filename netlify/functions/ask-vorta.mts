@@ -28,9 +28,10 @@ interface ToolResult {
   message?: string;
 }
 
-const MODEL = "gpt-4.1-mini";
-const MAX_TOOL_ROUNDS = 5;
-const MAX_TOOL_OUTPUT_CHARACTERS = 35_000;
+const MODEL = "gpt-5.6-terra";
+const PLANNER_MODEL = "gpt-5.6-luna";
+const MAX_TOOL_ROUNDS = 8;
+const MAX_TOOL_OUTPUT_CHARACTERS = 50_000;
 const RATE_LIMIT_WINDOW_MINUTES = 5;
 const RATE_LIMIT_REQUESTS = 12;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,6 +75,14 @@ const TOOLS: Tool[] = [
   },
   {
     type: "function",
+    name: "get_site_operational_snapshot",
+    description:
+      "Get a cross-domain maintenance-manager decision snapshot covering current site risk, open work backlog, critical spares, capability dependencies and the latest shift handover. Use this for broad or vague questions such as what should I worry about, what needs attention, what should we do first, what changed or what could stop the site.",
+    parameters: EMPTY_PARAMETERS,
+    strict: true,
+  },
+  {
+    type: "function",
     name: "get_equipment_risk",
     description:
       "Get current equipment risk records. Use an empty query for the risk-ranked site list, or a name, code or area to narrow it. This tool returns the exact equipment UUID required by equipment-specific tools.",
@@ -83,6 +92,24 @@ const TOOLS: Tool[] = [
         query: {
           type: "string",
           description: "Equipment name, equipment code or area. Use an empty string for all equipment.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    type: "function",
+    name: "get_equipment_decision_pack",
+    description:
+      "Resolve one equipment item from a natural-language name or code and return a compact cross-domain decision pack with risk, work, PM/calibration, skills, spares, risk-reduction actions, history and documents. Use for broad equipment questions, unclear equipment follow-ups or questions that combine several asset evidence domains.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Natural-language equipment name, equipment code or unambiguous asset reference.",
         },
       },
       required: ["query"],
@@ -416,6 +443,70 @@ const ANSWER_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+
+const QUESTION_PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    intentLabel: { type: "string" },
+    decisionGoal: { type: "string" },
+    scope: {
+      type: "string",
+      enum: [
+        "site_priorities",
+        "equipment",
+        "shift_cover",
+        "handover",
+        "work",
+        "maintenance_plan",
+        "spares",
+        "skills",
+        "contractor",
+        "documents",
+        "mixed",
+        "write_request",
+        "out_of_scope",
+      ],
+    },
+    shouldUseTools: { type: "boolean" },
+    requiredTools: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 8,
+    },
+    optionalTools: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 8,
+    },
+    equipmentQuery: { type: "string" },
+    startDate: { type: "string" },
+    endDate: { type: "string" },
+    ambiguity: { type: "string" },
+    answerFocus: { type: "string" },
+    verificationChecks: {
+      type: "array",
+      items: { type: "string" },
+      minItems: 1,
+      maxItems: 6,
+    },
+  },
+  required: [
+    "intentLabel",
+    "decisionGoal",
+    "scope",
+    "shouldUseTools",
+    "requiredTools",
+    "optionalTools",
+    "equipmentQuery",
+    "startDate",
+    "endDate",
+    "ambiguity",
+    "answerFocus",
+    "verificationChecks",
+  ],
+  additionalProperties: false,
+} as const;
+
 function jsonResponse(body: unknown, status = 200): Response {
   return Response.json(body, {
     status,
@@ -439,7 +530,7 @@ function parseRequest(value: unknown): AskVortaRequest | null {
   const siteId = requiredText(record.siteId, 100);
   const rawRole = requiredText(record.role, 80);
   const role = rawRole && ALLOWED_ROLES.has(rawRole) ? rawRole : null;
-  const rawHistory = Array.isArray(record.history) ? record.history.slice(-8) : [];
+  const rawHistory = Array.isArray(record.history) ? record.history.slice(-12) : [];
   const history: RequestHistoryItem[] = rawHistory.flatMap((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return [];
     const row = item as JsonRecord;
@@ -563,6 +654,33 @@ function compactShiftCoverData(value: unknown): unknown {
     },
     detailScope:
       "All shift summaries are included. Named rota-off, candidate, package and skill-by-asset detail is limited to the four highest-priority shifts.",
+  };
+}
+
+
+function compactDecisionData(value: unknown, depth = 0): unknown {
+  if (depth > 5) return "Further nested evidence omitted from the compact decision pack.";
+  if (typeof value === "string") {
+    return value.length > 1_500 ? value.slice(0, 1_500) + "…" : value;
+  }
+  if (Array.isArray(value)) {
+    const limit = depth === 0 ? 20 : 12;
+    return value.slice(0, limit).map((item) => compactDecisionData(item, depth + 1));
+  }
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as JsonRecord)
+      .slice(0, 60)
+      .map(([key, item]) => [key, compactDecisionData(item, depth + 1)]),
+  );
+}
+
+function compactToolDomain(result: ToolResult): JsonRecord {
+  return {
+    source: result.source,
+    status: result.status,
+    data: compactDecisionData(result.data),
+    message: result.message,
   };
 }
 
@@ -1165,6 +1283,8 @@ function evidenceLinkForTool(name: string, args: JsonRecord): EvidenceLink | nul
   const equipmentPath = equipment ? `/equipment/${encodeURIComponent(equipment)}` : null;
   const links: Record<string, EvidenceLink> = {
     get_site_risk: { label: "Open site risk", path: "/dashboard", recordType: "risk" },
+    get_site_operational_snapshot: { label: "Open operational dashboard", path: "/dashboard", recordType: "risk" },
+    get_equipment_decision_pack: { label: "Open equipment register", path: "/equipment", recordType: "equipment" },
     get_equipment_risk: { label: "Open equipment", path: "/equipment", recordType: "equipment" },
     get_shift_cover: { label: "Open Shift Cover", path: "/shift-cover", recordType: "shift" },
     get_shift_handover: { label: "Open Shift Handover", path: "/shift-handover", recordType: "handover" },
@@ -1244,6 +1364,40 @@ async function executeTool(
     case "get_site_risk":
       return rpcTool(supabase, "Current risk dashboard", "vorta_get_operational_dashboard_snapshot");
 
+
+    case "get_site_operational_snapshot": {
+      const domainDefinitions: Array<[string, Promise<ToolResult>]> = [
+        ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
+        ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
+        ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
+        ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
+        ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
+      ];
+      const domainEntries = await Promise.all(
+        domainDefinitions.map(async ([key, pending]) => [
+          key,
+          compactToolDomain(await pending),
+        ] as const),
+      );
+      const domains = Object.fromEntries(domainEntries) as Record<string, JsonRecord>;
+      const statuses = Object.values(domains).map((item) => item.status);
+      const status: ToolResult["status"] = statuses.some((item) => item === "ok")
+        ? "ok"
+        : statuses.some((item) => item === "empty")
+          ? "empty"
+          : "unavailable";
+      return {
+        source: "Cross-domain operational decision snapshot",
+        status,
+        data: {
+          generatedAt: new Date().toISOString(),
+          domains,
+          caveat:
+            "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",
+        },
+      };
+    }
+
     case "get_equipment_risk": {
       const result = await rpcTool(
         supabase,
@@ -1259,6 +1413,99 @@ async function executeTool(
           .some((value) => value.toLowerCase().includes(query));
       });
       return { ...result, status: rows.length ? "ok" : "empty", data: rows };
+    }
+
+
+    case "get_equipment_decision_pack": {
+      const query = requiredText(args.query, 300);
+      if (!query) {
+        return {
+          source: "Equipment cross-domain decision pack",
+          status: "unavailable",
+          message: "A natural-language equipment name or code is required.",
+        };
+      }
+      const riskResult = await executeTool(
+        "get_equipment_risk",
+        { query },
+        supabase,
+        request,
+      );
+      const matches = records(riskResult.data);
+      if (riskResult.status !== "ok" || matches.length === 0) {
+        return {
+          source: "Equipment cross-domain decision pack",
+          status: riskResult.status,
+          data: { query, matches: compactDecisionData(matches) },
+          message: riskResult.message ?? "No authorised equipment matched the reference.",
+        };
+      }
+      const normalisedQuery = query.trim().toLowerCase();
+      const exactMatch = matches.find((item) =>
+        [item.equipment_name, item.equipment_code, item.name, item.code]
+          .filter((value): value is string => typeof value === "string")
+          .some((value) => value.trim().toLowerCase() === normalisedQuery),
+      );
+      const selected = exactMatch ?? (matches.length === 1 ? matches[0] : null);
+      if (!selected) {
+        return {
+          source: "Equipment cross-domain decision pack",
+          status: "ok",
+          data: {
+            query,
+            ambiguous: true,
+            matches: compactDecisionData(matches.slice(0, 8)),
+            instruction:
+              "Several authorised assets match. Ask one focused clarification using the displayed name or equipment code; do not choose an asset silently.",
+          },
+        };
+      }
+      const equipmentIdValue = [
+        selected.equipment_id,
+        selected.equipmentId,
+        selected.id,
+      ].find((value) => typeof value === "string" && value.trim().length > 0);
+      if (typeof equipmentIdValue !== "string") {
+        return {
+          source: "Equipment cross-domain decision pack",
+          status: "unavailable",
+          data: { query, equipment: compactDecisionData(selected) },
+          message: "The matched equipment record did not expose its authorised identifier.",
+        };
+      }
+      const domainNames = [
+        "get_equipment_work",
+        "get_equipment_calibrations",
+        "get_equipment_skills",
+        "get_equipment_spares",
+        "get_equipment_risk_actions",
+        "get_equipment_history",
+        "get_equipment_documents",
+      ] as const;
+      const domainEntries = await Promise.all(
+        domainNames.map(async (toolName) => [
+          toolName,
+          compactToolDomain(
+            await executeTool(
+              toolName,
+              { equipment_id: equipmentIdValue },
+              supabase,
+              request,
+            ),
+          ),
+        ] as const),
+      );
+      return {
+        source: "Equipment cross-domain decision pack",
+        status: "ok",
+        data: {
+          query,
+          equipment: compactDecisionData(selected),
+          domains: Object.fromEntries(domainEntries),
+          caveat:
+            "Use search_maintenance_documents as an additional specialist lookup when the question asks for a fault code, procedure, drawing, manual section or exact technical instruction.",
+        },
+      };
     }
 
     case "get_shift_cover": {
@@ -1823,7 +2070,69 @@ async function executeTool(
   }
 }
 
-function systemInstructions(request: AskVortaRequest): string {
+
+async function buildQuestionPlan(
+  client: OpenAI,
+  request: AskVortaRequest,
+): Promise<JsonRecord | null> {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: request.pageContext.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const availableTools = TOOLS.flatMap((tool) =>
+    tool.type === "function" ? [tool.name] : [],
+  );
+  const plannerInput: ResponseInput = [
+    ...request.history.slice(-8).map((item) => ({
+      role: item.role,
+      content: item.content,
+    })),
+    { role: "user", content: request.question },
+  ];
+  const response = await client.responses.create({
+    model: Netlify.env.get("VORTA_AI_PLANNER_MODEL") || PLANNER_MODEL,
+    reasoning: { effort: "low" },
+    instructions: [
+      "You are the semantic planning layer for Ask Vorta.",
+      "Infer the maintenance manager's real decision goal from meaning, not keywords. Handle spelling mistakes, shorthand, natural speech, follow-ups, pronouns such as it or that one, and questions that combine several domains.",
+      "The word issue does not mean equipment fault. Choose evidence by the actual subject and requested decision.",
+      "Use conversation history and the current page to resolve references. If several equipment items genuinely match, mark the ambiguity rather than guessing.",
+      "Current or dated site facts require Vorta tools. Pure write commands remain read-only. Advisory questions such as what should we order or who should cover still require evidence tools.",
+      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools when dates, shifts, people or exact records matter.",
+      "Use get_equipment_decision_pack for broad multi-domain equipment questions. For a narrow asset question, plan get_equipment_risk followed by only the specialist tools needed.",
+      "For plan-achievability questions combine get_site_maintenance_plan with get_shift_cover. For cross-domain questions list every evidence tool needed to answer every part.",
+      "Relative dates must be interpreted from the supplied local date and timezone. Leave startDate and endDate empty only when no date scope is needed.",
+      "requiredTools must contain exact names from the available tool list. A plan is routing guidance, never evidence.",
+      "Available tools: " + availableTools.join(", ") + ".",
+      "Current local date: " + today + ". Timezone: " + request.pageContext.timezone + ".",
+      "Current page: " + request.pageContext.path + ". User role: " + request.role + ".",
+    ].join("\n"),
+    input: plannerInput,
+    max_output_tokens: 1_200,
+    store: false,
+    text: {
+      verbosity: "low",
+      format: {
+        type: "json_schema",
+        name: "vorta_question_plan",
+        strict: true,
+        schema: QUESTION_PLAN_SCHEMA,
+      },
+    },
+  });
+  const plan = JSON.parse(response.output_text) as JsonRecord;
+  const knownTools = new Set(availableTools);
+  plan.requiredTools = textValues(plan.requiredTools).filter((name) => knownTools.has(name));
+  plan.optionalTools = textValues(plan.optionalTools).filter((name) => knownTools.has(name));
+  return plan;
+}
+
+function systemInstructions(
+  request: AskVortaRequest,
+  questionPlan: JsonRecord | null,
+): string {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: request.pageContext.timezone,
     year: "numeric",
@@ -1836,6 +2145,12 @@ function systemInstructions(request: AskVortaRequest): string {
     "You may use only the supplied Vorta tools and conversation context. Never use general-world facts as evidence, never browse the web, and never invent site records.",
     "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",
     "Do not give a management slogan when Vorta contains names, dates, order numbers, part codes, quantities, risk reductions or prior-work evidence. Surface the decision-ready detail.",
+    "Understand any natural wording rather than matching prepared questions. Correct obvious spelling mistakes silently, interpret shorthand, use history for follow-ups and answer every material part of a mixed question.",
+    "The semantic question plan is a routing hypothesis, not evidence. Verify it against actual tool results, call any missing required evidence tool before finalising, and deviate from the plan when the returned evidence proves a better route.",
+    "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence when the decision depends on a specific period.",
+    "For broad equipment questions use get_equipment_decision_pack. If it reports more than one plausible match, state the options and ask one focused clarification rather than choosing silently.",
+    "Cross-check conclusions across domains. Examples: a work order is not executable if the required part or skill is missing; a PM plan is not achievable merely because labour headcount exists; and the highest numerical risk is not automatically the first action if the intervention is not executable.",
+    "Before answering, test the proposed conclusion against contradictory evidence, source freshness, missing data and the question actually asked. Do not hide conflict behind a confidence score.",
     "For shift-cover questions, always call get_shift_cover. State who is scheduled on the risky shift, who has a recorded holiday/training/absence exception, which engineers are off-rota, which named skills and assets are exposed, and the ranked cover candidates or calculated cover package.",
     "Distinguish rota headcount, validated skill coverage, recorded absence and fatigue/rest restrictions. Do not call a skill-only exposure reduced cover. State both counts when rota and skill risks differ.",
     "For the priority shift, findings must name every scheduled engineer, every rota-off engineer returned, the highest missing skills with their asset names/codes, and the most serious residual gaps after the best cover package.",
@@ -1865,6 +2180,9 @@ function systemInstructions(request: AskVortaRequest): string {
     "This is read-only. Do not imply that a shift, work order, stock record or other source record has been changed.",
     `Current local date: ${today}. User timezone: ${request.pageContext.timezone}. Current Vorta page: ${request.pageContext.path}.`,
     `User role: ${request.role}.`,
+    questionPlan
+      ? `Semantic question plan (routing guidance only): ${JSON.stringify(questionPlan)}`
+      : "Semantic question plan unavailable. Infer the decision goal carefully and verify it with Vorta evidence.",
   ].join("\n");
 }
 
@@ -1949,6 +2267,15 @@ export default async function handler(req: Request, _context: Context): Promise<
   }
 
   const client = new OpenAI();
+  let questionPlan: JsonRecord | null = null;
+  try {
+    questionPlan = await buildQuestionPlan(client, request);
+  } catch (error) {
+    console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
+      requestId: _context.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   const input: ResponseInput = [
     ...request.history.map((item) => ({
       role: item.role,
@@ -1966,14 +2293,19 @@ export default async function handler(req: Request, _context: Context): Promise<
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await client.responses.create({
         model: Netlify.env.get("VORTA_AI_MODEL") || MODEL,
-        instructions: systemInstructions(request),
+        reasoning: { effort: "medium" },
+        instructions: systemInstructions(request, questionPlan),
         input,
         tools: TOOLS,
-        tool_choice: "auto",
+        tool_choice:
+          round === 0 && questionPlan?.shouldUseTools === true
+            ? "required"
+            : "auto",
         parallel_tool_calls: true,
-        max_output_tokens: 3_000,
+        max_output_tokens: 5_000,
         store: false,
         text: {
+          verbosity: "low",
           format: {
             type: "json_schema",
             name: "vorta_maintenance_answer",
@@ -1988,6 +2320,20 @@ export default async function handler(req: Request, _context: Context): Promise<
       input.push(...(response.output as unknown as ResponseInput));
       const toolCalls = response.output.filter((item) => item.type === "function_call");
       if (toolCalls.length === 0) {
+        const plannedRequiredTools = textValues(questionPlan?.requiredTools);
+        const missingPlannedTools = plannedRequiredTools.filter(
+          (toolName) => !usedTools.has(toolName),
+        );
+        if (missingPlannedTools.length > 0 && round < MAX_TOOL_ROUNDS - 1) {
+          input.push({
+            role: "user",
+            content:
+              "Evidence completeness check: the semantic plan still requires these Vorta tools before a final answer: " +
+              missingPlannedTools.join(", ") +
+              ". Call the relevant tools now, or use the returned evidence to explain why a planned tool is genuinely inapplicable. Do not answer from the plan itself.",
+          });
+          continue;
+        }
         const answer = JSON.parse(response.output_text) as JsonRecord;
         enforceAnswerEvidence(
           answer,
