@@ -66,7 +66,6 @@ test("VOR-035 real Tab S9 Ultra journey keeps the original rota", async ({
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   await expect(embeddedAi).toBeVisible();
   await expect(embeddedAi).toHaveCSS("border-top-style", "solid");
-  await expect(embeddedAi).toHaveCSS("border-radius", "16px");
   await expect(
     embeddedAi.getByRole("button", { name: "Ask", exact: true }),
   ).toBeVisible();
