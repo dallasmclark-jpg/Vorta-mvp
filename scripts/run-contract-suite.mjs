@@ -26,6 +26,7 @@ const contracts = [
   ["Final mobile portal polish", "scripts/mobile-portal-final-polish-contracts.mjs"],
   ["Mobile typography", "scripts/mobile-typography-contracts.mjs"],
   ["Shared card surfaces", "scripts/card-surface-contracts.mjs"],
+  ["Tablet presentation recovery", "scripts/tablet-presentation-contracts.mjs"],
   ["Maintenance portal workflow", "scripts/maintenance-portal-workflow-contracts.mjs"],
   ["Requirements live evidence", "scripts/requirements-live-evidence-contracts.mjs"],
   ["Engineers live evidence", "scripts/engineers-live-evidence-contracts.mjs"],

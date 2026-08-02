@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 async function expectNoPageOverflow(page: Page): Promise<void> {
@@ -30,6 +30,41 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "Vorta could not verify your access", exact: true }),
   ).toHaveCount(0);
+}
+
+async function expectContentOnlyCardPadding(page: Page, pageName: string): Promise<void> {
+  const content = page
+    .locator('[data-vorta-card="true"] > [class*="pt-0"]:first-child')
+    .first();
+  await expect(content, `${pageName} must expose responsive CardContent`).toBeVisible();
+  const paddingTop = await content.evaluate((element) =>
+    Number.parseFloat(window.getComputedStyle(element).paddingTop),
+  );
+  expect(
+    paddingTop,
+    `${pageName} card content must retain visible top breathing room`,
+  ).toBeGreaterThanOrEqual(20);
+}
+
+async function expectCapabilityBorder(
+  card: Locator,
+  expectedTopColour: string,
+  label: string,
+): Promise<void> {
+  await expect(card, `${label} capability card must be visible`).toBeVisible();
+  const border = await card.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      top: style.borderTopColor,
+      left: style.borderLeftColor,
+      right: style.borderRightColor,
+      bottom: style.borderBottomColor,
+    };
+  });
+
+  expect(border.top, `${label} top edge must use its team colour`).toBe(expectedTopColour);
+  expect(border.left, `${label} left edge must not be neutral`).not.toBe(border.bottom);
+  expect(border.right, `${label} right edge must not be neutral`).not.toBe(border.bottom);
 }
 
 test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
@@ -72,9 +107,18 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   await expect(embeddedAi).toBeVisible();
   await expect(embeddedAi).toHaveCSS("border-top-style", "solid");
-  await expect(
-    embeddedAi.getByRole("button", { name: "Ask", exact: true }),
-  ).toBeVisible();
+  await expect(embeddedAi).toHaveCSS("border-radius", "16px");
+  const askButton = embeddedAi.getByRole("button", { name: "Ask", exact: true });
+  await expect(askButton).toBeVisible();
+  const askButtonSize = await askButton.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      minWidth: Number.parseFloat(style.minWidth),
+      minHeight: Number.parseFloat(style.minHeight),
+    };
+  });
+  expect(askButtonSize.minWidth).toBeGreaterThanOrEqual(96);
+  expect(askButtonSize.minHeight).toBeGreaterThanOrEqual(48);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
   await captureEvidence(page, testInfo, "dashboard-samsung");
@@ -107,6 +151,28 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   await expect(
     page.getByText("Skills capability data could not be loaded", { exact: true }),
   ).toHaveCount(0);
+
+  await expectCapabilityBorder(
+    page.locator('button[aria-pressed][class~="border-t-red-500"]').first(),
+    "rgb(239, 68, 68)",
+    "Red Shift",
+  );
+  await expectCapabilityBorder(
+    page.locator('button[aria-pressed][class~="border-t-emerald-500"]').first(),
+    "rgb(16, 185, 129)",
+    "Green Shift",
+  );
+  await expectCapabilityBorder(
+    page.locator('button[aria-pressed][class~="border-t-blue-500"]').first(),
+    "rgb(59, 130, 246)",
+    "Blue Shift",
+  );
+  await expectCapabilityBorder(
+    page.locator('button[aria-pressed][class~="border-t-yellow-400"]').first(),
+    "rgb(250, 204, 21)",
+    "Yellow Shift",
+  );
+
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
   await captureEvidence(page, testInfo, "skills-matrix-samsung");
@@ -177,7 +243,17 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   await expect(page.getByText(/Loading equipment/i)).toHaveCount(0, {
     timeout: 30_000,
   });
+  await expectContentOnlyCardPadding(page, "Equipment");
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
   await captureEvidence(page, testInfo, "equipment-samsung");
+
+  await page.goto("/training-providers");
+  await expect(
+    page.getByRole("heading", { name: "Training Providers", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expectContentOnlyCardPadding(page, "Training Providers");
+  await expectNoGenericDataFailure(page);
+  await expectNoPageOverflow(page);
+  await captureEvidence(page, testInfo, "training-providers-samsung");
 });

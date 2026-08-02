@@ -48,16 +48,13 @@ html.dark {
  * blue states, charts and status badges keep their operational meaning.
  */
 [data-vorta-page-content="true"] :where(
-  [class*="rounded-xl"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-xl"][class*="border"][class*="bg-[#1"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-[#1"],
-  [class*="rounded-xl"][class*="border"][class*="bg-slate-9"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-slate-9"],
-  [class*="rounded-xl"][class*="border"][class*="bg-gray-9"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-gray-9"],
-  [class*="rounded-xl"][class*="border"]:not([class*="bg-"]),
-  [class*="rounded-2xl"][class*="border"]:not([class*="bg-"])
+  :is([class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
+    [class*="bg-[#0"],
+    [class*="bg-[#1"],
+    [class*="bg-slate-9"],
+    [class*="bg-gray-9"],
+    :not([class*="bg-"])
+  )
 ) {
   border-color: var(--vorta-surface-border) !important;
   background-color: var(--vorta-surface-card) !important;
@@ -74,25 +71,45 @@ html.dark {
 html [data-vorta-page-content="true"] :where(
   .vorta-card,
   [data-vorta-card="true"],
-  [class*="rounded-xl"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-xl"][class*="border"][class*="bg-[#1"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-2xl"][class*="border"][class*="bg-[#1"]
+  :is([class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
+    [class*="bg-[#0"],
+    [class*="bg-[#1"]
+  )
 ) :where(
-  [class*="rounded-lg"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-lg"][class*="border"][class*="bg-[#1"],
-  [class*="rounded-xl"][class*="border"][class*="bg-[#0"],
-  [class*="rounded-xl"][class*="border"][class*="bg-[#1"],
-  [class*="rounded-lg"][class*="border"][class*="bg-slate-9"],
-  [class*="rounded-xl"][class*="border"][class*="bg-slate-9"],
-  [class*="rounded-lg"][class*="border"][class*="bg-gray-9"],
-  [class*="rounded-xl"][class*="border"][class*="bg-gray-9"],
-  [class*="rounded-lg"][class*="border"]:not([class*="bg-"]),
-  [class*="rounded-xl"][class*="border"]:not([class*="bg-"])
+  :is([class*="rounded-lg"], [class*="rounded-xl"])[class*="border"]:is(
+    [class*="bg-[#0"],
+    [class*="bg-[#1"],
+    [class*="bg-slate-9"],
+    [class*="bg-gray-9"],
+    :not([class*="bg-"])
+  )
 ) {
   border-color: var(--vorta-surface-raised-border) !important;
   background-color: var(--vorta-surface-raised) !important;
   box-shadow: var(--vorta-surface-raised-shadow) !important;
+}
+
+@media (min-width: 768px) {
+  [data-vorta-page-content="true"] [data-vorta-card="true"] > [class*="pt-0"]:first-child {
+    padding-top: 1.25rem !important;
+  }
+}
+
+.border-t-blue-400 { --vorta-capability-edge: #60a5fa; }
+.border-t-red-500 { --vorta-capability-edge: #ef4444; }
+.border-t-emerald-500 { --vorta-capability-edge: #10b981; }
+.border-t-blue-500 { --vorta-capability-edge: #3b82f6; }
+.border-t-yellow-400 { --vorta-capability-edge: #facc15; }
+.border-t-slate-300 { --vorta-capability-edge: #cbd5e1; }
+.border-t-violet-400 { --vorta-capability-edge: #a78bfa; }
+.border-t-cyan-400 { --vorta-capability-edge: #22d3ee; }
+
+button[aria-pressed][class~="rounded-xl"][class*="border-t-"] {
+  border-top-width: 2px !important;
+  border-top-color: var(--vorta-capability-edge) !important;
+  border-left-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
+  border-right-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
+  border-bottom-color: var(--vorta-surface-border) !important;
 }
 
 /* Quiet structure should not compete with the operational content. */
