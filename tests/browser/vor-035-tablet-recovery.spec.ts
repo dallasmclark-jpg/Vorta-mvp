@@ -95,25 +95,52 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   await captureEvidence(page, testInfo, "skills-matrix-tablet");
 
   await page.goto("/engineers");
-  const tabletEngineers = page.locator('[data-vorta-tablet-engineers="true"]');
-  await expect(tabletEngineers).toBeVisible({ timeout: 30_000 });
+  const originalRota = page.locator('[data-vorta-original-shift-rota="true"]');
+  await expect(originalRota).toBeVisible({ timeout: 30_000 });
   await expect(
-    page.getByText("Loading workforce and rota evidence…", { exact: true }),
-  ).toHaveCount(0, { timeout: 30_000 });
-  await expect(
-    page.getByRole("heading", { name: "Engineers", exact: true }),
+    page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Failed to load engineers", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Weekend", { exact: true })).toHaveCount(0);
-  await expect
-    .poll(async () =>
-      page.getByText(/^(Blue|Red|Green|Yellow)( Shift)?$/i).count(),
-      { timeout: 30_000 },
-    )
-    .toBeGreaterThanOrEqual(4);
+  await expect(
+    page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Verified weekly coverage", { exact: true })).toHaveCount(0);
+
+  for (const team of [
+    "Yellow Shift",
+    "Red Shift",
+    "Green Shift",
+    "Blue Shift",
+    "Days",
+  ]) {
+    await expect(page.getByText(team, { exact: true }).first()).toBeVisible();
+  }
+
+  for (const legend of [
+    "Fully Covered",
+    "Reduced Cover",
+    "Critical Gap",
+    "Contractor Cover",
+    "Off Shift",
+    "Missing Skill",
+    "Reduced Resilience",
+    "SME Dependency",
+    "Contractor Involved",
+  ]) {
+    await expect(page.getByText(legend, { exact: true }).first()).toBeVisible();
+  }
+
+  await expect(page.getByText("Tonight's Risk", { exact: true })).toBeVisible();
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "engineers-tablet");
+  await captureEvidence(page, testInfo, "engineers-original-rota-tablet");
+
+  await page
+    .getByRole("button", { name: "Resolve Tonight's Cover", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Tonight's Risk Summary", exact: true }),
+  ).toBeVisible();
 
   await page.goto("/stores-inventory");
   await expect(page.locator('[data-vorta-stores-inventory="true"]')).toBeVisible();
