@@ -13,19 +13,23 @@ const [styles, dashboardStyles, engineersRoute] = await Promise.all([
   readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
 ]);
 
+const compactDashboardStyles = dashboardStyles.replace(/\s+/g, "");
+
 assert.match(
   styles,
   /\[data-vorta-card="true"\][\s\S]*> \[class\*="pt-0"\]:first-child/,
   "Responsive content-only cards must recover their top padding.",
 );
-assert.match(
-  dashboardStyles,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*border: 0 !important;[\s\S]*background: transparent !important;[\s\S]*box-shadow: none !important;/,
+assert.ok(
+  compactDashboardStyles.includes(
+    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}',
+  ),
   "The embedded Ask Vorta control must retain the approved slim, flat outer treatment.",
 );
-assert.match(
-  dashboardStyles,
-  /\.flex\.min-w-0\.flex-1\.items-center:focus-within[\s\S]*border-color: rgb\(55 65 81\) !important;[\s\S]*box-shadow: none !important;/,
+assert.ok(
+  compactDashboardStyles.includes(
+    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"].flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;outline:none!important;box-shadow:none!important}',
+  ),
   "The embedded Ask Vorta input must not draw the rejected blue focus rectangle.",
 );
 assert.doesNotMatch(
