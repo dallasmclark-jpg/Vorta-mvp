@@ -7,6 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const golden = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-033-demo-golden.json"), "utf8"));
 const natural = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-040-natural-questions.json"), "utf8"));
 const evaluator = readFileSync(resolve(root, "scripts/ask-vorta-live-evals.mjs"), "utf8");
+const backend = readFileSync(resolve(root, "netlify/functions/ask-vorta.mts"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
 assert.equal(golden.length, 24, "The established VOR-033 manager suite must retain 24 questions.");
@@ -86,8 +87,19 @@ for (const evaluatorFeature of [
   "scenario.maxDurationMs",
   "no evidence links",
   "no traceable response ID",
+  "reauthentications",
 ]) {
   assert.ok(evaluator.includes(evaluatorFeature), `Live evaluator must retain ${evaluatorFeature}.`);
+}
+
+for (const backendFeature of [
+  "buildDeterministicWorkBacklogAnswer",
+  'deterministicToolName === "get_site_work_backlog"',
+  "return jsonResponse(directBacklogAnswer)",
+  'intentLabel: "work_backlog"',
+  'toolsUsed: ["get_site_work_backlog"]',
+]) {
+  assert.ok(backend.includes(backendFeature), `Backlog fast path must retain ${backendFeature}.`);
 }
 
 assert.equal(
