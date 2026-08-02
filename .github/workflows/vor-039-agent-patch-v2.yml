@@ -1,4 +1,4 @@
-name: VOR-039 agent patch v2
+name: VOR-039 direct patch
 
 on:
   pull_request:
@@ -27,29 +27,434 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Extract and repair patch script
+      - name: Apply VOR-039 implementation
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
+          import json
+          import re
+          import textwrap
 
-          workflow = Path('.github/workflows/vor-039-agent-patch.yml').read_text()
-          marker = "          python <<'PY'\n"
-          start = workflow.index(marker) + len(marker)
-          end = workflow.index("\n          PY", start)
-          script = workflow[start:end]
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in script.splitlines()
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          agent_path = Path("netlify/functions/ask-vorta.mts")
+          agent = agent_path.read_text()
+
+          pack_helpers = textwrap.dedent('''\
+          const SITE_DECISION_PACK_COVERAGE = new Set([
+            "get_site_risk",
+            "get_site_work_backlog",
+            "get_site_spares_risk",
+            "get_site_capability_actions",
+            "get_shift_handover",
+          ]);
+          const EQUIPMENT_DECISION_PACK_COVERAGE = new Set([
+            "get_equipment_risk",
+            "get_equipment_work",
+            "get_equipment_calibrations",
+            "get_equipment_skills",
+            "get_equipment_spares",
+            "get_equipment_risk_actions",
+            "get_equipment_history",
+            "get_equipment_documents",
+          ]);
+
+          function successfulToolNames(outcomes: Map<string, ToolResult>): Set<string> {
+            return new Set(
+              [...outcomes.entries()]
+                .filter(([, result]) => result.status === "ok")
+                .map(([name]) => name),
+            );
+          }
+
+          function decisionPackCoveringTool(
+            toolName: string,
+            successfulTools: Set<string>,
+          ): string | null {
+            if (
+              successfulTools.has("get_site_operational_snapshot") &&
+              SITE_DECISION_PACK_COVERAGE.has(toolName)
+            ) {
+              return "get_site_operational_snapshot";
+            }
+            if (
+              successfulTools.has("get_equipment_decision_pack") &&
+              EQUIPMENT_DECISION_PACK_COVERAGE.has(toolName)
+            ) {
+              return "get_equipment_decision_pack";
+            }
+            return null;
+          }
+
+          ''')
+          agent = replace_once(
+              agent,
+              "const ANSWER_SCHEMA = {",
+              pack_helpers + "const ANSWER_SCHEMA = {",
+              "insert decision-pack coverage",
           )
-          script = script.replace("import re\n", "import re\nimport textwrap\n", 1)
-          script = script.replace(
-              'vor039_contract.replace(/^          /gm, "")',
-              'textwrap.dedent(vor039_contract).lstrip()',
+
+          agent = replace_once(agent, "      minItems: 3,\n      maxItems: 7,", "      minItems: 1,\n      maxItems: 5,", "adaptive decision summary")
+          agent = replace_once(agent, "    findings: {\n      type: \"array\",\n      minItems: 1,", "    findings: {\n      type: \"array\",\n      minItems: 0,", "adaptive findings")
+          agent = replace_once(agent, "    actionPlan: {\n      type: \"array\",\n      minItems: 1,", "    actionPlan: {\n      type: \"array\",\n      minItems: 0,", "adaptive action plan")
+          agent = replace_once(agent, "    followUpQuestions: {\n      type: \"array\",\n      minItems: 2,\n      items: { type: \"string\" },\n      maxItems: 4,", "    followUpQuestions: {\n      type: \"array\",\n      minItems: 0,\n      items: { type: \"string\" },\n      maxItems: 3,", "adaptive follow-ups")
+
+          confidence_helpers = textwrap.dedent('''\
+          function answerReasoningEffort(
+            questionPlan: JsonRecord | null,
+          ): "low" | "medium" {
+            const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
+            return new Set([
+              "site_priorities",
+              "equipment",
+              "shift_cover",
+              "maintenance_plan",
+              "mixed",
+            ]).has(scope)
+              ? "medium"
+              : "low";
+          }
+
+          function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+            return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
+          }
+
+          function evidenceTimestamps(value: unknown, depth = 0): number[] {
+            if (depth > 4 || value === null || value === undefined) return [];
+            if (Array.isArray(value)) {
+              return value.slice(0, 120).flatMap((item) => evidenceTimestamps(item, depth + 1));
+            }
+            if (typeof value !== "object") return [];
+            const timestamps: number[] = [];
+            for (const [key, item] of Object.entries(value as JsonRecord).slice(0, 100)) {
+              if (
+                typeof item === "string" &&
+                /^(sourceUpdatedAt|updatedAt|updated_at|snapshotDate|snapshot_date)$/i.test(key)
+              ) {
+                const parsed = new Date(item).getTime();
+                if (Number.isFinite(parsed)) timestamps.push(parsed);
+                continue;
+              }
+              timestamps.push(...evidenceTimestamps(item, depth + 1));
+            }
+            return timestamps;
+          }
+
+          function evidenceAwareConfidence(
+            answer: JsonRecord,
+            questionPlan: JsonRecord | null,
+            outcomes: Map<string, ToolResult>,
+          ): number {
+            const results = [...outcomes.values()];
+            const okResults = results.filter((result) => result.status === "ok");
+            const emptyResults = results.filter((result) => result.status === "empty");
+            const unavailableResults = results.filter((result) => result.status === "unavailable");
+            const successfulTools = successfulToolNames(outcomes);
+            const unresolvedRequired = textValues(questionPlan?.requiredTools).filter(
+              (toolName) =>
+                !successfulTools.has(toolName) &&
+                !decisionPackCoveringTool(toolName, successfulTools),
+            );
+            const missingDataCount = textValues(answer.missingData).length;
+            const ambiguity = Boolean(
+              typeof questionPlan?.ambiguity === "string" &&
+                questionPlan.ambiguity.trim() &&
+                !/^(none|no ambiguity|not ambiguous)$/i.test(questionPlan.ambiguity.trim()),
+            );
+
+            let score = okResults.length > 0
+              ? 86
+              : emptyResults.length > 0
+                ? 68
+                : questionPlan?.shouldUseTools === true
+                  ? 35
+                  : 82;
+
+            score += Math.min(6, Math.max(0, okResults.length - 1) * 2);
+            score -= Math.min(24, unavailableResults.length * 10);
+            score -= Math.min(16, emptyResults.length * 4);
+            score -= Math.min(24, unresolvedRequired.length * 8);
+            score -= Math.min(20, missingDataCount * 5);
+            if (ambiguity) score -= 12;
+
+            const timestamps = okResults.flatMap((result) => evidenceTimestamps(result.data));
+            if (timestamps.length > 0) {
+              const newestEvidence = Math.max(...timestamps);
+              const ageHours = Math.max(0, (Date.now() - newestEvidence) / 3_600_000);
+              if (ageHours > 168) score -= 8;
+              else if (ageHours > 72) score -= 4;
+            }
+
+            const modelConfidence = numberValue(answer.confidence);
+            if (modelConfidence >= 85) score += 3;
+            else if (modelConfidence > 0 && modelConfidence < 40) score -= 3;
+
+            const lowerBound = okResults.length > 0 ? (ambiguity ? 40 : 55) : 20;
+            return Math.max(lowerBound, Math.min(95, Math.round(score)));
+          }
+
+          ''')
+          agent = replace_once(agent, "function enforceAnswerEvidence(\n", confidence_helpers + "function enforceAnswerEvidence(\n", "insert confidence calibration")
+
+          agent = replace_once(
+              agent,
+              '      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools when dates, shifts, people or exact records matter.",',
+              '      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools only when a narrower date, person or record query is not included in the pack.",\n      "Decision packs already include their named specialist domains. Never require a decision pack and its covered specialist tools in the same plan unless the specialist query is materially narrower than the pack.",',
+              "planner duplicate guidance",
           )
-          Path('/tmp/apply-vor-039.py').write_text(script + "\n")
+          agent = replace_once(
+              agent,
+              '    "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence when the decision depends on a specific period.",',
+              '    "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence only when the decision depends on a specific period not covered by the snapshot.",\n    "Do not repeat a specialist lookup when a successful site or equipment decision pack already contains equivalent evidence. Reuse the pack and spend the remaining tool budget only on genuinely narrower evidence.",',
+              "answer duplicate guidance",
+          )
+          agent = replace_once(
+              agent,
+              '    "decisionSummary is the scannable decision layer shown before all detail. Return three to seven short labelled items with exact facts. For cover questions use the labels Highest risk, Scheduled, Absence, Best provisional cover, Calculated impact and First action when that evidence exists. Do not repeat the direct answer or use generic advice.",',
+              '    "decisionSummary is the scannable decision layer shown before all detail. Return one to five short labelled items with exact facts. Simple factual answers should usually use one or two items; complex decisions may use up to five. For cover questions use the labels Highest risk, Scheduled, Absence, Best provisional cover and Calculated impact when that evidence exists. Do not repeat the direct answer or use generic advice.",',
+              "decision summary instructions",
+          )
+          agent = replace_once(
+              agent,
+              '    "actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. recommendedActions is a concise plain-language version of the same priorities.",',
+              '    "When the question requires action, actionPlan must say who should do what, by when, the expected measurable impact and how to verify it. Return an empty actionPlan for a purely factual lookup with no justified next action. recommendedActions is a concise plain-language version of the same priorities and may also be empty.",',
+              "adaptive action instructions",
+          )
+          agent = replace_once(
+              agent,
+              '    "Provide two to four useful followUpQuestions grounded in evidence. For cover questions, prioritise residual skills/assets and alternative cover if the recommended package declines. Use human-readable dates such as Fri 31 Jul, never raw ISO dates.",',
+              '    "Return zero to three useful followUpQuestions only when they materially continue the decision. Do not pad a simple factual answer with generic questions. For cover questions, prioritise residual skills/assets and alternative cover if the recommended package declines. Use human-readable dates such as Fri 31 Jul, never raw ISO dates.",',
+              "adaptive follow-up instructions",
+          )
+
+          agent = replace_once(
+              agent,
+              "  const usedTools = new Set<string>();\n  const evidenceLinks = new Map<string, EvidenceLink>();",
+              "  const usedTools = new Set<string>();\n  const toolOutcomes = new Map<string, ToolResult>();\n  const evidenceLinks = new Map<string, EvidenceLink>();",
+              "track tool outcomes",
+          )
+          agent = replace_once(
+              agent,
+              "        const missingPlannedTools = plannedRequiredTools.filter(\n          (toolName) => !usedTools.has(toolName),\n        );",
+              "        const successfulTools = successfulToolNames(toolOutcomes);\n        const missingPlannedTools = plannedRequiredTools.filter(\n          (toolName) =>\n            !usedTools.has(toolName) &&\n            !decisionPackCoveringTool(toolName, successfulTools),\n        );",
+              "pack-aware evidence completeness",
+          )
+          agent = replace_once(
+              agent,
+              "        answer.sources = [...usedSources];",
+              "        const calibratedConfidence = evidenceAwareConfidence(\n          answer,\n          questionPlan,\n          toolOutcomes,\n        );\n        answer.confidence = shiftCoverEvidence\n          ? Math.max(\n              45,\n              Math.min(\n                95,\n                Math.round(\n                  numberValue(answer.confidence) * 0.6 + calibratedConfidence * 0.4,\n                ),\n              ),\n            )\n          : calibratedConfidence;\n        answer.sources = [...usedSources];",
+              "apply confidence calibration",
+          )
+          agent = replace_once(agent, '        reasoning: { effort: "medium" },', '        reasoning: { effort: answerReasoningEffort(questionPlan) },', "dynamic reasoning effort")
+          agent = replace_once(agent, "        max_output_tokens: 5_000,", "        max_output_tokens: answerOutputTokenBudget(questionPlan),", "dynamic output budget")
+
+          tool_pattern = re.compile(
+              r"      const results = await Promise\.all\(\n        toolCalls\.map\(async \(toolCall\) => \{.*?      input\.push\(\.\.\.results\);",
+              re.S,
+          )
+          tool_replacement = textwrap.indent(textwrap.dedent('''\
+          const executeToolCall = async (toolCall: (typeof toolCalls)[number]) => {
+            usedTools.add(toolCall.name);
+            const toolArguments = parseArguments(toolCall.arguments);
+            const effectiveArguments =
+              toolCall.name === "get_shift_cover"
+                ? normaliseRelativeShiftCoverArguments(
+                    request.question,
+                    request.pageContext.timezone,
+                    toolArguments,
+                  )
+                : toolArguments;
+            const link = evidenceLinkForTool(toolCall.name, effectiveArguments);
+            if (link) evidenceLinks.set(link.path, link);
+            let result: ToolResult;
+            try {
+              result = await executeTool(
+                toolCall.name,
+                effectiveArguments,
+                supabase,
+                request,
+              );
+              if (
+                toolCall.name === "get_shift_cover" &&
+                result.data &&
+                typeof result.data === "object" &&
+                !Array.isArray(result.data)
+              ) {
+                shiftCoverEvidence = result.data as JsonRecord;
+                shiftCoverArguments = effectiveArguments;
+              }
+            } catch (error) {
+              result = {
+                source: toolCall.name,
+                status: "unavailable",
+                message: error instanceof Error ? error.message : "The tool could not be completed.",
+              };
+            }
+            toolOutcomes.set(toolCall.name, result);
+            if (result.status !== "unavailable") usedSources.add(result.source);
+            return {
+              type: "function_call_output" as const,
+              call_id: toolCall.call_id,
+              output: trimToolResult(result),
+            };
+          };
+
+          const decisionPackCalls = toolCalls.filter(
+            (toolCall) =>
+              toolCall.name === "get_site_operational_snapshot" ||
+              toolCall.name === "get_equipment_decision_pack",
+          );
+          const decisionPackResults = await Promise.all(
+            decisionPackCalls.map(executeToolCall),
+          );
+          const successfulPacks = successfulToolNames(toolOutcomes);
+          const remainingResults = await Promise.all(
+            toolCalls
+              .filter((toolCall) => !decisionPackCalls.includes(toolCall))
+              .map(async (toolCall) => {
+                const coveringPack = decisionPackCoveringTool(
+                  toolCall.name,
+                  successfulPacks,
+                );
+                if (coveringPack) {
+                  return {
+                    type: "function_call_output" as const,
+                    call_id: toolCall.call_id,
+                    output: JSON.stringify({
+                      source: coveringPack,
+                      status: "ok",
+                      data: {
+                        coverage:
+                          `Equivalent ${toolCall.name} evidence is already included in ${coveringPack}; the duplicate lookup was not executed.`,
+                      },
+                    }),
+                  };
+                }
+                return executeToolCall(toolCall);
+              }),
+          );
+          const results = [...decisionPackResults, ...remainingResults];
+          input.push(...results);'''), "      ")
+          agent, count = tool_pattern.subn(tool_replacement, agent, count=1)
+          if count != 1:
+              raise SystemExit(f"tool execution rewrite: expected one match, found {count}")
+
+          agent_path.write_text(agent)
+
+          vor038_path = Path("scripts/vor-038-ask-vorta-intelligence-contracts.mjs")
+          vor038 = vor038_path.read_text()
+          vor038 = replace_once(vor038, "  [source.includes('reasoning: { effort: \"medium\" }'), \"answer reasoning effort is explicit\"],", "  [source.includes(\"answerReasoningEffort(questionPlan)\"), \"answer reasoning effort is adaptive\"],", "VOR-038 reasoning contract")
+          vor038_path.write_text(vor038)
+
+          core_path = Path("scripts/ask-vorta-agent-contracts.mjs")
+          core = core_path.read_text()
+          core = replace_once(core, "    agent.includes('reasoning: { effort: \"medium\" }') &&", "    agent.includes(\"answerReasoningEffort(questionPlan)\") &&", "core reasoning contract")
+          core = replace_once(core, "    agent.includes(\"max_output_tokens: 5_000\"),", "    agent.includes(\"answerOutputTokenBudget(questionPlan)\"),", "core output contract")
+          core_path.write_text(core)
+
+          eval_runner_path = Path("scripts/ask-vorta-live-evals.mjs")
+          eval_runner = eval_runner_path.read_text()
+          eval_runner = replace_once(
+              eval_runner,
+              '    if (!Array.isArray(payload.findings) || payload.findings.length === 0) {\n      failures.push("no structured findings");\n    }\n    if (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0) {\n      failures.push("no action plan");\n    }\n    if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");',
+              '    if (\n      scenario.requireFindings !== false &&\n      (!Array.isArray(payload.findings) || payload.findings.length === 0)\n    ) {\n      failures.push("no structured findings");\n    }\n    if (\n      scenario.requireActionPlan !== false &&\n      (!Array.isArray(payload.actionPlan) || payload.actionPlan.length === 0)\n    ) {\n      failures.push("no action plan");\n    }\n    if (Number.isFinite(scenario.confidenceMin) && Number(payload.confidence) < Number(scenario.confidenceMin)) {\n      failures.push(`confidence ${payload.confidence}; expected at least ${scenario.confidenceMin}`);\n    }\n    if (Number.isFinite(scenario.maxToolCount) && usedTools.size > Number(scenario.maxToolCount)) {\n      failures.push(`used ${usedTools.size} tools; expected at most ${scenario.maxToolCount}`);\n    }\n    if (Number.isFinite(scenario.maxDecisionSummaryItems) && (payload.decisionSummary || []).length > Number(scenario.maxDecisionSummaryItems)) {\n      failures.push(`decision summary has ${(payload.decisionSummary || []).length} items; expected at most ${scenario.maxDecisionSummaryItems}`);\n    }\n    if (Number.isFinite(scenario.maxFollowUpQuestions) && (payload.followUpQuestions || []).length > Number(scenario.maxFollowUpQuestions)) {\n      failures.push(`follow-ups have ${(payload.followUpQuestions || []).length} items; expected at most ${scenario.maxFollowUpQuestions}`);\n    }\n    if (Number.isFinite(scenario.maxDurationMs) && Date.now() - startedAt > Number(scenario.maxDurationMs)) {\n      failures.push(`duration ${Date.now() - startedAt}ms; expected at most ${scenario.maxDurationMs}ms`);\n    }\n    if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");',
+              "adaptive live evaluation assertions",
+          )
+          eval_runner_path.write_text(eval_runner)
+
+          evals = [
+            {
+              "id": "vor039-broad-pack-no-duplicate-tools",
+              "question": "What are the three biggest maintenance threats today and what should I do first?",
+              "expectedTools": ["get_site_operational_snapshot"],
+              "maxToolCount": 1,
+              "confidenceMin": 55,
+              "maxDurationMs": 18000,
+              "mustMentionAny": ["risk", "work", "spare", "skill", "handover"]
+            },
+            {
+              "id": "vor039-handover-concise",
+              "question": "What did nights leave us?",
+              "expectedTools": ["get_shift_handover"],
+              "maxToolCount": 1,
+              "confidenceMin": 55,
+              "requireActionPlan": False,
+              "maxDecisionSummaryItems": 3,
+              "maxFollowUpQuestions": 1,
+              "maxDurationMs": 15000,
+              "mustMentionAny": ["completed", "ongoing", "waiting", "next"]
+            },
+            {
+              "id": "vor039-contractor-factual",
+              "question": "Which contractors have recorded PLC support?",
+              "expectedTools": ["get_contractor_availability"],
+              "maxToolCount": 1,
+              "confidenceMin": 55,
+              "requireActionPlan": False,
+              "maxDecisionSummaryItems": 3,
+              "maxFollowUpQuestions": 1,
+              "maxDurationMs": 15000,
+              "mustMentionAny": ["PLC", "contractor", "availability", "support"]
+            },
+            {
+              "id": "vor039-spares-action-remains-complete",
+              "question": "What should we order first and why?",
+              "expectedTools": ["get_site_spares_risk"],
+              "confidenceMin": 55,
+              "requireActionPlan": True,
+              "maxDurationMs": 18000,
+              "mustMentionAny": ["stock", "lead", "shortfall", "part"]
+            }
+          ]
+          Path("tests/evals/vor-039-confidence-latency.json").write_text(json.dumps(evals, indent=2) + "\n")
+
+          contract = textwrap.dedent('''\
+          import { readFileSync } from "node:fs";
+
+          const source = readFileSync("netlify/functions/ask-vorta.mts", "utf8");
+          const service = readFileSync("src/screens/AiOperations/vortaAgentService.ts", "utf8");
+          const runner = readFileSync("scripts/ask-vorta-live-evals.mjs", "utf8");
+          const evals = JSON.parse(readFileSync("tests/evals/vor-039-confidence-latency.json", "utf8"));
+
+          const checks = [
+            [source.includes("evidenceAwareConfidence"), "deterministic evidence-aware confidence calibration exists"],
+            [source.includes("decisionPackCoveringTool"), "successful decision packs suppress equivalent specialist lookups"],
+            [source.includes("toolOutcomes = new Map<string, ToolResult>()"), "tool outcomes are retained for calibration"],
+            [source.includes("answerReasoningEffort(questionPlan)"), "answer reasoning effort is scope-aware"],
+            [source.includes("answerOutputTokenBudget(questionPlan)"), "answer output budget is scope-aware"],
+            [source.includes("Return an empty actionPlan for a purely factual lookup"), "factual answers may omit action plans"],
+            [source.includes("Return zero to three useful followUpQuestions"), "follow-up questions are optional"],
+            [service.includes("function isActionPlan") && service.includes("Array.isArray(value)"), "frontend accepts an empty action-plan array"],
+            [runner.includes("scenario.confidenceMin") && runner.includes("scenario.maxToolCount"), "live evaluations enforce confidence and duplicate-tool limits"],
+            [runner.includes("scenario.maxDurationMs") && runner.includes("scenario.maxFollowUpQuestions"), "live evaluations enforce latency and answer density"],
+            [Array.isArray(evals) && evals.length >= 4, "confidence and latency scenarios are permanent"],
+            [evals.some((item) => item.maxToolCount === 1), "decision-pack duplication is evaluated"],
+            [evals.some((item) => item.requireActionPlan === false), "concise factual answers are evaluated"],
+            [evals.some((item) => item.requireActionPlan === true), "complex action answers remain evaluated"],
+          ];
+
+          const failures = checks.filter(([passed]) => !passed);
+          for (const [passed, label] of checks) console.log(`${passed ? "PASS" : "FAIL"} - ${label}`);
+          if (failures.length) process.exit(1);
+          console.log(`VOR-039 Ask Vorta confidence and latency contract passed: ${checks.length}/${checks.length}.`);
+          ''')
+          Path("scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs").write_text(contract)
+
+          suite_path = Path("scripts/run-contract-suite.mjs")
+          suite = suite_path.read_text()
+          suite = replace_once(suite, '  ["VOR-038 Ask Vorta intelligence", "scripts/vor-038-ask-vorta-intelligence-contracts.mjs"],', '  ["VOR-038 Ask Vorta intelligence", "scripts/vor-038-ask-vorta-intelligence-contracts.mjs"],\n  ["VOR-039 Ask Vorta confidence and latency", "scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs"],', "register VOR-039 contract")
+          suite_path.write_text(suite)
+
+          package_path = Path("package.json")
+          package_data = json.loads(package_path.read_text())
+          package_data["scripts"]["eval:ask-vorta:vor039"] = "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-039-confidence-latency.json"
+          package_path.write_text(json.dumps(package_data, indent=2) + "\n")
           PY
-          python /tmp/apply-vor-039.py
 
       - name: Install dependencies
         run: npm ci
