@@ -1,0 +1,215 @@
+[
+  {
+    "id": "vor038-broad-priorities-natural",
+    "question": "Give me the three things most likely to hurt us today and what I should do first.",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "mustMentionAny": [
+      "risk",
+      "work",
+      "spare",
+      "skill",
+      "handover"
+    ],
+    "mustNotMention": [
+      "I do not know",
+      "check each system"
+    ]
+  },
+  {
+    "id": "vor038-spares-colloquial",
+    "question": "Anything nasty lurking in stores that could stop a repair?",
+    "expectedTools": [
+      "get_site_spares_risk"
+    ],
+    "mustMentionAny": [
+      "stock",
+      "part",
+      "spare",
+      "component"
+    ],
+    "mustNotMention": [
+      "check the warehouse"
+    ]
+  },
+  {
+    "id": "vor038-plan-feasibility-mixed",
+    "question": "Can we actually deliver next week's PM and calibration plan with the people available?",
+    "expectedTools": [
+      "get_site_maintenance_plan",
+      "get_shift_cover"
+    ],
+    "minimumToolCount": 2,
+    "mustMentionAny": [
+      "plan",
+      "cover",
+      "skill",
+      "assigned"
+    ],
+    "mustNotMention": [
+      "probably",
+      "should be fine"
+    ]
+  },
+  {
+    "id": "vor038-cover-typos",
+    "question": "whats the bigest labour rik nxt wk and who cud cover it",
+    "expectedTools": [
+      "get_shift_cover"
+    ],
+    "mustMentionAny": [
+      "cover",
+      "shift",
+      "skill",
+      "scheduled"
+    ],
+    "mustNotMention": [
+      "equipment fault"
+    ]
+  },
+  {
+    "id": "vor038-equipment-broad",
+    "question": "Tell me what matters about the Bosch vial filler: why it is risky, what is open and what action cuts the risk most.",
+    "expectedTools": [
+      "get_equipment_decision_pack"
+    ],
+    "mustMentionAny": [
+      "risk",
+      "work",
+      "action"
+    ],
+    "mustNotMention": [
+      "select an equipment page"
+    ]
+  },
+  {
+    "id": "vor038-follow-up-pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "Tell me about the Bosch vial filler."
+      },
+      {
+        "role": "assistant",
+        "content": "The Bosch vial filler is the equipment being reviewed."
+      }
+    ],
+    "path": "/equipment/40000000-0000-0000-0000-000000000001/overview",
+    "question": "What failed on it last time and have we got the parts to do it again?",
+    "expectedAnyTools": [
+      "get_equipment_decision_pack",
+      "get_equipment_history"
+    ],
+    "minimumToolCount": 1,
+    "mustMentionAny": [
+      "history",
+      "work order",
+      "part",
+      "stock",
+      "spare"
+    ],
+    "mustNotMention": [
+      "what do you mean by it"
+    ]
+  },
+  {
+    "id": "vor038-cross-domain-executability",
+    "question": "Which high-risk job looks urgent but cannot actually be executed because of people or parts?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "mustMentionAny": [
+      "work",
+      "skill",
+      "part",
+      "stock",
+      "execute"
+    ],
+    "mustNotMention": [
+      "all high-risk jobs are executable"
+    ]
+  },
+  {
+    "id": "vor038-handover-shorthand",
+    "question": "What did nights leave us and what needs chasing first?",
+    "expectedTools": [
+      "get_shift_handover"
+    ],
+    "mustMentionAny": [
+      "completed",
+      "ongoing",
+      "waiting",
+      "next"
+    ],
+    "mustNotMention": [
+      "I cannot see the handover"
+    ]
+  },
+  {
+    "id": "vor038-advisory-not-write",
+    "question": "What should we order first and why?",
+    "expectedTools": [
+      "get_site_spares_risk"
+    ],
+    "mustMentionAny": [
+      "stock",
+      "lead",
+      "shortfall",
+      "part"
+    ],
+    "mustNotMention": [
+      "read-only and cannot",
+      "order placed"
+    ]
+  },
+  {
+    "id": "vor038-write-command-read-only",
+    "question": "Assign the best three cover engineers to Red Shift now.",
+    "expectedTools": [],
+    "mustMention": [
+      "read-only"
+    ],
+    "mustMentionAny": [
+      "cannot",
+      "can’t"
+    ],
+    "mustNotMention": [
+      "assigned successfully",
+      "has been assigned"
+    ]
+  },
+  {
+    "id": "vor038-ambiguous-asset",
+    "question": "Why is the filler risky?",
+    "expectedAnyTools": [
+      "get_equipment_decision_pack",
+      "get_equipment_risk"
+    ],
+    "mustMentionAny": [
+      "filler",
+      "equipment",
+      "risk"
+    ],
+    "mustNotMention": [
+      "I picked one at random"
+    ]
+  },
+  {
+    "id": "vor038-contractor-mixed",
+    "question": "If our own team cannot cover the PLC gap, who outside the team has recorded support and what still needs confirming?",
+    "expectedTools": [
+      "get_contractor_availability"
+    ],
+    "mustMentionAny": [
+      "PLC",
+      "availability",
+      "confirm",
+      "contractor"
+    ],
+    "mustNotMention": [
+      "definitely available",
+      "assigned"
+    ]
+  }
+]

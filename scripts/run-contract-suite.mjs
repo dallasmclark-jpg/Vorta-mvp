@@ -21,6 +21,7 @@ const contracts = [
   ["VOR-033 demo restore", "scripts/vor-033-demo-restore-contracts.mjs"],
   ["VOR-034 verified imagery", "scripts/vor-034-verified-images-contract.mjs"],
   ["VOR-037 unified Ask Vorta", "scripts/vor-037-unified-ask-vorta-contracts.mjs"],
+  ["VOR-038 Ask Vorta intelligence", "scripts/vor-038-ask-vorta-intelligence-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],

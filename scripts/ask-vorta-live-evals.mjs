@@ -68,8 +68,11 @@ for (const scenario of scenarios.slice(0, limit)) {
       question: scenario.question,
       role: "maintenance-manager",
       siteId,
-      history: [],
-      pageContext: { path: "/dashboard", timezone: "Europe/London" },
+      history: scenario.history || [],
+      pageContext: {
+        path: scenario.path || "/dashboard",
+        timezone: scenario.timezone || "Europe/London",
+      },
     }),
   });
   const payload = await response.json().catch(() => null);
@@ -79,10 +82,16 @@ for (const scenario of scenarios.slice(0, limit)) {
   } else {
     const text = answerText(payload);
     const usedTools = new Set(payload.toolsUsed || []);
-    for (const tool of scenario.expectedTools) {
+    for (const tool of scenario.expectedTools || []) {
       if (!usedTools.has(tool)) failures.push(`missing tool ${tool}`);
     }
-    for (const phrase of scenario.mustMention) {
+    if (scenario.expectedAnyTools?.length && !scenario.expectedAnyTools.some((tool) => usedTools.has(tool))) {
+      failures.push(`missing any tool: ${scenario.expectedAnyTools.join(", ")}`);
+    }
+    if (scenario.minimumToolCount && usedTools.size < scenario.minimumToolCount) {
+      failures.push(`used ${usedTools.size} tools; expected at least ${scenario.minimumToolCount}`);
+    }
+    for (const phrase of scenario.mustMention || []) {
       if (!text.includes(phrase.toLowerCase())) failures.push(`missing "${phrase}"`);
     }
     if (
