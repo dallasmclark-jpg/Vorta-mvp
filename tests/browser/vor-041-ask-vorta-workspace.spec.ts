@@ -92,7 +92,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await mockAskVorta(page);
     await page.goto("/dashboard");
 
-    await page.getByRole("button", { name: "Ask Vorta AI" }).click();
+    await page
+      .getByRole("button", { name: "Ask Vorta AI", exact: true })
+      .click();
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
     const panelBox = await panel.boundingBox();
@@ -114,31 +116,44 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     const question = "Can the current shift cover the planned work?";
     const input = page.locator('[data-vorta-ai-workspace-input="true"]');
     await input.fill(question);
-    await page.getByRole("button", { name: "Send" }).click();
-    await expect(page.getByText(mockedAnswer.directAnswer)).toBeVisible();
-    await expect(page.getByText(question, { exact: true })).toBeVisible();
-    await expect(page.getByText(question).first()).toBeVisible();
+    const send = workspace.getByRole("button", { name: "Send", exact: true });
+    await expect(send).toBeEnabled();
+    await send.click();
+    await expect(workspace.getByText(mockedAnswer.directAnswer)).toBeVisible();
+    await expect(workspace.getByText(question, { exact: true })).toBeVisible();
 
     await page.getByRole("tab", { name: "Evidence" }).click();
-    await expect(page.getByText("Verified evidence")).toBeVisible();
-    await expect(page.getByText("Shift Cover decision pack")).toBeVisible();
-    await expect(page.getByText("Overtime acceptance is not yet confirmed.")).toBeVisible();
+    await expect(workspace.getByText("Verified evidence")).toBeVisible();
+    await expect(workspace.getByText("Shift Cover decision pack")).toBeVisible();
+    await expect(
+      workspace.getByText("Overtime acceptance is not yet confirmed."),
+    ).toBeVisible();
 
     await page.getByRole("tab", { name: "Actions" }).click();
-    await expect(page.getByText("Recommended actions")).toBeVisible();
+    await expect(workspace.getByText("Recommended actions")).toBeVisible();
     await expect(
-      page.getByText("Confirm the proposed Red Shift cover package."),
+      workspace.getByText("Confirm the proposed Red Shift cover package."),
     ).toBeVisible();
-    await expect(page.getByText("Oliver Clarke + Laura Davies")).toBeVisible();
+    await expect(
+      workspace.getByText("Oliver Clarke + Laura Davies"),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("ask-vorta-workspace-actions.png"),
+      fullPage: true,
+    });
 
     await page.getByRole("button", { name: "Compact" }).click();
     await expect(workspace).toBeHidden();
     await expect(panel).toBeVisible();
-    await expect(page.getByText(mockedAnswer.directAnswer)).toBeVisible();
+    await expect(panel.getByText(mockedAnswer.directAnswer)).toBeVisible();
 
     await expand.click();
     await expect(workspace).toBeVisible();
-    await expect(page.getByText(question).first()).toBeVisible();
+    await expect(workspace.getByText(question, { exact: true })).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("ask-vorta-workspace-conversation.png"),
+      fullPage: true,
+    });
   });
 
   test("phone keeps the approved assistant without workspace controls", async ({
@@ -147,7 +162,12 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     test.skip(!isPhoneProject(testInfo.project.name));
     await page.goto("/dashboard");
 
-    await page.getByRole("button", { name: "Ask Vorta AI" }).click();
+    const phoneLauncher = page.locator(
+      '[data-vorta-shared-mobile-ai-launcher="true"]',
+    );
+    await expect(phoneLauncher).toBeVisible();
+    await phoneLauncher.click();
+
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
     await expect(
@@ -169,5 +189,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     const box = await panel.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(359);
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(799);
+    await page.screenshot({
+      path: testInfo.outputPath("ask-vorta-phone-unchanged.png"),
+      fullPage: true,
+    });
   });
 });
