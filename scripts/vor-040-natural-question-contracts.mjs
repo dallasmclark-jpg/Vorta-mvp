@@ -99,7 +99,10 @@ for (const assistantFeature of [
   "relevantEquipmentDecisionFacts",
   "retainEquipmentDecisionFacts",
   "retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes)",
-  "decisionFacts: equipmentDecisionFacts(selected, domains)",
+  "decisionFacts: equipmentDecisionFacts(selected, domains, request.question)",
+  "const questionRanked = relevantEquipmentDecisionFacts(question, rankedFacts)",
+  "typeof value !== \"object\"",
+  "pathSegments",
 ]) {
   assert.ok(assistant.includes(assistantFeature), `Ask Vorta must retain ${assistantFeature}.`);
 }
