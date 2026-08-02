@@ -6,6 +6,10 @@ on:
       - main
     types:
       - synchronize
+    paths:
+      - netlify/functions/ask-vorta.mts
+      - scripts/ask-vorta-live-evals.mjs
+      - tests/evals/vor-039-confidence-latency.json
 
 permissions:
   contents: read
@@ -32,6 +36,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Allow the matching Netlify preview function to deploy
+        run: sleep 70
 
       - name: Run VOR-039 live evaluation against Netlify preview
         run: npm run eval:ask-vorta:vor039
