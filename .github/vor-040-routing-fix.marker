@@ -1,0 +1,5 @@
+baseline_batch=1
+baseline_passed=3
+baseline_total=8
+fixes=typo-normalisation,dated-shift-cover,spares-colloquial,summary-density
+triggered_at=2026-08-02T17:59:30Z
