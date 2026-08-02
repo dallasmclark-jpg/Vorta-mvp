@@ -808,6 +808,7 @@ function coverEvidenceConfidence(
 function answerReasoningEffort(
   questionPlan: JsonRecord | null,
 ): "low" | "medium" {
+  if (questionPlan?.routingMode === "deterministic") return "low";
   const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
   return new Set([
     "site_priorities",
@@ -821,6 +822,7 @@ function answerReasoningEffort(
 }
 
 function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
+  if (questionPlan?.routingMode === "deterministic") return 2_200;
   return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
 }
 
@@ -2209,6 +2211,118 @@ async function executeTool(
 }
 
 
+function deterministicQuestionPlan(
+  request: AskVortaRequest,
+): JsonRecord | null {
+  if (request.history.length > 0) return null;
+
+  const question = request.question
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, "'");
+
+  const fastPlan = (
+    scope: string,
+    intentLabel: string,
+    toolName: string,
+    answerFocus: string,
+  ): JsonRecord => ({
+    intentLabel,
+    decisionGoal: request.question,
+    scope,
+    shouldUseTools: true,
+    requiredTools: [toolName],
+    optionalTools: [],
+    equipmentQuery: "",
+    startDate: "",
+    endDate: "",
+    ambiguity: "none",
+    answerFocus,
+    verificationChecks: ["Use only current authorised Vorta evidence."],
+    routingMode: "deterministic",
+  });
+
+  if (
+    /\b(?:handover|hand over|previous shift|last shift|nights? (?:leave|left)|days? (?:leave|left)|left us|incoming shift)\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "handover",
+      "shift_handover",
+      "get_shift_handover",
+      "Summarise what the previous shift completed, left ongoing or waiting, and the next action.",
+    );
+  }
+
+  if (
+    /\b(?:contractors?|external support|on[- ]call|remote support|onsite support|plc support)\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "contractor",
+      "contractor_support",
+      "get_contractor_availability",
+      "Report only recorded contractor skills and availability, with any confirmation caveat.",
+    );
+  }
+
+  if (
+    /\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order)\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "spares",
+      "spares_priority",
+      "get_site_spares_risk",
+      "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time.",
+    );
+  }
+
+  if (
+    /\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "work",
+      "work_backlog",
+      "get_site_work_backlog",
+      "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence.",
+    );
+  }
+
+  if (
+    /\b(?:skills?|sme|single[- ]point|single person|succession|capability|training priorit(?:y|ies))\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "skills",
+      "capability_risk",
+      "get_site_capability_actions",
+      "Identify the highest capability dependency and the evidence-backed action that reduces it.",
+    );
+  }
+
+  if (
+    /\b(?:biggest (?:maintenance )?(?:risks?|threats?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what could stop (?:the )?site)\b/.test(
+      question,
+    )
+  ) {
+    return fastPlan(
+      "site_priorities",
+      "site_threat_prioritization",
+      "get_site_operational_snapshot",
+      "Rank the main current maintenance threats and state the first executable action.",
+    );
+  }
+
+  return null;
+}
+
 async function buildQuestionPlan(
   client: OpenAI,
   request: AskVortaRequest,
@@ -2283,6 +2397,7 @@ function systemInstructions(
     "You are Ask Vorta, a focused maintenance and reliability assistant.",
     "You may use only the supplied Vorta tools and conversation context. Never use general-world facts as evidence, never browse the web, and never invent site records.",
     "For any question about current or dated operational facts, call the relevant tools before answering. Use multiple tools when the risk depends on cover, skills, work, spares, documents or history.",
+    "When deterministic routing has already preloaded verified Vorta evidence, use that evidence directly and do not request another tool.",
     "Do not give a management slogan when Vorta contains names, dates, order numbers, part codes, quantities, risk reductions or prior-work evidence. Surface the decision-ready detail.",
     "Understand any natural wording rather than matching prepared questions. Correct obvious spelling mistakes silently, interpret shorthand, use history for follow-ups and answer every material part of a mixed question.",
     "The semantic question plan is a routing hypothesis, not evidence. Verify it against actual tool results, call any missing required evidence tool before finalising, and deviate from the plan when the returned evidence proves a better route.",
@@ -2407,14 +2522,16 @@ export default async function handler(req: Request, _context: Context): Promise<
   }
 
   const client = new OpenAI();
-  let questionPlan: JsonRecord | null = null;
-  try {
-    questionPlan = await buildQuestionPlan(client, request);
-  } catch (error) {
-    console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
-      requestId: _context.requestId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  let questionPlan: JsonRecord | null = deterministicQuestionPlan(request);
+  if (!questionPlan) {
+    try {
+      questionPlan = await buildQuestionPlan(client, request);
+    } catch (error) {
+      console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
+        requestId: _context.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   const input: ResponseInput = [
     ...request.history.map((item) => ({
@@ -2429,20 +2546,64 @@ export default async function handler(req: Request, _context: Context): Promise<
   const evidenceLinks = new Map<string, EvidenceLink>();
   let shiftCoverEvidence: JsonRecord | null = null;
   let shiftCoverArguments: JsonRecord | null = null;
+  const deterministicToolName =
+    questionPlan?.routingMode === "deterministic"
+      ? textValues(questionPlan.requiredTools)[0] ?? null
+      : null;
 
   try {
+    if (deterministicToolName) {
+      usedTools.add(deterministicToolName);
+      let deterministicResult: ToolResult;
+      try {
+        deterministicResult = await executeTool(
+          deterministicToolName,
+          {},
+          supabase,
+          request,
+        );
+      } catch (error) {
+        deterministicResult = {
+          source: deterministicToolName,
+          status: "unavailable",
+          message:
+            error instanceof Error
+              ? error.message
+              : "The deterministic evidence lookup could not be completed.",
+        };
+      }
+      toolOutcomes.set(deterministicToolName, deterministicResult);
+      if (deterministicResult.status !== "unavailable") {
+        usedSources.add(deterministicResult.source);
+      }
+      const deterministicLink = evidenceLinkForTool(
+        deterministicToolName,
+        {},
+      );
+      if (deterministicLink) {
+        evidenceLinks.set(deterministicLink.path, deterministicLink);
+      }
+      input.push({
+        role: "user",
+        content:
+          `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:
+${trimToolResult(deterministicResult)}`,
+      });
+    }
+
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await client.responses.create({
         model: Netlify.env.get("VORTA_AI_MODEL") || MODEL,
         reasoning: { effort: answerReasoningEffort(questionPlan) },
         instructions: systemInstructions(request, questionPlan),
         input,
-        tools: TOOLS,
-        tool_choice:
-          round === 0 && questionPlan?.shouldUseTools === true
+        tools: deterministicToolName ? [] : TOOLS,
+        tool_choice: deterministicToolName
+          ? "none"
+          : round === 0 && questionPlan?.shouldUseTools === true
             ? "required"
             : "auto",
-        parallel_tool_calls: true,
+        parallel_tool_calls: !deterministicToolName,
         max_output_tokens: answerOutputTokenBudget(questionPlan),
         store: false,
         text: {

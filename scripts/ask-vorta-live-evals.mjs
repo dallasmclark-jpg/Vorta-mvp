@@ -61,25 +61,47 @@ function answerText(answer) {
 const results = [];
 for (const scenario of scenarios.slice(0, limit)) {
   const startedAt = Date.now();
-  const response = await fetch(`${baseUrl}/api/ask-vorta`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      question: scenario.question,
-      role: "maintenance-manager",
-      siteId,
-      history: scenario.history || [],
-      pageContext: {
-        path: scenario.path || "/dashboard",
-        timezone: scenario.timezone || "Europe/London",
-      },
-    }),
-  });
-  const payload = await response.json().catch(() => null);
+  const controller = new AbortController();
+  const requestTimeoutMs = Math.max(
+    5_000,
+    Number(scenario.requestTimeoutMs || 45_000),
+  );
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response;
+  let payload = null;
   const failures = [];
-  if (!response.ok || !payload) {
+  try {
+    response = await fetch(`${baseUrl}/api/ask-vorta`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        question: scenario.question,
+        role: "maintenance-manager",
+        siteId,
+        history: scenario.history || [],
+        pageContext: {
+          path: scenario.path || "/dashboard",
+          timezone: scenario.timezone || "Europe/London",
+        },
+      }),
+      signal: controller.signal,
+    });
+    payload = await response.json().catch(() => null);
+  } catch (error) {
+    failures.push(
+      error instanceof Error
+        ? `request failed: ${error.message}`
+        : "request failed",
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (response && (!response.ok || !payload)) {
     failures.push(`HTTP ${response.status}: ${payload?.error || "invalid JSON"}`);
-  } else {
+  } else if (!response && failures.length === 0) {
+    failures.push("request failed without a response");
+  }
+  if (response?.ok && payload) {
     const text = answerText(payload);
     const usedTools = new Set(payload.toolsUsed || []);
     for (const tool of scenario.expectedTools || []) {
