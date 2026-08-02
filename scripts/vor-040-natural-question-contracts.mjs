@@ -94,6 +94,9 @@ for (const evaluatorFeature of [
 }
 
 for (const assistantFeature of [
+  "maintenancePlanOnly",
+  '"maintenance_plan"',
+  '"get_site_maintenance_plan"',
   "normaliseEquipmentReference",
   "excludedAcronyms",
   "relevantEquipmentDecisionFacts",
@@ -123,6 +126,12 @@ for (const edgeFeature of [
   "isFactualBacklogRequest",
   "CAPABILITY_PATTERN",
   "isCapabilityRequest",
+  "EQUIPMENT_SPARE_FOLLOW_UP_PATTERN",
+  "isEquipmentSpareFollowUp",
+  "equipmentReferenceFromRequest",
+  "componentConstraintScore",
+  'toolsUsed: ["get_equipment_spares"]',
+  'intentLabel: "equipment_spare_blocker"',
   "vorta_get_capability_reconciliation_report",
   "context.next(request)",
   "ask_vorta_interactions",

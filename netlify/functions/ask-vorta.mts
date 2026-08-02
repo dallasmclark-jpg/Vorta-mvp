@@ -2888,6 +2888,25 @@ function deterministicQuestionPlan(
     );
   }
 
+  const maintenancePlanOnly =
+    /\b(?:pm|pms|planned maintenance|preventive maintenance|calibration|calibrations|calibrate|due next|due this week|next seven days)\b/.test(question) &&
+    !/\b(?:cover|coverage|people|available|availability|rota|achievable|complete|slip)\b/.test(question);
+  if (maintenancePlanOnly) {
+    const includesOverdue = /\boverdue\b/.test(question);
+    const asksNextSevenDays = /\b(?:next seven days|next 7 days)\b/.test(question);
+    return fastPlan(
+      "maintenance_plan",
+      "maintenance_plan",
+      "get_site_maintenance_plan",
+      "Report the dated PM and calibration work requested, separating overdue items from the next due work and naming the asset, due date and assignee where recorded.",
+      {
+        startDate: includesOverdue ? dateWithOffset(-21) : dateWithOffset(0),
+        endDate: asksNextSevenDays ? dateWithOffset(7) : dateWithOffset(10),
+        summaryItemLimit: 4,
+      },
+    );
+  }
+
   if (/\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/.test(question)) {
     return fastPlan(
       "work",
