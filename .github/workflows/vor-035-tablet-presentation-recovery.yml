@@ -1,0 +1,63 @@
+name: VOR-035 tablet presentation recovery gate
+
+on:
+  pull_request:
+    paths:
+      - "src/tabletPresentationRecovery.css"
+      - "src/index.tsx"
+      - "tests/browser/vor-035-tablet-recovery.spec.ts"
+      - "scripts/tablet-presentation-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - ".github/workflows/vor-035-tablet-presentation-recovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  samsung-presentation-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VORTA_E2E_EMAIL: ${{ secrets.VORTA_E2E_EMAIL }}
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+    steps:
+      - name: Check out recovery commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Run tablet presentation contract
+        run: node scripts/tablet-presentation-contracts.mjs
+
+      - name: Verify production build
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Samsung presentation journey
+        run: >-
+          npx playwright test tests/browser/vor-035-tablet-recovery.spec.ts
+          --project=samsung-tablet-portrait
+          --project=samsung-tablet-landscape
+
+      - name: Preserve Samsung screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-035-tablet-presentation-${{ github.sha }}
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
