@@ -908,18 +908,22 @@ function enforceDeterministicResponseShape(
 
   const scope =
     typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+  const configuredLimit = Number(questionPlan.summaryItemLimit);
+  const summaryLimit = Number.isFinite(configuredLimit)
+    ? Math.max(1, Math.min(5, Math.round(configuredLimit)))
+    : scope === "handover"
+      ? 3
+      : 4;
 
-  if (scope === "handover") {
-    answer.decisionSummary = records(answer.decisionSummary).slice(0, 3);
-    answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, 1);
-  }
+  answer.decisionSummary = records(answer.decisionSummary).slice(0, summaryLimit);
+  answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, 1);
 
-  if (scope !== "site_priorities" || records(answer.actionPlan).length > 0) {
-    return;
-  }
+  const requiresAction =
+    scope === "site_priorities" || questionPlan.forceActionPlan === true;
+  if (!requiresAction || records(answer.actionPlan).length > 0) return;
 
   const summaryAction = records(answer.decisionSummary).find((item) =>
-    /first action|next action|action/i.test(String(item.label ?? "")),
+    /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
   );
   const action =
     textValues(answer.recommendedActions)[0] ??
@@ -933,11 +937,15 @@ function enforceDeterministicResponseShape(
     {
       priority: "now",
       action,
-      owner: "Maintenance Manager",
+      owner: scope === "spares" ? "Maintenance Manager / Stores" : "Maintenance Manager",
       expectedImpact:
-        "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
+        scope === "spares"
+          ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+          : "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
       verification:
-        "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
+        scope === "spares"
+          ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+          : "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
     },
   ];
 }
@@ -2261,13 +2269,39 @@ function deterministicQuestionPlan(
   const question = request.question
     .trim()
     .toLowerCase()
-    .replace(/[’']/g, "'");
+    .replace(/[’']/g, "'")
+    .replace(/\bwot\b/g, "what")
+    .replace(/\bshud\b/g, "should")
+    .replace(/\brite\b/g, "right")
+    .replace(/\bproblms?\b/g, "problems")
+    .replace(/\btomor+ow\b/g, "tomorrow")
+    .replace(/\bcalabrations?\b/g, "calibrations")
+    .replace(/\bvacum\b/g, "vacuum")
+    .replace(/\bwhats\b/g, "what is");
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: request.pageContext.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const dateWithOffset = (days: number): string => {
+    const date = new Date(`${today}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
 
   const fastPlan = (
     scope: string,
     intentLabel: string,
     toolName: string,
     answerFocus: string,
+    options: {
+      startDate?: string;
+      endDate?: string;
+      summaryItemLimit?: number;
+      forceActionPlan?: boolean;
+    } = {},
   ): JsonRecord => ({
     intentLabel,
     decisionGoal: request.question,
@@ -2276,12 +2310,14 @@ function deterministicQuestionPlan(
     requiredTools: [toolName],
     optionalTools: [],
     equipmentQuery: "",
-    startDate: "",
-    endDate: "",
+    startDate: options.startDate ?? "",
+    endDate: options.endDate ?? "",
     ambiguity: "none",
     answerFocus,
     verificationChecks: ["Use only current authorised Vorta evidence."],
     routingMode: "deterministic",
+    summaryItemLimit: options.summaryItemLimit ?? 4,
+    forceActionPlan: options.forceActionPlan ?? false,
   });
 
   if (
@@ -2294,6 +2330,31 @@ function deterministicQuestionPlan(
       "shift_handover",
       "get_shift_handover",
       "Summarise what the previous shift completed, left ongoing or waiting, and the next action using no more than three decision summary items.",
+      { summaryItemLimit: 3 },
+    );
+  }
+
+  const coverDate = /\btomorrow\b/.test(question)
+    ? dateWithOffset(1)
+    : /\btoday\b/.test(question)
+      ? dateWithOffset(0)
+      : null;
+  if (
+    coverDate &&
+    /\b(?:cover|coverage|short|rota|available|availability)\b/.test(question) &&
+    /\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\b/.test(question)
+  ) {
+    return fastPlan(
+      "shift_cover",
+      "shift_cover_risk",
+      "get_shift_cover",
+      "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",
+      {
+        startDate: coverDate,
+        endDate: coverDate,
+        summaryItemLimit: 4,
+        forceActionPlan: true,
+      },
     );
   }
 
@@ -2307,19 +2368,36 @@ function deterministicQuestionPlan(
       "contractor_support",
       "get_contractor_availability",
       "Report only recorded contractor skills and availability, with any confirmation caveat.",
+      { summaryItemLimit: 4 },
     );
   }
 
   if (
-    /\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order)\b/.test(
+    /\b(?:(?:which|what) (?:plant )?area (?:currently )?(?:has|carries|holds|is carrying) (?:the )?highest (?:maintenance )?risk|highest[- ]risk (?:plant )?area)\b/.test(
       question,
     )
   ) {
     return fastPlan(
+      "site_risk",
+      "highest_current_area_risk",
+      "get_site_risk",
+      "Name the highest-risk area and the exact current score without padding the factual answer.",
+      { summaryItemLimit: 3 },
+    );
+  }
+
+  if (
+    /\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order|what (?:bit|part|spare) should (?:we|i) (?:buy|get|order) first|what should (?:we|i) (?:buy|get) first)\b/.test(
+      question,
+    )
+  ) {
+    const asksForAction = /\b(?:buy|get|order|do) first\b/.test(question);
+    return fastPlan(
       "spares",
       "spares_priority",
       "get_site_spares_risk",
-      "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time.",
+      "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time, and state the first purchasing action when requested.",
+      { summaryItemLimit: 4, forceActionPlan: asksForAction },
     );
   }
 
@@ -2333,6 +2411,7 @@ function deterministicQuestionPlan(
       "work_backlog",
       "get_site_work_backlog",
       "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence.",
+      { summaryItemLimit: 4 },
     );
   }
 
@@ -2346,11 +2425,12 @@ function deterministicQuestionPlan(
       "capability_risk",
       "get_site_capability_actions",
       "Identify the highest capability dependency and the evidence-backed action that reduces it.",
+      { summaryItemLimit: 4 },
     );
   }
 
   if (
-    /\b(?:biggest (?:maintenance )?(?:risks?|threats?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what could stop (?:the )?site)\b/.test(
+    /\b(?:biggest (?:maintenance )?(?:risks?|threats?|problems?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what should (?:i|we) be (?:most )?worried about|what could stop (?:the )?site|what is likely to bite us)\b/.test(
       question,
     )
   ) {
@@ -2359,6 +2439,7 @@ function deterministicQuestionPlan(
       "site_threat_prioritization",
       "get_site_operational_snapshot",
       "Rank the main current maintenance threats, state the first executable action and return one actionPlan item for it.",
+      { summaryItemLimit: 4, forceActionPlan: true },
     );
   }
 
@@ -2592,46 +2673,69 @@ export default async function handler(req: Request, _context: Context): Promise<
     questionPlan?.routingMode === "deterministic"
       ? textValues(questionPlan.requiredTools)[0] ?? null
       : null;
+  const deterministicArguments: JsonRecord =
+    deterministicToolName === "get_shift_cover" ||
+    deterministicToolName === "get_site_maintenance_plan"
+      ? {
+          start_date:
+            typeof questionPlan?.startDate === "string"
+              ? questionPlan.startDate
+              : "",
+          end_date:
+            typeof questionPlan?.endDate === "string"
+              ? questionPlan.endDate
+              : "",
+        }
+      : {};
 
   try {
     if (deterministicToolName) {
-      usedTools.add(deterministicToolName);
-      let deterministicResult: ToolResult;
-      try {
-        deterministicResult = await executeTool(
-          deterministicToolName,
-          {},
-          supabase,
-          request,
-        );
-      } catch (error) {
-        deterministicResult = {
-          source: deterministicToolName,
-          status: "unavailable",
-          message:
-            error instanceof Error
-              ? error.message
-              : "The deterministic evidence lookup could not be completed.",
-        };
-      }
-      toolOutcomes.set(deterministicToolName, deterministicResult);
-      if (deterministicResult.status !== "unavailable") {
-        usedSources.add(deterministicResult.source);
-      }
-      const deterministicLink = evidenceLinkForTool(
+    usedTools.add(deterministicToolName);
+    let deterministicResult: ToolResult;
+    try {
+      deterministicResult = await executeTool(
         deterministicToolName,
-        {},
+        deterministicArguments,
+        supabase,
+        request,
       );
-      if (deterministicLink) {
-        evidenceLinks.set(deterministicLink.path, deterministicLink);
-      }
-      input.push({
-        role: "user",
-        content:
-          `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:
-${trimToolResult(deterministicResult)}`,
-      });
+    } catch (error) {
+      deterministicResult = {
+        source: deterministicToolName,
+        status: "unavailable",
+        message:
+          error instanceof Error
+            ? error.message
+            : "The deterministic evidence lookup could not be completed.",
+      };
     }
+    toolOutcomes.set(deterministicToolName, deterministicResult);
+    if (deterministicResult.status !== "unavailable") {
+      usedSources.add(deterministicResult.source);
+    }
+    if (
+      deterministicToolName === "get_shift_cover" &&
+      deterministicResult.data &&
+      typeof deterministicResult.data === "object" &&
+      !Array.isArray(deterministicResult.data)
+    ) {
+      shiftCoverEvidence = deterministicResult.data as JsonRecord;
+      shiftCoverArguments = deterministicArguments;
+    }
+    const deterministicLink = evidenceLinkForTool(
+      deterministicToolName,
+      deterministicArguments,
+    );
+    if (deterministicLink) {
+      evidenceLinks.set(deterministicLink.path, deterministicLink);
+    }
+    input.push({
+      role: "user",
+      content:
+        `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:\n${trimToolResult(deterministicResult)}`,
+    });
+  }
+
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await client.responses.create({
