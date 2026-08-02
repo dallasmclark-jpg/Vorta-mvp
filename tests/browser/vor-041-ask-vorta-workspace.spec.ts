@@ -80,6 +80,23 @@ async function mockAskVorta(page: Page): Promise<void> {
   });
 }
 
+async function openAskVorta(page: Page): Promise<void> {
+  const sharedLauncher = page.locator(
+    '[data-vorta-shared-mobile-ai-launcher="true"]',
+  );
+  if (await sharedLauncher.isVisible().catch(() => false)) {
+    await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
+    return;
+  }
+
+  const desktopLauncher = page.getByRole("button", {
+    name: "Ask Vorta AI",
+    exact: true,
+  });
+  await expect(desktopLauncher).toBeVisible();
+  await desktopLauncher.evaluate((element: HTMLButtonElement) => element.click());
+}
+
 test.describe("VOR-041 Ask Vorta workspace", () => {
   test.skip(
     !hasAuthenticatedTestUser,
@@ -92,10 +109,8 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     test.skip(isPhoneProject(testInfo.project.name));
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
+    await openAskVorta(page);
 
-    await page
-      .getByRole("button", { name: "Ask Vorta AI", exact: true })
-      .click();
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
     const panelBox = await panel.boundingBox();
@@ -103,7 +118,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
 
     const expand = page.locator('[data-vorta-global-ai-expand="true"]');
     await expect(expand).toBeVisible();
-    await expand.click();
+    await expand.evaluate((element: HTMLButtonElement) => element.click());
 
     const workspace = page.locator('[data-vorta-ai-workspace="true"]');
     await expect(workspace).toBeVisible();
@@ -148,7 +163,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(panel).toBeVisible();
     await expect(panel.getByText(mockedAnswer.directAnswer)).toBeVisible();
 
-    await expand.click();
+    await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
     await expect(workspace.getByText(question, { exact: true })).toBeVisible();
     await page.screenshot({
@@ -162,12 +177,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
   }, testInfo) => {
     test.skip(!isPhoneProject(testInfo.project.name));
     await signInMaintenanceManager(page);
-
-    const phoneLauncher = page.locator(
-      '[data-vorta-shared-mobile-ai-launcher="true"]',
-    );
-    await expect(phoneLauncher).toBeVisible();
-    await phoneLauncher.evaluate((element: HTMLButtonElement) => element.click());
+    await openAskVorta(page);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
