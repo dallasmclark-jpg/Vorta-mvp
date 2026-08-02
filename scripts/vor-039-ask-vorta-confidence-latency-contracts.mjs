@@ -19,7 +19,14 @@ const checks = [
       source.includes("answer.decisionSummary = records(answer.decisionSummary).slice(0, summaryLimit)"),
     "fast routes enforce per-intent concise summaries and requested action structure",
   ],
-  [source.includes("deterministicToolName ? [] : TOOLS") && source.includes('? "none"'), "deterministic evidence is preloaded before one tool-free answer call"],
+  [
+    source.includes("deterministicToolNames") &&
+      source.includes("hasDeterministicRouting") &&
+      source.includes("Promise.all(") &&
+      source.includes("tools: hasDeterministicRouting ? [] : TOOLS") &&
+      source.includes('tool_choice: hasDeterministicRouting\n          ? "none"'),
+    "deterministic evidence is preloaded before one tool-free answer call",
+  ],
   [source.includes("Return an empty actionPlan for a purely factual lookup"), "factual answers may omit action plans"],
   [source.includes("Return zero to three useful followUpQuestions"), "follow-up questions are optional"],
   [service.includes("function isActionPlan") && service.includes("Array.isArray(value)"), "frontend accepts an empty action-plan array"],
