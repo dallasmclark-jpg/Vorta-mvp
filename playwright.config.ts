@@ -7,6 +7,8 @@ const maintenanceManagerAuthState =
 const askVortaLiveEval = /vor-033-ask-vorta-live-eval\.spec\.ts/;
 const samsungTabletUserAgent =
   "Mozilla/5.0 (Linux; Android 15; SM-X910 Build/AP3A.240905.015.A2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
+const samsungDesktopModeUserAgent =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 
 const authenticatedProject = hasAuthenticatedTestUser
   ? {
@@ -88,7 +90,7 @@ export default defineConfig({
         ...authenticatedProject.use,
         viewport: { width: 1536, height: 1024 },
         hasTouch: true,
-        userAgent: samsungTabletUserAgent,
+        userAgent: samsungDesktopModeUserAgent,
       },
     },
     {
