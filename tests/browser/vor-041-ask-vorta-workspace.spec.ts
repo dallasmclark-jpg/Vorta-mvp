@@ -4,8 +4,8 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
-const usesSharedLauncher = (projectName: string): boolean =>
-  projectName === "phone-360" || projectName === "samsung-tablet-portrait";
+const usesDashboardAskButton = (projectName: string): boolean =>
+  projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -86,12 +86,22 @@ async function openAskVorta(
   page: Page,
   projectName: string,
 ): Promise<void> {
-  if (usesSharedLauncher(projectName)) {
+  if (isPhoneProject(projectName)) {
     const sharedLauncher = page.locator(
       '[data-vorta-shared-mobile-ai-launcher="true"]',
     );
     await expect(sharedLauncher).toBeVisible();
     await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
+    return;
+  }
+
+  if (usesDashboardAskButton(projectName)) {
+    const dashboardAsk = page.getByRole("button", {
+      name: "Ask",
+      exact: true,
+    });
+    await expect(dashboardAsk).toBeVisible();
+    await dashboardAsk.evaluate((element: HTMLButtonElement) => element.click());
     return;
   }
 
