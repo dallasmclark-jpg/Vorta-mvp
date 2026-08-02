@@ -1,0 +1,63 @@
+name: VOR-038 Ask Vorta intelligence eval
+
+on:
+  push:
+    branches:
+      - fix/vor-038-ask-vorta-intelligence
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-038-intelligence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semantic-live-eval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_BASE_URL: https://deploy-preview-187--vorta-app.netlify.app
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+
+    steps:
+      - name: Check out exact branch commit
+        uses: actions/checkout@v4
+        with:
+          ref: fix/vor-038-ask-vorta-intelligence
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Materialise and type-check VOR-038 backend
+        run: npm run typecheck
+
+      - name: Wait for the matching deploy preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            html="$(curl --fail --silent --show-error "$VORTA_EVAL_BASE_URL" || true)"
+            if [[ "$html" == *"${GITHUB_SHA}"* ]]; then
+              echo "Deploy preview contains the exact branch commit ${GITHUB_SHA}."
+              exit 0
+            fi
+            echo "Waiting for Netlify deploy preview (${attempt}/30)..."
+            sleep 10
+          done
+          echo "The exact branch commit did not appear in the deploy preview in time." >&2
+          exit 1
+
+      - name: Run semantic and cross-domain live evaluations
+        run: npm run eval:ask-vorta:vor038
