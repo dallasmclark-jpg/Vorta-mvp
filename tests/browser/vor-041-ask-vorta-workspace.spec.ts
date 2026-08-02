@@ -94,11 +94,7 @@ async function openAskVorta(
   }
 
   await page.evaluate(() => {
-    window.dispatchEvent(
-      new CustomEvent("vorta-global-ai-prompt", {
-        detail: { role: "maintenance_manager" },
-      }),
-    );
+    window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt"));
   });
 }
 
