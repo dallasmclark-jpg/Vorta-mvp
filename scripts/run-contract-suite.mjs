@@ -79,24 +79,31 @@ const suiteStartedAt = Date.now();
 for (const [label, path] of selectedContracts) {
   const startedAt = Date.now();
   console.log(`\n▶ ${label}`);
-  const result = spawnSync(process.execPath, [path], {
+
+  const result = spawnSync(process.execPath, [resolve(repositoryRoot, path)], {
     cwd: repositoryRoot,
+    env: process.env,
     stdio: "inherit",
   });
-  const duration = Date.now() - startedAt;
-  if (result.status !== 0) {
-    failures.push(label);
-    console.error(`✗ ${label} failed in ${duration}ms`);
-  } else {
-    console.log(`✓ ${label} passed in ${duration}ms`);
+
+  const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+  if (result.status === 0) {
+    console.log(`✓ ${label} (${seconds}s)`);
+    continue;
   }
+
+  failures.push({ label, path, status: result.status, signal: result.signal });
+  console.error(`✗ ${label} (${seconds}s)`);
 }
 
-const totalDuration = Date.now() - suiteStartedAt;
+const suiteSeconds = ((Date.now() - suiteStartedAt) / 1000).toFixed(1);
+console.log(`\nContract suite finished: ${selectedContracts.length - failures.length}/${selectedContracts.length} passed in ${suiteSeconds}s.`);
+
 if (failures.length > 0) {
-  console.error(`\n${failures.length} contract group(s) failed after ${totalDuration}ms:`);
-  for (const failure of failures) console.error(`- ${failure}`);
+  console.error("\nFailed contract groups:");
+  for (const failure of failures) {
+    const reason = failure.signal ? `signal ${failure.signal}` : `exit ${failure.status ?? "unknown"}`;
+    console.error(`- ${failure.label}: ${failure.path} (${reason})`);
+  }
   process.exit(1);
 }
-
-console.log(`\n${selectedContracts.length}/${selectedContracts.length} contract groups passed in ${totalDuration}ms.`);
