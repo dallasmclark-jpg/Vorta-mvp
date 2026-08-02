@@ -5,6 +5,8 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
+const isPortraitTabletProject = (projectName: string): boolean =>
+  projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -19,6 +21,11 @@ const mockedAnswer = {
       label: "First action",
       value: "Confirm the proposed cover package before releasing planned work.",
     },
+    { label: "Scheduled", value: "Four engineers are currently rostered." },
+    { label: "Absence", value: "No recorded absence is visible." },
+    { label: "Best provisional cover", value: "Oliver Clarke and Laura Davies." },
+    { label: "Calculated impact", value: "Closes the highest-priority gap." },
+    { label: "Residual risk", value: "Approval and rest compliance remain open." },
   ],
   evidence: [
     "Red Shift night has one unresolved validated-skill gap on VF-02.",
@@ -59,7 +66,7 @@ const mockedAnswer = {
   sources: ["Shift Cover decision pack"],
   missingData: ["Overtime acceptance is not yet confirmed."],
   confidence: 82,
-  intentLabel: "Shift cover decision",
+  intentLabel: "check_shift_cover",
   toolsUsed: ["get_shift_cover"],
   evidenceLinks: [
     {
@@ -146,6 +153,20 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(send).toBeEnabled();
     await send.click();
     await expect(workspace.getByText(mockedAnswer.directAnswer)).toBeVisible();
+    const liveEvidenceStatus = workspace.getByText("Live evidence loaded", {
+      exact: true,
+    });
+    if (isPortraitTabletProject(testInfo.project.name)) {
+      await expect(liveEvidenceStatus).toBeHidden();
+    } else {
+      await expect(liveEvidenceStatus).toBeVisible();
+    }
+    await expect(workspace.getByText("check_shift_cover", { exact: true })).toHaveCount(0);
+    await expect(workspace.getByText("Strategic maintenance response", { exact: true })).toHaveCount(0);
+    await expect(workspace.getByText("Maintenance Manager", { exact: true })).toHaveCount(0);
+    await expect(
+      workspace.getByText("I can answer Maintenance Manager questions", { exact: false }),
+    ).toHaveCount(0);
     await expect(
       workspace.getByText(question, { exact: true }).last(),
     ).toBeVisible();
@@ -178,6 +199,10 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(workspace).toBeHidden();
     await expect(panel).toBeVisible();
     await expect(panel.getByText(mockedAnswer.directAnswer)).toBeVisible();
+    const compactSummary = panel.locator(
+      'section[aria-labelledby="ask-vorta-decision-summary"]',
+    );
+    await expect(compactSummary.locator("li")).toHaveCount(4);
 
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
