@@ -46,7 +46,9 @@ jobs:
 
       - name: Apply bounded workspace integration
         if: steps.state.outputs.integrated == 'false'
-        run: python scripts/vor-041-integrate-workspace.py
+        run: |
+          python scripts/vor-041-integrate-workspace.py
+          python scripts/vor-041-optimise-workspace.py
 
       - name: Prove mobile presentation was not edited
         if: steps.state.outputs.integrated == 'false'
@@ -68,6 +70,7 @@ jobs:
         if: steps.state.outputs.integrated == 'false'
         run: |
           rm scripts/vor-041-integrate-workspace.py
+          rm scripts/vor-041-optimise-workspace.py
           rm .github/workflows/vor-041-implement-workspace.yml
 
       - name: Commit verified workspace integration
@@ -81,6 +84,7 @@ jobs:
                   scripts/run-contract-suite.mjs \
                   scripts/vor-041-ask-vorta-workspace-contracts.mjs \
                   scripts/vor-041-integrate-workspace.py \
+                  scripts/vor-041-optimise-workspace.py \
                   .github/workflows/vor-041-implement-workspace.yml
           git commit -m "VOR-041: add desktop and tablet Ask Vorta workspace"
           git push origin HEAD:agent/vor-041-ask-vorta-workspace
