@@ -11,15 +11,28 @@ const checks = [
   [source.includes("toolOutcomes = new Map<string, ToolResult>()"), "tool outcomes are retained for calibration"],
   [source.includes("answerReasoningEffort(questionPlan)"), "answer reasoning effort is scope-aware"],
   [source.includes("answerOutputTokenBudget(questionPlan)"), "answer output budget is scope-aware"],
-    [source.includes("deterministicQuestionPlan") && source.includes('routingMode: "deterministic"'), "clear maintenance intents bypass the model planner"],
-    [source.includes("enforceDeterministicResponseShape") && source.includes('scope === "handover"') && source.includes('scope !== "site_priorities"'), "fast routes enforce concise summaries and requested action structure"],
-    [source.includes("deterministicToolName ? [] : TOOLS") && source.includes('? "none"'), "deterministic evidence is preloaded before one tool-free answer call"],
+  [source.includes("deterministicQuestionPlan") && source.includes('routingMode: "deterministic"'), "clear maintenance intents bypass the model planner"],
+  [
+    source.includes("enforceDeterministicResponseShape") &&
+      source.includes("summaryItemLimit") &&
+      source.includes("forceActionPlan") &&
+      source.includes("answer.decisionSummary = records(answer.decisionSummary).slice(0, summaryLimit)"),
+    "fast routes enforce per-intent concise summaries and requested action structure",
+  ],
+  [
+    source.includes("deterministicToolNames") &&
+      source.includes("hasDeterministicRouting") &&
+      source.includes("Promise.all(") &&
+      source.includes("tools: hasDeterministicRouting ? [] : TOOLS") &&
+      source.includes('tool_choice: hasDeterministicRouting\n          ? "none"'),
+    "deterministic evidence is preloaded before one tool-free answer call",
+  ],
   [source.includes("Return an empty actionPlan for a purely factual lookup"), "factual answers may omit action plans"],
   [source.includes("Return zero to three useful followUpQuestions"), "follow-up questions are optional"],
   [service.includes("function isActionPlan") && service.includes("Array.isArray(value)"), "frontend accepts an empty action-plan array"],
   [runner.includes("scenario.confidenceMin") && runner.includes("scenario.maxToolCount"), "live evaluations enforce confidence and duplicate-tool limits"],
   [runner.includes("scenario.maxDurationMs") && runner.includes("scenario.maxFollowUpQuestions"), "live evaluations enforce latency and answer density"],
-    [runner.includes("AbortController") && runner.includes("requestTimeoutMs") && runner.includes("request failed:"), "live evaluation network failures are bounded and recorded"],
+  [runner.includes("AbortController") && runner.includes("requestTimeoutMs") && runner.includes("request failed:"), "live evaluation network failures are bounded and recorded"],
   [Array.isArray(evals) && evals.length >= 4, "confidence and latency scenarios are permanent"],
   [evals.some((item) => item.maxToolCount === 1), "decision-pack duplication is evaluated"],
   [evals.some((item) => item.requireActionPlan === false), "concise factual answers are evaluated"],
