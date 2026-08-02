@@ -350,9 +350,9 @@ export function AskVortaWorkspace({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-800 bg-gray-950 px-5">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1" role="tablist" aria-label="Ask Vorta workspace views">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-gray-800 bg-gray-950 px-3 lg:px-5">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1" role="tablist" aria-label="Ask Vorta workspace views">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const selected = activeTab === tab.id;
@@ -375,7 +375,7 @@ export function AskVortaWorkspace({
                 );
               })}
             </div>
-            <div className="hidden items-center gap-2 text-xs text-slate-500 lg:flex">
+            <div className="hidden min-w-0 items-center gap-2 text-xs text-slate-500 xl:flex">
               {loadingContext ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
               ) : contextReady ? (
@@ -387,7 +387,7 @@ export function AskVortaWorkspace({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
               onClick={onCollapse}

@@ -52,6 +52,11 @@ assert.match(
 );
 assert.match(
   workspace,
+  /justify-between gap-2[\s\S]*px-3 lg:px-5[\s\S]*min-w-0 flex-1[\s\S]*xl:flex[\s\S]*shrink-0 items-center gap-1/,
+  "The portrait workspace header keeps exit controls visible while deferring context text to wider screens.",
+);
+assert.match(
+  workspace,
   /matchMedia\("\(max-width: 768px\)"\)[\s\S]*onCollapse\(\)/,
   "Crossing into phone width must collapse the workspace back to the approved mobile assistant.",
 );

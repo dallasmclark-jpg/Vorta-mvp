@@ -116,6 +116,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     test.skip(isPhoneProject(testInfo.project.name));
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
+    await page.evaluate(() => window.localStorage.removeItem("vorta:ask-vorta:recent-conversations:v1"));
     await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
@@ -192,6 +193,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
   }, testInfo) => {
     test.skip(!isPhoneProject(testInfo.project.name));
     await signInMaintenanceManager(page);
+    await page.evaluate(() => window.localStorage.removeItem("vorta:ask-vorta:recent-conversations:v1"));
     await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
