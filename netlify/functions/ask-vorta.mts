@@ -900,6 +900,48 @@ function evidenceAwareConfidence(
   return Math.max(lowerBound, Math.min(95, Math.round(score)));
 }
 
+function enforceDeterministicResponseShape(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+): void {
+  if (questionPlan?.routingMode !== "deterministic") return;
+
+  const scope =
+    typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+
+  if (scope === "handover") {
+    answer.decisionSummary = records(answer.decisionSummary).slice(0, 3);
+    answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, 1);
+  }
+
+  if (scope !== "site_priorities" || records(answer.actionPlan).length > 0) {
+    return;
+  }
+
+  const summaryAction = records(answer.decisionSummary).find((item) =>
+    /first action|next action|action/i.test(String(item.label ?? "")),
+  );
+  const action =
+    textValues(answer.recommendedActions)[0] ??
+    (typeof summaryAction?.value === "string"
+      ? summaryAction.value.trim()
+      : "");
+
+  if (!action) return;
+
+  answer.actionPlan = [
+    {
+      priority: "now",
+      action,
+      owner: "Maintenance Manager",
+      expectedImpact:
+        "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
+      verification:
+        "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
+    },
+  ];
+}
+
 function enforceAnswerEvidence(
   answer: JsonRecord,
   question: string,
@@ -2251,7 +2293,7 @@ function deterministicQuestionPlan(
       "handover",
       "shift_handover",
       "get_shift_handover",
-      "Summarise what the previous shift completed, left ongoing or waiting, and the next action.",
+      "Summarise what the previous shift completed, left ongoing or waiting, and the next action using no more than three decision summary items.",
     );
   }
 
@@ -2316,7 +2358,7 @@ function deterministicQuestionPlan(
       "site_priorities",
       "site_threat_prioritization",
       "get_site_operational_snapshot",
-      "Rank the main current maintenance threats and state the first executable action.",
+      "Rank the main current maintenance threats, state the first executable action and return one actionPlan item for it.",
     );
   }
 
@@ -2646,6 +2688,7 @@ ${trimToolResult(deterministicResult)}`,
           shiftCoverEvidence,
           shiftCoverArguments,
         );
+        enforceDeterministicResponseShape(answer, questionPlan);
         const calibratedConfidence = evidenceAwareConfidence(
           answer,
           questionPlan,

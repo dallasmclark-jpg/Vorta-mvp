@@ -12,6 +12,7 @@ const checks = [
   [source.includes("answerReasoningEffort(questionPlan)"), "answer reasoning effort is scope-aware"],
   [source.includes("answerOutputTokenBudget(questionPlan)"), "answer output budget is scope-aware"],
     [source.includes("deterministicQuestionPlan") && source.includes('routingMode: "deterministic"'), "clear maintenance intents bypass the model planner"],
+    [source.includes("enforceDeterministicResponseShape") && source.includes('scope === "handover"') && source.includes('scope !== "site_priorities"'), "fast routes enforce concise summaries and requested action structure"],
     [source.includes("deterministicToolName ? [] : TOOLS") && source.includes('? "none"'), "deterministic evidence is preloaded before one tool-free answer call"],
   [source.includes("Return an empty actionPlan for a purely factual lookup"), "factual answers may omit action plans"],
   [source.includes("Return zero to three useful followUpQuestions"), "follow-up questions are optional"],
