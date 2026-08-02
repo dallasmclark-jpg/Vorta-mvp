@@ -784,6 +784,22 @@ function collectDecisionFacts(
   depth = 0,
 ): Array<{ score: number; text: string }> {
   if (depth > 6 || value === null || value === undefined) return [];
+  if (typeof value !== "object") {
+    const text = String(value).trim();
+    if (!text || !path) return [];
+    const pathSegments = path.split(/[.[\]]/).filter(Boolean);
+    const leafKey =
+      [...pathSegments].reverse().find((segment) => !/^\d+$/.test(segment)) ?? path;
+    const keyScore = /code|number|reference|fault|component|part|skill|engineer|name/i.test(leafKey)
+      ? 8
+      : /title|summary|description|action|outcome|status|quantity|stock|lead|risk|validation|calibration|cause|text|note|specialism|evidence/i.test(leafKey)
+        ? 5
+        : 1;
+    const valueScore = /[A-Z]{2,}[-0-9]{2,}/.test(text) ? 5 : 0;
+    return keyScore + valueScore >= 5
+      ? [{ score: keyScore + valueScore, text: `${path}: ${text.slice(0, 500)}` }]
+      : [];
+  }
   if (Array.isArray(value)) {
     return value
       .slice(0, 40)
@@ -822,6 +838,7 @@ function collectDecisionFacts(
 function equipmentDecisionFacts(
   selected: JsonRecord,
   domains: Record<string, JsonRecord>,
+  question: string,
 ): string[] {
   const identity = [
     selected.equipment_code,
@@ -832,10 +849,17 @@ function equipmentDecisionFacts(
   ]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .map((value) => `equipment: ${value}`);
-  const ranked = collectDecisionFacts(domains)
+  const rankedFacts = collectDecisionFacts(domains)
     .sort((first, second) => second.score - first.score)
     .map((item) => item.text);
-  return [...new Set([...identity, ...ranked])].slice(0, 36);
+  const questionRanked = relevantEquipmentDecisionFacts(question, rankedFacts);
+  return [
+    ...new Set([
+      ...identity,
+      ...questionRanked,
+      ...rankedFacts.slice(0, 28),
+    ]),
+  ].slice(0, 48);
 }
 
 function relevantEquipmentDecisionFacts(
@@ -880,7 +904,7 @@ function relevantEquipmentDecisionFacts(
       return { fact, score, index };
     })
     .sort((first, second) => second.score - first.score || first.index - second.index)
-    .slice(0, 12)
+    .slice(0, 16)
     .map((item) => item.fact);
 }
 
@@ -1918,7 +1942,7 @@ async function executeTool(
         data: {
           query,
           equipment: compactDecisionData(selected),
-          decisionFacts: equipmentDecisionFacts(selected, domains),
+          decisionFacts: equipmentDecisionFacts(selected, domains, request.question),
           domains,
           caveat:
             "Use search_maintenance_documents as an additional specialist lookup when the question asks for a fault code, procedure, drawing, manual section or exact technical instruction.",
