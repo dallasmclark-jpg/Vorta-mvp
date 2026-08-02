@@ -126,63 +126,10 @@
   }
 }
 
-/* Every non-phone layout keeps the approved embedded assistant presentation. */
-@media (min-width: 768px) {
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] {
-    min-width: 0;
-    padding: 0.375rem;
-    overflow: visible;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    border-radius: 1rem;
-    background: linear-gradient(
-      135deg,
-      rgba(30, 41, 59, 0.88),
-      rgba(15, 23, 42, 0.96)
-    );
-    box-shadow:
-      0 14px 32px rgba(0, 0, 0, 0.26),
-      inset 0 1px 0 rgba(255, 255, 255, 0.055);
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    .flex.min-w-0.flex-1.items-center {
-    min-height: 3rem;
-    border-color: rgba(148, 163, 184, 0.2) !important;
-    border-radius: 0.75rem;
-    background: rgba(9, 12, 18, 0.84) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  }
-
-  [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input[type="text"] {
-    min-height: 2.75rem;
-    color: rgb(226 232 240);
-    font-size: 0.875rem;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    input[type="text"]::placeholder {
-    color: rgb(148 163 184);
-    opacity: 0.78;
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    button:has(> svg.lucide-send) {
-    min-width: 6rem;
-    min-height: 3rem;
-    border: 1px solid rgba(147, 197, 253, 0.22);
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgb(37 99 235), rgb(29 78 216));
-    box-shadow:
-      0 8px 20px rgba(29, 78, 216, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  }
-
-  [data-vorta-dashboard-root="true"]
-    [data-vorta-embedded-ai="true"]
-    button:has(> svg.lucide-send):hover {
-    background: linear-gradient(135deg, rgb(59 130 246), rgb(37 99 235));
-  }
+@media (min-width:768px){
+[data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"]{
+padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+& .flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(55 65 81)!important;box-shadow:none!important}
+& input[type="text"]:focus{outline:none!important;box-shadow:none!important}
+}
 }

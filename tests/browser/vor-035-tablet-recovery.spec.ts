@@ -48,23 +48,27 @@ async function expectContentOnlyCardPadding(page: Page, pageName: string): Promi
 
 async function expectCapabilityBorder(
   card: Locator,
-  expectedTopColour: string,
+  expectedEdge: string,
   label: string,
 ): Promise<void> {
   await expect(card, `${label} capability card must be visible`).toBeVisible();
-  const border = await card.evaluate((element) => {
+  const edge = await card.evaluate((element) => {
     const style = window.getComputedStyle(element);
+    const before = window.getComputedStyle(element, "::before");
     return {
-      top: style.borderTopColor,
-      left: style.borderLeftColor,
-      right: style.borderRightColor,
-      bottom: style.borderBottomColor,
+      colour: style.getPropertyValue("--vorta-capability-edge").trim(),
+      content: before.content,
+      backgroundImage: before.backgroundImage,
+      paddingTop: before.paddingTop,
+      paddingBottom: before.paddingBottom,
     };
   });
 
-  expect(border.top, `${label} top edge must use its team colour`).toBe(expectedTopColour);
-  expect(border.left, `${label} left edge must not be neutral`).not.toBe(border.bottom);
-  expect(border.right, `${label} right edge must not be neutral`).not.toBe(border.bottom);
+  expect(edge.colour, `${label} must retain its team colour token`).toBe(expectedEdge);
+  expect(edge.content, `${label} must render the faded three-sided edge`).not.toBe("none");
+  expect(edge.backgroundImage, `${label} edge must use a vertical gradient`).toContain("linear-gradient");
+  expect(edge.paddingTop, `${label} top edge must be stronger than its sides`).toBe("2px");
+  expect(edge.paddingBottom, `${label} bottom edge must remain neutral`).toBe("0px");
 }
 
 test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
@@ -104,21 +108,26 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   await expect(
     page.getByRole("button", { name: /Refresh risk intelligence/i }),
   ).toBeVisible({ timeout: 30_000 });
+
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   await expect(embeddedAi).toBeVisible();
-  await expect(embeddedAi).toHaveCSS("border-top-style", "solid");
-  await expect(embeddedAi).toHaveCSS("border-radius", "16px");
-  const askButton = embeddedAi.getByRole("button", { name: "Ask", exact: true });
-  await expect(askButton).toBeVisible();
-  const askButtonSize = await askButton.evaluate((element) => {
-    const style = window.getComputedStyle(element);
-    return {
-      minWidth: Number.parseFloat(style.minWidth),
-      minHeight: Number.parseFloat(style.minHeight),
-    };
-  });
-  expect(askButtonSize.minWidth).toBeGreaterThanOrEqual(96);
-  expect(askButtonSize.minHeight).toBeGreaterThanOrEqual(48);
+  await expect(embeddedAi).toHaveCSS("border-top-style", "none");
+  await expect(embeddedAi).toHaveCSS("border-radius", "0px");
+  await expect(embeddedAi).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(embeddedAi).toHaveCSS("box-shadow", "none");
+
+  const aiInput = embeddedAi.getByRole("textbox");
+  await aiInput.focus();
+  const inputFrame = embeddedAi.locator(".flex.min-w-0.flex-1.items-center");
+  await expect(inputFrame).toHaveCSS("border-color", "rgb(55, 65, 81)");
+  await expect(inputFrame).toHaveCSS("box-shadow", "none");
+  await expect(embeddedAi.getByRole("button", { name: "Ask", exact: true })).toBeVisible();
+
+  const visibleRiskCards = page.locator(
+    '[data-vorta-card-rail="labour-risk"] > [data-vorta-dashboard-card="labour-risk"]:visible',
+  );
+  await expect(visibleRiskCards).toHaveCount(4);
+
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
   await captureEvidence(page, testInfo, "dashboard-samsung");
@@ -154,22 +163,22 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
 
   await expectCapabilityBorder(
     page.locator('button[aria-pressed][class~="border-t-red-500"]').first(),
-    "rgb(239, 68, 68)",
+    "#ef4444",
     "Red Shift",
   );
   await expectCapabilityBorder(
     page.locator('button[aria-pressed][class~="border-t-emerald-500"]').first(),
-    "rgb(16, 185, 129)",
+    "#10b981",
     "Green Shift",
   );
   await expectCapabilityBorder(
     page.locator('button[aria-pressed][class~="border-t-blue-500"]').first(),
-    "rgb(59, 130, 246)",
+    "#3b82f6",
     "Blue Shift",
   );
   await expectCapabilityBorder(
     page.locator('button[aria-pressed][class~="border-t-yellow-400"]').first(),
-    "rgb(250, 204, 21)",
+    "#facc15",
     "Yellow Shift",
   );
 

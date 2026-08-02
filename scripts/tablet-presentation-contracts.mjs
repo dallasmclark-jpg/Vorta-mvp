@@ -13,20 +13,35 @@ const [styles, dashboardStyles, engineersRoute] = await Promise.all([
   readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
 ]);
 
+const compactDashboardStyles = dashboardStyles.replace(/\s+/g, "");
+
 assert.match(
   styles,
   /\[data-vorta-card="true"\][\s\S]*> \[class\*="pt-0"\]:first-child/,
   "Responsive content-only cards must recover their top padding.",
 );
-assert.match(
-  dashboardStyles,
-  /@media \(min-width: 768px\) \{[\s\S]*\[data-vorta-embedded-ai="true"\]/,
-  "The approved embedded Ask Vorta presentation must apply at every non-phone width.",
+assert.ok(
+  compactDashboardStyles.includes(
+    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;',
+  ),
+  "The embedded Ask Vorta control must retain the approved slim, flat outer treatment.",
+);
+assert.ok(
+  compactDashboardStyles.includes(
+    '&.flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;box-shadow:none!important}',
+  ),
+  "The embedded Ask Vorta input frame must not draw the rejected blue focus rectangle.",
+);
+assert.ok(
+  compactDashboardStyles.includes(
+    '&input[type="text"]:focus{outline:none!important;box-shadow:none!important}',
+  ),
+  "The Ask Vorta textbox itself must not draw a focus outline or shadow.",
 );
 assert.doesNotMatch(
   dashboardStyles,
-  /@media \(min-width: 768px\) and \(max-width: 1439px\)/,
-  "Chrome desktop-site mode must not bypass the approved Ask Vorta presentation.",
+  /box-shadow:\s*0 14px 32px|border:\s*1px solid rgba\(96, 165, 250/,
+  "The rejected glowing Ask Vorta shell must not return.",
 );
 for (const teamClass of [
   "border-t-red-500",
@@ -45,8 +60,13 @@ for (const teamClass of [
 }
 assert.match(
   styles,
-  /border-left-color:[\s\S]*border-right-color:[\s\S]*border-bottom-color:/,
-  "Skills Matrix capability cards must use team colour on left, top and right while keeping a neutral bottom edge.",
+  /button\[aria-pressed\][\s\S]*::before[\s\S]*padding: 2px 1px 0;[\s\S]*linear-gradient\([\s\S]*transparent 86%[\s\S]*mask-composite: exclude/,
+  "Skills Matrix cards must use a strong top edge with side colours fading towards the bottom.",
+);
+assert.match(
+  styles,
+  /\[data-vorta-card-rail="labour-risk"\] > :nth-child\(n \+ 5\)[\s\S]*display: none !important;/,
+  "The combined Spares and Labour Risks rail must show only its four highest-ranked cards.",
 );
 assert.match(
   engineersRoute,
@@ -59,4 +79,4 @@ assert.doesNotMatch(
   "Presentation recovery must not restore the rejected Engineers replacement.",
 );
 
-console.log("Tablet card spacing, Ask Vorta and Skills Matrix team-edge contracts passed.");
+console.log("Final Ask Vorta, top-four risk rail and faded Skills Matrix edge contracts passed.");

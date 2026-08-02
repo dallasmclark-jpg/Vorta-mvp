@@ -104,14 +104,6 @@ html [data-vorta-page-content="true"] :where(
 .border-t-violet-400 { --vorta-capability-edge: #a78bfa; }
 .border-t-cyan-400 { --vorta-capability-edge: #22d3ee; }
 
-button[aria-pressed][class~="rounded-xl"][class*="border-t-"] {
-  border-top-width: 2px !important;
-  border-top-color: var(--vorta-capability-edge) !important;
-  border-left-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
-  border-right-color: color-mix(in srgb, var(--vorta-capability-edge) 68%, transparent) !important;
-  border-bottom-color: var(--vorta-surface-border) !important;
-}
-
 /* Quiet structure should not compete with the operational content. */
 html.dark [data-vorta-page-content="true"] [class~="border-gray-800"] {
   border-color: var(--vorta-surface-divider) !important;
@@ -308,4 +300,44 @@ html[data-vorta-select-open="true"] :is(
   ):hover {
     transform: none;
   }
+}
+
+/* Approved Skills Matrix identity: strong top edge, fading side edges, neutral bottom. */
+button[aria-pressed][class~="rounded-xl"][class*="border-t-"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: var(--vorta-surface-border) !important;
+}
+
+button[aria-pressed][class~="rounded-xl"][class*="border-t-"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 2px 1px 0;
+  background: linear-gradient(
+    180deg,
+    var(--vorta-capability-edge) 0%,
+    color-mix(in srgb, var(--vorta-capability-edge) 64%, transparent) 36%,
+    color-mix(in srgb, var(--vorta-capability-edge) 24%, transparent) 64%,
+    transparent 86%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+button[aria-pressed][class~="rounded-xl"][class*="border-t-"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dashboard rail shows only the four highest scoring combined spares/labour risks. */
+[data-vorta-card-rail="labour-risk"] > :nth-child(n + 5) {
+  display: none !important;
 }
