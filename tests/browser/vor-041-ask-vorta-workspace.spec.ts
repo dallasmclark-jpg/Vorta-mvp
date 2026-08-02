@@ -1,4 +1,4 @@
-// Final VOR-041 device verification covers phone, tablet portrait, tablet landscape and desktop.
+// Final VOR-041 verification covers four device classes and stable Recent conversations.
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
@@ -184,6 +184,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(
       workspace.getByText(question, { exact: true }).last(),
     ).toBeVisible();
+    await expect(
+      workspace.locator("aside").getByText(question, { exact: true }),
+    ).toHaveCount(1);
     await page.screenshot({
       path: testInfo.outputPath("ask-vorta-workspace-conversation.png"),
       fullPage: true,
