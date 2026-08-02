@@ -11,26 +11,43 @@ const offset = Math.max(0, Math.min(scenarios.length, Number(process.env.VORTA_E
 const limit = Math.max(1, Math.min(scenarios.length - offset || 1, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
 const delayMs = Math.max(0, Number(process.env.VORTA_EVAL_DELAY_MS || 0));
 const selectedScenarios = scenarios.slice(offset, offset + limit);
+const authConfig = {
+  supabaseUrl: process.env.VITE_SUPABASE_URL,
+  anonKey: process.env.VITE_SUPABASE_ANON_KEY,
+  email: process.env.VORTA_E2E_EMAIL,
+  password: process.env.VORTA_E2E_PASSWORD,
+};
+
+function hasProtectedAuthConfig() {
+  return Boolean(
+    authConfig.supabaseUrl &&
+      authConfig.anonKey &&
+      authConfig.email &&
+      authConfig.password,
+  );
+}
+
+async function signInEvaluationUser() {
+  if (!hasProtectedAuthConfig()) return null;
+  const signIn = await fetch(`${authConfig.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: authConfig.anonKey },
+    body: JSON.stringify({ email: authConfig.email, password: authConfig.password }),
+  });
+  const session = await signIn.json().catch(() => null);
+  if (!signIn.ok || !session?.access_token) return null;
+  return session.access_token;
+}
 
 if (!token) {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-  const email = process.env.VORTA_E2E_EMAIL;
-  const password = process.env.VORTA_E2E_PASSWORD;
-  if (!supabaseUrl || !anonKey || !email || !password) {
+  if (!hasProtectedAuthConfig()) {
     console.error(
       "Provide VORTA_EVAL_TOKEN or the protected VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VORTA_E2E_EMAIL and VORTA_E2E_PASSWORD variables.",
     );
     process.exit(2);
   }
-  const signIn = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { "content-type": "application/json", apikey: anonKey },
-    body: JSON.stringify({ email, password }),
-  });
-  const session = await signIn.json().catch(() => null);
-  token = session?.access_token;
-  if (!signIn.ok || !token) {
+  token = await signInEvaluationUser();
+  if (!token) {
     console.error("The protected Ask Vorta evaluation user could not sign in.");
     process.exit(2);
   }
@@ -66,25 +83,13 @@ function sleep(milliseconds) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 }
 
-const results = [];
-let blockedByRateLimit = false;
-for (const [batchIndex, scenario] of selectedScenarios.entries()) {
-  if (batchIndex > 0 && delayMs > 0) await sleep(delayMs);
-
-  const startedAt = Date.now();
+async function executeScenarioRequest(scenario, bearerToken, requestTimeoutMs) {
   const controller = new AbortController();
-  const requestTimeoutMs = Math.max(
-    5_000,
-    Number(scenario.requestTimeoutMs || 45_000),
-  );
   const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
-  let response;
-  let payload = null;
-  const failures = [];
   try {
-    response = await fetch(`${baseUrl}/api/ask-vorta`, {
+    const response = await fetch(`${baseUrl}/api/ask-vorta`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${bearerToken}` },
       body: JSON.stringify({
         question: scenario.question,
         role: "maintenance-manager",
@@ -97,16 +102,44 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       }),
       signal: controller.signal,
     });
-    payload = await response.json().catch(() => null);
+    const payload = await response.json().catch(() => null);
+    return { response, payload, error: null };
   } catch (error) {
-    failures.push(
-      error instanceof Error
-        ? `request failed: ${error.message}`
-        : "request failed",
-    );
+    return {
+      response: null,
+      payload: null,
+      error: error instanceof Error ? error.message : "request failed",
+    };
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+const results = [];
+let blockedByRateLimit = false;
+for (const [batchIndex, scenario] of selectedScenarios.entries()) {
+  if (batchIndex > 0 && delayMs > 0) await sleep(delayMs);
+
+  const startedAt = Date.now();
+  const requestTimeoutMs = Math.max(
+    5_000,
+    Number(scenario.requestTimeoutMs || 45_000),
+  );
+  const failures = [];
+  let reauthentications = 0;
+  let requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+
+  if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
+    const recoveredToken = await signInEvaluationUser();
+    if (recoveredToken) {
+      token = recoveredToken;
+      reauthentications += 1;
+      requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+    }
+  }
+
+  const { response, payload, error } = requestResult;
+  if (error) failures.push(`request failed: ${error}`);
 
   if (response?.status === 429) {
     const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
@@ -182,6 +215,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     missingDataCount: Array.isArray(payload?.missingData) ? payload.missingData.length : null,
     decisionSummaryItems: Array.isArray(payload?.decisionSummary) ? payload.decisionSummary.length : null,
     followUpQuestions: Array.isArray(payload?.followUpQuestions) ? payload.followUpQuestions.length : null,
+    reauthentications,
   };
   results.push({
     index: offset + batchIndex,
