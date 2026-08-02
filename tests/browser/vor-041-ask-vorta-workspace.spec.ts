@@ -144,7 +144,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(send).toBeEnabled();
     await send.click();
     await expect(workspace.getByText(mockedAnswer.directAnswer)).toBeVisible();
-    await expect(workspace.getByText(question, { exact: true })).toBeVisible();
+    await expect(
+      workspace.getByText(question, { exact: true }).last(),
+    ).toBeVisible();
 
     await page.getByRole("tab", { name: "Evidence" }).click();
     await expect(workspace.getByText("Verified evidence")).toBeVisible();
@@ -173,7 +175,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
 
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
-    await expect(workspace.getByText(question, { exact: true })).toBeVisible();
+    await expect(
+      workspace.getByText(question, { exact: true }).last(),
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("ask-vorta-workspace-conversation.png"),
       fullPage: true,
