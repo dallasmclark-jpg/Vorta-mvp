@@ -167,7 +167,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
       '[data-vorta-shared-mobile-ai-launcher="true"]',
     );
     await expect(phoneLauncher).toBeVisible();
-    await phoneLauncher.click({ force: true });
+    await phoneLauncher.evaluate((element: HTMLButtonElement) => element.click());
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
