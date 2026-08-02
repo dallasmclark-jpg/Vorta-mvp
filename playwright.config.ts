@@ -5,6 +5,8 @@ const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const maintenanceManagerAuthState =
   "playwright/.auth/maintenance-manager.json";
 const askVortaLiveEval = /vor-033-ask-vorta-live-eval\.spec\.ts/;
+const samsungTabletUserAgent =
+  "Mozilla/5.0 (Linux; Android 15; SM-X910 Build/AP3A.240905.015.A2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 
 const authenticatedProject = hasAuthenticatedTestUser
   ? {
@@ -73,7 +75,9 @@ export default defineConfig({
       testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
-        viewport: { width: 800, height: 1280 },
+        viewport: { width: 1024, height: 1536 },
+        hasTouch: true,
+        userAgent: samsungTabletUserAgent,
       },
     },
     {
@@ -82,7 +86,9 @@ export default defineConfig({
       testIgnore: askVortaLiveEval,
       use: {
         ...authenticatedProject.use,
-        viewport: { width: 1280, height: 800 },
+        viewport: { width: 1536, height: 1024 },
+        hasTouch: true,
+        userAgent: samsungTabletUserAgent,
       },
     },
     {

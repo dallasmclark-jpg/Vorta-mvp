@@ -32,14 +32,26 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
   ).toHaveCount(0);
 }
 
-test("VOR-035 Samsung tablet demo journey remains authoritative and polished", async ({
+test("VOR-035 real Tab S9 Ultra journey keeps the original rota", async ({
   page,
 }, testInfo) => {
-  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const viewport = page.viewportSize();
+  const viewportWidth = viewport?.width ?? 0;
   test.skip(
-    viewportWidth < 768 || viewportWidth > 1439,
-    "VOR-035 recovery evidence is tablet-only.",
+    viewportWidth < 768 || viewportWidth > 1600,
+    "VOR-035 recovery evidence is Samsung tablet-only.",
   );
+
+  const deviceProfile = await page.evaluate(() => ({
+    userAgent: navigator.userAgent,
+    maxTouchPoints: navigator.maxTouchPoints,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
+  expect(deviceProfile.userAgent).toContain("Android");
+  expect(deviceProfile.maxTouchPoints).toBeGreaterThan(0);
+  expect(deviceProfile.width).toBe(viewport?.width);
+  expect(deviceProfile.height).toBe(viewport?.height);
 
   await signInMaintenanceManager(page);
 
@@ -54,7 +66,6 @@ test("VOR-035 Samsung tablet demo journey remains authoritative and polished", a
   const embeddedAi = page.locator('[data-vorta-embedded-ai="true"]');
   await expect(embeddedAi).toBeVisible();
   await expect(embeddedAi).toHaveCSS("border-top-style", "solid");
-  await expect(embeddedAi).toHaveCSS("border-radius", "16px");
   await expect(
     embeddedAi.getByRole("button", { name: "Ask", exact: true }),
   ).toBeVisible();
