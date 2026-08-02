@@ -77,7 +77,7 @@ mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers rout
 mustMatch(routeEntry, /useMediaQuery\("\(min-width: 768px\) and \(max-width: 1439px\)"\)/, "Engineers route must isolate the tablet boundary");
 mustMatch(routeEntry, /<MobileEngineersSection dataMode=\{dataMode\} \/>/, "Phone Engineers must retain the working mobile presentation");
 mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Tablet Engineers must expose the restored original rota marker");
-mustMatch(routeEntry, /location="\/labour-risk\/shift-cover"/, "Tablet Engineers must render the existing approved Shift Cover route without copying or redesigning it");
+mustMatch(routeEntry, /location="\/engineers\/shift-cover"/, "Tablet Engineers must render the existing approved Shift Cover route within the Engineers route context");
 mustMatch(routeEntry, /<LabourRiskDetailPage \/>/, "Tablet Engineers must reuse the approved full shift-cover implementation");
 mustMatch(routeEntry, /<LiveEngineersSection \/>/, "Desktop Engineers must retain the established verified presentation");
 mustNotMatch(routeEntry, /TabletEngineersSection/, "Tablet Engineers must not return to the simplified weekly coverage replacement");
