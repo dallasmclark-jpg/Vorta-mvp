@@ -13,29 +13,29 @@ const [styles, dashboardStyles, engineersRoute] = await Promise.all([
   readFile(new URL("../src/screens/Engineers/EngineersRouteEntry.tsx", import.meta.url), "utf8"),
 ]);
 
-const compactDashboardStyles = dashboardStyles.replace(/\s+/g, "");
-
 assert.match(
   styles,
   /\[data-vorta-card="true"\][\s\S]*> \[class\*="pt-0"\]:first-child/,
   "Responsive content-only cards must recover their top padding.",
 );
-assert.ok(
-  compactDashboardStyles.includes(
-    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"]{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;',
-  ),
-  "The embedded Ask Vorta control must retain the approved slim, flat outer treatment.",
+assert.match(
+  dashboardStyles,
+  /header:has\(\[data-vorta-embedded-ai="true"\]\)[\s\S]*\[data-vorta-embedded-ai="true"\][\s\S]*max-width: 40rem;[\s\S]*justify-self: center;/,
+  "The agreed Ask Vorta control must remain centred in the Risk Intelligence header at a 640px maximum width.",
 );
-assert.ok(
-  compactDashboardStyles.includes(
-    '&.flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;box-shadow:none!important}',
-  ),
+assert.match(
+  dashboardStyles,
+  /> \[data-vorta-card="true"\][\s\S]*border: 0 !important;[\s\S]*background: transparent !important;[\s\S]*box-shadow: none !important;/,
+  "The embedded Ask Vorta command bar must not render an outer card, shell, border or background.",
+);
+assert.match(
+  dashboardStyles,
+  /\.flex\.min-w-0\.flex-1\.items-center:focus-within[\s\S]*border-color: rgb\(55 65 81\) !important;[\s\S]*box-shadow: none !important;/,
   "The embedded Ask Vorta input frame must not draw the rejected blue focus rectangle.",
 );
-assert.ok(
-  compactDashboardStyles.includes(
-    '&input[type="text"]:focus{outline:none!important;box-shadow:none!important}',
-  ),
+assert.match(
+  dashboardStyles,
+  /input\[type="text"\]:focus[\s\S]*outline: none !important;[\s\S]*box-shadow: none !important;/,
   "The Ask Vorta textbox itself must not draw a focus outline or shadow.",
 );
 assert.doesNotMatch(
@@ -79,4 +79,4 @@ assert.doesNotMatch(
   "Presentation recovery must not restore the rejected Engineers replacement.",
 );
 
-console.log("Final Ask Vorta, top-four risk rail and faded Skills Matrix edge contracts passed.");
+console.log("Agreed Ask Vorta header, top-four risk rail and faded Skills Matrix edge contracts passed.");
