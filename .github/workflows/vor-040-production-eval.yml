@@ -4,19 +4,16 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - ".github/workflows/vor-040-production-eval.yml"
-      - "tests/evals/vor-040-natural-questions.json"
-      - "scripts/ask-vorta-live-evals.mjs"
-      - "package.json"
+      - ".github/vor-040-production-batch.marker"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  first-production-batch:
+  production-batch:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 12
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
@@ -25,7 +22,9 @@ jobs:
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
-      VORTA_EVAL_LIMIT: 10
+      VORTA_EVAL_OFFSET: 0
+      VORTA_EVAL_LIMIT: 8
+      VORTA_EVAL_DELAY_MS: 500
     steps:
       - name: Check out tested commit
         uses: actions/checkout@v4
@@ -43,17 +42,21 @@ jobs:
       - name: Install dependencies
         run: npm ci --silent
 
-      - name: Run first authenticated production batch
+      - name: Allow the previous production rate window to expire
+        shell: bash
+        run: sleep 220
+
+      - name: Run authenticated production batch
         shell: bash
         run: |
           set -o pipefail
-          npm run eval:ask-vorta:vor040 2>&1 | tee vor-040-production-batch-1.log
+          npm run eval:ask-vorta:vor040 2>&1 | tee vor-040-production-batch.log
 
       - name: Preserve evaluation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vor-040-production-batch-1
-          path: vor-040-production-batch-1.log
+          name: vor-040-production-batch
+          path: vor-040-production-batch.log
           if-no-files-found: error
           retention-days: 14
