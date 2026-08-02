@@ -42,6 +42,11 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
+/*
+ * A large part of the MVP predates the shared Card primitive. Scope the new
+ * hierarchy to neutral, bordered content surfaces so risk colours, selected
+ * blue states, charts and status badges keep their operational meaning.
+ */
 [data-vorta-page-content="true"] :where(
   :is([class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
     [class*="bg-[#0"],
@@ -56,11 +61,13 @@ html.dark {
   box-shadow: var(--vorta-surface-shadow) !important;
 }
 
+/* Group-only frames are declared by component intent, never DOM shape or accessible copy. */
 [data-vorta-page-content="true"] [data-vorta-group-frame="true"] {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
+/* Nested metrics should read as grouped panels, not a second card hierarchy. */
 html [data-vorta-page-content="true"] :where(
   .vorta-card,
   [data-vorta-card="true"],
@@ -105,10 +112,12 @@ html [data-vorta-page-content="true"] :where(
   border-bottom-color: var(--vorta-surface-border) !important;
 }
 
+/* Quiet structure should not compete with the operational content. */
 html.dark [data-vorta-page-content="true"] [class~="border-gray-800"] {
   border-color: var(--vorta-surface-divider) !important;
 }
 
+/* Secondary evidence remains readable in workshops, offices and ageing eyes. */
 html.dark [data-vorta-page-content="true"] :is(
   [class~="text-slate-500"],
   [class~="text-gray-500"]
@@ -163,6 +172,7 @@ html.dark [data-vorta-page-content="true"] :is(
   outline-offset: 2px;
 }
 
+/* Stores Inventory starts with its operational scope rail, not explanatory copy. */
 [data-vorta-stores-inventory="true"] > header,
 [data-vorta-stores-inventory="true"]
   > section[aria-labelledby="area-risk-heading"]
@@ -174,6 +184,8 @@ html.dark [data-vorta-page-content="true"] :is(
   order: 99;
 }
 
+/* Mobile inventory risk uses a neutral card with a three-sided severity edge. */
+/* VOR-014: refined edge and typography are intentionally protected for production. */
 @media (max-width: 767px) {
   [data-vorta-stores-inventory="true"]
     [data-vorta-inventory-risk-card="true"] {
@@ -262,10 +274,12 @@ html.dark [data-vorta-page-content="true"] :is(
   }
 }
 
+/* Shift Handover starts with the operational summary cards, not evidence copy. */
 [data-vorta-shift-handover="true"] > header {
   display: none !important;
 }
 
+/* Open listboxes own the foreground so floating AI launchers cannot cover options. */
 html[data-vorta-select-open="true"] :is(
   [data-vorta-shared-mobile-ai-launcher="true"],
   [data-vorta-ask-vorta-launcher="true"],
