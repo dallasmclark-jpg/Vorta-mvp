@@ -1,6 +1,5 @@
 @media (max-width: 639px) {
   [hidden],
-  [data-vorta-maintenance-portal="true"]:has(> [data-vorta-dashboard-root="true"]) > [data-vorta-data-mode="demo"],
   [data-vorta-dashboard-root="true"] > section > header {
     display: none !important;
   }
