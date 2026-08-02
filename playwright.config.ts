@@ -89,7 +89,7 @@ export default defineConfig({
       use: {
         ...authenticatedProject.use,
         viewport: { width: 1536, height: 959 },
-        hasTouch: false,
+        hasTouch: true,
         userAgent: desktopModeUserAgent,
       },
     },
