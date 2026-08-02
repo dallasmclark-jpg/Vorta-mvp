@@ -12,7 +12,7 @@ permissions:
 jobs:
   evaluate-preview:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Check out tested head
         uses: actions/checkout@v4
@@ -30,6 +30,17 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "Skipping evaluation for commit: $message"
           fi
+
+      - name: Read batch configuration
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          offset="$(awk -F= '$1 == "offset" { print $2 }' .github/vor-040-preview-baseline.marker | tail -1)"
+          limit="$(awk -F= '$1 == "limit" { print $2 }' .github/vor-040-preview-baseline.marker | tail -1)"
+          delay="$(awk -F= '$1 == "delay_ms" { print $2 }' .github/vor-040-preview-baseline.marker | tail -1)"
+          echo "VORTA_EVAL_OFFSET=${offset:-0}" >> "$GITHUB_ENV"
+          echo "VORTA_EVAL_LIMIT=${limit:-8}" >> "$GITHUB_ENV"
+          echo "VORTA_EVAL_DELAY_MS=${delay:-500}" >> "$GITHUB_ENV"
 
       - name: Compose public Supabase client key
         if: steps.guard.outputs.run == 'true'
@@ -50,7 +61,7 @@ jobs:
         if: steps.guard.outputs.run == 'true'
         run: npm ci --silent
 
-      - name: Run identical first eight scenarios against preview
+      - name: Run configured natural-question batch against preview
         if: steps.guard.outputs.run == 'true'
         shell: bash
         env:
@@ -59,18 +70,15 @@ jobs:
           VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
           VORTA_EVAL_BASE_URL: https://deploy-preview-191--vorta-app.netlify.app
           VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
-          VORTA_EVAL_OFFSET: 0
-          VORTA_EVAL_LIMIT: 8
-          VORTA_EVAL_DELAY_MS: 500
         run: |
           set -o pipefail
-          npm run eval:ask-vorta:vor040 2>&1 | tee vor-040-preview-baseline.log
+          npm run eval:ask-vorta:vor040 2>&1 | tee vor-040-preview-batch.log
 
       - name: Preserve preview evidence
         if: always() && steps.guard.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: vor-040-preview-baseline
-          path: vor-040-preview-baseline.log
+          name: vor-040-preview-batch
+          path: vor-040-preview-batch.log
           if-no-files-found: error
           retention-days: 14
