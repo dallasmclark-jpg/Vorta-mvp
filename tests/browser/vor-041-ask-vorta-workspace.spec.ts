@@ -5,6 +5,8 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
+const isPortraitTabletProject = (projectName: string): boolean =>
+  projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -151,7 +153,14 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(send).toBeEnabled();
     await send.click();
     await expect(workspace.getByText(mockedAnswer.directAnswer)).toBeVisible();
-    await expect(workspace.getByText("Live evidence loaded", { exact: true })).toBeVisible();
+    const liveEvidenceStatus = workspace.getByText("Live evidence loaded", {
+      exact: true,
+    });
+    if (isPortraitTabletProject(testInfo.project.name)) {
+      await expect(liveEvidenceStatus).toBeHidden();
+    } else {
+      await expect(liveEvidenceStatus).toBeVisible();
+    }
     await expect(workspace.getByText("check_shift_cover", { exact: true })).toHaveCount(0);
     await expect(workspace.getByText("Strategic maintenance response", { exact: true })).toHaveCount(0);
     await expect(workspace.getByText("Maintenance Manager", { exact: true })).toHaveCount(0);
