@@ -276,9 +276,9 @@ export function AskVortaWorkspace({
   return (
     <div
       data-vorta-ai-workspace="true"
-      className="fixed inset-0 z-[70] hidden min-h-0 bg-[#080b10] md:flex"
+      className="fixed inset-0 z-[70] hidden min-h-0 bg-gray-950 md:flex"
     >
-      <aside className="flex w-[272px] shrink-0 flex-col border-r border-gray-800 bg-[#0d1118]">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-gray-800 bg-gray-950">
         <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15">
             <Sparkles className="h-4 w-4 text-blue-300" />
@@ -301,7 +301,7 @@ export function AskVortaWorkspace({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
-          <div className="mb-2 flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+          <div className="mb-2 flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-widest text-slate-500">
             <Clock3 className="h-3.5 w-3.5" />
             Recents
           </div>
@@ -322,7 +322,7 @@ export function AskVortaWorkspace({
                   className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
                     conversation.id === currentConversationId
                       ? "border-blue-500/35 bg-blue-500/10 text-slate-100"
-                      : "border-transparent text-slate-300 hover:border-gray-700 hover:bg-white/[0.04]"
+                      : "border-transparent text-slate-300 hover:border-gray-700 hover:bg-white/5"
                   }`}
                 >
                   <span className="block line-clamp-2 text-sm font-semibold leading-5">
@@ -350,7 +350,7 @@ export function AskVortaWorkspace({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-800 bg-[#0b0f15] px-5">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-800 bg-gray-950 px-5">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1" role="tablist" aria-label="Ask Vorta workspace views">
               {tabs.map((tab) => {
@@ -366,7 +366,7 @@ export function AskVortaWorkspace({
                     className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors ${
                       selected
                         ? "border-blue-400/60 bg-[#101722] text-blue-200"
-                        : "border-transparent text-slate-400 hover:border-gray-700 hover:bg-white/[0.04] hover:text-slate-200"
+                        : "border-transparent text-slate-400 hover:border-gray-700 hover:bg-white/5 hover:text-slate-200"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -383,7 +383,7 @@ export function AskVortaWorkspace({
               ) : (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
               )}
-              <span className="max-w-[360px] truncate">{contextLine}</span>
+              <span className="max-w-sm truncate">{contextLine}</span>
             </div>
           </div>
 
@@ -412,7 +412,7 @@ export function AskVortaWorkspace({
           {activeTab === "conversation" && (
             <div
               data-vorta-ai-workspace-conversation="true"
-              className="mx-auto flex w-full max-w-[960px] flex-col gap-5 px-6 py-7 xl:px-10"
+              className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-6 py-7 xl:px-10"
             >
               {messages.map((message) => (
                 <div
@@ -424,8 +424,8 @@ export function AskVortaWorkspace({
                   <div
                     className={`rounded-2xl px-4 py-3 ${
                       message.role === "user"
-                        ? "max-w-[76%] bg-blue-600 text-white"
-                        : "w-full border border-gray-800 bg-[#10151e] text-slate-200"
+                        ? "max-w-3xl bg-blue-600 text-white"
+                        : "w-full border border-gray-800 bg-gray-900 text-slate-200"
                     }`}
                   >
                     {message.loading ? (
@@ -474,7 +474,7 @@ export function AskVortaWorkspace({
           {activeTab === "evidence" && (
             <div
               data-vorta-ai-workspace-evidence="true"
-              className="mx-auto w-full max-w-[1040px] px-6 py-7 xl:px-10"
+              className="mx-auto w-full max-w-5xl px-6 py-7 xl:px-10"
             >
               {!latestAnswer ? (
                 <EmptyWorkspaceState
@@ -482,9 +482,9 @@ export function AskVortaWorkspace({
                   detail="Ask a maintenance question first. The verified sources, findings and missing-evidence notes will be collected here."
                 />
               ) : (
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">
-                  <section className="space-y-5">
-                    <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                <div className="grid gap-5 lg:grid-cols-3">
+                  <section className="space-y-5 lg:col-span-2">
+                    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                       <h3 className="text-base font-bold text-slate-100">Verified evidence</h3>
                       <p className="mt-1 text-sm leading-6 text-slate-400">
                         Evidence supporting the latest Ask Vorta decision.
@@ -494,7 +494,7 @@ export function AskVortaWorkspace({
                           latestAnswer.evidence?.map((item, index) => (
                             <div
                               key={`${item}-${index}`}
-                              className="rounded-lg border border-gray-800 bg-[#0c1017] px-4 py-3 text-sm leading-6 text-slate-300"
+                              className="rounded-lg border border-gray-800 bg-gray-950 px-4 py-3 text-sm leading-6 text-slate-300"
                             >
                               {item}
                             </div>
@@ -506,13 +506,13 @@ export function AskVortaWorkspace({
                     </div>
 
                     {(latestAnswer.findings ?? []).length > 0 && (
-                      <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                         <h3 className="text-base font-bold text-slate-100">Detailed findings</h3>
                         <div className="mt-4 space-y-3">
                           {latestAnswer.findings?.map((finding, index) => (
                             <article
                               key={`${finding.title}-${index}`}
-                              className="rounded-xl border border-gray-800 bg-[#0c1017] p-4"
+                              className="rounded-xl border border-gray-800 bg-gray-950 p-4"
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <h4 className="text-sm font-bold text-slate-100">{finding.title}</h4>
@@ -529,13 +529,13 @@ export function AskVortaWorkspace({
                   </section>
 
                   <aside className="space-y-5">
-                    <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Sources</h3>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(latestAnswer.sources ?? []).map((source) => (
                           <span
                             key={source}
-                            className="rounded-lg border border-gray-700 bg-[#0c1017] px-2.5 py-1.5 text-xs font-semibold text-slate-300"
+                            className="rounded-lg border border-gray-700 bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-slate-300"
                           >
                             {source}
                           </span>
@@ -544,7 +544,7 @@ export function AskVortaWorkspace({
                     </div>
 
                     {(latestAnswer.evidenceLinks ?? []).length > 0 && (
-                      <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Open in Vorta</h3>
                         <div className="mt-3 space-y-2">
                           {latestAnswer.evidenceLinks?.map((link) => (
@@ -552,7 +552,7 @@ export function AskVortaWorkspace({
                               key={`${link.path}-${link.label}`}
                               type="button"
                               onClick={() => onOpenEvidenceLink(link.path)}
-                              className="flex w-full items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2.5 text-left text-sm font-semibold text-blue-200 transition-colors hover:border-blue-400/50 hover:bg-blue-500/10"
+                              className="flex w-full items-center justify-between rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2.5 text-left text-sm font-semibold text-blue-200 transition-colors hover:border-blue-400/50 hover:bg-blue-500/10"
                             >
                               {link.label}
                               <ChevronLeft className="h-4 w-4 rotate-180" />
@@ -563,7 +563,7 @@ export function AskVortaWorkspace({
                     )}
 
                     {(latestAnswer.missingData ?? []).length > 0 && (
-                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] p-5">
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5">
                         <h3 className="text-sm font-bold uppercase tracking-wider text-amber-200">Missing or unverified</h3>
                         <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-100/80">
                           {latestAnswer.missingData?.map((item) => (
@@ -581,7 +581,7 @@ export function AskVortaWorkspace({
           {activeTab === "actions" && (
             <div
               data-vorta-ai-workspace-actions="true"
-              className="mx-auto w-full max-w-[1040px] px-6 py-7 xl:px-10"
+              className="mx-auto w-full max-w-5xl px-6 py-7 xl:px-10"
             >
               {!latestAnswer ? (
                 <EmptyWorkspaceState
@@ -590,13 +590,13 @@ export function AskVortaWorkspace({
                 />
               ) : (
                 <div className="space-y-5">
-                  <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                  <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                     <h3 className="text-base font-bold text-slate-100">Recommended actions</h3>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       {(latestAnswer.recommendedActions ?? []).map((action, index) => (
                         <div
                           key={`${action}-${index}`}
-                          className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-4 py-3"
+                          className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3"
                         >
                           <span className="text-xs font-bold uppercase tracking-wider text-blue-300">
                             Priority {index + 1}
@@ -608,13 +608,13 @@ export function AskVortaWorkspace({
                   </div>
 
                   {(latestAnswer.actionPlan ?? []).length > 0 && (
-                    <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                       <h3 className="text-base font-bold text-slate-100">Action plan</h3>
                       <div className="mt-4 space-y-3">
                         {latestAnswer.actionPlan?.map((item, index) => (
                           <article
                             key={`${item.action}-${index}`}
-                            className="grid gap-3 rounded-xl border border-gray-800 bg-[#0c1017] p-4 lg:grid-cols-[120px_minmax(0,1fr)]"
+                            className="grid gap-3 rounded-xl border border-gray-800 bg-gray-950 p-4 lg:grid-cols-[120px_minmax(0,1fr)]"
                           >
                             <div>
                               <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-xs font-bold uppercase text-blue-200">
@@ -645,13 +645,13 @@ export function AskVortaWorkspace({
                   )}
 
                   {(latestAnswer.coverOptions ?? []).length > 0 && (
-                    <div className="rounded-2xl border border-gray-800 bg-[#10151e] p-5">
+                    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                       <h3 className="text-base font-bold text-slate-100">Cover options</h3>
                       <div className="mt-4 grid gap-3 lg:grid-cols-2">
                         {latestAnswer.coverOptions?.map((option, index) => (
                           <article
                             key={`${option.shift}-${option.engineerNames.join("-")}-${index}`}
-                            className="rounded-xl border border-gray-800 bg-[#0c1017] p-4"
+                            className="rounded-xl border border-gray-800 bg-gray-950 p-4"
                           >
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                               {index === 0 ? "Recommended" : "Alternative"}
@@ -674,9 +674,9 @@ export function AskVortaWorkspace({
         </div>
 
         {activeTab === "conversation" && (
-          <div className="shrink-0 border-t border-gray-800 bg-[#0b0f15] px-6 py-4">
-            <div className="mx-auto max-w-[960px]">
-              <div className="flex gap-2 rounded-xl border border-gray-700 bg-[#10151e] p-2 focus-within:border-blue-500/50">
+          <div className="shrink-0 border-t border-gray-800 bg-gray-950 px-6 py-4">
+            <div className="mx-auto max-w-4xl">
+              <div className="flex gap-2 rounded-xl border border-gray-700 bg-gray-900 p-2 focus-within:border-blue-500/50">
                 <Button
                   type="button"
                   variant="outline"
