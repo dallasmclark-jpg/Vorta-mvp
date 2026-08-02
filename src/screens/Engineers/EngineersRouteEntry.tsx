@@ -1,9 +1,23 @@
+import { Route, Routes } from "react-router-dom";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
+import { LabourRiskDetailPage } from "../LabourRisk/LabourRiskDetailPage";
 import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
-import { TabletEngineersSection } from "./TabletEngineersSection";
+
+function OriginalShiftCoverRota(): JSX.Element {
+  return (
+    <div className="contents" data-vorta-original-shift-rota="true">
+      <Routes location="/labour-risk/shift-cover">
+        <Route
+          path="/labour-risk/:riskType"
+          element={<LabourRiskDetailPage />}
+        />
+      </Routes>
+    </div>
+  );
+}
 
 export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
@@ -16,7 +30,7 @@ export function EngineersRouteEntry(): JSX.Element {
       {isPhone ? (
         <MobileEngineersSection dataMode={dataMode} />
       ) : isTablet ? (
-        <TabletEngineersSection />
+        <OriginalShiftCoverRota />
       ) : (
         <LiveEngineersSection />
       )}
