@@ -73,8 +73,11 @@ mustNotMatch(tabletEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Tab
 
 mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain the shared data-trust mode for the phone presentation");
 mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers route must preserve the explicit phone boundary");
-mustMatch(routeEntry, /isPhone \? \([\s\S]*<MobileEngineersSection dataMode=\{dataMode\} \/>[\s\S]*\) : \([\s\S]*<TabletEngineersSection \/>/, "Phone and tablet Engineers must use explicit responsive experiences");
-mustNotMatch(routeEntry, /DemoEngineersSection/, "Tablet Engineers must not return to the obsolete demo-only route");
+mustMatch(routeEntry, /useMediaQuery\("\(min-width: 768px\) and \(max-width: 1439px\)"\)/, "Engineers route must isolate the tablet boundary");
+mustMatch(routeEntry, /<MobileEngineersSection dataMode=\{dataMode\} \/>/, "Phone Engineers must retain the working mobile presentation");
+mustMatch(routeEntry, /<TabletEngineersSection \/>/, "Tablet Engineers must use the authoritative tablet presentation");
+mustMatch(routeEntry, /<LiveEngineersSection \/>/, "Desktop Engineers must retain the established verified presentation");
+mustNotMatch(routeEntry, /DemoEngineersSection/, "Engineers must not return to the obsolete demo-only route");
 mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the responsive route");
 mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
 mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the responsive entry");
