@@ -4,6 +4,8 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
 const isPhoneProject = (projectName: string): boolean =>
   projectName === "phone-360";
+const usesSharedLauncher = (projectName: string): boolean =>
+  projectName === "phone-360" || projectName === "samsung-tablet-portrait";
 
 const mockedAnswer = {
   responseId: "vor-041-browser-response",
@@ -80,11 +82,15 @@ async function mockAskVorta(page: Page): Promise<void> {
   });
 }
 
-async function openAskVorta(page: Page): Promise<void> {
-  const sharedLauncher = page.locator(
-    '[data-vorta-shared-mobile-ai-launcher="true"]',
-  );
-  if (await sharedLauncher.isVisible().catch(() => false)) {
+async function openAskVorta(
+  page: Page,
+  projectName: string,
+): Promise<void> {
+  if (usesSharedLauncher(projectName)) {
+    const sharedLauncher = page.locator(
+      '[data-vorta-shared-mobile-ai-launcher="true"]',
+    );
+    await expect(sharedLauncher).toBeVisible();
     await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
     return;
   }
@@ -109,7 +115,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     test.skip(isPhoneProject(testInfo.project.name));
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
-    await openAskVorta(page);
+    await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
@@ -177,7 +183,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
   }, testInfo) => {
     test.skip(!isPhoneProject(testInfo.project.name));
     await signInMaintenanceManager(page);
-    await openAskVorta(page);
+    await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
     await expect(panel).toBeVisible();
