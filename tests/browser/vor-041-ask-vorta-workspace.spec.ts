@@ -168,7 +168,12 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
       fullPage: true,
     });
 
-    await page.getByRole("button", { name: "Compact" }).click();
+    await workspace
+      .getByRole("button", {
+        name: "Return to compact Ask Vorta panel",
+        exact: true,
+      })
+      .click();
     await expect(workspace).toBeHidden();
     await expect(panel).toBeVisible();
     await expect(panel.getByText(mockedAnswer.directAnswer)).toBeVisible();
