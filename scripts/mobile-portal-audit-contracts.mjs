@@ -45,10 +45,13 @@ const browserTest = read("tests/browser/maintenance-manager-mobile-routes.spec.t
 check(
   engineersRoute.includes("<MobileEngineersSection dataMode={dataMode}") &&
     engineersRoute.includes('data-vorta-original-shift-rota="true"') &&
-    engineersRoute.includes('location="/labour-risk/shift-cover"') &&
+    engineersRoute.includes('location="/engineers/shift-cover"') &&
     engineersRoute.includes('useMediaQuery("(max-width: 767px)")') &&
+    engineersRoute.includes("(min-width: 768px) and (max-width: 1600px)") &&
+    !engineersRoute.includes("navigator.") &&
+    !engineersRoute.includes("any-pointer: coarse") &&
     !engineersRoute.includes("TabletEngineersSection"),
-  "Engineers must preserve the phone presentation while tablet reuses the original full shift-cover rota.",
+  "Engineers must preserve the phone presentation while every 768-1600px viewport reuses the original full shift-cover rota.",
 );
 
 check(
