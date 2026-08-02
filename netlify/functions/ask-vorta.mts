@@ -593,8 +593,28 @@ function equipmentReferenceMatches(candidate: unknown, query: string): boolean {
 }
 
 function extractEquipmentReference(value: string): string | null {
-  const matches = value.match(/\b[a-z]{2,}(?:\s*-?\s*\d{1,3})(?:-[a-z0-9]+)*\b/gi) ?? [];
-  return matches.length ? matches[matches.length - 1].replace(/\s+/g, "") : null;
+  const codedMatches =
+    value.match(/\b[a-z]{2,}(?:\s*-?\s*\d{1,3})(?:-[a-z0-9]+)*\b/gi) ?? [];
+  if (codedMatches.length > 0) {
+    return codedMatches[codedMatches.length - 1].replace(/\s+/g, "");
+  }
+
+  const excludedAcronyms = new Set([
+    "AI",
+    "KPI",
+    "OEM",
+    "PLC",
+    "PM",
+    "RCA",
+    "SAP",
+    "SME",
+    "SOP",
+    "WO",
+  ]);
+  const acronymMatches = (value.match(/\b[A-Z]{3,5}\b/g) ?? []).filter(
+    (candidate) => !excludedAcronyms.has(candidate),
+  );
+  return acronymMatches.length ? acronymMatches[acronymMatches.length - 1] : null;
 }
 
 function parseRequest(value: unknown): AskVortaRequest | null {
@@ -816,6 +836,81 @@ function equipmentDecisionFacts(
     .sort((first, second) => second.score - first.score)
     .map((item) => item.text);
   return [...new Set([...identity, ...ranked])].slice(0, 36);
+}
+
+function relevantEquipmentDecisionFacts(
+  question: string,
+  decisionFacts: string[],
+): string[] {
+  const loweredQuestion = question.toLowerCase();
+  const questionTokens = new Set(
+    (loweredQuestion.match(/[a-z0-9-]{4,}/g) ?? []).filter(
+      (token) => !new Set(["what", "with", "that", "this", "from", "have", "actually", "should"]).has(token),
+    ),
+  );
+  const topicPatterns: RegExp[] = [];
+
+  if (/\b(?:who|skill|qualified|qualification|without guessing|engineer|backup)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/engineer|skill|qualified|validated|candidate|competency|authorisation|training/i);
+  }
+  if (/\b(?:spare|part|stock|stopping|block|available|lead time)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/component|part|stock|quantity|availability|lead|work.?order|wo-/i);
+  }
+  if (/\b(?:run|campaign|release|proof|verify|verification)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/interlock|airflow|validation|challenge|approved|document|test|verification/i);
+  }
+  if (/\b(?:fault|wrong|repeat|reject|problem|keep|again)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/fault|sensor|reject|repeat|history|work.?order|component|vacuum|condenser/i);
+  }
+  if (/\b(?:water|conductivity|instrument|lying|bias|sample)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/conductivity|bias|grab sample|calibrated|reference|sensor|water/i);
+  }
+
+  return [...new Set(decisionFacts)]
+    .map((fact, index) => {
+      const loweredFact = fact.toLowerCase();
+      let score = /^equipment:/.test(loweredFact) ? 40 : 0;
+      if (/[A-Z]{2,}[-0-9]{2,}/.test(fact)) score += 8;
+      for (const token of questionTokens) {
+        if (loweredFact.includes(token)) score += 4;
+      }
+      for (const pattern of topicPatterns) {
+        if (pattern.test(fact)) score += 18;
+      }
+      return { fact, score, index };
+    })
+    .sort((first, second) => second.score - first.score || first.index - second.index)
+    .slice(0, 12)
+    .map((item) => item.fact);
+}
+
+function retainEquipmentDecisionFacts(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+  toolOutcomes: Map<string, ToolResult>,
+): void {
+  if (questionPlan?.scope !== "equipment") return;
+  const pack = toolOutcomes.get("get_equipment_decision_pack");
+  if (
+    !pack?.data ||
+    typeof pack.data !== "object" ||
+    Array.isArray(pack.data)
+  ) {
+    return;
+  }
+  const decisionFacts = textValues((pack.data as JsonRecord).decisionFacts);
+  if (decisionFacts.length === 0) return;
+
+  const selectedFacts = relevantEquipmentDecisionFacts(
+    String(questionPlan.decisionGoal ?? ""),
+    decisionFacts,
+  );
+  answer.evidence = [
+    ...new Set([
+      ...textValues(answer.evidence),
+      ...selectedFacts,
+    ]),
+  ].slice(0, 16);
 }
 
 function textValues(value: unknown): string[] {
@@ -2978,6 +3073,7 @@ export default async function handler(req: Request, _context: Context): Promise<
         );
         enforceDeterministicResponseShape(answer, questionPlan);
         enforcePlannedResponseShape(answer, questionPlan);
+        retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
         const calibratedConfidence = evidenceAwareConfidence(
           answer,
           questionPlan,

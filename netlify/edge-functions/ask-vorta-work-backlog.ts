@@ -13,7 +13,8 @@ declare const Netlify: {
 const RATE_LIMIT_WINDOW_MINUTES = 5;
 const RATE_LIMIT_REQUESTS = 12;
 const OPEN_WORK_PATTERN = /\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/i;
-const MIXED_DECISION_PATTERN = /\b(?:shift|cover|rota|pm|calibration|spare|stock|part|skill|contractor|handover|history|document|manual)\b/i;
+const CAPABILITY_PATTERN = /\b(?:one person deep|only one person|single[- ]person|single point|single[- ]point|backup sme|developed as backup|develop as backup)\b/i;
+const MIXED_DECISION_PATTERN = /\b(?:shift|cover|rota|pm|calibration|spare|stock|part|contractor|handover|history|document|manual)\b/i;
 const EQUIPMENT_CODE_PATTERN = /\b[A-Z]{2,}(?:-[A-Z0-9]+)*-?\d+[A-Z0-9-]*\b/;
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -52,6 +53,16 @@ function isFactualBacklogRequest(body: JsonRecord): boolean {
   if (!question || history.length > 0) return false;
   if (!OPEN_WORK_PATTERN.test(question)) return false;
   if (MIXED_DECISION_PATTERN.test(question.replace(OPEN_WORK_PATTERN, ""))) return false;
+  if (EQUIPMENT_CODE_PATTERN.test(question)) return false;
+  return true;
+}
+
+function isCapabilityRequest(body: JsonRecord): boolean {
+  const question = requiredText(body.question, 2_000);
+  const history = Array.isArray(body.history) ? body.history : [];
+  if (!question || history.length > 0) return false;
+  if (!CAPABILITY_PATTERN.test(question)) return false;
+  if (MIXED_DECISION_PATTERN.test(question)) return false;
   if (EQUIPMENT_CODE_PATTERN.test(question)) return false;
   return true;
 }
@@ -137,7 +148,12 @@ export default async function handler(request: Request, context: EdgeContext): P
     return context.next(request);
   }
   const record = body as JsonRecord;
-  if (!isFactualBacklogRequest(record)) return context.next(request);
+  const requestKind = isFactualBacklogRequest(record)
+    ? "backlog"
+    : isCapabilityRequest(record)
+      ? "capability"
+      : null;
+  if (!requestKind) return context.next(request);
 
   const question = requiredText(record.question, 2_000);
   const siteId = requiredText(record.siteId, 100);
@@ -206,6 +222,178 @@ export default async function handler(request: Request, context: EdgeContext): P
         },
         429,
       );
+    }
+
+    if (requestKind === "capability") {
+      const capabilityResponse = await fetch(
+        `${supabaseUrl}/rest/v1/rpc/vorta_get_capability_reconciliation_report`,
+        {
+          method: "POST",
+          headers: supabaseHeaders(anonKey, bearer, {
+            "content-type": "application/json",
+          }),
+          body: JSON.stringify({ p_site_id: siteId, p_limit: 15 }),
+        },
+      );
+      const capabilityReport = (await capabilityResponse.json().catch(() => null)) as JsonRecord | null;
+      if (!capabilityResponse.ok || !capabilityReport) return context.next(request);
+
+      const allActions = records(capabilityReport.actions);
+      const backupActions = allActions.filter(
+        (action) => String(action.actionType ?? "") === "BACKUP_SME_DEVELOPMENT",
+      );
+      const rankedActions = [...backupActions, ...allActions.filter((action) => !backupActions.includes(action))].slice(0, 4);
+      const topAction = rankedActions[0];
+      if (!topAction) return context.next(request);
+
+      const equipment =
+        topAction.equipment && typeof topAction.equipment === "object" && !Array.isArray(topAction.equipment)
+          ? (topAction.equipment as JsonRecord)
+          : {};
+      const primarySme =
+        topAction.primarySme && typeof topAction.primarySme === "object" && !Array.isArray(topAction.primarySme)
+          ? (topAction.primarySme as JsonRecord)
+          : {};
+      const backupSme =
+        topAction.backupSme && typeof topAction.backupSme === "object" && !Array.isArray(topAction.backupSme)
+          ? (topAction.backupSme as JsonRecord)
+          : {};
+      const candidate =
+        topAction.candidate && typeof topAction.candidate === "object" && !Array.isArray(topAction.candidate)
+          ? (topAction.candidate as JsonRecord)
+          : {};
+      const requirement =
+        topAction.requirement && typeof topAction.requirement === "object" && !Array.isArray(topAction.requirement)
+          ? (topAction.requirement as JsonRecord)
+          : {};
+      const equipmentCode = requiredText(equipment.code, 120) || "the highest-ranked asset";
+      const equipmentName = requiredText(equipment.name, 240) || "asset name not recorded";
+      const primaryName = requiredText(primarySme.name, 200);
+      const backupName = requiredText(backupSme.name, 200);
+      const candidateName = requiredText(candidate.name, 200);
+      const skillName = requiredText(requirement.skillName, 240);
+      const recommendedAction =
+        requiredText(topAction.recommendedAction, 1_000) ||
+        "Complete the limiting skills and equipment validation, then designate an active backup SME.";
+      const rationale = requiredText(topAction.rationale, 1_000);
+      const interactionId = crypto.randomUUID();
+      const questionFingerprint = await sha256Fingerprint(question.toLowerCase());
+
+      const startResponse = await fetch(`${supabaseUrl}/rest/v1/ask_vorta_interactions`, {
+        method: "POST",
+        headers: supabaseHeaders(anonKey, bearer, {
+          "content-type": "application/json",
+          prefer: "return=minimal",
+        }),
+        body: JSON.stringify({
+          id: interactionId,
+          site_id: siteId,
+          user_id: userId,
+          role,
+          question_fingerprint: questionFingerprint,
+          status: "started",
+        }),
+      });
+      if (!startResponse.ok) return context.next(request);
+
+      const missingData = rankedActions
+        .flatMap((action) =>
+          Array.isArray(action.missingEvidence)
+            ? action.missingEvidence.filter((item): item is string => typeof item === "string")
+            : [],
+        )
+        .filter((item, index, values) => values.indexOf(item) === index)
+        .slice(0, 5);
+      const findings = rankedActions.map((action) => {
+        const actionEquipment =
+          action.equipment && typeof action.equipment === "object" && !Array.isArray(action.equipment)
+            ? (action.equipment as JsonRecord)
+            : {};
+        const actionCandidate =
+          action.candidate && typeof action.candidate === "object" && !Array.isArray(action.candidate)
+            ? (action.candidate as JsonRecord)
+            : {};
+        return {
+          category: "skills",
+          severity: /critical/i.test(String(action.priorityLevel))
+            ? "critical"
+            : /high/i.test(String(action.priorityLevel))
+              ? "high"
+              : "medium",
+          title: `${String(actionEquipment.code ?? "Asset")} · ${String(action.actionType ?? "Capability action")}`,
+          detail: `${String(action.rationale ?? "Capability dependency recorded")}${actionCandidate.name ? ` Candidate: ${String(actionCandidate.name)}.` : ""} ${String(action.recommendedAction ?? "")}`.trim(),
+        };
+      });
+      const evidence = rankedActions.map(
+        (action) =>
+          `${String((action.equipment as JsonRecord | undefined)?.code ?? "Asset")}: ${String(action.rationale ?? "Capability dependency recorded")}. Recommended action: ${String(action.recommendedAction ?? "not recorded")}.`,
+      );
+      const directAnswer = `${equipmentCode} (${equipmentName}) is the highest-ranked single-person capability dependency. ${primaryName ? `${primaryName} is the recorded primary SME; ` : ""}${backupName ? `${backupName} is the active backup SME.` : "no active validated backup SME is recorded."}${candidateName ? ` Develop ${candidateName} as the nearest recorded backup candidate.` : " No named backup candidate is currently proven."}`;
+      const decisionSummary = [
+        {
+          label: "Highest dependency",
+          value: `${equipmentCode} · ${String(topAction.priorityLevel ?? "priority not recorded")} · score ${String(topAction.priorityScore ?? "not recorded")}.`,
+        },
+        {
+          label: "Current SME",
+          value: primaryName || "No active validated primary SME is recorded.",
+        },
+        {
+          label: "Backup candidate",
+          value: candidateName
+            ? `${candidateName}${skillName ? ` · limiting skill: ${skillName}` : ""}.`
+            : "No named candidate is currently proven.",
+        },
+        {
+          label: "Required action",
+          value: recommendedAction,
+        },
+      ];
+      const answer = {
+        directAnswer,
+        decisionSummary,
+        evidence,
+        findings,
+        coverOptions: [],
+        recommendedActions: [recommendedAction],
+        actionPlan: [
+          {
+            priority: "now",
+            action: recommendedAction,
+            owner: String(topAction.actionOwner ?? "Maintenance Manager"),
+            expectedImpact: `Reduces the single-person dependency on ${equipmentCode} by developing and validating a named backup.`,
+            verification: `Confirm the candidate's limiting skill, equipment-specific evidence and active backup-SME designation in the Skills Matrix.`,
+          },
+        ],
+        followUpQuestions: [],
+        sources: ["Site capability risk actions"],
+        missingData,
+        confidence: candidateName ? 83 : 72,
+        intentLabel: "capability_risk",
+        toolsUsed: ["get_site_capability_actions"],
+        evidenceGeneratedAt:
+          requiredText(capabilityReport.generatedAt, 100) || new Date().toISOString(),
+        evidenceLinks: [
+          {
+            label: "Open Skills Matrix",
+            path: "/skills-matrix",
+            recordType: "skill",
+          },
+        ],
+        responseId: interactionId,
+      };
+
+      await patchInteraction(supabaseUrl, anonKey, bearer, interactionId, userId, {
+        intent_label: "capability_risk",
+        tools_used: ["get_site_capability_actions"],
+        sources: ["Site capability risk actions"],
+        confidence: answer.confidence,
+        missing_data_count: missingData.length,
+        duration_ms: Date.now() - startedAt,
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      });
+      return jsonResponse(answer);
     }
 
     const equipmentQuery = new URLSearchParams({
