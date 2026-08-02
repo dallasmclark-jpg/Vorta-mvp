@@ -822,7 +822,12 @@ function answerReasoningEffort(
 }
 
 function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
-  if (questionPlan?.routingMode === "deterministic") return 2_200;
+  if (questionPlan?.routingMode === "deterministic") {
+    const scope =
+      typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+    if (scope === "site_risk" || scope === "work") return 1_400;
+    return questionPlan.forceActionPlan === true ? 2_000 : 1_700;
+  }
   return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
 }
 
