@@ -133,7 +133,30 @@ function patchBrowserContract() {
 
 function addContract() {
   const contractPath = "scripts/vor-042-ask-vorta-polish-contracts.mjs";
-  const contract = `import { readFileSync } from \"node:fs\";\n\nconst workspace = readFileSync(\"src/screens/AiOperations/AskVortaWorkspace.tsx\", \"utf8\");\nconst assistant = readFileSync(\"src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx\", \"utf8\");\nconst browser = readFileSync(\"tests/browser/vor-041-ask-vorta-workspace.spec.ts\", \"utf8\");\n\nconst checks = [\n  [workspace.includes(\"visibleConversationMessages\"), \"active workspace conversation hides its introductory card\"],\n  [workspace.includes(\"Live evidence loaded\"), \"workspace uses a compact evidence-status label\"],\n  [assistant.includes('presentation?: \"compact\" | \"workspace\"'), \"AnswerBlock supports workspace presentation\"],\n  [assistant.includes(\"wideCompactPresentation\"), \"compact density is limited only on non-mobile layouts\"],\n  [assistant.includes(\"decisionSummaryLimit\"), \"decision summary density is explicitly bounded\"],\n  [assistant.includes('presentation=\"workspace\"'), \"workspace rendering opts into the clean hierarchy\"],\n  [assistant.includes('messageIndex === 0 ? \"md:hidden\"'), \"compact introduction remains available on phone and hides on wider active conversations\"],\n  [browser.includes(\"check_shift_cover\") && browser.includes(\"toHaveCount(0)\"), \"browser coverage rejects internal intent labels\"],\n  [browser.includes(\"compactSummary\") && browser.includes(\"toHaveCount(4)\"), \"browser coverage protects compact response density\"],\n];\n\nconst failures = checks.filter(([passed]) => !passed);\nfor (const [passed, label] of checks) console.log(\`${passed ? \"✓\" : \"✗\"} ${label}\`);\nif (failures.length) process.exit(1);\n`;
+  const contract = [
+    'import { readFileSync } from "node:fs";',
+    "",
+    'const workspace = readFileSync("src/screens/AiOperations/AskVortaWorkspace.tsx", "utf8");',
+    'const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8");',
+    'const browser = readFileSync("tests/browser/vor-041-ask-vorta-workspace.spec.ts", "utf8");',
+    "",
+    "const checks = [",
+    '  [workspace.includes("visibleConversationMessages"), "active workspace conversation hides its introductory card"],',
+    '  [workspace.includes("Live evidence loaded"), "workspace uses a compact evidence-status label"],',
+    '  [assistant.includes(\'presentation?: "compact" | "workspace"\'), "AnswerBlock supports workspace presentation"],',
+    '  [assistant.includes("wideCompactPresentation"), "compact density is limited only on non-mobile layouts"],',
+    '  [assistant.includes("decisionSummaryLimit"), "decision summary density is explicitly bounded"],',
+    '  [assistant.includes(\'presentation="workspace"\'), "workspace rendering opts into the clean hierarchy"],',
+    '  [assistant.includes(\'messageIndex === 0 ? "md:hidden"\'), "compact introduction remains available on phone and hides on wider active conversations"],',
+    '  [browser.includes("check_shift_cover") && browser.includes("toHaveCount(0)"), "browser coverage rejects internal intent labels"],',
+    '  [browser.includes("compactSummary") && browser.includes("toHaveCount(4)"), "browser coverage protects compact response density"],',
+    "];",
+    "",
+    "const failures = checks.filter(([passed]) => !passed);",
+    'for (const [passed, label] of checks) console.log(`${passed ? "✓" : "✗"} ${label}`);',
+    "if (failures.length) process.exit(1);",
+    "",
+  ].join("\n");
   writeFileSync(contractPath, contract);
 
   const runnerPath = "scripts/run-contract-suite.mjs";
