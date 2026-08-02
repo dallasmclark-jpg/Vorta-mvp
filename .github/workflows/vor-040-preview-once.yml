@@ -12,7 +12,7 @@ permissions:
 jobs:
   evaluate-preview:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Check out tested head
         uses: actions/checkout@v4
@@ -41,6 +41,26 @@ jobs:
           echo "VORTA_EVAL_OFFSET=${offset:-0}" >> "$GITHUB_ENV"
           echo "VORTA_EVAL_LIMIT=${limit:-8}" >> "$GITHUB_ENV"
           echo "VORTA_EVAL_DELAY_MS=${delay:-500}" >> "$GITHUB_ENV"
+
+      - name: Wait for exact Netlify preview head
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          PREVIEW_URL: https://deploy-preview-191--vorta-app.netlify.app
+        run: |
+          for attempt in $(seq 1 48); do
+            payload="$(curl --silent --show-error --fail --max-time 15 "$PREVIEW_URL/vorta-build.json" || true)"
+            deployed_head="$(printf '%s' "$payload" | node -e 'let value="";process.stdin.on("data",c=>value+=c).on("end",()=>{try{process.stdout.write(JSON.parse(value).commit||"")}catch{}})')"
+            if [ "$deployed_head" = "$EXPECTED_HEAD" ]; then
+              echo "Exact preview head is ready: $deployed_head"
+              exit 0
+            fi
+            echo "Preview head is ${deployed_head:-unavailable}; waiting for $EXPECTED_HEAD (attempt $attempt/48)."
+            sleep 5
+          done
+          echo "The exact Netlify preview head did not become ready." >&2
+          exit 1
 
       - name: Compose public Supabase client key
         if: steps.guard.outputs.run == 'true'
