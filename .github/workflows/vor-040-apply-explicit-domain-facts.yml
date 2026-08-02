@@ -48,19 +48,15 @@ jobs:
           from pathlib import Path
           path = Path('scripts/vor-040-natural-question-contracts.mjs')
           source = path.read_text()
-          old = '''  "const questionRanked = relevantEquipmentDecisionFacts(question, rankedFacts)",
-          "typeof value !== \\\"object\\\"",
-          "pathSegments",'''
+          old = '  "const questionRanked = relevantEquipmentDecisionFacts(question, rankedFacts)",'
           new = '''  "explicitEquipmentDomainFacts",
-          "nestedDecisionRecords",
-          "work evidence",
-          "spare evidence",
-          "capability evidence",
-          "document evidence",
-          "const questionRanked = relevantEquipmentDecisionFacts(\n    question,\n    [...explicitFacts, ...rankedFacts]",
-          "...selectedFacts,\n      ...textValues(answer.evidence)",
-          "typeof value !== \\\"object\\\"",
-          "pathSegments",'''
+            "nestedDecisionRecords",
+            "work evidence",
+            "spare evidence",
+            "capability evidence",
+            "document evidence",
+            "const questionRanked = relevantEquipmentDecisionFacts(\\n    question,\\n    [...explicitFacts, ...rankedFacts]",
+            "...selectedFacts,\\n      ...textValues(answer.evidence)",'''
           if old not in source:
               raise SystemExit('VOR-040 explicit-domain contract anchor missing')
           path.write_text(source.replace(old, new, 1))
