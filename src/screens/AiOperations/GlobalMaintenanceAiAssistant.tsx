@@ -11,6 +11,7 @@ import {
   ClipboardPlus,
   ExternalLink,
   Loader2,
+  Maximize2,
   Mic,
   MicOff,
   RefreshCw,
@@ -58,6 +59,11 @@ import {
   type VortaAgentFinding,
   type VortaAgentHistoryItem,
 } from "./vortaAgentService";
+import {
+  AskVortaWorkspace,
+  type AskVortaWorkspaceAnswer,
+  type AskVortaWorkspaceMessage,
+} from "./AskVortaWorkspace";
 
 type ChatRole = "user" | "assistant";
 
@@ -2430,11 +2436,13 @@ export function GlobalMaintenanceAiAssistant({
   shouldHandlePrompt,
 }: GlobalMaintenanceAiAssistantProps): JSX.Element | null {
   const roleProfile = getRoleProfile(role);
+  const navigate = useNavigate();
   const { siteContext } = useAuth();
   const agentContextReady = Boolean(siteContext?.siteId);
 
   const [open, setOpen] = useState(false);
   const [minimised, setMinimised] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [input, setInput] = useState("");
 
   const speechRecognitionRef =
@@ -2509,6 +2517,10 @@ export function GlobalMaintenanceAiAssistant({
       },
     },
   ]);
+
+  const hasActiveConversation = messages.some(
+    (message) => message.role === "user" && Boolean(message.text?.trim()),
+  );
 
   useEffect(() => {
     const speechWindow =
@@ -3226,6 +3238,81 @@ export function GlobalMaintenanceAiAssistant({
     void submitQuestion(question);
   }, [open, agentContextReady, pendingPrompt]);
 
+
+  const resetWorkspaceConversation = (): void => {
+    stopSpeechRecognition(true);
+    setInput("");
+    setMessages([
+      {
+        id: `global-mm-intro-${Date.now()}`,
+        role: "assistant",
+        answer: {
+          directAnswer: roleProfile.introAnswer,
+          decisionSummary: [],
+          evidence: [],
+          recommendedActions: [roleProfile.defaultAction],
+          sources: [],
+          confidence: 70,
+          roleLabel: roleProfile.label,
+          responseBadge: roleProfile.responseBadge,
+          intentLabel: "Introduction",
+          roleNote: roleAwareNote(roleProfile),
+        },
+      },
+    ]);
+  };
+
+  const loadWorkspaceConversation = (
+    nextMessages: AskVortaWorkspaceMessage[],
+  ): void => {
+    stopSpeechRecognition(true);
+    setInput("");
+    setMessages(nextMessages as GlobalAiMessage[]);
+  };
+
+  if (open && workspaceOpen) {
+    return (
+      <AskVortaWorkspace
+        messages={messages as AskVortaWorkspaceMessage[]}
+        input={input}
+        roleSubtitle={roleProfile.subtitle}
+        contextLine={
+          shiftSkillsContext
+            ? `${roleProfile.contextLine} Shift skills context loaded: ${shiftSkillsContext.shiftLabel}.`
+            : roleProfile.contextLine
+        }
+        contextReady={agentContextReady}
+        loadingContext={loadingContext}
+        speechSupported={speechSupported}
+        listening={listening}
+        speechError={speechError}
+        promptPlaceholder={roleProfile.promptPlaceholder}
+        onInputChange={setInput}
+        onSubmit={submitQuestion}
+        onRetry={retryFailedQuestion}
+        onToggleSpeech={toggleSpeechRecognition}
+        onCollapse={() => setWorkspaceOpen(false)}
+        onClose={() => {
+          stopSpeechRecognition(true);
+          setWorkspaceOpen(false);
+          setOpen(false);
+        }}
+        onNewConversation={resetWorkspaceConversation}
+        onLoadConversation={loadWorkspaceConversation}
+        onOpenEvidenceLink={(path) => {
+          navigate(path);
+          setWorkspaceOpen(false);
+        }}
+        renderAnswer={(answer: AskVortaWorkspaceAnswer) => (
+          <AnswerBlock
+            answer={answer as GlobalAiAnswer}
+            onFollowUp={submitQuestion}
+          />
+        )}
+      />
+    );
+  }
+
   if (!open) {
     if (!showLauncher) return null;
 
@@ -3248,7 +3335,7 @@ export function GlobalMaintenanceAiAssistant({
   return (
     <div
       data-vorta-global-ai-panel="true"
-      className="fixed bottom-4 right-4 z-40 w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-500/20 bg-[#10141d] shadow-2xl shadow-black/60 max-md:inset-0 max-md:flex max-md:h-[100dvh] max-md:w-screen max-md:flex-col max-md:rounded-none max-md:border-0 max-md:bg-[#0b0e14] max-md:shadow-none"
+      className="fixed bottom-4 right-4 z-40 w-[min(500px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-500/20 bg-[#10141d] shadow-2xl shadow-black/60 max-md:inset-0 max-md:flex max-md:h-[100dvh] max-md:w-screen max-md:flex-col max-md:rounded-none max-md:border-0 max-md:bg-[#0b0e14] max-md:shadow-none"
     >
       <div
         data-vorta-global-ai-header="true"
@@ -3265,6 +3352,16 @@ export function GlobalMaintenanceAiAssistant({
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setWorkspaceOpen(true)}
+            data-vorta-global-ai-expand="true"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 max-md:hidden"
+            aria-label="Expand Ask Vorta workspace"
+            title="Open full Ask Vorta workspace"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -3303,7 +3400,7 @@ export function GlobalMaintenanceAiAssistant({
 
       {!minimised && (
         <>
-          <div className="border-b border-gray-800 px-4 py-3">
+          <div className={`border-b border-gray-800 px-4 py-3 ${hasActiveConversation ? "md:hidden" : ""}`}>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {roleProfile.quickQuestions.map((question) => (
                 <button
@@ -3388,7 +3485,7 @@ export function GlobalMaintenanceAiAssistant({
 
           <div
             data-vorta-global-ai-messages="true"
-            className="flex max-h-[380px] flex-col gap-3 overflow-y-auto px-4 py-3 max-md:min-h-0 max-md:max-h-none max-md:flex-1"
+            className="flex max-h-[min(56vh,560px)] flex-col gap-3 overflow-y-auto px-4 py-3 max-md:min-h-0 max-md:max-h-none max-md:flex-1"
           >
             {messages.map((message) => (
               <div
