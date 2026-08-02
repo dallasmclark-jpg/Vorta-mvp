@@ -7,9 +7,8 @@ import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
 
 function OriginalShiftCoverRota(): JSX.Element {
-  // The invalid nested route location="/labour-risk/shift-cover" sits outside
-  // the Engineers route context and renders nothing. Keep the synthetic child
-  // location beneath /engineers so LabourRiskDetailPage receives riskType.
+  // Keep the synthetic child location beneath /engineers so
+  // LabourRiskDetailPage receives the shift-cover risk type.
   return (
     <div className="contents" data-vorta-original-shift-rota="true">
       <Routes location="/engineers/shift-cover">
@@ -23,19 +22,15 @@ export function EngineersRouteEntry(): JSX.Element {
   const { siteContext } = useAuth();
   const dataMode = getEffectiveDataMode(Boolean(siteContext?.siteId));
   const isPhone = useMediaQuery("(max-width: 767px)");
-  const isNarrowTablet = useMediaQuery("(min-width: 768px) and (max-width: 1439px)");
-  const isWideTabletViewport = useMediaQuery("(min-width: 1440px) and (max-width: 1600px)");
-  const hasCoarsePointer = useMediaQuery("(any-pointer: coarse)");
-  const isTouchDevice =
-    typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-  const isTablet =
-    isNarrowTablet || (isWideTabletViewport && isTouchDevice && hasCoarsePointer);
+  const usesOriginalRota = useMediaQuery(
+    "(min-width: 768px) and (max-width: 1600px)",
+  );
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>
       {isPhone ? (
         <MobileEngineersSection dataMode={dataMode} />
-      ) : isTablet ? (
+      ) : usesOriginalRota ? (
         <OriginalShiftCoverRota />
       ) : (
         <LiveEngineersSection />

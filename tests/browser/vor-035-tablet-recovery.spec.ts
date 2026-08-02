@@ -32,31 +32,29 @@ async function expectNoGenericDataFailure(page: Page): Promise<void> {
   ).toHaveCount(0);
 }
 
-test("VOR-035 real Tab S9 Ultra journey keeps the original rota", async ({
+test("VOR-035 exact Samsung screenshot dimensions keep the original rota", async ({
   page,
 }, testInfo) => {
   const viewport = page.viewportSize();
   const viewportWidth = viewport?.width ?? 0;
   test.skip(
     viewportWidth < 768 || viewportWidth > 1600,
-    "VOR-035 recovery evidence is Samsung tablet-only.",
+    "VOR-035 recovery evidence is tablet-width only.",
   );
 
-  const deviceProfile = await page.evaluate(() => ({
+  const browserProfile = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     maxTouchPoints: navigator.maxTouchPoints,
-    coarsePointer: window.matchMedia("(any-pointer: coarse)").matches,
     width: window.innerWidth,
     height: window.innerHeight,
   }));
-  expect(deviceProfile.maxTouchPoints).toBeGreaterThan(0);
-  expect(deviceProfile.coarsePointer).toBe(true);
-  expect(deviceProfile.width).toBe(viewport?.width);
-  expect(deviceProfile.height).toBe(viewport?.height);
-  if (viewportWidth > 1439) {
-    expect(deviceProfile.userAgent).not.toContain("Android");
-  } else {
-    expect(deviceProfile.userAgent).toContain("Android");
+  expect(browserProfile.width).toBe(viewport?.width);
+  expect(browserProfile.height).toBe(viewport?.height);
+
+  if (viewportWidth === 1536) {
+    expect(browserProfile.height).toBe(959);
+    expect(browserProfile.userAgent).not.toContain("Android");
+    expect(browserProfile.maxTouchPoints).toBe(0);
   }
 
   await signInMaintenanceManager(page);
