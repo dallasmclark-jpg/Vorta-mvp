@@ -1,0 +1,39 @@
+name: VOR-039 live preview evaluation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  live-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/vor-039-ask-vorta-confidence-latency
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run VOR-039 live evaluation against Netlify preview
+        env:
+          VORTA_EVAL_BASE_URL: https://deploy-preview-189--vorta-app.netlify.app
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VORTA_E2E_EMAIL: ${{ secrets.VORTA_E2E_EMAIL }}
+          VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+          VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+        run: npm run eval:ask-vorta:vor039
