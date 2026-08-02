@@ -1,0 +1,28 @@
+name: VOR-036 honest equipment risk trend gate
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20260802151500_make_equipment_risk_trend_evidence_only.sql"
+      - "scripts/vor-036-honest-equipment-risk-trend-contracts.mjs"
+      - ".github/workflows/vor-036-honest-equipment-risk-trend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-only-trend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify evidence-only trend contract
+        run: node scripts/vor-036-honest-equipment-risk-trend-contracts.mjs
