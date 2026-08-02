@@ -1,0 +1,70 @@
+name: VOR-039 agent patch v2
+
+on:
+  push:
+    branches:
+      - agent/vor-039-ask-vorta-confidence-latency
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, '[vor-039 patched]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/vor-039-ask-vorta-confidence-latency
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Extract and repair patch script
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/vor-039-agent-patch.yml').read_text()
+          marker = "          python <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY", start)
+          script = workflow[start:end]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in script.splitlines()
+          )
+          script = script.replace("import re\n", "import re\nimport textwrap\n", 1)
+          script = script.replace(
+              'vor039_contract.replace(/^          /gm, "")',
+              'textwrap.dedent(vor039_contract).lstrip()',
+          )
+          Path('/tmp/apply-vor-039.py').write_text(script + "\n")
+          PY
+          python /tmp/apply-vor-039.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify focused implementation
+        run: |
+          npm run typecheck:functions
+          node scripts/vor-038-ask-vorta-intelligence-contracts.mjs
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          rm .github/workflows/vor-039-agent-patch.yml
+          rm .github/workflows/vor-039-agent-patch-v2.yml
+          git config user.name "Vorta Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-039: calibrate Ask Vorta confidence and latency [vor-039 patched]"
+          git push origin HEAD:agent/vor-039-ask-vorta-confidence-latency
