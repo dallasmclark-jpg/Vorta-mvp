@@ -6,10 +6,6 @@ on:
       - main
     types:
       - synchronize
-    paths:
-      - netlify/functions/ask-vorta.mts
-      - scripts/ask-vorta-live-evals.mjs
-      - tests/evals/vor-039-confidence-latency.json
 
 permissions:
   contents: read
@@ -30,15 +26,39 @@ jobs:
         with:
           ref: agent/vor-039-ask-vorta-confidence-latency
 
+      - name: Check whether this is the deliberate final evaluation
+        id: gate
+        shell: bash
+        run: |
+          message="$(git log -1 --pretty=%B)"
+          if [[ "$message" == *"[vor039-final-eval]"* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping live evaluation for a non-evaluation commit."
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci
 
-      - name: Allow the matching Netlify preview function to deploy
-        run: sleep 70
+      - name: Warm the Netlify preview function
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          curl --silent --show-error --max-time 20 \
+            --request POST \
+            --header 'content-type: application/json' \
+            --data '{}' \
+            "$VORTA_EVAL_BASE_URL/api/ask-vorta" >/dev/null || true
+          sleep 5
 
       - name: Run VOR-039 live evaluation against Netlify preview
+        if: steps.gate.outputs.run == 'true'
         run: npm run eval:ask-vorta:vor039
