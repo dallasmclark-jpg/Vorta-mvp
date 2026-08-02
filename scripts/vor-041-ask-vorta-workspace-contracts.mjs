@@ -29,6 +29,11 @@ assert.match(
   /vorta:ask-vorta:recent-conversations:v1/,
   "Recent conversations must use the bounded local workspace store.",
 );
+assert.match(
+  workspace,
+  /vorta:ask-vorta:active-conversation:v1[\s\S]*sessionStorage.getItem[\s\S]*sessionStorage.setItem/,
+  "The active conversation survives compact workspace remounts without duplicating Recents.",
+);
 for (const label of ["Conversation", "Evidence", "Actions"]) {
   assert.ok(
     workspace.includes(`label: "${label}"`),

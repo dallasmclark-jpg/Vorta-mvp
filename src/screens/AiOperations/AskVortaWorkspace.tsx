@@ -102,11 +102,28 @@ interface AskVortaWorkspaceProps {
 }
 
 const STORAGE_KEY = "vorta:ask-vorta:recent-conversations:v1";
+const ACTIVE_STORAGE_KEY = "vorta:ask-vorta:active-conversation:v1";
 const MAX_RECENTS = 12;
 const MAX_STORED_MESSAGES = 18;
 
 function conversationId(): string {
   return `ask-vorta-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function readActiveConversationId(): string {
+  try {
+    return window.sessionStorage.getItem(ACTIVE_STORAGE_KEY) ?? conversationId();
+  } catch {
+    return conversationId();
+  }
+}
+
+function writeActiveConversationId(value: string): void {
+  try {
+    window.sessionStorage.setItem(ACTIVE_STORAGE_KEY, value);
+  } catch {
+    // The workspace still functions when browser session storage is unavailable.
+  }
 }
 
 function conversationTitle(messages: AskVortaWorkspaceMessage[]): string {
@@ -212,7 +229,7 @@ export function AskVortaWorkspace({
     readStoredConversations(),
   );
   const [currentConversationId, setCurrentConversationId] = useState(() =>
-    conversationId(),
+    readActiveConversationId(),
   );
 
   const latestAnswer = useMemo(
@@ -222,6 +239,10 @@ export function AskVortaWorkspace({
   const hasUserQuestion = messages.some(
     (message) => message.role === "user" && message.text?.trim(),
   );
+
+  useEffect(() => {
+    writeActiveConversationId(currentConversationId);
+  }, [currentConversationId]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 768px)");
