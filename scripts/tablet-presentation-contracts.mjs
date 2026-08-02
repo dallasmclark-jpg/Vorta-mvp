@@ -28,9 +28,9 @@ assert.ok(
 );
 assert.ok(
   compactDashboardStyles.includes(
-    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"].flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;outline:none!important;box-shadow:none!important}',
+    '[data-vorta-dashboard-root="true"][data-vorta-embedded-ai="true"].flex.min-w-0.flex-1.items-center:focus-within{border-color:rgb(556581)!important;box-shadow:none!important}',
   ),
-  "The embedded Ask Vorta input must not draw the rejected blue focus rectangle.",
+  "The embedded Ask Vorta input frame must not draw the rejected blue focus rectangle.",
 );
 assert.doesNotMatch(
   dashboardStyles,
