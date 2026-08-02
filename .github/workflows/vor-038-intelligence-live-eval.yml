@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: fix/vor-038-ask-vorta-intelligence
+          fetch-depth: 1
           show-progress: false
 
       - name: Use Node.js
@@ -40,7 +41,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --silent
 
-      - name: Materialise and type-check VOR-038 backend
+      - name: Type-check canonical VOR-038 backend
         run: npm run typecheck
 
       - name: Wait for the matching deploy preview
