@@ -1,0 +1,99 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const golden = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-033-demo-golden.json"), "utf8"));
+const natural = JSON.parse(readFileSync(resolve(root, "tests/evals/vor-040-natural-questions.json"), "utf8"));
+const evaluator = readFileSync(resolve(root, "scripts/ask-vorta-live-evals.mjs"), "utf8");
+const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+
+assert.equal(golden.length, 24, "The established VOR-033 manager suite must retain 24 questions.");
+assert.ok(natural.length >= 30, "VOR-040 must add at least 30 fresh natural-language scenarios.");
+assert.ok(golden.length + natural.length >= 54, "The combined Ask Vorta quality audit must contain at least 54 scenarios.");
+
+const ids = new Set();
+const questions = new Set();
+for (const scenario of [...golden, ...natural]) {
+  assert.equal(typeof scenario.id, "string", "Every scenario needs a stable ID.");
+  assert.ok(!ids.has(scenario.id), `Duplicate scenario ID: ${scenario.id}`);
+  ids.add(scenario.id);
+  assert.equal(typeof scenario.question, "string", `${scenario.id} needs a question.`);
+  assert.ok(scenario.question.trim().length >= 18, `${scenario.id} question is too short.`);
+  const normalisedQuestion = scenario.question.trim().toLowerCase();
+  assert.ok(!questions.has(normalisedQuestion), `Duplicate scenario question: ${scenario.question}`);
+  questions.add(normalisedQuestion);
+}
+
+for (const scenario of natural) {
+  assert.ok(scenario.id.startsWith("vor040-"), `${scenario.id} must use the VOR-040 prefix.`);
+  assert.ok(
+    Array.isArray(scenario.expectedTools) || Array.isArray(scenario.expectedAnyTools),
+    `${scenario.id} must constrain tool selection.`,
+  );
+  assert.ok(Array.isArray(scenario.mustMentionAny), `${scenario.id} needs mustMentionAny assertions.`);
+  assert.ok(scenario.mustMentionAny.length > 0, `${scenario.id} must verify relevant answer content.`);
+  assert.ok(Array.isArray(scenario.mustNotMention), `${scenario.id} needs mustNotMention assertions.`);
+  assert.ok(Number.isFinite(scenario.confidenceMin), `${scenario.id} needs a confidence floor.`);
+  assert.ok(Number.isFinite(scenario.maxToolCount), `${scenario.id} needs a tool-count ceiling.`);
+  assert.ok(Number.isFinite(scenario.maxDurationMs), `${scenario.id} needs a latency ceiling.`);
+  assert.ok(Number.isFinite(scenario.maxDecisionSummaryItems), `${scenario.id} needs an answer-density ceiling.`);
+  assert.ok(Number.isFinite(scenario.maxFollowUpQuestions), `${scenario.id} needs a follow-up ceiling.`);
+}
+
+const followUps = natural.filter((scenario) => Array.isArray(scenario.history) && scenario.history.length > 0);
+assert.ok(followUps.length >= 2, "VOR-040 must evaluate conversational follow-up resolution.");
+
+const typoOrShorthand = natural.filter((scenario) => /typo|shorthand|colloquial/.test(scenario.id));
+assert.ok(typoOrShorthand.length >= 10, "VOR-040 must include substantial typo, shorthand and colloquial coverage.");
+
+const mixed = natural.filter((scenario) => Number(scenario.minimumToolCount || 0) >= 2);
+assert.ok(mixed.length >= 2, "VOR-040 must include mixed-domain decision questions.");
+
+const safetyCases = natural.filter((scenario) =>
+  scenario.mustNotMention.some((phrase) => /created|placed|guaranteed|definitely|without testing|becomes zero/i.test(phrase)),
+);
+assert.ok(safetyCases.length >= 8, "VOR-040 must protect against unsupported certainty and false write claims.");
+
+const requiredDomains = [
+  "get_site_operational_snapshot",
+  "get_site_risk",
+  "get_shift_handover",
+  "get_shift_cover",
+  "get_contractor_availability",
+  "get_site_spares_risk",
+  "get_site_work_backlog",
+  "get_site_capability_actions",
+  "get_site_maintenance_plan",
+  "get_equipment_decision_pack",
+];
+const encoded = JSON.stringify(natural);
+for (const tool of requiredDomains) {
+  assert.ok(encoded.includes(tool), `VOR-040 must cover ${tool}.`);
+}
+
+for (const evidence of ["FD-03", "RABS-01", "VF-02", "WFI-01", "AHU-01", "COLD-01"]) {
+  assert.ok(encoded.includes(evidence), `VOR-040 must retain natural-language coverage for ${evidence}.`);
+}
+
+for (const evaluatorFeature of [
+  "scenario.history || []",
+  "scenario.confidenceMin",
+  "scenario.maxToolCount",
+  "scenario.maxDecisionSummaryItems",
+  "scenario.maxFollowUpQuestions",
+  "scenario.maxDurationMs",
+  "no evidence links",
+  "no traceable response ID",
+]) {
+  assert.ok(evaluator.includes(evaluatorFeature), `Live evaluator must retain ${evaluatorFeature}.`);
+}
+
+assert.equal(
+  packageJson.scripts?.["eval:ask-vorta:vor040"],
+  "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-040-natural-questions.json",
+  "The repository must expose a dedicated VOR-040 live evaluation command.",
+);
+
+console.log(`VOR-040 natural-question contracts passed (${golden.length + natural.length} total scenarios).`);
