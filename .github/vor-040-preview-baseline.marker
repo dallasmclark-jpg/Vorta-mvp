@@ -2,3 +2,4 @@ mode=patch-natural-routing
 batch=second-batch-repair
 baseline=0-of-8
 fixes=equipment-reference-normalisation,multi-tool-plan-cover,decision-facts,response-shaping
+attempt=2
