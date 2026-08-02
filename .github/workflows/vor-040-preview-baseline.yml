@@ -1,0 +1,64 @@
+name: VOR-040 preview baseline
+
+on:
+  push:
+    branches:
+      - agent/vor-040-natural-question-audit
+    paths:
+      - .github/vor-040-preview-baseline.marker
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate-preview:
+    if: github.event.head_commit.message == 'VOR-040: run repaired preview baseline'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_BASE_URL: https://deploy-preview-191--vorta-app.netlify.app
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_OFFSET: 0
+      VORTA_EVAL_LIMIT: 8
+      VORTA_EVAL_DELAY_MS: 500
+    steps:
+      - name: Check out tested branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/vor-040-natural-question-audit
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Allow the previous production rate window to expire
+        run: sleep 240
+
+      - name: Run identical first eight scenarios against preview
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run eval:ask-vorta:vor040 2>&1 | tee vor-040-preview-baseline.log
+
+      - name: Preserve preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-040-preview-baseline
+          path: vor-040-preview-baseline.log
+          if-no-files-found: error
+          retention-days: 14
