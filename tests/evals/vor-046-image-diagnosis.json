@@ -1,0 +1,214 @@
+{
+  "suite": "VOR-046 image diagnosis",
+  "catalog": {
+    "equipment": [
+      {
+        "id": "41000000-0000-0000-0000-000000000001",
+        "equipment_code": "VF-02",
+        "name": "Bosch Vial Filler VF-02",
+        "equipment_type": "Vial Filling Line",
+        "area": "Fill-Finish",
+        "model": "FLC Line 2",
+        "description": "Aseptic vial filling line"
+      },
+      {
+        "id": "41000000-0000-0000-0000-000000000002",
+        "equipment_code": "VF-01",
+        "name": "Bosch Vial Filler VF-01",
+        "equipment_type": "Vial Filling Line",
+        "area": "Fill-Finish",
+        "model": "FLC Line 1",
+        "description": "Aseptic vial filling line"
+      },
+      {
+        "id": "41000000-0000-0000-0000-000000000003",
+        "equipment_code": "AUT-02",
+        "name": "Steris Autoclave A-02",
+        "equipment_type": "Autoclave",
+        "area": "Sterile Prep",
+        "model": "AMSCO 2",
+        "description": "Steam steriliser with door interlocks"
+      },
+      {
+        "id": "41000000-0000-0000-0000-000000000004",
+        "equipment_code": "BMS-01",
+        "name": "Siemens Building Management System BMS-01",
+        "equipment_type": "Building management system",
+        "area": "Utilities",
+        "model": "Desigo CC",
+        "description": "Site building-management platform"
+      }
+    ],
+    "components": [
+      {
+        "id": "51000000-0000-0000-0000-000000000001",
+        "equipment_id": "41000000-0000-0000-0000-000000000001",
+        "component_name": "HMI operator panel",
+        "component_code": "VF02-HMI-012",
+        "oem_part_number": "6AV2124-0MC01-0AX0",
+        "maker_name": "Siemens",
+        "vendor_name": "Siemens"
+      },
+      {
+        "id": "51000000-0000-0000-0000-000000000002",
+        "equipment_id": "41000000-0000-0000-0000-000000000002",
+        "component_name": "Servo drive",
+        "component_code": "VF01-SRV-220",
+        "oem_part_number": "6SL3210-1PE23-3UL0",
+        "maker_name": "Siemens",
+        "vendor_name": "Siemens"
+      },
+      {
+        "id": "51000000-0000-0000-0000-000000000003",
+        "equipment_id": "41000000-0000-0000-0000-000000000003",
+        "component_name": "Door interlock switch",
+        "component_code": "AUT2-INTLK-017",
+        "oem_part_number": "NBB5-18GM50-E2",
+        "maker_name": "Pepperl+Fuchs",
+        "vendor_name": "OEM approved"
+      },
+      {
+        "id": "51000000-0000-0000-0000-000000000004",
+        "equipment_id": "41000000-0000-0000-0000-000000000004",
+        "component_name": "PLC processor",
+        "component_code": "BMS-01-PLC-01",
+        "oem_part_number": "6ES7515-2AM01-0AB0",
+        "maker_name": "Siemens",
+        "vendor_name": "Siemens"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "nameplate-exact-equipment-code",
+      "extraction": {
+        "extractionStatus": "readable",
+        "imageType": "nameplate",
+        "observedText": [
+          { "value": "BOSCH", "confidence": 98 },
+          { "value": "FLC LINE 2", "confidence": 95 },
+          { "value": "VF-02", "confidence": 99 }
+        ],
+        "faultCodes": [],
+        "manufacturerCandidates": [{ "value": "Bosch", "confidence": 98 }],
+        "modelCandidates": [{ "value": "FLC Line 2", "confidence": 95 }],
+        "partCandidates": [],
+        "equipmentCodeCandidates": [{ "value": "VF-02", "confidence": 99 }],
+        "visualObservations": ["Metal equipment nameplate"],
+        "qualityWarnings": []
+      },
+      "expect": {
+        "matchStatus": "exact_identifier",
+        "selectedEquipmentQuery": "VF-02",
+        "topEquipmentCode": "VF-02",
+        "topEquipmentExact": true
+      }
+    },
+    {
+      "id": "component-exact-oem-part",
+      "extraction": {
+        "extractionStatus": "readable",
+        "imageType": "component",
+        "observedText": [
+          { "value": "SIEMENS", "confidence": 97 },
+          { "value": "6AV2124-0MC01-0AX0", "confidence": 96 }
+        ],
+        "faultCodes": [],
+        "manufacturerCandidates": [{ "value": "Siemens", "confidence": 97 }],
+        "modelCandidates": [],
+        "partCandidates": [{ "value": "6AV2124-0MC01-0AX0", "confidence": 96 }],
+        "equipmentCodeCandidates": [],
+        "visualObservations": ["Operator panel label"],
+        "qualityWarnings": []
+      },
+      "expect": {
+        "matchStatus": "exact_identifier",
+        "selectedEquipmentQuery": "VF-02",
+        "topComponentCode": "VF02-HMI-012",
+        "topComponentExact": true
+      }
+    },
+    {
+      "id": "fault-screen-equipment-code",
+      "extraction": {
+        "extractionStatus": "partial",
+        "imageType": "fault_screen",
+        "observedText": [
+          { "value": "AUT-02", "confidence": 92 },
+          { "value": "DOOR INTERLOCK NOT MADE", "confidence": 87 }
+        ],
+        "faultCodes": [{ "value": "E117", "confidence": 89 }],
+        "manufacturerCandidates": [{ "value": "Steris", "confidence": 72 }],
+        "modelCandidates": [],
+        "partCandidates": [],
+        "equipmentCodeCandidates": [{ "value": "AUT-02", "confidence": 92 }],
+        "visualObservations": ["Red alarm banner visible"],
+        "qualityWarnings": ["Glare obscures the bottom line"]
+      },
+      "expect": {
+        "matchStatus": "exact_identifier",
+        "selectedEquipmentQuery": "AUT-02",
+        "topEquipmentCode": "AUT-02",
+        "topFaultCode": "E117"
+      }
+    },
+    {
+      "id": "manufacturer-only-ambiguous",
+      "extraction": {
+        "extractionStatus": "partial",
+        "imageType": "component",
+        "observedText": [{ "value": "SIEMENS", "confidence": 94 }],
+        "faultCodes": [],
+        "manufacturerCandidates": [{ "value": "Siemens", "confidence": 94 }],
+        "modelCandidates": [],
+        "partCandidates": [],
+        "equipmentCodeCandidates": [],
+        "visualObservations": ["Grey automation component"],
+        "qualityWarnings": ["Part number is not visible"]
+      },
+      "expect": {
+        "matchStatus": "ambiguous",
+        "selectedEquipmentQuery": null,
+        "hasConflicts": true
+      }
+    },
+    {
+      "id": "unreadable-image",
+      "extraction": {
+        "extractionStatus": "unreadable",
+        "imageType": "other",
+        "observedText": [],
+        "faultCodes": [],
+        "manufacturerCandidates": [],
+        "modelCandidates": [],
+        "partCandidates": [],
+        "equipmentCodeCandidates": [],
+        "visualObservations": ["Image is heavily blurred"],
+        "qualityWarnings": ["Retake the photo closer and square to the label"]
+      },
+      "expect": {
+        "matchStatus": "unreadable",
+        "selectedEquipmentQuery": null
+      }
+    },
+    {
+      "id": "no-site-match",
+      "extraction": {
+        "extractionStatus": "readable",
+        "imageType": "nameplate",
+        "observedText": [{ "value": "UNKNOWN ZX-999", "confidence": 96 }],
+        "faultCodes": [],
+        "manufacturerCandidates": [{ "value": "Unknown Corp", "confidence": 90 }],
+        "modelCandidates": [{ "value": "ZX-999", "confidence": 96 }],
+        "partCandidates": [],
+        "equipmentCodeCandidates": [],
+        "visualObservations": ["Readable nameplate"],
+        "qualityWarnings": []
+      },
+      "expect": {
+        "matchStatus": "no_supported_match",
+        "selectedEquipmentQuery": null
+      }
+    }
+  ]
+}

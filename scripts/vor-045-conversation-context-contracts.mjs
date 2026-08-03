@@ -150,11 +150,11 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs && node scripts\/write-build-metadata\.mjs/,
+  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)? && node scripts\/write-build-metadata\.mjs/,
 );
 assert.match(
   packageJson.scripts.predev,
-  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs/,
+  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?/,
 );
 
 console.log("VOR-045 conversational context contracts passed.");
