@@ -778,6 +778,45 @@ function compactToolDomain(result: ToolResult): JsonRecord {
   };
 }
 
+function compactEquipmentSkillsDomain(result: ToolResult): JsonRecord {
+  return {
+    source: result.source,
+    status: result.status,
+    message: result.message,
+    data: records(result.data).map((row) => ({
+      equipment_code: row.equipment_code ?? row.equipmentCode,
+      equipment_name: row.equipment_name ?? row.equipmentName,
+      required_skills: records(row.required_skills ?? row.requiredSkills).map((skill) => ({
+        name: skill.name ?? skill.skill_name ?? skill.skillName,
+        required_level: skill.required_level ?? skill.requiredLevel,
+        minimum_qualified_engineers:
+          skill.minimum_qualified_engineers ?? skill.minimumQualifiedEngineers,
+        criticality: skill.criticality,
+        execution_authority: skill.execution_authority ?? skill.executionAuthority,
+        validation_required: skill.validation_required ?? skill.validationRequired,
+        qualified_engineers: records(
+          skill.qualified_engineers ?? skill.qualifiedEngineers,
+        )
+          .slice(0, 12)
+          .map((engineer) => ({
+            engineer_name: engineer.engineer_name ?? engineer.engineerName,
+            rating: engineer.rating ?? engineer.validated_rating ?? engineer.validatedRating,
+            validation_status:
+              engineer.validation_status ??
+              engineer.validationStatus ??
+              engineer.verification_status ??
+              engineer.verificationStatus,
+            capability_role: engineer.capability_role ?? engineer.capabilityRole,
+            qualification_state:
+              engineer.qualification_state ?? engineer.qualificationState,
+            availability_status:
+              engineer.availability_status ?? engineer.availabilityStatus,
+          })),
+      })),
+    })),
+  };
+}
+
 function collectDecisionFacts(
   value: unknown,
   path = "",
@@ -2525,17 +2564,20 @@ async function executeTool(
         "get_equipment_documents",
       ] as const;
       const domainEntries = await Promise.all(
-        domainNames.map(async (toolName) => [
-          toolName,
-          compactToolDomain(
-            await executeTool(
-              toolName,
-              { equipment_id: equipmentIdValue },
-              supabase,
-              request,
-            ),
-          ),
-        ] as const),
+        domainNames.map(async (toolName) => {
+          const result = await executeTool(
+            toolName,
+            { equipment_id: equipmentIdValue },
+            supabase,
+            request,
+          );
+          return [
+            toolName,
+            toolName === "get_equipment_skills"
+              ? compactEquipmentSkillsDomain(result)
+              : compactToolDomain(result),
+          ] as const;
+        }),
       );
       const domains = Object.fromEntries(domainEntries) as Record<string, JsonRecord>;
       const documentSearchRequested =
