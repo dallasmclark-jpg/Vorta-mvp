@@ -87,7 +87,7 @@ function option(value, fallbackPosition) {
   const equipmentQuery = text(candidate.equipmentQuery, 160);
   const equipmentId = uuid(candidate.equipmentId);
   const reference = text(candidate.reference, 160);
-  const value = text(candidate.value, 500);
+  const optionValue = text(candidate.value, 500);
   return {
     position: normalisedPosition,
     type,
@@ -95,7 +95,7 @@ function option(value, fallbackPosition) {
     ...(equipmentQuery ? { equipmentQuery } : {}),
     ...(equipmentId ? { equipmentId } : {}),
     ...(reference ? { reference } : {}),
-    ...(value ? { value } : {}),
+    ...(optionValue ? { value: optionValue } : {}),
   };
 }
 
