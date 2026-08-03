@@ -1,0 +1,216 @@
+--- a/netlify/functions/ask-vorta.mts
++++ b/netlify/functions/ask-vorta.mts
+@@ -4833,13 +5041,18 @@
+   if (!questionPlan) {
+     try {
+       questionPlan = await buildQuestionPlan(client, planningRequest);
++      plannerMs = Date.now() - plannerStartedAt;
+     } catch (error) {
++      plannerMs = Date.now() - plannerStartedAt;
++      failureStage = error instanceof AskVortaPhaseTimeoutError ? error.stage : "planner";
+       console.warn("Ask Vorta semantic planning failed; continuing with direct evidence reasoning", {
+         requestId: _context.requestId,
+         error: error instanceof Error ? error.message : String(error),
+       });
+     }
+   }
++  const routeKey = canonicalRouteKey(questionPlan);
++  const routingMode = routingModeForPlan(questionPlan);
+   const input: ResponseInput = [
+     ...request.history.map((item) => ({
+       role: item.role,
+@@ -4899,6 +5112,22 @@
+     return {};
+   };
+ 
++  const telemetryValues = (
++    status: "completed" | "failed" | "fallback" | "timed_out",
++  ): JsonRecord => ({
++    route_key: routeKey,
++    routing_mode: status === "fallback" ? "fallback" : routingMode,
++    planner_ms: plannerMs,
++    evidence_ms: evidenceMs,
++    answer_ms: answerMs,
++    tool_count: usedTools.size,
++    tool_round_count: toolRoundCount,
++    failure_stage: status === "completed" ? null : failureStage,
++    duration_ms: Date.now() - startedAt,
++    status,
++    completed_at: new Date().toISOString(),
++  });
++
+   const completeDeterministicAnswer = async (
+     answer: JsonRecord,
+   ): Promise<Response> => {
+@@ -4927,8 +5156,8 @@
+     await supabase
+       .from("ask_vorta_interactions")
+       .update({
+-        intent_label:
+-          typeof answer.intentLabel === "string" ? answer.intentLabel : null,
++        ...telemetryValues("completed"),
++        intent_label: routeKey,
+         tools_used: [...usedTools],
+         sources: [...usedSources],
+         confidence:
+@@ -4938,9 +5167,6 @@
+         missing_data_count: Array.isArray(answer.missingData)
+           ? answer.missingData.length
+           : 0,
+-        duration_ms: Date.now() - startedAt,
+-        status: "completed",
+-        completed_at: new Date().toISOString(),
+       })
+       .eq("id", interactionId)
+       .eq("user_id", userData.user.id);
+@@ -4987,17 +5213,18 @@
+ 
+   try {
+     if (hasDeterministicRouting) {
++      const evidenceStartedAt = Date.now();
++      toolRoundCount = deterministicToolNames.length > 0 ? 1 : 0;
+       const deterministicResults = await Promise.all(
+         deterministicToolNames.map(async (toolName) => {
+           const toolArguments = deterministicArgumentsFor(toolName);
+           usedTools.add(toolName);
+           let result: ToolResult;
+           try {
+-            result = await executeTool(
+-              toolName,
+-              toolArguments,
+-              supabase,
+-              request,
++            result = await withPhaseTimeout(
++              "evidence",
++              EVIDENCE_TIMEOUT_MS,
++              () => executeTool(toolName, toolArguments, supabase, request),
+             );
+           } catch (error) {
+             result = {
+@@ -5025,6 +5252,7 @@
+           return { toolName, result };
+         }),
+       );
++      evidenceMs += Date.now() - evidenceStartedAt;
+       for (const { toolName, result } of deterministicResults) {
+         input.push({
+           role: "user",
+@@ -5044,7 +5272,13 @@
+ 
+ 
+     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+-      const response = await client.responses.create({
++      const answerStartedAt = Date.now();
++      let response: Awaited<ReturnType<typeof client.responses.create>>;
++      try {
++        response = await withPhaseTimeout(
++          "answer",
++          ANSWER_TIMEOUT_MS,
++          (signal) => client.responses.create({
+         model: Netlify.env.get("VORTA_AI_MODEL") || MODEL,
+         reasoning: { effort: answerReasoningEffort(questionPlan) },
+         instructions: systemInstructions(request, questionPlan),
+@@ -5067,7 +5301,14 @@
+             schema: ANSWER_SCHEMA,
+           },
+         },
+-      });
++      }, { signal }),
++        );
++      } catch (error) {
++        failureStage = error instanceof AskVortaPhaseTimeoutError ? error.stage : "answer";
++        throw error;
++      } finally {
++        answerMs += Date.now() - answerStartedAt;
++      }
+ 
+       // OpenAI documents response output as valid subsequent response input.
+       // The SDK unions currently disagree on one unused computer-tool status.
+@@ -5133,8 +5374,8 @@
+         await supabase
+           .from("ask_vorta_interactions")
+           .update({
+-            intent_label:
+-              typeof answer.intentLabel === "string" ? answer.intentLabel : null,
++            ...telemetryValues("completed"),
++            intent_label: routeKey,
+             tools_used: [...usedTools],
+             sources: [...usedSources],
+             confidence:
+@@ -5144,15 +5385,13 @@
+             missing_data_count: Array.isArray(answer.missingData)
+               ? answer.missingData.length
+               : 0,
+-            duration_ms: Date.now() - startedAt,
+-            status: "completed",
+-            completed_at: new Date().toISOString(),
+           })
+           .eq("id", interactionId)
+           .eq("user_id", userData.user.id);
+         return jsonResponse(answer);
+       }
+ 
++      toolRoundCount += 1;
+       const executeToolCall = async (toolCall: (typeof toolCalls)[number]) => {
+         usedTools.add(toolCall.name);
+         const toolArguments = parseArguments(toolCall.arguments);
+@@ -5168,11 +5407,16 @@
+         if (link) evidenceLinks.set(link.path, link);
+         let result: ToolResult;
+         try {
+-          result = await executeTool(
+-            toolCall.name,
+-            effectiveArguments,
+-            supabase,
+-            request,
++          result = await withPhaseTimeout(
++            "evidence",
++            EVIDENCE_TIMEOUT_MS,
++            () =>
++              executeTool(
++                toolCall.name,
++                effectiveArguments,
++                supabase,
++                request,
++              ),
+           );
+           if (
+             toolCall.name === "get_shift_cover" &&
+@@ -5199,6 +5443,7 @@
+         };
+       };
+ 
++      const evidenceStartedAt = Date.now();
+       const decisionPackCalls = toolCalls.filter(
+         (toolCall) =>
+           toolCall.name === "get_site_operational_snapshot" ||
+@@ -5234,17 +5479,16 @@
+           }),
+       );
+       const results = [...decisionPackResults, ...remainingResults];
++      evidenceMs += Date.now() - evidenceStartedAt;
+       input.push(...results);
+     }
+ 
+     await supabase
+       .from("ask_vorta_interactions")
+       .update({
++        ...telemetryValues("failed"),
+         tools_used: [...usedTools],
+         sources: [...usedSources],
+-        duration_ms: Date.now() - startedAt,
+-        status: "failed",
+-        completed_at: new Date().toISOString(),
+       })
+       .eq("id", interactionId)
+       .eq("user_id", userData.user.id);
+@@ -5256,6 +5500,9 @@
+       422,
+     );
+   } catch (error) {
++    if (error instanceof AskVortaPhaseTimeoutError) {
++      failureStage = error.stage;
++    }
+     const verifiedFallback = deterministicOperationalAnswer(
+       request,
+       questionPlan,
