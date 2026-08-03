@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const responseId = "48000000-0000-4000-8000-000000000001";
@@ -53,12 +53,27 @@ function json(route: Route, body: unknown): Promise<void> {
   });
 }
 
-function visibleFeedbackButton(page: Page, label: string) {
-  return page.locator(`button[aria-label="${label}"]:visible`).first();
+function activeAssistantMessages(page: Page): Locator {
+  return page.locator('[data-vorta-global-ai-messages="true"]:visible').first();
 }
 
-function visibleFeedbackText(page: Page, text: string) {
-  return page.locator("span:visible").filter({ hasText: text }).first();
+function feedbackButton(page: Page, label: string): Locator {
+  return activeAssistantMessages(page)
+    .getByRole("button", { name: label })
+    .first();
+}
+
+function feedbackText(page: Page, text: string): Locator {
+  return activeAssistantMessages(page)
+    .locator("span")
+    .filter({ hasText: text })
+    .first();
+}
+
+async function reveal(locator: Locator): Promise<void> {
+  await expect(locator).toBeAttached({ timeout: 20_000 });
+  await locator.scrollIntoViewIfNeeded();
+  await expect(locator).toBeVisible();
 }
 
 async function installFeedbackMocks(
@@ -90,9 +105,7 @@ async function openMockedShiftCoverAnswer(page: Page): Promise<void> {
       }),
     );
   });
-  await expect(visibleFeedbackText(page, "Was this decision pack useful?")).toBeVisible({
-    timeout: 20_000,
-  });
+  await reveal(feedbackText(page, "Was this decision pack useful?"));
 }
 
 test("VOR-048 not-helpful feedback captures an optional bounded reason", async ({
@@ -111,21 +124,22 @@ test("VOR-048 not-helpful feedback captures an optional bounded reason", async (
   await installFeedbackMocks(page, captured);
   await openMockedShiftCoverAnswer(page);
 
-  await visibleFeedbackButton(
+  const notHelpful = feedbackButton(
     page,
     "Mark this Ask Vorta response not helpful",
-  ).click();
+  );
+  await reveal(notHelpful);
+  await notHelpful.click();
 
-  const prompt = page
-    .locator('[role="group"]:visible')
-    .filter({ hasText: "What was not useful?" })
+  const prompt = activeAssistantMessages(page)
+    .getByRole("group", { name: /What was not useful/i })
     .first();
-  await expect(prompt).toBeVisible();
+  await reveal(prompt);
   await prompt.getByLabel("Reason").selectOption("wrong_route");
   await prompt.getByLabel("Brief detail").fill("It answered equipment history instead of the rota question.");
   await prompt.getByRole("button", { name: "Submit feedback" }).click();
 
-  await expect(visibleFeedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
+  await reveal(feedbackText(page, "Thanks—this improves Ask Vorta."));
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "not_helpful",
@@ -148,12 +162,14 @@ test("VOR-048 helpful feedback remains one tap on phone", async ({ page }, testI
   await installFeedbackMocks(page, captured);
   await openMockedShiftCoverAnswer(page);
 
-  await visibleFeedbackButton(
+  const helpful = feedbackButton(
     page,
     "Mark this Ask Vorta response helpful",
-  ).click();
+  );
+  await reveal(helpful);
+  await helpful.click();
 
-  await expect(visibleFeedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
+  await reveal(feedbackText(page, "Thanks—this improves Ask Vorta."));
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "helpful",
