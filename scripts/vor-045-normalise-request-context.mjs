@@ -35,6 +35,25 @@ if (!source.includes("interface PageContext {") || !source.includes("  pageConte
   changed = true;
 }
 
+if (!source.includes("function equipmentReferenceFromQuestion(")) {
+  const insertionMarker = "interface ToolResult {\n";
+  if (!source.includes(insertionMarker)) {
+    throw new Error("VOR-045 could not locate the ToolResult interface insertion point.");
+  }
+  source = source.replace(
+    insertionMarker,
+    [
+      "function equipmentReferenceFromQuestion(question: string): string {",
+      "  const explicitCode = question.match(/\\b[A-Z]{2,8}-\\d{1,6}\\b/i)?.[0];",
+      "  return explicitCode ? explicitCode.toUpperCase() : \"\";",
+      "}",
+      "",
+      insertionMarker.trimEnd(),
+    ].join("\n") + "\n",
+  );
+  changed = true;
+}
+
 const plannerStart = source.indexOf("async function buildQuestionPlan(");
 const plannerEnd = source.indexOf("\nfunction systemInstructions(", plannerStart);
 if (plannerStart < 0 || plannerEnd < 0) {
@@ -57,7 +76,7 @@ if (!plannerBlock.includes(normalisedPlannerInput)) {
 
 if (changed) {
   writeFileSync(path, source);
-  console.log("Normalised VOR-045 Ask Vorta request and planner context shapes.");
+  console.log("Normalised VOR-045 Ask Vorta request, equipment reference and planner context shapes.");
 } else {
-  console.log("VOR-045 Ask Vorta request and planner context shapes are already normalised.");
+  console.log("VOR-045 Ask Vorta request, equipment reference and planner context shapes are already normalised.");
 }
