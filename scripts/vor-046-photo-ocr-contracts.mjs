@@ -5,6 +5,8 @@ import "./vor-046-image-evidence-contracts.mjs";
 
 const read = (path) => readFileSync(path, "utf8");
 const backendIntegration = read("scripts/vor-046-integrate-image-backend.mjs");
+const backendHelpers = read("scripts/templates/vor-046-image-backend-helpers.txt");
+const backendSurface = `${backendIntegration}\n${backendHelpers}`;
 const clientIntegration = read("scripts/vor-046-integrate-image-client.mjs");
 const imageValidation = read("netlify/functions/_shared/askVortaImageEvidence.mjs");
 const diagnosis = read("netlify/functions/_shared/askVortaImageDiagnosis.mjs");
@@ -60,20 +62,21 @@ for (const marker of [
   "selectedEquipmentQuery",
 ]) assert.match(diagnosis, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-assert.match(backendIntegration, /type: "input_image"/);
-assert.match(backendIntegration, /image_url: image\.dataUrl/);
-assert.match(backendIntegration, /store: false/);
-assert.match(backendIntegration, /VORTA_AI_VISION_MODEL/);
-assert.match(backendIntegration, /equipment_assets/);
-assert.match(backendIntegration, /equipment_components/);
-assert.match(backendIntegration, /\.eq\("site_id", request\.siteId\)/);
-assert.match(backendIntegration, /get_equipment_decision_pack/);
-assert.match(backendIntegration, /approved\/current documents/);
-assert.match(backendIntegration, /Do not recommend bypassing protection/);
-assert.match(backendIntegration, /User-supplied image evidence/);
-assert.match(backendIntegration, /imageFingerprint/);
-assert.doesNotMatch(backendIntegration, /storage\.from|supabase\.storage|upload\(/);
-assert.doesNotMatch(backendIntegration, /answer\.image\s*=|conversationContext.*dataUrl/);
+assert.match(backendIntegration, /vor-046-image-backend-helpers\.txt/);
+assert.match(backendSurface, /type: "input_image"/);
+assert.match(backendSurface, /image_url: image\.dataUrl/);
+assert.match(backendSurface, /store: false/);
+assert.match(backendSurface, /VORTA_AI_VISION_MODEL/);
+assert.match(backendSurface, /equipment_assets/);
+assert.match(backendSurface, /equipment_components/);
+assert.match(backendSurface, /\.eq\("site_id", request\.siteId\)/);
+assert.match(backendSurface, /get_equipment_decision_pack/);
+assert.match(backendSurface, /approved\/current documents/);
+assert.match(backendSurface, /Do not recommend bypassing protection/);
+assert.match(backendSurface, /User-supplied image evidence/);
+assert.match(backendSurface, /imageFingerprint/);
+assert.doesNotMatch(backendSurface, /storage\.from|supabase\.storage|upload\(/);
+assert.doesNotMatch(backendSurface, /answer\.image\s*=|conversationContext.*dataUrl/);
 
 for (const marker of [
   "maxBytes: 3_000_000",
