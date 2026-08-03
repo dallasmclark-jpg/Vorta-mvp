@@ -41,6 +41,16 @@ assert.match(
 );
 assert.match(
   integration,
+  /scanClosingDelimiter\(source, parameterStart, "\(", "\)"\)/,
+  "The codemod must scan the complete TypeScript parameter list before locating the function body",
+);
+assert.match(
+  integration,
+  /source\.indexOf\("\{", parameterEnd \+ 1\)/,
+  "The codemod must not confuse a destructured parameter with the function body",
+);
+assert.match(
+  integration,
   /findConstArrowRange\(source, "prepareDraft"\)/,
   "VOR-047 must patch the prepareDraft function that actually exists",
 );
@@ -157,5 +167,6 @@ assert.match(
 
 console.log("✓ VOR-047 is limited to confirmed Vorta shift-handover actions");
 console.log("✓ SAP and SAP-equivalent maintenance records remain read-only");
+console.log("✓ Destructured TypeScript signatures cannot be mistaken for function bodies");
 console.log("✓ The unused spare-stock task queue is removed fail-closed");
 console.log("✓ The approved mobile Ask Vorta presentation remains unchanged");
