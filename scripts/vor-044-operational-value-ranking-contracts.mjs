@@ -46,8 +46,8 @@ assert.match(manifest, /vorta_get_ranked_operational_actions\(uuid,integer\)/);
 assert.match(manifest, /'read'/);
 assert.match(manifest, /'definer'/);
 assert.match(manifest, /false/);
-assert.match(healthGate, /reviewedAuthenticatedReadRpcCount\),\s*52/);
-assert.match(healthGate, /authenticatedSecurityDefinerRpcCount\),\s*67/);
+assert.match(healthGate, /reviewedAuthenticatedReadRpcCount\),\s*53/);
+assert.match(healthGate, /authenticatedSecurityDefinerRpcCount\),\s*71/);
 assert.match(integration, /case "get_site_ranked_actions":/);
 assert.match(integration, /rankedActions/);
 assert.match(integration, /vorta_get_ranked_operational_actions/);
@@ -64,12 +64,12 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
 );
 assert.equal(packageJson.scripts["pretest:contracts"], undefined);
 assert.match(
   packageJson.scripts.predev,
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?$/,
 );
 
 console.log("VOR-044 operational-value ranking contracts passed.");
