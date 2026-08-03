@@ -76,14 +76,11 @@ jobs:
           python3 scripts/vor-040-deterministic-operational-answers-patch.py
           python3 - <<'PY'
           from pathlib import Path
+
           path = Path('scripts/vor-040-natural-question-contracts.mjs')
           source = path.read_text()
-          old = '''  "maintenancePlanOnly",
-          '"maintenance_plan"',
-          '"get_site_maintenance_plan"','''
-          new = '''  "maintenancePlanOnly",
-          '"maintenance_plan"',
-          '"get_site_maintenance_plan"',
+          anchor = '  "maintenancePlanOnly",\n'
+          features = '''  "maintenancePlanOnly",
           "deterministicOperationalAnswer",
           "maintenance_plan_cover_feasibility",
           "site_evidence_freshness",
@@ -92,10 +89,13 @@ jobs:
           "verified_risk_reduction_ranking",
           "completeDeterministicAnswer",
           "verifiedFallback",
-          "followUpLimit",'''
-          if old not in source:
-              raise SystemExit('VOR-040 operational contract anchor missing')
-          path.write_text(source.replace(old, new, 1))
+          "followUpLimit",
+          '''
+          if source.count(anchor) != 1:
+              raise SystemExit(
+                  f'VOR-040 operational contract anchor count {source.count(anchor)}'
+              )
+          path.write_text(source.replace(anchor, features, 1))
           PY
 
       - name: Verify backend TypeScript
