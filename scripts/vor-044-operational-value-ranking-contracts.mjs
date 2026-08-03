@@ -62,8 +62,14 @@ assert.equal(
   packageJson.scripts.build,
   "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
 );
-assert.match(packageJson.scripts["build:metadata"], /^node scripts\/vor-044-integrate-operational-value\.mjs && node scripts\/write-build-metadata\.mjs$/);
+assert.match(
+  packageJson.scripts["build:metadata"],
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-integrate-conversation-context\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
+);
 assert.equal(packageJson.scripts["pretest:contracts"], undefined);
-assert.equal(packageJson.scripts.predev, "node scripts/vor-044-integrate-operational-value.mjs");
+assert.match(
+  packageJson.scripts.predev,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-integrate-conversation-context\.mjs)?$/,
+);
 
 console.log("VOR-044 operational-value ranking contracts passed.");
