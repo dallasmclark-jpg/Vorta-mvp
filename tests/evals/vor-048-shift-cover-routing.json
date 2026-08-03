@@ -62,7 +62,7 @@
     "confidenceMin": 55,
     "maxDurationMs": 10000,
     "requestTimeoutMs": 25000,
-    "pagePath": "/maintenance/labour-risk/shift-cover",
+    "path": "/maintenance/labour-risk/shift-cover",
     "mustMentionAny": ["shift", "cover", "skill", "rota"]
   }
 ]
