@@ -1,0 +1,166 @@
+--- a/netlify/functions/ask-vorta.mts
++++ b/netlify/functions/ask-vorta.mts
+@@ -4591,43 +4758,51 @@
+     })),
+     { role: "user", content: request.question.trim() },
+   ];
+-  const response = await client.responses.create({
+-    model: Netlify.env.get("VORTA_AI_PLANNER_MODEL") || PLANNER_MODEL,
+-    reasoning: { effort: "low" },
+-    instructions: [
+-      "You are the semantic planning layer for Ask Vorta.",
+-      "Infer the maintenance manager's real decision goal from meaning, not keywords. Handle spelling mistakes, shorthand, natural speech, follow-ups, pronouns such as it or that one, and questions that combine several domains.",
+-      "The word issue does not mean equipment fault. Choose evidence by the actual subject and requested decision.",
+-      "Use conversation history and the current page to resolve references. If several equipment items genuinely match, mark the ambiguity rather than guessing.",
+-      "Current or dated site facts require Vorta tools. Pure write commands remain read-only. Advisory questions such as what should we order or who should cover still require evidence tools.",
+-      "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools only when a narrower date, person or record query is not included in the pack.",
+-      "Decision packs already include their named specialist domains. Never require a decision pack and its covered specialist tools in the same plan unless the specialist query is materially narrower than the pack.",
+-      "Use get_equipment_decision_pack for broad multi-domain equipment questions. For a narrow asset question, plan get_equipment_risk followed by only the specialist tools needed.",
+-      "For plan-achievability questions combine get_site_maintenance_plan with get_shift_cover. For cross-domain questions list every evidence tool needed to answer every part.",
+-      "Relative dates must be interpreted from the supplied local date and timezone. Leave startDate and endDate empty only when no date scope is needed.",
+-      "requiredTools must contain exact names from the available tool list. A plan is routing guidance, never evidence.",
+-      "Available tools: " + availableTools.join(", ") + ".",
+-      "Current local date: " + today + ". Timezone: " + request.pageContext.timezone + ".",
+-      "Current page: " + request.pageContext.path + ". User role: " + request.role + ".",
++  const response = await withPhaseTimeout(
++    "planner",
++    PLANNER_TIMEOUT_MS,
++    (signal) =>
++      client.responses.create(
++        {
++          model: Netlify.env.get("VORTA_AI_PLANNER_MODEL") || PLANNER_MODEL,
++          reasoning: { effort: "low" },
++          instructions: [
++            "You are the semantic planning layer for Ask Vorta.",
++            "Infer the maintenance manager's real decision goal from meaning, not keywords. Handle spelling mistakes, shorthand, natural speech, follow-ups, pronouns such as it or that one, and questions that combine several domains.",
++            "The word issue does not mean equipment fault. Choose evidence by the actual subject and requested decision.",
++            "Use conversation history and the current page to resolve references. If several equipment items genuinely match, mark the ambiguity rather than guessing.",
++            "Current or dated site facts require Vorta tools. Pure write commands remain read-only. Advisory questions such as what should we order or who should cover still require evidence tools.",
++            "Use get_site_operational_snapshot for broad questions about priorities, threats, what needs attention, what changed or what should be done first. Add specialist tools only when a narrower date, person or record query is not included in the pack.",
++            "Decision packs already include their named specialist domains. Never require a decision pack and its covered specialist tools in the same plan unless the specialist query is materially narrower than the pack.",
++            "Use get_equipment_decision_pack for broad multi-domain equipment questions. For a narrow asset question, plan get_equipment_risk followed by only the specialist tools needed.",
++            "For plan-achievability questions combine get_site_maintenance_plan with get_shift_cover. For cross-domain questions list every evidence tool needed to answer every part.",
++            "Relative dates must be interpreted from the supplied local date and timezone. Leave startDate and endDate empty only when no date scope is needed.",
++            "requiredTools must contain exact names from the available tool list. A plan is routing guidance, never evidence.",
++            "Available tools: " + availableTools.join(", ") + ".",
++            "Current local date: " + today + ". Timezone: " + request.pageContext.timezone + ".",
++            "Current page: " + request.pageContext.path + ". User role: " + request.role + ".",
+       "Validated structured conversation context: " +
+         contextResolutionPrompt(
+           resolveConversationFollowUp(request.question, request.conversationContext),
+         ) +
+         ". Explicit equipment, area, shift and date wording in the current question overrides inherited context.",
+-    ].join("\n"),
+-    input: plannerInput,
+-    max_output_tokens: 1_200,
+-    store: false,
+-    text: {
+-      verbosity: "low",
+-      format: {
+-        type: "json_schema",
+-        name: "vorta_question_plan",
+-        strict: true,
+-        schema: QUESTION_PLAN_SCHEMA,
+-      },
+-    },
+-  });
++          ].join("\n"),
++          input: plannerInput,
++          max_output_tokens: 1_200,
++          store: false,
++          text: {
++            verbosity: "low",
++            format: {
++              type: "json_schema",
++              name: "vorta_question_plan",
++              strict: true,
++              schema: QUESTION_PLAN_SCHEMA,
++            },
++          },
++        },
++        { signal },
++      ),
++  );
+   const plan = JSON.parse(response.output_text) as JsonRecord;
+   const knownTools = new Set(availableTools);
+   plan.requiredTools = textValues(plan.requiredTools).filter((name) => knownTools.has(name));
+@@ -4745,6 +4920,15 @@
+   }
+ 
+   const startedAt = Date.now();
++  const preliminaryPlan = deterministicQuestionPlan(request);
++  const preliminaryRouteKey = canonicalRouteKey(preliminaryPlan);
++  const preliminaryRoutingMode = routingModeForPlan(preliminaryPlan);
++  const imageFingerprint = request.image
++    ? await sha256Fingerprint(request.image.dataUrl)
++    : "";
++  const questionFingerprint = await sha256Fingerprint(
++    `${request.question.trim().toLowerCase()}|image:${imageFingerprint}`,
++  );
+   const rateWindowStart = new Date(
+     startedAt - RATE_LIMIT_WINDOW_MINUTES * 60_000,
+   ).toISOString();
+@@ -4761,6 +4945,23 @@
+     return jsonResponse({ error: "Ask Vorta could not verify request capacity." }, 503);
+   }
+   if ((recentRequestCount ?? 0) >= RATE_LIMIT_REQUESTS) {
++    await supabase.from("ask_vorta_interactions").insert({
++      id: crypto.randomUUID(),
++      site_id: request.siteId,
++      user_id: userData.user.id,
++      role: request.role,
++      question_fingerprint: questionFingerprint,
++      route_key: preliminaryRouteKey,
++      routing_mode: preliminaryRoutingMode,
++      planner_ms: 0,
++      evidence_ms: 0,
++      answer_ms: 0,
++      tool_count: 0,
++      tool_round_count: 0,
++      duration_ms: Date.now() - startedAt,
++      status: "rate_limited",
++      completed_at: new Date().toISOString(),
++    });
+     return jsonResponse(
+       {
+         error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.`,
+@@ -4770,12 +4971,6 @@
+   }
+ 
+   const interactionId = crypto.randomUUID();
+-  const imageFingerprint = request.image
+-    ? await sha256Fingerprint(request.image.dataUrl)
+-    : "";
+-  const questionFingerprint = await sha256Fingerprint(
+-    `${request.question.trim().toLowerCase()}|image:${imageFingerprint}`,
+-  );
+   const { error: interactionError } = await supabase
+     .from("ask_vorta_interactions")
+     .insert({
+@@ -4784,6 +4979,13 @@
+       user_id: userData.user.id,
+       role: request.role,
+       question_fingerprint: questionFingerprint,
++      route_key: preliminaryRouteKey,
++      routing_mode: preliminaryRoutingMode,
++      planner_ms: 0,
++      evidence_ms: 0,
++      answer_ms: 0,
++      tool_count: 0,
++      tool_round_count: 0,
+       status: "started",
+     });
+   if (interactionError) {
+@@ -4794,6 +4996,12 @@
+     return jsonResponse({ error: "Ask Vorta could not start a traceable analysis." }, 503);
+   }
+ 
++  let plannerMs = 0;
++  let evidenceMs = 0;
++  let answerMs = 0;
++  let toolRoundCount = 0;
++  let failureStage: AskVortaPhase | null = null;
++  const plannerStartedAt = Date.now();
+   const client = new OpenAI();
+   const imageDiagnosis = await buildAskVortaImageDiagnosis(
+     client,
