@@ -568,6 +568,55 @@ function requiredText(value: unknown, maximumLength: number): string | null {
   return text && text.length <= maximumLength ? text : null;
 }
 
+function normaliseEquipmentReference(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/([a-z]+)0+(\d)/g, "$1$2");
+}
+
+function equipmentReferenceMatches(candidate: unknown, query: string): boolean {
+  if (typeof candidate !== "string") return false;
+  const rawCandidate = candidate.trim().toLowerCase();
+  const rawQuery = query.trim().toLowerCase();
+  if (rawCandidate.includes(rawQuery) || rawQuery.includes(rawCandidate)) return true;
+  const normalisedCandidate = normaliseEquipmentReference(candidate);
+  const normalisedQuery = normaliseEquipmentReference(query);
+  return Boolean(
+    normalisedCandidate.length >= 3 &&
+      normalisedQuery.length >= 3 &&
+      (normalisedCandidate.includes(normalisedQuery) ||
+        normalisedQuery.includes(normalisedCandidate)),
+  );
+}
+
+function extractEquipmentReference(value: string): string | null {
+  const codedMatches =
+    value.match(/\b[a-z]{2,}(?:\s*-?\s*\d{1,3})(?:-[a-z0-9]+)*\b/gi) ?? [];
+  if (codedMatches.length > 0) {
+    return codedMatches[codedMatches.length - 1].replace(/\s+/g, "");
+  }
+
+  const excludedAcronyms = new Set([
+    "AI",
+    "KPI",
+    "OEM",
+    "PLC",
+    "PM",
+    "RCA",
+    "SAP",
+    "SME",
+    "SOP",
+    "WO",
+  ]);
+  const acronymMatches = (value.match(/\b[A-Z]{3,5}\b/g) ?? []).filter(
+    (candidate) => !excludedAcronyms.has(candidate),
+  );
+  return acronymMatches.length ? acronymMatches[acronymMatches.length - 1] : null;
+}
+
 function parseRequest(value: unknown): AskVortaRequest | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as JsonRecord;
@@ -729,6 +778,830 @@ function compactToolDomain(result: ToolResult): JsonRecord {
   };
 }
 
+function compactEquipmentSkillsDomain(result: ToolResult): JsonRecord {
+  return {
+    source: result.source,
+    status: result.status,
+    message: result.message,
+    data: records(result.data).map((row) => ({
+      equipment_code: row.equipment_code ?? row.equipmentCode,
+      equipment_name: row.equipment_name ?? row.equipmentName,
+      required_skills: records(row.required_skills ?? row.requiredSkills).map((skill) => ({
+        name: skill.name ?? skill.skill_name ?? skill.skillName,
+        required_level: skill.required_level ?? skill.requiredLevel,
+        minimum_qualified_engineers:
+          skill.minimum_qualified_engineers ?? skill.minimumQualifiedEngineers,
+        criticality: skill.criticality,
+        execution_authority: skill.execution_authority ?? skill.executionAuthority,
+        validation_required: skill.validation_required ?? skill.validationRequired,
+        qualified_engineers: records(
+          skill.qualified_engineers ?? skill.qualifiedEngineers,
+        )
+          .slice(0, 12)
+          .map((engineer) => ({
+            engineer_name: engineer.engineer_name ?? engineer.engineerName,
+            rating: engineer.rating ?? engineer.validated_rating ?? engineer.validatedRating,
+            validation_status:
+              engineer.validation_status ??
+              engineer.validationStatus ??
+              engineer.verification_status ??
+              engineer.verificationStatus,
+            capability_role: engineer.capability_role ?? engineer.capabilityRole,
+            qualification_state:
+              engineer.qualification_state ?? engineer.qualificationState,
+            availability_status:
+              engineer.availability_status ?? engineer.availabilityStatus,
+            discipline: engineer.discipline,
+            shift_pattern: engineer.shift_pattern ?? engineer.shiftPattern,
+          })),
+      })),
+    })),
+  };
+}
+
+function collectDecisionFacts(
+  value: unknown,
+  path = "",
+  depth = 0,
+): Array<{ score: number; text: string }> {
+  if (depth > 6 || value === null || value === undefined) return [];
+  if (typeof value !== "object") {
+    const text = String(value).trim();
+    if (!text || !path) return [];
+    const pathSegments = path.split(/[.[\]]/).filter(Boolean);
+    const leafKey =
+      [...pathSegments].reverse().find((segment) => !/^\d+$/.test(segment)) ?? path;
+    const keyScore = /code|number|reference|fault|component|part|skill|engineer|name/i.test(leafKey)
+      ? 8
+      : /title|summary|description|action|outcome|status|quantity|stock|lead|risk|validation|calibration|cause|text|note|specialism|evidence/i.test(leafKey)
+        ? 5
+        : 1;
+    const valueScore = /[A-Z]{2,}[-0-9]{2,}/.test(text) ? 5 : 0;
+    return keyScore + valueScore >= 5
+      ? [{ score: keyScore + valueScore, text: `${path}: ${text.slice(0, 500)}` }]
+      : [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, 40)
+      .flatMap((item, index) =>
+        collectDecisionFacts(item, `${path}[${index}]`, depth + 1),
+      );
+  }
+  if (typeof value !== "object") return [];
+
+  const facts: Array<{ score: number; text: string }> = [];
+  for (const [key, item] of Object.entries(value as JsonRecord).slice(0, 100)) {
+    const nextPath = path ? `${path}.${key}` : key;
+    if (
+      (typeof item === "string" || typeof item === "number" || typeof item === "boolean") &&
+      String(item).trim()
+    ) {
+      const keyScore = /code|number|reference|fault|component|part|skill|engineer|name/i.test(key)
+        ? 8
+        : /title|summary|description|action|outcome|status|quantity|stock|lead|risk|validation|calibration/i.test(key)
+          ? 5
+          : 1;
+      const valueScore = /[A-Z]{2,}[-0-9]{2,}/.test(String(item)) ? 5 : 0;
+      if (keyScore + valueScore >= 5) {
+        facts.push({
+          score: keyScore + valueScore,
+          text: `${nextPath}: ${String(item).slice(0, 500)}`,
+        });
+      }
+      continue;
+    }
+    facts.push(...collectDecisionFacts(item, nextPath, depth + 1));
+  }
+  return facts;
+}
+
+function nestedDecisionRecords(value: unknown, depth = 0): JsonRecord[] {
+  if (depth > 6 || value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.slice(0, 120).flatMap((item) => nestedDecisionRecords(item, depth + 1));
+  }
+  if (typeof value !== "object") return [];
+  const record = value as JsonRecord;
+  return [
+    record,
+    ...Object.values(record)
+      .slice(0, 100)
+      .flatMap((item) => nestedDecisionRecords(item, depth + 1)),
+  ];
+}
+
+function decisionField(record: JsonRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) {
+      const text = value
+        .filter((item) => typeof item === "string" || typeof item === "number")
+        .map(String)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 8)
+        .join(", ");
+      if (text) return text;
+      continue;
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      const text = String(value).trim();
+      if (text) return text;
+    }
+  }
+  return "";
+}
+
+function explicitEquipmentDomainFacts(
+  domains: Record<string, JsonRecord>,
+): string[] {
+  const facts: string[] = [];
+  const add = (value: string): void => {
+    const text = value.trim();
+    if (text) facts.push(text.slice(0, 900));
+  };
+
+  const workRecords = [
+    ...nestedDecisionRecords(domains.get_equipment_work?.data),
+    ...nestedDecisionRecords(domains.get_equipment_history?.data),
+  ];
+  for (const record of workRecords.slice(0, 160)) {
+    const workOrder = decisionField(record, [
+      "work_order_number",
+      "workOrderNumber",
+      "wo_number",
+      "workOrder",
+    ]);
+    const description = decisionField(record, [
+      "description",
+      "latest_confirmation_text",
+      "latestConfirmationText",
+      "confirmation_text",
+      "confirmationText",
+      "summary",
+    ]);
+    const faultCode = decisionField(record, ["fault_code", "faultCode"]);
+    const engineer = decisionField(record, [
+      "assigned_engineer",
+      "assignedEngineer",
+      "latest_confirmed_by",
+      "latestConfirmedBy",
+      "confirmed_by",
+      "confirmedBy",
+      "engineer_name",
+      "engineerName",
+      "full_name",
+      "fullName",
+    ]);
+    const status = decisionField(record, ["status", "outcome", "risk_state", "riskState"]);
+    if (!description && !faultCode && !engineer) continue;
+    add(
+      `work evidence${workOrder ? ` ${workOrder}` : ""}: ${[
+        faultCode ? `fault ${faultCode}` : "",
+        description,
+        engineer ? `engineer ${engineer}` : "",
+        status ? `status ${status}` : "",
+      ].filter(Boolean).join(" | ")}`,
+    );
+  }
+
+  for (const record of nestedDecisionRecords(domains.get_equipment_spares?.data).slice(0, 120)) {
+    const componentCode = decisionField(record, [
+      "component_code",
+      "componentCode",
+      "material_number",
+      "materialNumber",
+      "part_number",
+      "partNumber",
+    ]);
+    const componentName = decisionField(record, ["component_name", "componentName", "materialDescription"]);
+    const available = decisionField(record, ["quantity_available", "availableQuantity", "available", "stock"]);
+    const minimum = decisionField(record, ["minimum_quantity", "minimumQuantity", "minimum"]);
+    const availability = decisionField(record, ["availability_status", "availabilityStatus", "status"]);
+    const leadDays = decisionField(record, ["lead_days", "leadDays"]);
+    if (!componentCode && !componentName) continue;
+    add(
+      `spare evidence: ${[
+        componentCode,
+        componentName,
+        available ? `stock available ${available}` : "",
+        minimum ? `minimum ${minimum}` : "",
+        availability ? `availability ${availability}` : "",
+        leadDays ? `lead time ${leadDays} days` : "",
+      ].filter(Boolean).join(" | ")}`,
+    );
+  }
+
+  for (const skillSummary of records(domains.get_equipment_skills?.data)) {
+    const requiredSkills = records(
+      skillSummary.required_skills ?? skillSummary.requiredSkills,
+    );
+    for (const requiredSkill of requiredSkills.slice(0, 40)) {
+      const skillName = decisionField(requiredSkill, [
+        "name",
+        "skill_name",
+        "skillName",
+      ]);
+      const requiredLevel = decisionField(requiredSkill, [
+        "required_level",
+        "requiredLevel",
+      ]);
+      const minimumQualified = decisionField(requiredSkill, [
+        "minimum_qualified_engineers",
+        "minimumQualifiedEngineers",
+      ]);
+      const qualifiedEngineers = records(
+        requiredSkill.qualified_engineers ?? requiredSkill.qualifiedEngineers,
+      );
+      if (skillName && qualifiedEngineers.length === 0) {
+        add(
+          `capability evidence: skill ${skillName} | required level ${requiredLevel || "not recorded"} | minimum qualified ${minimumQualified || "not recorded"} | qualified engineers 0`,
+        );
+      }
+      for (const engineerRecord of qualifiedEngineers.slice(0, 8)) {
+        const engineer = decisionField(engineerRecord, [
+          "engineer_name",
+          "engineerName",
+          "full_name",
+          "fullName",
+        ]);
+        if (!skillName || !engineer) continue;
+        const rating = decisionField(engineerRecord, [
+          "rating",
+          "validated_rating",
+          "validatedRating",
+        ]);
+        const validation = decisionField(engineerRecord, [
+          "validation_status",
+          "validationStatus",
+          "verification_status",
+          "verificationStatus",
+        ]);
+        const role = decisionField(engineerRecord, [
+          "capability_role",
+          "capabilityRole",
+        ]);
+        const qualification = decisionField(engineerRecord, [
+          "qualification_state",
+          "qualificationState",
+        ]);
+        add(
+          `capability evidence: skill ${skillName} | engineer ${engineer} | rating ${rating || "not recorded"} | required level ${requiredLevel || "not recorded"} | validation ${validation || "not recorded"} | role ${role || "not recorded"} | qualification ${qualification || "not recorded"}`,
+        );
+      }
+    }
+  }
+
+  for (const record of nestedDecisionRecords(domains.get_equipment_skills?.data).slice(0, 160)) {
+    const engineer = decisionField(record, [
+      "engineer_name",
+      "engineerName",
+      "full_name",
+      "fullName",
+      "name",
+    ]);
+    const skill = decisionField(record, [
+      "skill_name",
+      "skillName",
+      "specialism",
+      "required_skill",
+      "requiredSkill",
+    ]);
+    const role = decisionField(record, ["capability_role", "capabilityRole", "role"]);
+    const validation = decisionField(record, [
+      "validation_status",
+      "validationStatus",
+      "verification_status",
+      "verificationStatus",
+      "capability_status",
+      "capabilityStatus",
+    ]);
+    const level = decisionField(record, ["competency_level", "competencyLevel", "validated_rating", "validatedRating"]);
+    if (!engineer && !skill) continue;
+    add(
+      `capability evidence: ${[
+        engineer ? `engineer ${engineer}` : "",
+        skill ? `skill ${skill}` : "",
+        role ? `role ${role}` : "",
+        validation ? `validation ${validation}` : "",
+        level ? `level ${level}` : "",
+      ].filter(Boolean).join(" | ")}`,
+    );
+  }
+
+  const documentRecords = [
+    ...nestedDecisionRecords(domains.search_maintenance_documents?.data),
+    ...nestedDecisionRecords(domains.get_equipment_documents?.data),
+  ];
+  for (const record of documentRecords.slice(0, 160)) {
+    const title = decisionField(record, ["title", "document_title", "documentTitle"]);
+    const approval = decisionField(record, ["approval_status", "approvalStatus", "status"]);
+    const revision = decisionField(record, ["revision"]);
+    const section = decisionField(record, ["manual_section", "manualSection", "first_section_title", "firstSectionTitle"]);
+    const page = decisionField(record, ["page_number", "pageNumber", "first_page_number", "firstPageNumber"]);
+    const faultCodes = decisionField(record, ["fault_codes", "faultCodes"]);
+    const summary = decisionField(record, [
+      "summary",
+      "extracted_summary",
+      "extractedSummary",
+      "content",
+      "excerpt",
+      "chunk_text",
+      "chunkText",
+    ]);
+    if (!title && !summary && !faultCodes) continue;
+    add(
+      `document evidence: ${[
+        title,
+        revision ? `revision ${revision}` : "",
+        approval ? `approval ${approval}` : "",
+        section ? `section ${section}` : "",
+        page ? `page ${page}` : "",
+        faultCodes ? `fault codes ${faultCodes}` : "",
+        summary,
+      ].filter(Boolean).join(" | ")}`,
+    );
+  }
+
+  return [...new Set(facts)];
+}
+
+function normalisedEvidenceTokens(value: string): string[] {
+  const stopWords = new Set([
+    "what",
+    "which",
+    "with",
+    "that",
+    "this",
+    "from",
+    "have",
+    "should",
+    "could",
+    "would",
+    "before",
+    "after",
+    "system",
+    "equipment",
+  ]);
+  return (value.toLowerCase().match(/[a-z0-9]+/g) ?? [])
+    .map((token) => {
+      if (token.length > 5 && token.endsWith("ies")) {
+        return `${token.slice(0, -3)}y`;
+      }
+      return token.length > 4 && token.endsWith("s")
+        ? token.slice(0, -1)
+        : token;
+    })
+    .filter((token) => token.length >= 3 && !stopWords.has(token));
+}
+
+function evidenceTextOverlapScore(query: string, candidate: string): number {
+  const queryTokens = new Set(normalisedEvidenceTokens(query));
+  return normalisedEvidenceTokens(candidate).reduce(
+    (score, token) => score + (queryTokens.has(token) ? 1 : 0),
+    0,
+  );
+}
+
+function questionMatchedEquipmentFacts(
+  selected: JsonRecord,
+  domains: Record<string, JsonRecord>,
+  question: string,
+): string[] {
+  const priorityFacts: string[] = [];
+  const add = (fact: string): void => {
+    const text = fact.trim();
+    if (text && !priorityFacts.includes(text)) priorityFacts.push(text.slice(0, 1_200));
+  };
+  const loweredQuestion = question.toLowerCase();
+  const equipmentIdentity = [
+    selected.equipment_name,
+    selected.equipment_code,
+    selected.name,
+    selected.code,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+
+  const asksForSpare =
+    /\b(?:spare|part|stock|stockout|out of stock|lead time|blocking|blocker|stopping|permanent correction|permanent repair|leading intervention)\b/.test(
+      loweredQuestion,
+    );
+  if (asksForSpare) {
+    const spareRecords = nestedDecisionRecords(domains.get_equipment_spares?.data)
+      .filter((record) =>
+        Boolean(
+          decisionField(record, [
+            "component_code",
+            "componentCode",
+            "part_number",
+            "partNumber",
+          ]) || decisionField(record, ["component_name", "componentName"]),
+        ),
+      );
+    const rankedSpares = spareRecords
+      .map((record, index) => {
+        const componentCode = decisionField(record, [
+          "component_code",
+          "componentCode",
+          "material_number",
+          "materialNumber",
+          "part_number",
+          "partNumber",
+        ]);
+        const componentName = decisionField(record, [
+          "component_name",
+          "componentName",
+          "materialDescription",
+        ]);
+        const available = decisionField(record, [
+          "quantity_available",
+          "availableQuantity",
+          "available",
+          "stock",
+        ]);
+        const minimum = decisionField(record, [
+          "minimum_quantity",
+          "minimumQuantity",
+          "minimum",
+        ]);
+        const availability = decisionField(record, [
+          "availability_status",
+          "availabilityStatus",
+          "status",
+        ]);
+        const leadDays = decisionField(record, ["lead_days", "leadDays"]);
+        const candidate = `${componentCode} ${componentName} ${availability}`;
+        const unavailable =
+          Number(available) <= 0 || /out.?of.?stock|stockout|unavailable/i.test(availability);
+        const score =
+          evidenceTextOverlapScore(question, candidate) * 30 +
+          (unavailable ? 120 : 0) +
+          Math.min(60, numberValue(leadDays)) +
+          (/blocking|stopping|permanent|leading intervention/.test(loweredQuestion) && unavailable
+            ? 50
+            : 0);
+        return {
+          record,
+          index,
+          score,
+          componentCode,
+          componentName,
+          available,
+          minimum,
+          availability,
+          leadDays,
+        };
+      })
+      .sort((first, second) => second.score - first.score || first.index - second.index);
+    const spare = rankedSpares[0];
+    if (spare) {
+      add(
+        `priority spare evidence: ${[
+          spare.componentCode,
+          spare.componentName,
+          spare.available ? `stock available ${spare.available}` : "",
+          spare.minimum ? `minimum ${spare.minimum}` : "",
+          spare.availability ? `availability ${spare.availability}` : "",
+          spare.leadDays ? `lead time ${spare.leadDays} days` : "",
+        ].filter(Boolean).join(" | ")}`,
+      );
+    }
+  }
+
+  const asksForCapability =
+    /\b(?:who|qualified|qualification|skill|capability|engineer|authorise|authorize|lead|calibrate|verify|diagnos)\b/.test(
+      loweredQuestion,
+    );
+  if (asksForCapability) {
+    const skillRows = nestedDecisionRecords(domains.get_equipment_skills?.data)
+      .filter((record) => Array.isArray(record.required_skills) || Array.isArray(record.requiredSkills))
+      .flatMap((record) => records(record.required_skills ?? record.requiredSkills));
+    const workContext = JSON.stringify({
+      work: domains.get_equipment_work?.data,
+      history: domains.get_equipment_history?.data,
+    }).toLowerCase();
+    const rankedSkills = skillRows
+      .map((skill, index) => {
+        const skillName = decisionField(skill, ["name", "skill_name", "skillName"]);
+        let score =
+          evidenceTextOverlapScore(question, skillName) * 45 +
+          evidenceTextOverlapScore(equipmentIdentity, skillName) * 8;
+        if (/vacuum/.test(loweredQuestion) && /vacuum/i.test(skillName)) score += 140;
+        if (/airflow/.test(loweredQuestion) && /hvac|airflow|environment/i.test(skillName)) score += 140;
+        if (/conductivity/.test(loweredQuestion) && /conductivity/i.test(skillName)) score += 140;
+        if (/pressure|transmitter/.test(loweredQuestion) && /pressure|instrument/i.test(skillName)) score += 120;
+        if (/cold|monitoring/.test(loweredQuestion) && /environmental monitoring/i.test(skillName)) score += 120;
+        if (/reject|vial|filler/.test(loweredQuestion) && /bosch vial|vial fill/i.test(skillName)) score += 120;
+        return { skill, skillName, score, index };
+      })
+      .filter((item) => item.skillName)
+      .sort((first, second) => second.score - first.score || first.index - second.index);
+    const matchedSkill = rankedSkills[0];
+    if (matchedSkill) {
+      const requiredLevel = decisionField(matchedSkill.skill, [
+        "required_level",
+        "requiredLevel",
+      ]);
+      const minimumQualified = decisionField(matchedSkill.skill, [
+        "minimum_qualified_engineers",
+        "minimumQualifiedEngineers",
+      ]);
+      const engineers = records(
+        matchedSkill.skill.qualified_engineers ?? matchedSkill.skill.qualifiedEngineers,
+      )
+        .map((engineer, index) => {
+          const engineerName = decisionField(engineer, [
+            "engineer_name",
+            "engineerName",
+            "full_name",
+            "fullName",
+          ]);
+          const role = decisionField(engineer, ["capability_role", "capabilityRole"]);
+          const validation = decisionField(engineer, [
+            "validation_status",
+            "validationStatus",
+            "verification_status",
+            "verificationStatus",
+          ]);
+          const rating = decisionField(engineer, [
+            "rating",
+            "validated_rating",
+            "validatedRating",
+          ]);
+          const availability = decisionField(engineer, [
+            "availability_status",
+            "availabilityStatus",
+          ]);
+          const discipline = decisionField(engineer, ["discipline"]);
+          const calibrationContext =
+            /\b(?:calibrat|instrument|transmitter|pressure|sensor)\b/.test(
+              loweredQuestion,
+            );
+          const disciplineMatch =
+            calibrationContext && /instrument|calibration/i.test(discipline);
+          const score =
+            (/primary_sme/i.test(role) ? 120 : /backup_sme/i.test(role) ? 80 : 0) +
+            (engineerName && workContext.includes(engineerName.toLowerCase()) ? 90 : 0) +
+            (/validated/i.test(validation) ? 30 : 0) +
+            (/on_shift/i.test(availability)
+              ? 70
+              : /available/i.test(availability)
+                ? 20
+                : 0) +
+            (disciplineMatch ? 90 : 0) +
+            numberValue(rating) * 8;
+          return {
+            engineerName,
+            role,
+            validation,
+            rating,
+            availability,
+            discipline,
+            score,
+            index,
+          };
+        })
+        .filter((item) => item.engineerName)
+        .sort((first, second) => second.score - first.score || first.index - second.index);
+      const engineer = engineers[0];
+      add(
+        `priority capability evidence: ${[
+          `skill ${matchedSkill.skillName}`,
+          engineer ? `engineer ${engineer.engineerName}` : "qualified engineer not recorded",
+          engineer?.rating ? `rating ${engineer.rating}` : "",
+          requiredLevel ? `required level ${requiredLevel}` : "",
+          engineer?.validation ? `validation ${engineer.validation}` : "",
+          engineer?.role ? `role ${engineer.role}` : "",
+          minimumQualified ? `minimum qualified ${minimumQualified}` : "",
+        ].filter(Boolean).join(" | ")}`,
+      );
+    }
+  }
+
+  const asksForDocument =
+    /\b(?:document|manual|guide|approved|procedure|drawing|evidence|before acting|history)\b/.test(
+      loweredQuestion,
+    );
+  if (asksForDocument) {
+    const documents = [
+      ...nestedDecisionRecords(domains.search_maintenance_documents?.data),
+      ...nestedDecisionRecords(domains.get_equipment_documents?.data),
+    ]
+      .filter((record) => decisionField(record, ["title", "document_title", "documentTitle"]))
+      .map((record, index) => {
+        const title = decisionField(record, ["title", "document_title", "documentTitle"]);
+        const approval = decisionField(record, ["approval_status", "approvalStatus", "status"]);
+        const revision = decisionField(record, ["revision"]);
+        const section = decisionField(record, [
+          "section_title",
+          "sectionTitle",
+          "manual_section",
+          "manualSection",
+          "first_section_title",
+          "firstSectionTitle",
+        ]);
+        const page = decisionField(record, [
+          "page_number",
+          "pageNumber",
+          "first_page_number",
+          "firstPageNumber",
+        ]);
+        const summary = decisionField(record, [
+          "summary",
+          "extracted_summary",
+          "extractedSummary",
+          "chunk_text",
+          "chunkText",
+        ]);
+        let score =
+          evidenceTextOverlapScore(question, `${title} ${summary}`) * 25 +
+          evidenceTextOverlapScore(equipmentIdentity, title) * 20 +
+          (/approved/i.test(approval) ? 80 : 0);
+        if (/before acting|work history|approved document/.test(loweredQuestion) && /fault|finding|guide/i.test(title)) {
+          score += 100;
+        }
+        return { title, approval, revision, section, page, summary, score, index };
+      })
+      .sort((first, second) => second.score - first.score || first.index - second.index);
+    const document = documents[0];
+    if (document) {
+      add(
+        `priority document evidence: ${[
+          document.title,
+          document.revision ? `revision ${document.revision}` : "",
+          document.approval ? `approval ${document.approval}` : "",
+          document.section ? `section ${document.section}` : "",
+          document.page ? `page ${document.page}` : "",
+          document.summary,
+        ].filter(Boolean).join(" | ")}`,
+      );
+    }
+  }
+
+  return priorityFacts;
+}
+
+function equipmentDecisionFacts(
+  selected: JsonRecord,
+  domains: Record<string, JsonRecord>,
+  question: string,
+): string[] {
+  const identity = [
+    selected.equipment_code,
+    selected.equipment_name,
+    selected.code,
+    selected.name,
+    selected.area,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => `equipment: ${value}`);
+  const priorityFacts = questionMatchedEquipmentFacts(selected, domains, question);
+  const explicitFacts = explicitEquipmentDomainFacts(domains);
+  const rankedFacts = collectDecisionFacts(domains)
+    .sort((first, second) => second.score - first.score)
+    .map((item) => item.text);
+  const questionRanked = relevantEquipmentDecisionFacts(
+    question,
+    [...explicitFacts, ...rankedFacts],
+  );
+  return [
+    ...new Set([
+      ...priorityFacts,
+      ...identity,
+      ...questionRanked,
+      ...explicitFacts.slice(0, 32),
+      ...rankedFacts.slice(0, 24),
+    ]),
+  ].slice(0, 64);
+}
+
+function relevantEquipmentDecisionFacts(
+  question: string,
+  decisionFacts: string[],
+): string[] {
+  const loweredQuestion = question.toLowerCase();
+  const questionTokens = new Set(
+    (loweredQuestion.match(/[a-z0-9-]{4,}/g) ?? []).filter(
+      (token) => !new Set(["what", "with", "that", "this", "from", "have", "actually", "should"]).has(token),
+    ),
+  );
+  const topicPatterns: RegExp[] = [];
+
+  if (/\b(?:who|skill|qualified|qualification|without guessing|engineer|backup)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/engineer|skill|qualified|validated|candidate|competency|authorisation|training/i);
+  }
+  if (/\b(?:spare|part|stock|stopping|block|available|lead time)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/component|part|stock|quantity|availability|lead|work.?order|wo-/i);
+  }
+  if (/\b(?:run|campaign|release|proof|verify|verification)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/interlock|airflow|validation|challenge|approved|document|test|verification/i);
+  }
+  if (/\b(?:document|manual|guide|approved|procedure|drawing|history|before acting|evidence supports|verification record)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/document evidence|work evidence|approved|manual|guide|drawing|history|verification|fault.?finding/i);
+  }
+  if (/\b(?:fault|wrong|repeat|reject|problem|keep|again)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/fault|sensor|reject|repeat|history|work.?order|component|vacuum|condenser/i);
+  }
+  if (/\b(?:water|conductivity|instrument|lying|bias|sample)\b/.test(loweredQuestion)) {
+    topicPatterns.push(/conductivity|bias|grab sample|calibrated|reference|sensor|water/i);
+  }
+
+  return [...new Set(decisionFacts)]
+    .map((fact, index) => {
+      const loweredFact = fact.toLowerCase();
+      let score = /^priority /.test(loweredFact)
+        ? 160
+        : /^equipment:/.test(loweredFact)
+          ? 40
+          : 0;
+      if (/[A-Z]{2,}[-0-9]{2,}/.test(fact)) score += 8;
+      for (const token of questionTokens) {
+        if (loweredFact.includes(token)) score += 4;
+      }
+      for (const pattern of topicPatterns) {
+        if (pattern.test(fact)) score += 18;
+      }
+      return { fact, score, index };
+    })
+    .sort((first, second) => second.score - first.score || first.index - second.index)
+    .slice(0, 16)
+    .map((item) => item.fact);
+}
+
+function retainEquipmentDecisionFacts(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+  toolOutcomes: Map<string, ToolResult>,
+): void {
+  if (questionPlan?.scope !== "equipment") return;
+  const pack = toolOutcomes.get("get_equipment_decision_pack");
+  if (
+    !pack?.data ||
+    typeof pack.data !== "object" ||
+    Array.isArray(pack.data)
+  ) {
+    return;
+  }
+  const packData = pack.data as JsonRecord;
+  answer.coveredTools = textValues(packData.coveredTools);
+  const decisionFacts = textValues(packData.decisionFacts);
+  if (decisionFacts.length === 0) return;
+
+  const priorityFacts = decisionFacts.filter((fact) => /^priority /i.test(fact));
+  const selectedFacts = relevantEquipmentDecisionFacts(
+    String(questionPlan.decisionGoal ?? ""),
+    decisionFacts,
+  );
+  answer.evidence = [
+    ...new Set([
+      ...priorityFacts,
+      ...selectedFacts,
+      ...textValues(answer.evidence),
+    ]),
+  ].slice(0, 16);
+}
+
+function replaceReleasedWording(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.replace(/\breleased\b/gi, "approved for return to service");
+  }
+  if (Array.isArray(value)) return value.map(replaceReleasedWording);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as JsonRecord).map(([key, item]) => [
+      key,
+      replaceReleasedWording(item),
+    ]),
+  );
+}
+
+function enforceEquipmentReturnToServiceSafety(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+): void {
+  if (
+    questionPlan?.scope !== "equipment" ||
+    !/\breleas(?:e|ed|ing)\b/i.test(String(questionPlan.decisionGoal ?? ""))
+  ) {
+    return;
+  }
+  for (const key of [
+    "directAnswer",
+    "decisionSummary",
+    "evidence",
+    "findings",
+    "coverOptions",
+    "recommendedActions",
+    "actionPlan",
+    "followUpQuestions",
+    "missingData",
+  ]) {
+    answer[key] = replaceReleasedWording(answer[key]);
+  }
+}
+
 function textValues(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter(
@@ -822,7 +1695,12 @@ function answerReasoningEffort(
 }
 
 function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {
-  if (questionPlan?.routingMode === "deterministic") return 2_200;
+  if (questionPlan?.routingMode === "deterministic") {
+    const scope =
+      typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+    if (scope === "site_risk" || scope === "work") return 1_400;
+    return questionPlan.forceActionPlan === true ? 2_000 : 1_700;
+  }
   return answerReasoningEffort(questionPlan) === "medium" ? 4_200 : 2_800;
 }
 
@@ -908,18 +1786,26 @@ function enforceDeterministicResponseShape(
 
   const scope =
     typeof questionPlan.scope === "string" ? questionPlan.scope : "";
+  const configuredLimit = Number(questionPlan.summaryItemLimit);
+  const summaryLimit = Number.isFinite(configuredLimit)
+    ? Math.max(1, Math.min(5, Math.round(configuredLimit)))
+    : scope === "handover"
+      ? 3
+      : 4;
 
-  if (scope === "handover") {
-    answer.decisionSummary = records(answer.decisionSummary).slice(0, 3);
-    answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, 1);
-  }
+  answer.decisionSummary = records(answer.decisionSummary).slice(0, summaryLimit);
+  const configuredFollowUpLimit = Number(questionPlan.followUpLimit);
+  const followUpLimit = Number.isFinite(configuredFollowUpLimit)
+    ? Math.max(0, Math.min(1, Math.round(configuredFollowUpLimit)))
+    : 1;
+  answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, followUpLimit);
 
-  if (scope !== "site_priorities" || records(answer.actionPlan).length > 0) {
-    return;
-  }
+  const requiresAction =
+    scope === "site_priorities" || questionPlan.forceActionPlan === true;
+  if (!requiresAction || records(answer.actionPlan).length > 0) return;
 
   const summaryAction = records(answer.decisionSummary).find((item) =>
-    /first action|next action|action/i.test(String(item.label ?? "")),
+    /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
   );
   const action =
     textValues(answer.recommendedActions)[0] ??
@@ -933,11 +1819,47 @@ function enforceDeterministicResponseShape(
     {
       priority: "now",
       action,
-      owner: "Maintenance Manager",
+      owner: scope === "spares" ? "Maintenance Manager / Stores" : "Maintenance Manager",
       expectedImpact:
-        "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
+        scope === "spares"
+          ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+          : "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
       verification:
-        "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
+        scope === "spares"
+          ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+          : "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
+    },
+  ];
+}
+
+function enforcePlannedResponseShape(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+): void {
+  const scope = typeof questionPlan?.scope === "string" ? questionPlan.scope : "";
+  const summaryLimit = scope === "mixed" ? 5 : new Set(["equipment", "skills"]).has(scope) ? 4 : 5;
+  answer.decisionSummary = records(answer.decisionSummary).slice(0, summaryLimit);
+  answer.followUpQuestions = textValues(answer.followUpQuestions).slice(0, 1);
+
+  const actionRequested =
+    questionPlan?.forceActionPlan === true ||
+    /(?:what (?:do|should)|do first|can we fix|what is stopping|let .* run|next shift must)/i.test(
+      String(questionPlan?.decisionGoal ?? ""),
+    );
+  if (!actionRequested || records(answer.actionPlan).length > 0) return;
+  const action =
+    textValues(answer.recommendedActions)[0] ??
+    records(answer.findings)
+      .map((item) => (typeof item.detail === "string" ? item.detail : ""))
+      .find((value) => /(?:verify|replace|confirm|inspect|repair|order|test|challenge)/i.test(value)) ??
+    "Review the linked Vorta evidence and assign the first verified intervention before releasing the work.";
+  answer.actionPlan = [
+    {
+      priority: "now",
+      action,
+      owner: "Maintenance Manager",
+      expectedImpact: "Starts the first evidence-backed intervention for the requested maintenance decision.",
+      verification: "Open the linked equipment evidence and confirm the named action, owner and completion status.",
     },
   ];
 }
@@ -1586,13 +2508,12 @@ async function executeTool(
         "Equipment risk register",
         "vorta_get_demo_equipment_risk_list",
       );
-      const query = typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
+      const query = typeof args.query === "string" ? args.query.trim() : "";
       if (!query || result.status !== "ok" || !Array.isArray(result.data)) return result;
       const rows = result.data.filter((item) => {
         const row = item as JsonRecord;
         return [row.equipment_name, row.equipment_code, row.area]
-          .filter((value): value is string => typeof value === "string")
-          .some((value) => value.toLowerCase().includes(query));
+          .some((value) => equipmentReferenceMatches(value, query));
       });
       return { ...result, status: rows.length ? "ok" : "empty", data: rows };
     }
@@ -1622,11 +2543,17 @@ async function executeTool(
           message: riskResult.message ?? "No authorised equipment matched the reference.",
         };
       }
-      const normalisedQuery = query.trim().toLowerCase();
+      const normalisedQuery = normaliseEquipmentReference(query);
       const exactMatch = matches.find((item) =>
         [item.equipment_name, item.equipment_code, item.name, item.code]
-          .filter((value): value is string => typeof value === "string")
-          .some((value) => value.trim().toLowerCase() === normalisedQuery),
+          .some((value) => {
+            const normalisedCandidate = normaliseEquipmentReference(value);
+            return Boolean(
+              normalisedCandidate &&
+                (normalisedCandidate === normalisedQuery ||
+                  normalisedQuery.includes(normalisedCandidate)),
+            );
+          }),
       );
       const selected = exactMatch ?? (matches.length === 1 ? matches[0] : null);
       if (!selected) {
@@ -1665,27 +2592,57 @@ async function executeTool(
         "get_equipment_documents",
       ] as const;
       const domainEntries = await Promise.all(
-        domainNames.map(async (toolName) => [
-          toolName,
-          compactToolDomain(
-            await executeTool(
-              toolName,
-              { equipment_id: equipmentIdValue },
-              supabase,
-              request,
-            ),
-          ),
-        ] as const),
+        domainNames.map(async (toolName) => {
+          const result = await executeTool(
+            toolName,
+            { equipment_id: equipmentIdValue },
+            supabase,
+            request,
+          );
+          return [
+            toolName,
+            toolName === "get_equipment_skills"
+              ? compactEquipmentSkillsDomain(result)
+              : compactToolDomain(result),
+          ] as const;
+        }),
       );
+      const domains = Object.fromEntries(domainEntries) as Record<string, JsonRecord>;
+      const documentSearchRequested =
+        /\b(?:fault|diagnos|cause(?:d|s)?|root cause|excursion|credible|reading|bias|document|manual|guide|approved|procedure|drawing|history|evidence|verify|verification|release|before acting)\b/i.test(
+          request.question,
+        );
+      if (documentSearchRequested) {
+        domains.search_maintenance_documents = compactToolDomain(
+          await executeTool(
+            "search_maintenance_documents",
+            {
+              equipment_id: equipmentIdValue,
+              query: request.question,
+              limit: 8,
+            },
+            supabase,
+            request,
+          ),
+        );
+      }
+      const coveredTools = [
+        "get_equipment_risk",
+        ...domainNames,
+        ...(documentSearchRequested ? ["search_maintenance_documents"] : []),
+      ];
       return {
         source: "Equipment cross-domain decision pack",
         status: "ok",
         data: {
           query,
           equipment: compactDecisionData(selected),
-          domains: Object.fromEntries(domainEntries),
-          caveat:
-            "Use search_maintenance_documents as an additional specialist lookup when the question asks for a fault code, procedure, drawing, manual section or exact technical instruction.",
+          coveredTools,
+          decisionFacts: equipmentDecisionFacts(selected, domains, request.question),
+          domains,
+          caveat: documentSearchRequested
+            ? "Approved maintenance knowledge search was included for this technical evidence question."
+            : "The pack contains the authorised equipment risk, work, capability, spares, history, risk-action and document-register domains.",
         },
       };
     }
@@ -2253,36 +3210,373 @@ async function executeTool(
 }
 
 
+
+function firstDecisionText(value: unknown, keys: string[]): string {
+  for (const record of nestedDecisionRecords(value)) {
+    const text = decisionField(record, keys);
+    if (text) return text;
+  }
+  return "";
+}
+
+function firstDecisionNumber(value: unknown, keys: string[]): number | null {
+  const text = firstDecisionText(value, keys);
+  if (!text) return null;
+  const numeric = Number(text);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function outcomeData(
+  outcomes: Map<string, ToolResult>,
+  toolName: string,
+): unknown {
+  return outcomes.get(toolName)?.data;
+}
+
+function operationalDomainData(value: unknown, domainName: string): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const domains = (value as JsonRecord).domains;
+  if (!domains || typeof domains !== "object" || Array.isArray(domains)) return null;
+  const domain = (domains as JsonRecord)[domainName];
+  if (!domain || typeof domain !== "object" || Array.isArray(domain)) return null;
+  return (domain as JsonRecord).data;
+}
+
+function readableEvidenceTime(timestamp: number | null): string {
+  return timestamp === null
+    ? "no verified source-update timestamp returned"
+    : new Date(timestamp).toISOString().replace("T", " ").replace(/:\d{2}\.\d{3}Z$/, " UTC");
+}
+
+function deterministicOperationalAnswer(
+  request: AskVortaRequest,
+  questionPlan: JsonRecord | null,
+  outcomes: Map<string, ToolResult>,
+): JsonRecord | null {
+  if (questionPlan?.routingMode !== "deterministic") return null;
+  const intent = typeof questionPlan.intentLabel === "string" ? questionPlan.intentLabel : "";
+  const generatedAt = new Date().toISOString();
+  const base = {
+    findings: [] as JsonRecord[],
+    coverOptions: [] as JsonRecord[],
+    recommendedActions: [] as string[],
+    actionPlan: [] as JsonRecord[],
+    followUpQuestions: [] as string[],
+    sources: [] as string[],
+    missingData: [] as string[],
+    confidence: 75,
+    intentLabel: intent,
+    toolsUsed: [] as string[],
+    evidenceLinks: [] as JsonRecord[],
+    evidenceGeneratedAt: generatedAt,
+  };
+
+  if (intent === "maintenance_plan_cover_feasibility") {
+    const planData = outcomeData(outcomes, "get_site_maintenance_plan");
+    const coverData = outcomeData(outcomes, "get_shift_cover");
+    const dueCount = firstDecisionNumber(planData, ["dueCount"]) ?? 0;
+    const calibrationCount = firstDecisionNumber(planData, ["calibrationCount"]) ?? 0;
+    const estimatedHours = firstDecisionNumber(planData, ["estimatedHours"]) ?? 0;
+    const unassignedCount = firstDecisionNumber(planData, ["unassignedCount"]) ?? 0;
+    const shiftsChecked = firstDecisionNumber(coverData, ["shiftsChecked"]) ?? 0;
+    const reducedCoverShifts = firstDecisionNumber(coverData, ["reducedCoverShifts"]) ?? 0;
+    const skillExposureShifts = firstDecisionNumber(coverData, ["shiftsWithSkillExposure"]) ?? 0;
+    const gapsRemain = reducedCoverShifts > 0 || skillExposureShifts > 0 || unassignedCount > 0;
+    const period = `${String(questionPlan.startDate || "next week")} to ${String(questionPlan.endDate || "")}`.replace(/ to $/, "");
+    const firstAction = gapsRemain
+      ? "Reconcile the highest-risk PM and calibration jobs against validated shift cover before releasing the weekly plan."
+      : "Confirm the dated rota and release the planned PM and calibration workload."
+    return {
+      ...base,
+      directAnswer: gapsRemain
+        ? `The next-week PM and calibration workload is not fully proven achievable: ${dueCount} planned items (${calibrationCount} calibrations, ${estimatedHours} estimated hours) were checked against ${shiftsChecked} shifts, with ${reducedCoverShifts} reduced-cover shifts and ${skillExposureShifts} shifts carrying validated-skill gaps.`
+        : `The next-week evidence supports the planned PM and calibration workload: ${dueCount} planned items (${calibrationCount} calibrations, ${estimatedHours} estimated hours) were checked against ${shiftsChecked} shifts with no recorded cover or validated-skill gap.`,
+      decisionSummary: [
+        { label: "Period", value: period },
+        { label: "Planned workload", value: `${dueCount} PM/calibration items · ${estimatedHours} estimated hours · ${calibrationCount} calibrations.` },
+        { label: "Cover evidence", value: `${shiftsChecked} shifts checked · ${reducedCoverShifts} reduced-cover · ${skillExposureShifts} with validated-skill gaps.` },
+        { label: "Unassigned work", value: `${unassignedCount} planned items have no recorded assignee.` },
+        { label: "First action", value: firstAction },
+      ],
+      evidence: [
+        `Maintenance plan: ${dueCount} dated PM/calibration items, ${calibrationCount} calibrations, ${estimatedHours} estimated hours and ${unassignedCount} unassigned.`,
+        `Shift cover: ${shiftsChecked} shifts checked, ${reducedCoverShifts} reduced-cover shifts and ${skillExposureShifts} shifts with validated-skill exposure.`,
+      ],
+      findings: [
+        { category: "work", severity: gapsRemain ? "high" : "info", title: "Plan and cover comparison", detail: gapsRemain ? "The dated plan still has rota, validated-skill or assignment constraints; completion is not yet proven by the recorded evidence." : "No recorded cover or assignment constraint was returned for the dated plan." },
+      ],
+      recommendedActions: [firstAction],
+      actionPlan: [{
+        priority: "before_weekly_plan_release",
+        action: firstAction,
+        owner: "Maintenance Manager / Planner",
+        expectedImpact: "Prevents PM or calibration work being released without the recorded people and validated skills needed to complete it.",
+        verification: "Open the linked maintenance plan and Shift Cover evidence and confirm every priority job has an assignee and validated cover.",
+      }],
+      missingData: gapsRemain
+        ? ["Overtime acceptance, unrecorded leave and final job sequencing are not proven by the current evidence."]
+        : ["Final overtime acceptance and unrecorded leave still require manager confirmation."],
+      confidence: gapsRemain ? 72 : 82,
+    };
+  }
+
+  if (intent === "site_evidence_freshness") {
+    const riskData = outcomeData(outcomes, "get_site_risk");
+    const timestamps = evidenceTimestamps(riskData);
+    const newest = timestamps.length ? Math.max(...timestamps) : null;
+    const oldest = timestamps.length ? Math.min(...timestamps) : null;
+    const freshness = readableEvidenceTime(newest);
+    return {
+      ...base,
+      directAnswer: newest
+        ? `The current site-risk answer is backed by recorded Vorta evidence last updated at ${freshness}; that timestamp is source freshness, not a guarantee of real-time conditions.`
+        : "Vorta returned the current site-risk evidence but no verified source-update timestamp, so freshness cannot be proven from this result.",
+      decisionSummary: [
+        { label: "Newest evidence", value: freshness },
+        { label: "Oldest evidence", value: readableEvidenceTime(oldest) },
+        { label: "Freshness caveat", value: "Query time and source-update time are different; real-time status is not guaranteed." },
+      ],
+      evidence: [`Site-risk evidence timestamp check: ${freshness}.`],
+    findings: [{
+      category: "freshness",
+      severity: newest ? "info" : "medium",
+      title: "Source evidence freshness",
+      detail: newest
+        ? `Newest recorded source update: ${freshness}. This is source-update time, not query time or a real-time promise.`
+        : "The site-risk result did not expose a verified source-update timestamp, so freshness cannot be proven from this evidence.",
+    }],
+    missingData: newest ? [] : ["The site-risk result did not expose a verified source-update timestamp."],
+      confidence: newest ? 82 : 55,
+    };
+  }
+
+  if (intent === "site_missing_evidence") {
+    const snapshot = outcomeData(outcomes, "get_site_operational_snapshot");
+    const domainsValue = snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+      ? (snapshot as JsonRecord).domains
+      : null;
+    const domains = domainsValue && typeof domainsValue === "object" && !Array.isArray(domainsValue)
+      ? Object.entries(domainsValue as JsonRecord)
+      : [];
+    const unavailable = domains
+      .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value) && (value as JsonRecord).status === "unavailable")
+      .map(([name]) => name);
+    const empty = domains
+      .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value) && (value as JsonRecord).status === "empty")
+      .map(([name]) => name);
+    const recorded = domains.filter(([, value]) => value && typeof value === "object" && !Array.isArray(value) && (value as JsonRecord).status === "ok").map(([name]) => name);
+    const missing = [
+      ...(unavailable.length ? [`Unavailable evidence domains: ${unavailable.join(", ")}.`] : []),
+      ...(empty.length ? [`No current records returned for: ${empty.join(", ")}.`] : []),
+      "Vorta cannot prove unrecorded leave, overtime acceptance, fatigue/rest approval, supplier acceptance or work completed outside the recorded source systems.",
+    ];
+    return {
+      ...base,
+      directAnswer: `Vorta can prove the recorded ${recorded.join(", ") || "maintenance"} evidence, but it cannot confirm facts that are missing, unavailable or not entered in the source systems.`,
+      decisionSummary: [
+        { label: "Proven domains", value: recorded.join(", ") || "No complete domain was returned." },
+        { label: "Unavailable domains", value: unavailable.join(", ") || "None returned as unavailable." },
+        { label: "Empty domains", value: empty.join(", ") || "None returned empty." },
+        { label: "Cannot confirm", value: "Unrecorded leave, overtime acceptance, fatigue/rest approval, supplier acceptance and off-system work completion." },
+      ],
+      evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
+      findings: [
+      {
+        category: "evidence",
+        severity: unavailable.length ? "high" : empty.length ? "medium" : "info",
+        title: "Evidence gaps and confirmations",
+        detail: missing.join(" "),
+      },
+    ],
+    missingData: missing,
+      confidence: recorded.length ? 68 : 40,
+    };
+  }
+
+  if (intent === "morning_maintenance_briefing") {
+    const snapshot = outcomeData(outcomes, "get_site_operational_snapshot");
+    const riskData = operationalDomainData(snapshot, "siteRisk");
+    const workData = operationalDomainData(snapshot, "workBacklog");
+    const sparesData = operationalDomainData(snapshot, "sparesRisk");
+    const riskScore = firstDecisionNumber(riskData, ["riskScore"]) ?? 0;
+    const highestArea = firstDecisionText(riskData, ["highestArea"]) || "highest-risk area not returned";
+    const overdueCount = firstDecisionNumber(workData, ["overdueCount"]) ?? 0;
+    const openCount = firstDecisionNumber(workData, ["openCount"]) ?? 0;
+    const outOfStockCount = firstDecisionNumber(sparesData, ["outOfStockCount"]) ?? 0;
+    const criticalSpare = firstDecisionText(sparesData, ["componentCode", "componentName", "equipmentCode"]);
+    return {
+      ...base,
+      directAnswer: "Use these three evidence-backed points in the morning maintenance meeting: current site risk, overdue work and the critical-spares constraint.",
+      decisionSummary: [
+        { label: "1 · Risk", value: `Site risk ${riskScore}; highest-risk area ${highestArea}.` },
+        { label: "2 · Work", value: `${overdueCount} overdue from ${openCount} open work orders.` },
+        { label: "3 · Spares", value: `${outOfStockCount} out-of-stock risk items${criticalSpare ? `; first recorded constraint ${criticalSpare}` : ""}.` },
+      ],
+      evidence: [
+        `Risk evidence: site score ${riskScore}, highest area ${highestArea}.`,
+        `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
+        `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
+      ],
+      findings: [
+      {
+        category: "risk",
+        severity: "high",
+        title: "Morning briefing evidence · site risk",
+        detail: `Current site risk is ${riskScore}; ${highestArea} is the highest-risk area returned by the operational snapshot.`,
+      },
+      {
+        category: "work",
+        severity: overdueCount > 0 ? "high" : "info",
+        title: "Morning briefing evidence · work",
+        detail: `${overdueCount} overdue work orders remain within ${openCount} open work orders.`,
+      },
+      {
+        category: "spares",
+        severity: outOfStockCount > 0 ? "high" : "info",
+        title: "Morning briefing evidence · spares",
+        detail: `${outOfStockCount} out-of-stock risk items are recorded${criticalSpare ? `; the first recorded constraint is ${criticalSpare}` : ""}.`,
+      },
+    ],
+    confidence: 78,
+    };
+  }
+
+  if (intent === "verified_risk_reduction_ranking") {
+    const snapshot = outcomeData(outcomes, "get_site_operational_snapshot");
+    const riskData = operationalDomainData(snapshot, "siteRisk");
+    const priorityAction = firstDecisionText(riskData, ["priorityAction", "priority_action"])
+      || firstDecisionText(snapshot, ["priorityAction", "priority_action"]);
+    const riskScore = firstDecisionNumber(riskData, ["riskScore"]) ?? 0;
+    const highestArea = firstDecisionText(riskData, ["highestArea"]) || "highest-risk area not returned";
+    const action = priorityAction || "Complete the highest-value verified maintenance work queue shown in the current site-risk evidence.";
+    return {
+      ...base,
+      directAnswer: `The single highest verified risk-reduction intervention is: ${action}`,
+      decisionSummary: [
+        { label: "Current risk", value: `Site risk ${riskScore}; highest-risk area ${highestArea}.` },
+        { label: "Highest-value action", value: action },
+        { label: "Evidence basis", value: "Current calculated site-risk and cross-domain work, spare, capability and handover evidence." },
+      ],
+      evidence: [`Verified risk-reduction action: ${action}`],
+      findings: [{ category: "risk", severity: "high", title: "Highest verified intervention", detail: action }],
+      recommendedActions: [action],
+      actionPlan: [{
+        priority: "now",
+        action,
+        owner: "Maintenance Manager",
+        expectedImpact: "Delivers the largest currently verified risk reduction recorded by Vorta; the exact projected change remains governed by the linked calculation.",
+        verification: "Open the operational dashboard and confirm the action, owner, work status and projected risk reduction before release.",
+      }],
+      missingData: priorityAction ? [] : ["The snapshot did not expose a named priority action; the linked dashboard must be checked before work release."],
+      confidence: priorityAction ? 84 : 58,
+    };
+  }
+
+  return null;
+}
+
 function deterministicQuestionPlan(
   request: AskVortaRequest,
 ): JsonRecord | null {
-  if (request.history.length > 0) return null;
-
   const question = request.question
     .trim()
     .toLowerCase()
-    .replace(/[’']/g, "'");
+    .replace(/[’']/g, "'")
+    .replace(/\bwot\b/g, "what")
+    .replace(/\bshud\b/g, "should")
+    .replace(/\brite\b/g, "right")
+    .replace(/\bproblms?\b/g, "problems")
+    .replace(/\btomor+ow\b/g, "tomorrow")
+    .replace(/\bcalabrations?\b/g, "calibrations")
+    .replace(/\bvacum\b/g, "vacuum")
+    .replace(/\bwhats\b/g, "what is");
+
+  const contextText = [...request.history.map((item) => item.content), request.question].join(" ");
+  const explicitEquipment = extractEquipmentReference(request.question);
+  const historicalEquipment = extractEquipmentReference(contextText);
+  const pronounFollowUp = /\b(?:it|that one|that asset|the asset|what part|what spare)\b/i.test(
+    request.question,
+  );
+  const equipmentQuery = explicitEquipment ?? (pronounFollowUp ? historicalEquipment : null);
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: request.pageContext.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const dateWithOffset = (days: number): string => {
+    const date = new Date(`${today}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const nextWeekRange = (): { startDate: string; endDate: string } => {
+    const date = new Date(`${today}T12:00:00Z`);
+    const weekday = date.getUTCDay();
+    const daysToMonday = weekday === 0 ? 1 : 8 - weekday;
+    const start = new Date(date);
+    start.setUTCDate(start.getUTCDate() + daysToMonday);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return {
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+    };
+  };
 
   const fastPlan = (
     scope: string,
     intentLabel: string,
-    toolName: string,
+    toolNames: string | string[],
     answerFocus: string,
+    options: {
+      startDate?: string;
+      endDate?: string;
+      summaryItemLimit?: number;
+      forceActionPlan?: boolean;
+      equipmentQuery?: string;
+      followUpLimit?: number;
+    } = {},
   ): JsonRecord => ({
     intentLabel,
     decisionGoal: request.question,
     scope,
     shouldUseTools: true,
-    requiredTools: [toolName],
+    requiredTools: Array.isArray(toolNames) ? toolNames : [toolNames],
     optionalTools: [],
-    equipmentQuery: "",
-    startDate: "",
-    endDate: "",
+    equipmentQuery: options.equipmentQuery ?? "",
+    startDate: options.startDate ?? "",
+    endDate: options.endDate ?? "",
     ambiguity: "none",
     answerFocus,
-    verificationChecks: ["Use only current authorised Vorta evidence."],
+    verificationChecks: [
+      "Use only current authorised Vorta evidence.",
+      "Use relevant decisionFacts and exact names, codes, work orders, skills and approved evidence returned by the tools.",
+    ],
     routingMode: "deterministic",
+    summaryItemLimit: options.summaryItemLimit ?? 4,
+    forceActionPlan: options.forceActionPlan ?? false,
+    followUpLimit: options.followUpLimit ?? 1,
   });
+
+  if (equipmentQuery) {
+    const actionRequested = /\b(?:what (?:do|should)|do first|fix(?:ing|ed)?|repair(?:ing|ed)?|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|confirm(?:ed|ing)?|after repair|evidence (?:is )?required|required evidence|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
+      question,
+    );
+    return fastPlan(
+      "equipment",
+      "equipment_decision",
+      "get_equipment_decision_pack",
+      "Resolve the exact asset and answer with decisive named evidence from decisionFacts, including relevant fault codes, work orders, components, skills, engineers and approved verification evidence.",
+      {
+        equipmentQuery,
+        summaryItemLimit: 4,
+        forceActionPlan: actionRequested,
+      },
+    );
+  }
+
+  if (request.history.length > 0) return null;
 
   if (
     /\b(?:handover|hand over|previous shift|last shift|nights? (?:leave|left)|days? (?:leave|left)|left us|incoming shift)\b/.test(
@@ -2294,71 +3588,176 @@ function deterministicQuestionPlan(
       "shift_handover",
       "get_shift_handover",
       "Summarise what the previous shift completed, left ongoing or waiting, and the next action using no more than three decision summary items.",
+      { summaryItemLimit: 3 },
+    );
+  }
+
+  const coverDate = /\btomorrow\b/.test(question)
+    ? dateWithOffset(1)
+    : /\btoday\b/.test(question)
+      ? dateWithOffset(0)
+      : null;
+  const nextWeek = /\b(?:next|following) week\b/.test(question);
+  const planAndCover =
+    /\b(?:pm|calibration|maintenance plan|planned work|workload|jobs?)\b/.test(question) &&
+    /\b(?:cover|coverage|people|available|availability|rota|complete|achievable|slip)\b/.test(question);
+  if (planAndCover && (coverDate || nextWeek)) {
+    const range = nextWeek
+      ? nextWeekRange()
+      : { startDate: coverDate as string, endDate: coverDate as string };
+    return fastPlan(
+      "mixed",
+      "maintenance_plan_cover_feasibility",
+      ["get_site_maintenance_plan", "get_shift_cover"],
+      "Compare the dated PM/calibration workload with the actual rota and validated skills. State what is achievable, what will slip and the first mitigation.",
+      {
+        ...range,
+        summaryItemLimit: 5,
+        forceActionPlan: true,
+      },
     );
   }
 
   if (
-    /\b(?:contractors?|external support|on[- ]call|remote support|onsite support|plc support)\b/.test(
-      question,
-    )
+    coverDate &&
+    /\b(?:cover|coverage|short|rota|available|availability)\b/.test(question) &&
+    /\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\b/.test(question) &&
+      !/\b(?:evidence|prove|confirm|picture)\b/.test(question)
   ) {
+    return fastPlan(
+      "shift_cover",
+      "shift_cover_risk",
+      "get_shift_cover",
+      "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",
+      {
+        startDate: coverDate,
+        endDate: coverDate,
+        summaryItemLimit: 4,
+        forceActionPlan: true,
+      },
+    );
+  }
+
+  const evidenceFreshnessRequest =
+    /\b(?:how fresh|freshness|last updated|source update|updated evidence|evidence timestamp)\b/.test(question) &&
+    /\b(?:site[- ]?risk|risk answer|evidence)\b/.test(question);
+  if (evidenceFreshnessRequest) {
+    return fastPlan(
+      "site_risk",
+      "site_evidence_freshness",
+      "get_site_risk",
+      "Report the newest and oldest source-update timestamps behind the current site-risk evidence and distinguish source freshness from query time.",
+      { summaryItemLimit: 3, followUpLimit: 0 },
+    );
+  }
+
+  if (/\b(?:what .*cannot prove|what .*can not prove|not prove|missing evidence|evidence .*missing|available evidence|cannot confirm|can not confirm|unproven|incomplete picture)\b/.test(question)) {
+    return fastPlan(
+      "site_priorities",
+      "site_missing_evidence",
+      "get_site_operational_snapshot",
+      "State which maintenance domains are proven, unavailable or empty and what real-world confirmations remain outside the recorded evidence.",
+      { summaryItemLimit: 5, followUpLimit: 1 },
+    );
+  }
+
+  if (/\b(?:morning maintenance meeting|morning meeting|three things .* say|three points .* meeting)\b/.test(question)) {
+    return fastPlan(
+      "site_priorities",
+      "morning_maintenance_briefing",
+      "get_site_operational_snapshot",
+      "Return exactly three evidence-backed briefing points covering current risk, work and the most material spare, skill or handover constraint.",
+      { summaryItemLimit: 3, followUpLimit: 0 },
+    );
+  }
+
+  if (/\b(?:single|one) maintenance intervention\b/.test(question) && /\b(?:biggest|highest|largest).*risk reduction\b/.test(question)) {
+    return fastPlan(
+      "site_priorities",
+      "verified_risk_reduction_ranking",
+      "get_site_operational_snapshot",
+      "Return the single highest verified risk-reduction intervention from the current calculated site action evidence, with one executable actionPlan item.",
+      { summaryItemLimit: 4, forceActionPlan: true, followUpLimit: 1 },
+    );
+  }
+
+  if (/\b(?:contractors?|external support|on[- ]call|remote support|onsite support|plc support)\b/.test(question)) {
     return fastPlan(
       "contractor",
       "contractor_support",
       "get_contractor_availability",
       "Report only recorded contractor skills and availability, with any confirmation caveat.",
+      { summaryItemLimit: 4 },
     );
   }
 
-  if (
-    /\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order)\b/.test(
-      question,
-    )
-  ) {
+  if (/\b(?:(?:which|what) (?:plant )?area (?:currently )?(?:has|carries|holds|is carrying) (?:the )?highest (?:maintenance )?risk|highest[- ]risk (?:plant )?area)\b/.test(question)) {
+    return fastPlan(
+      "site_risk",
+      "highest_current_area_risk",
+      "get_site_risk",
+      "Name the highest-risk area and the exact current score without padding the factual answer.",
+      { summaryItemLimit: 3 },
+    );
+  }
+
+  if (/\b(?:spares?|stock(?:out)?|inventory|parts?|lead time|shortfall|what should (?:we|i) order|what (?:bit|part|spare) should (?:we|i) (?:buy|get|order) first|what should (?:we|i) (?:buy|get) first)\b/.test(question)) {
+    const asksForAction = /\b(?:buy|get|order|do) first\b/.test(question);
     return fastPlan(
       "spares",
       "spares_priority",
       "get_site_spares_risk",
-      "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time.",
+      "Identify the most urgent spare using stock, minimum, target, shortfall, criticality and lead time, and state the first purchasing action when requested.",
+      { summaryItemLimit: 4, forceActionPlan: asksForAction },
     );
   }
 
-  if (
-    /\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/.test(
-      question,
-    )
-  ) {
+  const maintenancePlanOnly =
+    /\b(?:pm|pms|planned maintenance|preventive maintenance|calibration|calibrations|calibrate|due next|due this week|next seven days)\b/.test(question) &&
+    !/\b(?:cover|coverage|people|available|availability|rota|achievable|complete|slip)\b/.test(question);
+  if (maintenancePlanOnly) {
+    const includesOverdue = /\boverdue\b/.test(question);
+    const asksNextSevenDays = /\b(?:next seven days|next 7 days)\b/.test(question);
+    return fastPlan(
+      "maintenance_plan",
+      "maintenance_plan",
+      "get_site_maintenance_plan",
+      "Report the dated PM and calibration work requested, separating overdue items from the next due work and naming the asset, due date and assignee where recorded.",
+      {
+        startDate: includesOverdue ? dateWithOffset(-21) : dateWithOffset(0),
+        endDate: asksNextSevenDays ? dateWithOffset(7) : dateWithOffset(10),
+        summaryItemLimit: 4,
+      },
+    );
+  }
+
+  if (/\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/.test(question)) {
     return fastPlan(
       "work",
       "work_backlog",
       "get_site_work_backlog",
       "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence.",
+      { summaryItemLimit: 4 },
     );
   }
 
-  if (
-    /\b(?:skills?|sme|single[- ]point|single person|succession|capability|training priorit(?:y|ies))\b/.test(
-      question,
-    )
-  ) {
+  if (/\b(?:skills?|sme|single[- ]point|single person|one person deep|only one person|succession|capability|training priorit(?:y|ies))\b/.test(question)) {
     return fastPlan(
       "skills",
       "capability_risk",
       "get_site_capability_actions",
       "Identify the highest capability dependency and the evidence-backed action that reduces it.",
+      { summaryItemLimit: 4 },
     );
   }
 
-  if (
-    /\b(?:biggest (?:maintenance )?(?:risks?|threats?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what could stop (?:the )?site)\b/.test(
-      question,
-    )
-  ) {
+  if (/\b(?:biggest (?:maintenance )?(?:risks?|threats?|problems?)|maintenance threats?|site priorit(?:y|ies)|what needs attention|what should (?:i|we) (?:do|review|worry about) first|what should (?:i|we) worry about|what should (?:i|we) be (?:most )?worried about|what could stop (?:the )?site|what is likely to bite us)\b/.test(question)) {
     return fastPlan(
       "site_priorities",
       "site_threat_prioritization",
       "get_site_operational_snapshot",
       "Rank the main current maintenance threats, state the first executable action and return one actionPlan item for it.",
+      { summaryItemLimit: 4, forceActionPlan: true },
     );
   }
 
@@ -2446,6 +3845,7 @@ function systemInstructions(
     "For broad site-priority questions use get_site_operational_snapshot, then add dated shift-cover or maintenance-plan evidence only when the decision depends on a specific period not covered by the snapshot.",
     "Do not repeat a specialist lookup when a successful site or equipment decision pack already contains equivalent evidence. Reuse the pack and spend the remaining tool budget only on genuinely narrower evidence.",
     "For broad equipment questions use get_equipment_decision_pack. If it reports more than one plausible match, state the options and ask one focused clarification rather than choosing silently.",
+    "When an equipment decision pack returns decisionFacts, treat them as the decisive evidence index. Use the relevant exact equipment code, fault code, work-order number, component code, named skill, named engineer and approved verification fact in the answer rather than replacing them with generic prose.",
     "Cross-check conclusions across domains. Examples: a work order is not executable if the required part or skill is missing; a PM plan is not achievable merely because labour headcount exists; and the highest numerical risk is not automatically the first action if the intervention is not executable.",
     "Before answering, test the proposed conclusion against contradictory evidence, source freshness, missing data and the question actually asked. Do not hide conflict behind a confidence score.",
     "For shift-cover questions, always call get_shift_cover. State who is scheduled on the risky shift, who has a recorded holiday/training/absence exception, which engineers are off-rota, which named skills and assets are exposed, and the ranked cover candidates or calculated cover package.",
@@ -2588,50 +3988,132 @@ export default async function handler(req: Request, _context: Context): Promise<
   const evidenceLinks = new Map<string, EvidenceLink>();
   let shiftCoverEvidence: JsonRecord | null = null;
   let shiftCoverArguments: JsonRecord | null = null;
-  const deterministicToolName =
+  const deterministicToolNames =
     questionPlan?.routingMode === "deterministic"
-      ? textValues(questionPlan.requiredTools)[0] ?? null
-      : null;
+      ? textValues(questionPlan.requiredTools)
+      : [];
+  const hasDeterministicRouting = deterministicToolNames.length > 0;
+  const deterministicArgumentsFor = (toolName: string): JsonRecord => {
+    if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {
+      return {
+        start_date:
+          typeof questionPlan?.startDate === "string"
+            ? questionPlan.startDate
+            : "",
+        end_date:
+          typeof questionPlan?.endDate === "string"
+            ? questionPlan.endDate
+            : "",
+      };
+    }
+    if (toolName === "get_equipment_decision_pack") {
+      return {
+        query:
+          typeof questionPlan?.equipmentQuery === "string"
+            ? questionPlan.equipmentQuery
+            : "",
+      };
+    }
+    return {};
+  };
+
+  const completeDeterministicAnswer = async (
+    answer: JsonRecord,
+  ): Promise<Response> => {
+    enforceAnswerEvidence(
+      answer,
+      request.question,
+      shiftCoverEvidence,
+      shiftCoverArguments,
+    );
+    enforceDeterministicResponseShape(answer, questionPlan);
+    enforcePlannedResponseShape(answer, questionPlan);
+    retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
+    answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);
+    answer.sources = [...usedSources];
+    answer.toolsUsed = [...usedTools];
+    answer.evidenceLinks = [...evidenceLinks.values()];
+    answer.responseId = interactionId;
+    await supabase
+      .from("ask_vorta_interactions")
+      .update({
+        intent_label:
+          typeof answer.intentLabel === "string" ? answer.intentLabel : null,
+        tools_used: [...usedTools],
+        sources: [...usedSources],
+        confidence:
+          typeof answer.confidence === "number"
+            ? Math.max(0, Math.min(100, Math.round(answer.confidence)))
+            : null,
+        missing_data_count: Array.isArray(answer.missingData)
+          ? answer.missingData.length
+          : 0,
+        duration_ms: Date.now() - startedAt,
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", interactionId)
+      .eq("user_id", userData.user.id);
+    return jsonResponse(answer);
+  };
 
   try {
-    if (deterministicToolName) {
-      usedTools.add(deterministicToolName);
-      let deterministicResult: ToolResult;
-      try {
-        deterministicResult = await executeTool(
-          deterministicToolName,
-          {},
-          supabase,
-          request,
-        );
-      } catch (error) {
-        deterministicResult = {
-          source: deterministicToolName,
-          status: "unavailable",
-          message:
-            error instanceof Error
-              ? error.message
-              : "The deterministic evidence lookup could not be completed.",
-        };
-      }
-      toolOutcomes.set(deterministicToolName, deterministicResult);
-      if (deterministicResult.status !== "unavailable") {
-        usedSources.add(deterministicResult.source);
-      }
-      const deterministicLink = evidenceLinkForTool(
-        deterministicToolName,
-        {},
+    if (hasDeterministicRouting) {
+      const deterministicResults = await Promise.all(
+        deterministicToolNames.map(async (toolName) => {
+          const toolArguments = deterministicArgumentsFor(toolName);
+          usedTools.add(toolName);
+          let result: ToolResult;
+          try {
+            result = await executeTool(
+              toolName,
+              toolArguments,
+              supabase,
+              request,
+            );
+          } catch (error) {
+            result = {
+              source: toolName,
+              status: "unavailable",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "The deterministic evidence lookup could not be completed.",
+            };
+          }
+          toolOutcomes.set(toolName, result);
+          if (result.status !== "unavailable") usedSources.add(result.source);
+          if (
+            toolName === "get_shift_cover" &&
+            result.data &&
+            typeof result.data === "object" &&
+            !Array.isArray(result.data)
+          ) {
+            shiftCoverEvidence = result.data as JsonRecord;
+            shiftCoverArguments = toolArguments;
+          }
+          const link = evidenceLinkForTool(toolName, toolArguments);
+          if (link) evidenceLinks.set(link.path, link);
+          return { toolName, result };
+        }),
       );
-      if (deterministicLink) {
-        evidenceLinks.set(deterministicLink.path, deterministicLink);
+      for (const { toolName, result } of deterministicResults) {
+        input.push({
+          role: "user",
+          content:
+            `Verified Vorta evidence from ${toolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:\n${trimToolResult(result)}`,
+        });
       }
-      input.push({
-        role: "user",
-        content:
-          `Verified Vorta evidence from ${deterministicToolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:
-${trimToolResult(deterministicResult)}`,
-      });
+      const deterministicAnswer = deterministicOperationalAnswer(
+        request,
+        questionPlan,
+        toolOutcomes,
+      );
+      if (deterministicAnswer) {
+        return completeDeterministicAnswer(deterministicAnswer);
+      }
     }
+
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await client.responses.create({
@@ -2639,13 +4121,13 @@ ${trimToolResult(deterministicResult)}`,
         reasoning: { effort: answerReasoningEffort(questionPlan) },
         instructions: systemInstructions(request, questionPlan),
         input,
-        tools: deterministicToolName ? [] : TOOLS,
-        tool_choice: deterministicToolName
+        tools: hasDeterministicRouting ? [] : TOOLS,
+        tool_choice: hasDeterministicRouting
           ? "none"
           : round === 0 && questionPlan?.shouldUseTools === true
             ? "required"
             : "auto",
-        parallel_tool_calls: !deterministicToolName,
+        parallel_tool_calls: !hasDeterministicRouting,
         max_output_tokens: answerOutputTokenBudget(questionPlan),
         store: false,
         text: {
@@ -2689,6 +4171,9 @@ ${trimToolResult(deterministicResult)}`,
           shiftCoverArguments,
         );
         enforceDeterministicResponseShape(answer, questionPlan);
+        enforcePlannedResponseShape(answer, questionPlan);
+        retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
+        enforceEquipmentReturnToServiceSafety(answer, questionPlan);
         const calibratedConfidence = evidenceAwareConfidence(
           answer,
           questionPlan,
@@ -2835,6 +4320,19 @@ ${trimToolResult(deterministicResult)}`,
       422,
     );
   } catch (error) {
+    const verifiedFallback = deterministicOperationalAnswer(
+      request,
+      questionPlan,
+      toolOutcomes,
+    );
+    if (verifiedFallback && usedSources.size > 0) {
+      console.warn("Ask Vorta final reasoning failed; returning verified deterministic evidence", {
+        requestId: _context.requestId,
+        userId: userData.user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return completeDeterministicAnswer(verifiedFallback);
+    }
     await supabase
       .from("ask_vorta_interactions")
       .update({

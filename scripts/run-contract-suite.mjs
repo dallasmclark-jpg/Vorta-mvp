@@ -23,6 +23,7 @@ const contracts = [
   ["VOR-037 unified Ask Vorta", "scripts/vor-037-unified-ask-vorta-contracts.mjs"],
   ["VOR-038 Ask Vorta intelligence", "scripts/vor-038-ask-vorta-intelligence-contracts.mjs"],
   ["VOR-039 Ask Vorta confidence and latency", "scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs"],
+  ["VOR-040 natural Ask Vorta questions", "scripts/vor-040-natural-question-contracts.mjs"],
   ["VOR-041 Ask Vorta workspace", "scripts/vor-041-ask-vorta-workspace-contracts.mjs"],
   ["VOR-042 Ask Vorta response hierarchy", "scripts/vor-042-ask-vorta-polish-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
