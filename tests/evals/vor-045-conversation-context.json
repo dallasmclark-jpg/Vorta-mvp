@@ -1,0 +1,132 @@
+{
+  "suite": "VOR-045 conversational context",
+  "scenarios": [
+    {
+      "id": "ranked-action-second-option",
+      "context": {
+        "version": 1,
+        "subject": "site_priorities",
+        "intent": "Ranked operational actions",
+        "activeEquipment": null,
+        "area": "Utilities",
+        "shift": null,
+        "dateRange": null,
+        "orderedOptions": [
+          { "position": 1, "type": "ranked_action", "label": "WO-250511 · WFI-01", "equipmentQuery": "WFI-01", "reference": "WO-250511" },
+          { "position": 2, "type": "ranked_action", "label": "WO-250466 · VF-02", "equipmentQuery": "VF-02", "reference": "WO-250466" },
+          { "position": 3, "type": "ranked_action", "label": "WO-250477 · AUT-02", "equipmentQuery": "AUT-02", "reference": "WO-250477" }
+        ],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:30:00.000Z"
+      },
+      "question": "Show me the second option",
+      "expect": { "selectedPosition": 2, "equipmentQuery": "VF-02", "shouldClarify": false, "usedContext": true }
+    },
+    {
+      "id": "equipment-pronoun",
+      "context": {
+        "version": 1,
+        "subject": "equipment",
+        "intent": "Equipment decision",
+        "activeEquipment": { "query": "VF-02", "code": "VF-02", "name": "Bosch Vial Filler" },
+        "area": "Fill Finish",
+        "shift": null,
+        "dateRange": null,
+        "orderedOptions": [],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:31:00.000Z"
+      },
+      "question": "What is stopping that asset?",
+      "expect": { "equipmentQuery": "VF-02", "shouldClarify": false, "usedContext": true }
+    },
+    {
+      "id": "explicit-equipment-overrides",
+      "contextRef": "equipment-pronoun",
+      "question": "What about AUT-02 instead?",
+      "expect": { "equipmentQuery": null, "hasExplicitEquipment": true, "shouldClarify": false }
+    },
+    {
+      "id": "shift-cover-date-change",
+      "context": {
+        "version": 1,
+        "subject": "shift_cover",
+        "intent": "Shift cover risk",
+        "activeEquipment": null,
+        "area": null,
+        "shift": { "type": "night", "date": "2026-08-04" },
+        "dateRange": { "startDate": "2026-08-04", "endDate": "2026-08-04", "timezone": "Europe/London" },
+        "orderedOptions": [],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:32:00.000Z"
+      },
+      "question": "What about next week?",
+      "expect": { "subject": "shift_cover", "inheritedDateRange": null, "hasExplicitDate": true, "shouldClarify": false }
+    },
+    {
+      "id": "spare-option-pronoun",
+      "context": {
+        "version": 1,
+        "subject": "spares",
+        "intent": "Critical spare priority",
+        "activeEquipment": null,
+        "area": null,
+        "shift": null,
+        "dateRange": null,
+        "orderedOptions": [
+          { "position": 1, "type": "spare", "label": "SEAL-447 · VF-02", "equipmentQuery": "VF-02", "reference": "SEAL-447" }
+        ],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:33:00.000Z"
+      },
+      "question": "Why is that one important?",
+      "expect": { "selectedPosition": 1, "equipmentQuery": "VF-02", "shouldClarify": false }
+    },
+    {
+      "id": "document-second-result",
+      "context": {
+        "version": 1,
+        "subject": "documents",
+        "intent": "Approved document search",
+        "activeEquipment": { "query": "VF-02", "code": "VF-02" },
+        "area": "Fill Finish",
+        "shift": null,
+        "dateRange": null,
+        "orderedOptions": [
+          { "position": 1, "type": "document", "label": "Bosch VF operating manual · Rev 6", "equipmentQuery": "VF-02" },
+          { "position": 2, "type": "document", "label": "VF reject monitoring SOP · Rev 4", "equipmentQuery": "VF-02" }
+        ],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:34:00.000Z"
+      },
+      "question": "Open the second result",
+      "expect": { "selectedPosition": 2, "equipmentQuery": "VF-02", "shouldClarify": false }
+    },
+    {
+      "id": "ambiguous-cover-pronoun",
+      "context": {
+        "version": 1,
+        "subject": "shift_cover",
+        "intent": "Cover options",
+        "activeEquipment": null,
+        "area": null,
+        "shift": { "type": "night" },
+        "dateRange": null,
+        "orderedOptions": [
+          { "position": 1, "type": "cover", "label": "Sarah Chen + Mark Evans" },
+          { "position": 2, "type": "cover", "label": "Paul Jones + Amy Reed" }
+        ],
+        "selectedOption": null,
+        "updatedAt": "2026-08-03T11:35:00.000Z"
+      },
+      "question": "Use that one",
+      "expect": { "shouldClarify": true, "clarificationContains": "Which one" }
+    },
+    {
+      "id": "recent-restore-roundtrip",
+      "contextRef": "document-second-result",
+      "roundTrip": true,
+      "question": "What revision is it?",
+      "expect": { "equipmentQuery": "VF-02", "subject": "documents", "shouldClarify": false, "usedContext": true }
+    }
+  ]
+}
