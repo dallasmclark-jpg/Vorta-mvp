@@ -1,0 +1,162 @@
+name: VOR-048 routing telemetry feedback
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta.mts"
+      - "src/screens/AiOperations/**"
+      - "scripts/vor-048*"
+      - "scripts/vor-044-operational-value-ranking-contracts.mjs"
+      - "scripts/vor-045-conversation-context-contracts.mjs"
+      - "scripts/vor-046-photo-ocr-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - "supabase/migrations/20260803202500_vor_048_route_latency_feedback.sql"
+      - "tests/browser/vor-048-feedback.spec.ts"
+      - "tests/evals/vor-048-shift-cover-routing.json"
+      - "package.json"
+      - ".github/workflows/vor-048-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta.mts"
+      - "src/screens/AiOperations/**"
+      - "scripts/vor-048*"
+      - "scripts/vor-044-operational-value-ranking-contracts.mjs"
+      - "scripts/vor-045-conversation-context-contracts.mjs"
+      - "scripts/vor-046-photo-ocr-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - "supabase/migrations/20260803202500_vor_048_route_latency_feedback.sql"
+      - "tests/browser/vor-048-feedback.spec.ts"
+      - "tests/evals/vor-048-shift-cover-routing.json"
+      - "package.json"
+      - ".github/workflows/vor-048-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-048-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Routing, telemetry, feedback and live preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PREVIEW_URL: https://deploy-preview-${{ github.event.pull_request.number }}--vorta-app.netlify.app
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply the complete Ask Vorta integration chain
+        run: npm run build:metadata
+
+      - name: Run transformed-source TypeScript checks
+        run: npm run typecheck -- --pretty false
+
+      - name: Run permanent VOR-048 contracts
+        run: node scripts/vor-048-routing-telemetry-feedback-contracts.mjs
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Build production bundle
+        run: npx vite build
+
+      - name: Enforce unchanged performance budgets
+        run: npm run test:performance
+
+      - name: Install browser-test runner without changing lockfile
+        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated phone and laptop feedback journeys
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:browser -- \
+            tests/browser/vor-048-feedback.spec.ts \
+            --project=phone-360 \
+            --project=laptop-1366 2>&1 | tee vor-048-browser.log
+
+      - name: Wait for exact Netlify preview commit
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            metadata="$(curl -fsS "${PREVIEW_URL}/vorta-build.json" || true)"
+            if printf '%s' "$metadata" | grep -Fq "$EXPECTED_HEAD_SHA"; then
+              echo "Netlify preview is serving $EXPECTED_HEAD_SHA."
+              exit 0
+            fi
+            echo "Preview is not on the expected commit yet (${attempt}/60)."
+            sleep 10
+          done
+          echo "Netlify preview did not publish the expected commit." >&2
+          exit 1
+
+      - name: Run live Shift Cover routing and latency scenarios
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
+          VORTA_EVAL_DELAY_MS: 500
+        run: |
+          set -o pipefail
+          npm run eval:ask-vorta:vor048 2>&1 | tee vor-048-live-eval.log
+
+      - name: Preserve failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-048-failure-evidence-${{ github.sha }}
+          path: |
+            vor-048-browser.log
+            vor-048-live-eval.log
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Preserve successful validation evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-048-validation-evidence-${{ github.sha }}
+          path: |
+            dist/vorta-build.json
+            vor-048-browser.log
+            vor-048-live-eval.log
+          if-no-files-found: warn
+          retention-days: 7
