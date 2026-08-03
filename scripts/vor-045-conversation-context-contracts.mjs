@@ -111,6 +111,11 @@ assert.equal("extra" in bounded, false);
 assert.equal("unexpected" in bounded.orderedOptions[0], false);
 assert.equal("injected" in bounded.activeEquipment, false);
 
+const normaliser = readFileSync("scripts/vor-045-normalise-request-context.mjs", "utf8");
+assert.match(normaliser, /interface PageContext/);
+assert.match(normaliser, /pageContext: PageContext/);
+assert.match(normaliser, /inline pageContext type/);
+
 const integration = readFileSync("scripts/vor-045-integrate-conversation-context.mjs", "utf8");
 assert.match(integration, /conversationContext/);
 assert.match(integration, /resolveConversationFollowUp/);
@@ -129,11 +134,11 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs && node scripts\/write-build-metadata\.mjs/,
+  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs && node scripts\/write-build-metadata\.mjs/,
 );
 assert.match(
   packageJson.scripts.predev,
-  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs/,
+  /vor-044-integrate-operational-value\.mjs && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs/,
 );
 
 console.log("VOR-045 conversational context contracts passed.");
