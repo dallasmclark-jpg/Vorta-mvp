@@ -11,8 +11,8 @@ insert into private.vorta_privileged_rpc_allowlist (
 values
   (
     'vorta_create_ask_vorta_action_draft(uuid,uuid,text,text,uuid,text,text,text,text,text,jsonb,jsonb,text)',
-    'Create an idempotent typed Ask Vorta action draft',
-    'SECURITY DEFINER with fixed search path; authenticated execution only; completed interaction ownership, active site, management role, target scope and proposal shape are revalidated. No target maintenance record is changed.',
+    'Create an idempotent Vorta shift-handover draft',
+    'SECURITY DEFINER with fixed search path; authenticated execution only; completed interaction ownership, active site, management role, open work-order target and exact handover proposal are revalidated. SAP and the target work order are not changed.',
     '20260803175800_vor_047_register_action_rpcs',
     now(),
     'mutation',
@@ -21,7 +21,7 @@ values
   ),
   (
     'vorta_get_ask_vorta_action_draft(uuid)',
-    'Read one owned Ask Vorta action draft and audit events',
+    'Read one owned Ask Vorta handover draft and its audit events',
     'SECURITY DEFINER with fixed search path; authenticated execution only; draft ownership and active site access are required.',
     '20260803175800_vor_047_register_action_rpcs',
     now(),
@@ -31,8 +31,8 @@ values
   ),
   (
     'vorta_cancel_ask_vorta_action(uuid,integer)',
-    'Cancel one owned Ask Vorta action draft',
-    'SECURITY DEFINER with fixed search path; authenticated execution only; management role, ownership, active site and optimistic draft version are revalidated. Source records are not changed.',
+    'Cancel one owned Ask Vorta handover draft',
+    'SECURITY DEFINER with fixed search path; authenticated execution only; management role, ownership, active site and optimistic draft version are revalidated. The work order, handover source and SAP remain unchanged.',
     '20260803175800_vor_047_register_action_rpcs',
     now(),
     'mutation',
@@ -41,8 +41,8 @@ values
   ),
   (
     'vorta_confirm_ask_vorta_action(uuid,integer)',
-    'Confirm one owned Ask Vorta draft through an action-specific workflow',
-    'SECURITY DEFINER with fixed search path; authenticated execution only; management role, ownership, active site, optimistic draft version and current target state are revalidated. Dispatch is limited to handover note, maintenance notification and spare stock review task workflows.',
+    'Confirm one owned Vorta shift-handover action',
+    'SECURITY DEFINER with fixed search path; authenticated execution only; management role, ownership, active site, optimistic draft version and current open work-order state are revalidated. Dispatch is limited to the existing vorta_save_shift_handover_action RPC. SAP, maintenance notifications, work requests, work orders, stock records and parallel task queues cannot be created or changed.',
     '20260803175800_vor_047_register_action_rpcs',
     now(),
     'mutation',
