@@ -58,6 +58,18 @@ begin
 end;
 $block$;
 
+create index if not exists ask_vorta_action_drafts_interaction_idx
+  on public.ask_vorta_action_drafts (interaction_id)
+  where interaction_id is not null;
+create index if not exists ask_vorta_action_drafts_confirmed_by_idx
+  on public.ask_vorta_action_drafts (confirmed_by)
+  where confirmed_by is not null;
+create index if not exists ask_vorta_action_drafts_cancelled_by_idx
+  on public.ask_vorta_action_drafts (cancelled_by)
+  where cancelled_by is not null;
+create index if not exists ask_vorta_action_events_actor_idx
+  on public.ask_vorta_action_events (actor_id, created_at desc);
+
 create or replace function private.vorta_block_ask_vorta_maintenance_notifications()
 returns trigger
 language plpgsql
