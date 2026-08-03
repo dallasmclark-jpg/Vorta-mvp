@@ -11,11 +11,14 @@ const assistantPath = resolve(
 );
 const marker = 'type AskVortaPhase = "planner" | "evidence" | "answer";';
 const feedbackMarker = 'data-vorta-ai-feedback="true"';
+const sitePriorityPageExclusion =
+  '!/\\bshift-cover\\b/.test(request.pageContext.path)';
 
 const backendSource = readFileSync(backendPath, "utf8");
 const assistantSource = readFileSync(assistantPath, "utf8");
 const fullyApplied =
   backendSource.includes(marker) &&
+  backendSource.includes(sitePriorityPageExclusion) &&
   assistantSource.includes(feedbackMarker) &&
   assistantSource.includes("<section");
 if (fullyApplied) {
@@ -49,6 +52,22 @@ for (const patchName of patchNames) {
     );
   }
 }
+
+let transformedBackend = readFileSync(backendPath, "utf8");
+const sitePriorityIntent = '      "site_threat_prioritization",';
+const sitePriorityIntentIndex = transformedBackend.indexOf(sitePriorityIntent);
+const sitePriorityIfIndex = transformedBackend.lastIndexOf(
+  "  if (",
+  sitePriorityIntentIndex,
+);
+if (sitePriorityIntentIndex < 0 || sitePriorityIfIndex < 0) {
+  throw new Error("VOR-048 could not locate the broad site-priority route.");
+}
+transformedBackend =
+  transformedBackend.slice(0, sitePriorityIfIndex) +
+  `  if (\n    ${sitePriorityPageExclusion} &&\n    ` +
+  transformedBackend.slice(sitePriorityIfIndex + "  if (".length);
+writeFileSync(backendPath, transformedBackend);
 
 let transformedAssistant = readFileSync(assistantPath, "utf8");
 const feedbackOpenAnchor = `{answer.responseId && (\n        <div className="space-y-2">`;
