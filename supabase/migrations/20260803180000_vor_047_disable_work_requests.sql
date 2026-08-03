@@ -1,54 +1,62 @@
 begin;
 
-create or replace function private.vorta_disable_ask_vorta_work_request_drafts()
-returns trigger
-language plpgsql
-security invoker
-set search_path to 'pg_catalog', 'public', 'private'
-as $function$
-begin
-  if new.action_kind = 'work_request' then
-    new.supported := false;
-    new.failure_reason := coalesce(
-      nullif(btrim(new.failure_reason), ''),
-      'Disabled: Vorta is read-only from SAP and cannot create maintenance work requests or notifications.'
-    );
-  end if;
-  return new;
-end;
-$function$;
-
-revoke all on function private.vorta_disable_ask_vorta_work_request_drafts()
-  from public, anon, authenticated, service_role;
-
-drop trigger if exists ask_vorta_disable_work_request_drafts
-  on public.ask_vorta_action_drafts;
-
-create trigger ask_vorta_disable_work_request_drafts
-before insert or update of action_kind, supported
-on public.ask_vorta_action_drafts
-for each row
-execute function private.vorta_disable_ask_vorta_work_request_drafts();
-
 update public.ask_vorta_action_drafts
-set supported = false,
+set action_kind = 'read_only',
+    supported = false,
     failure_reason = coalesce(
       nullif(btrim(failure_reason), ''),
-      'Disabled: Vorta is read-only from SAP and cannot create maintenance work requests or notifications.'
+      'Unsupported by the Vorta read-only SAP boundary.'
     ),
     updated_at = now()
-where action_kind = 'work_request';
+where action_kind not in ('read_only', 'handover_note');
 
 alter table public.ask_vorta_action_drafts
   drop constraint if exists ask_vorta_action_drafts_work_request_disabled;
 
 alter table public.ask_vorta_action_drafts
-  add constraint ask_vorta_action_drafts_work_request_disabled
-  check (action_kind <> 'work_request' or supported = false)
-  not valid;
+  drop constraint if exists ask_vorta_action_drafts_action_kind_check;
 
 alter table public.ask_vorta_action_drafts
-  validate constraint ask_vorta_action_drafts_work_request_disabled;
+  add constraint ask_vorta_action_drafts_action_kind_check
+  check (action_kind in ('read_only', 'handover_note'));
+
+drop trigger if exists ask_vorta_disable_work_request_drafts
+  on public.ask_vorta_action_drafts;
+drop function if exists private.vorta_disable_ask_vorta_work_request_drafts();
+
+do $block$
+declare
+  v_task_count bigint := 0;
+begin
+  if to_regclass('public.spare_stock_review_tasks') is not null then
+    execute 'select count(*) from public.spare_stock_review_tasks'
+      into v_task_count;
+    if v_task_count <> 0 then
+      raise exception
+        'VOR-047 cannot remove spare_stock_review_tasks because % records exist.',
+        v_task_count;
+    end if;
+    execute 'drop table public.spare_stock_review_tasks';
+  end if;
+end;
+$block$;
+
+do $block$
+declare
+  v_notification_count bigint;
+begin
+  select count(*)
+  into v_notification_count
+  from public.maintenance_notifications
+  where lower(btrim(coalesce(source_system, ''))) = 'ask_vorta';
+
+  if v_notification_count <> 0 then
+    raise exception
+      'VOR-047 found % Ask Vorta maintenance notifications. Reconciliation must fail closed.',
+      v_notification_count;
+  end if;
+end;
+$block$;
 
 create or replace function private.vorta_block_ask_vorta_maintenance_notifications()
 returns trigger
@@ -58,7 +66,8 @@ set search_path to 'pg_catalog', 'public', 'private'
 as $function$
 begin
   if lower(btrim(coalesce(new.source_system, ''))) = 'ask_vorta' then
-    raise exception 'Ask Vorta cannot create maintenance notifications because Vorta is read-only from SAP.'
+    raise exception
+      'Ask Vorta cannot create or relabel maintenance notifications because Vorta is read-only from SAP.'
       using errcode = '0A000';
   end if;
   return new;
@@ -77,16 +86,13 @@ on public.maintenance_notifications
 for each row
 execute function private.vorta_block_ask_vorta_maintenance_notifications();
 
-revoke all on function public.vorta_confirm_ask_vorta_action(uuid, integer)
-  from public, anon, authenticated, service_role;
-grant execute on function public.vorta_confirm_ask_vorta_action(uuid, integer)
-  to authenticated, service_role;
-
-comment on function private.vorta_disable_ask_vorta_work_request_drafts()
-  is 'Permanently forces Ask Vorta work-request drafts to unsupported because Vorta is read-only from SAP.';
-
 comment on function private.vorta_block_ask_vorta_maintenance_notifications()
-  is 'Blocks Ask Vorta from creating or relabelling maintenance notifications; SAP remains the maintenance system of record.';
+  is 'Hard boundary preventing Ask Vorta from creating or relabelling maintenance notifications; SAP remains the maintenance system of record.';
+comment on function public.vorta_create_ask_vorta_action_draft(
+  uuid, uuid, text, text, uuid, text, text, text, text, text, jsonb, jsonb, text
+) is 'Prepares only a reviewable Vorta shift-handover draft. Work requests, notifications, stock tasks and SAP-equivalent records are unsupported.';
+comment on function public.vorta_confirm_ask_vorta_action(uuid, integer)
+  is 'Confirms only a Vorta shift-handover action linked to an existing open work order. SAP remains unchanged.';
 
 notify pgrst, 'reload schema';
 
