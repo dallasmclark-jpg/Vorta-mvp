@@ -68,17 +68,17 @@ try {
   assert.ok(data.security && typeof data.security === "object", "Health report contains no RPC security contract");
   assert.equal(
     Number(data.security.reviewedAuthenticatedMutationRpcCount),
-    18,
+    21,
     "Authenticated mutation RPC manifest count has drifted",
   );
   assert.equal(
     Number(data.security.reviewedAuthenticatedReadRpcCount),
-    52,
+    53,
     "Authenticated read RPC manifest count has drifted",
   );
   assert.equal(
     Number(data.security.authenticatedSecurityDefinerRpcCount),
-    67,
+    71,
     "Authenticated SECURITY DEFINER RPC count has drifted",
   );
   assert.equal(
