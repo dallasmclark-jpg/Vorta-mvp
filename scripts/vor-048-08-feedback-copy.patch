@@ -1,0 +1,11 @@
+--- a/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
++++ b/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
+@@ -2478,7 +2478,7 @@
+                 id={`ask-vorta-feedback-${answer.responseId}`}
+                 className="text-xs font-semibold text-amber-100"
+               >
+-                What was not useful? Optional, but considerably more informative than a lonely thumbs-down.
++                What was not useful? Choose a reason or add a brief detail to help improve the response.
+               </p>
+               <label className="block space-y-1 text-xs text-slate-300">
+                 <span>Reason</span>
