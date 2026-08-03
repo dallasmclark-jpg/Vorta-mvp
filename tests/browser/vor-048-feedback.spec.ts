@@ -70,10 +70,14 @@ function feedbackText(page: Page, text: string): Locator {
     .first();
 }
 
-async function reveal(locator: Locator): Promise<void> {
-  await expect(locator).toBeAttached({ timeout: 20_000 });
-  await locator.scrollIntoViewIfNeeded();
-  await expect(locator).toBeVisible();
+async function scrollAssistantToEnd(page: Page): Promise<void> {
+  const messages = activeAssistantMessages(page);
+  await expect(messages).toBeVisible({ timeout: 20_000 });
+  await messages.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
 }
 
 async function installFeedbackMocks(
@@ -105,7 +109,13 @@ async function openMockedShiftCoverAnswer(page: Page): Promise<void> {
       }),
     );
   });
-  await reveal(feedbackText(page, "Was this decision pack useful?"));
+
+  const messages = activeAssistantMessages(page);
+  await expect(
+    messages.getByText(askVortaAnswer.directAnswer, { exact: true }),
+  ).toBeAttached({ timeout: 20_000 });
+  await scrollAssistantToEnd(page);
+  await expect(feedbackText(page, "Was this decision pack useful?")).toBeVisible();
 }
 
 test("VOR-048 not-helpful feedback captures an optional bounded reason", async ({
@@ -128,18 +138,20 @@ test("VOR-048 not-helpful feedback captures an optional bounded reason", async (
     page,
     "Mark this Ask Vorta response not helpful",
   );
-  await reveal(notHelpful);
+  await expect(notHelpful).toBeVisible();
   await notHelpful.click();
+  await scrollAssistantToEnd(page);
 
   const prompt = activeAssistantMessages(page)
     .getByRole("group", { name: /What was not useful/i })
     .first();
-  await reveal(prompt);
+  await expect(prompt).toBeVisible();
   await prompt.getByLabel("Reason").selectOption("wrong_route");
   await prompt.getByLabel("Brief detail").fill("It answered equipment history instead of the rota question.");
   await prompt.getByRole("button", { name: "Submit feedback" }).click();
+  await scrollAssistantToEnd(page);
 
-  await reveal(feedbackText(page, "Thanks—this improves Ask Vorta."));
+  await expect(feedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "not_helpful",
@@ -166,10 +178,11 @@ test("VOR-048 helpful feedback remains one tap on phone", async ({ page }, testI
     page,
     "Mark this Ask Vorta response helpful",
   );
-  await reveal(helpful);
+  await expect(helpful).toBeVisible();
   await helpful.click();
+  await scrollAssistantToEnd(page);
 
-  await reveal(feedbackText(page, "Thanks—this improves Ask Vorta."));
+  await expect(feedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "helpful",
