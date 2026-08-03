@@ -13,12 +13,15 @@ const marker = 'type AskVortaPhase = "planner" | "evidence" | "answer";';
 const feedbackMarker = 'data-vorta-ai-feedback="true"';
 const sitePriorityPageExclusion =
   '!/\\bshift-cover\\b/.test(request.pageContext.path)';
+const deterministicPageContextMarker =
+  "    (shiftCoverPageContext ||\n      (asksForCoverDecision &&";
 
 const backendSource = readFileSync(backendPath, "utf8");
 const assistantSource = readFileSync(assistantPath, "utf8");
 const fullyApplied =
   backendSource.includes(marker) &&
   backendSource.includes(sitePriorityPageExclusion) &&
+  backendSource.includes(deterministicPageContextMarker) &&
   assistantSource.includes(feedbackMarker) &&
   assistantSource.includes("<section");
 if (fullyApplied) {
@@ -67,6 +70,21 @@ transformedBackend =
   transformedBackend.slice(0, sitePriorityIfIndex) +
   `  if (\n    ${sitePriorityPageExclusion} &&\n    ` +
   transformedBackend.slice(sitePriorityIfIndex + "  if (".length);
+
+const shiftCoverDecisionAnchor =
+  "    asksForCoverDecision &&\n" +
+  "    (explicitShiftCoverQuestion || datedWorkforceQuestion || shiftCoverPageContext || inheritedShiftCoverContext) &&";
+const shiftCoverDecisionReplacement =
+  "    (shiftCoverPageContext ||\n" +
+  "      (asksForCoverDecision &&\n" +
+  "        (explicitShiftCoverQuestion || datedWorkforceQuestion || inheritedShiftCoverContext))) &&";
+if (!transformedBackend.includes(shiftCoverDecisionAnchor)) {
+  throw new Error("VOR-048 could not locate the Shift Cover decision condition.");
+}
+transformedBackend = transformedBackend.replace(
+  shiftCoverDecisionAnchor,
+  shiftCoverDecisionReplacement,
+);
 writeFileSync(backendPath, transformedBackend);
 
 let transformedAssistant = readFileSync(assistantPath, "utf8");
