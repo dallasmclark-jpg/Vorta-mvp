@@ -29,6 +29,7 @@ const contracts = [
   ["VOR-043 exact document intelligence", "scripts/vor-043-exact-document-intelligence-contracts.mjs"],
   ["VOR-044 operational value ranking", "scripts/vor-044-operational-value-ranking-contracts.mjs"],
   ["VOR-045 conversational context", "scripts/vor-045-conversation-context-contracts.mjs"],
+  ["VOR-046 photo and OCR diagnosis", "scripts/vor-046-photo-ocr-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
