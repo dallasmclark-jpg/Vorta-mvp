@@ -38,25 +38,18 @@ function localDateTime(date: Date): string {
 }
 
 function initialKind(actionText: string): AskVortaActionKind {
-  if (/spare|stock|inventory|part|replenish|order/i.test(actionText)) {
-    return "spare_stock_review";
-  }
   if (/handover|incoming shift|outgoing shift|next shift/i.test(actionText)) {
     return "handover_note";
   }
-  return "work_request";
+  return "spare_stock_review";
 }
 
 function kindLabel(kind: AskVortaActionKind): string {
-  if (kind === "handover_note") return "Handover note";
-  if (kind === "spare_stock_review") return "Spare stock review";
-  return "Maintenance work request";
+  return kind === "handover_note" ? "Handover note" : "Spare stock review";
 }
 
 function targetLabel(kind: AskVortaActionKind): string {
-  if (kind === "handover_note") return "Open work order";
-  if (kind === "spare_stock_review") return "Spare component";
-  return "Equipment";
+  return kind === "handover_note" ? "Open work order" : "Spare component";
 }
 
 function proposedRows(value: Record<string, unknown>): Array<[string, string]> {
@@ -93,27 +86,6 @@ export function AskVortaActionReviewDialog({
   const [draft, setDraft] = useState<AskVortaControlledDraft | null>(null);
 
   const now = useMemo(() => new Date(), []);
-  const [shortText, setShortText] = useState(action.action.slice(0, 160));
-  const [longText, setLongText] = useState(
-    [action.expectedImpact, action.verification].filter(Boolean).join("\n\n"),
-  );
-  const [priorityCode, setPriorityCode] = useState(
-    action.priority === "now"
-      ? "1"
-      : action.priority === "before_shift"
-        ? "2"
-        : action.priority === "this_week"
-          ? "3"
-          : "4",
-  );
-  const [requiredStartDate, setRequiredStartDate] = useState(
-    now.toISOString().slice(0, 10),
-  );
-  const [requiredEndDate, setRequiredEndDate] = useState(
-    new Date(now.getTime() + 24 * 60 * 60 * 1_000)
-      .toISOString()
-      .slice(0, 10),
-  );
   const [outgoingNote, setOutgoingNote] = useState(
     evidence[0] || action.expectedImpact,
   );
@@ -186,35 +158,20 @@ export function AskVortaActionReviewDialog({
         expectedVersion: Number(selectedTarget?.snapshot.expectedVersion) || 0,
       };
     }
-    if (kind === "spare_stock_review") {
-      return {
-        requestedQuantity: Number(requestedQuantity),
-        reason: stockReason.trim(),
-        ownerName: ownerName.trim(),
-        dueAt: new Date(dueAt).toISOString(),
-      };
-    }
     return {
-      shortText: shortText.trim(),
-      longText: longText.trim(),
-      priorityCode,
-      requiredStartDate,
-      requiredEndDate,
-      breakdownIndicator: false,
+      requestedQuantity: Number(requestedQuantity),
+      reason: stockReason.trim(),
+      ownerName: ownerName.trim(),
+      dueAt: new Date(dueAt).toISOString(),
     };
   }, [
     dueAt,
     kind,
-    longText,
     nextAction,
     outgoingNote,
     ownerName,
-    priorityCode,
     requestedQuantity,
-    requiredEndDate,
-    requiredStartDate,
     selectedTarget?.snapshot.expectedVersion,
-    shortText,
     stockReason,
     windowEnd,
     windowStart,
@@ -222,11 +179,9 @@ export function AskVortaActionReviewDialog({
 
   const formValid = Boolean(
     selectedTarget &&
-      (kind === "work_request"
-        ? shortText.trim()
-        : kind === "handover_note"
-          ? outgoingNote.trim() && nextAction.trim() && ownerName.trim()
-          : stockReason.trim() && ownerName.trim() && Number(requestedQuantity) > 0),
+      (kind === "handover_note"
+        ? outgoingNote.trim() && nextAction.trim() && ownerName.trim()
+        : stockReason.trim() && ownerName.trim() && Number(requestedQuantity) > 0),
   );
 
   const prepareDraft = async () => {
@@ -310,17 +265,17 @@ export function AskVortaActionReviewDialog({
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
               <ShieldCheck className="h-4 w-4" />
-              Controlled action
+              Vorta-native action
             </div>
             <h2 id="ask-vorta-action-title" className="text-lg font-semibold text-white">
               {stage === "complete"
                 ? "Action confirmed"
                 : stage === "review"
                   ? "Review exact proposed changes"
-                  : "Prepare an action for confirmation"}
+                  : "Prepare a Vorta action for confirmation"}
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-              A normal Ask Vorta answer never changes maintenance records.
+              Vorta remains read-only from SAP. No SAP notification, work order or stock record can be created or changed here.
             </p>
           </div>
           <button
@@ -359,7 +314,6 @@ export function AskVortaActionReviewDialog({
                     onChange={(event) => setKind(event.target.value as AskVortaActionKind)}
                     className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500"
                   >
-                    <option value="work_request">Maintenance work request</option>
                     <option value="handover_note">Handover note</option>
                     <option value="spare_stock_review">Spare stock review</option>
                   </select>
@@ -385,24 +339,6 @@ export function AskVortaActionReviewDialog({
                 </label>
               </div>
 
-              {kind === "work_request" ? (
-                <div className="space-y-4">
-                  <label className="block space-y-1.5 text-sm text-slate-300">
-                    <span>Request summary</span>
-                    <input value={shortText} maxLength={160} onChange={(event) => setShortText(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500" />
-                  </label>
-                  <label className="block space-y-1.5 text-sm text-slate-300">
-                    <span>Request detail</span>
-                    <textarea value={longText} maxLength={4000} rows={4} onChange={(event) => setLongText(event.target.value)} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500" />
-                  </label>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Priority</span><select value={priorityCode} onChange={(event) => setPriorityCode(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"><option value="1">Critical</option><option value="2">High</option><option value="3">Medium</option><option value="4">Low</option></select></label>
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Required start</span><input type="date" value={requiredStartDate} onChange={(event) => setRequiredStartDate(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Required end</span><input type="date" value={requiredEndDate} onChange={(event) => setRequiredEndDate(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  </div>
-                </div>
-              ) : null}
-
               {kind === "handover_note" ? (
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -426,13 +362,13 @@ export function AskVortaActionReviewDialog({
                   </div>
                   <label className="block space-y-1.5 text-sm text-slate-300"><span>Review reason</span><textarea value={stockReason} rows={4} onChange={(event) => setStockReason(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
                   <label className="block space-y-1.5 text-sm text-slate-300"><span>Due by</span><input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  <p className="text-xs text-slate-500">Confirmation creates a review task. It does not change the recorded stock quantity.</p>
+                  <p className="text-xs text-slate-500">Confirmation creates a Vorta review task only. It does not change the SAP stock quantity.</p>
                 </div>
               ) : null}
 
               <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Preparing the draft records the proposal and evidence only. The target maintenance record changes only after the separate confirmation step.</p>
+                <p>Only Vorta-native notes and review tasks are supported. SAP maintenance requests and notifications remain recommendations only.</p>
               </div>
             </div>
           ) : null}
@@ -440,7 +376,7 @@ export function AskVortaActionReviewDialog({
           {stage === "review" && draft && selectedTarget ? (
             <div className="space-y-5">
               <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">Draft created · source unchanged</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">Draft created · SAP unchanged</p>
                 <p className="mt-2 text-sm font-semibold text-white">{kindLabel(kind)}</p>
                 <p className="mt-1 text-sm text-slate-300">Target: {selectedTarget.label}</p>
                 <p className="mt-1 text-xs text-slate-500">Draft {draft.id} · version {draft.version}</p>
@@ -465,7 +401,7 @@ export function AskVortaActionReviewDialog({
 
               <div className="flex gap-3 rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-100">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Confirming applies this action to Vorta. Permissions, target state and draft version are checked again by the server.</p>
+                <p>Confirming applies this Vorta-native action only. SAP records remain read-only.</p>
               </div>
             </div>
           ) : null}
@@ -473,7 +409,7 @@ export function AskVortaActionReviewDialog({
           {stage === "complete" && draft ? (
             <div className="space-y-5 py-4 text-center">
               {draft.status === "confirmed" ? <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" /> : <AlertTriangle className="mx-auto h-12 w-12 text-red-400" />}
-              <div><h3 className="text-xl font-semibold text-white">{draft.status === "confirmed" ? "Controlled action completed" : "Controlled action failed safely"}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-400">{draft.status === "confirmed" ? `${draft.resultType ?? "Action"} ${draft.resultId ?? ""} was created and linked to this Ask Vorta draft.` : draft.failureReason ?? "The target record was not changed."}</p></div>
+              <div><h3 className="text-xl font-semibold text-white">{draft.status === "confirmed" ? "Vorta action completed" : "Vorta action failed safely"}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-400">{draft.status === "confirmed" ? `${draft.resultType ?? "Vorta action"} ${draft.resultId ?? ""} was created and linked to this Ask Vorta draft. SAP was not changed.` : draft.failureReason ?? "No target record was changed."}</p></div>
               <div className="mx-auto max-w-xl rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-left"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audit evidence</p><p className="mt-2 text-sm text-slate-300">Draft {draft.id} · version {draft.version} · {draft.events.length} recorded event{draft.events.length === 1 ? "" : "s"}</p></div>
             </div>
           ) : null}
@@ -484,7 +420,7 @@ export function AskVortaActionReviewDialog({
             <><Button type="button" variant="outline" onClick={onClose} disabled={working}>Cancel</Button><Button type="button" onClick={() => void prepareDraft()} disabled={!formValid || loadingTargets || working}>{working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}Review exact changes</Button></>
           ) : null}
           {stage === "review" ? (
-            <><Button type="button" variant="outline" onClick={() => void cancelDraft()} disabled={working}>Cancel draft</Button><Button type="button" onClick={() => void confirmDraft()} disabled={working} className="bg-red-600 text-white hover:bg-red-500">{working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}Confirm controlled action</Button></>
+            <><Button type="button" variant="outline" onClick={() => void cancelDraft()} disabled={working}>Cancel draft</Button><Button type="button" onClick={() => void confirmDraft()} disabled={working} className="bg-red-600 text-white hover:bg-red-500">{working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}Confirm Vorta action</Button></>
           ) : null}
           {stage === "complete" ? <Button type="button" onClick={onClose}>Close</Button> : null}
         </footer>
