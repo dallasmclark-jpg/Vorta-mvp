@@ -1,0 +1,165 @@
+name: VOR-040 apply operational response fixes
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/vor-040-natural-question-audit-clean'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out clean audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Detect completed response-shape repair
+        id: state
+        shell: bash
+        run: |
+          if grep -q 'Source evidence freshness' netlify/functions/ask-vorta.mts && grep -q 'Morning briefing evidence' netlify/functions/ask-vorta.mts; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use Node.js
+        if: steps.state.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.state.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Apply focused backend fixes
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('netlify/functions/ask-vorta.mts')
+          source = path.read_text()
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global source
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'VOR-040 {label} anchor count {count}')
+              source = source.replace(old, new, 1)
+
+          replace_once(
+              'completion is not guaranteed.',
+              'completion is not yet proven by the recorded evidence.',
+              'feasibility wording',
+          )
+
+          replace_once(
+              '      evidence: [`Site-risk evidence timestamp check: ${freshness}.`],\n      missingData:',
+              '''      evidence: [`Site-risk evidence timestamp check: ${freshness}.`],
+              findings: [{
+                category: "freshness",
+                severity: newest ? "info" : "medium",
+                title: "Source evidence freshness",
+                detail: newest
+                  ? `Newest recorded source update: ${freshness}. This is source-update time, not query time or a real-time promise.`
+                  : "The site-risk result did not expose a verified source-update timestamp, so freshness cannot be proven from this evidence.",
+              }],
+              missingData:''',
+              'freshness findings',
+          )
+
+          replace_once(
+              '''    /\\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\\b/.test(question)
+            ) {''',
+              '''    /\\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\\b/.test(question) &&
+                !/\\b(?:evidence|prove|confirm|picture)\\b/.test(question)
+            ) {''',
+              'cover evidence exclusion',
+          )
+
+          replace_once(
+              '''      evidence: [
+                `Risk evidence: site score ${riskScore}, highest area ${highestArea}.`,
+                `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
+                `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
+              ],
+              confidence: 78,''',
+              '''      evidence: [
+                `Risk evidence: site score ${riskScore}, highest area ${highestArea}.`,
+                `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
+                `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
+              ],
+              findings: [
+                {
+                  category: "risk",
+                  severity: "high",
+                  title: "Morning briefing evidence · site risk",
+                  detail: `Current site risk is ${riskScore}; ${highestArea} is the highest-risk area returned by the operational snapshot.`,
+                },
+                {
+                  category: "work",
+                  severity: overdueCount > 0 ? "high" : "info",
+                  title: "Morning briefing evidence · work",
+                  detail: `${overdueCount} overdue work orders remain within ${openCount} open work orders.`,
+                },
+                {
+                  category: "spares",
+                  severity: outOfStockCount > 0 ? "high" : "info",
+                  title: "Morning briefing evidence · spares",
+                  detail: `${outOfStockCount} out-of-stock risk items are recorded${criticalSpare ? `; the first recorded constraint is ${criticalSpare}` : ""}.`,
+                },
+              ],
+              confidence: 78,''',
+              'morning findings',
+          )
+
+          path.write_text(source)
+
+          contract_path = Path('scripts/vor-040-natural-question-contracts.mjs')
+          contract = contract_path.read_text()
+          anchor = '"followUpLimit",\n'
+          additions = '''"followUpLimit",
+          "completion is not yet proven by the recorded evidence",
+          "Source evidence freshness",
+          "Morning briefing evidence",
+          "evidence|prove|confirm|picture",
+          '''
+          if contract.count(anchor) != 1:
+              raise SystemExit(f'VOR-040 contract feature anchor count {contract.count(anchor)}')
+          contract_path.write_text(contract.replace(anchor, additions, 1))
+          PY
+
+      - name: Verify backend TypeScript
+        if: steps.state.outputs.skip != 'true'
+        run: npm run typecheck:functions
+
+      - name: Verify Ask Vorta contracts
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/vor-040-natural-question-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Remove disposable workflow
+        if: steps.state.outputs.skip != 'true'
+        run: rm .github/workflows/vor-040-apply-operational-shape-fixes.yml
+
+      - name: Commit verified response-shape fixes
+        if: steps.state.outputs.skip != 'true'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add netlify/functions/ask-vorta.mts scripts/vor-040-natural-question-contracts.mjs
+          git add -u .github/workflows/vor-040-apply-operational-shape-fixes.yml
+          git commit -m 'VOR-040: finish deterministic operational response shaping'
+          git push origin HEAD:${{ github.head_ref }}
