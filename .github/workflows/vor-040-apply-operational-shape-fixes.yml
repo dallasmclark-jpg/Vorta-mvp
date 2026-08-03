@@ -87,18 +87,12 @@ jobs:
           )
 
           replace_once(
-              '''      evidence: [
-                `Risk evidence: site score ${riskScore}, highest area ${highestArea}.`,
-                `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
-                `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
-              ],
-              confidence: 78,''',
-              '''      evidence: [
-                `Risk evidence: site score ${riskScore}, highest area ${highestArea}.`,
-                `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
-                `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
-              ],
-              findings: [
+              '''      confidence: 78,
+            };
+          }
+
+          if (intent === "verified_risk_reduction_ranking") {''',
+              '''      findings: [
                 {
                   category: "risk",
                   severity: "high",
@@ -118,7 +112,11 @@ jobs:
                   detail: `${outOfStockCount} out-of-stock risk items are recorded${criticalSpare ? `; the first recorded constraint is ${criticalSpare}` : ""}.`,
                 },
               ],
-              confidence: 78,''',
+              confidence: 78,
+            };
+          }
+
+          if (intent === "verified_risk_reduction_ranking") {''',
               'morning findings',
           )
 
