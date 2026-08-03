@@ -13,7 +13,7 @@ function closeActiveReview(): void {
   document.body.style.removeProperty("overflow");
 }
 
-function isSupportedVortaNativeAction(
+function isHandoverRecommendation(
   context: AskVortaActionReviewContext,
 ): boolean {
   const actionText = [
@@ -24,25 +24,33 @@ function isSupportedVortaNativeAction(
     .join(" ")
     .toLowerCase();
 
-  return (
-    /handover|incoming shift|outgoing shift|next shift/.test(actionText) ||
-    /spare|stock review|inventory review|replenishment review/.test(actionText)
-  );
+  return /handover|incoming shift|outgoing shift|next shift/.test(actionText);
+}
+
+function isPhoneViewport(): boolean {
+  return window.matchMedia("(max-width: 768px)").matches;
 }
 
 export function openAskVortaActionReviewDialog(
   context: AskVortaActionReviewContext,
 ): void {
-  if (!isSupportedVortaNativeAction(context)) {
+  if (!isHandoverRecommendation(context)) {
     window.alert(
-      "Vorta is read-only from SAP. Ask Vorta can recommend the SAP action, but it cannot create a maintenance request or notification.",
+      "Vorta is read-only from SAP. Ask Vorta can recommend the SAP action, but only an existing-work-order shift-handover action can be confirmed in Vorta.",
+    );
+    return;
+  }
+
+  if (isPhoneViewport()) {
+    window.alert(
+      "The approved mobile Ask Vorta experience remains recommendation-only. Review and confirm the Vorta shift-handover action on tablet or desktop.",
     );
     return;
   }
 
   closeActiveReview();
   const container = document.createElement("div");
-  container.dataset.askVortaControlledAction = "true";
+  container.dataset.askVortaControlledAction = "handover-note";
   document.body.appendChild(container);
   document.body.style.overflow = "hidden";
   activeContainer = container;
