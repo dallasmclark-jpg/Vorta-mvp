@@ -1,0 +1,97 @@
+name: VOR-040 apply deterministic operational answers
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/vor-040-natural-question-audit-clean'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out clean audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Detect completed operational repair
+        id: state
+        shell: bash
+        run: |
+          if grep -q 'deterministicOperationalAnswer' netlify/functions/ask-vorta.mts && grep -q 'site_missing_evidence' netlify/functions/ask-vorta.mts; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use Node.js
+        if: steps.state.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.state.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Apply deterministic operational-answer repair
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          python3 scripts/vor-040-deterministic-operational-answers-patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/vor-040-natural-question-contracts.mjs')
+          source = path.read_text()
+          old = '''  "maintenancePlanOnly",
+          '"maintenance_plan"',
+          '"get_site_maintenance_plan"','''
+          new = '''  "maintenancePlanOnly",
+          '"maintenance_plan"',
+          '"get_site_maintenance_plan"',
+          "deterministicOperationalAnswer",
+          "maintenance_plan_cover_feasibility",
+          "site_evidence_freshness",
+          "site_missing_evidence",
+          "morning_maintenance_briefing",
+          "verified_risk_reduction_ranking",
+          "completeDeterministicAnswer",
+          "verifiedFallback",
+          "followUpLimit",'''
+          if old not in source:
+              raise SystemExit('VOR-040 operational contract anchor missing')
+          path.write_text(source.replace(old, new, 1))
+          PY
+
+      - name: Verify backend TypeScript
+        if: steps.state.outputs.skip != 'true'
+        run: npm run typecheck:functions
+
+      - name: Verify Ask Vorta contracts
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/vor-040-natural-question-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Remove disposable repair scaffolding
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          rm scripts/vor-040-deterministic-operational-answers-patch.py
+          rm .github/workflows/vor-040-apply-operational-answers.yml
+
+      - name: Commit verified operational repair
+        if: steps.state.outputs.skip != 'true'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add netlify/functions/ask-vorta.mts scripts/vor-040-natural-question-contracts.mjs
+          git add -u scripts/vor-040-deterministic-operational-answers-patch.py .github/workflows/vor-040-apply-operational-answers.yml
+          git commit -m 'VOR-040: return verified operational answers without model failure'
+          git push origin HEAD:${{ github.head_ref }}
