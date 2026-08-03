@@ -53,6 +53,14 @@ function json(route: Route, body: unknown): Promise<void> {
   });
 }
 
+function visibleFeedbackButton(page: Page, label: string) {
+  return page.locator(`button[aria-label="${label}"]:visible`).first();
+}
+
+function visibleFeedbackText(page: Page, text: string) {
+  return page.locator("span:visible").filter({ hasText: text }).first();
+}
+
 async function installFeedbackMocks(
   page: Page,
   captured: FeedbackPayload[],
@@ -82,7 +90,7 @@ async function openMockedShiftCoverAnswer(page: Page): Promise<void> {
       }),
     );
   });
-  await expect(page.getByText("Was this decision pack useful?").first()).toBeVisible({
+  await expect(visibleFeedbackText(page, "Was this decision pack useful?")).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -103,18 +111,21 @@ test("VOR-048 not-helpful feedback captures an optional bounded reason", async (
   await installFeedbackMocks(page, captured);
   await openMockedShiftCoverAnswer(page);
 
-  const notHelpful = page
-    .getByRole("button", { name: "Mark this Ask Vorta response not helpful" })
-    .first();
-  await notHelpful.click();
+  await visibleFeedbackButton(
+    page,
+    "Mark this Ask Vorta response not helpful",
+  ).click();
 
-  const prompt = page.getByRole("group", { name: /What was not useful/i }).first();
+  const prompt = page
+    .locator('[role="group"]:visible')
+    .filter({ hasText: "What was not useful?" })
+    .first();
   await expect(prompt).toBeVisible();
   await prompt.getByLabel("Reason").selectOption("wrong_route");
   await prompt.getByLabel("Brief detail").fill("It answered equipment history instead of the rota question.");
   await prompt.getByRole("button", { name: "Submit feedback" }).click();
 
-  await expect(page.getByText("Thanks—this improves Ask Vorta.").first()).toBeVisible();
+  await expect(visibleFeedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "not_helpful",
@@ -137,12 +148,12 @@ test("VOR-048 helpful feedback remains one tap on phone", async ({ page }, testI
   await installFeedbackMocks(page, captured);
   await openMockedShiftCoverAnswer(page);
 
-  await page
-    .getByRole("button", { name: "Mark this Ask Vorta response helpful" })
-    .first()
-    .click();
+  await visibleFeedbackButton(
+    page,
+    "Mark this Ask Vorta response helpful",
+  ).click();
 
-  await expect(page.getByText("Thanks—this improves Ask Vorta.").first()).toBeVisible();
+  await expect(visibleFeedbackText(page, "Thanks—this improves Ask Vorta.")).toBeVisible();
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     feedback: "helpful",
