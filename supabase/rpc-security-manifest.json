@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260728140000",
-  "migrationName": "register_shift_handover_workflow_rpcs",
+  "migrationVersion": "20260803115400",
+  "migrationName": "vor_044_register_operational_value_rpc",
   "invariants": {
-    "authenticatedCallable": 69,
-    "reviewedRead": 51,
+    "authenticatedCallable": 70,
+    "reviewedRead": 52,
     "reviewedMutation": 18,
-    "securityDefiner": 66,
+    "securityDefiner": 67,
     "securityInvoker": 3,
     "anonymousCallable": 0,
     "manifestDrift": 0
@@ -15,6 +15,10 @@
     {
       "identity": "vorta_get_shift_cover_ai_brief(uuid,date,date)",
       "scope": "authenticated requested-site access through vorta_has_site_access"
+    },
+    {
+      "identity": "vorta_get_ranked_operational_actions(uuid,integer)",
+      "scope": "authenticated authorised-demo-site access with optional validated equipment scope"
     }
   ],
   "shiftHandoverWorkflowRpcs": [

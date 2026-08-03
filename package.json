@@ -5,6 +5,7 @@
   "name": "vorta-mvp",
   "description": "Vorta maintenance and reliability intelligence MVP",
   "scripts": {
+    "predev": "node scripts/vor-044-integrate-operational-value.mjs",
     "dev": "vite",
     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
     "typecheck": "tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
@@ -16,7 +17,7 @@
     "eval:ask-vorta:live": "node scripts/ask-vorta-live-evals.mjs",
     "eval:ask-vorta:vor033": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json",
     "prebuild": "node scripts/validate-live-pilot.mjs",
-    "build:metadata": "node scripts/write-build-metadata.mjs",
+    "build:metadata": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/write-build-metadata.mjs",
     "build": "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
     "postbuild": "npm run test:performance",
     "check": "npm run build",
