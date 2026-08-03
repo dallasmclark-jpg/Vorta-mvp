@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-function findClosingBrace(source, braceStart) {
+function scanClosingDelimiter(source, openingIndex, opening, closing) {
   let depth = 0;
   let quote = null;
   let escaped = false;
   let lineComment = false;
   let blockComment = false;
 
-  for (let index = braceStart; index < source.length; index += 1) {
+  for (let index = openingIndex; index < source.length; index += 1) {
     const character = source[index];
     const next = source[index + 1];
 
@@ -48,26 +48,34 @@ function findClosingBrace(source, braceStart) {
       quote = character;
       continue;
     }
-    if (character === "{") depth += 1;
-    if (character === "}") {
+    if (character === opening) depth += 1;
+    if (character === closing) {
       depth -= 1;
       if (depth === 0) return index;
     }
   }
 
-  throw new Error("A closing brace could not be found.");
+  throw new Error(`A closing ${closing} could not be found.`);
+}
+
+function findClosingBrace(source, braceStart) {
+  return scanClosingDelimiter(source, braceStart, "{", "}");
 }
 
 function findFunctionBody(source, name) {
-  const markers = [`function ${name}(`, `async function ${name}(`];
+  const markers = [`async function ${name}(`, `function ${name}(`];
   const start = markers
     .map((marker) => source.indexOf(marker))
     .filter((index) => index >= 0)
     .sort((left, right) => left - right)[0];
   if (start === undefined) throw new Error(`Function ${name} was not found.`);
 
-  const braceStart = source.indexOf("{", start);
+  const parameterStart = source.indexOf("(", start);
+  if (parameterStart < 0) throw new Error(`Function ${name} has no parameters.`);
+  const parameterEnd = scanClosingDelimiter(source, parameterStart, "(", ")");
+  const braceStart = source.indexOf("{", parameterEnd + 1);
   if (braceStart < 0) throw new Error(`Function ${name} has no body.`);
+
   return { braceStart, braceEnd: findClosingBrace(source, braceStart) };
 }
 
