@@ -70,9 +70,8 @@
 -    /\b(?:cover|coverage|short|rota|available|availability)\b/.test(question) &&
 -    /\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\b/.test(question) &&
 -      !/\b(?:evidence|prove|confirm|picture)\b/.test(question)
-+    (shiftCoverPageContext ||
-+      (asksForCoverDecision &&
-+        (explicitShiftCoverQuestion || datedWorkforceQuestion || inheritedShiftCoverContext))) &&
++    asksForCoverDecision &&
++    (explicitShiftCoverQuestion || datedWorkforceQuestion || shiftCoverPageContext || inheritedShiftCoverContext) &&
 +    !/\b(?:document cover|insurance cover|cover image|cover photo|cover page)\b/.test(question) &&
 +    !/\b(?:evidence|prove|confirm|picture)\b/.test(question)
    ) {
