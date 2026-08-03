@@ -2871,7 +2871,15 @@ function deterministicOperationalAnswer(
         { label: "Cannot confirm", value: "Unrecorded leave, overtime acceptance, fatigue/rest approval, supplier acceptance and off-system work completion." },
       ],
       evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
-      missingData: missing,
+      findings: [
+      {
+        category: "evidence",
+        severity: unavailable.length ? "high" : empty.length ? "medium" : "info",
+        title: "Evidence gaps and confirmations",
+        detail: missing.join(" "),
+      },
+    ],
+    missingData: missing,
       confidence: recorded.length ? 68 : 40,
     };
   }

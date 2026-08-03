@@ -107,6 +107,7 @@ for (const assistantFeature of [
 "completion is not yet proven by the recorded evidence",
 "Source evidence freshness",
 "Morning briefing evidence",
+"Evidence gaps and confirmations",
 "evidence|prove|confirm|picture",
   '"maintenance_plan"',
   '"get_site_maintenance_plan"',
