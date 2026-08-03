@@ -253,16 +253,23 @@ export function AskVortaActionReviewDialog({
   ];
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm md:p-6">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm md:p-6"
+      style={{ zIndex: 120 }}
+    >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="ask-vorta-action-title"
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#11151d] shadow-2xl"
+        className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-700 shadow-2xl"
+        style={{ maxHeight: "92vh", backgroundColor: "#11151d" }}
       >
         <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 md:px-6">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
+            <div
+              className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-blue-300"
+              style={{ letterSpacing: "0.16em" }}
+            >
               <ShieldCheck className="h-4 w-4" />
               Vorta shift-handover action
             </div>
@@ -405,9 +412,9 @@ export function AskVortaActionReviewDialog({
               </div>
               <dl className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
                 {reviewRows.map(([label, value]) => (
-                  <div key={label} className="grid gap-1 px-4 py-3 md:grid-cols-[180px_1fr] md:gap-4">
+                  <div key={label} className="grid gap-1 px-4 py-3 md:grid-cols-3 md:gap-4">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-                    <dd className="whitespace-pre-wrap text-sm text-slate-200">{displayValue(value)}</dd>
+                    <dd className="whitespace-pre-wrap text-sm text-slate-200 md:col-span-2">{displayValue(value)}</dd>
                   </div>
                 ))}
               </dl>
