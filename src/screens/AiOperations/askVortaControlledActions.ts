@@ -6,12 +6,11 @@ import type {
 
 export type AskVortaActionKind =
   | "handover_note"
-  | "work_request"
   | "spare_stock_review";
 
 export interface AskVortaActionTarget {
   id: string;
-  type: "work_order" | "equipment" | "equipment_component";
+  type: "work_order" | "equipment_component";
   label: string;
   detail: string;
   snapshot: Record<string, unknown>;
@@ -36,7 +35,7 @@ export interface AskVortaControlledDraft {
   expectedImpact: string;
   verification: string;
   status: "draft" | "confirmed" | "cancelled" | "failed";
-  actionKind: AskVortaActionKind | "read_only";
+  actionKind: AskVortaActionKind | "read_only" | "work_request";
   targetType: string | null;
   targetId: string | null;
   proposedChanges: Record<string, unknown>;
@@ -132,23 +131,6 @@ export async function loadAskVortaActionTargets(
   siteId: string,
   actionKind: AskVortaActionKind,
 ): Promise<AskVortaActionTarget[]> {
-  if (actionKind === "work_request") {
-    const { data, error } = await supabase
-      .from("equipment_assets")
-      .select("id,equipment_code,name,area,model,criticality")
-      .eq("site_id", siteId)
-      .order("equipment_code")
-      .limit(500);
-    if (error) throw new Error("Vorta could not load authorised equipment targets.");
-    return (data ?? []).map((item) => ({
-      id: String(item.id),
-      type: "equipment" as const,
-      label: targetLabel(item.equipment_code, item.name),
-      detail: targetLabel(item.area, item.model, item.criticality),
-      snapshot: { ...item },
-    }));
-  }
-
   if (actionKind === "handover_note") {
     const [{ data: workOrders, error: workError }, { data: handovers, error: handoverError }] =
       await Promise.all([
@@ -213,6 +195,12 @@ export async function loadAskVortaActionTargets(
 export async function createAskVortaControlledDraft(
   input: CreateAskVortaControlledDraftInput,
 ): Promise<AskVortaControlledDraft> {
+  if ((input.actionKind as string) === "work_request") {
+    throw new Error(
+      "Vorta is read-only from SAP and cannot create maintenance requests or notifications.",
+    );
+  }
+
   const evidence = {
     answerEvidence: input.evidence.slice(0, 12),
     sources: input.sources.slice(0, 12),
@@ -255,6 +243,12 @@ export async function getAskVortaControlledDraft(
 export async function confirmAskVortaControlledDraft(
   draft: AskVortaControlledDraft,
 ): Promise<AskVortaControlledDraft> {
+  if (draft.actionKind === "work_request") {
+    throw new Error(
+      "Vorta is read-only from SAP and cannot create maintenance requests or notifications.",
+    );
+  }
+
   const { data, error } = await supabase.rpc(
     "vorta_confirm_ask_vorta_action",
     { p_draft_id: draft.id, p_expected_version: draft.version },
