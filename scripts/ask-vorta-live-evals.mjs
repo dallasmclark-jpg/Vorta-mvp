@@ -154,10 +154,14 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   if (response?.ok && payload) {
     const text = answerText(payload);
     const usedTools = new Set(payload.toolsUsed || []);
+    // Decision-pack covered tools count as satisfied evidence without inflating actual tool-call limits.
+    const coveredTools = new Set(payload.coveredTools || []);
+    const hasEvidenceTool = (tool) =>
+      usedTools.has(tool) || coveredTools.has(tool);
     for (const tool of scenario.expectedTools || []) {
-      if (!usedTools.has(tool)) failures.push(`missing tool ${tool}`);
+      if (!hasEvidenceTool(tool)) failures.push(`missing tool ${tool}`);
     }
-    if (scenario.expectedAnyTools?.length && !scenario.expectedAnyTools.some((tool) => usedTools.has(tool))) {
+    if (scenario.expectedAnyTools?.length && !scenario.expectedAnyTools.some((tool) => hasEvidenceTool(tool))) {
       failures.push(`missing any tool: ${scenario.expectedAnyTools.join(", ")}`);
     }
     if (scenario.minimumToolCount && usedTools.size < scenario.minimumToolCount) {
@@ -210,6 +214,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   const observed = {
     intent: payload?.intent || payload?.questionPlan?.intent || null,
     tools: payload?.toolsUsed || [],
+    coveredTools: payload?.coveredTools || [],
     sources: payload?.sources || [],
     confidence: Number.isFinite(Number(payload?.confidence)) ? Number(payload.confidence) : null,
     missingDataCount: Array.isArray(payload?.missingData) ? payload.missingData.length : null,

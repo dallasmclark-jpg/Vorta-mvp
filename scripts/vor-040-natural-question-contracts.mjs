@@ -89,6 +89,9 @@ for (const evaluatorFeature of [
   "no evidence links",
   "no traceable response ID",
   "reauthentications",
+  "payload.coveredTools || []",
+  "hasEvidenceTool",
+  "Decision-pack covered tools",
 ]) {
   assert.ok(evaluator.includes(evaluatorFeature), `Live evaluator must retain ${evaluatorFeature}.`);
 }
@@ -123,6 +126,12 @@ for (const assistantFeature of [
   "spare evidence",
   "capability evidence",
   "document evidence",
+  "qualified engineers 0",
+  "requiredSkill.qualified_engineers",
+  "documentSearchRequested",
+  "coveredTools",
+  "before acting|evidence supports|verification record",
+  "block(?:ing|ed)?|preventing",
   "const questionRanked = relevantEquipmentDecisionFacts(\n    question,\n    [...explicitFacts, ...rankedFacts]",
   "...selectedFacts,\n      ...textValues(answer.evidence)",
   "typeof value !== \"object\"",
