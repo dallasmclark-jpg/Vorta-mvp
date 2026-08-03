@@ -3560,7 +3560,7 @@ function deterministicQuestionPlan(
   });
 
   if (equipmentQuery) {
-    const actionRequested = /\b(?:what (?:do|should)|do first|fix|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|confirm(?:ed|ing)?|after repair|evidence (?:is )?required|required evidence|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
+    const actionRequested = /\b(?:what (?:do|should)|do first|fix(?:ing|ed)?|repair(?:ing|ed)?|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|confirm(?:ed|ing)?|after repair|evidence (?:is )?required|required evidence|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
       question,
     );
     return fastPlan(

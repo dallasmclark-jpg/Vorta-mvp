@@ -15,6 +15,7 @@ const RATE_LIMIT_REQUESTS = 12;
 const OPEN_WORK_PATTERN = /\b(?:backlog|open work|overdue work|unassigned work|work orders?)\b/i;
 const CAPABILITY_PATTERN = /\b(?:one person deep|only one person|single[- ]person|single point|single[- ]point|backup sme|developed as backup|develop as backup)\b/i;
 const EQUIPMENT_SPARE_FOLLOW_UP_PATTERN = /\b(?:(?:what|which) (?:spare|part)|(?:spare|part) (?:blocks?|blocking|stops?|stopping|holds?|holding)|what is (?:blocking|stopping|holding))\b/i;
+const ACTIONABLE_EQUIPMENT_SPARE_FOLLOW_UP_PATTERN = /\b(?:fix(?:ing|ed)?|repair(?:ing|ed)?|properly|permanent|replace|replacement|required action|what (?:do|should))\b/i;
 const MIXED_DECISION_PATTERN = /\b(?:shift|cover|rota|pm|calibration|spare|stock|part|contractor|handover|history|document|manual)\b/i;
 const EQUIPMENT_CODE_PATTERN = /\b[A-Z]{2,}(?:-[A-Z0-9]+)*-?\d+[A-Z0-9-]*\b/;
 const EQUIPMENT_REFERENCE_PATTERN = /\b[A-Z]{2,}(?:-[A-Z0-9]+)*-?\d+[A-Z0-9-]*\b/g;
@@ -88,6 +89,7 @@ function isEquipmentSpareFollowUp(body: JsonRecord): boolean {
   const history = Array.isArray(body.history) ? body.history : [];
   if (!question || history.length === 0) return false;
   if (!EQUIPMENT_SPARE_FOLLOW_UP_PATTERN.test(question)) return false;
+  if (ACTIONABLE_EQUIPMENT_SPARE_FOLLOW_UP_PATTERN.test(question)) return false;
   return Boolean(equipmentReferenceFromRequest(body));
 }
 
