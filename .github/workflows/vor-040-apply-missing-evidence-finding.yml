@@ -48,10 +48,11 @@ jobs:
 
           path = Path('netlify/functions/ask-vorta.mts')
           source = path.read_text()
-          old = '''      evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
-              missingData: missing,'''
-          new = '''      evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
-              findings: [
+          start = source.index('  if (intent === "site_missing_evidence") {')
+          end = source.index('  if (intent === "morning_maintenance_briefing") {', start)
+          scoped = source[start:end]
+          anchor = '      missingData: missing,'
+          insertion = '''      findings: [
                 {
                   category: "evidence",
                   severity: unavailable.length ? "high" : empty.length ? "medium" : "info",
@@ -60,17 +61,18 @@ jobs:
                 },
               ],
               missingData: missing,'''
-          if source.count(old) != 1:
-              raise SystemExit(f'VOR-040 missing-evidence finding anchor count {source.count(old)}')
-          path.write_text(source.replace(old, new, 1))
+          if scoped.count(anchor) != 1:
+              raise SystemExit(f'VOR-040 scoped missingData anchor count {scoped.count(anchor)}')
+          scoped = scoped.replace(anchor, insertion, 1)
+          path.write_text(source[:start] + scoped + source[end:])
 
           contract_path = Path('scripts/vor-040-natural-question-contracts.mjs')
           contract = contract_path.read_text()
-          anchor = '"Morning briefing evidence",\n'
+          contract_anchor = '"Morning briefing evidence",\n'
           addition = '"Morning briefing evidence",\n"Evidence gaps and confirmations",\n'
-          if contract.count(anchor) != 1:
-              raise SystemExit(f'VOR-040 finding contract anchor count {contract.count(anchor)}')
-          contract_path.write_text(contract.replace(anchor, addition, 1))
+          if contract.count(contract_anchor) != 1:
+              raise SystemExit(f'VOR-040 finding contract anchor count {contract.count(contract_anchor)}')
+          contract_path.write_text(contract.replace(contract_anchor, addition, 1))
           PY
 
       - name: Verify backend TypeScript
