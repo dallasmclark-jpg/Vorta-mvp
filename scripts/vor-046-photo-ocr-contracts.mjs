@@ -105,7 +105,7 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /vor-045-integrate-conversation-context\.mjs && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs && node scripts\/write-build-metadata\.mjs/,
+  /vor-045-integrate-conversation-context\.mjs && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)? && node scripts\/write-build-metadata\.mjs/,
 );
 assert.equal(
   packageJson.scripts["eval:ask-vorta:vor046"],
