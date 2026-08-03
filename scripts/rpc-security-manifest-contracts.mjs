@@ -22,18 +22,21 @@ const handoverManifestMigration = read(
 const handoverGrantMigration = read(
   "supabase/migrations/20260728133000_restrict_shift_handover_rpc_anon.sql",
 );
+const operationalValueManifestMigration = read(
+  "supabase/migrations/20260803115400_vor_044_register_operational_value_rpc.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260728140000");
-assert.equal(manifest.migrationName, "register_shift_handover_workflow_rpcs");
+assert.equal(manifest.migrationVersion, "20260803115400");
+assert.equal(manifest.migrationName, "vor_044_register_operational_value_rpc");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 69,
-  reviewedRead: 51,
+  authenticatedCallable: 70,
+  reviewedRead: 52,
   reviewedMutation: 18,
-  securityDefiner: 66,
+  securityDefiner: 67,
   securityInvoker: 3,
   anonymousCallable: 0,
   manifestDrift: 0,
@@ -43,6 +46,19 @@ assert.ok(
     askVortaManifestMigration.includes("'read'") &&
     askVortaManifestMigration.includes("'definer'"),
   "Ask Vorta Shift Cover evidence RPC is missing from the reviewed manifest migration",
+);
+assert.ok(
+  operationalValueManifestMigration.includes("vorta_get_ranked_operational_actions(uuid,integer)") &&
+    operationalValueManifestMigration.includes("'read'") &&
+    operationalValueManifestMigration.includes("'definer'") &&
+    operationalValueManifestMigration.includes("false"),
+  "Ask Vorta operational-value RPC is missing from the reviewed manifest migration",
+);
+assert.ok(
+  manifest.askVortaEvidenceRpcs.some(
+    ({ identity }) => identity === "vorta_get_ranked_operational_actions(uuid,integer)",
+  ),
+  "The canonical manifest does not list the Ask Vorta operational-value RPC",
 );
 
 const shiftHandoverWorkflowRpcs = [
@@ -198,8 +214,8 @@ for (const expected of [
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
   "18",
-  "51",
-  "66",
+  "52",
+  "67",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),
