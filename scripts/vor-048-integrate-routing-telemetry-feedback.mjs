@@ -9,21 +9,15 @@ const assistantPath = resolve(
   repositoryRoot,
   "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
 );
-const mobileHardeningPath = resolve(
-  repositoryRoot,
-  "src/screens/AiOperations/mobilePortalHardening.css",
-);
 const marker = 'type AskVortaPhase = "planner" | "evidence" | "answer";';
 const feedbackMarker = 'data-vorta-ai-feedback="true"';
-const mobileFeedbackSelector = '[data-vorta-ai-feedback="true"]';
 
 const backendSource = readFileSync(backendPath, "utf8");
 const assistantSource = readFileSync(assistantPath, "utf8");
-const mobileHardeningSource = readFileSync(mobileHardeningPath, "utf8");
 const fullyApplied =
   backendSource.includes(marker) &&
   assistantSource.includes(feedbackMarker) &&
-  mobileHardeningSource.includes(mobileFeedbackSelector);
+  assistantSource.includes("<section");
 if (fullyApplied) {
   console.log("VOR-048 routing, telemetry and feedback integration is already applied.");
   process.exit(0);
@@ -56,17 +50,29 @@ for (const patchName of patchNames) {
   }
 }
 
-const transformedAssistant = readFileSync(assistantPath, "utf8");
-const feedbackAnchor = `{answer.responseId && (\n        <div className="space-y-2">`;
-if (!transformedAssistant.includes(feedbackAnchor)) {
+let transformedAssistant = readFileSync(assistantPath, "utf8");
+const feedbackOpenAnchor = `{answer.responseId && (\n        <div className="space-y-2">`;
+const feedbackOpenIndex = transformedAssistant.indexOf(feedbackOpenAnchor);
+if (feedbackOpenIndex < 0) {
   throw new Error("VOR-048 feedback wrapper anchor was not found after integration.");
 }
-writeFileSync(
-  assistantPath,
-  transformedAssistant.replace(
-    feedbackAnchor,
-    `{answer.responseId && (\n        <div\n          data-vorta-ai-feedback="true"\n          className="space-y-2"\n        >`,
-  ),
+transformedAssistant = transformedAssistant.replace(
+  feedbackOpenAnchor,
+  `{answer.responseId && (\n        <section\n          data-vorta-ai-feedback="true"\n          className="space-y-2"\n        >`,
 );
+
+const feedbackCloseAnchor = `          )}\n        </div>\n      )}\n    </div>`;
+const feedbackCloseIndex = transformedAssistant.indexOf(
+  feedbackCloseAnchor,
+  feedbackOpenIndex,
+);
+if (feedbackCloseIndex < 0) {
+  throw new Error("VOR-048 feedback wrapper closing anchor was not found.");
+}
+transformedAssistant =
+  transformedAssistant.slice(0, feedbackCloseIndex) +
+  feedbackCloseAnchor.replace("</div>", "</section>") +
+  transformedAssistant.slice(feedbackCloseIndex + feedbackCloseAnchor.length);
+writeFileSync(assistantPath, transformedAssistant);
 
 console.log("Applied VOR-048 Shift Cover routing, phase telemetry and feedback integration.");
