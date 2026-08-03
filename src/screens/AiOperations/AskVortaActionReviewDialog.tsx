@@ -6,7 +6,6 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
-  ClipboardCheck,
   Loader2,
   ShieldCheck,
   X,
@@ -16,8 +15,7 @@ import {
   cancelAskVortaControlledDraft,
   confirmAskVortaControlledDraft,
   createAskVortaControlledDraft,
-  loadAskVortaActionTargets,
-  type AskVortaActionKind,
+  loadAskVortaHandoverTargets,
   type AskVortaActionReviewContext,
   type AskVortaActionTarget,
   type AskVortaControlledDraft,
@@ -37,32 +35,26 @@ function localDateTime(date: Date): string {
     .slice(0, 16);
 }
 
-function initialKind(actionText: string): AskVortaActionKind {
-  if (/handover|incoming shift|outgoing shift|next shift/i.test(actionText)) {
-    return "handover_note";
+function validDateTime(value: string): boolean {
+  return Boolean(value) && Number.isFinite(new Date(value).getTime());
+}
+
+function toIso(value: string): string {
+  if (!validDateTime(value)) {
+    throw new Error("A valid date and time is required.");
   }
-  return "spare_stock_review";
+  return new Date(value).toISOString();
 }
 
-function kindLabel(kind: AskVortaActionKind): string {
-  return kind === "handover_note" ? "Handover note" : "Spare stock review";
-}
-
-function targetLabel(kind: AskVortaActionKind): string {
-  return kind === "handover_note" ? "Open work order" : "Spare component";
-}
-
-function proposedRows(value: Record<string, unknown>): Array<[string, string]> {
-  return Object.entries(value).map(([key, rawValue]) => [
-    key
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (character) => character.toUpperCase()),
-    rawValue === null || rawValue === undefined || rawValue === ""
-      ? "Not set"
-      : typeof rawValue === "object"
-        ? JSON.stringify(rawValue)
-        : String(rawValue),
-  ]);
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "Not set";
+  if (typeof value === "string" && Number.isFinite(new Date(value).getTime())) {
+    return new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+  }
+  return String(value);
 }
 
 export function AskVortaActionReviewDialog({
@@ -75,9 +67,6 @@ export function AskVortaActionReviewDialog({
   onClose,
 }: AskVortaActionReviewDialogProps) {
   const [stage, setStage] = useState<DialogStage>("edit");
-  const [kind, setKind] = useState<AskVortaActionKind>(() =>
-    initialKind(action.action),
-  );
   const [targets, setTargets] = useState<AskVortaActionTarget[]>([]);
   const [targetId, setTargetId] = useState("");
   const [loadingTargets, setLoadingTargets] = useState(true);
@@ -98,15 +87,13 @@ export function AskVortaActionReviewDialog({
   const [dueAt, setDueAt] = useState(
     localDateTime(new Date(now.getTime() + 4 * 60 * 60 * 1_000)),
   );
-  const [requestedQuantity, setRequestedQuantity] = useState("1");
-  const [stockReason, setStockReason] = useState(action.action);
 
   useEffect(() => {
     let active = true;
     setLoadingTargets(true);
     setError(null);
-    setTargetId("");
-    void loadAskVortaActionTargets(siteId, kind)
+
+    void loadAskVortaHandoverTargets(siteId)
       .then((items) => {
         if (!active) return;
         setTargets(items);
@@ -122,72 +109,71 @@ export function AskVortaActionReviewDialog({
       .catch((loadError) => {
         if (!active) return;
         setTargets([]);
+        setTargetId("");
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Vorta could not load authorised action targets.",
+            : "Vorta could not load authorised handover targets.",
         );
       })
       .finally(() => {
         if (active) setLoadingTargets(false);
       });
+
     return () => {
       active = false;
     };
-  }, [conversationContext?.activeEquipment?.query, kind, siteId]);
+  }, [conversationContext?.activeEquipment?.query, siteId]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !working) onClose();
+      if (event.key !== "Escape" || working) return;
+      if (stage === "review" && draft?.status === "draft") {
+        void cancelDraft();
+        return;
+      }
+      onClose();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose, working]);
+  });
 
   const selectedTarget = targets.find((item) => item.id === targetId) ?? null;
 
-  const proposedChanges = useMemo<Record<string, unknown>>(() => {
-    if (kind === "handover_note") {
-      return {
-        windowStart: new Date(windowStart).toISOString(),
-        windowEnd: new Date(windowEnd).toISOString(),
-        outgoingNote: outgoingNote.trim(),
-        nextAction: nextAction.trim(),
-        ownerName: ownerName.trim(),
-        dueAt: new Date(dueAt).toISOString(),
-        expectedVersion: Number(selectedTarget?.snapshot.expectedVersion) || 0,
-      };
-    }
-    return {
-      requestedQuantity: Number(requestedQuantity),
-      reason: stockReason.trim(),
-      ownerName: ownerName.trim(),
-      dueAt: new Date(dueAt).toISOString(),
-    };
-  }, [
+  const formValid = Boolean(
+    selectedTarget &&
+      outgoingNote.trim() &&
+      nextAction.trim() &&
+      ownerName.trim() &&
+      validDateTime(windowStart) &&
+      validDateTime(windowEnd) &&
+      validDateTime(dueAt) &&
+      new Date(windowStart).getTime() <= new Date(windowEnd).getTime(),
+  );
+
+  const proposedChanges = useMemo<Record<string, unknown>>(() => ({
+    windowStart: validDateTime(windowStart) ? new Date(windowStart).toISOString() : "",
+    windowEnd: validDateTime(windowEnd) ? new Date(windowEnd).toISOString() : "",
+    outgoingNote: outgoingNote.trim(),
+    nextAction: nextAction.trim(),
+    ownerName: ownerName.trim(),
+    dueAt: validDateTime(dueAt) ? new Date(dueAt).toISOString() : "",
+    expectedVersion: Number(selectedTarget?.snapshot.expectedVersion) || 0,
+  }), [
     dueAt,
-    kind,
     nextAction,
     outgoingNote,
     ownerName,
-    requestedQuantity,
     selectedTarget?.snapshot.expectedVersion,
-    stockReason,
     windowEnd,
     windowStart,
   ]);
 
-  const formValid = Boolean(
-    selectedTarget &&
-      (kind === "handover_note"
-        ? outgoingNote.trim() && nextAction.trim() && ownerName.trim()
-        : stockReason.trim() && ownerName.trim() && Number(requestedQuantity) > 0),
-  );
-
-  const prepareDraft = async () => {
+  const prepareDraft = async (): Promise<void> => {
     if (!selectedTarget || !formValid) return;
     setWorking(true);
     setError(null);
+
     try {
       const created = await createAskVortaControlledDraft({
         siteId,
@@ -196,9 +182,13 @@ export function AskVortaActionReviewDialog({
         conversationContext,
         evidence,
         sources,
-        actionKind: kind,
         target: selectedTarget,
-        proposedChanges,
+        proposedChanges: {
+          ...proposedChanges,
+          windowStart: toIso(windowStart),
+          windowEnd: toIso(windowEnd),
+          dueAt: toIso(dueAt),
+        },
       });
       setDraft(created);
       setStage("review");
@@ -206,17 +196,18 @@ export function AskVortaActionReviewDialog({
       setError(
         prepareError instanceof Error
           ? prepareError.message
-          : "Vorta could not prepare the controlled action.",
+          : "Vorta could not prepare the handover action.",
       );
     } finally {
       setWorking(false);
     }
   };
 
-  const confirmDraft = async () => {
+  const confirmDraft = async (): Promise<void> => {
     if (!draft) return;
     setWorking(true);
     setError(null);
+
     try {
       const confirmed = await confirmAskVortaControlledDraft(draft);
       setDraft(confirmed);
@@ -225,18 +216,19 @@ export function AskVortaActionReviewDialog({
       setError(
         confirmError instanceof Error
           ? confirmError.message
-          : "Vorta could not confirm the controlled action.",
+          : "The handover action failed closed.",
       );
     } finally {
       setWorking(false);
     }
   };
 
-  const cancelDraft = async () => {
+  const cancelDraft = async (): Promise<void> => {
     if (!draft || draft.status !== "draft") {
       onClose();
       return;
     }
+
     setWorking(true);
     setError(null);
     try {
@@ -246,12 +238,22 @@ export function AskVortaActionReviewDialog({
       setError(
         cancelError instanceof Error
           ? cancelError.message
-          : "Vorta could not cancel the controlled action.",
+          : "Vorta could not cancel the handover action.",
       );
     } finally {
       setWorking(false);
     }
   };
+
+  const reviewRows: Array<[string, unknown]> = [
+    ["Work order", selectedTarget?.label],
+    ["Window start", proposedChanges.windowStart],
+    ["Window end", proposedChanges.windowEnd],
+    ["Outgoing note", proposedChanges.outgoingNote],
+    ["Incoming-shift action", proposedChanges.nextAction],
+    ["Owner", proposedChanges.ownerName],
+    ["Due by", proposedChanges.dueAt],
+  ];
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm md:p-6">
@@ -265,25 +267,25 @@ export function AskVortaActionReviewDialog({
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
               <ShieldCheck className="h-4 w-4" />
-              Vorta-native action
+              Vorta shift-handover action
             </div>
             <h2 id="ask-vorta-action-title" className="text-lg font-semibold text-white">
               {stage === "complete"
-                ? "Action confirmed"
+                ? "Handover action confirmed"
                 : stage === "review"
-                  ? "Review exact proposed changes"
-                  : "Prepare a Vorta action for confirmation"}
+                  ? "Review exact proposed handover"
+                  : "Prepare a handover action for confirmation"}
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-              Vorta remains read-only from SAP. No SAP notification, work order or stock record can be created or changed here.
+              Vorta remains read-only from SAP. This cannot create a maintenance request, notification, work order or stock record.
             </p>
           </div>
           <button
             type="button"
-            onClick={stage === "review" ? cancelDraft : onClose}
+            onClick={stage === "review" ? () => void cancelDraft() : onClose}
             disabled={working}
             className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-50"
-            aria-label="Close controlled action review"
+            aria-label="Close handover action review"
           >
             <X className="h-5 w-5" />
           </button>
@@ -300,129 +302,167 @@ export function AskVortaActionReviewDialog({
           {stage === "edit" ? (
             <div className="space-y-5">
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ask Vorta recommendation</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Ask Vorta recommendation
+                </p>
                 <p className="mt-2 text-sm font-semibold text-slate-100">{action.action}</p>
                 <p className="mt-2 text-sm text-slate-400">Owner: {action.owner}</p>
-                <p className="mt-1 text-sm text-slate-400">Expected impact: {action.expectedImpact}</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  Expected impact: {action.expectedImpact}
+                </p>
               </div>
+
+              <label className="block space-y-1.5 text-sm text-slate-300">
+                <span>Open work order</span>
+                <select
+                  value={targetId}
+                  onChange={(event) => setTargetId(event.target.value)}
+                  disabled={loadingTargets}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500 disabled:opacity-50"
+                >
+                  {loadingTargets ? <option>Loading authorised targets…</option> : null}
+                  {!loadingTargets && targets.length === 0 ? (
+                    <option>No eligible open work order found</option>
+                  ) : null}
+                  {targets.map((target) => (
+                    <option key={target.id} value={target.id}>{target.label}</option>
+                  ))}
+                </select>
+                {selectedTarget?.detail ? (
+                  <span className="block text-xs text-slate-500">{selectedTarget.detail}</span>
+                ) : null}
+              </label>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1.5 text-sm text-slate-300">
-                  <span>Action type</span>
-                  <select
-                    value={kind}
-                    onChange={(event) => setKind(event.target.value as AskVortaActionKind)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500"
-                  >
-                    <option value="handover_note">Handover note</option>
-                    <option value="spare_stock_review">Spare stock review</option>
-                  </select>
+                  <span>Window start</span>
+                  <input
+                    type="datetime-local"
+                    value={windowStart}
+                    onChange={(event) => setWindowStart(event.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                  />
                 </label>
-
                 <label className="space-y-1.5 text-sm text-slate-300">
-                  <span>{targetLabel(kind)}</span>
-                  <select
-                    value={targetId}
-                    onChange={(event) => setTargetId(event.target.value)}
-                    disabled={loadingTargets}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-blue-500 disabled:opacity-50"
-                  >
-                    {loadingTargets ? <option>Loading authorised targets…</option> : null}
-                    {!loadingTargets && targets.length === 0 ? <option>No authorised target found</option> : null}
-                    {targets.map((target) => (
-                      <option key={target.id} value={target.id}>{target.label}</option>
-                    ))}
-                  </select>
-                  {selectedTarget?.detail ? (
-                    <span className="block text-xs text-slate-500">{selectedTarget.detail}</span>
-                  ) : null}
+                  <span>Window end</span>
+                  <input
+                    type="datetime-local"
+                    value={windowEnd}
+                    onChange={(event) => setWindowEnd(event.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                  />
                 </label>
               </div>
 
-              {kind === "handover_note" ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Window start</span><input type="datetime-local" value={windowStart} onChange={(event) => setWindowStart(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Window end</span><input type="datetime-local" value={windowEnd} onChange={(event) => setWindowEnd(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  </div>
-                  <label className="block space-y-1.5 text-sm text-slate-300"><span>Outgoing note</span><textarea value={outgoingNote} rows={3} onChange={(event) => setOutgoingNote(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  <label className="block space-y-1.5 text-sm text-slate-300"><span>Incoming-shift action</span><textarea value={nextAction} rows={3} onChange={(event) => setNextAction(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Owner</span><input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Due by</span><input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  </div>
-                </div>
-              ) : null}
+              <label className="block space-y-1.5 text-sm text-slate-300">
+                <span>Outgoing note</span>
+                <textarea
+                  value={outgoingNote}
+                  rows={4}
+                  onChange={(event) => setOutgoingNote(event.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                />
+              </label>
 
-              {kind === "spare_stock_review" ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Quantity to review</span><input type="number" min="0.01" step="0.01" value={requestedQuantity} onChange={(event) => setRequestedQuantity(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                    <label className="space-y-1.5 text-sm text-slate-300"><span>Owner</span><input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  </div>
-                  <label className="block space-y-1.5 text-sm text-slate-300"><span>Review reason</span><textarea value={stockReason} rows={4} onChange={(event) => setStockReason(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  <label className="block space-y-1.5 text-sm text-slate-300"><span>Due by</span><input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100" /></label>
-                  <p className="text-xs text-slate-500">Confirmation creates a Vorta review task only. It does not change the SAP stock quantity.</p>
-                </div>
-              ) : null}
+              <label className="block space-y-1.5 text-sm text-slate-300">
+                <span>Incoming-shift action</span>
+                <textarea
+                  value={nextAction}
+                  rows={4}
+                  onChange={(event) => setNextAction(event.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                />
+              </label>
 
-              <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Only Vorta-native notes and review tasks are supported. SAP maintenance requests and notifications remain recommendations only.</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-1.5 text-sm text-slate-300">
+                  <span>Owner</span>
+                  <input
+                    value={ownerName}
+                    onChange={(event) => setOwnerName(event.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm text-slate-300">
+                  <span>Due by</span>
+                  <input
+                    type="datetime-local"
+                    value={dueAt}
+                    onChange={(event) => setDueAt(event.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100"
+                  />
+                </label>
               </div>
+
+              {validDateTime(windowStart) && validDateTime(windowEnd) &&
+              new Date(windowStart).getTime() > new Date(windowEnd).getTime() ? (
+                <p className="text-sm text-amber-300">Window end must be after window start.</p>
+              ) : null}
             </div>
           ) : null}
 
-          {stage === "review" && draft && selectedTarget ? (
+          {stage === "review" ? (
             <div className="space-y-5">
-              <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">Draft created · SAP unchanged</p>
-                <p className="mt-2 text-sm font-semibold text-white">{kindLabel(kind)}</p>
-                <p className="mt-1 text-sm text-slate-300">Target: {selectedTarget.label}</p>
-                <p className="mt-1 text-xs text-slate-500">Draft {draft.id} · version {draft.version}</p>
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+                Confirming writes only the Vorta shift-handover action below. It does not change SAP or create a parallel maintenance request.
               </div>
-
-              <div>
-                <h3 className="mb-2 text-sm font-semibold text-white">Exact proposed changes</h3>
-                <dl className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
-                  {proposedRows(draft.proposedChanges).map(([label, value]) => (
-                    <div key={label} className="grid gap-1 px-4 py-3 md:grid-cols-[180px_1fr]">
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-                      <dd className="break-words text-sm text-slate-200">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Expected impact</p><p className="mt-2 text-sm text-slate-300">{draft.expectedImpact}</p></div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</p><p className="mt-2 text-sm text-slate-300">{draft.verification}</p></div>
-              </div>
-
-              <div className="flex gap-3 rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-100">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Confirming applies this Vorta-native action only. SAP records remain read-only.</p>
+              <dl className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
+                {reviewRows.map(([label, value]) => (
+                  <div key={label} className="grid gap-1 px-4 py-3 md:grid-cols-[180px_1fr] md:gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+                    <dd className="whitespace-pre-wrap text-sm text-slate-200">{displayValue(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</p>
+                <p className="mt-2 text-sm text-slate-300">{action.verification}</p>
               </div>
             </div>
           ) : null}
 
-          {stage === "complete" && draft ? (
-            <div className="space-y-5 py-4 text-center">
-              {draft.status === "confirmed" ? <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" /> : <AlertTriangle className="mx-auto h-12 w-12 text-red-400" />}
-              <div><h3 className="text-xl font-semibold text-white">{draft.status === "confirmed" ? "Vorta action completed" : "Vorta action failed safely"}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-400">{draft.status === "confirmed" ? `${draft.resultType ?? "Vorta action"} ${draft.resultId ?? ""} was created and linked to this Ask Vorta draft. SAP was not changed.` : draft.failureReason ?? "No target record was changed."}</p></div>
-              <div className="mx-auto max-w-xl rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-left"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audit evidence</p><p className="mt-2 text-sm text-slate-300">Draft {draft.id} · version {draft.version} · {draft.events.length} recorded event{draft.events.length === 1 ? "" : "s"}</p></div>
+          {stage === "complete" ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+              <h3 className="mt-4 text-lg font-semibold text-white">Handover action saved</h3>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+                Vorta recorded the confirmed handover action and audit evidence. SAP remains unchanged.
+              </p>
+              {draft?.resultId ? (
+                <p className="mt-3 text-xs text-slate-500">Action reference: {draft.resultId}</p>
+              ) : null}
             </div>
           ) : null}
         </div>
 
-        <footer className="flex flex-col-reverse gap-3 border-t border-slate-800 px-5 py-4 sm:flex-row sm:justify-end md:px-6">
+        <footer className="flex flex-wrap justify-end gap-3 border-t border-slate-800 px-5 py-4 md:px-6">
           {stage === "edit" ? (
-            <><Button type="button" variant="outline" onClick={onClose} disabled={working}>Cancel</Button><Button type="button" onClick={() => void prepareDraft()} disabled={!formValid || loadingTargets || working}>{working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}Review exact changes</Button></>
+            <>
+              <Button type="button" variant="outline" onClick={onClose} disabled={working}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={() => void prepareDraft()} disabled={!formValid || working}>
+                {working ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Review exact changes
+              </Button>
+            </>
           ) : null}
+
           {stage === "review" ? (
-            <><Button type="button" variant="outline" onClick={() => void cancelDraft()} disabled={working}>Cancel draft</Button><Button type="button" onClick={() => void confirmDraft()} disabled={working} className="bg-red-600 text-white hover:bg-red-500">{working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}Confirm Vorta action</Button></>
+            <>
+              <Button type="button" variant="outline" onClick={() => void cancelDraft()} disabled={working}>
+                Cancel draft
+              </Button>
+              <Button type="button" onClick={() => void confirmDraft()} disabled={working}>
+                {working ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Confirm handover action
+              </Button>
+            </>
           ) : null}
-          {stage === "complete" ? <Button type="button" onClick={onClose}>Close</Button> : null}
+
+          {stage === "complete" ? (
+            <Button type="button" onClick={onClose}>Close</Button>
+          ) : null}
         </footer>
       </section>
     </div>
