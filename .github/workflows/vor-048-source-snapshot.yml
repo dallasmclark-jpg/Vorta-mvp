@@ -1,0 +1,37 @@
+name: VOR-048 source snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    name: Preserve exact branch source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out branch source
+        uses: actions/checkout@v4
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-048-source-${{ github.sha }}
+          path: |
+            .github
+            netlify
+            scripts
+            src
+            supabase
+            tests
+            package.json
+            package-lock.json
+            playwright.config.ts
+            tsconfig*.json
+            vite.config.*
+            tailwind.css
+          if-no-files-found: error
+          retention-days: 1
