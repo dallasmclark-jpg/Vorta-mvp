@@ -95,6 +95,15 @@ for (const evaluatorFeature of [
 
 for (const assistantFeature of [
   "maintenancePlanOnly",
+"deterministicOperationalAnswer",
+"maintenance_plan_cover_feasibility",
+"site_evidence_freshness",
+"site_missing_evidence",
+"morning_maintenance_briefing",
+"verified_risk_reduction_ranking",
+"completeDeterministicAnswer",
+"verifiedFallback",
+"followUpLimit",
   '"maintenance_plan"',
   '"get_site_maintenance_plan"',
   "normaliseEquipmentReference",
