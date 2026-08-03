@@ -87,11 +87,7 @@ jobs:
           )
 
           replace_once(
-              '''      confidence: 78,
-            };
-          }
-
-          if (intent === "verified_risk_reduction_ranking") {''',
+              '      confidence: 78,',
               '''      findings: [
                 {
                   category: "risk",
@@ -112,11 +108,7 @@ jobs:
                   detail: `${outOfStockCount} out-of-stock risk items are recorded${criticalSpare ? `; the first recorded constraint is ${criticalSpare}` : ""}.`,
                 },
               ],
-              confidence: 78,
-            };
-          }
-
-          if (intent === "verified_risk_reduction_ranking") {''',
+              confidence: 78,''',
               'morning findings',
           )
 
