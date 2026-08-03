@@ -811,6 +811,8 @@ function compactEquipmentSkillsDomain(result: ToolResult): JsonRecord {
               engineer.qualification_state ?? engineer.qualificationState,
             availability_status:
               engineer.availability_status ?? engineer.availabilityStatus,
+            discipline: engineer.discipline,
+            shift_pattern: engineer.shift_pattern ?? engineer.shiftPattern,
           })),
       })),
     })),
@@ -1328,12 +1330,38 @@ function questionMatchedEquipmentFacts(
             "validated_rating",
             "validatedRating",
           ]);
+          const availability = decisionField(engineer, [
+            "availability_status",
+            "availabilityStatus",
+          ]);
+          const discipline = decisionField(engineer, ["discipline"]);
+          const calibrationContext =
+            /\b(?:calibrat|instrument|transmitter|pressure|sensor)\b/.test(
+              loweredQuestion,
+            );
+          const disciplineMatch =
+            calibrationContext && /instrument|calibration/i.test(discipline);
           const score =
             (/primary_sme/i.test(role) ? 120 : /backup_sme/i.test(role) ? 80 : 0) +
             (engineerName && workContext.includes(engineerName.toLowerCase()) ? 90 : 0) +
             (/validated/i.test(validation) ? 30 : 0) +
+            (/on_shift/i.test(availability)
+              ? 70
+              : /available/i.test(availability)
+                ? 20
+                : 0) +
+            (disciplineMatch ? 90 : 0) +
             numberValue(rating) * 8;
-          return { engineerName, role, validation, rating, score, index };
+          return {
+            engineerName,
+            role,
+            validation,
+            rating,
+            availability,
+            discipline,
+            score,
+            index,
+          };
         })
         .filter((item) => item.engineerName)
         .sort((first, second) => second.score - first.score || first.index - second.index);
@@ -2581,7 +2609,7 @@ async function executeTool(
       );
       const domains = Object.fromEntries(domainEntries) as Record<string, JsonRecord>;
       const documentSearchRequested =
-        /\b(?:fault|diagnos|document|manual|guide|approved|procedure|drawing|history|evidence|verify|verification|release|before acting)\b/i.test(
+        /\b(?:fault|diagnos|cause(?:d|s)?|root cause|excursion|credible|reading|bias|document|manual|guide|approved|procedure|drawing|history|evidence|verify|verification|release|before acting)\b/i.test(
           request.question,
         );
       if (documentSearchRequested) {
@@ -3532,7 +3560,7 @@ function deterministicQuestionPlan(
   });
 
   if (equipmentQuery) {
-    const actionRequested = /\b(?:what (?:do|should)|do first|fix|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
+    const actionRequested = /\b(?:what (?:do|should)|do first|fix|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|confirm(?:ed|ing)?|after repair|evidence (?:is )?required|required evidence|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
       question,
     );
     return fastPlan(
