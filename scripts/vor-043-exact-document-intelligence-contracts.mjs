@@ -12,7 +12,9 @@ const askVortaFunction = readFileSync("netlify/functions/ask-vorta.mts", "utf8")
 
 const checks = [
   [
-    askVortaFunction.includes('rpc: "vorta_search_equipment_knowledge"'),
+    askVortaFunction.includes('case "search_maintenance_documents"')
+      && askVortaFunction.includes('rpcTool(')
+      && askVortaFunction.includes('"vorta_search_equipment_knowledge"'),
     "Ask Vorta still routes technical document questions through the authorised knowledge RPC",
   ],
   [
