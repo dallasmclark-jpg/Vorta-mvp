@@ -27,7 +27,7 @@ const checks = [
   [backend.includes("Promise.race([operation(controller.signal), timeoutPromise])"), "phase timeouts reject even when an evidence client ignores abort"],
   [backend.includes('intent === "shift_cover_risk"'), "Shift Cover has a deterministic evidence answer"],
   [backend.includes('"shift_cover",\n      "shift_cover_risk",\n      "get_shift_cover"'), "natural Shift Cover requests use one canonical tool route"],
-  [integrationScript.includes('sitePriorityPageExclusion') && integrationScript.includes('site_threat_prioritization') && integrationPatch.includes('(shiftCoverPageContext ||'), "Shift Cover page context deterministically outranks the broad site-priority route"],
+  [integrationScript.includes('sitePriorityPageExclusion') && integrationScript.includes('site_threat_prioritization') && integrationScript.includes('shiftCoverDecisionReplacement'), "Shift Cover page context deterministically outranks the broad site-priority route"],
   [backend.includes("inheritedShiftCoverContext"), "dated Shift Cover follow-ups retain their operational context"],
   [backend.includes("document cover|insurance cover|cover image|cover photo|cover page"), "non-maintenance cover wording is excluded"],
   [backend.includes("route_key: routeKey") && backend.includes("routing_mode:") && backend.includes("planner_ms:") && backend.includes("evidence_ms:") && backend.includes("answer_ms:"), "canonical route and phase telemetry are persisted"],
