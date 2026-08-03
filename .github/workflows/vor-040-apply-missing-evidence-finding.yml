@@ -1,0 +1,100 @@
+name: VOR-040 apply missing-evidence finding
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/vor-040-natural-question-audit-clean'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out clean audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Detect completed finding
+        id: state
+        shell: bash
+        run: |
+          if grep -q 'Evidence gaps and confirmations' netlify/functions/ask-vorta.mts; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use Node.js
+        if: steps.state.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.state.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Apply focused finding
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('netlify/functions/ask-vorta.mts')
+          source = path.read_text()
+          old = '''      evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
+              missingData: missing,'''
+          new = '''      evidence: domains.map(([name, value]) => `${name}: ${String((value as JsonRecord).status ?? "unknown")}`),
+              findings: [
+                {
+                  category: "evidence",
+                  severity: unavailable.length ? "high" : empty.length ? "medium" : "info",
+                  title: "Evidence gaps and confirmations",
+                  detail: missing.join(" "),
+                },
+              ],
+              missingData: missing,'''
+          if source.count(old) != 1:
+              raise SystemExit(f'VOR-040 missing-evidence finding anchor count {source.count(old)}')
+          path.write_text(source.replace(old, new, 1))
+
+          contract_path = Path('scripts/vor-040-natural-question-contracts.mjs')
+          contract = contract_path.read_text()
+          anchor = '"Morning briefing evidence",\n'
+          addition = '"Morning briefing evidence",\n"Evidence gaps and confirmations",\n'
+          if contract.count(anchor) != 1:
+              raise SystemExit(f'VOR-040 finding contract anchor count {contract.count(anchor)}')
+          contract_path.write_text(contract.replace(anchor, addition, 1))
+          PY
+
+      - name: Verify backend TypeScript
+        if: steps.state.outputs.skip != 'true'
+        run: npm run typecheck:functions
+
+      - name: Verify Ask Vorta contracts
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/vor-040-natural-question-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Remove disposable workflow
+        if: steps.state.outputs.skip != 'true'
+        run: rm .github/workflows/vor-040-apply-missing-evidence-finding.yml
+
+      - name: Commit verified finding
+        if: steps.state.outputs.skip != 'true'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add netlify/functions/ask-vorta.mts scripts/vor-040-natural-question-contracts.mjs
+          git add -u .github/workflows/vor-040-apply-missing-evidence-finding.yml
+          git commit -m 'VOR-040: structure missing-evidence findings'
+          git push origin HEAD:${{ github.head_ref }}
