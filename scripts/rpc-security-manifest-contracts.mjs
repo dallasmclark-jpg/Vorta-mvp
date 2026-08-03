@@ -25,18 +25,21 @@ const handoverGrantMigration = read(
 const operationalValueManifestMigration = read(
   "supabase/migrations/20260803115400_vor_044_register_operational_value_rpc.sql",
 );
+const askVortaActionManifestMigration = read(
+  "supabase/migrations/20260803175800_vor_047_register_action_rpcs.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260803115400");
-assert.equal(manifest.migrationName, "vor_044_register_operational_value_rpc");
+assert.equal(manifest.migrationVersion, "20260803175800");
+assert.equal(manifest.migrationName, "vor_047_register_action_rpcs");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 70,
-  reviewedRead: 52,
-  reviewedMutation: 18,
-  securityDefiner: 67,
+  authenticatedCallable: 74,
+  reviewedRead: 53,
+  reviewedMutation: 21,
+  securityDefiner: 71,
   securityInvoker: 3,
   anonymousCallable: 0,
   manifestDrift: 0,
@@ -59,6 +62,49 @@ assert.ok(
     ({ identity }) => identity === "vorta_get_ranked_operational_actions(uuid,integer)",
   ),
   "The canonical manifest does not list the Ask Vorta operational-value RPC",
+);
+
+const askVortaActionRpcs = [
+  {
+    identity: "vorta_create_ask_vorta_action_draft(uuid,uuid,text,text,uuid,text,text,text,text,text,jsonb,jsonb,text)",
+    rpcClass: "mutation",
+  },
+  {
+    identity: "vorta_get_ask_vorta_action_draft(uuid)",
+    rpcClass: "read",
+  },
+  {
+    identity: "vorta_cancel_ask_vorta_action(uuid,integer)",
+    rpcClass: "mutation",
+  },
+  {
+    identity: "vorta_confirm_ask_vorta_action(uuid,integer)",
+    rpcClass: "mutation",
+  },
+];
+assert.deepEqual(
+  manifest.askVortaActionRpcs.map(({ identity, class: rpcClass }) => ({
+    identity,
+    rpcClass,
+  })),
+  askVortaActionRpcs,
+);
+for (const { identity, rpcClass } of askVortaActionRpcs) {
+  assert.ok(
+    askVortaActionManifestMigration.includes(`'${identity}'`) &&
+      askVortaActionManifestMigration.includes(`'${rpcClass}'`) &&
+      askVortaActionManifestMigration.includes("'definer'") &&
+      askVortaActionManifestMigration.includes("false"),
+    `Ask Vorta controlled-action RPC is missing from the reviewed security manifest: ${identity}`,
+  );
+}
+assert.match(
+  askVortaActionManifestMigration,
+  /Dispatch is limited to the existing vorta_save_shift_handover_action RPC/,
+);
+assert.doesNotMatch(
+  askVortaActionManifestMigration,
+  /maintenance work-request creation|spare-stock task creation/i,
 );
 
 const shiftHandoverWorkflowRpcs = [
@@ -213,9 +259,9 @@ for (const expected of [
   "authenticatedSecurityInvokerRpcCount",
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
-  "18",
-  "52",
-  "67",
+  "21",
+  "53",
+  "71",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),
