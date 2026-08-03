@@ -31,6 +31,7 @@ const contracts = [
   ["VOR-045 conversational context", "scripts/vor-045-conversation-context-contracts.mjs"],
   ["VOR-046 photo and OCR diagnosis", "scripts/vor-046-photo-ocr-contracts.mjs"],
   ["VOR-047 confirmed handover actions", "scripts/vor-047-confirmed-handover-contracts.mjs"],
+  ["VOR-048 routing, telemetry and feedback", "scripts/vor-048-routing-telemetry-feedback-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
