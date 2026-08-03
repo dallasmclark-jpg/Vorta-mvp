@@ -73,7 +73,7 @@
 +    asksForCoverDecision &&
 +    (explicitShiftCoverQuestion || datedWorkforceQuestion || shiftCoverPageContext || inheritedShiftCoverContext) &&
 +    !/\b(?:document cover|insurance cover|cover image|cover photo|cover page)\b/.test(question) &&
-+    !/\b(?:evidence|prove|picture)\b/.test(question)
++    !/\b(?:evidence|prove|confirm|picture)\b/.test(question)
    ) {
      return fastPlan(
        "shift_cover",
