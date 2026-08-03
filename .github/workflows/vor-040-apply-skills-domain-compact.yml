@@ -1,0 +1,73 @@
+name: VOR-040 apply skills-domain compact
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/vor-040-natural-question-audit-clean'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out clean audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Detect completed compact repair
+        id: state
+        shell: bash
+        run: |
+          if grep -q 'compactEquipmentSkillsDomain' netlify/functions/ask-vorta.mts; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use Node.js
+        if: steps.state.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.state.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Apply skills-domain compact repair
+        if: steps.state.outputs.skip != 'true'
+        run: python3 scripts/vor-040-skills-domain-compact-patch.py
+
+      - name: Verify backend TypeScript
+        if: steps.state.outputs.skip != 'true'
+        run: npm run typecheck:functions
+
+      - name: Verify Ask Vorta contracts
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          node scripts/vor-039-ask-vorta-confidence-latency-contracts.mjs
+          node scripts/vor-040-natural-question-contracts.mjs
+          node scripts/ask-vorta-agent-contracts.mjs
+
+      - name: Remove disposable scaffolding
+        if: steps.state.outputs.skip != 'true'
+        run: |
+          rm scripts/vor-040-skills-domain-compact-patch.py
+          rm .github/workflows/vor-040-apply-skills-domain-compact.yml
+
+      - name: Commit verified compact repair
+        if: steps.state.outputs.skip != 'true'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add netlify/functions/ask-vorta.mts scripts/vor-040-natural-question-contracts.mjs
+          git add -u scripts/vor-040-skills-domain-compact-patch.py .github/workflows/vor-040-apply-skills-domain-compact.yml
+          git commit -m 'VOR-040: preserve nested qualified engineer evidence'
+          git push origin HEAD:${{ github.head_ref }}
