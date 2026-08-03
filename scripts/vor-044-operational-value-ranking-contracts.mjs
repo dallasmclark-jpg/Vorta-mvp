@@ -5,7 +5,9 @@ import { spawnSync } from "node:child_process";
 const read = (path) => readFileSync(path, "utf8");
 const ranking = read("supabase/migrations/20260803113112_vor_044_rank_operational_actions.sql");
 const invariants = read("supabase/migrations/20260803113243_vor_044_operational_value_invariants.sql");
+const manifest = read("supabase/migrations/20260803115400_vor_044_register_operational_value_rpc.sql");
 const integration = read("scripts/vor-044-integrate-operational-value.mjs");
+const healthGate = read("scripts/live-demo-backend-health.mjs");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.equal(
@@ -40,6 +42,12 @@ assert.match(ranking, /case when scored\.feasibility_state = 'ready_now' then 0 
 assert.match(invariants, /blocked work outranked executable work/);
 assert.match(invariants, /operational-value score does not equal its returned components/);
 assert.match(invariants, /has_function_privilege\('anon'/);
+assert.match(manifest, /vorta_get_ranked_operational_actions\(uuid,integer\)/);
+assert.match(manifest, /'read'/);
+assert.match(manifest, /'definer'/);
+assert.match(manifest, /false/);
+assert.match(healthGate, /reviewedAuthenticatedReadRpcCount\),\s*52/);
+assert.match(healthGate, /authenticatedSecurityDefinerRpcCount\),\s*67/);
 assert.match(integration, /case "get_site_ranked_actions":/);
 assert.match(integration, /rankedActions/);
 assert.match(integration, /vorta_get_ranked_operational_actions/);
