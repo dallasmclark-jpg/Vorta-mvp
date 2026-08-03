@@ -70,6 +70,64 @@ create index if not exists ask_vorta_action_drafts_cancelled_by_idx
 create index if not exists ask_vorta_action_events_actor_idx
   on public.ask_vorta_action_events (actor_id, created_at desc);
 
+create or replace function private.vorta_get_unreviewed_authenticated_mutation_rpcs()
+returns table(rpc_identity text, function_name text)
+language sql
+stable
+security definer
+set search_path to 'pg_catalog', 'public', 'private'
+as $function$
+  select
+    function_row.oid::regprocedure::text as rpc_identity,
+    function_row.proname::text as function_name
+  from pg_proc function_row
+  join pg_namespace namespace_row
+    on namespace_row.oid = function_row.pronamespace
+  left join private.vorta_privileged_rpc_allowlist allowlist
+    on allowlist.rpc_identity = function_row.oid::regprocedure::text
+      and allowlist.rpc_class = 'mutation'
+  where namespace_row.nspname = 'public'
+    and function_row.prokind = 'f'
+    and has_function_privilege('authenticated', function_row.oid, 'EXECUTE')
+    and function_row.proname ~ '^vorta_(launch|update|record|refresh|recalculate|log|track|upsert|save|acknowledge|carry|create|confirm|cancel)'
+    and allowlist.rpc_identity is null
+  order by function_row.proname, function_row.oid::regprocedure::text;
+$function$;
+
+create or replace function private.vorta_get_unreviewed_authenticated_read_rpcs()
+returns table(rpc_identity text, function_name text)
+language sql
+stable
+security definer
+set search_path to 'pg_catalog', 'public', 'private'
+as $function$
+  select
+    function_row.oid::regprocedure::text as rpc_identity,
+    function_row.proname::text as function_name
+  from pg_proc function_row
+  join pg_namespace namespace_row
+    on namespace_row.oid = function_row.pronamespace
+  left join private.vorta_privileged_rpc_allowlist allowlist
+    on allowlist.rpc_identity = function_row.oid::regprocedure::text
+      and allowlist.rpc_class = 'read'
+  where namespace_row.nspname = 'public'
+    and function_row.prokind = 'f'
+    and has_function_privilege('authenticated', function_row.oid, 'EXECUTE')
+    and function_row.proname like 'vorta_%'
+    and function_row.proname !~ '^vorta_(launch|update|record|refresh|recalculate|log|track|upsert|save|acknowledge|carry|create|confirm|cancel)'
+    and allowlist.rpc_identity is null
+  order by function_row.proname, function_row.oid::regprocedure::text;
+$function$;
+
+revoke all on function private.vorta_get_unreviewed_authenticated_mutation_rpcs()
+  from public, anon, authenticated;
+revoke all on function private.vorta_get_unreviewed_authenticated_read_rpcs()
+  from public, anon, authenticated;
+grant execute on function private.vorta_get_unreviewed_authenticated_mutation_rpcs()
+  to service_role;
+grant execute on function private.vorta_get_unreviewed_authenticated_read_rpcs()
+  to service_role;
+
 create or replace function private.vorta_block_ask_vorta_maintenance_notifications()
 returns trigger
 language plpgsql
