@@ -12,6 +12,10 @@ const integrationScript = readFileSync(
 const backend = readFileSync("netlify/functions/ask-vorta.mts", "utf8") + integrationPatch;
 const service = readFileSync("src/screens/AiOperations/vortaAgentService.ts", "utf8") + integrationPatch;
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8") + integrationPatch;
+const mobileHardening = readFileSync(
+  "src/screens/AiOperations/mobilePortalHardening.css",
+  "utf8",
+) + integrationPatch;
 const migration = readFileSync(
   "supabase/migrations/20260803202500_vor_048_route_latency_feedback.sql",
   "utf8",
@@ -37,6 +41,7 @@ const checks = [
   [service.includes("export type AskVortaFeedbackCategory") && service.includes("feedback_category"), "frontend service sends a bounded feedback category"],
   [assistant.includes("What was not useful?") && assistant.includes("Skip reason") && assistant.includes("Submit feedback"), "not-helpful feedback offers optional category and detail"],
   [assistant.includes('onClick={() => void recordFeedback("helpful")}'), "helpful feedback remains one tap"],
+  [assistant.includes('data-vorta-ai-feedback="true"') && mobileHardening.includes('[data-vorta-ai-feedback="true"]') && mobileHardening.includes("display: block !important"), "phone feedback remains visible despite compact answer pruning"],
   [browser.includes("feedback_category") && browser.includes("feedback_reason"), "authenticated browser coverage checks the feedback payload"],
   [Array.isArray(evals) && evals.length >= 6, "permanent Shift Cover route and latency scenarios exist"],
   [evals.every((scenario) => scenario.expectedTools?.includes("get_shift_cover")), "all VOR-048 scenarios require Shift Cover evidence"],
