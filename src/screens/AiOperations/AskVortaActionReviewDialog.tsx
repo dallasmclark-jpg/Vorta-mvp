@@ -128,15 +128,12 @@ export function AskVortaActionReviewDialog({
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || working) return;
-      if (stage === "review" && draft?.status === "draft") {
-        void cancelDraft();
-        return;
-      }
+      if (stage === "review" && draft?.status === "draft") return;
       onClose();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  });
+  }, [draft?.status, onClose, stage, working]);
 
   const selectedTarget = targets.find((item) => item.id === targetId) ?? null;
 
