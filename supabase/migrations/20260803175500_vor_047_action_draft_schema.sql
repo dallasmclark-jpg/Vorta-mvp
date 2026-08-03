@@ -17,13 +17,23 @@ alter table public.ask_vorta_action_drafts
   add column if not exists failure_reason text,
   add column if not exists updated_at timestamptz not null default now();
 
+update public.ask_vorta_action_drafts
+set action_kind = 'read_only',
+    supported = false,
+    failure_reason = coalesce(
+      nullif(btrim(failure_reason), ''),
+      'Unsupported by the Vorta read-only SAP boundary.'
+    ),
+    updated_at = now()
+where action_kind not in ('read_only', 'handover_note');
+
 alter table public.ask_vorta_action_drafts
   drop constraint if exists ask_vorta_action_drafts_status_check,
   add constraint ask_vorta_action_drafts_status_check
     check (status in ('draft', 'confirmed', 'cancelled', 'failed')),
   drop constraint if exists ask_vorta_action_drafts_action_kind_check,
   add constraint ask_vorta_action_drafts_action_kind_check
-    check (action_kind in ('read_only', 'handover_note', 'work_request', 'spare_stock_review')),
+    check (action_kind in ('read_only', 'handover_note')),
   drop constraint if exists ask_vorta_action_drafts_priority_check,
   add constraint ask_vorta_action_drafts_priority_check
     check (priority in ('now', 'before_shift', 'this_week', 'planned')),
@@ -47,12 +57,15 @@ create table if not exists public.ask_vorta_action_events (
   draft_id uuid not null references public.ask_vorta_action_drafts(id) on delete cascade,
   site_id uuid not null references public.sites(id) on delete cascade,
   actor_id uuid not null references auth.users(id) on delete restrict,
-  event_type text not null check (event_type in ('created', 'confirmed', 'cancelled', 'failed', 'idempotent_replay')),
+  event_type text not null check (
+    event_type in ('created', 'confirmed', 'cancelled', 'failed', 'idempotent_replay')
+  ),
   action_kind text not null,
   target_type text,
   target_id uuid,
   draft_version integer not null,
-  event_payload jsonb not null default '{}'::jsonb check (jsonb_typeof(event_payload) = 'object'),
+  event_payload jsonb not null default '{}'::jsonb
+    check (jsonb_typeof(event_payload) = 'object'),
   created_at timestamptz not null default now()
 );
 create index if not exists ask_vorta_action_events_draft_idx
@@ -60,30 +73,21 @@ create index if not exists ask_vorta_action_events_draft_idx
 create index if not exists ask_vorta_action_events_site_idx
   on public.ask_vorta_action_events (site_id, created_at desc);
 
-create table if not exists public.spare_stock_review_tasks (
-  id uuid primary key default gen_random_uuid(),
-  site_id uuid not null references public.sites(id) on delete cascade,
-  component_id uuid not null references public.equipment_components(id) on delete restrict,
-  source_draft_id uuid not null unique references public.ask_vorta_action_drafts(id) on delete restrict,
-  requested_quantity numeric,
-  reason text not null,
-  owner_name text not null,
-  due_at timestamptz,
-  status text not null default 'open' check (status in ('open', 'reviewed', 'cancelled')),
-  component_snapshot jsonb not null default '{}'::jsonb check (jsonb_typeof(component_snapshot) = 'object'),
-  created_by uuid not null references auth.users(id) on delete restrict,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists spare_stock_review_tasks_site_status_idx
-  on public.spare_stock_review_tasks (site_id, status, created_at desc);
-create index if not exists spare_stock_review_tasks_component_idx
-  on public.spare_stock_review_tasks (component_id, status);
-
+alter table public.ask_vorta_action_drafts enable row level security;
 alter table public.ask_vorta_action_events enable row level security;
-alter table public.spare_stock_review_tasks enable row level security;
 
-drop policy if exists ask_vorta_action_events_select_own on public.ask_vorta_action_events;
+drop policy if exists ask_vorta_action_drafts_select_own
+  on public.ask_vorta_action_drafts;
+create policy ask_vorta_action_drafts_select_own
+  on public.ask_vorta_action_drafts
+  for select to authenticated
+  using (
+    user_id = (select auth.uid())
+    and private.vorta_rls_has_site_access(site_id, false)
+  );
+
+drop policy if exists ask_vorta_action_events_select_own
+  on public.ask_vorta_action_events;
 create policy ask_vorta_action_events_select_own
   on public.ask_vorta_action_events
   for select to authenticated
@@ -97,21 +101,17 @@ create policy ask_vorta_action_events_select_own
     )
   );
 
-drop policy if exists spare_stock_review_tasks_select_site on public.spare_stock_review_tasks;
-create policy spare_stock_review_tasks_select_site
-  on public.spare_stock_review_tasks
-  for select to authenticated
-  using (private.vorta_rls_has_site_access(site_id, false));
+drop policy if exists ask_vorta_action_drafts_insert_own
+  on public.ask_vorta_action_drafts;
+drop policy if exists ask_vorta_action_drafts_update_own
+  on public.ask_vorta_action_drafts;
 
-drop policy if exists ask_vorta_action_drafts_insert_own on public.ask_vorta_action_drafts;
-drop policy if exists ask_vorta_action_drafts_update_own on public.ask_vorta_action_drafts;
-
-revoke insert, update, delete on table public.ask_vorta_action_drafts from authenticated;
-revoke insert, update, delete on table public.ask_vorta_action_events from authenticated;
-revoke insert, update, delete on table public.spare_stock_review_tasks from authenticated;
+revoke insert, update, delete on table public.ask_vorta_action_drafts
+  from authenticated;
+revoke insert, update, delete on table public.ask_vorta_action_events
+  from authenticated;
 grant select on table public.ask_vorta_action_drafts to authenticated;
 grant select on table public.ask_vorta_action_events to authenticated;
-grant select on table public.spare_stock_review_tasks to authenticated;
 
 create or replace function private.vorta_ask_vorta_can_manage(p_site_id uuid)
 returns boolean
@@ -197,9 +197,16 @@ revoke all on function private.vorta_ask_vorta_can_manage(uuid)
   from public, anon, authenticated;
 grant execute on function private.vorta_ask_vorta_can_manage(uuid)
   to service_role;
-revoke all on function private.vorta_ask_vorta_action_draft_json(public.ask_vorta_action_drafts)
-  from public, anon, authenticated;
-grant execute on function private.vorta_ask_vorta_action_draft_json(public.ask_vorta_action_drafts)
-  to service_role;
+revoke all on function private.vorta_ask_vorta_action_draft_json(
+  public.ask_vorta_action_drafts
+) from public, anon, authenticated;
+grant execute on function private.vorta_ask_vorta_action_draft_json(
+  public.ask_vorta_action_drafts
+) to service_role;
+
+comment on table public.ask_vorta_action_drafts
+  is 'Reviewable Ask Vorta handover drafts. Vorta remains read-only from SAP.';
+comment on table public.ask_vorta_action_events
+  is 'Immutable audit events for controlled Ask Vorta handover drafts.';
 
 notify pgrst, 'reload schema';
