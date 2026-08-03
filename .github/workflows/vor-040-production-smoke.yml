@@ -1,15 +1,16 @@
 name: VOR-040 authenticated production smoke
 
 on:
-  push:
-    branches:
-      - agent/vor-040-natural-question-audit-clean
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   smoke:
+    if: github.head_ref == 'agent/vor-040-natural-question-audit-clean'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -27,7 +28,7 @@ jobs:
       - name: Check out smoke branch
         uses: actions/checkout@v4
         with:
-          ref: agent/vor-040-natural-question-audit-clean
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Compose public Supabase client key
@@ -89,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vor-040-production-smoke-${{ github.sha }}
+          name: vor-040-production-smoke-${{ github.event.pull_request.head.sha }}
           path: vor-040-production-smoke.log
           if-no-files-found: error
           retention-days: 30
@@ -106,4 +107,4 @@ jobs:
           git add .github/workflows/vor-040-production-smoke.yml
           git diff --cached --check
           git commit -m "VOR-040: complete production smoke verification"
-          git push origin HEAD:agent/vor-040-natural-question-audit-clean
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
