@@ -93,7 +93,9 @@ assert.match(clientIntegration, /Not saved to Vorta records or Recents/);
 assert.match(clientIntegration, /does not retain image uploads/);
 assert.match(clientIntegration, /imageName/);
 assert.match(clientIntegration, /dataUrl: image\.dataUrl/);
-assert.doesNotMatch(clientIntegration, /localStorage.*dataUrl|conversationContext.*dataUrl/);
+assert.doesNotMatch(clientIntegration, /localStorage[^\n]*dataUrl/);
+assert.doesNotMatch(clientIntegration, /conversationContext\s*:\s*\{[^}]*dataUrl/);
+assert.doesNotMatch(clientIntegration, /answer\s*:\s*\{[^}]*dataUrl/);
 assert.doesNotMatch(clientIntegration, /src\/screens\/ShiftHandover|ShiftHandover/);
 
 assert.equal(packageJson.scripts.prebuild, "node scripts/validate-live-pilot.mjs");
