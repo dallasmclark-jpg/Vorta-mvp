@@ -2794,7 +2794,7 @@ function deterministicOperationalAnswer(
         `Shift cover: ${shiftsChecked} shifts checked, ${reducedCoverShifts} reduced-cover shifts and ${skillExposureShifts} shifts with validated-skill exposure.`,
       ],
       findings: [
-        { category: "work", severity: gapsRemain ? "high" : "info", title: "Plan and cover comparison", detail: gapsRemain ? "The dated plan still has rota, validated-skill or assignment constraints; completion is not guaranteed." : "No recorded cover or assignment constraint was returned for the dated plan." },
+        { category: "work", severity: gapsRemain ? "high" : "info", title: "Plan and cover comparison", detail: gapsRemain ? "The dated plan still has rota, validated-skill or assignment constraints; completion is not yet proven by the recorded evidence." : "No recorded cover or assignment constraint was returned for the dated plan." },
       ],
       recommendedActions: [firstAction],
       actionPlan: [{
@@ -2828,7 +2828,15 @@ function deterministicOperationalAnswer(
         { label: "Freshness caveat", value: "Query time and source-update time are different; real-time status is not guaranteed." },
       ],
       evidence: [`Site-risk evidence timestamp check: ${freshness}.`],
-      missingData: newest ? [] : ["The site-risk result did not expose a verified source-update timestamp."],
+    findings: [{
+      category: "freshness",
+      severity: newest ? "info" : "medium",
+      title: "Source evidence freshness",
+      detail: newest
+        ? `Newest recorded source update: ${freshness}. This is source-update time, not query time or a real-time promise.`
+        : "The site-risk result did not expose a verified source-update timestamp, so freshness cannot be proven from this evidence.",
+    }],
+    missingData: newest ? [] : ["The site-risk result did not expose a verified source-update timestamp."],
       confidence: newest ? 82 : 55,
     };
   }
@@ -2892,7 +2900,27 @@ function deterministicOperationalAnswer(
         `Work evidence: ${openCount} open and ${overdueCount} overdue.`,
         `Spares evidence: ${outOfStockCount} out of stock${criticalSpare ? `, including ${criticalSpare}` : ""}.`,
       ],
-      confidence: 78,
+      findings: [
+      {
+        category: "risk",
+        severity: "high",
+        title: "Morning briefing evidence · site risk",
+        detail: `Current site risk is ${riskScore}; ${highestArea} is the highest-risk area returned by the operational snapshot.`,
+      },
+      {
+        category: "work",
+        severity: overdueCount > 0 ? "high" : "info",
+        title: "Morning briefing evidence · work",
+        detail: `${overdueCount} overdue work orders remain within ${openCount} open work orders.`,
+      },
+      {
+        category: "spares",
+        severity: outOfStockCount > 0 ? "high" : "info",
+        title: "Morning briefing evidence · spares",
+        detail: `${outOfStockCount} out-of-stock risk items are recorded${criticalSpare ? `; the first recorded constraint is ${criticalSpare}` : ""}.`,
+      },
+    ],
+    confidence: 78,
     };
   }
 
@@ -3076,7 +3104,8 @@ function deterministicQuestionPlan(
   if (
     coverDate &&
     /\b(?:cover|coverage|short|rota|available|availability)\b/.test(question) &&
-    /\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\b/.test(question)
+    /\b(?:shift|skills?|engineers?|people|team|day|night|today|tomorrow)\b/.test(question) &&
+      !/\b(?:evidence|prove|confirm|picture)\b/.test(question)
   ) {
     return fastPlan(
       "shift_cover",
