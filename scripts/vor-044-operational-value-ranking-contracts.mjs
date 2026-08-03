@@ -102,10 +102,11 @@ const checks = [
     "the deterministic answer retains score components, blockers and the exact owner",
   ],
   [
-    packageJson.scripts.prebuild.startsWith("node scripts/vor-044-integrate-operational-value.mjs")
+    packageJson.scripts.prebuild === "node scripts/validate-live-pilot.mjs"
+      && packageJson.scripts.build.startsWith("node scripts/vor-044-integrate-operational-value.mjs &&")
       && packageJson.scripts["pretest:contracts"] === "node scripts/vor-044-integrate-operational-value.mjs"
       && packageJson.scripts.predev === "node scripts/vor-044-integrate-operational-value.mjs",
-    "development, contracts and production builds apply the audited integration before use",
+    "the live-pilot guard remains the exact prebuild gate while development, contracts and production builds apply the audited integration",
   ],
   [
     integrationScript.includes('const targetPath = "netlify/functions/ask-vorta.mts";')
