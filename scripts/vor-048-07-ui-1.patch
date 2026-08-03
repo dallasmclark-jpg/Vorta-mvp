@@ -1,0 +1,190 @@
+--- a/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
++++ b/src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
+@@ -52,6 +52,7 @@
+   AskVortaAgentError,
+   markAskVortaFallback,
+   submitAskVortaFeedback,
++  type AskVortaFeedbackCategory,
+   type VortaAgentAction,
+   type VortaAgentCoverOption,
+   type VortaAgentDecisionSummaryItem,
+@@ -2026,15 +2027,28 @@
+     : null;
+   const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | null>(null);
+   const [feedbackPending, setFeedbackPending] = useState(false);
++  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false);
++  const [feedbackCategory, setFeedbackCategory] = useState<AskVortaFeedbackCategory | "">("");
++  const [feedbackReason, setFeedbackReason] = useState("");
+   const [draftedActions, setDraftedActions] = useState<Set<number>>(() => new Set());
+   const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
+ 
+-  const recordFeedback = async (value: "helpful" | "not_helpful"): Promise<void> => {
++  const recordFeedback = async (
++    value: "helpful" | "not_helpful",
++    options: {
++      category?: AskVortaFeedbackCategory;
++      reason?: string;
++    } = {},
++  ): Promise<void> => {
+     if (!answer.responseId || feedbackPending) return;
+     setFeedbackPending(true);
++    setWorkflowMessage(null);
+     try {
+-      await submitAskVortaFeedback(answer.responseId, value);
++      await submitAskVortaFeedback(answer.responseId, value, options);
+       setFeedback(value);
++      setFeedbackPromptOpen(false);
++      setFeedbackCategory("");
++      setFeedbackReason("");
+     } catch (error) {
+       setWorkflowMessage(error instanceof Error ? error.message : "Feedback could not be saved.");
+     } finally {
+@@ -2426,38 +2440,117 @@
+         </span>
+       </div>
+       {answer.responseId && (
+-        <div className="flex items-center justify-between gap-2">
+-          <span className="text-xs text-slate-500">
+-            {feedback ? "Thanks—this improves Ask Vorta." : "Was this decision pack useful?"}
+-          </span>
+-          <div className="flex gap-1">
+-            <button
+-              type="button"
+-              aria-label="Mark this Ask Vorta response helpful"
+-              disabled={feedbackPending}
+-              onClick={() => void recordFeedback("helpful")}
+-              className={`rounded-md border p-2 transition-colors ${
+-                feedback === "helpful"
+-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+-                  : "border-gray-700 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
+-              }`}
+-            >
+-              <ThumbsUp className="h-3.5 w-3.5" />
+-            </button>
+-            <button
+-              type="button"
+-              aria-label="Mark this Ask Vorta response not helpful"
+-              disabled={feedbackPending}
+-              onClick={() => void recordFeedback("not_helpful")}
+-              className={`rounded-md border p-2 transition-colors ${
+-                feedback === "not_helpful"
+-                  ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+-                  : "border-gray-700 text-slate-400 hover:border-amber-500/30 hover:text-amber-300"
+-              }`}
+-            >
+-              <ThumbsDown className="h-3.5 w-3.5" />
+-            </button>
++        <div className="space-y-2">
++          <div className="flex items-center justify-between gap-2">
++            <span className="text-xs text-slate-500">
++              {feedback ? "Thanks—this improves Ask Vorta." : "Was this decision pack useful?"}
++            </span>
++            <div className="flex gap-1">
++              <button
++                type="button"
++                aria-label="Mark this Ask Vorta response helpful"
++                disabled={feedbackPending}
++                onClick={() => void recordFeedback("helpful")}
++                className={`rounded-md border p-2 transition-colors ${
++                  feedback === "helpful"
++                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
++                    : "border-gray-700 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
++                }`}
++              >
++                <ThumbsUp className="h-3.5 w-3.5" />
++              </button>
++              <button
++                type="button"
++                aria-label="Mark this Ask Vorta response not helpful"
++                aria-expanded={feedbackPromptOpen}
++                disabled={feedbackPending}
++                onClick={() => setFeedbackPromptOpen((current) => !current)}
++                className={`rounded-md border p-2 transition-colors ${
++                  feedback === "not_helpful"
++                    ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
++                    : "border-gray-700 text-slate-400 hover:border-amber-500/30 hover:text-amber-300"
++                }`}
++              >
++                <ThumbsDown className="h-3.5 w-3.5" />
++              </button>
++            </div>
+           </div>
++
++          {feedbackPromptOpen && feedback !== "not_helpful" && (
++            <div
++              role="group"
++              aria-labelledby={`ask-vorta-feedback-${answer.responseId}`}
++              className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3"
++            >
++              <p
++                id={`ask-vorta-feedback-${answer.responseId}`}
++                className="text-xs font-semibold text-amber-100"
++              >
++                What was not useful? Optional, but considerably more informative than a lonely thumbs-down.
++              </p>
++              <label className="block space-y-1 text-xs text-slate-300">
++                <span>Reason</span>
++                <select
++                  value={feedbackCategory}
++                  onChange={(event) =>
++                    setFeedbackCategory(event.target.value as AskVortaFeedbackCategory | "")
++                  }
++                  className="min-h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-sm text-slate-100"
++                >
++                  <option value="">No category selected</option>
++                  <option value="wrong_route">Answered the wrong question</option>
++                  <option value="missing_evidence">Missing important evidence</option>
++                  <option value="too_slow">Took too long</option>
++                  <option value="unclear">Unclear or difficult to scan</option>
++                  <option value="incorrect">Information looked incorrect</option>
++                  <option value="too_much_detail">Too much detail</option>
++                  <option value="other">Other</option>
++                </select>
++              </label>
++              <label className="block space-y-1 text-xs text-slate-300">
++                <span>Brief detail</span>
++                <textarea
++                  value={feedbackReason}
++                  maxLength={500}
++                  rows={2}
++                  onChange={(event) => setFeedbackReason(event.target.value)}
++                  placeholder="Optional detail"
++                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-sm text-slate-100"
++                />
++              </label>
++              <div className="flex flex-wrap justify-end gap-2">
++                <button
++                  type="button"
++                  disabled={feedbackPending}
++                  onClick={() => setFeedbackPromptOpen(false)}
++                  className="min-h-10 rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-500"
++                >
++                  Cancel
++                </button>
++                <button
++                  type="button"
++                  disabled={feedbackPending}
++                  onClick={() => void recordFeedback("not_helpful")}
++                  className="min-h-10 rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-500/30"
++                >
++                  Skip reason
++                </button>
++                <button
++                  type="button"
++                  disabled={feedbackPending}
++                  onClick={() =>
++                    void recordFeedback("not_helpful", {
++                      category: feedbackCategory || undefined,
++                      reason: feedbackReason,
++                    })
++                  }
++                  className="min-h-10 rounded-md bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-500/30"
++                >
++                  Submit feedback
++                </button>
++              </div>
++            </div>
++          )}
+         </div>
+       )}
+     </div>

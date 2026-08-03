@@ -1,0 +1,68 @@
+[
+  {
+    "id": "vor048-shift-cover-explicit",
+    "question": "What are the shift cover issues today?",
+    "expectedTools": ["get_shift_cover"],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "requireActionPlan": true,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "maxDurationMs": 10000,
+    "requestTimeoutMs": 25000,
+    "mustMentionAny": ["shift", "cover", "skill", "engineer"]
+  },
+  {
+    "id": "vor048-shift-cover-natural",
+    "question": "Are we short of the right people tomorrow?",
+    "expectedTools": ["get_shift_cover"],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "requireActionPlan": true,
+    "maxDurationMs": 10000,
+    "requestTimeoutMs": 25000,
+    "mustMentionAny": ["shift", "skill", "engineer", "rota"]
+  },
+  {
+    "id": "vor048-shift-cover-absence",
+    "question": "Who is off next week and what does that expose?",
+    "expectedTools": ["get_shift_cover"],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "maxDurationMs": 10000,
+    "requestTimeoutMs": 25000,
+    "mustMentionAny": ["off", "absence", "shift", "skill"]
+  },
+  {
+    "id": "vor048-shift-cover-rest",
+    "question": "Check the proposed cover for rest conflicts this week.",
+    "expectedTools": ["get_shift_cover"],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "maxDurationMs": 10000,
+    "requestTimeoutMs": 25000,
+    "mustMentionAny": ["rest", "cover", "shift", "confirm"]
+  },
+  {
+    "id": "vor048-shift-cover-plan-feasibility",
+    "question": "Can we complete next week's PM and calibration plan with the people available?",
+    "expectedTools": ["get_site_maintenance_plan", "get_shift_cover"],
+    "maxToolCount": 2,
+    "confidenceMin": 55,
+    "requireActionPlan": true,
+    "maxDurationMs": 12000,
+    "requestTimeoutMs": 28000,
+    "mustMentionAny": ["plan", "cover", "calibration", "shift"]
+  },
+  {
+    "id": "vor048-shift-cover-page-context",
+    "question": "What needs attention here today?",
+    "expectedTools": ["get_shift_cover"],
+    "maxToolCount": 1,
+    "confidenceMin": 55,
+    "maxDurationMs": 10000,
+    "requestTimeoutMs": 25000,
+    "path": "/maintenance/labour-risk/shift-cover",
+    "mustMentionAny": ["shift", "cover", "skill", "rota"]
+  }
+]

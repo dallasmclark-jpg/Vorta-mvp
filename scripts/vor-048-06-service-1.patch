@@ -1,0 +1,44 @@
+--- a/src/screens/AiOperations/vortaAgentService.ts
++++ b/src/screens/AiOperations/vortaAgentService.ts
+@@ -94,6 +94,15 @@
+   conversationContext?: VortaConversationContext;
+ }
+ 
++export type AskVortaFeedbackCategory =
++  | "wrong_route"
++  | "missing_evidence"
++  | "too_slow"
++  | "unclear"
++  | "incorrect"
++  | "too_much_detail"
++  | "other";
++
+ export interface VortaAgentDecisionSummaryItem {
+   label: string;
+   value: string;
+@@ -298,7 +307,10 @@
+ export async function submitAskVortaFeedback(
+   responseId: string,
+   feedback: "helpful" | "not_helpful",
+-  reason?: string,
++  options: {
++    category?: AskVortaFeedbackCategory;
++    reason?: string;
++  } = {},
+ ): Promise<void> {
+   const { data: sessionData } = await supabase.auth.getSession();
+   if (!sessionData.session?.user.id) {
+@@ -308,7 +320,12 @@
+     .from("ask_vorta_interactions")
+     .update({
+       feedback,
+-      feedback_reason: reason?.trim().slice(0, 500) || null,
++      feedback_category:
++        feedback === "not_helpful" ? options.category ?? null : null,
++      feedback_reason:
++        feedback === "not_helpful"
++          ? options.reason?.trim().slice(0, 500) || null
++          : null,
+       feedback_at: new Date().toISOString(),
+     })
+     .eq("id", responseId)

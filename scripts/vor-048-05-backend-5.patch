@@ -1,0 +1,72 @@
+--- a/netlify/functions/ask-vorta.mts
++++ b/netlify/functions/ask-vorta.mts
+@@ -5267,16 +5514,49 @@
+         userId: userData.user.id,
+         error: error instanceof Error ? error.message : String(error),
+       });
+-      return completeDeterministicAnswer(verifiedFallback);
++      enforceAnswerEvidence(
++        verifiedFallback,
++        request.question,
++        shiftCoverEvidence,
++        shiftCoverArguments,
++      );
++      enforceDeterministicResponseShape(verifiedFallback, questionPlan);
++      verifiedFallback.confidence = evidenceAwareConfidence(
++        verifiedFallback,
++        questionPlan,
++        toolOutcomes,
++      );
++      verifiedFallback.sources = [...usedSources];
++      verifiedFallback.toolsUsed = [...usedTools];
++      verifiedFallback.evidenceLinks = [...evidenceLinks.values()];
++      verifiedFallback.responseId = interactionId;
++      await supabase
++        .from("ask_vorta_interactions")
++        .update({
++          ...telemetryValues("fallback"),
++          intent_label: routeKey,
++          tools_used: [...usedTools],
++          sources: [...usedSources],
++          confidence: Math.max(
++            0,
++            Math.min(100, Math.round(numberValue(verifiedFallback.confidence))),
++          ),
++          missing_data_count: Array.isArray(verifiedFallback.missingData)
++            ? verifiedFallback.missingData.length
++            : 0,
++        })
++        .eq("id", interactionId)
++        .eq("user_id", userData.user.id);
++      return jsonResponse(verifiedFallback);
+     }
+     await supabase
+       .from("ask_vorta_interactions")
+       .update({
++        ...telemetryValues(
++          error instanceof AskVortaPhaseTimeoutError ? "timed_out" : "failed",
++        ),
+         tools_used: [...usedTools],
+         sources: [...usedSources],
+-        duration_ms: Date.now() - startedAt,
+-        status: "failed",
+-        completed_at: new Date().toISOString(),
+       })
+       .eq("id", interactionId)
+       .eq("user_id", userData.user.id);
+@@ -5287,10 +5567,13 @@
+     });
+     return jsonResponse(
+       {
+-        error: "The Vorta reasoning service is temporarily unavailable. Verified fallback analysis will be used.",
++        error:
++          error instanceof AskVortaPhaseTimeoutError
++            ? `Ask Vorta ${error.stage} took too long. Try again with a narrower question.`
++            : "The Vorta reasoning service is temporarily unavailable. Verified fallback analysis will be used.",
+         responseId: interactionId,
+       },
+-      503,
++      error instanceof AskVortaPhaseTimeoutError ? 504 : 503,
+     );
+   }
+ }

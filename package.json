@@ -5,7 +5,7 @@
   "name": "vorta-mvp",
   "description": "Vorta maintenance and reliability intelligence MVP",
   "scripts": {
-    "predev": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs",
+    "predev": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs && node scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
     "dev": "vite",
     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
     "typecheck": "tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
@@ -19,13 +19,14 @@
     "eval:ask-vorta:vor045": "node scripts/vor-045-multi-turn-context-evals.mjs tests/evals/vor-045-conversation-context.json",
     "eval:ask-vorta:vor046": "node scripts/vor-046-image-diagnosis-evals.mjs tests/evals/vor-046-image-diagnosis.json",
     "prebuild": "node scripts/validate-live-pilot.mjs",
-    "build:metadata": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs && node scripts/write-build-metadata.mjs",
+    "build:metadata": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs && node scripts/vor-048-integrate-routing-telemetry-feedback.mjs && node scripts/write-build-metadata.mjs",
     "build": "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
     "postbuild": "npm run test:performance",
     "check": "npm run build",
     "eval:ask-vorta:vor038": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-038-intelligence.json",
     "eval:ask-vorta:vor039": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-039-confidence-latency.json",
-    "eval:ask-vorta:vor040": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-040-natural-questions.json"
+    "eval:ask-vorta:vor040": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-040-natural-questions.json",
+    "eval:ask-vorta:vor048": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-048-shift-cover-routing.json"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",
