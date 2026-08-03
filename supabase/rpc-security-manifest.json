@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260803115400",
-  "migrationName": "vor_044_register_operational_value_rpc",
+  "migrationVersion": "20260803175800",
+  "migrationName": "vor_047_register_action_rpcs",
   "invariants": {
-    "authenticatedCallable": 70,
-    "reviewedRead": 52,
-    "reviewedMutation": 18,
-    "securityDefiner": 67,
+    "authenticatedCallable": 74,
+    "reviewedRead": 53,
+    "reviewedMutation": 21,
+    "securityDefiner": 71,
     "securityInvoker": 3,
     "anonymousCallable": 0,
     "manifestDrift": 0
@@ -19,6 +19,28 @@
     {
       "identity": "vorta_get_ranked_operational_actions(uuid,integer)",
       "scope": "authenticated authorised-demo-site access with optional validated equipment scope"
+    }
+  ],
+  "askVortaActionRpcs": [
+    {
+      "identity": "vorta_create_ask_vorta_action_draft(uuid,uuid,text,text,uuid,text,text,text,text,text,jsonb,jsonb,text)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, owned completed interaction, authorised site, eligible open work order and exact handover proposal; no SAP or target work-order mutation"
+    },
+    {
+      "identity": "vorta_get_ask_vorta_action_draft(uuid)",
+      "class": "read",
+      "scope": "authenticated draft ownership and active site access"
+    },
+    {
+      "identity": "vorta_cancel_ask_vorta_action(uuid,integer)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, draft ownership, authorised site and optimistic version; no source-record or SAP mutation"
+    },
+    {
+      "identity": "vorta_confirm_ask_vorta_action(uuid,integer)",
+      "class": "mutation",
+      "scope": "Maintenance Manager-class role, draft ownership, authorised site, optimistic version and current eligible work-order state; dispatch limited to vorta_save_shift_handover_action"
     }
   ],
   "shiftHandoverWorkflowRpcs": [
