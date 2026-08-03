@@ -64,12 +64,12 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-integrate-conversation-context\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
 );
 assert.equal(packageJson.scripts["pretest:contracts"], undefined);
 assert.match(
   packageJson.scripts.predev,
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-integrate-conversation-context\.mjs)?$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?$/,
 );
 
 console.log("VOR-044 operational-value ranking contracts passed.");
