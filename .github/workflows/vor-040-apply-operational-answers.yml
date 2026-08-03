@@ -43,6 +43,36 @@ jobs:
       - name: Apply deterministic operational-answer repair
         if: steps.state.outputs.skip != 'true'
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/vor-040-deterministic-operational-answers-patch.py')
+          source = path.read_text()
+          old = '''def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f"VOR-040 anchor {label} count {count}")
+              return source.replace(old, new, 1)
+          '''
+          new = '''def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if label == "deterministic follow-up limit" and count == 2:
+                  start = source.index("function enforceDeterministicResponseShape(")
+                  end = source.index("function enforcePlannedResponseShape(", start)
+                  scoped = source[start:end]
+                  if scoped.count(old) != 1:
+                      raise SystemExit(
+                          f"VOR-040 scoped anchor {label} count {scoped.count(old)}"
+                      )
+                  return source[:start] + scoped.replace(old, new, 1) + source[end:]
+              if count != 1:
+                  raise SystemExit(f"VOR-040 anchor {label} count {count}")
+              return source.replace(old, new, 1)
+          '''
+          if old not in source:
+              raise SystemExit('VOR-040 replace_once helper anchor missing')
+          path.write_text(source.replace(old, new, 1))
+          PY
           python3 scripts/vor-040-deterministic-operational-answers-patch.py
           python3 - <<'PY'
           from pathlib import Path
