@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import {
   createConversationContext,
   resolveConversationFollowUp,
@@ -111,10 +112,25 @@ assert.equal("extra" in bounded, false);
 assert.equal("unexpected" in bounded.orderedOptions[0], false);
 assert.equal("injected" in bounded.activeEquipment, false);
 
+const multiTurnEval = spawnSync(
+  process.execPath,
+  [
+    "scripts/vor-045-multi-turn-context-evals.mjs",
+    "tests/evals/vor-045-conversation-context.json",
+  ],
+  { encoding: "utf8" },
+);
+assert.equal(
+  multiTurnEval.status,
+  0,
+  `VOR-045 multi-turn context fixture failed:\n${multiTurnEval.stdout}\n${multiTurnEval.stderr}`,
+);
+
 const normaliser = readFileSync("scripts/vor-045-normalise-request-context.mjs", "utf8");
 assert.match(normaliser, /interface PageContext/);
 assert.match(normaliser, /pageContext: PageContext/);
-assert.match(normaliser, /inline pageContext type/);
+assert.match(normaliser, /equipmentReferenceFromQuestion/);
+assert.match(normaliser, /request\.question\.trim\(\)/);
 
 const integration = readFileSync("scripts/vor-045-integrate-conversation-context.mjs", "utf8");
 assert.match(integration, /conversationContext/);
