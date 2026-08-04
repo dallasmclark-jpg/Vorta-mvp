@@ -1,0 +1,42 @@
+name: VOR-033 Production Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/vor-033-production-audit.yml'
+      - 'scripts/vor-033-production-audit.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Run 24 production questions
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VORTA_E2E_EMAIL: ${{ secrets.VORTA_E2E_EMAIL }}
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_DELAY_MS: '10000'
+    steps:
+      - name: Check out production source
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run exact 24-question production audit
+        run: node scripts/vor-033-production-audit.mjs
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-033-production-audit-${{ github.sha }}
+          path: artifacts/vor-033-production-audit.json
+          if-no-files-found: error
+          retention-days: 14
