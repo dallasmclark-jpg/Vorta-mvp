@@ -1,5 +1,5 @@
 {
-  "generatedFromCommit": "427057d7bd7653350953680e77445a5d32dafc11",
+  "generatedFromCommit": "8f59c2eb6003f8f5226c2bc79a713d3851f87e59",
   "integrationScripts": [
     {
       "path": "scripts/vor-044-integrate-operational-value.mjs",
@@ -115,7 +115,7 @@
         "action draft",
         "vorta_save_shift_handover_action"
       ],
-      "characterCount": 9118
+      "characterCount": 9352
     },
     {
       "path": "scripts/ask-vorta-agent-contracts.mjs",
