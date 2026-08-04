@@ -25,6 +25,28 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Preserve literal replacement text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/vor-053-retire-scaffolding.py")
+          source = path.read_text()
+          marker = "import re\n"
+          patch = '''import re
+
+_original_subn = re.subn
+
+def _literal_subn(pattern, replacement, source, *args, **kwargs):
+    if isinstance(replacement, str):
+        replacement = lambda _match, value=replacement: value
+    return _original_subn(pattern, replacement, source, *args, **kwargs)
+
+re.subn = _literal_subn
+'''
+          if source.count(marker) != 1:
+              raise SystemExit("Could not patch literal regex replacement handling")
+          path.write_text(source.replace(marker, patch))
+          PY
       - name: Retire reviewed legacy scaffolding
         run: python scripts/vor-053-retire-scaffolding.py
       - name: Verify canonical contracts and runtime
