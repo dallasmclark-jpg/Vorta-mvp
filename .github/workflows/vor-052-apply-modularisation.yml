@@ -20,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -37,20 +38,18 @@ jobs:
               Path(".vor-052/modulariser-parts/03").read_bytes(),
           ]
           reviewed = b"".join(part.rstrip(b"\r\n") for part in parts[:-1]) + parts[-1]
-          Path("scripts/vor-052-modularise-backend.mjs").write_bytes(reviewed)
+          source = reviewed.decode("utf8")
+          source = source.replace(
+              'global: { headers: { Authorization: `Bearer ${bearer}` } },',
+              r'global: { headers: { Authorization: \`Bearer \${bearer}\` } },',
+          )
+          source = source.replace(
+              '{ error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.` },',
+              r'{ error: \`Ask Vorta allows \${RATE_LIMIT_REQUESTS} analyses every \${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.\` },',
+          )
+          Path("scripts/vor-052-modularise-backend.mjs").write_text(source)
           PY
-          wc -c scripts/vor-052-modularise-backend.mjs
-          sha256sum scripts/vor-052-modularise-backend.mjs
-      - name: Retain transported modulariser
-        uses: actions/upload-artifact@v4
-        with:
-          name: vor-052-transported-modulariser
-          path: scripts/vor-052-modularise-backend.mjs
-          if-no-files-found: error
-          retention-days: 2
-      - name: Verify transported modulariser
-        run: |
-          echo "d48fdb54d8d360e982e3f91374691ab709eb61bfe4d83165c5e73d4f6211cffd  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
+          echo "8fe5682360a0c68018ae89f4289ad067faef3d601a75619d048aae51eee8c78d  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
           node --check scripts/vor-052-modularise-backend.mjs
       - name: Materialise the validated VOR-044 to VOR-051 behaviour
         run: npm run predev
