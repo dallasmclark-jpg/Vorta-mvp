@@ -48,19 +48,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          clear_build_metadata() {
+            if git ls-files --error-unmatch public/vorta-build.json >/dev/null 2>&1; then
+              git checkout -- public/vorta-build.json
+            else
+              rm -f public/vorta-build.json
+            fi
+          }
+
+          assert_only_build_metadata_changed() {
+            unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^( M|\?\?) public/vorta-build\.json$' || true)"
+            test -z "$unexpected"
+          }
+
           node scripts/vor-053-canonical-build-contracts.mjs
 
           npm run predev
           test -z "$(git status --porcelain --untracked-files=all)"
 
           npm run build:metadata
-          unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
-          test -z "$unexpected"
-          git checkout -- public/vorta-build.json
+          assert_only_build_metadata_changed
+          clear_build_metadata
 
           npm run test:contracts
           test -z "$(git status --porcelain --untracked-files=all)"
 
           npm run build
-          unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
-          test -z "$unexpected"
+          assert_only_build_metadata_changed
+          clear_build_metadata
+          test -z "$(git status --porcelain --untracked-files=all)"
