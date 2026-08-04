@@ -2,7 +2,6 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import {
   expectNoPageOverflow,
-  getStoredSupabaseAccessToken,
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
@@ -14,6 +13,8 @@ const siteId =
   "11000000-0000-0000-0000-000000000001";
 const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
+const protectedEmail = process.env.VORTA_E2E_EMAIL ?? "";
+const protectedPassword = process.env.VORTA_E2E_PASSWORD ?? "";
 const expectedEntities = [
   "FD-03",
   "FD-03-PLC-01",
@@ -75,14 +76,49 @@ async function scrollAssistantToEnd(page: Page): Promise<void> {
   await page.waitForTimeout(100);
 }
 
-async function resolveFd03EquipmentId(page: Page): Promise<string> {
+async function getProtectedEvidenceToken(page: Page): Promise<string> {
   expect(supabaseUrl, "VITE_SUPABASE_URL must be configured").not.toBe("");
   expect(
     supabaseAnonKey,
     "VITE_SUPABASE_ANON_KEY must be configured",
   ).not.toBe("");
+  expect(protectedEmail, "VORTA_E2E_EMAIL must be configured").not.toBe("");
+  expect(
+    protectedPassword,
+    "VORTA_E2E_PASSWORD must be configured",
+  ).not.toBe("");
 
-  const accessToken = await getStoredSupabaseAccessToken(page);
+  const response = await page.request.post(
+    `${supabaseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=password`,
+    {
+      headers: {
+        apikey: supabaseAnonKey,
+        "content-type": "application/json",
+      },
+      data: {
+        email: protectedEmail,
+        password: protectedPassword,
+      },
+    },
+  );
+  const payload = (await response.json().catch(() => null)) as {
+    access_token?: unknown;
+    error_description?: unknown;
+    message?: unknown;
+  } | null;
+  expect(
+    response.ok(),
+    `The protected evidence reader could not sign in: ${String(
+      payload?.error_description ?? payload?.message ?? response.status(),
+    )}`,
+  ).toBe(true);
+  expect(typeof payload?.access_token).toBe("string");
+  expect(String(payload?.access_token ?? "")).not.toBe("");
+  return String(payload?.access_token);
+}
+
+async function resolveFd03EquipmentId(page: Page): Promise<string> {
+  const accessToken = await getProtectedEvidenceToken(page);
   const query = new URLSearchParams({
     select: "id,equipment_code",
     site_id: `eq.${siteId}`,
