@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const browserTest = read("tests/browser/vor-051-manager-demo-rehearsal.spec.ts");
+const dataTrustBanner = read("src/components/DataTrustBanner.tsx");
 const workflow = read(".github/workflows/vor-051-validation.yml");
 const playwright = read("playwright.config.ts");
 const packageJson = JSON.parse(read("package.json"));
@@ -11,7 +12,7 @@ for (const marker of [
   '"phone-360"',
   '"laptop-1366"',
   'data-vorta-dashboard-root="true"',
-  "Fill Finish",
+  "Lyophilisation",
   "View work plan",
   "Recommended Work Queue",
   "FD-03",
@@ -33,6 +34,21 @@ for (const marker of [
     `Missing VOR-051 rehearsal marker: ${marker}`,
   );
 }
+assert.doesNotMatch(
+  browserTest,
+  /dashboardScope: "Fill Finish"/,
+  "FD-03 must not be rehearsed under the wrong dashboard area",
+);
+assert.match(
+  browserTest,
+  /dashboardScope: "Lyophilisation"/,
+  "The golden journey must record the real FD-03 area",
+);
+assert.match(
+  browserTest,
+  /data-vorta-data-mode=\\?"unavailable\\?"[\s\S]*?toHaveCount\(0/,
+  "A credible demo rehearsal must fail while the global data-trust banner is unavailable",
+);
 
 for (const marker of [
   "getStoredSupabaseAccessToken",
@@ -114,6 +130,20 @@ assert.ok(
   (browserTest.match(/testInfo\.attach/g) ?? []).length >= 4,
   "The successful rehearsal must retain its manifest and three visual checkpoints",
 );
+
+for (const marker of [
+  "getConfiguredDataMode",
+  "data-vorta-data-unavailable-reason",
+  '"deployment-mode"',
+  '"active-site"',
+  "verified the active site",
+  "no verified active-site context",
+]) {
+  assert.ok(
+    dataTrustBanner.includes(marker),
+    `The unavailable banner must state the real trust failure: ${marker}`,
+  );
+}
 
 assert.match(
   playwright,
