@@ -1,9 +1,9 @@
 name: VOR-053 retire legacy scaffolding
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - agent/vor-053-canonicalise-ask-vorta-build
     paths:
       - ".github/workflows/vor-053-canonicalisation-audit.yml"
 
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -72,6 +72,6 @@ re.subn = _literal_subn
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "VOR-053 retire legacy Ask Vorta build scaffolding"
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git rebase "origin/${GITHUB_HEAD_REF}"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git rebase "origin/${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
