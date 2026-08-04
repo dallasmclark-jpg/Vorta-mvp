@@ -28,15 +28,19 @@ if (!answerBlock.includes("evidenceLinks: agentAnswer.evidenceLinks,")) {
   changed = true;
 }
 
-if (!source.includes("Open in Vorta")) {
-  const sourcesMarker = "      {answer.sources.length > 0 && (\n";
-  const sourcesIndex = source.indexOf(sourcesMarker);
+const rendererMarker =
+  "      {answer.evidenceLinks && answer.evidenceLinks.length > 0 && (\n";
+const sourcesMarker = "      {answer.sources.length > 0 && (\n";
+let rendererStart = source.indexOf(rendererMarker);
+let sourcesIndex = source.indexOf(sourcesMarker);
+
+if (rendererStart < 0) {
   if (sourcesIndex < 0) {
     throw new Error("VOR-051 could not locate the Ask Vorta source badges insertion point.");
   }
 
   const evidenceLinksRenderer = `      {answer.evidenceLinks && answer.evidenceLinks.length > 0 && (
-        <div data-vorta-ai-evidence-links="true">
+        <section data-vorta-ai-evidence-links="true">
           <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
             Open in Vorta
           </h4>
@@ -54,7 +58,7 @@ if (!source.includes("Open in Vorta")) {
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
 `;
@@ -64,12 +68,48 @@ if (!source.includes("Open in Vorta")) {
     evidenceLinksRenderer +
     source.slice(sourcesIndex);
   changed = true;
+  rendererStart = source.indexOf(rendererMarker);
+  sourcesIndex = source.indexOf(sourcesMarker);
+}
+
+if (rendererStart < 0 || sourcesIndex < 0 || sourcesIndex <= rendererStart) {
+  throw new Error("VOR-051 could not isolate the Ask Vorta evidence-link renderer.");
+}
+
+let rendererBlock = source.slice(rendererStart, sourcesIndex);
+if (!rendererBlock.includes('data-vorta-ai-evidence-links="true"')) {
+  const plainOpen = "        <div>\n";
+  const openIndex = rendererBlock.indexOf(plainOpen);
+  if (openIndex < 0) {
+    throw new Error("VOR-051 could not locate the evidence-link wrapper.");
+  }
+  rendererBlock =
+    rendererBlock.slice(0, openIndex) +
+    '        <section data-vorta-ai-evidence-links="true">\n' +
+    rendererBlock.slice(openIndex + plainOpen.length);
+
+  const plainClose = "        </div>\n      )}";
+  const closeIndex = rendererBlock.lastIndexOf(plainClose);
+  if (closeIndex < 0) {
+    throw new Error("VOR-051 could not locate the closing evidence-link wrapper.");
+  }
+  rendererBlock =
+    rendererBlock.slice(0, closeIndex) +
+    "        </section>\n      )}" +
+    rendererBlock.slice(closeIndex + plainClose.length);
+
+  source =
+    source.slice(0, rendererStart) +
+    rendererBlock +
+    source.slice(sourcesIndex);
+  changed = true;
 }
 
 for (const marker of [
   "evidenceLinks?: VortaAgentEvidenceLink[];",
   "evidenceLinks: agentAnswer.evidenceLinks,",
   "answer.evidenceLinks && answer.evidenceLinks.length > 0",
+  'data-vorta-ai-evidence-links="true"',
   "Open in Vorta",
 ]) {
   if (!source.includes(marker)) {
@@ -79,7 +119,7 @@ for (const marker of [
 
 if (changed) {
   writeFileSync(assistantPath, source);
-  console.log("Applied VOR-051 Ask Vorta evidence-link preservation.");
+  console.log("Applied VOR-051 phone-visible Ask Vorta evidence navigation.");
 } else {
-  console.log("VOR-051 Ask Vorta evidence-link preservation is already applied.");
+  console.log("VOR-051 phone-visible Ask Vorta evidence navigation is already applied.");
 }
