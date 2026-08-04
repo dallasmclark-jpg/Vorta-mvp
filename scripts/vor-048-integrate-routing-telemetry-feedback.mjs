@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,38 @@ const deterministicPageContextMarker =
 
 const backendSource = readFileSync(backendPath, "utf8");
 const assistantSource = readFileSync(assistantPath, "utf8");
+const modularEntrypoint = 'export { default, config } from "./ask-vorta/runtime.mjs";';
+if (backendSource.includes(modularEntrypoint)) {
+  const contractsPath = resolve(repositoryRoot, "netlify/functions/ask-vorta/contracts.mts");
+  const routePlanningPath = resolve(repositoryRoot, "netlify/functions/ask-vorta/route-planning.mts");
+  const telemetryPath = resolve(repositoryRoot, "netlify/functions/ask-vorta/telemetry.mts");
+  for (const modulePath of [contractsPath, routePlanningPath, telemetryPath]) {
+    if (!existsSync(modulePath)) {
+      throw new Error(`VOR-048 modular Ask Vorta source is missing ${modulePath}.`);
+    }
+  }
+
+  const contractsSource = readFileSync(contractsPath, "utf8");
+  const routePlanningSource = readFileSync(routePlanningPath, "utf8");
+  const telemetrySource = readFileSync(telemetryPath, "utf8");
+  const requiredMarkers = [
+    [contractsSource, marker, contractsPath],
+    [routePlanningSource, sitePriorityPageExclusion, routePlanningPath],
+    [routePlanningSource, deterministicPageContextMarker, routePlanningPath],
+    [telemetrySource, '.from("ask_vorta_interactions")', telemetryPath],
+    [assistantSource, feedbackMarker, assistantPath],
+    [assistantSource, "<section", assistantPath],
+  ];
+  for (const [moduleSource, requiredMarker, modulePath] of requiredMarkers) {
+    if (!moduleSource.includes(requiredMarker)) {
+      throw new Error(`VOR-048 modular integration is missing ${requiredMarker} in ${modulePath}.`);
+    }
+  }
+
+  console.log("VOR-048 routing, telemetry and feedback integration is already applied in focused modules.");
+  process.exit(0);
+}
+
 const fullyApplied =
   backendSource.includes(marker) &&
   backendSource.includes(sitePriorityPageExclusion) &&
