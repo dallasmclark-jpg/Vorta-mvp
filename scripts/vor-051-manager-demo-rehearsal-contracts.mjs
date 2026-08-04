@@ -51,7 +51,13 @@ assert.match(
 );
 
 for (const marker of [
-  "getStoredSupabaseAccessToken",
+  "getProtectedEvidenceToken",
+  "VORTA_E2E_EMAIL",
+  "VORTA_E2E_PASSWORD",
+  "auth/v1/token?grant_type=password",
+  'email: protectedEmail',
+  'password: protectedPassword',
+  "payload?.access_token",
   "rest/v1/equipment_assets",
   'site_id: `eq.${siteId}`',
   'equipment_code: "eq.FD-03"',
@@ -61,9 +67,14 @@ for (const marker of [
 ]) {
   assert.ok(
     browserTest.includes(marker),
-    `The rehearsal must resolve FD-03 from authenticated active-site data: ${marker}`,
+    `The rehearsal must resolve FD-03 through protected authenticated evidence access: ${marker}`,
   );
 }
+assert.doesNotMatch(
+  browserTest,
+  /getStoredSupabaseAccessToken/,
+  "The evidence identity check must not depend on implementation-specific browser storage keys",
+);
 assert.ok(
   browserTest.indexOf('await page.goto("/dashboard")') <
     browserTest.indexOf("const equipmentId = await resolveFd03EquipmentId(page)"),
@@ -129,6 +140,11 @@ assert.match(
 assert.ok(
   (browserTest.match(/testInfo\.attach/g) ?? []).length >= 4,
   "The successful rehearsal must retain its manifest and three visual checkpoints",
+);
+assert.doesNotMatch(
+  browserTest,
+  /visibleAnswer:[\s\S]*?protectedPassword/,
+  "Protected browser credentials must never enter the rehearsal evidence manifest",
 );
 
 for (const marker of [
