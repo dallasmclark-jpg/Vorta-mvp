@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/vor-052-fix-netlify-entry.yml"
+      - "netlify/functions/ask-vorta.mts"
 
 permissions:
   contents: write
@@ -92,6 +93,7 @@ export const config: Config = {
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add netlify/functions/ask-vorta/runtime.mts scripts/vor-052-modularise-backend.mjs
           git rm .github/workflows/vor-052-fix-netlify-entry.yml
+          git diff --cached --quiet && exit 0
           git commit -m "VOR-052 move Netlify route metadata to entrypoint"
           git fetch origin "${GITHUB_HEAD_REF}"
           git rebase "origin/${GITHUB_HEAD_REF}"
