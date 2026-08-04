@@ -1,0 +1,254 @@
+{
+  "sourceSha256": "156b0aa82fa7d1db316e17d3aafa47c31a50acfbb6dd74376e91361df49a7bc7",
+  "sourceLines": 5992,
+  "sourceCharacters": 241227,
+  "modules": {
+    "contracts": {
+      "declarations": [
+        "JsonRecord",
+        "RequestHistoryItem",
+        "PageContext",
+        "AskVortaRequest",
+        "ToolResult",
+        "MODEL",
+        "PLANNER_MODEL",
+        "MAX_TOOL_ROUNDS",
+        "MAX_TOOL_OUTPUT_CHARACTERS",
+        "RATE_LIMIT_WINDOW_MINUTES",
+        "RATE_LIMIT_REQUESTS",
+        "PLANNER_TIMEOUT_MS",
+        "EVIDENCE_TIMEOUT_MS",
+        "ANSWER_TIMEOUT_MS",
+        "DATE_ONLY_PATTERN",
+        "ALLOWED_ROLES",
+        "EMPTY_PARAMETERS",
+        "EQUIPMENT_ID_PARAMETERS",
+        "TOOLS",
+        "SITE_DECISION_PACK_COVERAGE",
+        "EQUIPMENT_DECISION_PACK_COVERAGE",
+        "successfulToolNames",
+        "decisionPackCoveringTool",
+        "ANSWER_SCHEMA",
+        "QUESTION_PLAN_SCHEMA",
+        "AskVortaPhase",
+        "EvidenceLink"
+      ],
+      "lines": 591,
+      "dependencies": []
+    },
+    "phase-runtime": {
+      "declarations": [
+        "AskVortaPhaseTimeoutError",
+        "withPhaseTimeout",
+        "canonicalRouteKey",
+        "routingModeForPlan"
+      ],
+      "lines": 87,
+      "dependencies": [
+        "contracts"
+      ]
+    },
+    "request-context": {
+      "declarations": [
+        "equipmentReferenceFromQuestion",
+        "jsonResponse",
+        "parseRequest",
+        "conversationSubject",
+        "enrichQuestionWithConversationContext",
+        "contextRecords",
+        "contextField",
+        "rankedActionContextOptions",
+        "answerContextOptions",
+        "buildConversationContext"
+      ],
+      "lines": 373,
+      "dependencies": [
+        "contracts",
+        "decisionAnswer",
+        "utilities"
+      ]
+    },
+    "utilities": {
+      "declarations": [
+        "requiredText",
+        "normaliseEquipmentReference",
+        "equipmentReferenceMatches",
+        "extractEquipmentReference",
+        "parseArguments",
+        "nestedDecisionRecords",
+        "decisionField",
+        "textValues",
+        "records",
+        "evidenceTimestamps",
+        "equipmentId",
+        "validDateRange",
+        "addUtcDays",
+        "formatUtcDate",
+        "normaliseRelativeShiftCoverArguments",
+        "sha256Fingerprint",
+        "numberValue"
+      ],
+      "lines": 244,
+      "dependencies": [
+        "contracts"
+      ]
+    },
+    "equipment-evidence": {
+      "declarations": [
+        "compactEquipmentDecisionPackForModel",
+        "trimToolResult",
+        "compactShiftCoverData",
+        "compactDecisionData",
+        "compactToolDomain",
+        "compactEquipmentSkillsDomain",
+        "EquipmentDecisionDomainName",
+        "ALL_EQUIPMENT_DECISION_DOMAINS",
+        "equipmentDecisionDomains",
+        "collectDecisionFacts",
+        "explicitEquipmentDomainFacts",
+        "normalisedEvidenceTokens",
+        "evidenceTextOverlapScore",
+        "questionMatchedEquipmentFacts",
+        "equipmentDecisionFacts",
+        "relevantEquipmentDecisionFacts",
+        "equipmentVisibleDecisionText",
+        "unavailableEquipmentDecisionClaim",
+        "readableEquipmentDecisionFact",
+        "equipmentFactCategory",
+        "repairEquipmentDecisionAnswer",
+        "retainEquipmentDecisionFacts"
+      ],
+      "lines": 1288,
+      "dependencies": [
+        "contracts",
+        "utilities"
+      ]
+    },
+    "response-validation": {
+      "declarations": [
+        "replaceReleasedWording",
+        "enforceEquipmentReturnToServiceSafety",
+        "coverShiftKey",
+        "compareCoverPriority",
+        "readableShift",
+        "coverEvidenceConfidence",
+        "answerReasoningEffort",
+        "answerOutputTokenBudget",
+        "evidenceAwareConfidence",
+        "enforceDeterministicResponseShape",
+        "enforcePlannedResponseShape",
+        "enforceAnswerEvidence"
+      ],
+      "lines": 694,
+      "dependencies": [
+        "contracts",
+        "equipmentEvidence",
+        "utilities"
+      ]
+    },
+    "tool-execution": {
+      "declarations": [
+        "rpcTool",
+        "evidenceLinkForTool",
+        "getSiteEquipmentIndex",
+        "assetLabel",
+        "executeTool"
+      ],
+      "lines": 847,
+      "dependencies": [
+        "contracts",
+        "equipmentEvidence",
+        "utilities"
+      ]
+    },
+    "decision-answer": {
+      "declarations": [
+        "firstDecisionText",
+        "firstDecisionNumber",
+        "outcomeData",
+        "operationalDomainData",
+        "readableEvidenceTime",
+        "deterministicOperationalAnswer"
+      ],
+      "lines": 422,
+      "dependencies": [
+        "contracts",
+        "utilities"
+      ]
+    },
+    "image-diagnosis": {
+      "declarations": [
+        "AskVortaImageDiagnosisEvidence",
+        "fallbackImageExtraction",
+        "extractAskVortaImageEvidence",
+        "buildAskVortaImageDiagnosis",
+        "imageDiagnosisQuestionPlan",
+        "imageDiagnosisPrompt",
+        "imageMatchLabel",
+        "directImageEvidenceAnswer",
+        "enforceImageDiagnosisAnswer"
+      ],
+      "lines": 355,
+      "dependencies": [
+        "contracts",
+        "utilities"
+      ]
+    },
+    "route-planning": {
+      "declarations": [
+        "deterministicQuestionPlan",
+        "buildQuestionPlan",
+        "systemInstructions"
+      ],
+      "lines": 463,
+      "dependencies": [
+        "contracts",
+        "phaseRuntime",
+        "utilities"
+      ]
+    },
+    "runtime": {
+      "declarations": [
+        "handler",
+        "config"
+      ],
+      "lines": 711,
+      "dependencies": [
+        "contracts",
+        "decisionAnswer",
+        "equipmentEvidence",
+        "imageDiagnosis",
+        "phaseRuntime",
+        "requestContext",
+        "responseValidation",
+        "routePlanning",
+        "toolExecution",
+        "utilities"
+      ]
+    },
+    "authenticated-context": {
+      "declarations": [
+        "AuthenticatedAskVortaRequest",
+        "authenticateAskVortaRequest"
+      ],
+      "lines": 60,
+      "dependencies": [
+        "contracts",
+        "requestContext"
+      ]
+    },
+    "telemetry": {
+      "declarations": [
+        "BeginAskVortaInteractionResult",
+        "beginAskVortaInteraction",
+        "buildAskVortaTelemetryValues",
+        "updateAskVortaInteraction"
+      ],
+      "lines": 137,
+      "dependencies": [
+        "contracts",
+        "requestContext"
+      ]
+    }
+  }
+}

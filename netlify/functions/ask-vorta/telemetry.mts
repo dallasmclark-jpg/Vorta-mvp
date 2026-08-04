@@ -1,4 +1,40 @@
-t verify request capacity." }, 503) };
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AskVortaPhase, AskVortaRequest, JsonRecord } from "./contracts.mjs";
+import { RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MINUTES } from "./contracts.mjs";
+import { jsonResponse } from "./request-context.mjs";
+
+interface BeginAskVortaInteractionInput {
+  supabase: SupabaseClient;
+  request: AskVortaRequest;
+  userId: string;
+  requestId: string;
+  startedAt: number;
+  questionFingerprint: string;
+  routeKey: string;
+  routingMode: string;
+}
+
+export type BeginAskVortaInteractionResult =
+  | { ok: true; interactionId: string }
+  | { ok: false; response: Response };
+
+export async function beginAskVortaInteraction(
+  input: BeginAskVortaInteractionInput,
+): Promise<BeginAskVortaInteractionResult> {
+  const rateWindowStart = new Date(
+    input.startedAt - RATE_LIMIT_WINDOW_MINUTES * 60_000,
+  ).toISOString();
+  const { count: recentRequestCount, error: rateError } = await input.supabase
+    .from("ask_vorta_interactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId)
+    .gte("created_at", rateWindowStart);
+  if (rateError) {
+    console.error("Ask Vorta rate-limit check failed", {
+      requestId: input.requestId,
+      error: rateError.message,
+    });
+    return { ok: false, response: jsonResponse({ error: "Ask Vorta could not verify request capacity." }, 503) };
   }
   if ((recentRequestCount ?? 0) >= RATE_LIMIT_REQUESTS) {
     await input.supabase.from("ask_vorta_interactions").insert({
@@ -98,41 +134,3 @@ export async function updateAskVortaInteraction(
     .eq("id", interactionId)
     .eq("user_id", userId);
 }
-`;
-
-for (const g of Object.keys(byGroup)) {
-  const imports=importTextForGroup(g,false);
-  const body=byGroup[g].map(st=>exportedText(st).trim()).join('\n\n');
-  let moduleSource=`${imports}${imports?'\n\n':''}${body}\n`;
-  if (g==='runtime') moduleSource=modulariseRuntime(moduleSource);
-  fs.writeFileSync(path.join(outDir,`${fileName[g]}.mts`),moduleSource);
-}
-fs.writeFileSync(path.join(outDir,'authenticated-context.mts'),authenticatedContextSource);
-fs.writeFileSync(path.join(outDir,'telemetry.mts'),telemetrySource);
-const legacy=`/*
-VOR-052 legacy integration guards. The validated behaviour now lives in focused modules.
-These exact markers keep the temporary VOR-044 to VOR-049 build codemods idempotent until canonicalisation.
-case "get_site_ranked_actions":
-["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)]
-"vorta_get_ranked_operational_actions"
-const rankedData = operationalDomainData(snapshot, "rankedActions");
-Treat its rankedActions domain as the deterministic operational-value order
-function buildConversationContext(
-async function extractAskVortaImageEvidence(
-type AskVortaPhase = "planner" | "evidence" | "answer";
-!/\\bshift-cover\\b/.test(request.pageContext.path)
-    (shiftCoverPageContext ||
-      (asksForCoverDecision &&
-function compactEquipmentDecisionPackForModel(
-function repairEquipmentDecisionAnswer(
-*/`;
-const entry=`${legacy}\n\nexport { default, config } from "./ask-vorta/runtime.mjs";\n`;
-fs.writeFileSync(path.join(outputRoot,'ask-vorta.mts'),entry);
-const graph={};
-for (const g of Object.keys(byGroup)) graph[g]=[...new Set([...byGroup[g].flatMap(st=>[...refsOf(st)].map(n=>nameGroup.get(n)).filter(Boolean))].filter(x=>x!==g))].sort();
-const generatedModules=Object.fromEntries(Object.entries(byGroup).map(([g,sts])=>[fileName[g],{declarations:sts.flatMap(namesOf),lines:sts.reduce((n,st)=>n+sourceText.slice(st.getFullStart(),st.end).split('\n').length,0),dependencies:graph[g]}]));
-generatedModules['authenticated-context']={declarations:['AuthenticatedAskVortaRequest','authenticateAskVortaRequest'],lines:authenticatedContextSource.split('\n').length,dependencies:['contracts','requestContext']};
-generatedModules.telemetry={declarations:['BeginAskVortaInteractionResult','beginAskVortaInteraction','buildAskVortaTelemetryValues','updateAskVortaInteraction'],lines:telemetrySource.split('\n').length,dependencies:['contracts','requestContext']};
-const manifest={sourceSha256:crypto.createHash('sha256').update(sourceText).digest('hex'),sourceLines:sourceText.split('\n').length,sourceCharacters:sourceText.length,modules:generatedModules};
-fs.writeFileSync(path.join(outputRoot,'ask-vorta','modularisation-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
-console.log(JSON.stringify(manifest,null,2));
