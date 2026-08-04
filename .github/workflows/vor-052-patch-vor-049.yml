@@ -1,0 +1,136 @@
+name: VOR-052 patch VOR-049 compatibility
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/vor-052-patch-vor-049.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Add modular VOR-049 compatibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/vor-049-integrate-decision-ready-equipment.mjs")
+          source = path.read_text()
+          marker = "const fullyApplied =\n"
+          modular_marker = "VOR-049 modular backend compatibility"
+          if modular_marker in source:
+              raise SystemExit("VOR-049 modular compatibility is already present.")
+          if source.count(marker) != 1:
+              raise SystemExit(f"Expected one VOR-049 insertion marker, found {source.count(marker)}.")
+
+          block = r'''// VOR-049 modular backend compatibility
+          const modularEntrypoint = 'export { default, config } from "./ask-vorta/runtime.mjs";';
+          if (backend.includes(modularEntrypoint)) {
+            const equipmentEvidencePath = resolve(
+              repositoryRoot,
+              "netlify/functions/ask-vorta/equipment-evidence.mts",
+            );
+            const equipmentEvidence = readFileSync(equipmentEvidencePath, "utf8");
+            for (const requiredMarker of [backendMarker, repairMarker]) {
+              if (!equipmentEvidence.includes(requiredMarker)) {
+                throw new Error(
+                  `VOR-049 modular equipment evidence is missing ${requiredMarker}.`,
+                );
+              }
+            }
+
+            if (!liveEval.includes(evalMarker)) {
+              const visibleEvalHelpers = readFileSync(
+                templatePath("vor-049-visible-eval-helpers.txt"),
+                "utf8",
+              );
+              liveEval = replaceOnce(
+                liveEval,
+                "function answerText(answer) {\n",
+                `${visibleEvalHelpers}function answerText(answer) {\n`,
+                "live-evaluation answer text helper",
+              );
+
+              const evalTextAnchor = [
+                "    const text = answerText(payload);",
+                "    const usedTools = new Set(payload.toolsUsed || []);",
+              ].join("\n");
+              const evalTextReplacement = [
+                "    const text = answerText(payload);",
+                "    const visibleText = visibleDecisionText(payload);",
+                "    const requireVisibleDecision =",
+                "      scenario.requireVisibleDecision === true ||",
+                "      /vor-033-demo-golden\\.json$/.test(scenarioFile);",
+                "    const assertionText = requireVisibleDecision ? visibleText : text;",
+                "    const usedTools = new Set(payload.toolsUsed || []);",
+              ].join("\n");
+              liveEval = replaceOnce(
+                liveEval,
+                evalTextAnchor,
+                evalTextReplacement,
+                "live-evaluation response assertions",
+              );
+              liveEval = liveEval.replaceAll(
+                "text.includes(phrase.toLowerCase())",
+                "assertionText.includes(phrase.toLowerCase())",
+              );
+
+              const contradictionAnchor = [
+                "    if (",
+                "      scenario.requireFindings !== false &&",
+              ].join("\n");
+              const contradictionChecks = [
+                "    if (requireVisibleDecision) {",
+                "      failures.push(...visibleDecisionContradictions(payload));",
+                "      if (",
+                "        /(?:decision pack|equipment evidence|authorised result)[^.]{0,120}(?:unavailable|too large)/.test(",
+                "          visibleText,",
+                "        )",
+                "      ) {",
+                "        failures.push(\"visible decision layer reports an unavailable or oversized equipment pack\");",
+                "      }",
+                "    }",
+                "",
+                contradictionAnchor,
+              ].join("\n");
+              liveEval = replaceOnce(
+                liveEval,
+                contradictionAnchor,
+                contradictionChecks,
+                "visible contradiction assertions",
+              );
+              writeFileSync(liveEvalPath, liveEval);
+            }
+
+            extendIntegrationChainContracts();
+            console.log(
+              "Applied VOR-049 visible-quality evaluation while preserving the modular Ask Vorta backend.",
+            );
+            process.exit(0);
+          }
+
+          '''
+          path.write_text(source.replace(marker, block + marker))
+          PY
+          node --check scripts/vor-049-integrate-decision-ready-equipment.mjs
+      - name: Commit compatibility patch and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/vor-049-integrate-decision-ready-equipment.mjs
+          git rm .github/workflows/vor-052-patch-vor-049.yml
+          git commit -m "VOR-052 make VOR-049 integrator module-aware"
+          git fetch origin "${GITHUB_HEAD_REF}"
+          git rebase "origin/${GITHUB_HEAD_REF}"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
