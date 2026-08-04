@@ -313,13 +313,11 @@ liveEval = liveEval.replaceAll(
   "assertionText.includes(phrase.toLowerCase())",
 );
 
-const mustNotBlock = [
-  "    for (const phrase of scenario.mustNotMention || []) {",
-  "      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase \\\"${phrase}\\\"`);",
-  "    }",
+const contradictionAnchor = [
+  "    if (",
+  "      scenario.requireFindings !== false &&",
 ].join("\n");
 const contradictionChecks = [
-  mustNotBlock,
   "    if (requireVisibleDecision) {",
   "      failures.push(...visibleDecisionContradictions(payload));",
   "      if (",
@@ -330,10 +328,12 @@ const contradictionChecks = [
   "        failures.push(\"visible decision layer reports an unavailable or oversized equipment pack\");",
   "      }",
   "    }",
+  "",
+  contradictionAnchor,
 ].join("\n");
 liveEval = replaceOnce(
   liveEval,
-  mustNotBlock,
+  contradictionAnchor,
   contradictionChecks,
   "visible contradiction assertions",
 );
