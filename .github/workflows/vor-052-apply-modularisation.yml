@@ -1,183 +1,38 @@
-name: VOR-052 repair Netlify entrypoint
+name: VOR-052 backend modularisation
 
 on:
   pull_request:
     branches:
       - main
     paths:
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "scripts/vor-045-normalise-request-context.mjs"
+      - "scripts/vor-048-integrate-routing-telemetry-feedback.mjs"
+      - "scripts/vor-049-integrate-decision-ready-equipment.mjs"
+      - "scripts/vor-052-backend-modularisation-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
       - ".github/workflows/vor-052-apply-modularisation.yml"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair:
-    if: github.actor != 'github-actions[bot]'
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Put route metadata in the deployable function file
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          entry_path = Path("netlify/functions/ask-vorta.mts")
-          entry = entry_path.read_text()
-          old_export = 'export { default, config } from "./ask-vorta/runtime.mjs";'
-          new_export = '''// Legacy modular-layout detector: export { default, config } from "./ask-vorta/runtime.mjs";
-          import type { Config } from "@netlify/functions";
-          import handler from "./ask-vorta/runtime.mjs";
-
-          export default handler;
-
-          export const config: Config = {
-            path: "/api/ask-vorta",
-            method: "POST",
-          };'''
-          if entry.count(old_export) != 1:
-              raise SystemExit(f"Expected one entrypoint re-export, found {entry.count(old_export)}")
-          entry_path.write_text(entry.replace(old_export, new_export))
-
-          runtime_path = Path("netlify/functions/ask-vorta/runtime.mts")
-          runtime = runtime_path.read_text()
-          old_import = 'import type { Config, Context } from "@netlify/functions";'
-          old_config = '''\n\nexport const config: Config = {
-            path: "/api/ask-vorta",
-            method: "POST",
-          };'''
-          if runtime.count(old_import) != 1:
-              raise SystemExit(f"Expected one runtime Config import, found {runtime.count(old_import)}")
-          if runtime.count(old_config) != 1:
-              raise SystemExit(f"Expected one runtime config block, found {runtime.count(old_config)}")
-          runtime = runtime.replace(old_import, 'import type { Context } from "@netlify/functions";')
-          runtime_path.write_text(runtime.replace(old_config, ""))
-
-          modulariser_path = Path("scripts/vor-052-modularise-backend.mjs")
-          modulariser = modulariser_path.read_text()
-          old_runtime_generation = "  if (g==='runtime') moduleSource=modulariseRuntime(moduleSource);"
-          new_runtime_generation = '''  if (g==='runtime') {
-            moduleSource=modulariseRuntime(moduleSource).replace(
-              'import type { Config, Context } from "@netlify/functions";',
-              'import type { Context } from "@netlify/functions";',
-            );
-            const configStart=moduleSource.lastIndexOf('\\nexport const config: Config = {');
-            if (configStart < 0) throw new Error('VOR-052 could not move the Netlify config to the entrypoint.');
-            moduleSource=moduleSource.slice(0,configStart)+'\\n';
-          }'''
-          if modulariser.count(old_runtime_generation) != 1:
-              raise SystemExit("Could not locate modulariser runtime generation")
-          modulariser = modulariser.replace(old_runtime_generation, new_runtime_generation)
-          old_entry = '''const entry=`${legacy}\\n\\nexport { default, config } from "./ask-vorta/runtime.mjs";\\n`;'''
-          new_entry = '''const entry=`${legacy}
-
-// Legacy modular-layout detector: export { default, config } from "./ask-vorta/runtime.mjs";
-import type { Config } from "@netlify/functions";
-import handler from "./ask-vorta/runtime.mjs";
-
-export default handler;
-
-export const config: Config = {
-  path: "/api/ask-vorta",
-  method: "POST",
-};
-`;'''
-          if modulariser.count(old_entry) != 1:
-              raise SystemExit("Could not locate modulariser entry generation")
-          modulariser = modulariser.replace(old_entry, new_entry)
-          old_manifest = "const generatedModules=Object.fromEntries(Object.entries(byGroup).map(([g,sts])=>[fileName[g],{declarations:sts.flatMap(namesOf),lines:sts.reduce((n,st)=>n+sourceText.slice(st.getFullStart(),st.end).split('\\n').length,0),dependencies:graph[g]}]));"
-          if modulariser.count(old_manifest) != 1:
-              raise SystemExit("Could not locate modulariser manifest generation")
-          modulariser = modulariser.replace(
-              old_manifest,
-              old_manifest + "\ngeneratedModules.runtime.declarations=generatedModules.runtime.declarations.filter((name)=>name!=='config');",
-          )
-          modulariser_path.write_text(modulariser)
-
-          contract_path = Path("scripts/vor-052-backend-modularisation-contracts.mjs")
-          contract = contract_path.read_text()
-          old_entry_check = '''requireText(entry, 'export { default, config } from "./ask-vorta/runtime.mjs";', "endpoint entrypoint");'''
-          new_entry_check = '''requireText(entry, 'import handler from "./ask-vorta/runtime.mjs";', "endpoint handler delegation");
-          requireText(entry, "export default handler;", "endpoint handler delegation");
-          requireText(entry, 'path: "/api/ask-vorta"', "deployable endpoint config");
-          requireText(entry, 'method: "POST"', "deployable endpoint config");'''
-          if contract.count(old_entry_check) != 1:
-              raise SystemExit("Could not locate VOR-052 entrypoint contract")
-          contract = contract.replace(old_entry_check, new_entry_check)
-          old_runtime_checks = '''requireText(runtime, 'path: "/api/ask-vorta"', "endpoint config");
-          requireText(runtime, 'method: "POST"', "endpoint config");'''
-          if contract.count(old_runtime_checks) != 1:
-              raise SystemExit("Could not locate VOR-052 runtime config checks")
-          contract = contract.replace(
-              old_runtime_checks,
-              '''if (/export const config\\b/.test(runtime)) fail("runtime module must not own Netlify route metadata");''',
-          )
-          contract_path.write_text(contract)
-          PY
-          node --check scripts/vor-052-modularise-backend.mjs
-          node scripts/vor-052-backend-modularisation-contracts.mjs
-          npm run typecheck:functions
-          npm run test:smoke
-      - name: Restore permanent verification workflow and commit repair
-        run: |
-          cat > .github/workflows/vor-052-apply-modularisation.yml <<'YAML'
-          name: VOR-052 backend modularisation
-
-          on:
-            pull_request:
-              branches:
-                - main
-              paths:
-                - "netlify/functions/ask-vorta.mts"
-                - "netlify/functions/ask-vorta/**"
-                - "scripts/vor-045-normalise-request-context.mjs"
-                - "scripts/vor-048-integrate-routing-telemetry-feedback.mjs"
-                - "scripts/vor-049-integrate-decision-ready-equipment.mjs"
-                - "scripts/vor-052-backend-modularisation-contracts.mjs"
-                - "scripts/run-contract-suite.mjs"
-                - ".github/workflows/vor-052-apply-modularisation.yml"
-                - "package.json"
-                - "package-lock.json"
-
-          permissions:
-            contents: read
-
-          jobs:
-            verify:
-              runs-on: ubuntu-latest
-              timeout-minutes: 20
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-                    cache: npm
-                - run: npm ci
-                - name: Verify function TypeScript
-                  run: npm run typecheck:functions
-                - name: Verify VOR-052 architecture boundaries
-                  run: node scripts/vor-052-backend-modularisation-contracts.mjs
-                - name: Verify runtime routes
-                  run: npm run test:smoke
-          YAML
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/workflows/vor-052-apply-modularisation.yml \
-            netlify/functions/ask-vorta.mts \
-            netlify/functions/ask-vorta/runtime.mts \
-            scripts/vor-052-modularise-backend.mjs \
-            scripts/vor-052-backend-modularisation-contracts.mjs
-          git rm -f .github/workflows/vor-052-fix-netlify-entry.yml
-          git commit -m "VOR-052 make Ask Vorta route deployable"
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git rebase "origin/${GITHUB_HEAD_REF}"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+      - name: Verify function TypeScript
+        run: npm run typecheck:functions
+      - name: Verify VOR-052 architecture boundaries
+        run: node scripts/vor-052-backend-modularisation-contracts.mjs
+      - name: Verify runtime routes
+        run: npm run test:smoke
