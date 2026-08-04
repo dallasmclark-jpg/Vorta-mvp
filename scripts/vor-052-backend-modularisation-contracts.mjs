@@ -37,7 +37,11 @@ function requireText(source, text, label) {
 
 const entry = read(entryPath);
 if (entry.split("\n").length > 40) fail("Ask Vorta endpoint entrypoint exceeds 40 lines");
-requireText(entry, 'export { default, config } from "./ask-vorta/runtime.mjs";', "endpoint entrypoint");
+requireText(entry, 'import handler from "./ask-vorta/runtime.mjs";', "endpoint handler delegation");
+requireText(entry, "export default handler;", "endpoint handler delegation");
+if (!/export const config: Config = \{[\s\S]*?path: "\/api\/ask-vorta",[\s\S]*?method: "POST",[\s\S]*?\};/.test(entry)) {
+  fail("deployable endpoint config must be exported directly from netlify/functions/ask-vorta.mts");
+}
 for (const marker of [
   'case "get_site_ranked_actions":',
   'function buildConversationContext(',
@@ -58,8 +62,8 @@ if (manifest.sourceLines !== 5992 || manifest.sourceCharacters !== 241227) {
 
 const runtime = read(path.join(moduleRoot, "runtime.mts"));
 if (runtime.split("\n").length > 750) fail("runtime module exceeds 750 lines");
-requireText(runtime, 'path: "/api/ask-vorta"', "endpoint config");
-requireText(runtime, 'method: "POST"', "endpoint config");
+requireText(runtime, 'path: "/api/ask-vorta"', "runtime endpoint compatibility config");
+requireText(runtime, 'method: "POST"', "runtime endpoint compatibility config");
 requireText(runtime, "authenticateAskVortaRequest(req)", "runtime authentication boundary");
 requireText(runtime, "beginAskVortaInteraction({", "runtime telemetry boundary");
 requireText(runtime, "updateAskVortaInteraction(", "runtime telemetry boundary");
@@ -138,5 +142,5 @@ requireText(contracts, "export const ANSWER_SCHEMA", "response contract");
 requireText(contracts, "export const QUESTION_PLAN_SCHEMA", "planner contract");
 
 console.log(
-  `VOR-052 backend modularisation contracts passed: ${requiredModules.length} focused modules, one tool registry, acyclic imports, authenticated site isolation, telemetry separation and unchanged API/action boundaries.`,
+  `VOR-052 backend modularisation contracts passed: ${requiredModules.length} focused modules, one tool registry, acyclic imports, deployable endpoint config, authenticated site isolation, telemetry separation and unchanged API/action boundaries.`,
 );
