@@ -1,5 +1,5 @@
 {
-  "generatedFromCommit": "8258061064c4d71c7002d581d5c885b5406bf22b",
+  "generatedFromCommit": "427057d7bd7653350953680e77445a5d32dafc11",
   "integrationScripts": [
     {
       "path": "scripts/vor-044-integrate-operational-value.mjs",
@@ -164,6 +164,15 @@
         "action draft"
       ],
       "characterCount": 7973
+    },
+    {
+      "path": "scripts/vor-052-backend-modularisation-contracts.mjs",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 5919
     },
     {
       "path": "scripts/vor-052-scan-compatibility.mjs",
