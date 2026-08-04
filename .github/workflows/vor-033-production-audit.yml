@@ -12,9 +12,9 @@ permissions:
 
 jobs:
   audit:
-    name: Run 24 production questions
+    name: Rerun two rate-limited production questions
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
@@ -22,7 +22,7 @@ jobs:
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
-      VORTA_EVAL_DELAY_MS: '10000'
+      VORTA_EVAL_DELAY_MS: '15000'
     steps:
       - name: Check out production source
         uses: actions/checkout@v4
@@ -30,13 +30,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run exact 24-question production audit
+      - name: Allow the production rate window to clear
+        run: sleep 90
+      - name: Select the two transport-interrupted scenarios
+        run: |
+          node --input-type=module - <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'tests/evals/vor-033-demo-golden.json';
+          const ids = new Set(['vor033-wfi01-cause', 'vor033-wfi01-spare']);
+          const scenarios = JSON.parse(readFileSync(path, 'utf8')).filter((item) => ids.has(item.id));
+          if (scenarios.length !== 2) throw new Error(`Expected two WFI-01 scenarios, found ${scenarios.length}.`);
+          writeFileSync(path, `${JSON.stringify(scenarios, null, 2)}\n`);
+          NODE
+      - name: Rerun the two exact production questions
         run: node scripts/vor-033-production-audit.mjs
-      - name: Upload audit evidence
+      - name: Upload rerun evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vor-033-production-audit-${{ github.sha }}
+          name: vor-033-production-rerun-${{ github.sha }}
           path: artifacts/vor-033-production-audit.json
           if-no-files-found: error
           retention-days: 14
