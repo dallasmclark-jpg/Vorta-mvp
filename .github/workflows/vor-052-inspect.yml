@@ -1,0 +1,33 @@
+name: VOR-052 backend inspection
+
+on:
+  push:
+    branches:
+      - agent/vor-052-modularise-ask-vorta
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/vor-052-inspect-backend.mjs
+      - name: Commit structure report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .vor-052/ask-vorta-structure.json
+          git diff --cached --quiet && exit 0
+          git commit -m "VOR-052 record Ask Vorta backend structure"
+          git push
