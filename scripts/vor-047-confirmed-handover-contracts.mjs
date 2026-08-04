@@ -48,10 +48,15 @@ assert.match(
   /openAskVortaActionReviewDialog/,
   "The canonical Ask Vorta action button must open the controlled review",
 );
-assert.match(
+excludes(
   assistant,
-  /Controlled Ask Vorta actions require the review dialog/,
-  "The legacy direct draft path must remain disabled in canonical source",
+  "createAskVortaActionDraft",
+  "Canonical Ask Vorta assistant",
+);
+excludes(
+  assistant,
+  "confirmAskVortaActionDraft",
+  "Canonical Ask Vorta assistant",
 );
 
 assert.match(
