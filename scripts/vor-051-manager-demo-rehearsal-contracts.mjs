@@ -34,11 +34,29 @@ for (const marker of [
   );
 }
 
+for (const marker of [
+  "getStoredSupabaseAccessToken",
+  'rest/v1/equipment_assets',
+  'site_id: `eq.${siteId}`',
+  'equipment_code: "eq.FD-03"',
+  'Authorization: `Bearer ${accessToken}`',
+  'expect(rows).toHaveLength(1)',
+  'expect(rows[0]?.equipment_code).toBe("FD-03")',
+]) {
+  assert.ok(
+    browserTest.includes(marker),
+    `The rehearsal must resolve FD-03 from authenticated active-site data: ${marker}`,
+  );
+}
 assert.ok(
-  browserTest.includes("resolveFd03EquipmentId") &&
-    browserTest.includes("const match = new URL(page.url()).pathname.match") &&
-    browserTest.includes("return decodeURIComponent"),
-  "The rehearsal must resolve the real equipment route rather than hard-code a database UUID",
+  browserTest.indexOf('await page.goto("/dashboard")') <
+    browserTest.indexOf("const equipmentId = await resolveFd03EquipmentId(page)"),
+  "The manager journey must establish verified dashboard context before resolving downstream evidence identity",
+);
+assert.doesNotMatch(
+  browserTest,
+  /page\.goto\("\/equipment"\)/,
+  "The test setup must not race into the equipment route before active-site context is committed",
 );
 assert.match(
   browserTest,
