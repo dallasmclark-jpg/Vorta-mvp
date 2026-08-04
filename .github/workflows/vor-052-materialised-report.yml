@@ -1,0 +1,39 @@
+name: VOR-052 materialised backend report
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/_shared/**"
+      - "scripts/vor-0*-integrate-*.mjs"
+      - "scripts/templates/**"
+      - "scripts/vor-052-*.mjs"
+      - ".github/workflows/vor-052-materialised-report.yml"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Materialise validated Ask Vorta integrations
+        run: npm run build:metadata
+      - run: node scripts/vor-052-inspect-backend.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vor-052-materialised-backend
+          path: .vor-052/ask-vorta-structure.json
+          if-no-files-found: error
+          retention-days: 7
