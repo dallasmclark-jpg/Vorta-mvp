@@ -10,7 +10,7 @@
     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
     "typecheck": "tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
     "typecheck:functions": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 --lib ES2022,DOM netlify/functions/ask-vorta.mts",
-    "test:contracts": "node scripts/run-contract-suite.mjs",
+    "test:contracts": "node scripts/vor-051-integrate-evidence-links.mjs && node scripts/run-contract-suite.mjs",
     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
     "test:browser": "playwright test --config=playwright.config.ts",
     "test:browser:vor051": "playwright test --config=playwright.config.ts tests/browser/vor-051-manager-demo-rehearsal.spec.ts --project=phone-360 --project=laptop-1366",
