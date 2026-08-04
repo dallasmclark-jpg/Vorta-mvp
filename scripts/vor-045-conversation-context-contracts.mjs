@@ -126,21 +126,26 @@ assert.equal(
   `VOR-045 multi-turn context fixture failed:\n${multiTurnEval.stdout}\n${multiTurnEval.stderr}`,
 );
 
-const normaliser = readFileSync("scripts/vor-045-normalise-request-context.mjs", "utf8");
-assert.match(normaliser, /interface PageContext/);
-assert.match(normaliser, /pageContext: PageContext/);
-assert.match(normaliser, /equipmentReferenceFromQuestion/);
-assert.match(normaliser, /request\.question\.trim\(\)/);
-
-const integration = readFileSync("scripts/vor-045-integrate-conversation-context.mjs", "utf8");
-assert.match(integration, /conversationContext/);
-assert.match(integration, /resolveConversationFollowUp/);
-assert.match(integration, /buildConversationContext/);
-assert.match(integration, /latestConversationContext/);
-assert.match(integration, /clarificationQuestion/);
-assert.match(integration, /selectedOption/);
-assert.match(integration, /orderedOptions/);
-assert.doesNotMatch(integration, /ShiftHandover|shift-handover|src\/screens\/ShiftHandover/);
+const canonicalContextSurface = [
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/request-context.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "src/screens/AiOperations/vortaAgentService.ts",
+  "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+].map((path) => readFileSync(path, "utf8")).join("\n");
+assert.match(canonicalContextSurface, /interface PageContext/);
+assert.match(canonicalContextSurface, /pageContext: PageContext/);
+assert.match(canonicalContextSurface, /equipmentReferenceFromQuestion/);
+assert.match(canonicalContextSurface, /request\.question\.trim\(\)/);
+assert.match(canonicalContextSurface, /conversationContext/);
+assert.match(canonicalContextSurface, /resolveConversationFollowUp/);
+assert.match(canonicalContextSurface, /buildConversationContext/);
+assert.match(canonicalContextSurface, /latestConversationContext/);
+assert.match(canonicalContextSurface, /clarificationQuestion/);
+assert.match(canonicalContextSurface, /selectedOption/);
+assert.match(canonicalContextSurface, /orderedOptions/);
+assert.doesNotMatch(canonicalContextSurface, /ShiftHandover|shift-handover|src\/screens\/ShiftHandover/);
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 assert.equal(packageJson.scripts.prebuild, "node scripts/validate-live-pilot.mjs");
