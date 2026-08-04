@@ -1,0 +1,85 @@
+name: VOR-053 canonicalisation audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/vor-053-canonicalisation-audit.yml"
+      - "package.json"
+      - "scripts/vor-0*-integrate-*.mjs"
+      - "scripts/vor-045-normalise-request-context.mjs"
+      - "scripts/templates/**"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/AiOperations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Audit lifecycle source mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .vor-053
+
+          audit_command() {
+            local name="$1"
+            shift
+            echo "Running $name: $*"
+            "$@"
+            git status --short --untracked-files=all > ".vor-053/${name}-status.txt"
+            git diff --name-status > ".vor-053/${name}-name-status.txt"
+            git diff --stat > ".vor-053/${name}-stat.txt"
+            git diff --binary > ".vor-053/${name}.patch"
+            git reset --hard HEAD
+            git clean -fd -e .vor-053
+          }
+
+          audit_command predev npm run predev
+          audit_command build-metadata npm run build:metadata
+          audit_command test-contracts npm run test:contracts
+
+          {
+            echo "# VOR-053 lifecycle mutation audit"
+            echo
+            echo "Commit: ${GITHUB_SHA}"
+            echo
+            for name in predev build-metadata test-contracts; do
+              echo "## ${name}"
+              if [ -s ".vor-053/${name}-status.txt" ]; then
+                echo '```text'
+                cat ".vor-053/${name}-status.txt"
+                echo '```'
+              else
+                echo "No tracked or untracked source mutation."
+              fi
+              echo
+            done
+            echo "## Integration-chain references"
+            echo '```text'
+            grep -RInE 'vor-04[4-9]-(integrate|normalise)|vor-051-integrate' \
+              package.json .github scripts netlify src tests 2>/dev/null || true
+            echo '```'
+          } > .vor-053/report.md
+
+          cat .vor-053/report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vor-053-canonicalisation-audit
+          path: .vor-053
+          if-no-files-found: error
+          retention-days: 7
