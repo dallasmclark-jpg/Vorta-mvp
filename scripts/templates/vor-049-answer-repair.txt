@@ -67,7 +67,6 @@ function repairEquipmentDecisionAnswer(
   const originalUnavailable = unavailableEquipmentDecisionClaim(
     equipmentVisibleDecisionText(answer),
   );
-  if (!originalUnavailable) return;
 
   const goal = String(questionPlan.decisionGoal ?? "");
   const selectedFacts = [
@@ -118,6 +117,34 @@ function repairEquipmentDecisionAnswer(
   const supportingText = supportingFact
     ? readableEquipmentDecisionFact(supportingFact)
     : "";
+
+  if (!originalUnavailable) {
+    const existingSummary = records(answer.decisionSummary).filter(
+      (item) =>
+        typeof item.value !== "string" ||
+        item.value.trim().toLowerCase() !== primaryText.toLowerCase(),
+    );
+    answer.decisionSummary = [
+      { label: "Verified evidence", value: primaryText },
+      ...existingSummary,
+    ].slice(0, 5);
+
+    const existingFindings = records(answer.findings).filter(
+      (item) =>
+        typeof item.detail !== "string" ||
+        item.detail.trim().toLowerCase() !== primaryText.toLowerCase(),
+    );
+    answer.findings = [
+      {
+        category: equipmentFactCategory(primaryFact),
+        severity: "info",
+        title: "Verified decision fact",
+        detail: primaryText,
+      },
+      ...existingFindings,
+    ].slice(0, 6);
+    return;
+  }
 
   if (/\b(?:who|qualified|engineer|skill|authori[sz]e|can lead|can verify)\b/.test(loweredGoal)) {
     answer.directAnswer = `The verified Vorta capability evidence identifies ${primaryText}.`;
