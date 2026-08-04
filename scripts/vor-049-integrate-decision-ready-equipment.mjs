@@ -277,7 +277,7 @@ liveEval = liveEval.replaceAll(
 
 const mustNotBlock = [
   "    for (const phrase of scenario.mustNotMention || []) {",
-  "      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase \\\"${phrase}\\\"`);",
+  "      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase \"${phrase}\"`);",
   "    }",
 ].join("\n");
 const contradictionChecks = [
