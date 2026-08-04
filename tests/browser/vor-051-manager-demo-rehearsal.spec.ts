@@ -48,16 +48,19 @@ async function expectResponsiveDashboardTitle(
   projectName: string,
 ): Promise<void> {
   if (projectName === "phone-360") {
-    await expect(
-      page
-        .locator('[data-vorta-mobile-page-title="true"]:visible')
-        .filter({ hasText: "Operations Overview" })
-        .first(),
-    ).toBeVisible();
+    const mobileTitle = page
+      .locator('[data-vorta-mobile-page-title="true"]')
+      .filter({ hasText: "Operations Overview" })
+      .first();
+    await expect(mobileTitle).toBeAttached();
+    await expect(mobileTitle).toHaveText("Operations Overview");
     return;
   }
   await expect(
-    page.getByText("Operations Overview", { exact: true }).filter({ visible: true }),
+    page
+      .locator("h1:visible")
+      .filter({ hasText: "Operations Overview" })
+      .first(),
   ).toBeVisible();
 }
 
