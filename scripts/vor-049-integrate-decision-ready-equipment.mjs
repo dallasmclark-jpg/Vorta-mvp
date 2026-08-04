@@ -153,7 +153,7 @@ const oldFactsReturn = [
 const newFactsReturn = [
   "  const questionRanked = relevantEquipmentDecisionFacts(",
   "    question,",
-  "    [...priorityFacts, ...explicitFacts, ...rankedFacts],",
+  "    [...explicitFacts, ...rankedFacts],",
   "  );",
   "  return [",
   "    ...new Set([",
