@@ -1,4 +1,4 @@
-name: VOR-053 canonicalisation audit
+name: VOR-053 materialise canonical source
 
 on:
   pull_request:
@@ -6,81 +6,59 @@ on:
       - main
     paths:
       - ".github/workflows/vor-053-canonicalisation-audit.yml"
-      - "package.json"
-      - "scripts/vor-0*-integrate-*.mjs"
-      - "scripts/vor-045-normalise-request-context.mjs"
-      - "scripts/templates/**"
-      - "netlify/functions/ask-vorta.mts"
-      - "netlify/functions/ask-vorta/**"
-      - "src/screens/AiOperations/**"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  materialise:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Audit lifecycle source mutation
+      - name: Apply the validated legacy integration chain once
+        run: npm run predev
+      - name: Verify the exact canonical source delta
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .vor-053
-
-          audit_command() {
-            local name="$1"
-            shift
-            echo "Running $name: $*"
-            "$@"
-            git status --short --untracked-files=all > ".vor-053/${name}-status.txt"
-            git diff --name-status > ".vor-053/${name}-name-status.txt"
-            git diff --stat > ".vor-053/${name}-stat.txt"
-            git diff --binary > ".vor-053/${name}.patch"
-            git reset --hard HEAD
-            git clean -fd -e .vor-053
-          }
-
-          audit_command predev npm run predev
-          audit_command build-metadata npm run build:metadata
-          audit_command test-contracts npm run test:contracts
-
-          {
-            echo "# VOR-053 lifecycle mutation audit"
-            echo
-            echo "Commit: ${GITHUB_SHA}"
-            echo
-            for name in predev build-metadata test-contracts; do
-              echo "## ${name}"
-              if [ -s ".vor-053/${name}-status.txt" ]; then
-                echo '```text'
-                cat ".vor-053/${name}-status.txt"
-                echo '```'
-              else
-                echo "No tracked or untracked source mutation."
-              fi
-              echo
-            done
-            echo "## Integration-chain references"
-            echo '```text'
-            grep -RInE 'vor-04[4-9]-(integrate|normalise)|vor-051-integrate' \
-              package.json .github scripts netlify src tests 2>/dev/null || true
-            echo '```'
-          } > .vor-053/report.md
-
-          cat .vor-053/report.md
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vor-053-canonicalisation-audit
-          path: .vor-053
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 7
+          cat > /tmp/vor-053-expected.txt <<'EOF'
+          scripts/ask-vorta-live-evals.mjs
+          scripts/vor-044-operational-value-ranking-contracts.mjs
+          scripts/vor-045-conversation-context-contracts.mjs
+          scripts/vor-046-photo-ocr-contracts.mjs
+          scripts/vor-049-decision-ready-equipment-contracts.mjs
+          src/screens/AiOperations/AskVortaWorkspace.tsx
+          src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx
+          src/screens/AiOperations/vortaAgentService.ts
+          EOF
+          git diff --name-only | sort > /tmp/vor-053-actual.txt
+          diff -u /tmp/vor-053-expected.txt /tmp/vor-053-actual.txt
+          test -z "$(git ls-files --others --exclude-standard)"
+          git diff --check
+      - name: Commit canonical generated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-044-operational-value-ranking-contracts.mjs \
+            scripts/vor-045-conversation-context-contracts.mjs \
+            scripts/vor-046-photo-ocr-contracts.mjs \
+            scripts/vor-049-decision-ready-equipment-contracts.mjs \
+            src/screens/AiOperations/AskVortaWorkspace.tsx \
+            src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx \
+            src/screens/AiOperations/vortaAgentService.ts
+          git commit -m "VOR-053 materialise Ask Vorta generated source"
+          git fetch origin "${GITHUB_HEAD_REF}"
+          git rebase "origin/${GITHUB_HEAD_REF}"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
