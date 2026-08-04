@@ -167,6 +167,7 @@ for (const marker of [
   "evidenceLinks?: VortaAgentEvidenceLink[];",
   "evidenceLinks: agentAnswer.evidenceLinks,",
   "answer.evidenceLinks && answer.evidenceLinks.length > 0",
+  'data-vorta-ai-evidence-links="true"',
   "Open in Vorta",
 ]) {
   assert.ok(
@@ -178,6 +179,16 @@ for (const marker of [
     `The VOR-051 transform guard must enforce evidence navigation: ${marker}`,
   );
 }
+assert.match(
+  transformedAssistant,
+  /answer\.evidenceLinks[\s\S]*?<section[^>]*data-vorta-ai-evidence-links="true"/,
+  "Phone evidence navigation must use a semantic section outside compact div pruning",
+);
+assert.match(
+  evidenceLinkIntegration,
+  /patchLegacyChainContracts/,
+  "VOR-051 must extend established integration-chain contracts after VOR-049",
+);
 assert.ok(
   packageJson.scripts.predev.includes("node scripts/vor-051-integrate-evidence-links.mjs"),
   "Development transforms must preserve Ask Vorta evidence links",
