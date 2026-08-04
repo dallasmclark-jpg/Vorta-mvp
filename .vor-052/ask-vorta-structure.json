@@ -1,19 +1,33 @@
 {
   "sourcePath": "netlify/functions/ask-vorta.mts",
-  "sha256": "e3e747102153ac8f60c60076041f32789aa5e232a5d7a6d3f79405bcdfbb7e41",
-  "lineCount": 4366,
-  "characterCount": 177339,
-  "statementCount": 86,
+  "sha256": "156b0aa82fa7d1db316e17d3aafa47c31a50acfbb6dd74376e91361df49a7bc7",
+  "lineCount": 5992,
+  "characterCount": 241227,
+  "statementCount": 127,
   "topLevelNames": [
     "ALLOWED_ROLES",
+    "ALL_EQUIPMENT_DECISION_DOMAINS",
     "ANSWER_SCHEMA",
+    "ANSWER_TIMEOUT_MS",
+    "ASK_VORTA_IMAGE_EXTRACTION_SCHEMA",
+    "AskVortaImageDiagnosisEvidence",
+    "AskVortaImageExtraction",
+    "AskVortaImageMatch",
+    "AskVortaPhase",
+    "AskVortaPhaseTimeoutError",
     "AskVortaRequest",
     "Config",
     "Context",
+    "ConversationContext",
+    "ConversationContextOption",
+    "ConversationContextResolution",
+    "ConversationContextSubject",
     "DATE_ONLY_PATTERN",
     "EMPTY_PARAMETERS",
     "EQUIPMENT_DECISION_PACK_COVERAGE",
     "EQUIPMENT_ID_PARAMETERS",
+    "EVIDENCE_TIMEOUT_MS",
+    "EquipmentDecisionDomainName",
     "EvidenceLink",
     "JsonRecord",
     "MAX_TOOL_OUTPUT_CHARACTERS",
@@ -21,6 +35,8 @@
     "MODEL",
     "OpenAI",
     "PLANNER_MODEL",
+    "PLANNER_TIMEOUT_MS",
+    "PageContext",
     "QUESTION_PLAN_SCHEMA",
     "RATE_LIMIT_REQUESTS",
     "RATE_LIMIT_WINDOW_MINUTES",
@@ -31,44 +47,68 @@
     "TOOLS",
     "Tool",
     "ToolResult",
+    "ValidatedAskVortaImage",
     "addUtcDays",
+    "answerContextOptions",
     "answerOutputTokenBudget",
     "answerReasoningEffort",
     "assetLabel",
+    "buildAskVortaImageDiagnosis",
+    "buildConversationContext",
     "buildQuestionPlan",
+    "canonicalRouteKey",
     "collectDecisionFacts",
     "compactDecisionData",
+    "compactEquipmentDecisionPackForModel",
     "compactEquipmentSkillsDomain",
     "compactShiftCoverData",
     "compactToolDomain",
     "compareCoverPriority",
     "config",
+    "contextField",
+    "contextRecords",
+    "contextResolutionPrompt",
+    "conversationSubject",
     "coverEvidenceConfidence",
     "coverShiftKey",
     "createClient",
+    "createConversationContext",
     "decisionField",
     "decisionPackCoveringTool",
     "deterministicOperationalAnswer",
     "deterministicQuestionPlan",
+    "directImageEvidenceAnswer",
     "enforceAnswerEvidence",
     "enforceDeterministicResponseShape",
     "enforceEquipmentReturnToServiceSafety",
+    "enforceImageDiagnosisAnswer",
     "enforcePlannedResponseShape",
+    "enrichQuestionWithConversationContext",
+    "equipmentDecisionDomains",
     "equipmentDecisionFacts",
+    "equipmentFactCategory",
     "equipmentId",
+    "equipmentReferenceFromQuestion",
     "equipmentReferenceMatches",
+    "equipmentVisibleDecisionText",
     "evidenceAwareConfidence",
     "evidenceLinkForTool",
     "evidenceTextOverlapScore",
     "evidenceTimestamps",
     "executeTool",
     "explicitEquipmentDomainFacts",
+    "extractAskVortaImageEvidence",
     "extractEquipmentReference",
+    "fallbackImageExtraction",
     "firstDecisionNumber",
     "firstDecisionText",
     "formatUtcDate",
     "getSiteEquipmentIndex",
     "handler",
+    "imageDiagnosisPrompt",
+    "imageDiagnosisQuestionPlan",
+    "imageDiagnosisSearchText",
+    "imageMatchLabel",
     "jsonResponse",
     "nestedDecisionRecords",
     "normaliseEquipmentReference",
@@ -80,20 +120,32 @@
     "parseArguments",
     "parseRequest",
     "questionMatchedEquipmentFacts",
+    "rankAskVortaImageMatches",
+    "rankedActionContextOptions",
+    "readableEquipmentDecisionFact",
     "readableEvidenceTime",
     "readableShift",
     "records",
     "relevantEquipmentDecisionFacts",
+    "repairEquipmentDecisionAnswer",
     "replaceReleasedWording",
     "requiredText",
+    "resolveConversationFollowUp",
     "retainEquipmentDecisionFacts",
+    "routingModeForPlan",
     "rpcTool",
+    "safeAskVortaImageMetadata",
+    "sanitizeAskVortaImageExtraction",
+    "sanitizeConversationContext",
     "sha256Fingerprint",
     "successfulToolNames",
     "systemInstructions",
     "textValues",
     "trimToolResult",
-    "validDateRange"
+    "unavailableEquipmentDecisionClaim",
+    "validDateRange",
+    "validateAskVortaImage",
+    "withPhaseTimeout"
   ],
   "statements": [
     {
@@ -153,198 +205,355 @@
     },
     {
       "index": 4,
+      "kind": "ImportDeclaration",
+      "names": [
+        "safeAskVortaImageMetadata",
+        "validateAskVortaImage"
+      ],
+      "modifiers": [],
+      "startLine": 5,
+      "endLine": 8,
+      "characterCount": 108,
+      "references": [],
+      "firstLine": "import {"
+    },
+    {
+      "index": 5,
+      "kind": "ImportDeclaration",
+      "names": [
+        "ValidatedAskVortaImage"
+      ],
+      "modifiers": [],
+      "startLine": 9,
+      "endLine": 11,
+      "characterCount": 85,
+      "references": [],
+      "firstLine": "import type {"
+    },
+    {
+      "index": 6,
+      "kind": "ImportDeclaration",
+      "names": [
+        "ASK_VORTA_IMAGE_EXTRACTION_SCHEMA",
+        "imageDiagnosisSearchText",
+        "rankAskVortaImageMatches",
+        "sanitizeAskVortaImageExtraction"
+      ],
+      "modifiers": [],
+      "startLine": 12,
+      "endLine": 17,
+      "characterCount": 183,
+      "references": [],
+      "firstLine": "import {"
+    },
+    {
+      "index": 7,
+      "kind": "ImportDeclaration",
+      "names": [
+        "AskVortaImageExtraction",
+        "AskVortaImageMatch"
+      ],
+      "modifiers": [],
+      "startLine": 18,
+      "endLine": 21,
+      "characterCount": 109,
+      "references": [],
+      "firstLine": "import type {"
+    },
+    {
+      "index": 8,
+      "kind": "ImportDeclaration",
+      "names": [
+        "contextResolutionPrompt",
+        "createConversationContext",
+        "resolveConversationFollowUp",
+        "sanitizeConversationContext"
+      ],
+      "modifiers": [],
+      "startLine": 22,
+      "endLine": 27,
+      "characterCount": 178,
+      "references": [],
+      "firstLine": "import {"
+    },
+    {
+      "index": 9,
+      "kind": "ImportDeclaration",
+      "names": [
+        "ConversationContext",
+        "ConversationContextOption",
+        "ConversationContextResolution",
+        "ConversationContextSubject"
+      ],
+      "modifiers": [],
+      "startLine": 28,
+      "endLine": 33,
+      "characterCount": 180,
+      "references": [],
+      "firstLine": "import type {"
+    },
+    {
+      "index": 10,
       "kind": "TypeAliasDeclaration",
       "names": [
         "JsonRecord"
       ],
       "modifiers": [],
-      "startLine": 6,
-      "endLine": 6,
+      "startLine": 35,
+      "endLine": 35,
       "characterCount": 42,
       "references": [],
       "firstLine": "type JsonRecord = Record<string, unknown>;"
     },
     {
-      "index": 5,
+      "index": 11,
       "kind": "InterfaceDeclaration",
       "names": [
         "RequestHistoryItem"
       ],
       "modifiers": [],
-      "startLine": 8,
-      "endLine": 11,
+      "startLine": 37,
+      "endLine": 40,
       "characterCount": 81,
       "references": [],
       "firstLine": "interface RequestHistoryItem {"
     },
     {
-      "index": 6,
+      "index": 12,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "PageContext"
+      ],
+      "modifiers": [],
+      "startLine": 42,
+      "endLine": 45,
+      "characterCount": 61,
+      "references": [],
+      "firstLine": "interface PageContext {"
+    },
+    {
+      "index": 13,
       "kind": "InterfaceDeclaration",
       "names": [
         "AskVortaRequest"
       ],
       "modifiers": [],
-      "startLine": 13,
-      "endLine": 22,
-      "characterCount": 178,
+      "startLine": 47,
+      "endLine": 55,
+      "characterCount": 235,
       "references": [
-        "RequestHistoryItem"
+        "ConversationContext",
+        "PageContext",
+        "RequestHistoryItem",
+        "ValidatedAskVortaImage"
       ],
       "firstLine": "interface AskVortaRequest {"
     },
     {
-      "index": 7,
+      "index": 14,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentReferenceFromQuestion"
+      ],
+      "modifiers": [],
+      "startLine": 57,
+      "endLine": 60,
+      "characterCount": 197,
+      "references": [],
+      "firstLine": "function equipmentReferenceFromQuestion(question: string): string {"
+    },
+    {
+      "index": 15,
       "kind": "InterfaceDeclaration",
       "names": [
         "ToolResult"
       ],
       "modifiers": [],
-      "startLine": 24,
-      "endLine": 29,
+      "startLine": 62,
+      "endLine": 67,
       "characterCount": 122,
       "references": [],
       "firstLine": "interface ToolResult {"
     },
     {
-      "index": 8,
+      "index": 16,
       "kind": "FirstStatement",
       "names": [
         "MODEL"
       ],
       "modifiers": [],
-      "startLine": 31,
-      "endLine": 31,
+      "startLine": 69,
+      "endLine": 69,
       "characterCount": 30,
       "references": [],
       "firstLine": "const MODEL = \"gpt-5.6-terra\";"
     },
     {
-      "index": 9,
+      "index": 17,
       "kind": "FirstStatement",
       "names": [
         "PLANNER_MODEL"
       ],
       "modifiers": [],
-      "startLine": 32,
-      "endLine": 32,
+      "startLine": 70,
+      "endLine": 70,
       "characterCount": 37,
       "references": [],
       "firstLine": "const PLANNER_MODEL = \"gpt-5.6-luna\";"
     },
     {
-      "index": 10,
+      "index": 18,
       "kind": "FirstStatement",
       "names": [
         "MAX_TOOL_ROUNDS"
       ],
       "modifiers": [],
-      "startLine": 33,
-      "endLine": 33,
+      "startLine": 71,
+      "endLine": 71,
       "characterCount": 26,
       "references": [],
       "firstLine": "const MAX_TOOL_ROUNDS = 8;"
     },
     {
-      "index": 11,
+      "index": 19,
       "kind": "FirstStatement",
       "names": [
         "MAX_TOOL_OUTPUT_CHARACTERS"
       ],
       "modifiers": [],
-      "startLine": 34,
-      "endLine": 34,
+      "startLine": 72,
+      "endLine": 72,
       "characterCount": 42,
       "references": [],
       "firstLine": "const MAX_TOOL_OUTPUT_CHARACTERS = 50_000;"
     },
     {
-      "index": 12,
+      "index": 20,
       "kind": "FirstStatement",
       "names": [
         "RATE_LIMIT_WINDOW_MINUTES"
       ],
       "modifiers": [],
-      "startLine": 35,
-      "endLine": 35,
+      "startLine": 73,
+      "endLine": 73,
       "characterCount": 36,
       "references": [],
       "firstLine": "const RATE_LIMIT_WINDOW_MINUTES = 5;"
     },
     {
-      "index": 13,
+      "index": 21,
       "kind": "FirstStatement",
       "names": [
         "RATE_LIMIT_REQUESTS"
       ],
       "modifiers": [],
-      "startLine": 36,
-      "endLine": 36,
+      "startLine": 74,
+      "endLine": 74,
       "characterCount": 31,
       "references": [],
       "firstLine": "const RATE_LIMIT_REQUESTS = 12;"
     },
     {
-      "index": 14,
+      "index": 22,
+      "kind": "FirstStatement",
+      "names": [
+        "PLANNER_TIMEOUT_MS"
+      ],
+      "modifiers": [],
+      "startLine": 75,
+      "endLine": 75,
+      "characterCount": 34,
+      "references": [],
+      "firstLine": "const PLANNER_TIMEOUT_MS = 12_000;"
+    },
+    {
+      "index": 23,
+      "kind": "FirstStatement",
+      "names": [
+        "EVIDENCE_TIMEOUT_MS"
+      ],
+      "modifiers": [],
+      "startLine": 76,
+      "endLine": 76,
+      "characterCount": 35,
+      "references": [],
+      "firstLine": "const EVIDENCE_TIMEOUT_MS = 15_000;"
+    },
+    {
+      "index": 24,
+      "kind": "FirstStatement",
+      "names": [
+        "ANSWER_TIMEOUT_MS"
+      ],
+      "modifiers": [],
+      "startLine": 77,
+      "endLine": 77,
+      "characterCount": 33,
+      "references": [],
+      "firstLine": "const ANSWER_TIMEOUT_MS = 40_000;"
+    },
+    {
+      "index": 25,
       "kind": "FirstStatement",
       "names": [
         "DATE_ONLY_PATTERN"
       ],
       "modifiers": [],
-      "startLine": 37,
-      "endLine": 37,
+      "startLine": 78,
+      "endLine": 78,
       "characterCount": 48,
       "references": [],
       "firstLine": "const DATE_ONLY_PATTERN = /^\\d{4}-\\d{2}-\\d{2}$/;"
     },
     {
-      "index": 15,
+      "index": 26,
       "kind": "FirstStatement",
       "names": [
         "ALLOWED_ROLES"
       ],
       "modifiers": [],
-      "startLine": 38,
-      "endLine": 46,
+      "startLine": 79,
+      "endLine": 87,
       "characterCount": 179,
       "references": [],
       "firstLine": "const ALLOWED_ROLES = new Set(["
     },
     {
-      "index": 16,
+      "index": 27,
       "kind": "FirstStatement",
       "names": [
         "EMPTY_PARAMETERS"
       ],
       "modifiers": [],
-      "startLine": 48,
-      "endLine": 53,
+      "startLine": 89,
+      "endLine": 94,
       "characterCount": 121,
       "references": [],
       "firstLine": "const EMPTY_PARAMETERS = {"
     },
     {
-      "index": 17,
+      "index": 28,
       "kind": "FirstStatement",
       "names": [
         "EQUIPMENT_ID_PARAMETERS"
       ],
       "modifiers": [],
-      "startLine": 55,
-      "endLine": 65,
+      "startLine": 96,
+      "endLine": 106,
       "characterCount": 273,
       "references": [],
       "firstLine": "const EQUIPMENT_ID_PARAMETERS = {"
     },
     {
-      "index": 18,
+      "index": 29,
       "kind": "FirstStatement",
       "names": [
         "TOOLS"
       ],
       "modifiers": [],
-      "startLine": 67,
-      "endLine": 288,
-      "characterCount": 8676,
+      "startLine": 108,
+      "endLine": 329,
+      "characterCount": 8751,
       "references": [
         "EMPTY_PARAMETERS",
         "EQUIPMENT_ID_PARAMETERS",
@@ -353,40 +562,40 @@
       "firstLine": "const TOOLS: Tool[] = ["
     },
     {
-      "index": 19,
+      "index": 30,
       "kind": "FirstStatement",
       "names": [
         "SITE_DECISION_PACK_COVERAGE"
       ],
       "modifiers": [],
-      "startLine": 290,
-      "endLine": 296,
+      "startLine": 331,
+      "endLine": 337,
       "characterCount": 178,
       "references": [],
       "firstLine": "const SITE_DECISION_PACK_COVERAGE = new Set(["
     },
     {
-      "index": 20,
+      "index": 31,
       "kind": "FirstStatement",
       "names": [
         "EQUIPMENT_DECISION_PACK_COVERAGE"
       ],
       "modifiers": [],
-      "startLine": 297,
-      "endLine": 306,
+      "startLine": 338,
+      "endLine": 347,
       "characterCount": 274,
       "references": [],
       "firstLine": "const EQUIPMENT_DECISION_PACK_COVERAGE = new Set(["
     },
     {
-      "index": 21,
+      "index": 32,
       "kind": "FunctionDeclaration",
       "names": [
         "successfulToolNames"
       ],
       "modifiers": [],
-      "startLine": 308,
-      "endLine": 314,
+      "startLine": 349,
+      "endLine": 355,
       "characterCount": 215,
       "references": [
         "ToolResult"
@@ -394,14 +603,14 @@
       "firstLine": "function successfulToolNames(outcomes: Map<string, ToolResult>): Set<string> {"
     },
     {
-      "index": 22,
+      "index": 33,
       "kind": "FunctionDeclaration",
       "names": [
         "decisionPackCoveringTool"
       ],
       "modifiers": [],
-      "startLine": 316,
-      "endLine": 333,
+      "startLine": 357,
+      "endLine": 374,
       "characterCount": 457,
       "references": [
         "EQUIPMENT_DECISION_PACK_COVERAGE",
@@ -410,79 +619,79 @@
       "firstLine": "function decisionPackCoveringTool("
     },
     {
-      "index": 23,
+      "index": 34,
       "kind": "FirstStatement",
       "names": [
         "ANSWER_SCHEMA"
       ],
       "modifiers": [],
-      "startLine": 335,
-      "endLine": 489,
+      "startLine": 376,
+      "endLine": 530,
       "characterCount": 3706,
       "references": [],
       "firstLine": "const ANSWER_SCHEMA = {"
     },
     {
-      "index": 24,
+      "index": 35,
       "kind": "FirstStatement",
       "names": [
         "QUESTION_PLAN_SCHEMA"
       ],
       "modifiers": [],
-      "startLine": 492,
-      "endLine": 553,
+      "startLine": 533,
+      "endLine": 594,
       "characterCount": 1331,
       "references": [],
       "firstLine": "const QUESTION_PLAN_SCHEMA = {"
     },
     {
-      "index": 25,
+      "index": 36,
       "kind": "FunctionDeclaration",
       "names": [
         "jsonResponse"
       ],
       "modifiers": [],
-      "startLine": 555,
-      "endLine": 563,
+      "startLine": 596,
+      "endLine": 604,
       "characterCount": 213,
       "references": [],
       "firstLine": "function jsonResponse(body: unknown, status = 200): Response {"
     },
     {
-      "index": 26,
+      "index": 37,
       "kind": "FunctionDeclaration",
       "names": [
         "requiredText"
       ],
       "modifiers": [],
-      "startLine": 565,
-      "endLine": 569,
+      "startLine": 606,
+      "endLine": 610,
       "characterCount": 215,
       "references": [],
       "firstLine": "function requiredText(value: unknown, maximumLength: number): string | null {"
     },
     {
-      "index": 27,
+      "index": 38,
       "kind": "FunctionDeclaration",
       "names": [
         "normaliseEquipmentReference"
       ],
       "modifiers": [],
-      "startLine": 571,
-      "endLine": 578,
+      "startLine": 612,
+      "endLine": 619,
       "characterCount": 227,
       "references": [],
       "firstLine": "function normaliseEquipmentReference(value: unknown): string {"
     },
     {
-      "index": 28,
+      "index": 39,
       "kind": "FunctionDeclaration",
       "names": [
         "equipmentReferenceMatches"
       ],
       "modifiers": [],
-      "startLine": 580,
-      "endLine": 593,
+      "startLine": 621,
+      "endLine": 634,
       "characterCount": 665,
       "references": [
         "normaliseEquipmentReference"
@@ -490,46 +699,124 @@
       "firstLine": "function equipmentReferenceMatches(candidate: unknown, query: string): boolean {"
     },
     {
-      "index": 29,
+      "index": 40,
       "kind": "FunctionDeclaration",
       "names": [
         "extractEquipmentReference"
       ],
       "modifiers": [],
-      "startLine": 595,
-      "endLine": 618,
+      "startLine": 636,
+      "endLine": 659,
       "characterCount": 638,
       "references": [],
       "firstLine": "function extractEquipmentReference(value: string): string | null {"
     },
     {
-      "index": 30,
+      "index": 41,
+      "kind": "TypeAliasDeclaration",
+      "names": [
+        "AskVortaPhase"
+      ],
+      "modifiers": [],
+      "startLine": 661,
+      "endLine": 661,
+      "characterCount": 55,
+      "references": [],
+      "firstLine": "type AskVortaPhase = \"planner\" | \"evidence\" | \"answer\";"
+    },
+    {
+      "index": 42,
+      "kind": "ClassDeclaration",
+      "names": [
+        "AskVortaPhaseTimeoutError"
+      ],
+      "modifiers": [],
+      "startLine": 663,
+      "endLine": 671,
+      "characterCount": 244,
+      "references": [
+        "AskVortaPhase"
+      ],
+      "firstLine": "class AskVortaPhaseTimeoutError extends Error {"
+    },
+    {
+      "index": 43,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "withPhaseTimeout"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 673,
+      "endLine": 706,
+      "characterCount": 1050,
+      "references": [
+        "AskVortaPhase",
+        "AskVortaPhaseTimeoutError"
+      ],
+      "firstLine": "async function withPhaseTimeout<T>("
+    },
+    {
+      "index": 44,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "canonicalRouteKey"
+      ],
+      "modifiers": [],
+      "startLine": 708,
+      "endLine": 737,
+      "characterCount": 729,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function canonicalRouteKey(questionPlan: JsonRecord | null): string {"
+    },
+    {
+      "index": 45,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "routingModeForPlan"
+      ],
+      "modifiers": [],
+      "startLine": 739,
+      "endLine": 744,
+      "characterCount": 238,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function routingModeForPlan("
+    },
+    {
+      "index": 46,
       "kind": "FunctionDeclaration",
       "names": [
         "parseRequest"
       ],
       "modifiers": [],
-      "startLine": 620,
-      "endLine": 652,
-      "characterCount": 1370,
+      "startLine": 746,
+      "endLine": 786,
+      "characterCount": 1721,
       "references": [
         "ALLOWED_ROLES",
         "AskVortaRequest",
         "JsonRecord",
         "RequestHistoryItem",
-        "requiredText"
+        "requiredText",
+        "sanitizeConversationContext",
+        "validateAskVortaImage"
       ],
       "firstLine": "function parseRequest(value: unknown): AskVortaRequest | null {"
     },
     {
-      "index": 31,
+      "index": 47,
       "kind": "FunctionDeclaration",
       "names": [
         "parseArguments"
       ],
       "modifiers": [],
-      "startLine": 654,
-      "endLine": 660,
+      "startLine": 788,
+      "endLine": 794,
       "characterCount": 266,
       "references": [
         "JsonRecord"
@@ -537,30 +824,51 @@
       "firstLine": "function parseArguments(value: string): JsonRecord {"
     },
     {
-      "index": 32,
+      "index": 48,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compactEquipmentDecisionPackForModel"
+      ],
+      "modifiers": [],
+      "startLine": 796,
+      "endLine": 831,
+      "characterCount": 1111,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "compactDecisionData",
+        "textValues"
+      ],
+      "firstLine": "function compactEquipmentDecisionPackForModel("
+    },
+    {
+      "index": 49,
       "kind": "FunctionDeclaration",
       "names": [
         "trimToolResult"
       ],
       "modifiers": [],
-      "startLine": 662,
-      "endLine": 670,
-      "characterCount": 356,
+      "startLine": 833,
+      "endLine": 859,
+      "characterCount": 929,
       "references": [
+        "JsonRecord",
         "MAX_TOOL_OUTPUT_CHARACTERS",
-        "ToolResult"
+        "ToolResult",
+        "compactEquipmentDecisionPackForModel",
+        "textValues"
       ],
       "firstLine": "function trimToolResult(result: ToolResult): string {"
     },
     {
-      "index": 33,
+      "index": 50,
       "kind": "FunctionDeclaration",
       "names": [
         "compactShiftCoverData"
       ],
       "modifiers": [],
-      "startLine": 672,
-      "endLine": 752,
+      "startLine": 861,
+      "endLine": 941,
       "characterCount": 2864,
       "references": [
         "JsonRecord",
@@ -569,14 +877,14 @@
       "firstLine": "function compactShiftCoverData(value: unknown): unknown {"
     },
     {
-      "index": 34,
+      "index": 51,
       "kind": "FunctionDeclaration",
       "names": [
         "compactDecisionData"
       ],
       "modifiers": [],
-      "startLine": 755,
-      "endLine": 770,
+      "startLine": 944,
+      "endLine": 959,
       "characterCount": 655,
       "references": [
         "JsonRecord"
@@ -584,14 +892,14 @@
       "firstLine": "function compactDecisionData(value: unknown, depth = 0): unknown {"
     },
     {
-      "index": 35,
+      "index": 52,
       "kind": "FunctionDeclaration",
       "names": [
         "compactToolDomain"
       ],
       "modifiers": [],
-      "startLine": 772,
-      "endLine": 779,
+      "startLine": 961,
+      "endLine": 968,
       "characterCount": 205,
       "references": [
         "JsonRecord",
@@ -601,14 +909,14 @@
       "firstLine": "function compactToolDomain(result: ToolResult): JsonRecord {"
     },
     {
-      "index": 36,
+      "index": 53,
       "kind": "FunctionDeclaration",
       "names": [
         "compactEquipmentSkillsDomain"
       ],
       "modifiers": [],
-      "startLine": 781,
-      "endLine": 820,
+      "startLine": 970,
+      "endLine": 1009,
       "characterCount": 1896,
       "references": [
         "JsonRecord",
@@ -618,14 +926,58 @@
       "firstLine": "function compactEquipmentSkillsDomain(result: ToolResult): JsonRecord {"
     },
     {
-      "index": 37,
+      "index": 54,
+      "kind": "TypeAliasDeclaration",
+      "names": [
+        "EquipmentDecisionDomainName"
+      ],
+      "modifiers": [],
+      "startLine": 1011,
+      "endLine": 1018,
+      "characterCount": 238,
+      "references": [],
+      "firstLine": "type EquipmentDecisionDomainName ="
+    },
+    {
+      "index": 55,
+      "kind": "FirstStatement",
+      "names": [
+        "ALL_EQUIPMENT_DECISION_DOMAINS"
+      ],
+      "modifiers": [],
+      "startLine": 1020,
+      "endLine": 1028,
+      "characterCount": 270,
+      "references": [
+        "EquipmentDecisionDomainName"
+      ],
+      "firstLine": "const ALL_EQUIPMENT_DECISION_DOMAINS: EquipmentDecisionDomainName[] = ["
+    },
+    {
+      "index": 56,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentDecisionDomains"
+      ],
+      "modifiers": [],
+      "startLine": 1030,
+      "endLine": 1103,
+      "characterCount": 2625,
+      "references": [
+        "ALL_EQUIPMENT_DECISION_DOMAINS",
+        "EquipmentDecisionDomainName"
+      ],
+      "firstLine": "function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName[] {"
+    },
+    {
+      "index": 57,
       "kind": "FunctionDeclaration",
       "names": [
         "collectDecisionFacts"
       ],
       "modifiers": [],
-      "startLine": 822,
-      "endLine": 877,
+      "startLine": 1105,
+      "endLine": 1160,
       "characterCount": 2142,
       "references": [
         "JsonRecord"
@@ -633,14 +985,14 @@
       "firstLine": "function collectDecisionFacts("
     },
     {
-      "index": 38,
+      "index": 58,
       "kind": "FunctionDeclaration",
       "names": [
         "nestedDecisionRecords"
       ],
       "modifiers": [],
-      "startLine": 879,
-      "endLine": 892,
+      "startLine": 1162,
+      "endLine": 1175,
       "characterCount": 494,
       "references": [
         "JsonRecord"
@@ -648,14 +1000,14 @@
       "firstLine": "function nestedDecisionRecords(value: unknown, depth = 0): JsonRecord[] {"
     },
     {
-      "index": 39,
+      "index": 59,
       "kind": "FunctionDeclaration",
       "names": [
         "decisionField"
       ],
       "modifiers": [],
-      "startLine": 894,
-      "endLine": 914,
+      "startLine": 1177,
+      "endLine": 1197,
       "characterCount": 600,
       "references": [
         "JsonRecord"
@@ -663,14 +1015,14 @@
       "firstLine": "function decisionField(record: JsonRecord, keys: string[]): string {"
     },
     {
-      "index": 40,
+      "index": 60,
       "kind": "FunctionDeclaration",
       "names": [
         "explicitEquipmentDomainFacts"
       ],
       "modifiers": [],
-      "startLine": 916,
-      "endLine": 1128,
+      "startLine": 1199,
+      "endLine": 1411,
       "characterCount": 7655,
       "references": [
         "JsonRecord",
@@ -681,27 +1033,27 @@
       "firstLine": "function explicitEquipmentDomainFacts("
     },
     {
-      "index": 41,
+      "index": 61,
       "kind": "FunctionDeclaration",
       "names": [
         "normalisedEvidenceTokens"
       ],
       "modifiers": [],
-      "startLine": 1130,
-      "endLine": 1157,
+      "startLine": 1413,
+      "endLine": 1440,
       "characterCount": 638,
       "references": [],
       "firstLine": "function normalisedEvidenceTokens(value: string): string[] {"
     },
     {
-      "index": 42,
+      "index": 62,
       "kind": "FunctionDeclaration",
       "names": [
         "evidenceTextOverlapScore"
       ],
       "modifiers": [],
-      "startLine": 1159,
-      "endLine": 1165,
+      "startLine": 1442,
+      "endLine": 1448,
       "characterCount": 272,
       "references": [
         "normalisedEvidenceTokens"
@@ -709,15 +1061,15 @@
       "firstLine": "function evidenceTextOverlapScore(query: string, candidate: string): number {"
     },
     {
-      "index": 43,
+      "index": 63,
       "kind": "FunctionDeclaration",
       "names": [
         "questionMatchedEquipmentFacts"
       ],
       "modifiers": [],
-      "startLine": 1167,
-      "endLine": 1444,
-      "characterCount": 10719,
+      "startLine": 1450,
+      "endLine": 1727,
+      "characterCount": 10753,
       "references": [
         "JsonRecord",
         "decisionField",
@@ -729,15 +1081,15 @@
       "firstLine": "function questionMatchedEquipmentFacts("
     },
     {
-      "index": 44,
+      "index": 64,
       "kind": "FunctionDeclaration",
       "names": [
         "equipmentDecisionFacts"
       ],
       "modifiers": [],
-      "startLine": 1446,
-      "endLine": 1478,
-      "characterCount": 1006,
+      "startLine": 1729,
+      "endLine": 1763,
+      "characterCount": 1024,
       "references": [
         "JsonRecord",
         "collectDecisionFacts",
@@ -748,27 +1100,106 @@
       "firstLine": "function equipmentDecisionFacts("
     },
     {
-      "index": 45,
+      "index": 65,
       "kind": "FunctionDeclaration",
       "names": [
         "relevantEquipmentDecisionFacts"
       ],
       "modifiers": [],
-      "startLine": 1480,
-      "endLine": 1531,
+      "startLine": 1765,
+      "endLine": 1816,
       "characterCount": 2354,
       "references": [],
       "firstLine": "function relevantEquipmentDecisionFacts("
     },
     {
-      "index": 46,
+      "index": 66,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentVisibleDecisionText"
+      ],
+      "modifiers": [],
+      "startLine": 1818,
+      "endLine": 1839,
+      "characterCount": 895,
+      "references": [
+        "JsonRecord",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function equipmentVisibleDecisionText(answer: JsonRecord): string {"
+    },
+    {
+      "index": 67,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "unavailableEquipmentDecisionClaim"
+      ],
+      "modifiers": [],
+      "startLine": 1841,
+      "endLine": 1845,
+      "characterCount": 432,
+      "references": [],
+      "firstLine": "function unavailableEquipmentDecisionClaim(value: string): boolean {"
+    },
+    {
+      "index": 68,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "readableEquipmentDecisionFact"
+      ],
+      "modifiers": [],
+      "startLine": 1847,
+      "endLine": 1855,
+      "characterCount": 327,
+      "references": [],
+      "firstLine": "function readableEquipmentDecisionFact(fact: string): string {"
+    },
+    {
+      "index": 69,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentFactCategory"
+      ],
+      "modifiers": [],
+      "startLine": 1857,
+      "endLine": 1864,
+      "characterCount": 426,
+      "references": [],
+      "firstLine": "function equipmentFactCategory(fact: string): string {"
+    },
+    {
+      "index": 70,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "repairEquipmentDecisionAnswer"
+      ],
+      "modifiers": [],
+      "startLine": 1866,
+      "endLine": 2064,
+      "characterCount": 7327,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "equipmentFactCategory",
+        "equipmentVisibleDecisionText",
+        "readableEquipmentDecisionFact",
+        "records",
+        "relevantEquipmentDecisionFacts",
+        "textValues",
+        "unavailableEquipmentDecisionClaim"
+      ],
+      "firstLine": "function repairEquipmentDecisionAnswer("
+    },
+    {
+      "index": 71,
       "kind": "FunctionDeclaration",
       "names": [
         "retainEquipmentDecisionFacts"
       ],
       "modifiers": [],
-      "startLine": 1533,
-      "endLine": 1564,
+      "startLine": 2066,
+      "endLine": 2097,
       "characterCount": 941,
       "references": [
         "JsonRecord",
@@ -779,14 +1210,14 @@
       "firstLine": "function retainEquipmentDecisionFacts("
     },
     {
-      "index": 47,
+      "index": 72,
       "kind": "FunctionDeclaration",
       "names": [
         "replaceReleasedWording"
       ],
       "modifiers": [],
-      "startLine": 1566,
-      "endLine": 1578,
+      "startLine": 2099,
+      "endLine": 2111,
       "characterCount": 456,
       "references": [
         "JsonRecord"
@@ -794,14 +1225,14 @@
       "firstLine": "function replaceReleasedWording(value: unknown): unknown {"
     },
     {
-      "index": 48,
+      "index": 73,
       "kind": "FunctionDeclaration",
       "names": [
         "enforceEquipmentReturnToServiceSafety"
       ],
       "modifiers": [],
-      "startLine": 1580,
-      "endLine": 1603,
+      "startLine": 2113,
+      "endLine": 2136,
       "characterCount": 536,
       "references": [
         "JsonRecord",
@@ -810,27 +1241,27 @@
       "firstLine": "function enforceEquipmentReturnToServiceSafety("
     },
     {
-      "index": 49,
+      "index": 74,
       "kind": "FunctionDeclaration",
       "names": [
         "textValues"
       ],
       "modifiers": [],
-      "startLine": 1605,
-      "endLine": 1612,
+      "startLine": 2138,
+      "endLine": 2145,
       "characterCount": 213,
       "references": [],
       "firstLine": "function textValues(value: unknown): string[] {"
     },
     {
-      "index": 50,
+      "index": 75,
       "kind": "FunctionDeclaration",
       "names": [
         "coverShiftKey"
       ],
       "modifiers": [],
-      "startLine": 1614,
-      "endLine": 1616,
+      "startLine": 2147,
+      "endLine": 2149,
       "characterCount": 119,
       "references": [
         "JsonRecord"
@@ -838,14 +1269,14 @@
       "firstLine": "function coverShiftKey(shift: JsonRecord): string {"
     },
     {
-      "index": 51,
+      "index": 76,
       "kind": "FunctionDeclaration",
       "names": [
         "compareCoverPriority"
       ],
       "modifiers": [],
-      "startLine": 1618,
-      "endLine": 1625,
+      "startLine": 2151,
+      "endLine": 2158,
       "characterCount": 399,
       "references": [
         "JsonRecord",
@@ -854,14 +1285,14 @@
       "firstLine": "function compareCoverPriority(first: JsonRecord, second: JsonRecord): number {"
     },
     {
-      "index": 52,
+      "index": 77,
       "kind": "FunctionDeclaration",
       "names": [
         "readableShift"
       ],
       "modifiers": [],
-      "startLine": 1627,
-      "endLine": 1637,
+      "startLine": 2160,
+      "endLine": 2170,
       "characterCount": 386,
       "references": [
         "JsonRecord"
@@ -869,14 +1300,14 @@
       "firstLine": "function readableShift(shift: JsonRecord): string {"
     },
     {
-      "index": 53,
+      "index": 78,
       "kind": "FunctionDeclaration",
       "names": [
         "records"
       ],
       "modifiers": [],
-      "startLine": 1639,
-      "endLine": 1646,
+      "startLine": 2172,
+      "endLine": 2179,
       "characterCount": 233,
       "references": [
         "JsonRecord"
@@ -884,14 +1315,14 @@
       "firstLine": "function records(value: unknown): JsonRecord[] {"
     },
     {
-      "index": 54,
+      "index": 79,
       "kind": "FunctionDeclaration",
       "names": [
         "coverEvidenceConfidence"
       ],
       "modifiers": [],
-      "startLine": 1649,
-      "endLine": 1679,
+      "startLine": 2182,
+      "endLine": 2212,
       "characterCount": 1113,
       "references": [
         "JsonRecord",
@@ -901,14 +1332,14 @@
       "firstLine": "function coverEvidenceConfidence("
     },
     {
-      "index": 55,
+      "index": 80,
       "kind": "FunctionDeclaration",
       "names": [
         "answerReasoningEffort"
       ],
       "modifiers": [],
-      "startLine": 1681,
-      "endLine": 1695,
+      "startLine": 2214,
+      "endLine": 2228,
       "characterCount": 399,
       "references": [
         "JsonRecord"
@@ -916,14 +1347,14 @@
       "firstLine": "function answerReasoningEffort("
     },
     {
-      "index": 56,
+      "index": 81,
       "kind": "FunctionDeclaration",
       "names": [
         "answerOutputTokenBudget"
       ],
       "modifiers": [],
-      "startLine": 1697,
-      "endLine": 1705,
+      "startLine": 2230,
+      "endLine": 2238,
       "characterCount": 432,
       "references": [
         "JsonRecord",
@@ -932,14 +1363,14 @@
       "firstLine": "function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {"
     },
     {
-      "index": 57,
+      "index": 82,
       "kind": "FunctionDeclaration",
       "names": [
         "evidenceTimestamps"
       ],
       "modifiers": [],
-      "startLine": 1707,
-      "endLine": 1726,
+      "startLine": 2240,
+      "endLine": 2259,
       "characterCount": 771,
       "references": [
         "JsonRecord"
@@ -947,35 +1378,37 @@
       "firstLine": "function evidenceTimestamps(value: unknown, depth = 0): number[] {"
     },
     {
-      "index": 58,
+      "index": 83,
       "kind": "FunctionDeclaration",
       "names": [
         "evidenceAwareConfidence"
       ],
       "modifiers": [],
-      "startLine": 1728,
-      "endLine": 1779,
-      "characterCount": 2047,
+      "startLine": 2261,
+      "endLine": 2319,
+      "characterCount": 2268,
       "references": [
         "JsonRecord",
         "ToolResult",
         "decisionPackCoveringTool",
+        "equipmentVisibleDecisionText",
         "evidenceTimestamps",
         "numberValue",
         "successfulToolNames",
-        "textValues"
+        "textValues",
+        "unavailableEquipmentDecisionClaim"
       ],
       "firstLine": "function evidenceAwareConfidence("
     },
     {
-      "index": 59,
+      "index": 84,
       "kind": "FunctionDeclaration",
       "names": [
         "enforceDeterministicResponseShape"
       ],
       "modifiers": [],
-      "startLine": 1781,
-      "endLine": 1833,
+      "startLine": 2321,
+      "endLine": 2373,
       "characterCount": 2163,
       "references": [
         "JsonRecord",
@@ -985,14 +1418,14 @@
       "firstLine": "function enforceDeterministicResponseShape("
     },
     {
-      "index": 60,
+      "index": 85,
       "kind": "FunctionDeclaration",
       "names": [
         "enforcePlannedResponseShape"
       ],
       "modifiers": [],
-      "startLine": 1835,
-      "endLine": 1865,
+      "startLine": 2375,
+      "endLine": 2405,
       "characterCount": 1483,
       "references": [
         "JsonRecord",
@@ -1002,14 +1435,14 @@
       "firstLine": "function enforcePlannedResponseShape("
     },
     {
-      "index": 61,
+      "index": 86,
       "kind": "FunctionDeclaration",
       "names": [
         "enforceAnswerEvidence"
       ],
       "modifiers": [],
-      "startLine": 1867,
-      "endLine": 2278,
+      "startLine": 2407,
+      "endLine": 2818,
       "characterCount": 19060,
       "references": [
         "JsonRecord",
@@ -1024,7 +1457,7 @@
       "firstLine": "function enforceAnswerEvidence("
     },
     {
-      "index": 62,
+      "index": 87,
       "kind": "FunctionDeclaration",
       "names": [
         "rpcTool"
@@ -1032,8 +1465,8 @@
       "modifiers": [
         "AsyncKeyword"
       ],
-      "startLine": 2280,
-      "endLine": 2294,
+      "startLine": 2820,
+      "endLine": 2834,
       "characterCount": 488,
       "references": [
         "JsonRecord",
@@ -1043,14 +1476,14 @@
       "firstLine": "async function rpcTool("
     },
     {
-      "index": 63,
+      "index": 88,
       "kind": "FunctionDeclaration",
       "names": [
         "equipmentId"
       ],
       "modifiers": [],
-      "startLine": 2296,
-      "endLine": 2298,
+      "startLine": 2836,
+      "endLine": 2838,
       "characterCount": 104,
       "references": [
         "JsonRecord",
@@ -1059,14 +1492,14 @@
       "firstLine": "function equipmentId(args: JsonRecord): string | null {"
     },
     {
-      "index": 64,
+      "index": 89,
       "kind": "FunctionDeclaration",
       "names": [
         "validDateRange"
       ],
       "modifiers": [],
-      "startLine": 2300,
-      "endLine": 2312,
+      "startLine": 2840,
+      "endLine": 2852,
       "characterCount": 487,
       "references": [
         "DATE_ONLY_PATTERN"
@@ -1074,40 +1507,40 @@
       "firstLine": "function validDateRange(startDate: unknown, endDate: unknown): boolean {"
     },
     {
-      "index": 65,
+      "index": 90,
       "kind": "FunctionDeclaration",
       "names": [
         "addUtcDays"
       ],
       "modifiers": [],
-      "startLine": 2314,
-      "endLine": 2318,
+      "startLine": 2854,
+      "endLine": 2858,
       "characterCount": 148,
       "references": [],
       "firstLine": "function addUtcDays(value: Date, days: number): Date {"
     },
     {
-      "index": 66,
+      "index": 91,
       "kind": "FunctionDeclaration",
       "names": [
         "formatUtcDate"
       ],
       "modifiers": [],
-      "startLine": 2320,
-      "endLine": 2322,
+      "startLine": 2860,
+      "endLine": 2862,
       "characterCount": 90,
       "references": [],
       "firstLine": "function formatUtcDate(value: Date): string {"
     },
     {
-      "index": 67,
+      "index": 92,
       "kind": "FunctionDeclaration",
       "names": [
         "normaliseRelativeShiftCoverArguments"
       ],
       "modifiers": [],
-      "startLine": 2324,
-      "endLine": 2367,
+      "startLine": 2864,
+      "endLine": 2907,
       "characterCount": 1251,
       "references": [
         "JsonRecord",
@@ -1117,7 +1550,7 @@
       "firstLine": "function normaliseRelativeShiftCoverArguments("
     },
     {
-      "index": 68,
+      "index": 93,
       "kind": "FunctionDeclaration",
       "names": [
         "sha256Fingerprint"
@@ -1125,34 +1558,34 @@
       "modifiers": [
         "AsyncKeyword"
       ],
-      "startLine": 2369,
-      "endLine": 2377,
+      "startLine": 2909,
+      "endLine": 2917,
       "characterCount": 277,
       "references": [],
       "firstLine": "async function sha256Fingerprint(value: string): Promise<string> {"
     },
     {
-      "index": 69,
+      "index": 94,
       "kind": "InterfaceDeclaration",
       "names": [
         "EvidenceLink"
       ],
       "modifiers": [],
-      "startLine": 2379,
-      "endLine": 2383,
+      "startLine": 2919,
+      "endLine": 2923,
       "characterCount": 160,
       "references": [],
       "firstLine": "interface EvidenceLink {"
     },
     {
-      "index": 70,
+      "index": 95,
       "kind": "FunctionDeclaration",
       "names": [
         "evidenceLinkForTool"
       ],
       "modifiers": [],
-      "startLine": 2385,
-      "endLine": 2425,
+      "startLine": 2925,
+      "endLine": 2965,
       "characterCount": 2590,
       "references": [
         "EvidenceLink",
@@ -1162,7 +1595,7 @@
       "firstLine": "function evidenceLinkForTool(name: string, args: JsonRecord): EvidenceLink | null {"
     },
     {
-      "index": 71,
+      "index": 96,
       "kind": "FunctionDeclaration",
       "names": [
         "getSiteEquipmentIndex"
@@ -1170,8 +1603,8 @@
       "modifiers": [
         "AsyncKeyword"
       ],
-      "startLine": 2427,
-      "endLine": 2443,
+      "startLine": 2967,
+      "endLine": 2983,
       "characterCount": 476,
       "references": [
         "JsonRecord",
@@ -1180,14 +1613,14 @@
       "firstLine": "async function getSiteEquipmentIndex("
     },
     {
-      "index": 72,
+      "index": 97,
       "kind": "FunctionDeclaration",
       "names": [
         "assetLabel"
       ],
       "modifiers": [],
-      "startLine": 2445,
-      "endLine": 2454,
+      "startLine": 2985,
+      "endLine": 2994,
       "characterCount": 425,
       "references": [
         "JsonRecord"
@@ -1195,20 +1628,20 @@
       "firstLine": "function assetLabel(asset: JsonRecord | undefined): JsonRecord {"
     },
     {
-      "index": 73,
+      "index": 98,
       "kind": "FunctionDeclaration",
       "names": [
         "numberValue"
       ],
       "modifiers": [],
-      "startLine": 2456,
-      "endLine": 2459,
+      "startLine": 2996,
+      "endLine": 2999,
       "characterCount": 130,
       "references": [],
       "firstLine": "function numberValue(value: unknown): number {"
     },
     {
-      "index": 74,
+      "index": 99,
       "kind": "FunctionDeclaration",
       "names": [
         "executeTool"
@@ -1216,10 +1649,11 @@
       "modifiers": [
         "AsyncKeyword"
       ],
-      "startLine": 2461,
-      "endLine": 3210,
-      "characterCount": 30577,
+      "startLine": 3001,
+      "endLine": 3754,
+      "characterCount": 30825,
       "references": [
+        "ALL_EQUIPMENT_DECISION_DOMAINS",
         "AskVortaRequest",
         "JsonRecord",
         "SupabaseClient",
@@ -1229,6 +1663,7 @@
         "compactEquipmentSkillsDomain",
         "compactShiftCoverData",
         "compactToolDomain",
+        "equipmentDecisionDomains",
         "equipmentDecisionFacts",
         "equipmentId",
         "equipmentReferenceMatches",
@@ -1243,14 +1678,14 @@
       "firstLine": "async function executeTool("
     },
     {
-      "index": 75,
+      "index": 100,
       "kind": "FunctionDeclaration",
       "names": [
         "firstDecisionText"
       ],
       "modifiers": [],
-      "startLine": 3214,
-      "endLine": 3220,
+      "startLine": 3758,
+      "endLine": 3764,
       "characterCount": 215,
       "references": [
         "decisionField",
@@ -1259,14 +1694,14 @@
       "firstLine": "function firstDecisionText(value: unknown, keys: string[]): string {"
     },
     {
-      "index": 76,
+      "index": 101,
       "kind": "FunctionDeclaration",
       "names": [
         "firstDecisionNumber"
       ],
       "modifiers": [],
-      "startLine": 3222,
-      "endLine": 3227,
+      "startLine": 3766,
+      "endLine": 3771,
       "characterCount": 236,
       "references": [
         "firstDecisionText"
@@ -1274,14 +1709,14 @@
       "firstLine": "function firstDecisionNumber(value: unknown, keys: string[]): number | null {"
     },
     {
-      "index": 77,
+      "index": 102,
       "kind": "FunctionDeclaration",
       "names": [
         "outcomeData"
       ],
       "modifiers": [],
-      "startLine": 3229,
-      "endLine": 3234,
+      "startLine": 3773,
+      "endLine": 3778,
       "characterCount": 132,
       "references": [
         "ToolResult"
@@ -1289,14 +1724,14 @@
       "firstLine": "function outcomeData("
     },
     {
-      "index": 78,
+      "index": 103,
       "kind": "FunctionDeclaration",
       "names": [
         "operationalDomainData"
       ],
       "modifiers": [],
-      "startLine": 3236,
-      "endLine": 3243,
+      "startLine": 3780,
+      "endLine": 3787,
       "characterCount": 469,
       "references": [
         "JsonRecord"
@@ -1304,28 +1739,28 @@
       "firstLine": "function operationalDomainData(value: unknown, domainName: string): unknown {"
     },
     {
-      "index": 79,
+      "index": 104,
       "kind": "FunctionDeclaration",
       "names": [
         "readableEvidenceTime"
       ],
       "modifiers": [],
-      "startLine": 3245,
-      "endLine": 3249,
+      "startLine": 3789,
+      "endLine": 3793,
       "characterCount": 242,
       "references": [],
       "firstLine": "function readableEvidenceTime(timestamp: number | null): string {"
     },
     {
-      "index": 80,
+      "index": 105,
       "kind": "FunctionDeclaration",
       "names": [
         "deterministicOperationalAnswer"
       ],
       "modifiers": [],
-      "startLine": 3251,
-      "endLine": 3476,
-      "characterCount": 13674,
+      "startLine": 3795,
+      "endLine": 4170,
+      "characterCount": 21132,
       "references": [
         "AskVortaRequest",
         "JsonRecord",
@@ -1333,22 +1768,321 @@
         "evidenceTimestamps",
         "firstDecisionNumber",
         "firstDecisionText",
+        "numberValue",
         "operationalDomainData",
         "outcomeData",
-        "readableEvidenceTime"
+        "readableEvidenceTime",
+        "records",
+        "textValues"
       ],
       "firstLine": "function deterministicOperationalAnswer("
     },
     {
-      "index": 81,
+      "index": 106,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "conversationSubject"
+      ],
+      "modifiers": [],
+      "startLine": 4173,
+      "endLine": 4191,
+      "characterCount": 602,
+      "references": [
+        "ConversationContextSubject"
+      ],
+      "firstLine": "function conversationSubject(scopeValue: unknown): ConversationContextSubject {"
+    },
+    {
+      "index": 107,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enrichQuestionWithConversationContext"
+      ],
+      "modifiers": [],
+      "startLine": 4193,
+      "endLine": 4230,
+      "characterCount": 1220,
+      "references": [
+        "ConversationContextResolution"
+      ],
+      "firstLine": "function enrichQuestionWithConversationContext("
+    },
+    {
+      "index": 108,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "contextRecords"
+      ],
+      "modifiers": [],
+      "startLine": 4232,
+      "endLine": 4243,
+      "characterCount": 431,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function contextRecords(value: unknown, depth = 0): JsonRecord[] {"
+    },
+    {
+      "index": 109,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "contextField"
+      ],
+      "modifiers": [],
+      "startLine": 4245,
+      "endLine": 4252,
+      "characterCount": 255,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function contextField(record: JsonRecord | undefined, keys: string[]): string {"
+    },
+    {
+      "index": 110,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "rankedActionContextOptions"
+      ],
+      "modifiers": [],
+      "startLine": 4254,
+      "endLine": 4307,
+      "characterCount": 2504,
+      "references": [
+        "ConversationContextOption",
+        "ToolResult",
+        "contextField",
+        "contextRecords",
+        "equipmentId",
+        "firstDecisionNumber",
+        "numberValue",
+        "operationalDomainData",
+        "outcomeData"
+      ],
+      "firstLine": "function rankedActionContextOptions("
+    },
+    {
+      "index": 111,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "answerContextOptions"
+      ],
+      "modifiers": [],
+      "startLine": 4309,
+      "endLine": 4391,
+      "characterCount": 3050,
+      "references": [
+        "ConversationContextOption",
+        "JsonRecord",
+        "ToolResult",
+        "contextField",
+        "contextRecords",
+        "outcomeData",
+        "rankedActionContextOptions",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function answerContextOptions("
+    },
+    {
+      "index": 112,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "buildConversationContext"
+      ],
+      "modifiers": [],
+      "startLine": 4393,
+      "endLine": 4476,
+      "characterCount": 3902,
+      "references": [
+        "AskVortaRequest",
+        "ConversationContext",
+        "ConversationContextResolution",
+        "JsonRecord",
+        "ToolResult",
+        "answerContextOptions",
+        "contextField",
+        "contextRecords",
+        "conversationSubject",
+        "createConversationContext",
+        "equipmentReferenceFromQuestion",
+        "outcomeData",
+        "records"
+      ],
+      "firstLine": "function buildConversationContext("
+    },
+    {
+      "index": 113,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "AskVortaImageDiagnosisEvidence"
+      ],
+      "modifiers": [],
+      "startLine": 4478,
+      "endLine": 4483,
+      "characterCount": 223,
+      "references": [
+        "AskVortaImageMatch",
+        "safeAskVortaImageMetadata"
+      ],
+      "firstLine": "interface AskVortaImageDiagnosisEvidence extends AskVortaImageMatch {"
+    },
+    {
+      "index": 114,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "fallbackImageExtraction"
+      ],
+      "modifiers": [],
+      "startLine": 4485,
+      "endLine": 4498,
+      "characterCount": 370,
+      "references": [
+        "AskVortaImageExtraction"
+      ],
+      "firstLine": "function fallbackImageExtraction(message: string): AskVortaImageExtraction {"
+    },
+    {
+      "index": 115,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "extractAskVortaImageEvidence"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 4500,
+      "endLine": 4559,
+      "characterCount": 2539,
+      "references": [
+        "ASK_VORTA_IMAGE_EXTRACTION_SCHEMA",
+        "AskVortaImageExtraction",
+        "MODEL",
+        "OpenAI",
+        "ResponseInput",
+        "ValidatedAskVortaImage",
+        "fallbackImageExtraction",
+        "sanitizeAskVortaImageExtraction"
+      ],
+      "firstLine": "async function extractAskVortaImageEvidence("
+    },
+    {
+      "index": 116,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "buildAskVortaImageDiagnosis"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 4561,
+      "endLine": 4593,
+      "characterCount": 1288,
+      "references": [
+        "AskVortaImageDiagnosisEvidence",
+        "AskVortaRequest",
+        "OpenAI",
+        "SupabaseClient",
+        "extractAskVortaImageEvidence",
+        "imageDiagnosisSearchText",
+        "rankAskVortaImageMatches",
+        "safeAskVortaImageMetadata"
+      ],
+      "firstLine": "async function buildAskVortaImageDiagnosis("
+    },
+    {
+      "index": 117,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "imageDiagnosisQuestionPlan"
+      ],
+      "modifiers": [],
+      "startLine": 4595,
+      "endLine": 4626,
+      "characterCount": 1424,
+      "references": [
+        "AskVortaImageDiagnosisEvidence",
+        "AskVortaRequest",
+        "JsonRecord"
+      ],
+      "firstLine": "function imageDiagnosisQuestionPlan("
+    },
+    {
+      "index": 118,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "imageDiagnosisPrompt"
+      ],
+      "modifiers": [],
+      "startLine": 4628,
+      "endLine": 4641,
+      "characterCount": 504,
+      "references": [
+        "AskVortaImageDiagnosisEvidence"
+      ],
+      "firstLine": "function imageDiagnosisPrompt("
+    },
+    {
+      "index": 119,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "imageMatchLabel"
+      ],
+      "modifiers": [],
+      "startLine": 4643,
+      "endLine": 4655,
+      "characterCount": 533,
+      "references": [
+        "AskVortaImageDiagnosisEvidence"
+      ],
+      "firstLine": "function imageMatchLabel(diagnosis: AskVortaImageDiagnosisEvidence): string {"
+    },
+    {
+      "index": 120,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "directImageEvidenceAnswer"
+      ],
+      "modifiers": [],
+      "startLine": 4657,
+      "endLine": 4754,
+      "characterCount": 4174,
+      "references": [
+        "AskVortaImageDiagnosisEvidence",
+        "JsonRecord",
+        "imageMatchLabel"
+      ],
+      "firstLine": "function directImageEvidenceAnswer("
+    },
+    {
+      "index": 121,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enforceImageDiagnosisAnswer"
+      ],
+      "modifiers": [],
+      "startLine": 4756,
+      "endLine": 4822,
+      "characterCount": 2697,
+      "references": [
+        "AskVortaImageDiagnosisEvidence",
+        "JsonRecord",
+        "imageMatchLabel",
+        "numberValue",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function enforceImageDiagnosisAnswer("
+    },
+    {
+      "index": 122,
       "kind": "FunctionDeclaration",
       "names": [
         "deterministicQuestionPlan"
       ],
       "modifiers": [],
-      "startLine": 3478,
-      "endLine": 3765,
-      "characterCount": 11902,
+      "startLine": 4824,
+      "endLine": 5144,
+      "characterCount": 13805,
       "references": [
         "AskVortaRequest",
         "JsonRecord",
@@ -1357,7 +2091,7 @@
       "firstLine": "function deterministicQuestionPlan("
     },
     {
-      "index": 82,
+      "index": 123,
       "kind": "FunctionDeclaration",
       "names": [
         "buildQuestionPlan"
@@ -1365,39 +2099,45 @@
       "modifiers": [
         "AsyncKeyword"
       ],
-      "startLine": 3767,
-      "endLine": 3824,
-      "characterCount": 3504,
+      "startLine": 5146,
+      "endLine": 5216,
+      "characterCount": 4118,
       "references": [
         "AskVortaRequest",
         "JsonRecord",
         "OpenAI",
         "PLANNER_MODEL",
+        "PLANNER_TIMEOUT_MS",
         "QUESTION_PLAN_SCHEMA",
         "ResponseInput",
         "TOOLS",
-        "textValues"
+        "contextResolutionPrompt",
+        "resolveConversationFollowUp",
+        "textValues",
+        "withPhaseTimeout"
       ],
       "firstLine": "async function buildQuestionPlan("
     },
     {
-      "index": 83,
+      "index": 124,
       "kind": "FunctionDeclaration",
       "names": [
         "systemInstructions"
       ],
       "modifiers": [],
-      "startLine": 3826,
-      "endLine": 3884,
-      "characterCount": 9566,
+      "startLine": 5218,
+      "endLine": 5282,
+      "characterCount": 10818,
       "references": [
         "AskVortaRequest",
-        "JsonRecord"
+        "JsonRecord",
+        "contextResolutionPrompt",
+        "resolveConversationFollowUp"
       ],
       "firstLine": "function systemInstructions("
     },
     {
-      "index": 84,
+      "index": 125,
       "kind": "FunctionDeclaration",
       "names": [
         "handler"
@@ -1407,12 +2147,17 @@
         "DefaultKeyword",
         "AsyncKeyword"
       ],
-      "startLine": 3886,
-      "endLine": 4360,
-      "characterCount": 17429,
+      "startLine": 5284,
+      "endLine": 5986,
+      "characterCount": 25553,
       "references": [
         "ANSWER_SCHEMA",
+        "ANSWER_TIMEOUT_MS",
+        "AskVortaPhase",
+        "AskVortaPhaseTimeoutError",
+        "AskVortaRequest",
         "Context",
+        "EVIDENCE_TIMEOUT_MS",
         "EvidenceLink",
         "JsonRecord",
         "MAX_TOOL_ROUNDS",
@@ -1425,34 +2170,48 @@
         "ToolResult",
         "answerOutputTokenBudget",
         "answerReasoningEffort",
+        "buildAskVortaImageDiagnosis",
+        "buildConversationContext",
         "buildQuestionPlan",
+        "canonicalRouteKey",
+        "contextResolutionPrompt",
         "createClient",
         "decisionPackCoveringTool",
         "deterministicOperationalAnswer",
         "deterministicQuestionPlan",
+        "directImageEvidenceAnswer",
         "enforceAnswerEvidence",
         "enforceDeterministicResponseShape",
         "enforceEquipmentReturnToServiceSafety",
+        "enforceImageDiagnosisAnswer",
         "enforcePlannedResponseShape",
+        "enrichQuestionWithConversationContext",
         "evidenceAwareConfidence",
         "evidenceLinkForTool",
         "executeTool",
+        "imageDiagnosisPrompt",
+        "imageDiagnosisQuestionPlan",
         "jsonResponse",
         "normaliseRelativeShiftCoverArguments",
         "numberValue",
         "parseArguments",
         "parseRequest",
+        "repairEquipmentDecisionAnswer",
+        "resolveConversationFollowUp",
         "retainEquipmentDecisionFacts",
+        "routingModeForPlan",
         "sha256Fingerprint",
         "successfulToolNames",
         "systemInstructions",
         "textValues",
-        "trimToolResult"
+        "trimToolResult",
+        "validateAskVortaImage",
+        "withPhaseTimeout"
       ],
       "firstLine": "export default async function handler(req: Request, _context: Context): Promise<Response> {"
     },
     {
-      "index": 85,
+      "index": 126,
       "kind": "FirstStatement",
       "names": [
         "config"
@@ -1460,8 +2219,8 @@
       "modifiers": [
         "ExportKeyword"
       ],
-      "startLine": 4362,
-      "endLine": 4365,
+      "startLine": 5988,
+      "endLine": 5991,
       "characterCount": 78,
       "references": [
         "Config"
