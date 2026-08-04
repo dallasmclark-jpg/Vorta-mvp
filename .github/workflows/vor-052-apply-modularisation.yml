@@ -28,13 +28,19 @@ jobs:
       - run: npm ci
       - name: Restore the reviewed modulariser
         run: |
-          cat \
-            .vor-052/modulariser-parts/00 \
-            .vor-052/modulariser-parts/01 \
-            .vor-052/modulariser-parts/02 \
-            .vor-052/modulariser-parts/03 \
-            > scripts/vor-052-modularise-backend.mjs
+          python - <<'PY'
+          from pathlib import Path
+          parts = [
+              Path(".vor-052/modulariser-parts/00").read_bytes(),
+              Path(".vor-052/modulariser-parts/01").read_bytes(),
+              Path(".vor-052/modulariser-parts/02").read_bytes(),
+              Path(".vor-052/modulariser-parts/03").read_bytes(),
+          ]
+          reviewed = b"".join(part.rstrip(b"\r\n") for part in parts[:-1]) + parts[-1]
+          Path("scripts/vor-052-modularise-backend.mjs").write_bytes(reviewed)
+          PY
           echo "d48fdb54d8d360e982e3f91374691ab709eb61bfe4d83165c5e73d4f6211cffd  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
+          node --check scripts/vor-052-modularise-backend.mjs
       - name: Materialise the validated VOR-044 to VOR-051 behaviour
         run: npm run predev
       - name: Split Ask Vorta into focused modules
