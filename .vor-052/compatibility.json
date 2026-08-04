@@ -1,0 +1,314 @@
+{
+  "generatedFromCommit": "1c18c3f16fb1dccf495a2e6ea721766c885dc7c7",
+  "integrationScripts": [
+    {
+      "path": "scripts/vor-044-integrate-operational-value.mjs",
+      "targetPaths": [
+        "netlify/functions/ask-vorta.mts"
+      ],
+      "explicitMarkers": [
+        "\"vorta_get_ranked_operational_actions\"",
+        "Treat its rankedActions domain as the deterministic operational-value order",
+        "[\"rankedActions\", executeTool(\"get_site_ranked_actions\", {}, supabase, request)]",
+        "case \"get_site_ranked_actions\":",
+        "const rankedData = operationalDomainData(snapshot, \"rankedActions\");"
+      ],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": true,
+      "characterCount": 13072
+    },
+    {
+      "path": "scripts/vor-045-integrate-conversation-context.mjs",
+      "targetPaths": [
+        "netlify/functions/ask-vorta.mts",
+        "src/screens/AiOperations/AskVortaWorkspace.tsx",
+        "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+        "src/screens/AiOperations/vortaAgentService.ts"
+      ],
+      "explicitMarkers": [],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": true,
+      "characterCount": 30153
+    },
+    {
+      "path": "scripts/vor-046-integrate-image-backend.mjs",
+      "targetPaths": [
+        "netlify/functions/ask-vorta.mts",
+        "scripts/templates/vor-046-image-backend-helpers.txt"
+      ],
+      "explicitMarkers": [],
+      "askVortaMarkers": [
+        "async function extractAskVortaImageEvidence("
+      ],
+      "referencesAskVortaFunction": true,
+      "characterCount": 9872
+    },
+    {
+      "path": "scripts/vor-046-integrate-image-client.mjs",
+      "targetPaths": [
+        "src/screens/AiOperations/AskVortaWorkspace.tsx",
+        "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+        "src/screens/AiOperations/vortaAgentService.ts"
+      ],
+      "explicitMarkers": [],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": false,
+      "characterCount": 18527
+    },
+    {
+      "path": "scripts/vor-047-integrate-confirmed-actions.mjs",
+      "targetPaths": [
+        "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+        "src/screens/AiOperations/vortaAgentService.ts"
+      ],
+      "explicitMarkers": [
+        "async function ${name}(",
+        "function ${name}("
+      ],
+      "askVortaMarkers": [
+        "Controlled Ask Vorta actions require the review dialog"
+      ],
+      "referencesAskVortaFunction": false,
+      "characterCount": 5447
+    },
+    {
+      "path": "scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
+      "targetPaths": [],
+      "explicitMarkers": [],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": true,
+      "characterCount": 4759
+    },
+    {
+      "path": "scripts/vor-049-integrate-decision-ready-equipment.mjs",
+      "targetPaths": [],
+      "explicitMarkers": [],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": true,
+      "characterCount": 11264
+    },
+    {
+      "path": "scripts/vor-051-integrate-evidence-links.mjs",
+      "targetPaths": [],
+      "explicitMarkers": [],
+      "askVortaMarkers": [],
+      "referencesAskVortaFunction": false,
+      "characterCount": 6634
+    }
+  ],
+  "askVortaFunctionIntegrators": [
+    "scripts/vor-044-integrate-operational-value.mjs",
+    "scripts/vor-045-integrate-conversation-context.mjs",
+    "scripts/vor-046-integrate-image-backend.mjs",
+    "scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
+    "scripts/vor-049-integrate-decision-ready-equipment.mjs"
+  ],
+  "actionFiles": [
+    {
+      "path": "scripts/ask-vorta-agent-contracts.mjs",
+      "terms": [
+        "ask_vorta_action",
+        "askVortaAction",
+        "action draft"
+      ],
+      "characterCount": 11132
+    },
+    {
+      "path": "scripts/rpc-security-manifest-contracts.mjs",
+      "terms": [
+        "ask_vorta_action",
+        "askVortaAction",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 9141
+    },
+    {
+      "path": "scripts/vor-007-013-audit-improvements-contracts.mjs",
+      "terms": [
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 4602
+    },
+    {
+      "path": "scripts/vor-047-confirmed-handover-contracts.mjs",
+      "terms": [
+        "handover_note",
+        "askVortaAction",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 5924
+    },
+    {
+      "path": "scripts/vor-047-integrate-confirmed-actions.mjs",
+      "terms": [
+        "askVortaAction"
+      ],
+      "characterCount": 5447
+    },
+    {
+      "path": "scripts/vor-051-manager-demo-rehearsal-contracts.mjs",
+      "terms": [
+        "action draft"
+      ],
+      "characterCount": 7973
+    },
+    {
+      "path": "scripts/vor-052-scan-compatibility.mjs",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "ask-vorta-action",
+        "askVortaAction",
+        "confirmed action",
+        "action draft",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 4178
+    },
+    {
+      "path": "src/screens/AiOperations/AskVortaActionReviewDialog.tsx",
+      "terms": [
+        "ask-vorta-action",
+        "askVortaAction"
+      ],
+      "characterCount": 17616
+    },
+    {
+      "path": "src/screens/AiOperations/askVortaActionReviewLauncher.tsx",
+      "terms": [
+        "askVortaAction"
+      ],
+      "characterCount": 1895
+    },
+    {
+      "path": "src/screens/AiOperations/askVortaControlledActions.ts",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "askVortaAction",
+        "action draft"
+      ],
+      "characterCount": 8577
+    },
+    {
+      "path": "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+      "terms": [
+        "askVortaAction",
+        "action draft"
+      ],
+      "characterCount": 138777
+    },
+    {
+      "path": "src/screens/AiOperations/vortaAgentService.ts",
+      "terms": [
+        "ask_vorta_action",
+        "askVortaAction",
+        "action draft"
+      ],
+      "characterCount": 10331
+    },
+    {
+      "path": "src/screens/ShiftHandover/shiftHandoverWorkflowService.ts",
+      "terms": [
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 6592
+    },
+    {
+      "path": "supabase/migrations/20260726235315_add_ask_vorta_quality_workflow.sql",
+      "terms": [
+        "ask_vorta_action"
+      ],
+      "characterCount": 5194
+    },
+    {
+      "path": "supabase/migrations/20260728130000_add_shift_handover_control_workflow.sql",
+      "terms": [
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 17726
+    },
+    {
+      "path": "supabase/migrations/20260728133000_restrict_shift_handover_rpc_anon.sql",
+      "terms": [
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 1303
+    },
+    {
+      "path": "supabase/migrations/20260728140000_register_shift_handover_workflow_rpcs.sql",
+      "terms": [
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 3535
+    },
+    {
+      "path": "supabase/migrations/20260803175500_vor_047_action_draft_schema.sql",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action"
+      ],
+      "characterCount": 8568
+    },
+    {
+      "path": "supabase/migrations/20260803175600_vor_047_action_draft_rpc.sql",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "action draft"
+      ],
+      "characterCount": 11088
+    },
+    {
+      "path": "supabase/migrations/20260803175700_vor_047_action_confirmation_rpc.sql",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "action draft",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 6192
+    },
+    {
+      "path": "supabase/migrations/20260803175800_vor_047_register_action_rpcs.sql",
+      "terms": [
+        "ask_vorta_action",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 2495
+    },
+    {
+      "path": "supabase/migrations/20260803180000_vor_047_disable_work_requests.sql",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action"
+      ],
+      "characterCount": 6659
+    },
+    {
+      "path": "supabase/rpc-security-manifest.json",
+      "terms": [
+        "ask_vorta_action",
+        "askVortaAction",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 4236
+    },
+    {
+      "path": "tests/browser/vor-047-confirmed-handover.spec.ts",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "action draft"
+      ],
+      "characterCount": 9848
+    },
+    {
+      "path": "tests/browser/vor-051-manager-demo-rehearsal.spec.ts",
+      "terms": [
+        "action draft"
+      ],
+      "characterCount": 13822
+    }
+  ]
+}
