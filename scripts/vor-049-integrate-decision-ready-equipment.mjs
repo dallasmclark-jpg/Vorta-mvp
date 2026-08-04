@@ -114,6 +114,44 @@ backend = replaceOnce(
   "equipment decision-pack domain list",
 );
 
+const oldPrioritySpareQuestion = [
+  "  const asksForSpare =",
+  "    /\\b(?:spare|part|stock|stockout|out of stock|lead time|blocking|blocker|stopping|permanent correction|permanent repair|leading intervention)\\b/.test(",
+  "      loweredQuestion,",
+  "    );",
+].join("\n");
+const newPrioritySpareQuestion = [
+  "  const asksForSpare =",
+  "    /\\b(?:spare|part|stock|stockout|out of stock|lead time|blocking|blocker|stopping|permanent correction|permanent repair|leading intervention|next safe action)\\b/.test(",
+  "      loweredQuestion,",
+  "    );",
+].join("\n");
+backend = replaceOnce(
+  backend,
+  oldPrioritySpareQuestion,
+  newPrioritySpareQuestion,
+  "priority spare question matching",
+);
+
+const oldPriorityDocumentQuestion = [
+  "  const asksForDocument =",
+  "    /\\b(?:document|manual|guide|approved|procedure|drawing|evidence|before acting|history)\\b/.test(",
+  "      loweredQuestion,",
+  "    );",
+].join("\n");
+const newPriorityDocumentQuestion = [
+  "  const asksForDocument =",
+  "    /\\b(?:document|manual|guide|approved|procedure|drawing|evidence|before acting|history|next safe action)\\b/.test(",
+  "      loweredQuestion,",
+  "    );",
+].join("\n");
+backend = replaceOnce(
+  backend,
+  oldPriorityDocumentQuestion,
+  newPriorityDocumentQuestion,
+  "priority document question matching",
+);
+
 const packDataAnchor = [
   "          coveredTools,",
   "          decisionFacts: equipmentDecisionFacts(selected, domains, request.question),",
@@ -277,7 +315,7 @@ liveEval = liveEval.replaceAll(
 
 const mustNotBlock = [
   "    for (const phrase of scenario.mustNotMention || []) {",
-  "      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase \"${phrase}\"`);",
+  "      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase \\\"${phrase}\\\"`);",
   "    }",
 ].join("\n");
 const contradictionChecks = [
