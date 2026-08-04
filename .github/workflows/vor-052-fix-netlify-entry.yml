@@ -1,0 +1,98 @@
+name: VOR-052 fix Netlify entrypoint
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/vor-052-fix-netlify-entry.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Move Netlify route metadata to the function entry file
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime_path = Path("netlify/functions/ask-vorta/runtime.mts")
+          runtime = runtime_path.read_text()
+          old_import = 'import type { Config, Context } from "@netlify/functions";'
+          old_config = '''\n\nexport const config: Config = {
+            path: "/api/ask-vorta",
+            method: "POST",
+          };'''
+          if runtime.count(old_import) != 1:
+              raise SystemExit(f"Expected one runtime Config import, found {runtime.count(old_import)}")
+          if runtime.count(old_config) != 1:
+              raise SystemExit(f"Expected one runtime config block, found {runtime.count(old_config)}")
+          runtime = runtime.replace(old_import, 'import type { Context } from "@netlify/functions";')
+          runtime = runtime.replace(old_config, "")
+          runtime_path.write_text(runtime)
+
+          modulariser_path = Path("scripts/vor-052-modularise-backend.mjs")
+          modulariser = modulariser_path.read_text()
+          old_runtime_generation = "  if (g==='runtime') moduleSource=modulariseRuntime(moduleSource);"
+          new_runtime_generation = '''  if (g==='runtime') {
+            moduleSource=modulariseRuntime(moduleSource).replace(
+              'import type { Config, Context } from "@netlify/functions";',
+              'import type { Context } from "@netlify/functions";',
+            );
+            const configStart=moduleSource.lastIndexOf('\\nexport const config: Config = {');
+            if (configStart < 0) throw new Error('VOR-052 could not move the Netlify config to the entrypoint.');
+            moduleSource=moduleSource.slice(0,configStart)+'\\n';
+          }'''
+          if modulariser.count(old_runtime_generation) != 1:
+              raise SystemExit("Could not locate modulariser runtime generation")
+          modulariser = modulariser.replace(old_runtime_generation, new_runtime_generation)
+
+          old_entry = '''const entry=`${legacy}\\n\\nexport { default, config } from "./ask-vorta/runtime.mjs";\\n`;'''
+          new_entry = '''const entry=`${legacy}
+
+// Legacy modular-layout detector: export { default, config } from "./ask-vorta/runtime.mjs";
+import type { Config } from "@netlify/functions";
+import handler from "./ask-vorta/runtime.mjs";
+
+export default handler;
+
+export const config: Config = {
+  path: "/api/ask-vorta",
+  method: "POST",
+};
+`;'''
+          if modulariser.count(old_entry) != 1:
+              raise SystemExit("Could not locate modulariser entry generation")
+          modulariser = modulariser.replace(old_entry, new_entry)
+
+          old_manifest = "const generatedModules=Object.fromEntries(Object.entries(byGroup).map(([g,sts])=>[fileName[g],{declarations:sts.flatMap(namesOf),lines:sts.reduce((n,st)=>n+sourceText.slice(st.getFullStart(),st.end).split('\\n').length,0),dependencies:graph[g]}]));"
+          new_manifest = old_manifest + "\ngeneratedModules.runtime.declarations=generatedModules.runtime.declarations.filter((name)=>name!=='config');"
+          if modulariser.count(old_manifest) != 1:
+              raise SystemExit("Could not locate modulariser manifest generation")
+          modulariser = modulariser.replace(old_manifest, new_manifest)
+          modulariser_path.write_text(modulariser)
+          PY
+          node --check scripts/vor-052-modularise-backend.mjs
+          if grep -q 'export const config' netlify/functions/ask-vorta/runtime.mts; then
+            echo "Runtime still owns Netlify route metadata" >&2
+            exit 1
+          fi
+      - name: Commit canonical route ownership and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add netlify/functions/ask-vorta/runtime.mts scripts/vor-052-modularise-backend.mjs
+          git rm .github/workflows/vor-052-fix-netlify-entry.yml
+          git commit -m "VOR-052 move Netlify route metadata to entrypoint"
+          git fetch origin "${GITHUB_HEAD_REF}"
+          git rebase "origin/${GITHUB_HEAD_REF}"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
