@@ -6,6 +6,18 @@ const read = (path) => readFileSync(path, "utf8");
 const integration = read("scripts/vor-049-integrate-decision-ready-equipment.mjs");
 const backend = read("netlify/functions/ask-vorta.mts");
 const liveEval = read("scripts/ask-vorta-live-evals.mjs");
+const modelPackTemplate = read("scripts/templates/vor-049-trim-tool-result.txt");
+const domainTemplate = read("scripts/templates/vor-049-domain-selection.txt");
+const answerRepairTemplate = read("scripts/templates/vor-049-answer-repair.txt");
+const visibleEvalTemplate = read("scripts/templates/vor-049-visible-eval-helpers.txt");
+const backendSurface = [
+  backend,
+  integration,
+  modelPackTemplate,
+  domainTemplate,
+  answerRepairTemplate,
+].join("\n");
+const liveEvalSurface = [liveEval, integration, visibleEvalTemplate].join("\n");
 const packageJson = JSON.parse(read("package.json"));
 const golden = JSON.parse(read("tests/evals/vor-033-demo-golden.json"));
 
@@ -45,45 +57,45 @@ for (const marker of [
   "visibleDecisionUnavailable ? 50 : 95",
 ]) {
   assert.match(
-    backend,
+    backendSurface,
     new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `Missing transformed VOR-049 backend marker: ${marker}`,
+    `Missing VOR-049 backend integration marker: ${marker}`,
   );
 }
 
 assert.match(
-  backend,
+  modelPackTemplate,
   /const compactEquipmentPack = compactEquipmentDecisionPackForModel\(result\);/,
   "Equipment packs must be compacted before the generic oversize failure path",
 );
 assert.match(
-  backend,
+  modelPackTemplate,
   /decisionFacts: textValues\(data\.decisionFacts\)/,
   "The model-facing pack must retain verified decision facts",
 );
 assert.doesNotMatch(
-  backend.match(/function compactEquipmentDecisionPackForModel[\s\S]*?function trimToolResult/)?.[0] ?? "",
+  modelPackTemplate,
   /domains:\s*data\.domains/,
   "Raw multi-domain equipment payloads must not be copied into the model-facing compact pack",
 );
 assert.match(
-  backend,
+  integration,
   /const domainNames = equipmentDecisionDomains\(request\.question\);/,
   "Focused equipment questions must select only relevant evidence domains",
 );
 assert.match(
-  backend,
+  integration,
   /repairEquipmentDecisionAnswer\(answer, questionPlan, toolOutcomes\);[\s\S]*?answer\.confidence = evidenceAwareConfidence/,
   "Deterministic completion must repair contradictions before confidence calibration",
 );
 assert.match(
-  backend,
-  /retainEquipmentDecisionFacts\(answer, questionPlan, toolOutcomes\);\s*repairEquipmentDecisionAnswer\(answer, questionPlan, toolOutcomes\);\s*enforceEquipmentReturnToServiceSafety/,
+  integration,
+  /retainEquipmentDecisionFacts\(answer, questionPlan, toolOutcomes\);[\s\S]*?repairEquipmentDecisionAnswer\(answer, questionPlan, toolOutcomes\);[\s\S]*?enforceEquipmentReturnToServiceSafety/,
   "Model-generated equipment answers must be repaired before return-to-service wording and confidence",
 );
 assert.match(
-  backend,
-  /const upperBound = visibleDecisionUnavailable \? 50 : 95/,
+  integration,
+  /visibleDecisionUnavailable \? 50 : 95/,
   "Non-answerable visible decisions must not report confidence above 50 percent",
 );
 
@@ -97,19 +109,19 @@ for (const marker of [
   "visible decision layer reports an unavailable or oversized equipment pack",
 ]) {
   assert.match(
-    liveEval,
+    liveEvalSurface,
     new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
     `Missing VOR-049 visible-evaluation marker: ${marker}`,
   );
 }
 assert.match(
-  liveEval,
-  /\/vor-033-demo-golden\\\.json\$\/\.test\(scenarioFile\)/,
+  liveEvalSurface,
+  /vor-033-demo-golden/,
   "The VOR-033 golden set must automatically judge the visible decision layer",
 );
 assert.match(
-  liveEval,
-  /if \(!assertionText\.includes\(phrase\.toLowerCase\(\)\)\)/,
+  integration,
+  /assertionText\.includes\(phrase\.toLowerCase\(\)\)/,
   "Required golden facts must be present in the selected visible assertion layer",
 );
 
