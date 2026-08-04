@@ -87,6 +87,47 @@ function answerText(answer) {
   ].filter(Boolean).join("\n").toLowerCase();
 }
 
+function boundedAnswerSnapshot(answer) {
+  if (!answer || typeof answer !== "object") return null;
+  const text = (value, limit = 2_000) =>
+    typeof value === "string" ? value.slice(0, limit) : null;
+  const objectItems = (value, limit) =>
+    Array.isArray(value)
+      ? value.slice(0, limit).filter((item) => item && typeof item === "object")
+      : [];
+  const textItems = (value, limit) =>
+    Array.isArray(value)
+      ? value
+          .filter((item) => typeof item === "string")
+          .slice(0, limit)
+          .map((item) => item.slice(0, 1_000))
+      : [];
+
+  return {
+    responseId: text(answer.responseId, 200),
+    directAnswer: text(answer.directAnswer),
+    decisionSummary: objectItems(answer.decisionSummary, 5).map((item) => ({
+      label: text(item.label, 300),
+      value: text(item.value, 1_500),
+    })),
+    findings: objectItems(answer.findings, 8).map((item) => ({
+      category: text(item.category, 100),
+      severity: text(item.severity, 100),
+      title: text(item.title, 500),
+      detail: text(item.detail, 1_500),
+    })),
+    actionPlan: objectItems(answer.actionPlan, 6).map((item) => ({
+      priority: text(item.priority, 100),
+      action: text(item.action, 1_000),
+      owner: text(item.owner, 300),
+      expectedImpact: text(item.expectedImpact, 1_000),
+      verification: text(item.verification, 1_000),
+    })),
+    missingData: textItems(answer.missingData, 8),
+    followUpQuestions: textItems(answer.followUpQuestions, 3),
+  };
+}
+
 function sleep(milliseconds) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 }
@@ -285,6 +326,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     durationMs,
     failures,
     observed,
+    visibleAnswer: boundedAnswerSnapshot(payload),
   });
   console.log(
     `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms active; ${elapsedDurationMs}ms elapsed) ` +
