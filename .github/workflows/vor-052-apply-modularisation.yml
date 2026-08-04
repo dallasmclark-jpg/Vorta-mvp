@@ -72,6 +72,8 @@ jobs:
           git rm -r .vor-052/modulariser-parts
           git diff --cached --quiet && exit 0
           git commit -m "VOR-052 modularise Ask Vorta backend"
+          git reset --hard HEAD
+          git clean -fd
           git fetch origin "${GITHUB_HEAD_REF}"
           git rebase "origin/${GITHUB_HEAD_REF}"
           git push origin "HEAD:${GITHUB_HEAD_REF}"
