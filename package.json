@@ -13,6 +13,7 @@
     "test:contracts": "node scripts/run-contract-suite.mjs",
     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
     "test:browser": "playwright test --config=playwright.config.ts",
+    "test:browser:vor051": "playwright test --config=playwright.config.ts tests/browser/vor-051-manager-demo-rehearsal.spec.ts --project=phone-360 --project=laptop-1366",
     "test:performance": "node scripts/check-performance-budgets.mjs",
     "eval:ask-vorta:live": "node scripts/ask-vorta-live-evals.mjs",
     "eval:ask-vorta:vor033": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json",
