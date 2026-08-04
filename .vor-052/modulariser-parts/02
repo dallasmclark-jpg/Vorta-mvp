@@ -1,0 +1,149 @@
+meSource.indexOf('  let plannerMs = 0;',rateStart);
+  if (rateStart<0||rateEnd<0) throw new Error('Telemetry start block not found.');
+  runtimeSource=runtimeSource.slice(0,rateStart)+[
+    '  const telemetryStart = await beginAskVortaInteraction({',
+    '    supabase,',
+    '    request,',
+    '    userId,',
+    '    requestId: _context.requestId,',
+    '    startedAt,',
+    '    questionFingerprint,',
+    '    routeKey: preliminaryRouteKey,',
+    '    routingMode: preliminaryRoutingMode,',
+    '  });',
+    '  if (!telemetryStart.ok) return telemetryStart.response;',
+    '  const { interactionId } = telemetryStart;',
+    '',
+  ].join('\n')+runtimeSource.slice(rateEnd);
+
+  const valuesStart=runtimeSource.indexOf('  const telemetryValues = (');
+  const valuesEnd=runtimeSource.indexOf('  const completeDeterministicAnswer',valuesStart);
+  if(valuesStart<0||valuesEnd<0) throw new Error('Telemetry values block not found.');
+  runtimeSource=runtimeSource.slice(0,valuesStart)+[
+    '  const telemetryValues = (',
+    '    status: "completed" | "failed" | "fallback" | "timed_out",',
+    '  ): JsonRecord => buildAskVortaTelemetryValues({',
+    '    status,',
+    '    routeKey,',
+    '    routingMode,',
+    '    plannerMs,',
+    '    evidenceMs,',
+    '    answerMs,',
+    '    toolCount: usedTools.size,',
+    '    toolRoundCount,',
+    '    failureStage,',
+    '    startedAt,',
+    '  });',
+    '',
+  ].join('\n')+runtimeSource.slice(valuesEnd);
+
+  runtimeSource=replaceInteractionUpdates(runtimeSource);
+  const handlerMarker='export default async function handler';
+  const insert=runtimeSource.indexOf(handlerMarker);
+  const extraImports=[
+    'import { authenticateAskVortaRequest } from "./authenticated-context.mjs";',
+    'import { beginAskVortaInteraction, buildAskVortaTelemetryValues, updateAskVortaInteraction } from "./telemetry.mjs";',
+    '',
+  ].join('\n');
+  runtimeSource=runtimeSource.slice(0,insert)+extraImports+runtimeSource.slice(insert);
+  return runtimeSource;
+}
+
+const authenticatedContextSource=`import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { validateAskVortaImage } from "../_shared/askVortaImageEvidence.mjs";
+import type { AskVortaRequest, JsonRecord } from "./contracts.mjs";
+import { jsonResponse, parseRequest } from "./request-context.mjs";
+
+export type AuthenticatedAskVortaRequest =
+  | { ok: true; request: AskVortaRequest; supabase: SupabaseClient; userId: string }
+  | { ok: false; response: Response };
+
+export async function authenticateAskVortaRequest(
+  req: Request,
+): Promise<AuthenticatedAskVortaRequest> {
+  const bearer = req.headers.get("authorization")?.match(/^Bearer\\s+(.+)$/i)?.[1]?.trim();
+  if (!bearer) return { ok: false, response: jsonResponse({ error: "Authentication is required." }, 401) };
+
+  const supabaseUrl = Netlify.env.get("VITE_SUPABASE_URL");
+  const supabaseAnonKey = Netlify.env.get("VITE_SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey || !Netlify.env.get("OPENAI_BASE_URL")) {
+    return { ok: false, response: jsonResponse({ error: "Ask Vorta is not configured on this deployment." }, 503) };
+  }
+
+  const rawRequest = await req.json().catch(() => null);
+  const rawImage = rawRequest && typeof rawRequest === "object" && !Array.isArray(rawRequest)
+    ? (rawRequest as JsonRecord).image
+    : null;
+  if (rawImage != null) {
+    const imageValidation = validateAskVortaImage(rawImage);
+    if (!imageValidation.ok) {
+      return { ok: false, response: jsonResponse({ error: imageValidation.message }, 400) };
+    }
+  }
+  const request = parseRequest(rawRequest);
+  if (!request) {
+    return { ok: false, response: jsonResponse({ error: "The Ask Vorta request is invalid." }, 400) };
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${bearer}` } },
+  });
+  const { data: userData, error: userError } = await supabase.auth.getUser(bearer);
+  if (userError || !userData.user) {
+    return { ok: false, response: jsonResponse({ error: "Your Vorta session is not valid." }, 401) };
+  }
+
+  const userId = userData.user.id;
+  const { data: access, error: accessError } = await supabase
+    .from("user_site_access")
+    .select("site_id")
+    .eq("user_id", userId)
+    .eq("site_id", request.siteId)
+    .eq("active", true)
+    .maybeSingle();
+  if (accessError || !access) {
+    return { ok: false, response: jsonResponse({ error: "You do not have access to the requested Vorta site." }, 403) };
+  }
+
+  return { ok: true, request, supabase, userId };
+}
+`;
+
+const telemetrySource=`import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AskVortaPhase, AskVortaRequest, JsonRecord } from "./contracts.mjs";
+import { RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MINUTES } from "./contracts.mjs";
+import { jsonResponse } from "./request-context.mjs";
+
+interface BeginAskVortaInteractionInput {
+  supabase: SupabaseClient;
+  request: AskVortaRequest;
+  userId: string;
+  requestId: string;
+  startedAt: number;
+  questionFingerprint: string;
+  routeKey: string;
+  routingMode: string;
+}
+
+export type BeginAskVortaInteractionResult =
+  | { ok: true; interactionId: string }
+  | { ok: false; response: Response };
+
+export async function beginAskVortaInteraction(
+  input: BeginAskVortaInteractionInput,
+): Promise<BeginAskVortaInteractionResult> {
+  const rateWindowStart = new Date(
+    input.startedAt - RATE_LIMIT_WINDOW_MINUTES * 60_000,
+  ).toISOString();
+  const { count: recentRequestCount, error: rateError } = await input.supabase
+    .from("ask_vorta_interactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId)
+    .gte("created_at", rateWindowStart);
+  if (rateError) {
+    console.error("Ask Vorta rate-limit check failed", {
+      requestId: input.requestId,
+      error: rateError.message,
+    });
+    return { ok: false, response: jsonResponse({ error: "Ask Vorta could no
