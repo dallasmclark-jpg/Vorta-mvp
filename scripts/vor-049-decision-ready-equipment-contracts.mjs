@@ -90,19 +90,34 @@ assert.match(
   "Blocked interventions must include spares, work and the calculated risk-action domain",
 );
 assert.match(
+  domainTemplate,
+  /diagnos\(\?:e\|is\|tic\|ing\)\?/,
+  "Natural diagnose, diagnosis, diagnostic and diagnosing wording must reach technical evidence",
+);
+assert.match(
   answerRepairTemplate,
   /if \(!originalUnavailable\)/,
-  "Valid model prose must still be enriched with the decisive verified fact",
+  "Valid model prose must still be enriched with decisive verified facts",
 );
 assert.match(
   answerRepairTemplate,
-  /label: "Verified evidence", value: primaryText/,
-  "The highest-relevance exact decision fact must be visible in decisionSummary",
+  /const asksForAllQualified/,
+  "Qualification questions must distinguish one recommended lead from every validated engineer",
 );
 assert.match(
   answerRepairTemplate,
-  /title: "Verified decision fact",\s*detail: primaryText/,
-  "The exact decision fact must also remain visible in findings",
+  /const qualifiedCapabilityFacts = decisionFacts\.filter/,
+  "All validated engineers for the selected skill must remain available to the visible decision layer",
+);
+assert.match(
+  answerRepairTemplate,
+  /label: asksForAllQualified \? "Validated capability" : "Verified evidence"/,
+  "Qualification questions must visibly list each validated capability record",
+);
+assert.match(
+  answerRepairTemplate,
+  /primaryTexts\.join\("; "\)/,
+  "A repaired qualification answer must name all relevant validated engineers rather than one arbitrary candidate",
 );
 assert.match(
   integration,
@@ -151,8 +166,23 @@ assert.match(
 );
 assert.match(
   liveEval,
-  /rateLimitRetries,/,
-  "Retry evidence must be included in the evaluation result",
+  /rateLimitWaitMs \+= pauseMs/,
+  "The evaluator must record deliberate rate-window waiting separately from service latency",
+);
+assert.match(
+  liveEval,
+  /const activeDurationMs = Math\.max\([\s\S]*?Date\.now\(\) - startedAt - rateLimitWaitMs/,
+  "Latency budgets must measure active request time rather than deliberate rate-window waits",
+);
+assert.match(
+  liveEval,
+  /activeDurationMs > Number\(scenario\.maxDurationMs\)/,
+  "Scenario latency limits must use active request time",
+);
+assert.match(
+  liveEval,
+  /rateLimitWaitMs,\s*elapsedDurationMs/,
+  "Retry and total elapsed evidence must be retained in the evaluation result",
 );
 
 for (const marker of [
@@ -185,6 +215,16 @@ assert.equal(golden.length, 24, "The permanent maintenance-manager golden set mu
 assert.ok(
   golden.every((scenario) => Array.isArray(scenario.expectedTools) && scenario.expectedTools.length > 0),
   "Every VOR-033 question must require authorised Vorta evidence",
+);
+const fd03Capability = golden.find((scenario) => scenario.id === "vor033-fd03-skills");
+assert.deepEqual(
+  fd03Capability?.mustMention,
+  ["Gareth Owen", "Sophie Bennett", "Vacuum Systems"],
+  "FD-03 qualification expectations must match the authoritative validated capability records",
+);
+assert.ok(
+  fd03Capability?.mustNotMention?.includes("Nia Roberts is qualified"),
+  "The golden suite must reject falsely upgrading current work ownership into validated equipment authority",
 );
 assert.ok(
   golden.some((scenario) => /spare|stock|blocking/i.test(scenario.question)),
