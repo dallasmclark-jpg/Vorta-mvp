@@ -33,13 +33,13 @@ assert.equal(
   `VOR-049 integration has invalid syntax:\n${syntax.stdout}\n${syntax.stderr}`,
 );
 
-assert.match(
+assert.equal(
   packageJson.scripts.predev,
-  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs && node scripts\/vor-051-integrate-evidence-links\.mjs$/,
+  "node scripts/vor-053-canonical-build-contracts.mjs --quick",
 );
-assert.match(
+assert.equal(
   packageJson.scripts["build:metadata"],
-  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs && node scripts\/vor-051-integrate-evidence-links\.mjs && node scripts\/write-build-metadata\.mjs$/,
+  "node scripts/write-build-metadata.mjs",
 );
 assert.equal(
   packageJson.scripts["eval:ask-vorta:vor049"],

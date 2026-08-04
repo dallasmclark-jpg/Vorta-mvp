@@ -189,13 +189,15 @@ assert.match(
   /patchLegacyChainContracts/,
   "VOR-051 must extend established integration-chain contracts after VOR-049",
 );
-assert.ok(
-  packageJson.scripts.predev.includes("node scripts/vor-051-integrate-evidence-links.mjs"),
-  "Development transforms must preserve Ask Vorta evidence links",
+assert.equal(
+  packageJson.scripts.predev,
+  "node scripts/vor-053-canonical-build-contracts.mjs --quick",
+  "Development must verify the canonical evidence-link source without transforming it",
 );
-assert.ok(
-  packageJson.scripts["build:metadata"].includes("node scripts/vor-051-integrate-evidence-links.mjs"),
-  "Production transforms must preserve Ask Vorta evidence links",
+assert.equal(
+  packageJson.scripts["build:metadata"],
+  "node scripts/write-build-metadata.mjs",
+  "Production builds must use the committed evidence-link source directly",
 );
 
 assert.match(
