@@ -56,6 +56,7 @@ async function expectResponsiveDashboardTitle(
     await expect(mobileTitle).toHaveText("Operations Overview");
     return;
   }
+
   await expect(
     page
       .locator("h1:visible")
@@ -101,6 +102,7 @@ async function resolveFd03EquipmentId(page: Page): Promise<string> {
     response.ok(),
     `FD-03 active-site identity could not be resolved: ${await response.text()}`,
   ).toBe(true);
+
   const rows = (await response.json()) as Array<{
     id?: unknown;
     equipment_code?: unknown;
@@ -235,9 +237,15 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
   await page.goto("/dashboard");
   await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
   await expectResponsiveDashboardTitle(page, testInfo.project.name);
+  await expect(
+    page.locator('[data-vorta-data-mode="unavailable"]'),
+  ).toHaveCount(0, { timeout: 30_000 });
 
-  const fillFinish = page.getByRole("tab", { name: /Fill Finish/i }).first();
-  await expect(fillFinish).toBeVisible({ timeout: 30_000 });
+  const lyophilisation = page
+    .getByRole("tab", { name: /Lyophilisation/i })
+    .first();
+  await expect(lyophilisation).toBeVisible({ timeout: 30_000 });
+
   const equipmentId = await resolveFd03EquipmentId(page);
   const answer = askVortaAnswer(equipmentId);
   let capturedRequest: Record<string, unknown> | null = null;
@@ -247,8 +255,8 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
     await json(route, answer);
   });
 
-  await fillFinish.click();
-  await expect(fillFinish).toHaveAttribute("aria-selected", "true");
+  await lyophilisation.click();
+  await expect(lyophilisation).toHaveAttribute("aria-selected", "true");
 
   const workPlanButton = page.getByRole("button", { name: /View work plan/i });
   await expect(workPlanButton).toBeEnabled({ timeout: 20_000 });
@@ -334,7 +342,9 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
   await page.goBack();
   await page.waitForURL(/\/dashboard(?:\?.*)?$/);
   await expect(page.locator('[data-vorta-dashboard-root="true"]')).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Fill Finish/i }).first()).toBeVisible();
+  await expect(
+    page.getByRole("tab", { name: /Lyophilisation/i }).first(),
+  ).toBeVisible();
 
   const manifest = {
     rehearsal: "VOR-051 Maintenance Manager golden journey",
@@ -345,7 +355,7 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
     equipmentId,
     question,
     responseId,
-    dashboardScope: "Fill Finish",
+    dashboardScope: "Lyophilisation",
     visibleAnswer: {
       directAnswer: answer.directAnswer,
       decisionSummary: answer.decisionSummary,
