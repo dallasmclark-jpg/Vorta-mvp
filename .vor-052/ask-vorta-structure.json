@@ -1,0 +1,1472 @@
+{
+  "sourcePath": "netlify/functions/ask-vorta.mts",
+  "sha256": "e3e747102153ac8f60c60076041f32789aa5e232a5d7a6d3f79405bcdfbb7e41",
+  "lineCount": 4366,
+  "characterCount": 177339,
+  "statementCount": 86,
+  "topLevelNames": [
+    "ALLOWED_ROLES",
+    "ANSWER_SCHEMA",
+    "AskVortaRequest",
+    "Config",
+    "Context",
+    "DATE_ONLY_PATTERN",
+    "EMPTY_PARAMETERS",
+    "EQUIPMENT_DECISION_PACK_COVERAGE",
+    "EQUIPMENT_ID_PARAMETERS",
+    "EvidenceLink",
+    "JsonRecord",
+    "MAX_TOOL_OUTPUT_CHARACTERS",
+    "MAX_TOOL_ROUNDS",
+    "MODEL",
+    "OpenAI",
+    "PLANNER_MODEL",
+    "QUESTION_PLAN_SCHEMA",
+    "RATE_LIMIT_REQUESTS",
+    "RATE_LIMIT_WINDOW_MINUTES",
+    "RequestHistoryItem",
+    "ResponseInput",
+    "SITE_DECISION_PACK_COVERAGE",
+    "SupabaseClient",
+    "TOOLS",
+    "Tool",
+    "ToolResult",
+    "addUtcDays",
+    "answerOutputTokenBudget",
+    "answerReasoningEffort",
+    "assetLabel",
+    "buildQuestionPlan",
+    "collectDecisionFacts",
+    "compactDecisionData",
+    "compactEquipmentSkillsDomain",
+    "compactShiftCoverData",
+    "compactToolDomain",
+    "compareCoverPriority",
+    "config",
+    "coverEvidenceConfidence",
+    "coverShiftKey",
+    "createClient",
+    "decisionField",
+    "decisionPackCoveringTool",
+    "deterministicOperationalAnswer",
+    "deterministicQuestionPlan",
+    "enforceAnswerEvidence",
+    "enforceDeterministicResponseShape",
+    "enforceEquipmentReturnToServiceSafety",
+    "enforcePlannedResponseShape",
+    "equipmentDecisionFacts",
+    "equipmentId",
+    "equipmentReferenceMatches",
+    "evidenceAwareConfidence",
+    "evidenceLinkForTool",
+    "evidenceTextOverlapScore",
+    "evidenceTimestamps",
+    "executeTool",
+    "explicitEquipmentDomainFacts",
+    "extractEquipmentReference",
+    "firstDecisionNumber",
+    "firstDecisionText",
+    "formatUtcDate",
+    "getSiteEquipmentIndex",
+    "handler",
+    "jsonResponse",
+    "nestedDecisionRecords",
+    "normaliseEquipmentReference",
+    "normaliseRelativeShiftCoverArguments",
+    "normalisedEvidenceTokens",
+    "numberValue",
+    "operationalDomainData",
+    "outcomeData",
+    "parseArguments",
+    "parseRequest",
+    "questionMatchedEquipmentFacts",
+    "readableEvidenceTime",
+    "readableShift",
+    "records",
+    "relevantEquipmentDecisionFacts",
+    "replaceReleasedWording",
+    "requiredText",
+    "retainEquipmentDecisionFacts",
+    "rpcTool",
+    "sha256Fingerprint",
+    "successfulToolNames",
+    "systemInstructions",
+    "textValues",
+    "trimToolResult",
+    "validDateRange"
+  ],
+  "statements": [
+    {
+      "index": 0,
+      "kind": "ImportDeclaration",
+      "names": [
+        "Config",
+        "Context"
+      ],
+      "modifiers": [],
+      "startLine": 1,
+      "endLine": 1,
+      "characterCount": 58,
+      "references": [],
+      "firstLine": "import type { Config, Context } from \"@netlify/functions\";"
+    },
+    {
+      "index": 1,
+      "kind": "ImportDeclaration",
+      "names": [
+        "createClient",
+        "SupabaseClient"
+      ],
+      "modifiers": [],
+      "startLine": 2,
+      "endLine": 2,
+      "characterCount": 74,
+      "references": [],
+      "firstLine": "import { createClient, type SupabaseClient } from \"@supabase/supabase-js\";"
+    },
+    {
+      "index": 2,
+      "kind": "ImportDeclaration",
+      "names": [
+        "OpenAI"
+      ],
+      "modifiers": [],
+      "startLine": 3,
+      "endLine": 3,
+      "characterCount": 28,
+      "references": [],
+      "firstLine": "import OpenAI from \"openai\";"
+    },
+    {
+      "index": 3,
+      "kind": "ImportDeclaration",
+      "names": [
+        "ResponseInput",
+        "Tool"
+      ],
+      "modifiers": [],
+      "startLine": 4,
+      "endLine": 4,
+      "characterCount": 80,
+      "references": [],
+      "firstLine": "import type { ResponseInput, Tool } from \"openai/resources/responses/responses\";"
+    },
+    {
+      "index": 4,
+      "kind": "TypeAliasDeclaration",
+      "names": [
+        "JsonRecord"
+      ],
+      "modifiers": [],
+      "startLine": 6,
+      "endLine": 6,
+      "characterCount": 42,
+      "references": [],
+      "firstLine": "type JsonRecord = Record<string, unknown>;"
+    },
+    {
+      "index": 5,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "RequestHistoryItem"
+      ],
+      "modifiers": [],
+      "startLine": 8,
+      "endLine": 11,
+      "characterCount": 81,
+      "references": [],
+      "firstLine": "interface RequestHistoryItem {"
+    },
+    {
+      "index": 6,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "AskVortaRequest"
+      ],
+      "modifiers": [],
+      "startLine": 13,
+      "endLine": 22,
+      "characterCount": 178,
+      "references": [
+        "RequestHistoryItem"
+      ],
+      "firstLine": "interface AskVortaRequest {"
+    },
+    {
+      "index": 7,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "ToolResult"
+      ],
+      "modifiers": [],
+      "startLine": 24,
+      "endLine": 29,
+      "characterCount": 122,
+      "references": [],
+      "firstLine": "interface ToolResult {"
+    },
+    {
+      "index": 8,
+      "kind": "FirstStatement",
+      "names": [
+        "MODEL"
+      ],
+      "modifiers": [],
+      "startLine": 31,
+      "endLine": 31,
+      "characterCount": 30,
+      "references": [],
+      "firstLine": "const MODEL = \"gpt-5.6-terra\";"
+    },
+    {
+      "index": 9,
+      "kind": "FirstStatement",
+      "names": [
+        "PLANNER_MODEL"
+      ],
+      "modifiers": [],
+      "startLine": 32,
+      "endLine": 32,
+      "characterCount": 37,
+      "references": [],
+      "firstLine": "const PLANNER_MODEL = \"gpt-5.6-luna\";"
+    },
+    {
+      "index": 10,
+      "kind": "FirstStatement",
+      "names": [
+        "MAX_TOOL_ROUNDS"
+      ],
+      "modifiers": [],
+      "startLine": 33,
+      "endLine": 33,
+      "characterCount": 26,
+      "references": [],
+      "firstLine": "const MAX_TOOL_ROUNDS = 8;"
+    },
+    {
+      "index": 11,
+      "kind": "FirstStatement",
+      "names": [
+        "MAX_TOOL_OUTPUT_CHARACTERS"
+      ],
+      "modifiers": [],
+      "startLine": 34,
+      "endLine": 34,
+      "characterCount": 42,
+      "references": [],
+      "firstLine": "const MAX_TOOL_OUTPUT_CHARACTERS = 50_000;"
+    },
+    {
+      "index": 12,
+      "kind": "FirstStatement",
+      "names": [
+        "RATE_LIMIT_WINDOW_MINUTES"
+      ],
+      "modifiers": [],
+      "startLine": 35,
+      "endLine": 35,
+      "characterCount": 36,
+      "references": [],
+      "firstLine": "const RATE_LIMIT_WINDOW_MINUTES = 5;"
+    },
+    {
+      "index": 13,
+      "kind": "FirstStatement",
+      "names": [
+        "RATE_LIMIT_REQUESTS"
+      ],
+      "modifiers": [],
+      "startLine": 36,
+      "endLine": 36,
+      "characterCount": 31,
+      "references": [],
+      "firstLine": "const RATE_LIMIT_REQUESTS = 12;"
+    },
+    {
+      "index": 14,
+      "kind": "FirstStatement",
+      "names": [
+        "DATE_ONLY_PATTERN"
+      ],
+      "modifiers": [],
+      "startLine": 37,
+      "endLine": 37,
+      "characterCount": 48,
+      "references": [],
+      "firstLine": "const DATE_ONLY_PATTERN = /^\\d{4}-\\d{2}-\\d{2}$/;"
+    },
+    {
+      "index": 15,
+      "kind": "FirstStatement",
+      "names": [
+        "ALLOWED_ROLES"
+      ],
+      "modifiers": [],
+      "startLine": 38,
+      "endLine": 46,
+      "characterCount": 179,
+      "references": [],
+      "firstLine": "const ALLOWED_ROLES = new Set(["
+    },
+    {
+      "index": 16,
+      "kind": "FirstStatement",
+      "names": [
+        "EMPTY_PARAMETERS"
+      ],
+      "modifiers": [],
+      "startLine": 48,
+      "endLine": 53,
+      "characterCount": 121,
+      "references": [],
+      "firstLine": "const EMPTY_PARAMETERS = {"
+    },
+    {
+      "index": 17,
+      "kind": "FirstStatement",
+      "names": [
+        "EQUIPMENT_ID_PARAMETERS"
+      ],
+      "modifiers": [],
+      "startLine": 55,
+      "endLine": 65,
+      "characterCount": 273,
+      "references": [],
+      "firstLine": "const EQUIPMENT_ID_PARAMETERS = {"
+    },
+    {
+      "index": 18,
+      "kind": "FirstStatement",
+      "names": [
+        "TOOLS"
+      ],
+      "modifiers": [],
+      "startLine": 67,
+      "endLine": 288,
+      "characterCount": 8676,
+      "references": [
+        "EMPTY_PARAMETERS",
+        "EQUIPMENT_ID_PARAMETERS",
+        "Tool"
+      ],
+      "firstLine": "const TOOLS: Tool[] = ["
+    },
+    {
+      "index": 19,
+      "kind": "FirstStatement",
+      "names": [
+        "SITE_DECISION_PACK_COVERAGE"
+      ],
+      "modifiers": [],
+      "startLine": 290,
+      "endLine": 296,
+      "characterCount": 178,
+      "references": [],
+      "firstLine": "const SITE_DECISION_PACK_COVERAGE = new Set(["
+    },
+    {
+      "index": 20,
+      "kind": "FirstStatement",
+      "names": [
+        "EQUIPMENT_DECISION_PACK_COVERAGE"
+      ],
+      "modifiers": [],
+      "startLine": 297,
+      "endLine": 306,
+      "characterCount": 274,
+      "references": [],
+      "firstLine": "const EQUIPMENT_DECISION_PACK_COVERAGE = new Set(["
+    },
+    {
+      "index": 21,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "successfulToolNames"
+      ],
+      "modifiers": [],
+      "startLine": 308,
+      "endLine": 314,
+      "characterCount": 215,
+      "references": [
+        "ToolResult"
+      ],
+      "firstLine": "function successfulToolNames(outcomes: Map<string, ToolResult>): Set<string> {"
+    },
+    {
+      "index": 22,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "decisionPackCoveringTool"
+      ],
+      "modifiers": [],
+      "startLine": 316,
+      "endLine": 333,
+      "characterCount": 457,
+      "references": [
+        "EQUIPMENT_DECISION_PACK_COVERAGE",
+        "SITE_DECISION_PACK_COVERAGE"
+      ],
+      "firstLine": "function decisionPackCoveringTool("
+    },
+    {
+      "index": 23,
+      "kind": "FirstStatement",
+      "names": [
+        "ANSWER_SCHEMA"
+      ],
+      "modifiers": [],
+      "startLine": 335,
+      "endLine": 489,
+      "characterCount": 3706,
+      "references": [],
+      "firstLine": "const ANSWER_SCHEMA = {"
+    },
+    {
+      "index": 24,
+      "kind": "FirstStatement",
+      "names": [
+        "QUESTION_PLAN_SCHEMA"
+      ],
+      "modifiers": [],
+      "startLine": 492,
+      "endLine": 553,
+      "characterCount": 1331,
+      "references": [],
+      "firstLine": "const QUESTION_PLAN_SCHEMA = {"
+    },
+    {
+      "index": 25,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "jsonResponse"
+      ],
+      "modifiers": [],
+      "startLine": 555,
+      "endLine": 563,
+      "characterCount": 213,
+      "references": [],
+      "firstLine": "function jsonResponse(body: unknown, status = 200): Response {"
+    },
+    {
+      "index": 26,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "requiredText"
+      ],
+      "modifiers": [],
+      "startLine": 565,
+      "endLine": 569,
+      "characterCount": 215,
+      "references": [],
+      "firstLine": "function requiredText(value: unknown, maximumLength: number): string | null {"
+    },
+    {
+      "index": 27,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "normaliseEquipmentReference"
+      ],
+      "modifiers": [],
+      "startLine": 571,
+      "endLine": 578,
+      "characterCount": 227,
+      "references": [],
+      "firstLine": "function normaliseEquipmentReference(value: unknown): string {"
+    },
+    {
+      "index": 28,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentReferenceMatches"
+      ],
+      "modifiers": [],
+      "startLine": 580,
+      "endLine": 593,
+      "characterCount": 665,
+      "references": [
+        "normaliseEquipmentReference"
+      ],
+      "firstLine": "function equipmentReferenceMatches(candidate: unknown, query: string): boolean {"
+    },
+    {
+      "index": 29,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "extractEquipmentReference"
+      ],
+      "modifiers": [],
+      "startLine": 595,
+      "endLine": 618,
+      "characterCount": 638,
+      "references": [],
+      "firstLine": "function extractEquipmentReference(value: string): string | null {"
+    },
+    {
+      "index": 30,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "parseRequest"
+      ],
+      "modifiers": [],
+      "startLine": 620,
+      "endLine": 652,
+      "characterCount": 1370,
+      "references": [
+        "ALLOWED_ROLES",
+        "AskVortaRequest",
+        "JsonRecord",
+        "RequestHistoryItem",
+        "requiredText"
+      ],
+      "firstLine": "function parseRequest(value: unknown): AskVortaRequest | null {"
+    },
+    {
+      "index": 31,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "parseArguments"
+      ],
+      "modifiers": [],
+      "startLine": 654,
+      "endLine": 660,
+      "characterCount": 266,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function parseArguments(value: string): JsonRecord {"
+    },
+    {
+      "index": 32,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "trimToolResult"
+      ],
+      "modifiers": [],
+      "startLine": 662,
+      "endLine": 670,
+      "characterCount": 356,
+      "references": [
+        "MAX_TOOL_OUTPUT_CHARACTERS",
+        "ToolResult"
+      ],
+      "firstLine": "function trimToolResult(result: ToolResult): string {"
+    },
+    {
+      "index": 33,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compactShiftCoverData"
+      ],
+      "modifiers": [],
+      "startLine": 672,
+      "endLine": 752,
+      "characterCount": 2864,
+      "references": [
+        "JsonRecord",
+        "numberValue"
+      ],
+      "firstLine": "function compactShiftCoverData(value: unknown): unknown {"
+    },
+    {
+      "index": 34,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compactDecisionData"
+      ],
+      "modifiers": [],
+      "startLine": 755,
+      "endLine": 770,
+      "characterCount": 655,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function compactDecisionData(value: unknown, depth = 0): unknown {"
+    },
+    {
+      "index": 35,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compactToolDomain"
+      ],
+      "modifiers": [],
+      "startLine": 772,
+      "endLine": 779,
+      "characterCount": 205,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "compactDecisionData"
+      ],
+      "firstLine": "function compactToolDomain(result: ToolResult): JsonRecord {"
+    },
+    {
+      "index": 36,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compactEquipmentSkillsDomain"
+      ],
+      "modifiers": [],
+      "startLine": 781,
+      "endLine": 820,
+      "characterCount": 1896,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "records"
+      ],
+      "firstLine": "function compactEquipmentSkillsDomain(result: ToolResult): JsonRecord {"
+    },
+    {
+      "index": 37,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "collectDecisionFacts"
+      ],
+      "modifiers": [],
+      "startLine": 822,
+      "endLine": 877,
+      "characterCount": 2142,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function collectDecisionFacts("
+    },
+    {
+      "index": 38,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "nestedDecisionRecords"
+      ],
+      "modifiers": [],
+      "startLine": 879,
+      "endLine": 892,
+      "characterCount": 494,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function nestedDecisionRecords(value: unknown, depth = 0): JsonRecord[] {"
+    },
+    {
+      "index": 39,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "decisionField"
+      ],
+      "modifiers": [],
+      "startLine": 894,
+      "endLine": 914,
+      "characterCount": 600,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function decisionField(record: JsonRecord, keys: string[]): string {"
+    },
+    {
+      "index": 40,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "explicitEquipmentDomainFacts"
+      ],
+      "modifiers": [],
+      "startLine": 916,
+      "endLine": 1128,
+      "characterCount": 7655,
+      "references": [
+        "JsonRecord",
+        "decisionField",
+        "nestedDecisionRecords",
+        "records"
+      ],
+      "firstLine": "function explicitEquipmentDomainFacts("
+    },
+    {
+      "index": 41,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "normalisedEvidenceTokens"
+      ],
+      "modifiers": [],
+      "startLine": 1130,
+      "endLine": 1157,
+      "characterCount": 638,
+      "references": [],
+      "firstLine": "function normalisedEvidenceTokens(value: string): string[] {"
+    },
+    {
+      "index": 42,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "evidenceTextOverlapScore"
+      ],
+      "modifiers": [],
+      "startLine": 1159,
+      "endLine": 1165,
+      "characterCount": 272,
+      "references": [
+        "normalisedEvidenceTokens"
+      ],
+      "firstLine": "function evidenceTextOverlapScore(query: string, candidate: string): number {"
+    },
+    {
+      "index": 43,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "questionMatchedEquipmentFacts"
+      ],
+      "modifiers": [],
+      "startLine": 1167,
+      "endLine": 1444,
+      "characterCount": 10719,
+      "references": [
+        "JsonRecord",
+        "decisionField",
+        "evidenceTextOverlapScore",
+        "nestedDecisionRecords",
+        "numberValue",
+        "records"
+      ],
+      "firstLine": "function questionMatchedEquipmentFacts("
+    },
+    {
+      "index": 44,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentDecisionFacts"
+      ],
+      "modifiers": [],
+      "startLine": 1446,
+      "endLine": 1478,
+      "characterCount": 1006,
+      "references": [
+        "JsonRecord",
+        "collectDecisionFacts",
+        "explicitEquipmentDomainFacts",
+        "questionMatchedEquipmentFacts",
+        "relevantEquipmentDecisionFacts"
+      ],
+      "firstLine": "function equipmentDecisionFacts("
+    },
+    {
+      "index": 45,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "relevantEquipmentDecisionFacts"
+      ],
+      "modifiers": [],
+      "startLine": 1480,
+      "endLine": 1531,
+      "characterCount": 2354,
+      "references": [],
+      "firstLine": "function relevantEquipmentDecisionFacts("
+    },
+    {
+      "index": 46,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "retainEquipmentDecisionFacts"
+      ],
+      "modifiers": [],
+      "startLine": 1533,
+      "endLine": 1564,
+      "characterCount": 941,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "relevantEquipmentDecisionFacts",
+        "textValues"
+      ],
+      "firstLine": "function retainEquipmentDecisionFacts("
+    },
+    {
+      "index": 47,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "replaceReleasedWording"
+      ],
+      "modifiers": [],
+      "startLine": 1566,
+      "endLine": 1578,
+      "characterCount": 456,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function replaceReleasedWording(value: unknown): unknown {"
+    },
+    {
+      "index": 48,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enforceEquipmentReturnToServiceSafety"
+      ],
+      "modifiers": [],
+      "startLine": 1580,
+      "endLine": 1603,
+      "characterCount": 536,
+      "references": [
+        "JsonRecord",
+        "replaceReleasedWording"
+      ],
+      "firstLine": "function enforceEquipmentReturnToServiceSafety("
+    },
+    {
+      "index": 49,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "textValues"
+      ],
+      "modifiers": [],
+      "startLine": 1605,
+      "endLine": 1612,
+      "characterCount": 213,
+      "references": [],
+      "firstLine": "function textValues(value: unknown): string[] {"
+    },
+    {
+      "index": 50,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "coverShiftKey"
+      ],
+      "modifiers": [],
+      "startLine": 1614,
+      "endLine": 1616,
+      "characterCount": 119,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function coverShiftKey(shift: JsonRecord): string {"
+    },
+    {
+      "index": 51,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "compareCoverPriority"
+      ],
+      "modifiers": [],
+      "startLine": 1618,
+      "endLine": 1625,
+      "characterCount": 399,
+      "references": [
+        "JsonRecord",
+        "numberValue"
+      ],
+      "firstLine": "function compareCoverPriority(first: JsonRecord, second: JsonRecord): number {"
+    },
+    {
+      "index": 52,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "readableShift"
+      ],
+      "modifiers": [],
+      "startLine": 1627,
+      "endLine": 1637,
+      "characterCount": 386,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function readableShift(shift: JsonRecord): string {"
+    },
+    {
+      "index": 53,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "records"
+      ],
+      "modifiers": [],
+      "startLine": 1639,
+      "endLine": 1646,
+      "characterCount": 233,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function records(value: unknown): JsonRecord[] {"
+    },
+    {
+      "index": 54,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "coverEvidenceConfidence"
+      ],
+      "modifiers": [],
+      "startLine": 1649,
+      "endLine": 1679,
+      "characterCount": 1113,
+      "references": [
+        "JsonRecord",
+        "numberValue",
+        "textValues"
+      ],
+      "firstLine": "function coverEvidenceConfidence("
+    },
+    {
+      "index": 55,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "answerReasoningEffort"
+      ],
+      "modifiers": [],
+      "startLine": 1681,
+      "endLine": 1695,
+      "characterCount": 399,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function answerReasoningEffort("
+    },
+    {
+      "index": 56,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "answerOutputTokenBudget"
+      ],
+      "modifiers": [],
+      "startLine": 1697,
+      "endLine": 1705,
+      "characterCount": 432,
+      "references": [
+        "JsonRecord",
+        "answerReasoningEffort"
+      ],
+      "firstLine": "function answerOutputTokenBudget(questionPlan: JsonRecord | null): number {"
+    },
+    {
+      "index": 57,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "evidenceTimestamps"
+      ],
+      "modifiers": [],
+      "startLine": 1707,
+      "endLine": 1726,
+      "characterCount": 771,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function evidenceTimestamps(value: unknown, depth = 0): number[] {"
+    },
+    {
+      "index": 58,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "evidenceAwareConfidence"
+      ],
+      "modifiers": [],
+      "startLine": 1728,
+      "endLine": 1779,
+      "characterCount": 2047,
+      "references": [
+        "JsonRecord",
+        "ToolResult",
+        "decisionPackCoveringTool",
+        "evidenceTimestamps",
+        "numberValue",
+        "successfulToolNames",
+        "textValues"
+      ],
+      "firstLine": "function evidenceAwareConfidence("
+    },
+    {
+      "index": 59,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enforceDeterministicResponseShape"
+      ],
+      "modifiers": [],
+      "startLine": 1781,
+      "endLine": 1833,
+      "characterCount": 2163,
+      "references": [
+        "JsonRecord",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function enforceDeterministicResponseShape("
+    },
+    {
+      "index": 60,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enforcePlannedResponseShape"
+      ],
+      "modifiers": [],
+      "startLine": 1835,
+      "endLine": 1865,
+      "characterCount": 1483,
+      "references": [
+        "JsonRecord",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function enforcePlannedResponseShape("
+    },
+    {
+      "index": 61,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "enforceAnswerEvidence"
+      ],
+      "modifiers": [],
+      "startLine": 1867,
+      "endLine": 2278,
+      "characterCount": 19060,
+      "references": [
+        "JsonRecord",
+        "compareCoverPriority",
+        "coverEvidenceConfidence",
+        "coverShiftKey",
+        "numberValue",
+        "readableShift",
+        "records",
+        "textValues"
+      ],
+      "firstLine": "function enforceAnswerEvidence("
+    },
+    {
+      "index": 62,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "rpcTool"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 2280,
+      "endLine": 2294,
+      "characterCount": 488,
+      "references": [
+        "JsonRecord",
+        "SupabaseClient",
+        "ToolResult"
+      ],
+      "firstLine": "async function rpcTool("
+    },
+    {
+      "index": 63,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "equipmentId"
+      ],
+      "modifiers": [],
+      "startLine": 2296,
+      "endLine": 2298,
+      "characterCount": 104,
+      "references": [
+        "JsonRecord",
+        "requiredText"
+      ],
+      "firstLine": "function equipmentId(args: JsonRecord): string | null {"
+    },
+    {
+      "index": 64,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "validDateRange"
+      ],
+      "modifiers": [],
+      "startLine": 2300,
+      "endLine": 2312,
+      "characterCount": 487,
+      "references": [
+        "DATE_ONLY_PATTERN"
+      ],
+      "firstLine": "function validDateRange(startDate: unknown, endDate: unknown): boolean {"
+    },
+    {
+      "index": 65,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "addUtcDays"
+      ],
+      "modifiers": [],
+      "startLine": 2314,
+      "endLine": 2318,
+      "characterCount": 148,
+      "references": [],
+      "firstLine": "function addUtcDays(value: Date, days: number): Date {"
+    },
+    {
+      "index": 66,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "formatUtcDate"
+      ],
+      "modifiers": [],
+      "startLine": 2320,
+      "endLine": 2322,
+      "characterCount": 90,
+      "references": [],
+      "firstLine": "function formatUtcDate(value: Date): string {"
+    },
+    {
+      "index": 67,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "normaliseRelativeShiftCoverArguments"
+      ],
+      "modifiers": [],
+      "startLine": 2324,
+      "endLine": 2367,
+      "characterCount": 1251,
+      "references": [
+        "JsonRecord",
+        "addUtcDays",
+        "formatUtcDate"
+      ],
+      "firstLine": "function normaliseRelativeShiftCoverArguments("
+    },
+    {
+      "index": 68,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "sha256Fingerprint"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 2369,
+      "endLine": 2377,
+      "characterCount": 277,
+      "references": [],
+      "firstLine": "async function sha256Fingerprint(value: string): Promise<string> {"
+    },
+    {
+      "index": 69,
+      "kind": "InterfaceDeclaration",
+      "names": [
+        "EvidenceLink"
+      ],
+      "modifiers": [],
+      "startLine": 2379,
+      "endLine": 2383,
+      "characterCount": 160,
+      "references": [],
+      "firstLine": "interface EvidenceLink {"
+    },
+    {
+      "index": 70,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "evidenceLinkForTool"
+      ],
+      "modifiers": [],
+      "startLine": 2385,
+      "endLine": 2425,
+      "characterCount": 2590,
+      "references": [
+        "EvidenceLink",
+        "JsonRecord",
+        "equipmentId"
+      ],
+      "firstLine": "function evidenceLinkForTool(name: string, args: JsonRecord): EvidenceLink | null {"
+    },
+    {
+      "index": 71,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "getSiteEquipmentIndex"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 2427,
+      "endLine": 2443,
+      "characterCount": 476,
+      "references": [
+        "JsonRecord",
+        "SupabaseClient"
+      ],
+      "firstLine": "async function getSiteEquipmentIndex("
+    },
+    {
+      "index": 72,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "assetLabel"
+      ],
+      "modifiers": [],
+      "startLine": 2445,
+      "endLine": 2454,
+      "characterCount": 425,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function assetLabel(asset: JsonRecord | undefined): JsonRecord {"
+    },
+    {
+      "index": 73,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "numberValue"
+      ],
+      "modifiers": [],
+      "startLine": 2456,
+      "endLine": 2459,
+      "characterCount": 130,
+      "references": [],
+      "firstLine": "function numberValue(value: unknown): number {"
+    },
+    {
+      "index": 74,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "executeTool"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 2461,
+      "endLine": 3210,
+      "characterCount": 30577,
+      "references": [
+        "AskVortaRequest",
+        "JsonRecord",
+        "SupabaseClient",
+        "ToolResult",
+        "assetLabel",
+        "compactDecisionData",
+        "compactEquipmentSkillsDomain",
+        "compactShiftCoverData",
+        "compactToolDomain",
+        "equipmentDecisionFacts",
+        "equipmentId",
+        "equipmentReferenceMatches",
+        "getSiteEquipmentIndex",
+        "normaliseEquipmentReference",
+        "numberValue",
+        "records",
+        "requiredText",
+        "rpcTool",
+        "validDateRange"
+      ],
+      "firstLine": "async function executeTool("
+    },
+    {
+      "index": 75,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "firstDecisionText"
+      ],
+      "modifiers": [],
+      "startLine": 3214,
+      "endLine": 3220,
+      "characterCount": 215,
+      "references": [
+        "decisionField",
+        "nestedDecisionRecords"
+      ],
+      "firstLine": "function firstDecisionText(value: unknown, keys: string[]): string {"
+    },
+    {
+      "index": 76,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "firstDecisionNumber"
+      ],
+      "modifiers": [],
+      "startLine": 3222,
+      "endLine": 3227,
+      "characterCount": 236,
+      "references": [
+        "firstDecisionText"
+      ],
+      "firstLine": "function firstDecisionNumber(value: unknown, keys: string[]): number | null {"
+    },
+    {
+      "index": 77,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "outcomeData"
+      ],
+      "modifiers": [],
+      "startLine": 3229,
+      "endLine": 3234,
+      "characterCount": 132,
+      "references": [
+        "ToolResult"
+      ],
+      "firstLine": "function outcomeData("
+    },
+    {
+      "index": 78,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "operationalDomainData"
+      ],
+      "modifiers": [],
+      "startLine": 3236,
+      "endLine": 3243,
+      "characterCount": 469,
+      "references": [
+        "JsonRecord"
+      ],
+      "firstLine": "function operationalDomainData(value: unknown, domainName: string): unknown {"
+    },
+    {
+      "index": 79,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "readableEvidenceTime"
+      ],
+      "modifiers": [],
+      "startLine": 3245,
+      "endLine": 3249,
+      "characterCount": 242,
+      "references": [],
+      "firstLine": "function readableEvidenceTime(timestamp: number | null): string {"
+    },
+    {
+      "index": 80,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "deterministicOperationalAnswer"
+      ],
+      "modifiers": [],
+      "startLine": 3251,
+      "endLine": 3476,
+      "characterCount": 13674,
+      "references": [
+        "AskVortaRequest",
+        "JsonRecord",
+        "ToolResult",
+        "evidenceTimestamps",
+        "firstDecisionNumber",
+        "firstDecisionText",
+        "operationalDomainData",
+        "outcomeData",
+        "readableEvidenceTime"
+      ],
+      "firstLine": "function deterministicOperationalAnswer("
+    },
+    {
+      "index": 81,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "deterministicQuestionPlan"
+      ],
+      "modifiers": [],
+      "startLine": 3478,
+      "endLine": 3765,
+      "characterCount": 11902,
+      "references": [
+        "AskVortaRequest",
+        "JsonRecord",
+        "extractEquipmentReference"
+      ],
+      "firstLine": "function deterministicQuestionPlan("
+    },
+    {
+      "index": 82,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "buildQuestionPlan"
+      ],
+      "modifiers": [
+        "AsyncKeyword"
+      ],
+      "startLine": 3767,
+      "endLine": 3824,
+      "characterCount": 3504,
+      "references": [
+        "AskVortaRequest",
+        "JsonRecord",
+        "OpenAI",
+        "PLANNER_MODEL",
+        "QUESTION_PLAN_SCHEMA",
+        "ResponseInput",
+        "TOOLS",
+        "textValues"
+      ],
+      "firstLine": "async function buildQuestionPlan("
+    },
+    {
+      "index": 83,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "systemInstructions"
+      ],
+      "modifiers": [],
+      "startLine": 3826,
+      "endLine": 3884,
+      "characterCount": 9566,
+      "references": [
+        "AskVortaRequest",
+        "JsonRecord"
+      ],
+      "firstLine": "function systemInstructions("
+    },
+    {
+      "index": 84,
+      "kind": "FunctionDeclaration",
+      "names": [
+        "handler"
+      ],
+      "modifiers": [
+        "ExportKeyword",
+        "DefaultKeyword",
+        "AsyncKeyword"
+      ],
+      "startLine": 3886,
+      "endLine": 4360,
+      "characterCount": 17429,
+      "references": [
+        "ANSWER_SCHEMA",
+        "Context",
+        "EvidenceLink",
+        "JsonRecord",
+        "MAX_TOOL_ROUNDS",
+        "MODEL",
+        "OpenAI",
+        "RATE_LIMIT_REQUESTS",
+        "RATE_LIMIT_WINDOW_MINUTES",
+        "ResponseInput",
+        "TOOLS",
+        "ToolResult",
+        "answerOutputTokenBudget",
+        "answerReasoningEffort",
+        "buildQuestionPlan",
+        "createClient",
+        "decisionPackCoveringTool",
+        "deterministicOperationalAnswer",
+        "deterministicQuestionPlan",
+        "enforceAnswerEvidence",
+        "enforceDeterministicResponseShape",
+        "enforceEquipmentReturnToServiceSafety",
+        "enforcePlannedResponseShape",
+        "evidenceAwareConfidence",
+        "evidenceLinkForTool",
+        "executeTool",
+        "jsonResponse",
+        "normaliseRelativeShiftCoverArguments",
+        "numberValue",
+        "parseArguments",
+        "parseRequest",
+        "retainEquipmentDecisionFacts",
+        "sha256Fingerprint",
+        "successfulToolNames",
+        "systemInstructions",
+        "textValues",
+        "trimToolResult"
+      ],
+      "firstLine": "export default async function handler(req: Request, _context: Context): Promise<Response> {"
+    },
+    {
+      "index": 85,
+      "kind": "FirstStatement",
+      "names": [
+        "config"
+      ],
+      "modifiers": [
+        "ExportKeyword"
+      ],
+      "startLine": 4362,
+      "endLine": 4365,
+      "characterCount": 78,
+      "references": [
+        "Config"
+      ],
+      "firstLine": "export const config: Config = {"
+    }
+  ]
+}
