@@ -35,6 +35,10 @@ assert.ok(
   "One PR-scoped workflow must own authenticated Ask Vorta evaluation traffic",
 );
 assert.ok(
+  liveWorkflow.includes("cancel-in-progress: true"),
+  "A newer branch commit must cancel an obsolete authenticated live run so stale evidence cannot block the latest head",
+);
+assert.ok(
   liveWorkflow.includes("timeout-minutes: 75"),
   "The exhaustive live gate must have enough wall-clock allowance for deliberate rate-window resets",
 );
