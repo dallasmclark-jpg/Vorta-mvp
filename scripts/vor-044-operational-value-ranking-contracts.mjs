@@ -1,20 +1,19 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 
 const read = (path) => readFileSync(path, "utf8");
 const ranking = read("supabase/migrations/20260803113112_vor_044_rank_operational_actions.sql");
 const invariants = read("supabase/migrations/20260803113243_vor_044_operational_value_invariants.sql");
 const manifest = read("supabase/migrations/20260803115400_vor_044_register_operational_value_rpc.sql");
-const integration = read("scripts/vor-044-integrate-operational-value.mjs");
+const canonicalBackend = [
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/tool-execution.mts",
+  "netlify/functions/ask-vorta/decision-answer.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+].map(read).join("\n");
 const healthGate = read("scripts/live-demo-backend-health.mjs");
 const packageJson = JSON.parse(read("package.json"));
-
-assert.equal(
-  spawnSync(process.execPath, ["--check", "scripts/vor-044-integrate-operational-value.mjs"]).status,
-  0,
-  "VOR-044 integration codemod must have valid syntax",
-);
 
 for (const marker of [
   "vorta_get_ranked_operational_actions",
@@ -48,12 +47,12 @@ assert.match(manifest, /'definer'/);
 assert.match(manifest, /false/);
 assert.match(healthGate, /reviewedAuthenticatedReadRpcCount\),\s*53/);
 assert.match(healthGate, /authenticatedSecurityDefinerRpcCount\),\s*71/);
-assert.match(integration, /case "get_site_ranked_actions":/);
-assert.match(integration, /rankedActions/);
-assert.match(integration, /vorta_get_ranked_operational_actions/);
-assert.match(integration, /Equipment operational-value ranking/);
-assert.match(integration, /Score components:/);
-assert.match(integration, /hardDependencies/);
+assert.match(canonicalBackend, /case "get_site_ranked_actions":/);
+assert.match(canonicalBackend, /rankedActions/);
+assert.match(canonicalBackend, /vorta_get_ranked_operational_actions/);
+assert.match(canonicalBackend, /Equipment operational-value ranking/);
+assert.match(canonicalBackend, /Score components:/);
+assert.match(canonicalBackend, /hardDependencies/);
 
 assert.equal(packageJson.scripts.prebuild, "node scripts/validate-live-pilot.mjs");
 assert.equal(
