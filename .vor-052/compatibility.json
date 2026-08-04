@@ -1,5 +1,5 @@
 {
-  "generatedFromCommit": "1c18c3f16fb1dccf495a2e6ea721766c885dc7c7",
+  "generatedFromCommit": "ba600f7478990c13b09f8df40ef733940f247f75",
   "integrationScripts": [
     {
       "path": "scripts/vor-044-integrate-operational-value.mjs",
@@ -104,6 +104,19 @@
     "scripts/vor-049-integrate-decision-ready-equipment.mjs"
   ],
   "actionFiles": [
+    {
+      "path": ".vor-052/compatibility.json",
+      "terms": [
+        "handover_note",
+        "ask_vorta_action",
+        "ask-vorta-action",
+        "askVortaAction",
+        "confirmed action",
+        "action draft",
+        "vorta_save_shift_handover_action"
+      ],
+      "characterCount": 8803
+    },
     {
       "path": "scripts/ask-vorta-agent-contracts.mjs",
       "terms": [
