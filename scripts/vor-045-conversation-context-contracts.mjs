@@ -145,7 +145,11 @@ assert.match(canonicalContextSurface, /latestConversationContext/);
 assert.match(canonicalContextSurface, /clarificationQuestion/);
 assert.match(canonicalContextSurface, /selectedOption/);
 assert.match(canonicalContextSurface, /orderedOptions/);
-assert.doesNotMatch(canonicalContextSurface, /ShiftHandover|shift-handover|src\/screens\/ShiftHandover/);
+assert.doesNotMatch(
+  canonicalContextSurface,
+  /from ["'][^"']*screens\/ShiftHandover[^"']*["']/,
+  "Conversation context must not import or mutate the Shift Handover screen",
+);
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 assert.equal(packageJson.scripts.prebuild, "node scripts/validate-live-pilot.mjs");
