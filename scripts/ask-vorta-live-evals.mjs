@@ -147,6 +147,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   const failures = [];
   let reauthentications = 0;
   let rateLimitRetries = 0;
+  let rateLimitWaitMs = 0;
   let requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
 
   if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
@@ -164,6 +165,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   ) {
     const pauseMs = retryDelayForRateLimit(requestResult);
     rateLimitRetries += 1;
+    rateLimitWaitMs += pauseMs;
     console.warn(
       `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
     );
@@ -195,6 +197,11 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   } else if (!response && failures.length === 0) {
     failures.push("request failed without a response");
   }
+
+  const activeDurationMs = Math.max(
+    0,
+    Date.now() - startedAt - rateLimitWaitMs,
+  );
 
   if (response?.ok && payload) {
     const text = answerText(payload);
@@ -248,14 +255,15 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     if (Number.isFinite(scenario.maxFollowUpQuestions) && (payload.followUpQuestions || []).length > Number(scenario.maxFollowUpQuestions)) {
       failures.push(`follow-ups have ${(payload.followUpQuestions || []).length} items; expected at most ${scenario.maxFollowUpQuestions}`);
     }
-    if (Number.isFinite(scenario.maxDurationMs) && Date.now() - startedAt > Number(scenario.maxDurationMs)) {
-      failures.push(`duration ${Date.now() - startedAt}ms; expected at most ${scenario.maxDurationMs}ms`);
+    if (Number.isFinite(scenario.maxDurationMs) && activeDurationMs > Number(scenario.maxDurationMs)) {
+      failures.push(`active duration ${activeDurationMs}ms; expected at most ${scenario.maxDurationMs}ms`);
     }
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
   }
 
-  const durationMs = Date.now() - startedAt;
+  const durationMs = activeDurationMs;
+  const elapsedDurationMs = Date.now() - startedAt;
   const observed = {
     intent: payload?.intent || payload?.questionPlan?.intent || null,
     tools: payload?.toolsUsed || [],
@@ -267,6 +275,8 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     followUpQuestions: Array.isArray(payload?.followUpQuestions) ? payload.followUpQuestions.length : null,
     reauthentications,
     rateLimitRetries,
+    rateLimitWaitMs,
+    elapsedDurationMs,
   };
   results.push({
     index: offset + batchIndex,
@@ -277,7 +287,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     observed,
   });
   console.log(
-    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms) ` +
+    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms active; ${elapsedDurationMs}ms elapsed) ` +
       `${JSON.stringify(observed)}${failures.length ? ` — ${failures.join("; ")}` : ""}`,
   );
 
