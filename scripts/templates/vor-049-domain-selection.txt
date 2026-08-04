@@ -32,7 +32,7 @@ function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName
     add("get_equipment_work", "get_equipment_spares", "get_equipment_risk_actions");
   }
   if (
-    /\b(?:who|qualified|qualification|skill|capability|engineer|authori[sz]e|can lead|can verify|calibrate and verify)\b/.test(
+    /\b(?:who|qualified|qualification|skill|capability|engineer|authori[sz]e|can lead|can verify|calibrate and verify|diagnos(?:e|is|tic|ing)?)\b/.test(
       lowered,
     )
   ) {
@@ -46,7 +46,7 @@ function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName
     add("get_equipment_spares", "get_equipment_work", "get_equipment_risk_actions");
   }
   if (
-    /\b(?:fault|cause|caused|diagnos|repeat|false reject|credible reading|instrument fault|probe disagreement|keep generating|work history)\b/.test(
+    /\b(?:fault|cause|caused|diagnos(?:e|is|tic|ing)?|repeat|false reject|credible reading|instrument fault|probe disagreement|keep generating|work history)\b/.test(
       lowered,
     )
   ) {
