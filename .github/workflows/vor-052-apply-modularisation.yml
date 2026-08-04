@@ -1,79 +1,35 @@
-name: VOR-052 apply backend modularisation
+name: VOR-052 backend modularisation
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - ".vor-052/modulariser-parts/**"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
       - "scripts/vor-052-backend-modularisation-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
       - ".github/workflows/vor-052-apply-modularisation.yml"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply:
-    if: github.actor != 'github-actions[bot]'
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Restore the reviewed modulariser
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          parts = [
-              Path(".vor-052/modulariser-parts/00").read_bytes(),
-              Path(".vor-052/modulariser-parts/01").read_bytes(),
-              Path(".vor-052/modulariser-parts/02").read_bytes(),
-              Path(".vor-052/modulariser-parts/03").read_bytes(),
-          ]
-          reviewed = b"".join(part.rstrip(b"\r\n") for part in parts[:-1]) + parts[-1]
-          source = reviewed.decode("utf8")
-          source = source.replace(
-              'global: { headers: { Authorization: `Bearer ${bearer}` } },',
-              r'global: { headers: { Authorization: \`Bearer \${bearer}\` } },',
-          )
-          source = source.replace(
-              '{ error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.` },',
-              r'{ error: \`Ask Vorta allows \${RATE_LIMIT_REQUESTS} analyses every \${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.\` },',
-          )
-          Path("scripts/vor-052-modularise-backend.mjs").write_text(source)
-          PY
-          echo "8fe5682360a0c68018ae89f4289ad067faef3d601a75619d048aae51eee8c78d  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
-          node --check scripts/vor-052-modularise-backend.mjs
-      - name: Materialise the validated VOR-044 to VOR-051 behaviour
-        run: npm run predev
-      - name: Split Ask Vorta into focused modules
-        run: node scripts/vor-052-modularise-backend.mjs
       - name: Verify function TypeScript
         run: npm run typecheck:functions
       - name: Verify VOR-052 architecture boundaries
         run: node scripts/vor-052-backend-modularisation-contracts.mjs
       - name: Verify runtime routes
         run: npm run test:smoke
-      - name: Commit the generated module boundary
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            netlify/functions/ask-vorta.mts \
-            netlify/functions/ask-vorta \
-            scripts/vor-052-modularise-backend.mjs
-          git rm -r .vor-052/modulariser-parts
-          git diff --cached --quiet && exit 0
-          git commit -m "VOR-052 modularise Ask Vorta backend"
-          git reset --hard HEAD
-          git clean -fd
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git rebase "origin/${GITHUB_HEAD_REF}"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
