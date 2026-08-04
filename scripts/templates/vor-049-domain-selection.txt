@@ -43,7 +43,7 @@ function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName
       lowered,
     )
   ) {
-    add("get_equipment_spares", "get_equipment_work");
+    add("get_equipment_spares", "get_equipment_work", "get_equipment_risk_actions");
   }
   if (
     /\b(?:fault|cause|caused|diagnos|repeat|false reject|credible reading|instrument fault|probe disagreement|keep generating|work history)\b/.test(
