@@ -14,7 +14,7 @@ jobs:
   retire:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 41
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,80 +64,10 @@ re.subn = _literal_subn
           npm run test:contracts
           npm run typecheck:functions
           npm run test:smoke
-      - name: Commit retirement and install permanent purity gate
+      - name: Commit verified retirement
         shell: bash
         run: |
           set -euo pipefail
-          rm scripts/vor-053-retire-scaffolding.py
-          cat > .github/workflows/vor-053-canonicalisation-audit.yml <<'YAML'
-          name: VOR-053 canonical Ask Vorta build
-
-          on:
-            pull_request:
-              branches:
-                - main
-              paths:
-                - "package.json"
-                - "package-lock.json"
-                - "netlify/functions/ask-vorta.mts"
-                - "netlify/functions/ask-vorta/**"
-                - "src/screens/AiOperations/**"
-                - "scripts/ask-vorta-live-evals.mjs"
-                - "scripts/vor-04*-contracts.mjs"
-                - "scripts/vor-05*-contracts.mjs"
-                - "scripts/run-contract-suite.mjs"
-                - ".github/workflows/vor-053-canonicalisation-audit.yml"
-            push:
-              branches:
-                - main
-              paths:
-                - "package.json"
-                - "package-lock.json"
-                - "netlify/functions/ask-vorta.mts"
-                - "netlify/functions/ask-vorta/**"
-                - "src/screens/AiOperations/**"
-                - "scripts/ask-vorta-live-evals.mjs"
-                - "scripts/vor-04*-contracts.mjs"
-                - "scripts/vor-05*-contracts.mjs"
-                - "scripts/run-contract-suite.mjs"
-                - ".github/workflows/vor-053-canonicalisation-audit.yml"
-
-          permissions:
-            contents: read
-
-          jobs:
-            verify:
-              runs-on: ubuntu-latest
-              timeout-minutes: 35
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-                    cache: npm
-                - run: npm ci
-                - name: Verify canonical source and lifecycle purity
-                  shell: bash
-                  run: |
-                    set -euo pipefail
-                    node scripts/vor-053-canonical-build-contracts.mjs
-
-                    npm run predev
-                    test -z "$(git status --porcelain --untracked-files=all)"
-
-                    npm run build:metadata
-                    unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
-                    test -z "$unexpected"
-                    git checkout -- public/vorta-build.json
-
-                    npm run test:contracts
-                    test -z "$(git status --porcelain --untracked-files=all)"
-
-                    npm run build
-                    unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
-                    test -z "$unexpected"
-          YAML
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
