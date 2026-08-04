@@ -1,37 +1,27 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 
 const read = (path) => readFileSync(path, "utf8");
-const integration = read("scripts/vor-049-integrate-decision-ready-equipment.mjs");
-const backend = read("netlify/functions/ask-vorta.mts");
-const liveEval = read("scripts/ask-vorta-live-evals.mjs");
-const workflow = read(".github/workflows/vor-049-validation.yml");
-const modelPackTemplate = read("scripts/templates/vor-049-trim-tool-result.txt");
-const domainTemplate = read("scripts/templates/vor-049-domain-selection.txt");
-const answerRepairTemplate = read("scripts/templates/vor-049-answer-repair.txt");
-const visibleEvalTemplate = read("scripts/templates/vor-049-visible-eval-helpers.txt");
 const backendSurface = [
-  backend,
-  integration,
-  modelPackTemplate,
-  domainTemplate,
-  answerRepairTemplate,
-].join("\n");
-const liveEvalSurface = [liveEval, integration, visibleEvalTemplate].join("\n");
+  "netlify/functions/ask-vorta.mts",
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/equipment-evidence.mts",
+  "netlify/functions/ask-vorta/response-validation.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "netlify/functions/ask-vorta/tool-execution.mts",
+].map(read).join("\n");
+const integration = backendSurface;
+const backend = backendSurface;
+const modelPackTemplate = backendSurface;
+const domainTemplate = backendSurface;
+const answerRepairTemplate = backendSurface;
+const liveEval = read("scripts/ask-vorta-live-evals.mjs");
+const visibleEvalTemplate = liveEval;
+const liveEvalSurface = liveEval;
+const workflow = read(".github/workflows/vor-049-validation.yml");
 const packageJson = JSON.parse(read("package.json"));
 const golden = JSON.parse(read("tests/evals/vor-033-demo-golden.json"));
-
-const syntax = spawnSync(
-  process.execPath,
-  ["--check", "scripts/vor-049-integrate-decision-ready-equipment.mjs"],
-  { encoding: "utf8" },
-);
-assert.equal(
-  syntax.status,
-  0,
-  `VOR-049 integration has invalid syntax:\n${syntax.stdout}\n${syntax.stderr}`,
-);
 
 assert.equal(
   packageJson.scripts.predev,
@@ -60,7 +50,7 @@ for (const marker of [
   assert.match(
     backendSurface,
     new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `Missing VOR-049 backend integration marker: ${marker}`,
+    `Missing VOR-049 backend marker: ${marker}`,
   );
 }
 
@@ -92,7 +82,7 @@ assert.match(
 assert.match(
   domainTemplate,
   /diagnos\(\?:e\|is\|tic\|ing\)\?/,
-  "Natural diagnose, diagnosis, diagnostic and diagnosing wording must reach technical evidence",
+  "Natural diagnosis wording must reach technical evidence",
 );
 assert.match(
   domainTemplate,
@@ -137,7 +127,7 @@ assert.match(
 assert.match(
   answerRepairTemplate,
   /primaryTexts\.join\("; "\)/,
-  "A repaired qualification answer must name all relevant validated engineers rather than one arbitrary candidate",
+  "A repaired qualification answer must name all relevant validated engineers",
 );
 assert.match(
   integration,
@@ -159,61 +149,23 @@ assert.match(
   /Wait for a clean shared evaluation rate window/,
   "The live golden gate must isolate itself from parallel CI traffic",
 );
-assert.match(
-  workflow,
-  /run: sleep 310/,
-  "The shared evaluation account must receive a full production rate-window reset",
-);
-assert.match(
-  workflow,
-  /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/,
-  "The dedicated gate must wait out a collided production rate window",
-);
-assert.match(
-  workflow,
-  /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/,
-  "The dedicated gate must retry the same blocked scenario without silently skipping it",
-);
+assert.match(workflow, /run: sleep 310/);
+assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/);
+assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/);
 assert.match(
   liveEval,
   /while \(\s*requestResult\.response\?\.status === 429 &&\s*rateLimitRetries < rateLimitMaxRetries/,
-  "The evaluator must pause and retry a rate-limited scenario",
 );
-assert.match(
-  liveEval,
-  /retryDelayForRateLimit/,
-  "The evaluator must honour the configured or server-provided retry window",
-);
-assert.match(
-  liveEval,
-  /rateLimitWaitMs \+= pauseMs/,
-  "The evaluator must record deliberate rate-window waiting separately from service latency",
-);
+assert.match(liveEval, /retryDelayForRateLimit/);
+assert.match(liveEval, /rateLimitWaitMs \+= pauseMs/);
 assert.match(
   liveEval,
   /const activeDurationMs = Math\.max\([\s\S]*?Date\.now\(\) - startedAt - rateLimitWaitMs/,
-  "Latency budgets must measure active request time rather than deliberate rate-window waits",
 );
-assert.match(
-  liveEval,
-  /activeDurationMs > Number\(scenario\.maxDurationMs\)/,
-  "Scenario latency limits must use active request time",
-);
-assert.match(
-  liveEval,
-  /rateLimitWaitMs,\s*elapsedDurationMs/,
-  "Retry and total elapsed evidence must be retained in the evaluation result",
-);
-assert.match(
-  liveEval,
-  /function boundedAnswerSnapshot\(answer\)/,
-  "The live audit must retain a bounded copy of the answer the manager actually saw",
-);
-assert.match(
-  liveEval,
-  /visibleAnswer: boundedAnswerSnapshot\(payload\)/,
-  "Every scenario result must preserve its visible answer for human review",
-);
+assert.match(liveEval, /activeDurationMs > Number\(scenario\.maxDurationMs\)/);
+assert.match(liveEval, /rateLimitWaitMs,\s*elapsedDurationMs/);
+assert.match(liveEval, /function boundedAnswerSnapshot\(answer\)/);
+assert.match(liveEval, /visibleAnswer: boundedAnswerSnapshot\(payload\)/);
 
 for (const marker of [
   "function visibleDecisionText(answer)",
@@ -230,18 +182,14 @@ for (const marker of [
     `Missing VOR-049 visible-evaluation marker: ${marker}`,
   );
 }
+assert.match(liveEvalSurface, /vor-033-demo-golden/);
 assert.match(
   liveEvalSurface,
-  /vor-033-demo-golden/,
-  "The VOR-033 golden set must automatically judge the visible decision layer",
-);
-assert.match(
-  integration,
   /assertionText\.includes\(phrase\.toLowerCase\(\)\)/,
   "Required golden facts must be present in the selected visible assertion layer",
 );
 
-assert.equal(golden.length, 24, "The permanent maintenance-manager golden set must retain 24 questions");
+assert.equal(golden.length, 24, "The maintenance-manager golden set must retain 24 questions");
 assert.ok(
   golden.every((scenario) => Array.isArray(scenario.expectedTools) && scenario.expectedTools.length > 0),
   "Every VOR-033 question must require authorised Vorta evidence",
@@ -250,60 +198,25 @@ const fd03Capability = golden.find((scenario) => scenario.id === "vor033-fd03-sk
 assert.deepEqual(
   fd03Capability?.mustMention,
   ["Gareth Owen", "Sophie Bennett", "Vacuum Systems"],
-  "FD-03 qualification expectations must match the authoritative validated capability records",
 );
-assert.ok(
-  fd03Capability?.mustNotMention?.includes("Nia Roberts is qualified"),
-  "The golden suite must reject falsely upgrading current work ownership into validated equipment authority",
-);
+assert.ok(fd03Capability?.mustNotMention?.includes("Nia Roberts is qualified"));
 const rabsRelease = golden.find((scenario) => scenario.id === "vor033-rabs-release");
-assert.ok(
-  !rabsRelease?.mustNotMention?.includes("released"),
-  "Safe statements such as not released must not fail through a bare substring assertion",
-);
+assert.ok(!rabsRelease?.mustNotMention?.includes("released"));
 assert.ok(
   rabsRelease?.mustNotMention?.includes("can be released now") &&
     rabsRelease?.mustNotMention?.includes("safe to release"),
-  "The release scenario must reject affirmative unsafe release claims",
 );
 const ahuDiagnosis = golden.find((scenario) => scenario.id === "vor033-ahu01-diagnosis");
-assert.ok(
-  ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"),
-  "Instrument-fault diagnosis must continue to require calibration evidence",
-);
+assert.ok(ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"));
 const coldNextAction = golden.find((scenario) => scenario.id === "vor033-cold01-next-action");
 assert.ok(
   coldNextAction?.expectedTools?.includes("get_equipment_spares") &&
     coldNextAction?.expectedTools?.includes("get_equipment_documents") &&
     coldNextAction?.mustMention?.includes("COLD-01-SEN-C01"),
-  "Repeated cold-room probe deviation must expose the exact replacement sensor and approved evidence",
 );
-assert.ok(
-  golden.some((scenario) => /spare|stock|blocking/i.test(scenario.question)),
-  "The golden set must cover spares and execution blockers",
-);
-assert.ok(
-  golden.some((scenario) => /who|qualified|engineer|authorise/i.test(scenario.question)),
-  "The golden set must cover named capability decisions",
-);
-assert.ok(
-  golden.some((scenario) => /diagnos|caused|reading|fault/i.test(scenario.question)),
-  "The golden set must cover technical diagnosis",
-);
-assert.ok(
-  golden.some((scenario) => /verification|verify|evidence|required|returning/i.test(scenario.question)),
-  "The golden set must cover verification and return-to-service decisions",
-);
-
-assert.match(
-  integration,
-  /chainContractPaths/,
-  "The VOR-049 integration must preserve the established integration-chain contracts",
-);
-assert.match(
-  integration,
-  /VOR-049 integration is partially applied/,
-  "The build transformation must fail closed on partial application",
-);
+assert.ok(golden.some((scenario) => /spare|stock|blocking/i.test(scenario.question)));
+assert.ok(golden.some((scenario) => /who|qualified|engineer|authorise/i.test(scenario.question)));
+assert.ok(golden.some((scenario) => /diagnos|caused|reading|fault/i.test(scenario.question)));
+assert.ok(golden.some((scenario) => /verification|verify|evidence|required|returning/i.test(scenario.question)));
 
 console.log("VOR-049 decision-ready equipment contracts passed.");
