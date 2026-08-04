@@ -1,0 +1,138 @@
+t verify request capacity." }, 503) };
+  }
+  if ((recentRequestCount ?? 0) >= RATE_LIMIT_REQUESTS) {
+    await input.supabase.from("ask_vorta_interactions").insert({
+      id: crypto.randomUUID(),
+      site_id: input.request.siteId,
+      user_id: input.userId,
+      role: input.request.role,
+      question_fingerprint: input.questionFingerprint,
+      route_key: input.routeKey,
+      routing_mode: input.routingMode,
+      planner_ms: 0,
+      evidence_ms: 0,
+      answer_ms: 0,
+      tool_count: 0,
+      tool_round_count: 0,
+      duration_ms: Date.now() - input.startedAt,
+      status: "rate_limited",
+      completed_at: new Date().toISOString(),
+    });
+    return {
+      ok: false,
+      response: jsonResponse(
+        { error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.` },
+        429,
+      ),
+    };
+  }
+
+  const interactionId = crypto.randomUUID();
+  const { error: interactionError } = await input.supabase
+    .from("ask_vorta_interactions")
+    .insert({
+      id: interactionId,
+      site_id: input.request.siteId,
+      user_id: input.userId,
+      role: input.request.role,
+      question_fingerprint: input.questionFingerprint,
+      route_key: input.routeKey,
+      routing_mode: input.routingMode,
+      planner_ms: 0,
+      evidence_ms: 0,
+      answer_ms: 0,
+      tool_count: 0,
+      tool_round_count: 0,
+      status: "started",
+    });
+  if (interactionError) {
+    console.error("Ask Vorta telemetry start failed", {
+      requestId: input.requestId,
+      error: interactionError.message,
+    });
+    return { ok: false, response: jsonResponse({ error: "Ask Vorta could not start a traceable analysis." }, 503) };
+  }
+  return { ok: true, interactionId };
+}
+
+interface AskVortaTelemetryValuesInput {
+  status: "completed" | "failed" | "fallback" | "timed_out";
+  routeKey: string;
+  routingMode: string;
+  plannerMs: number;
+  evidenceMs: number;
+  answerMs: number;
+  toolCount: number;
+  toolRoundCount: number;
+  failureStage: AskVortaPhase | null;
+  startedAt: number;
+}
+
+export function buildAskVortaTelemetryValues(
+  input: AskVortaTelemetryValuesInput,
+): JsonRecord {
+  return {
+    route_key: input.routeKey,
+    routing_mode: input.status === "fallback" ? "fallback" : input.routingMode,
+    planner_ms: input.plannerMs,
+    evidence_ms: input.evidenceMs,
+    answer_ms: input.answerMs,
+    tool_count: input.toolCount,
+    tool_round_count: input.toolRoundCount,
+    failure_stage: input.status === "completed" ? null : input.failureStage,
+    duration_ms: Date.now() - input.startedAt,
+    status: input.status,
+    completed_at: new Date().toISOString(),
+  };
+}
+
+export async function updateAskVortaInteraction(
+  supabase: SupabaseClient,
+  interactionId: string,
+  userId: string,
+  values: JsonRecord,
+): Promise<void> {
+  await supabase
+    .from("ask_vorta_interactions")
+    .update(values)
+    .eq("id", interactionId)
+    .eq("user_id", userId);
+}
+`;
+
+for (const g of Object.keys(byGroup)) {
+  const imports=importTextForGroup(g,false);
+  const body=byGroup[g].map(st=>exportedText(st).trim()).join('\n\n');
+  let moduleSource=`${imports}${imports?'\n\n':''}${body}\n`;
+  if (g==='runtime') moduleSource=modulariseRuntime(moduleSource);
+  fs.writeFileSync(path.join(outDir,`${fileName[g]}.mts`),moduleSource);
+}
+fs.writeFileSync(path.join(outDir,'authenticated-context.mts'),authenticatedContextSource);
+fs.writeFileSync(path.join(outDir,'telemetry.mts'),telemetrySource);
+const legacy=`/*
+VOR-052 legacy integration guards. The validated behaviour now lives in focused modules.
+These exact markers keep the temporary VOR-044 to VOR-049 build codemods idempotent until canonicalisation.
+case "get_site_ranked_actions":
+["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)]
+"vorta_get_ranked_operational_actions"
+const rankedData = operationalDomainData(snapshot, "rankedActions");
+Treat its rankedActions domain as the deterministic operational-value order
+function buildConversationContext(
+async function extractAskVortaImageEvidence(
+type AskVortaPhase = "planner" | "evidence" | "answer";
+!/\\bshift-cover\\b/.test(request.pageContext.path)
+    (shiftCoverPageContext ||
+      (asksForCoverDecision &&
+function compactEquipmentDecisionPackForModel(
+function repairEquipmentDecisionAnswer(
+*/`;
+const entry=`${legacy}\n\nexport { default, config } from "./ask-vorta/runtime.mjs";\n`;
+fs.writeFileSync(path.join(outputRoot,'ask-vorta.mts'),entry);
+const graph={};
+for (const g of Object.keys(byGroup)) graph[g]=[...new Set([...byGroup[g].flatMap(st=>[...refsOf(st)].map(n=>nameGroup.get(n)).filter(Boolean))].filter(x=>x!==g))].sort();
+const generatedModules=Object.fromEntries(Object.entries(byGroup).map(([g,sts])=>[fileName[g],{declarations:sts.flatMap(namesOf),lines:sts.reduce((n,st)=>n+sourceText.slice(st.getFullStart(),st.end).split('\n').length,0),dependencies:graph[g]}]));
+generatedModules['authenticated-context']={declarations:['AuthenticatedAskVortaRequest','authenticateAskVortaRequest'],lines:authenticatedContextSource.split('\n').length,dependencies:['contracts','requestContext']};
+generatedModules.telemetry={declarations:['BeginAskVortaInteractionResult','beginAskVortaInteraction','buildAskVortaTelemetryValues','updateAskVortaInteraction'],lines:telemetrySource.split('\n').length,dependencies:['contracts','requestContext']};
+const manifest={sourceSha256:crypto.createHash('sha256').update(sourceText).digest('hex'),sourceLines:sourceText.split('\n').length,sourceCharacters:sourceText.length,modules:generatedModules};
+fs.writeFileSync(path.join(outputRoot,'ask-vorta','modularisation-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+console.log(JSON.stringify(manifest,null,2));
