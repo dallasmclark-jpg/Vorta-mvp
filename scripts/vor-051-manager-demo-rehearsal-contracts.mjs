@@ -36,11 +36,11 @@ for (const marker of [
 
 for (const marker of [
   "getStoredSupabaseAccessToken",
-  'rest/v1/equipment_assets',
+  "rest/v1/equipment_assets",
   'site_id: `eq.${siteId}`',
   'equipment_code: "eq.FD-03"',
   'Authorization: `Bearer ${accessToken}`',
-  'expect(rows).toHaveLength(1)',
+  "expect(rows).toHaveLength(1)",
   'expect(rows[0]?.equipment_code).toBe("FD-03")',
 ]) {
   assert.ok(
@@ -57,6 +57,16 @@ assert.doesNotMatch(
   browserTest,
   /page\.goto\("\/equipment"\)/,
   "The test setup must not race into the equipment route before active-site context is committed",
+);
+assert.match(
+  browserTest,
+  /data-vorta-mobile-page-title=\\?"true\\?"[\s\S]*?toBeAttached\(\)[\s\S]*?toHaveText\("Operations Overview"\)/,
+  "The phone rehearsal must respect the shared aria-hidden page-title contract while still verifying the correct title text",
+);
+assert.match(
+  browserTest,
+  /locator\("h1:visible"\)[\s\S]*?Operations Overview[\s\S]*?toBeVisible\(\)/,
+  "The laptop rehearsal must require a visible Operations Overview heading",
 );
 assert.match(
   browserTest,
