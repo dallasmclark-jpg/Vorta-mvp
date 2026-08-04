@@ -1,77 +1,66 @@
-name: VOR-053 retire legacy scaffolding
+name: VOR-053 canonical Ask Vorta build
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/AiOperations/**"
+      - "scripts/ask-vorta-live-evals.mjs"
+      - "scripts/vor-04*-contracts.mjs"
+      - "scripts/vor-05*-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - ".github/workflows/vor-053-canonicalisation-audit.yml"
   push:
     branches:
-      - agent/vor-053-canonicalise-ask-vorta-build
+      - main
     paths:
+      - "package.json"
+      - "package-lock.json"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/AiOperations/**"
+      - "scripts/ask-vorta-live-evals.mjs"
+      - "scripts/vor-04*-contracts.mjs"
+      - "scripts/vor-05*-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
       - ".github/workflows/vor-053-canonicalisation-audit.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  retire:
-    if: github.actor != 'github-actions[bot]'
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Preserve literal replacement text
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("scripts/vor-053-retire-scaffolding.py")
-          source = path.read_text()
-          marker = "import re\n"
-          patch = '''import re
-
-_original_subn = re.subn
-
-def _literal_subn(pattern, replacement, source, *args, **kwargs):
-    if isinstance(replacement, str):
-        replacement = lambda _match, value=replacement: value
-    return _original_subn(pattern, replacement, source, *args, **kwargs)
-
-re.subn = _literal_subn
-'''
-          if source.count(marker) != 1:
-              raise SystemExit("Could not patch literal regex replacement handling")
-          path.write_text(source.replace(marker, patch))
-          PY
-      - name: Retire reviewed legacy scaffolding
-        run: python scripts/vor-053-retire-scaffolding.py
-      - name: Verify canonical contracts and runtime
-        run: |
-          git diff --check
-          node scripts/vor-044-operational-value-ranking-contracts.mjs
-          node scripts/vor-045-conversation-context-contracts.mjs
-          node scripts/vor-046-photo-ocr-contracts.mjs
-          node scripts/vor-047-confirmed-handover-contracts.mjs
-          node scripts/vor-048-routing-telemetry-feedback-contracts.mjs
-          node scripts/vor-049-decision-ready-equipment-contracts.mjs
-          node scripts/vor-051-manager-demo-rehearsal-contracts.mjs
-          node scripts/vor-052-backend-modularisation-contracts.mjs
-          node scripts/vor-053-canonical-build-contracts.mjs
-          npm run test:contracts
-          npm run typecheck:functions
-          npm run test:smoke
-      - name: Commit verified retirement
+      - name: Verify canonical source and lifecycle purity
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "VOR-053 retire legacy Ask Vorta build scaffolding"
-          git fetch origin "${GITHUB_REF_NAME}"
-          git rebase "origin/${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          node scripts/vor-053-canonical-build-contracts.mjs
+
+          npm run predev
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+          npm run build:metadata
+          unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
+          test -z "$unexpected"
+          git checkout -- public/vorta-build.json
+
+          npm run test:contracts
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+          npm run build
+          unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^ M public/vorta-build\.json$' || true)"
+          test -z "$unexpected"
