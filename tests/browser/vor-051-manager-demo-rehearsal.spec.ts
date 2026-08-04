@@ -2,12 +2,18 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import {
   expectNoPageOverflow,
+  getStoredSupabaseAccessToken,
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
 const responseId = "51000000-0000-4000-8000-000000000001";
 const question =
   "Why is FD-03 one of the highest-risk assets and what should we do first?";
+const siteId =
+  process.env.VORTA_E2E_SITE_ID ??
+  "11000000-0000-0000-0000-000000000001";
+const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
 const expectedEntities = [
   "FD-03",
   "FD-03-PLC-01",
@@ -47,36 +53,42 @@ async function scrollAssistantToEnd(page: Page): Promise<void> {
   await page.waitForTimeout(100);
 }
 
-async function resolveFd03EquipmentId(
-  page: Page,
-  projectName: string,
-): Promise<string> {
-  await page.goto("/equipment");
-  await page.locator('[data-vorta-maintenance-portal="true"]').waitFor();
+async function resolveFd03EquipmentId(page: Page): Promise<string> {
+  expect(supabaseUrl, "VITE_SUPABASE_URL must be configured").not.toBe("");
+  expect(
+    supabaseAnonKey,
+    "VITE_SUPABASE_ANON_KEY must be configured",
+  ).not.toBe("");
 
-  if (projectName === "phone-360") {
-    await page.locator('[data-vorta-mobile-equipment="true"]').waitFor();
-    const search = page.locator('input[placeholder*="Search"]').first();
-    await expect(search).toBeVisible();
-    await search.fill("FD-03");
-    await page
-      .getByRole("button", { name: /Open overview for .*FD-03/i })
-      .first()
-      .click();
-  } else {
-    await page.locator('[data-vorta-production-equipment-list="true"]').waitFor();
-    await page
-      .getByPlaceholder(
-        "Search equipment, asset number, area, manufacturer or production line...",
-      )
-      .fill("FD-03");
-    await page.getByRole("button", { name: "FD-03", exact: true }).click();
-  }
-
-  await page.waitForURL(/\/equipment\/[^/]+\/overview(?:\?.*)?$/);
-  const match = new URL(page.url()).pathname.match(/^\/equipment\/([^/]+)\/overview$/);
-  expect(match?.[1], "FD-03 must resolve to one stable equipment ID").toBeTruthy();
-  return decodeURIComponent(match?.[1] ?? "");
+  const accessToken = await getStoredSupabaseAccessToken(page);
+  const query = new URLSearchParams({
+    select: "id,equipment_code",
+    site_id: `eq.${siteId}`,
+    equipment_code: "eq.FD-03",
+    limit: "1",
+  });
+  const response = await page.request.get(
+    `${supabaseUrl.replace(/\/$/, "")}/rest/v1/equipment_assets?${query.toString()}`,
+    {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+  expect(
+    response.ok(),
+    `FD-03 active-site identity could not be resolved: ${await response.text()}`,
+  ).toBe(true);
+  const rows = (await response.json()) as Array<{
+    id?: unknown;
+    equipment_code?: unknown;
+  }>;
+  expect(rows).toHaveLength(1);
+  expect(rows[0]?.equipment_code).toBe("FD-03");
+  expect(typeof rows[0]?.id).toBe("string");
+  expect(String(rows[0]?.id)).not.toBe("");
+  return String(rows[0]?.id);
 }
 
 function askVortaAnswer(equipmentId: string) {
@@ -185,10 +197,7 @@ function askVortaAnswer(equipmentId: string) {
   };
 }
 
-async function capture(
-  page: Page,
-  path: string,
-): Promise<void> {
+async function capture(page: Page, path: string): Promise<void> {
   await page.screenshot({ path, fullPage: true });
 }
 
@@ -202,7 +211,13 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
   test.setTimeout(180_000);
 
   await signInMaintenanceManager(page);
-  const equipmentId = await resolveFd03EquipmentId(page, testInfo.project.name);
+  await page.goto("/dashboard");
+  await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
+  await expect(page.getByText("Operations Overview", { exact: true })).toBeVisible();
+
+  const fillFinish = page.getByRole("tab", { name: /Fill Finish/i }).first();
+  await expect(fillFinish).toBeVisible({ timeout: 30_000 });
+  const equipmentId = await resolveFd03EquipmentId(page);
   const answer = askVortaAnswer(equipmentId);
   let capturedRequest: Record<string, unknown> | null = null;
 
@@ -211,12 +226,6 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
     await json(route, answer);
   });
 
-  await page.goto("/dashboard");
-  await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
-  await expect(page.getByText("Operations Overview", { exact: true })).toBeVisible();
-
-  const fillFinish = page.getByRole("tab", { name: /Fill Finish/i }).first();
-  await expect(fillFinish).toBeVisible({ timeout: 20_000 });
   await fillFinish.click();
   await expect(fillFinish).toHaveAttribute("aria-selected", "true");
 
@@ -311,6 +320,7 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
     project: testInfo.project.name,
     expectedHeadSha: expectedHeadSha || null,
     buildMetadata,
+    siteId,
     equipmentId,
     question,
     responseId,
