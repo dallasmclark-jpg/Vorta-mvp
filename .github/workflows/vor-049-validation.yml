@@ -111,6 +111,10 @@ jobs:
           echo "Netlify preview did not publish the expected commit." >&2
           exit 1
 
+      - name: Wait for a clean shared evaluation rate window
+        if: github.event_name == 'pull_request'
+        run: sleep 310
+
       - name: Run all 24 visible-answer golden decisions
         if: github.event_name == 'pull_request'
         shell: bash
