@@ -45,7 +45,7 @@
     "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_documents"],
     "mustMention": ["RABS-01"],
     "mustMentionAny": ["interlock", "validated", "challenge", "airflow"],
-    "mustNotMention": ["released", "no further checks"]
+    "mustNotMention": ["can be released now", "safe to release", "released without", "no further checks"]
   },
   {
     "id": "vor033-rabs-skills",
