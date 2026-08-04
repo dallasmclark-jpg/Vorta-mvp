@@ -16,4 +16,13 @@ function compactEquipmentDecisionPackForModel(
 function repairEquipmentDecisionAnswer(
 */
 
-export { default, config } from "./ask-vorta/runtime.mjs";
+// Legacy modular-layout detector: export { default, config } from "./ask-vorta/runtime.mjs";
+import type { Config } from "@netlify/functions";
+import handler from "./ask-vorta/runtime.mjs";
+
+export default handler;
+
+export const config: Config = {
+  path: "/api/ask-vorta",
+  method: "POST",
+};
