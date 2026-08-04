@@ -1,0 +1,83 @@
+type EquipmentDecisionDomainName =
+  | "get_equipment_work"
+  | "get_equipment_calibrations"
+  | "get_equipment_skills"
+  | "get_equipment_spares"
+  | "get_equipment_risk_actions"
+  | "get_equipment_history"
+  | "get_equipment_documents";
+
+const ALL_EQUIPMENT_DECISION_DOMAINS: EquipmentDecisionDomainName[] = [
+  "get_equipment_work",
+  "get_equipment_calibrations",
+  "get_equipment_skills",
+  "get_equipment_spares",
+  "get_equipment_risk_actions",
+  "get_equipment_history",
+  "get_equipment_documents",
+];
+
+function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName[] {
+  const lowered = question.toLowerCase();
+  const selected = new Set<EquipmentDecisionDomainName>();
+  const add = (...domains: EquipmentDecisionDomainName[]): void => {
+    domains.forEach((domain) => selected.add(domain));
+  };
+
+  if (
+    /\b(?:why .*risk|driving .*risk|highest[- ]risk|risk reduction|do first|safest next action|leading intervention)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_work", "get_equipment_spares", "get_equipment_risk_actions");
+  }
+  if (
+    /\b(?:who|qualified|qualification|skill|capability|engineer|authori[sz]e|can lead|can verify|calibrate and verify)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_skills");
+  }
+  if (
+    /\b(?:spare|part|required action|blocking|blocker|permanent correction|permanent repair|replace|out of stock|stockout)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_spares", "get_equipment_work");
+  }
+  if (
+    /\b(?:fault|cause|caused|diagnos|repeat|false reject|credible reading|instrument fault|probe disagreement|keep generating|work history)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_history");
+  }
+  if (
+    /\b(?:calibrat|conductivity|pressure|transmitter|probe|measurement|reading|reference instrument)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_calibrations");
+  }
+  if (
+    /\b(?:document|manual|guide|approved|procedure|drawing|evidence|before acting|after repair|before production restarts|before returning|release|campaign|verification|verify|checks? required)\b/.test(
+      lowered,
+    )
+  ) {
+    add("get_equipment_documents");
+  }
+  if (/\b(?:after repair|before production restarts|before returning|release|campaign|next safe action|next shift)\b/.test(lowered)) {
+    add("get_equipment_work", "get_equipment_calibrations");
+  }
+  if (/\bnext shift\b/.test(lowered)) {
+    add("get_equipment_spares");
+  }
+  if (/\b(?:risk reduction|what remains afterwards|leading intervention)\b/.test(lowered)) {
+    add("get_equipment_risk_actions", "get_equipment_spares");
+  }
+
+  return selected.size > 0
+    ? ALL_EQUIPMENT_DECISION_DOMAINS.filter((domain) => selected.has(domain))
+    : [...ALL_EQUIPMENT_DECISION_DOMAINS];
+}
+
