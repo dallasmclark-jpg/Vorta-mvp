@@ -1,0 +1,59 @@
+name: VOR-052 apply backend modularisation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".vor-052/modulariser-parts/**"
+      - "scripts/vor-052-backend-modularisation-contracts.mjs"
+      - ".github/workflows/vor-052-apply-modularisation.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Restore the reviewed modulariser
+        run: |
+          cat \
+            .vor-052/modulariser-parts/00 \
+            .vor-052/modulariser-parts/01 \
+            .vor-052/modulariser-parts/02 \
+            .vor-052/modulariser-parts/03 \
+            > scripts/vor-052-modularise-backend.mjs
+          echo "d48fdb54d8d360e982e3f91374691ab709eb61bfe4d83165c5e73d4f6211cffd  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
+      - name: Materialise the validated VOR-044 to VOR-051 behaviour
+        run: npm run predev
+      - name: Split Ask Vorta into focused modules
+        run: node scripts/vor-052-modularise-backend.mjs
+      - name: Verify function TypeScript
+        run: npm run typecheck:functions
+      - name: Verify VOR-052 architecture boundaries
+        run: node scripts/vor-052-backend-modularisation-contracts.mjs
+      - name: Verify runtime routes
+        run: npm run test:smoke
+      - name: Commit the generated module boundary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            netlify/functions/ask-vorta.mts \
+            netlify/functions/ask-vorta \
+            scripts/vor-052-modularise-backend.mjs
+          git rm -r .vor-052/modulariser-parts
+          git diff --cached --quiet && exit 0
+          git commit -m "VOR-052 modularise Ask Vorta backend"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
