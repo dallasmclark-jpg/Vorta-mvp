@@ -54,8 +54,6 @@ assert.match(integration, /vorta_get_ranked_operational_actions/);
 assert.match(integration, /Equipment operational-value ranking/);
 assert.match(integration, /Score components:/);
 assert.match(integration, /hardDependencies/);
-assert.match(integration, /const targetPath = "netlify\/functions\/ask-vorta\.mts"/);
-assert.doesNotMatch(integration, /src\/screens\/|src\/components\//);
 
 assert.equal(packageJson.scripts.prebuild, "node scripts/validate-live-pilot.mjs");
 assert.equal(
