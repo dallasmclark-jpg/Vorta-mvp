@@ -64,12 +64,12 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)?(?: && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs)? && node scripts\/write-build-metadata\.mjs$/,
 );
 assert.equal(packageJson.scripts["pretest:contracts"], undefined);
 assert.match(
   packageJson.scripts.predev,
-  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)?$/,
+  /^node scripts\/vor-044-integrate-operational-value\.mjs(?: && node scripts\/vor-045-normalise-request-context\.mjs && node scripts\/vor-045-integrate-conversation-context\.mjs)?(?: && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs)?(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)?(?: && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs)?$/,
 );
 
 console.log("VOR-044 operational-value ranking contracts passed.");
