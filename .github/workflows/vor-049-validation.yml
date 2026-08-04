@@ -121,6 +121,8 @@ jobs:
         env:
           VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
           VORTA_EVAL_DELAY_MS: 30000
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
         run: |
           set -o pipefail
           npm run eval:ask-vorta:vor049 2>&1 | tee vor-049-live-eval.log
