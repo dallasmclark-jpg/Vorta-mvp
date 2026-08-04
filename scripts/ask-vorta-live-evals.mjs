@@ -10,6 +10,14 @@ const siteId = process.env.VORTA_EVAL_SITE_ID || "11000000-0000-0000-0000-000000
 const offset = Math.max(0, Math.min(scenarios.length, Number(process.env.VORTA_EVAL_OFFSET || 0)));
 const limit = Math.max(1, Math.min(scenarios.length - offset || 1, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
 const delayMs = Math.max(0, Number(process.env.VORTA_EVAL_DELAY_MS || 0));
+const rateLimitRetryMs = Math.max(
+  0,
+  Number(process.env.VORTA_EVAL_RATE_LIMIT_RETRY_MS || 0),
+);
+const rateLimitMaxRetries = Math.max(
+  0,
+  Math.min(5, Number(process.env.VORTA_EVAL_RATE_LIMIT_MAX_RETRIES || 0)),
+);
 const selectedScenarios = scenarios.slice(offset, offset + limit);
 const authConfig = {
   supabaseUrl: process.env.VITE_SUPABASE_URL,
@@ -115,6 +123,17 @@ async function executeScenarioRequest(scenario, bearerToken, requestTimeoutMs) {
   }
 }
 
+function retryDelayForRateLimit(requestResult) {
+  const retryAfterValue =
+    requestResult.response?.headers.get("retry-after") ||
+    requestResult.payload?.retryAfterSeconds ||
+    null;
+  const retryAfterMs = Number.isFinite(Number(retryAfterValue))
+    ? Math.max(0, Number(retryAfterValue) * 1_000 + 1_000)
+    : 0;
+  return Math.max(rateLimitRetryMs, retryAfterMs);
+}
+
 const results = [];
 let blockedByRateLimit = false;
 for (const [batchIndex, scenario] of selectedScenarios.entries()) {
@@ -127,6 +146,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   );
   const failures = [];
   let reauthentications = 0;
+  let rateLimitRetries = 0;
   let requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
 
   if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
@@ -135,6 +155,31 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       token = recoveredToken;
       reauthentications += 1;
       requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+    }
+  }
+
+  while (
+    requestResult.response?.status === 429 &&
+    rateLimitRetries < rateLimitMaxRetries
+  ) {
+    const pauseMs = retryDelayForRateLimit(requestResult);
+    rateLimitRetries += 1;
+    console.warn(
+      `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
+    );
+    await sleep(pauseMs);
+    requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+    if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
+      const recoveredToken = await signInEvaluationUser();
+      if (recoveredToken) {
+        token = recoveredToken;
+        reauthentications += 1;
+        requestResult = await executeScenarioRequest(
+          scenario,
+          token,
+          requestTimeoutMs,
+        );
+      }
     }
   }
 
@@ -221,6 +266,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     decisionSummaryItems: Array.isArray(payload?.decisionSummary) ? payload.decisionSummary.length : null,
     followUpQuestions: Array.isArray(payload?.followUpQuestions) ? payload.followUpQuestions.length : null,
     reauthentications,
+    rateLimitRetries,
   };
   results.push({
     index: offset + batchIndex,
@@ -236,7 +282,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   );
 
   if (blockedByRateLimit) {
-    console.error("Evaluation stopped because the authenticated test account reached the production rate limit.");
+    console.error("Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.");
     break;
   }
 }
