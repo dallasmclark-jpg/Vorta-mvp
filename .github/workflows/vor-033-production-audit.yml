@@ -18,7 +18,7 @@ jobs:
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
-      VORTA_E2E_EMAIL: ${{ secrets.VORTA_E2E_EMAIL }}
+      VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
