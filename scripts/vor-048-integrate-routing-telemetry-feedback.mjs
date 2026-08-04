@@ -16,6 +16,36 @@ const sitePriorityPageExclusion =
 const deterministicPageContextMarker =
   "    (shiftCoverPageContext ||\n      (asksForCoverDecision &&";
 
+function applyFeedbackWrapper(source) {
+  if (source.includes(feedbackMarker) && source.includes("<section")) {
+    return { source, changed: false };
+  }
+
+  const feedbackOpenAnchor = `{answer.responseId && (\n        <div className="space-y-2">`;
+  const feedbackOpenIndex = source.indexOf(feedbackOpenAnchor);
+  if (feedbackOpenIndex < 0) {
+    throw new Error("VOR-048 feedback wrapper anchor was not found after integration.");
+  }
+  let transformed = source.replace(
+    feedbackOpenAnchor,
+    `{answer.responseId && (\n        <section\n          data-vorta-ai-feedback="true"\n          className="space-y-2"\n        >`,
+  );
+
+  const feedbackCloseAnchor = `          )}\n        </div>\n      )}\n    </div>`;
+  const feedbackCloseIndex = transformed.indexOf(
+    feedbackCloseAnchor,
+    feedbackOpenIndex,
+  );
+  if (feedbackCloseIndex < 0) {
+    throw new Error("VOR-048 feedback wrapper closing anchor was not found.");
+  }
+  transformed =
+    transformed.slice(0, feedbackCloseIndex) +
+    feedbackCloseAnchor.replace("</div>", "</section>") +
+    transformed.slice(feedbackCloseIndex + feedbackCloseAnchor.length);
+  return { source: transformed, changed: true };
+}
+
 const backendSource = readFileSync(backendPath, "utf8");
 const assistantSource = readFileSync(assistantPath, "utf8");
 const modularEntrypoint = 'export { default, config } from "./ask-vorta/runtime.mjs";';
@@ -37,8 +67,6 @@ if (backendSource.includes(modularEntrypoint)) {
     [routePlanningSource, sitePriorityPageExclusion, routePlanningPath],
     [routePlanningSource, deterministicPageContextMarker, routePlanningPath],
     [telemetrySource, '.from("ask_vorta_interactions")', telemetryPath],
-    [assistantSource, feedbackMarker, assistantPath],
-    [assistantSource, "<section", assistantPath],
   ];
   for (const [moduleSource, requiredMarker, modulePath] of requiredMarkers) {
     if (!moduleSource.includes(requiredMarker)) {
@@ -46,7 +74,13 @@ if (backendSource.includes(modularEntrypoint)) {
     }
   }
 
-  console.log("VOR-048 routing, telemetry and feedback integration is already applied in focused modules.");
+  const feedback = applyFeedbackWrapper(assistantSource);
+  if (feedback.changed) writeFileSync(assistantPath, feedback.source);
+  console.log(
+    feedback.changed
+      ? "Applied VOR-048 feedback integration while preserving the modular Ask Vorta backend."
+      : "VOR-048 routing, telemetry and feedback integration is already applied in focused modules.",
+  );
   process.exit(0);
 }
 
@@ -119,29 +153,7 @@ transformedBackend = transformedBackend.replace(
 );
 writeFileSync(backendPath, transformedBackend);
 
-let transformedAssistant = readFileSync(assistantPath, "utf8");
-const feedbackOpenAnchor = `{answer.responseId && (\n        <div className="space-y-2">`;
-const feedbackOpenIndex = transformedAssistant.indexOf(feedbackOpenAnchor);
-if (feedbackOpenIndex < 0) {
-  throw new Error("VOR-048 feedback wrapper anchor was not found after integration.");
-}
-transformedAssistant = transformedAssistant.replace(
-  feedbackOpenAnchor,
-  `{answer.responseId && (\n        <section\n          data-vorta-ai-feedback="true"\n          className="space-y-2"\n        >`,
-);
-
-const feedbackCloseAnchor = `          )}\n        </div>\n      )}\n    </div>`;
-const feedbackCloseIndex = transformedAssistant.indexOf(
-  feedbackCloseAnchor,
-  feedbackOpenIndex,
-);
-if (feedbackCloseIndex < 0) {
-  throw new Error("VOR-048 feedback wrapper closing anchor was not found.");
-}
-transformedAssistant =
-  transformedAssistant.slice(0, feedbackCloseIndex) +
-  feedbackCloseAnchor.replace("</div>", "</section>") +
-  transformedAssistant.slice(feedbackCloseIndex + feedbackCloseAnchor.length);
-writeFileSync(assistantPath, transformedAssistant);
+const feedback = applyFeedbackWrapper(readFileSync(assistantPath, "utf8"));
+if (feedback.changed) writeFileSync(assistantPath, feedback.source);
 
 console.log("Applied VOR-048 Shift Cover routing, phase telemetry and feedback integration.");
