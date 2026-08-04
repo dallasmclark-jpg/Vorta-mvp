@@ -6,6 +6,8 @@ const browserTest = read("tests/browser/vor-051-manager-demo-rehearsal.spec.ts")
 const dataTrustBanner = read("src/components/DataTrustBanner.tsx");
 const workflow = read(".github/workflows/vor-051-validation.yml");
 const playwright = read("playwright.config.ts");
+const evidenceLinkIntegration = read("scripts/vor-051-integrate-evidence-links.mjs");
+const transformedAssistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const packageJson = JSON.parse(read("package.json"));
 
 for (const marker of [
@@ -161,6 +163,30 @@ for (const marker of [
   );
 }
 
+for (const marker of [
+  "evidenceLinks?: VortaAgentEvidenceLink[];",
+  "evidenceLinks: agentAnswer.evidenceLinks,",
+  "answer.evidenceLinks && answer.evidenceLinks.length > 0",
+  "Open in Vorta",
+]) {
+  assert.ok(
+    transformedAssistant.includes(marker),
+    `The transformed Ask Vorta assistant must preserve evidence navigation: ${marker}`,
+  );
+  assert.ok(
+    evidenceLinkIntegration.includes(marker),
+    `The VOR-051 transform guard must enforce evidence navigation: ${marker}`,
+  );
+}
+assert.ok(
+  packageJson.scripts.predev.includes("node scripts/vor-051-integrate-evidence-links.mjs"),
+  "Development transforms must preserve Ask Vorta evidence links",
+);
+assert.ok(
+  packageJson.scripts["build:metadata"].includes("node scripts/vor-051-integrate-evidence-links.mjs"),
+  "Production transforms must preserve Ask Vorta evidence links",
+);
+
 assert.match(
   playwright,
   /name: "phone-360"/,
@@ -184,6 +210,7 @@ for (const marker of [
   "dist/vorta-build.json",
   "playwright-report",
   "test-results",
+  "scripts/vor-051-integrate-evidence-links.mjs",
 ]) {
   assert.ok(workflow.includes(marker), `Missing VOR-051 workflow marker: ${marker}`);
 }
