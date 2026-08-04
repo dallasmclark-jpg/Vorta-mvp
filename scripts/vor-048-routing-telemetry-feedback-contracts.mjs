@@ -14,6 +14,7 @@ const backend = backendPaths
   .filter((path) => existsSync(path))
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
+const telemetry = readFileSync("netlify/functions/ask-vorta/telemetry.mts", "utf8");
 const service = readFileSync("src/screens/AiOperations/vortaAgentService.ts", "utf8");
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8");
 const migration = readFileSync(
@@ -40,8 +41,8 @@ const checks = [
   [backend.includes('!/\\bshift-cover\\b/.test(request.pageContext.path)') && backend.includes("site_threat_prioritization") && backend.includes("shiftCoverPageContext"), "Shift Cover page context deterministically outranks the broad site-priority route"],
   [backend.includes("inheritedShiftCoverContext"), "dated Shift Cover follow-ups retain their operational context"],
   [backend.includes("document cover|insurance cover|cover image|cover photo|cover page"), "non-maintenance cover wording is excluded"],
-  [backend.includes("route_key: routeKey") && backend.includes("routing_mode:") && backend.includes("planner_ms:") && backend.includes("evidence_ms:") && backend.includes("answer_ms:"), "canonical route and phase telemetry are persisted"],
-  [backend.includes("tool_count: usedTools.size") && backend.includes("tool_round_count: toolRoundCount"), "tool counts and rounds are persisted"],
+  [telemetry.includes("route_key: input.routeKey") && telemetry.includes("routing_mode:") && telemetry.includes("planner_ms: input.plannerMs") && telemetry.includes("evidence_ms: input.evidenceMs") && telemetry.includes("answer_ms: input.answerMs"), "canonical route and phase telemetry are persisted"],
+  [telemetry.includes("tool_count: input.toolCount") && telemetry.includes("tool_round_count: input.toolRoundCount"), "tool counts and rounds are persisted"],
   [backend.includes('status: "rate_limited"') && backend.includes('"timed_out"'), "rate-limited and timed-out requests remain traceable"],
   [migration.includes("feedback_category") && migration.includes("ask_vorta_interactions_route_key_check"), "database enforces bounded route and feedback values"],
   [migration.includes("revoke all on table public.ask_vorta_interactions from authenticated") && migration.includes("grant select, insert, update"), "authenticated interaction grants are reduced to minimum required"],
