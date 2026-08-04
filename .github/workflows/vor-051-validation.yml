@@ -1,0 +1,159 @@
+name: VOR-051 Maintenance Manager demo rehearsal
+
+on:
+  pull_request:
+    branches:
+      - main
+      - agent/vor-049-decision-ready-equipment
+    paths:
+      - "src/screens/AiOperations/**"
+      - "src/screens/Equipment/**"
+      - "src/components/ai/**"
+      - "src/lib/maintenanceActions*"
+      - "tests/browser/vor-051-manager-demo-rehearsal.spec.ts"
+      - "tests/browser/maintenance-manager-test-helpers.ts"
+      - "scripts/vor-051-integrate-evidence-links.mjs"
+      - "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - "playwright.config.ts"
+      - "package.json"
+      - ".github/workflows/vor-051-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/screens/AiOperations/**"
+      - "src/screens/Equipment/**"
+      - "src/components/ai/**"
+      - "src/lib/maintenanceActions*"
+      - "tests/browser/vor-051-manager-demo-rehearsal.spec.ts"
+      - "tests/browser/maintenance-manager-test-helpers.ts"
+      - "scripts/vor-051-integrate-evidence-links.mjs"
+      - "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - "playwright.config.ts"
+      - "package.json"
+      - ".github/workflows/vor-051-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-051-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Exact-preview Maintenance Manager golden journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PREVIEW_URL: https://deploy-preview-${{ github.event.pull_request.number }}--vorta-app.netlify.app
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply complete Ask Vorta integration chain
+        run: npm run build:metadata
+
+      - name: Run transformed-source TypeScript checks
+        run: npm run typecheck -- --pretty false
+
+      - name: Run permanent VOR-051 contracts
+        run: node scripts/vor-051-manager-demo-rehearsal-contracts.mjs
+
+      - name: Run complete contract suite
+        run: npm run test:contracts
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Build production bundle
+        run: npx vite build
+
+      - name: Enforce unchanged performance budgets
+        run: npm run test:performance
+
+      - name: Wait for exact Netlify preview commit
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            metadata="$(curl -fsS "${PREVIEW_URL}/vorta-build.json" || true)"
+            if printf '%s' "$metadata" | grep -Fq "$EXPECTED_HEAD_SHA"; then
+              echo "Netlify preview is serving $EXPECTED_HEAD_SHA."
+              exit 0
+            fi
+            echo "Preview is not on the expected commit yet (${attempt}/60)."
+            sleep 10
+          done
+          echo "Netlify preview did not publish the expected commit." >&2
+          exit 1
+
+      - name: Install browser-test runner without changing lockfile
+        if: github.event_name == 'pull_request'
+        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
+
+      - name: Install Chromium
+        if: github.event_name == 'pull_request'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated phone and laptop manager rehearsal
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          VORTA_E2E_BASE_URL: ${{ env.PREVIEW_URL }}
+        run: |
+          set -o pipefail
+          npm run test:browser:vor051 2>&1 | tee vor-051-browser.log
+
+      - name: Preserve failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-051-failure-evidence-${{ github.sha }}
+          path: |
+            vor-051-browser.log
+            playwright-report
+            test-results
+            dist/vorta-build.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Preserve successful rehearsal evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-051-validation-evidence-${{ github.sha }}
+          path: |
+            vor-051-browser.log
+            playwright-report
+            test-results
+            dist/vorta-build.json
+          if-no-files-found: warn
+          retention-days: 7
