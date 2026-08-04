@@ -1,5 +1,5 @@
 {
-  "generatedFromCommit": "992f0b3fb95f7c91e00d3b1978168e5c5f6cc52e",
+  "generatedFromCommit": "f7dace34743d77701cff7614243aad4759382090",
   "integrationScripts": [
     {
       "path": "scripts/vor-044-integrate-operational-value.mjs",
