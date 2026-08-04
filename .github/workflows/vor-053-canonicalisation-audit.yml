@@ -1,4 +1,4 @@
-name: VOR-053 migrate canonical contracts
+name: VOR-053 legacy scaffolding audit
 
 on:
   pull_request:
@@ -8,154 +8,45 @@ on:
       - ".github/workflows/vor-053-canonicalisation-audit.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  migrate:
-    if: github.actor != 'github-actions[bot]'
+  audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Replace codemod lifecycle assertions with canonical-source assertions
+      - name: List legacy Ask Vorta scaffolding and references
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
+          set -euo pipefail
+          echo "## Candidate scaffolding"
+          find scripts -maxdepth 2 -type f \
+            \( -name 'vor-044-integrate-*' \
+            -o -name 'vor-045-normalise-*' \
+            -o -name 'vor-045-integrate-*' \
+            -o -name 'vor-046-integrate-*' \
+            -o -name 'vor-047-integrate-*' \
+            -o -name 'vor-048-integrate-*' \
+            -o -name 'vor-048-*.patch' \
+            -o -name 'vor-049-integrate-*' \
+            -o -name 'vor-051-integrate-*' \
+            -o -path 'scripts/templates/vor-044-*' \
+            -o -path 'scripts/templates/vor-045-*' \
+            -o -path 'scripts/templates/vor-046-*' \
+            -o -path 'scripts/templates/vor-047-*' \
+            -o -path 'scripts/templates/vor-048-*' \
+            -o -path 'scripts/templates/vor-049-*' \
+            -o -path 'scripts/templates/vor-051-*' \) \
+            -print | sort | tee /tmp/vor-053-candidates.txt
 
-          def replace_regex(file_name, pattern, replacement, expected=1):
-              path = Path(file_name)
-              source = path.read_text()
-              updated, count = re.subn(pattern, replacement, source, flags=re.S)
-              if count != expected:
-                  raise SystemExit(f"{file_name}: expected {expected} replacements, found {count}")
-              path.write_text(updated)
+          echo
+          echo "## References outside candidate scaffolding"
+          while IFS= read -r file; do
+            base="$(basename "$file")"
+            grep -RInF --exclude="$base" "$base" package.json .github scripts netlify src tests 2>/dev/null || true
+          done < /tmp/vor-053-candidates.txt
 
-          canonical_lifecycle = '''assert.equal(
-            packageJson.scripts["build:metadata"],
-            "node scripts/write-build-metadata.mjs",
-          );
-          assert.equal(
-            packageJson.scripts.predev,
-            "node scripts/vor-053-canonical-build-contracts.mjs --quick",
-          );
-          assert.equal(
-            packageJson.scripts["test:contracts"],
-            "node scripts/run-contract-suite.mjs",
-          );'''
-
-          replace_regex(
-              "scripts/vor-044-operational-value-ranking-contracts.mjs",
-              r'''assert\.match\(\n  packageJson\.scripts\["build:metadata"\],[\s\S]*?\n\);\nassert\.equal\(packageJson\.scripts\["pretest:contracts"\], undefined\);\nassert\.match\(\n  packageJson\.scripts\.predev,[\s\S]*?\n\);''',
-              canonical_lifecycle,
-          )
-
-          replace_regex(
-              "scripts/vor-045-conversation-context-contracts.mjs",
-              r'''assert\.match\(\n  packageJson\.scripts\["build:metadata"\],[\s\S]*?\n\);\nassert\.match\(\n  packageJson\.scripts\.predev,[\s\S]*?\n\);''',
-              canonical_lifecycle,
-          )
-
-          replace_regex(
-              "scripts/vor-046-photo-ocr-contracts.mjs",
-              r'''assert\.match\(\n  packageJson\.scripts\["build:metadata"\],[\s\S]*?\n\);''',
-              '''assert.equal(
-            packageJson.scripts["build:metadata"],
-            "node scripts/write-build-metadata.mjs",
-          );
-          assert.equal(
-            packageJson.scripts.predev,
-            "node scripts/vor-053-canonical-build-contracts.mjs --quick",
-          );''',
-          )
-
-          replace_regex(
-              "scripts/vor-049-decision-ready-equipment-contracts.mjs",
-              r'''assert\.match\(\n  packageJson\.scripts\.predev,[\s\S]*?\n\);\nassert\.match\(\n  packageJson\.scripts\["build:metadata"\],[\s\S]*?\n\);''',
-              '''assert.equal(
-            packageJson.scripts.predev,
-            "node scripts/vor-053-canonical-build-contracts.mjs --quick",
-          );
-          assert.equal(
-            packageJson.scripts["build:metadata"],
-            "node scripts/write-build-metadata.mjs",
-          );''',
-          )
-
-          replace_regex(
-              "scripts/repository-hygiene-contracts.mjs",
-              r'''assert\.equal\(\n  packageJson\.scripts\["test:contracts"\],[\s\S]*?\n\);\nassert\.match\(\n  packageJson\.scripts\["test:contracts"\],[\s\S]*?\n\);''',
-              '''assert.equal(
-            packageJson.scripts["test:contracts"],
-            "node scripts/run-contract-suite.mjs",
-            "The contract command must execute canonical source without preparation or mutation",
-          );''',
-          )
-
-          replace_regex(
-              "scripts/vor-051-manager-demo-rehearsal-contracts.mjs",
-              r'''assert\.ok\(\n  packageJson\.scripts\.predev\.includes\("node scripts/vor-051-integrate-evidence-links\.mjs"\),[\s\S]*?\n\);\nassert\.ok\(\n  packageJson\.scripts\["build:metadata"\]\.includes\("node scripts/vor-051-integrate-evidence-links\.mjs"\),[\s\S]*?\n\);''',
-              '''assert.equal(
-            packageJson.scripts.predev,
-            "node scripts/vor-053-canonical-build-contracts.mjs --quick",
-            "Development must verify the canonical evidence-link source without transforming it",
-          );
-          assert.equal(
-            packageJson.scripts["build:metadata"],
-            "node scripts/write-build-metadata.mjs",
-            "Production builds must use the committed evidence-link source directly",
-          );''',
-          )
-
-          replace_regex(
-              "scripts/vor-052-backend-modularisation-contracts.mjs",
-              r'''for \(const marker of \[\n  'case "get_site_ranked_actions":',[\s\S]*?\n\]\) requireText\(entry, marker, "legacy integration guard"\);''',
-              '''if (/legacy integration guards|case "get_site_ranked_actions":/.test(entry)) {
-            fail("the deployable entrypoint still contains retired integration guards");
-          }''',
-          )
-
-          suite_path = Path("scripts/run-contract-suite.mjs")
-          suite = suite_path.read_text()
-          marker = '  ["VOR-052 Ask Vorta backend modularisation", "scripts/vor-052-backend-modularisation-contracts.mjs"],\n'
-          addition = marker + '  ["VOR-053 canonical Ask Vorta build", "scripts/vor-053-canonical-build-contracts.mjs"],\n'
-          if suite.count(marker) != 1:
-              raise SystemExit("run-contract-suite.mjs: VOR-052 registration marker is missing or duplicated")
-          suite_path.write_text(suite.replace(marker, addition))
-          PY
-          git diff --check
-      - name: Verify migrated contract groups
-        run: |
-          node scripts/vor-044-operational-value-ranking-contracts.mjs
-          node scripts/vor-045-conversation-context-contracts.mjs
-          node scripts/vor-046-photo-ocr-contracts.mjs
-          node scripts/vor-049-decision-ready-equipment-contracts.mjs
-          node scripts/vor-051-manager-demo-rehearsal-contracts.mjs
-          node scripts/vor-052-backend-modularisation-contracts.mjs
-          node scripts/vor-053-canonical-build-contracts.mjs
-          node scripts/repository-hygiene-contracts.mjs
-      - name: Commit canonical contract migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            scripts/vor-044-operational-value-ranking-contracts.mjs \
-            scripts/vor-045-conversation-context-contracts.mjs \
-            scripts/vor-046-photo-ocr-contracts.mjs \
-            scripts/vor-049-decision-ready-equipment-contracts.mjs \
-            scripts/vor-051-manager-demo-rehearsal-contracts.mjs \
-            scripts/vor-052-backend-modularisation-contracts.mjs \
-            scripts/repository-hygiene-contracts.mjs \
-            scripts/run-contract-suite.mjs
-          git commit -m "VOR-053 migrate contracts to canonical source"
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git rebase "origin/${GITHUB_HEAD_REF}"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          echo
+          echo "## Remaining package lifecycle"
+          node -e 'const p=require("./package.json"); console.log(JSON.stringify({predev:p.scripts.predev,buildMetadata:p.scripts["build:metadata"],contracts:p.scripts["test:contracts"],build:p.scripts.build},null,2))'
