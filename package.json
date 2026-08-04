@@ -5,12 +5,12 @@
   "name": "vorta-mvp",
   "description": "Vorta maintenance and reliability intelligence MVP",
   "scripts": {
-    "predev": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs && node scripts/vor-048-integrate-routing-telemetry-feedback.mjs && node scripts/vor-049-integrate-decision-ready-equipment.mjs && node scripts/vor-051-integrate-evidence-links.mjs",
+    "predev": "node scripts/vor-053-canonical-build-contracts.mjs --quick",
     "dev": "vite",
     "repair:legacy-workflows": "node scripts/apply-skills-matrix-data-trust-fix.mjs && node scripts/repair-skills-matrix-workflow-codemod.mjs && node scripts/apply-skills-matrix-workflow-fix.mjs && node scripts/apply-equipment-people-workflow-fix.mjs",
     "typecheck": "tsc -p tsconfig.maintenance.json && npm run typecheck:functions",
     "typecheck:functions": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 --lib ES2022,DOM netlify/functions/ask-vorta.mts",
-    "test:contracts": "node scripts/vor-051-integrate-evidence-links.mjs && node scripts/run-contract-suite.mjs",
+    "test:contracts": "node scripts/run-contract-suite.mjs",
     "test:smoke": "node scripts/runtime-route-smoke-tests.mjs",
     "test:browser": "playwright test --config=playwright.config.ts",
     "test:browser:vor051": "playwright test --config=playwright.config.ts tests/browser/vor-051-manager-demo-rehearsal.spec.ts --project=phone-360 --project=laptop-1366",
@@ -20,7 +20,7 @@
     "eval:ask-vorta:vor045": "node scripts/vor-045-multi-turn-context-evals.mjs tests/evals/vor-045-conversation-context.json",
     "eval:ask-vorta:vor046": "node scripts/vor-046-image-diagnosis-evals.mjs tests/evals/vor-046-image-diagnosis.json",
     "prebuild": "node scripts/validate-live-pilot.mjs",
-    "build:metadata": "node scripts/vor-044-integrate-operational-value.mjs && node scripts/vor-045-normalise-request-context.mjs && node scripts/vor-045-integrate-conversation-context.mjs && node scripts/vor-046-integrate-image-backend.mjs && node scripts/vor-046-integrate-image-client.mjs && node scripts/vor-047-integrate-confirmed-actions.mjs && node scripts/vor-048-integrate-routing-telemetry-feedback.mjs && node scripts/vor-049-integrate-decision-ready-equipment.mjs && node scripts/vor-051-integrate-evidence-links.mjs && node scripts/write-build-metadata.mjs",
+    "build:metadata": "node scripts/write-build-metadata.mjs",
     "build": "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
     "postbuild": "npm run test:performance",
     "check": "npm run build",
@@ -43,7 +43,7 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.30.0",
     "tailwind-merge": "2.5.4",
-    "tailwindcss-animate": "1.0.7"
+    "tailwindcss-animate": "1.0.0"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
