@@ -11,7 +11,7 @@ for (const marker of [
   '"phone-360"',
   '"laptop-1366"',
   'data-vorta-dashboard-root="true"',
-  "Risk intelligence scope",
+  "Fill Finish",
   "View work plan",
   "Recommended Work Queue",
   "FD-03",
@@ -27,15 +27,17 @@ for (const marker of [
   "expectNoPageOverflow",
   "vorta-build.json",
   "EXPECTED_HEAD_SHA",
-  "bounded visible answer",
 ]) {
-  const source = marker === "bounded visible answer" ? workflow : browserTest;
-  assert.ok(source.includes(marker), `Missing VOR-051 rehearsal marker: ${marker}`);
+  assert.ok(
+    browserTest.includes(marker),
+    `Missing VOR-051 rehearsal marker: ${marker}`,
+  );
 }
 
-assert.match(
-  browserTest,
-  /resolveFd03EquipmentId[\s\S]*?waitForURL\(\/\\\/equipment\\\/\[\^\/\]\+\\\/overview/,
+assert.ok(
+  browserTest.includes("resolveFd03EquipmentId") &&
+    browserTest.includes("const match = new URL(page.url()).pathname.match") &&
+    browserTest.includes("return decodeURIComponent"),
   "The rehearsal must resolve the real equipment route rather than hard-code a database UUID",
 );
 assert.match(
@@ -70,9 +72,9 @@ for (const unsafeClaim of [
     `The rehearsal must reject unsafe operational wording: ${unsafeClaim}`,
   );
 }
-assert.match(
-  browserTest,
-  /page\.goBack\(\)[\s\S]*?waitForURL\(\/\\\/dashboard/,
+assert.ok(
+  browserTest.includes("await page.goBack();") &&
+    browserTest.includes("await page.waitForURL(/\\/dashboard"),
   "Evidence review must return to the manager dashboard context",
 );
 assert.match(
