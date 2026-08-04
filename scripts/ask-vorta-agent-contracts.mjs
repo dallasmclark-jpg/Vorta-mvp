@@ -259,15 +259,18 @@ check(
   "Ask Vorta must retain an executable, authenticated golden-answer evaluation suite.",
 );
 
+const authenticatedQualityGrants = qualityMigration.match(
+  /grant select, insert, update on public\.ask_vorta_(?:interactions|action_drafts) to authenticated;/g,
+) ?? [];
 check(
   qualityMigration.includes("ask_vorta_interactions") &&
     qualityMigration.includes("ask_vorta_action_drafts") &&
     qualityMigration.includes("enable row level security") &&
     qualityMigration.includes("vorta_rls_has_site_access") &&
     qualityMigration.includes("revoke all") &&
-    qualityMigration.includes("grant select, insert, update") &&
-    qualityMigration.includes("grant select, insert, update, delete"),
-  "Ask Vorta quality telemetry and approval-only drafts must remain protected by site-aware RLS.",
+    authenticatedQualityGrants.length === 2 &&
+    !qualityMigration.includes("grant select, insert, update, delete"),
+  "Ask Vorta quality telemetry and approval-only drafts must remain protected by site-aware RLS with least-privilege authenticated grants.",
 );
 
 console.log("Ask Vorta agent contracts passed.");
