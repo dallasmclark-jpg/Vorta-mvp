@@ -105,7 +105,7 @@ assert.equal(
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /vor-045-integrate-conversation-context\.mjs && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)? && node scripts\/write-build-metadata\.mjs/,
+  /vor-045-integrate-conversation-context\.mjs && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)?(?: && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs)? && node scripts\/write-build-metadata\.mjs/,
 );
 assert.equal(
   packageJson.scripts["eval:ask-vorta:vor046"],

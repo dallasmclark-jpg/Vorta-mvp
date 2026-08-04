@@ -1,0 +1,46 @@
+function visibleDecisionText(answer) {
+  return [
+    answer?.directAnswer,
+    ...(answer?.decisionSummary || []).flatMap((item) => [item?.label, item?.value]),
+    ...(answer?.findings || []).flatMap((item) => [item?.title, item?.detail]),
+    ...(answer?.recommendedActions || []),
+    ...(answer?.actionPlan || []).flatMap((item) => [
+      item?.action,
+      item?.owner,
+      item?.expectedImpact,
+      item?.verification,
+    ]),
+  ]
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .join("\n")
+    .toLowerCase();
+}
+
+function visibleDecisionContradictions(answer) {
+  const visible = visibleDecisionText(answer);
+  const evidence = (answer?.evidence || [])
+    .filter((value) => typeof value === "string")
+    .join("\n")
+    .toLowerCase();
+  const failures = [];
+  if (
+    /(?:cannot|can’t|can't|unable to) (?:confirm|verify|identify)[^.]{0,120}(?:engineer|qualified|capability)/.test(visible) &&
+    /priority capability evidence/.test(evidence)
+  ) {
+    failures.push("visible answer denies capability evidence present in the response");
+  }
+  if (
+    /(?:cannot|can’t|can't|unable to) (?:confirm|verify|identify)[^.]{0,120}(?:spare|part|blocking)/.test(visible) &&
+    /priority spare evidence/.test(evidence)
+  ) {
+    failures.push("visible answer denies spare evidence present in the response");
+  }
+  if (
+    /(?:decision pack|equipment evidence|authorised result)[^.]{0,120}(?:unavailable|too large)/.test(visible) &&
+    /priority (?:capability|spare|document) evidence|work evidence/.test(evidence)
+  ) {
+    failures.push("visible answer claims the equipment decision is unavailable despite decisive evidence");
+  }
+  return failures;
+}
+

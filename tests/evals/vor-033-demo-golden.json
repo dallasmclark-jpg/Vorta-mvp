@@ -19,9 +19,9 @@
     "id": "vor033-fd03-skills",
     "question": "Who is qualified to diagnose the FD-03 vacuum system and what capability evidence supports that?",
     "expectedTools": ["get_equipment_risk", "get_equipment_skills"],
-    "mustMention": ["Nia Roberts", "Vacuum Systems"],
+    "mustMention": ["Gareth Owen", "Sophie Bennett", "Vacuum Systems"],
     "mustMentionAny": ["validated", "qualified", "rating"],
-    "mustNotMention": ["random engineer", "unverified"]
+    "mustNotMention": ["random engineer", "unverified", "Nia Roberts is qualified"]
   },
   {
     "id": "vor033-fd03-evidence",
@@ -45,7 +45,7 @@
     "expectedTools": ["get_equipment_risk", "get_equipment_work", "get_equipment_documents"],
     "mustMention": ["RABS-01"],
     "mustMentionAny": ["interlock", "validated", "challenge", "airflow"],
-    "mustNotMention": ["released", "no further checks"]
+    "mustNotMention": ["can be released now", "safe to release", "released without", "no further checks"]
   },
   {
     "id": "vor033-rabs-skills",

@@ -1,0 +1,248 @@
+function equipmentVisibleDecisionText(answer: JsonRecord): string {
+  return [
+    typeof answer.directAnswer === "string" ? answer.directAnswer : "",
+    ...records(answer.decisionSummary).flatMap((item) => [
+      typeof item.label === "string" ? item.label : "",
+      typeof item.value === "string" ? item.value : "",
+    ]),
+    ...records(answer.findings).flatMap((item) => [
+      typeof item.title === "string" ? item.title : "",
+      typeof item.detail === "string" ? item.detail : "",
+    ]),
+    ...textValues(answer.recommendedActions),
+    ...records(answer.actionPlan).flatMap((item) => [
+      typeof item.action === "string" ? item.action : "",
+      typeof item.expectedImpact === "string" ? item.expectedImpact : "",
+      typeof item.verification === "string" ? item.verification : "",
+    ]),
+    ...textValues(answer.missingData),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function unavailableEquipmentDecisionClaim(value: string): boolean {
+  return /(?:decision pack|equipment evidence|authorised result|available result)[^.]{0,120}(?:unavailable|too large|could not be analysed)|(?:cannot|can’t|can't|unable to) (?:confirm|verify|identify|support|determine)[^.]{0,120}(?:available|authorised|decision pack|evidence|result)|no authorised [^.]{0,80}(?:evidence|personnel|record)/i.test(
+    value,
+  );
+}
+
+function readableEquipmentDecisionFact(fact: string): string {
+  return fact
+    .replace(/^priority (?:spare|capability|document) evidence:\s*/i, "")
+    .replace(/^work evidence\s*/i, "work order ")
+    .replace(/^document evidence:\s*/i, "")
+    .replace(/^equipment:\s*/i, "")
+    .replace(/\s*\|\s*/g, "; ")
+    .trim();
+}
+
+function equipmentFactCategory(fact: string): string {
+  if (/capability|skill|engineer|qualified/i.test(fact)) return "skill";
+  if (/spare|component|part|stock|lead time/i.test(fact)) return "spare";
+  if (/document|manual|guide|drawing|procedure/i.test(fact)) return "document";
+  if (/work evidence|work order|WO-/i.test(fact)) return "work";
+  if (/risk|intervention|action/i.test(fact)) return "risk";
+  return "data";
+}
+
+function repairEquipmentDecisionAnswer(
+  answer: JsonRecord,
+  questionPlan: JsonRecord | null,
+  toolOutcomes: Map<string, ToolResult>,
+): void {
+  if (questionPlan?.scope !== "equipment") return;
+  const pack = toolOutcomes.get("get_equipment_decision_pack");
+  if (
+    !pack?.data ||
+    typeof pack.data !== "object" ||
+    Array.isArray(pack.data)
+  ) {
+    return;
+  }
+
+  const packData = pack.data as JsonRecord;
+  const decisionFacts = textValues(packData.decisionFacts);
+  if (decisionFacts.length === 0) return;
+  const originalUnavailable = unavailableEquipmentDecisionClaim(
+    equipmentVisibleDecisionText(answer),
+  );
+
+  const goal = String(questionPlan.decisionGoal ?? "");
+  const selectedFacts = [
+    ...new Set([
+      ...decisionFacts.filter((fact) => /^priority /i.test(fact)),
+      ...relevantEquipmentDecisionFacts(goal, decisionFacts),
+      ...decisionFacts,
+    ]),
+  ].slice(0, 8);
+  if (selectedFacts.length === 0) return;
+
+  const loweredGoal = goal.toLowerCase();
+  const capabilityFact = selectedFacts.find((fact) =>
+    /priority capability evidence/i.test(fact),
+  );
+  const capabilitySkill =
+    capabilityFact?.match(/\bskill\s+([^|;]+)/i)?.[1]?.trim().toLowerCase() ?? "";
+  const asksForAllQualified =
+    /\bwho is qualified\b|\bwhich engineers? (?:are|is) qualified\b/.test(
+      loweredGoal,
+    );
+  const qualifiedCapabilityFacts = decisionFacts.filter(
+    (fact) =>
+      /capability evidence/i.test(fact) &&
+      /\bengineer\s+/i.test(fact) &&
+      /\bvalidation\s+VALIDATED\b/i.test(fact) &&
+      (!capabilitySkill ||
+        fact.toLowerCase().includes(`skill ${capabilitySkill}`)),
+  );
+  const capabilityFactsToShow = asksForAllQualified
+    ? [
+        ...new Set(
+          [capabilityFact, ...qualifiedCapabilityFacts].filter(
+            (fact): fact is string => Boolean(fact),
+          ),
+        ),
+      ].slice(0, 3)
+    : capabilityFact
+      ? [capabilityFact]
+      : [];
+  const spareFact = selectedFacts.find((fact) =>
+    /priority spare evidence/i.test(fact),
+  );
+  const documentFact = selectedFacts.find((fact) =>
+    /priority document evidence|document evidence/i.test(fact),
+  );
+  const workFact = selectedFacts.find((fact) =>
+    /work evidence|work.?order|WO-/i.test(fact),
+  );
+  const primaryFact =
+    (/\b(?:who|qualified|engineer|skill|authori[sz]e|can lead|can verify)\b/.test(
+      loweredGoal,
+    )
+      ? capabilityFact
+      : undefined) ??
+    (/\b(?:spare|part|stock|blocking|blocker|permanent correction|permanent repair)\b/.test(
+      loweredGoal,
+    )
+      ? spareFact
+      : undefined) ??
+    (/\b(?:document|manual|approved|evidence|verification|verify|before acting|after repair)\b/.test(
+      loweredGoal,
+    )
+      ? documentFact
+      : undefined) ??
+    spareFact ??
+    capabilityFact ??
+    documentFact ??
+    workFact ??
+    selectedFacts[0];
+  const primaryFacts =
+    asksForAllQualified && capabilityFactsToShow.length > 0
+      ? capabilityFactsToShow
+      : [primaryFact];
+  const primaryTexts = primaryFacts.map(readableEquipmentDecisionFact);
+  const primaryText = primaryTexts[0];
+  const supportingFact = selectedFacts.find(
+    (fact) => !primaryFacts.includes(fact),
+  );
+  const supportingText = supportingFact
+    ? readableEquipmentDecisionFact(supportingFact)
+    : "";
+
+  if (!originalUnavailable) {
+    const primaryTextSet = new Set(
+      primaryTexts.map((text) => text.toLowerCase()),
+    );
+    const existingSummary = records(answer.decisionSummary).filter(
+      (item) =>
+        typeof item.value !== "string" ||
+        !primaryTextSet.has(item.value.trim().toLowerCase()),
+    );
+    answer.decisionSummary = [
+      ...primaryTexts.map((text) => ({
+        label: asksForAllQualified ? "Validated capability" : "Verified evidence",
+        value: text,
+      })),
+      ...existingSummary,
+    ].slice(0, 5);
+
+    const existingFindings = records(answer.findings).filter(
+      (item) =>
+        typeof item.detail !== "string" ||
+        !primaryTextSet.has(item.detail.trim().toLowerCase()),
+    );
+    answer.findings = [
+      ...primaryFacts.map((fact) => ({
+        category: equipmentFactCategory(fact),
+        severity: "info",
+        title: "Verified decision fact",
+        detail: readableEquipmentDecisionFact(fact),
+      })),
+      ...existingFindings,
+    ].slice(0, 6);
+    return;
+  }
+
+  if (/\b(?:who|qualified|engineer|skill|authori[sz]e|can lead|can verify)\b/.test(loweredGoal)) {
+    answer.directAnswer = `The verified Vorta capability evidence identifies ${primaryTexts.join("; ")}.`;
+  } else if (/\b(?:spare|part|stock|blocking|blocker|permanent correction|permanent repair)\b/.test(loweredGoal)) {
+    answer.directAnswer = `The verified blocking-spare evidence is ${primaryText}${supportingText ? `; ${supportingText}` : ""}.`;
+  } else if (/\b(?:fault|cause|diagnos|repeat|reading|instrument fault|probe disagreement)\b/.test(loweredGoal)) {
+    answer.directAnswer = `The authorised diagnosis is supported by ${primaryText}${supportingText ? `; ${supportingText}` : ""}.`;
+  } else if (/\b(?:verification|verify|checks? required|after repair|before production restarts|before returning|release|campaign)\b/.test(loweredGoal)) {
+    answer.directAnswer = `The required equipment verification is supported by ${primaryText}${supportingText ? `; ${supportingText}` : ""}.`;
+  } else {
+    answer.directAnswer = `The authorised equipment evidence supports the decision: ${primaryText}${supportingText ? `; ${supportingText}` : ""}.`;
+  }
+
+  const answerFacts = [
+    ...new Set([...primaryFacts, ...selectedFacts]),
+  ];
+  answer.decisionSummary = answerFacts.slice(0, 4).map((fact, index) => ({
+    label:
+      index === 0
+        ? "Decision"
+        : equipmentFactCategory(fact) === "spare"
+          ? "Spare"
+          : equipmentFactCategory(fact) === "skill"
+            ? "Capability"
+            : equipmentFactCategory(fact) === "document"
+              ? "Approved evidence"
+              : equipmentFactCategory(fact) === "work"
+                ? "Work evidence"
+                : "Supporting evidence",
+    value: readableEquipmentDecisionFact(fact),
+  }));
+  answer.findings = answerFacts.slice(0, 5).map((fact, index) => ({
+    category: equipmentFactCategory(fact),
+    severity: index === 0 ? "high" : "info",
+    title: index === 0 ? "Verified decision fact" : "Supporting Vorta evidence",
+    detail: readableEquipmentDecisionFact(fact),
+  }));
+  answer.missingData = textValues(answer.missingData).filter(
+    (item) => !unavailableEquipmentDecisionClaim(item),
+  );
+
+  if (
+    questionPlan.forceActionPlan === true &&
+    (records(answer.actionPlan).length === 0 || originalUnavailable)
+  ) {
+    const actionFact =
+      selectedFacts.find((fact) =>
+        /action|replace|verify|inspect|repair|order|procure/i.test(fact),
+      ) ?? primaryFact;
+    answer.actionPlan = [
+      {
+        priority: "now",
+        action: readableEquipmentDecisionFact(actionFact),
+        owner: "Maintenance Manager",
+        expectedImpact:
+          "Starts the first verified intervention supported by the current equipment evidence.",
+        verification:
+          "Open the linked equipment records and confirm the named part, person, work order or approved verification result before closing the decision.",
+      },
+    ];
+  }
+}
+

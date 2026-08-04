@@ -10,6 +10,14 @@ const siteId = process.env.VORTA_EVAL_SITE_ID || "11000000-0000-0000-0000-000000
 const offset = Math.max(0, Math.min(scenarios.length, Number(process.env.VORTA_EVAL_OFFSET || 0)));
 const limit = Math.max(1, Math.min(scenarios.length - offset || 1, Number(process.env.VORTA_EVAL_LIMIT || scenarios.length)));
 const delayMs = Math.max(0, Number(process.env.VORTA_EVAL_DELAY_MS || 0));
+const rateLimitRetryMs = Math.max(
+  0,
+  Number(process.env.VORTA_EVAL_RATE_LIMIT_RETRY_MS || 0),
+);
+const rateLimitMaxRetries = Math.max(
+  0,
+  Math.min(5, Number(process.env.VORTA_EVAL_RATE_LIMIT_MAX_RETRIES || 0)),
+);
 const selectedScenarios = scenarios.slice(offset, offset + limit);
 const authConfig = {
   supabaseUrl: process.env.VITE_SUPABASE_URL,
@@ -79,6 +87,47 @@ function answerText(answer) {
   ].filter(Boolean).join("\n").toLowerCase();
 }
 
+function boundedAnswerSnapshot(answer) {
+  if (!answer || typeof answer !== "object") return null;
+  const text = (value, limit = 2_000) =>
+    typeof value === "string" ? value.slice(0, limit) : null;
+  const objectItems = (value, limit) =>
+    Array.isArray(value)
+      ? value.slice(0, limit).filter((item) => item && typeof item === "object")
+      : [];
+  const textItems = (value, limit) =>
+    Array.isArray(value)
+      ? value
+          .filter((item) => typeof item === "string")
+          .slice(0, limit)
+          .map((item) => item.slice(0, 1_000))
+      : [];
+
+  return {
+    responseId: text(answer.responseId, 200),
+    directAnswer: text(answer.directAnswer),
+    decisionSummary: objectItems(answer.decisionSummary, 5).map((item) => ({
+      label: text(item.label, 300),
+      value: text(item.value, 1_500),
+    })),
+    findings: objectItems(answer.findings, 8).map((item) => ({
+      category: text(item.category, 100),
+      severity: text(item.severity, 100),
+      title: text(item.title, 500),
+      detail: text(item.detail, 1_500),
+    })),
+    actionPlan: objectItems(answer.actionPlan, 6).map((item) => ({
+      priority: text(item.priority, 100),
+      action: text(item.action, 1_000),
+      owner: text(item.owner, 300),
+      expectedImpact: text(item.expectedImpact, 1_000),
+      verification: text(item.verification, 1_000),
+    })),
+    missingData: textItems(answer.missingData, 8),
+    followUpQuestions: textItems(answer.followUpQuestions, 3),
+  };
+}
+
 function sleep(milliseconds) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 }
@@ -115,6 +164,17 @@ async function executeScenarioRequest(scenario, bearerToken, requestTimeoutMs) {
   }
 }
 
+function retryDelayForRateLimit(requestResult) {
+  const retryAfterValue =
+    requestResult.response?.headers.get("retry-after") ||
+    requestResult.payload?.retryAfterSeconds ||
+    null;
+  const retryAfterMs = Number.isFinite(Number(retryAfterValue))
+    ? Math.max(0, Number(retryAfterValue) * 1_000 + 1_000)
+    : 0;
+  return Math.max(rateLimitRetryMs, retryAfterMs);
+}
+
 const results = [];
 let blockedByRateLimit = false;
 for (const [batchIndex, scenario] of selectedScenarios.entries()) {
@@ -127,6 +187,8 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   );
   const failures = [];
   let reauthentications = 0;
+  let rateLimitRetries = 0;
+  let rateLimitWaitMs = 0;
   let requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
 
   if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
@@ -135,6 +197,32 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       token = recoveredToken;
       reauthentications += 1;
       requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+    }
+  }
+
+  while (
+    requestResult.response?.status === 429 &&
+    rateLimitRetries < rateLimitMaxRetries
+  ) {
+    const pauseMs = retryDelayForRateLimit(requestResult);
+    rateLimitRetries += 1;
+    rateLimitWaitMs += pauseMs;
+    console.warn(
+      `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
+    );
+    await sleep(pauseMs);
+    requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
+    if (requestResult.response?.status === 401 && hasProtectedAuthConfig()) {
+      const recoveredToken = await signInEvaluationUser();
+      if (recoveredToken) {
+        token = recoveredToken;
+        reauthentications += 1;
+        requestResult = await executeScenarioRequest(
+          scenario,
+          token,
+          requestTimeoutMs,
+        );
+      }
     }
   }
 
@@ -150,6 +238,11 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   } else if (!response && failures.length === 0) {
     failures.push("request failed without a response");
   }
+
+  const activeDurationMs = Math.max(
+    0,
+    Date.now() - startedAt - rateLimitWaitMs,
+  );
 
   if (response?.ok && payload) {
     const text = answerText(payload);
@@ -203,14 +296,15 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     if (Number.isFinite(scenario.maxFollowUpQuestions) && (payload.followUpQuestions || []).length > Number(scenario.maxFollowUpQuestions)) {
       failures.push(`follow-ups have ${(payload.followUpQuestions || []).length} items; expected at most ${scenario.maxFollowUpQuestions}`);
     }
-    if (Number.isFinite(scenario.maxDurationMs) && Date.now() - startedAt > Number(scenario.maxDurationMs)) {
-      failures.push(`duration ${Date.now() - startedAt}ms; expected at most ${scenario.maxDurationMs}ms`);
+    if (Number.isFinite(scenario.maxDurationMs) && activeDurationMs > Number(scenario.maxDurationMs)) {
+      failures.push(`active duration ${activeDurationMs}ms; expected at most ${scenario.maxDurationMs}ms`);
     }
     if (!Array.isArray(payload.evidenceLinks)) failures.push("no evidence links");
     if (!payload.responseId) failures.push("no traceable response ID");
   }
 
-  const durationMs = Date.now() - startedAt;
+  const durationMs = activeDurationMs;
+  const elapsedDurationMs = Date.now() - startedAt;
   const observed = {
     intent: payload?.intent || payload?.questionPlan?.intent || null,
     tools: payload?.toolsUsed || [],
@@ -221,6 +315,9 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     decisionSummaryItems: Array.isArray(payload?.decisionSummary) ? payload.decisionSummary.length : null,
     followUpQuestions: Array.isArray(payload?.followUpQuestions) ? payload.followUpQuestions.length : null,
     reauthentications,
+    rateLimitRetries,
+    rateLimitWaitMs,
+    elapsedDurationMs,
   };
   results.push({
     index: offset + batchIndex,
@@ -229,14 +326,15 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
     durationMs,
     failures,
     observed,
+    visibleAnswer: boundedAnswerSnapshot(payload),
   });
   console.log(
-    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms) ` +
+    `${failures.length ? "FAIL" : "PASS"} ${scenario.id} (${durationMs}ms active; ${elapsedDurationMs}ms elapsed) ` +
       `${JSON.stringify(observed)}${failures.length ? ` — ${failures.join("; ")}` : ""}`,
   );
 
   if (blockedByRateLimit) {
-    console.error("Evaluation stopped because the authenticated test account reached the production rate limit.");
+    console.error("Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.");
     break;
   }
 }

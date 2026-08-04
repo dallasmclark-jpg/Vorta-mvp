@@ -1,0 +1,64 @@
+function compactEquipmentDecisionPackForModel(
+  result: ToolResult,
+): ToolResult | null {
+  if (
+    result.source !== "Equipment cross-domain decision pack" ||
+    !result.data ||
+    typeof result.data !== "object" ||
+    Array.isArray(result.data)
+  ) {
+    return null;
+  }
+
+  const data = result.data as JsonRecord;
+  const decisionFacts = textValues(data.decisionFacts)
+    .slice(0, 24)
+    .map((fact) => fact.slice(0, 900));
+  return {
+    source: result.source,
+    status: result.status,
+    message: result.message,
+    data: {
+      query: data.query,
+      equipment: compactDecisionData(data.equipment),
+      ambiguous: data.ambiguous,
+      matches: compactDecisionData(data.matches),
+      coveredTools: textValues(data.coveredTools),
+      includedDomains: textValues(data.includedDomains),
+      omittedDomains: textValues(data.omittedDomains),
+      decisionFacts,
+      caveat:
+        typeof data.caveat === "string"
+          ? data.caveat
+          : "The model-facing pack contains the question-relevant verified decision facts rather than every raw equipment domain.",
+    },
+  };
+}
+
+function trimToolResult(result: ToolResult): string {
+  const compactEquipmentPack = compactEquipmentDecisionPackForModel(result);
+  if (compactEquipmentPack) {
+    const compactSerialised = JSON.stringify(compactEquipmentPack);
+    if (compactSerialised.length <= MAX_TOOL_OUTPUT_CHARACTERS) {
+      return compactSerialised;
+    }
+    const data = compactEquipmentPack.data as JsonRecord;
+    return JSON.stringify({
+      ...compactEquipmentPack,
+      data: {
+        ...data,
+        decisionFacts: textValues(data.decisionFacts)
+          .slice(0, 12)
+          .map((fact) => fact.slice(0, 650)),
+      },
+    });
+  }
+
+  const serialised = JSON.stringify(result);
+  if (serialised.length <= MAX_TOOL_OUTPUT_CHARACTERS) return serialised;
+  return JSON.stringify({
+    source: result.source,
+    status: "unavailable",
+    message: "The result was too large to analyse safely. Narrow the equipment or date range.",
+  });
+}
