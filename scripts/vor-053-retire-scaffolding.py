@@ -1,0 +1,258 @@
+from pathlib import Path
+import re
+
+
+def replace_exact(path_name: str, old: str, new: str) -> None:
+    path = Path(path_name)
+    source = path.read_text()
+    count = source.count(old)
+    if count != 1:
+        raise SystemExit(f"{path_name}: expected one exact replacement, found {count}")
+    path.write_text(source.replace(old, new))
+
+
+def replace_regex(
+    path_name: str,
+    pattern: str,
+    replacement: str,
+    expected: int = 1,
+) -> None:
+    path = Path(path_name)
+    source = path.read_text()
+    updated, count = re.subn(pattern, replacement, source, flags=re.S)
+    if count != expected:
+        raise SystemExit(f"{path_name}: expected {expected} regex replacements, found {count}")
+    path.write_text(updated)
+
+
+# VOR-044: preserve operational-value assertions against canonical backend modules.
+path = Path("scripts/vor-044-operational-value-ranking-contracts.mjs")
+source = path.read_text().replace('import { spawnSync } from "node:child_process";\n', "")
+replace_from = 'const integration = read("scripts/vor-044-integrate-operational-value.mjs");'
+replace_to = '''const canonicalBackend = [
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/tool-execution.mts",
+  "netlify/functions/ask-vorta/decision-answer.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+].map(read).join("\\n");'''
+if source.count(replace_from) != 1:
+    raise SystemExit("VOR-044 integration source declaration is missing or duplicated")
+source = source.replace(replace_from, replace_to)
+source, count = re.subn(
+    r'''\nassert\.equal\(\n  spawnSync\([\s\S]*?\n\);\n''',
+    "\n",
+    source,
+    count=1,
+)
+if count != 1:
+    raise SystemExit(f"VOR-044 syntax assertion replacement count was {count}")
+source = source.replace("assert.match(integration,", "assert.match(canonicalBackend,")
+if "integration" in source:
+    raise SystemExit("VOR-044 still references the retired integration source")
+path.write_text(source)
+
+
+# VOR-045: inspect committed request, planner, runtime and client context code.
+replace_regex(
+    "scripts/vor-045-conversation-context-contracts.mjs",
+    r'''const normaliser = readFileSync\("scripts/vor-045-normalise-request-context\.mjs", "utf8"\);[\s\S]*?const integration = readFileSync\("scripts/vor-045-integrate-conversation-context\.mjs", "utf8"\);''',
+    '''const canonicalContextSurface = [
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/request-context.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "src/screens/AiOperations/vortaAgentService.ts",
+  "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+].map((path) => readFileSync(path, "utf8")).join("\\n");
+const normaliser = canonicalContextSurface;
+const integration = canonicalContextSurface;''',
+)
+
+
+# VOR-046: inspect canonical image modules and client surfaces.
+replace_regex(
+    "scripts/vor-046-photo-ocr-contracts.mjs",
+    r'''const backendIntegration = read\("scripts/vor-046-integrate-image-backend\.mjs"\);[\s\S]*?const packageJson = JSON\.parse\(read\("package\.json"\)\);''',
+    '''const backendSurface = [
+  "netlify/functions/ask-vorta/image-diagnosis.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "netlify/functions/_shared/askVortaImageEvidence.mjs",
+  "netlify/functions/_shared/askVortaImageDiagnosis.mjs",
+].map(read).join("\\n");
+const clientIntegration = [
+  "src/screens/AiOperations/askVortaImageClient.ts",
+  "src/screens/AiOperations/vortaAgentService.ts",
+  "src/screens/AiOperations/AskVortaWorkspace.tsx",
+  "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+].map(read).join("\\n");
+const imageValidation = read("netlify/functions/_shared/askVortaImageEvidence.mjs");
+const diagnosis = read("netlify/functions/_shared/askVortaImageDiagnosis.mjs");
+const clientImage = read("src/screens/AiOperations/askVortaImageClient.ts");
+const packageJson = JSON.parse(read("package.json"));''',
+)
+replace_regex(
+    "scripts/vor-046-photo-ocr-contracts.mjs",
+    r'''for \(const script of \[\n  "scripts/vor-046-integrate-image-backend\.mjs",\n  "scripts/vor-046-integrate-image-client\.mjs",\n  "scripts/vor-046-image-diagnosis-evals\.mjs",\n\]\)''',
+    '''for (const script of [
+  "scripts/vor-046-image-diagnosis-evals.mjs",
+])''',
+)
+path = Path("scripts/vor-046-photo-ocr-contracts.mjs")
+source = path.read_text()
+source, count = re.subn(
+    r'''assert\.match\(backendIntegration, /vor-046-image-backend-helpers[\s\S]*?\);\n''',
+    "",
+    source,
+    count=1,
+)
+if count != 1:
+    raise SystemExit(f"VOR-046 helper-template assertion replacement count was {count}")
+path.write_text(source)
+
+
+# VOR-049: use focused modules and committed live-evaluation helpers.
+path = Path("scripts/vor-049-decision-ready-equipment-contracts.mjs")
+source = path.read_text().replace('import { spawnSync } from "node:child_process";\n', "")
+source, count = re.subn(
+    r'''const integration = read\("scripts/vor-049-integrate-decision-ready-equipment\.mjs"\);[\s\S]*?const golden = JSON\.parse\(read\("tests/evals/vor-033-demo-golden\.json"\)\);''',
+    '''const backendSurface = [
+  "netlify/functions/ask-vorta.mts",
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/equipment-evidence.mts",
+  "netlify/functions/ask-vorta/response-validation.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "netlify/functions/ask-vorta/tool-execution.mts",
+].map(read).join("\\n");
+const integration = backendSurface;
+const backend = backendSurface;
+const modelPackTemplate = backendSurface;
+const domainTemplate = backendSurface;
+const answerRepairTemplate = backendSurface;
+const liveEval = read("scripts/ask-vorta-live-evals.mjs");
+const visibleEvalTemplate = liveEval;
+const liveEvalSurface = liveEval;
+const workflow = read(".github/workflows/vor-049-validation.yml");
+const packageJson = JSON.parse(read("package.json"));
+const golden = JSON.parse(read("tests/evals/vor-033-demo-golden.json"));''',
+    source,
+    count=1,
+    flags=re.S,
+)
+if count != 1:
+    raise SystemExit(f"VOR-049 canonical surface replacement count was {count}")
+source, count = re.subn(
+    r'''\nconst syntax = spawnSync\([\s\S]*?`VOR-049 integration has invalid syntax:[\s\S]*?\n\);\n''',
+    "\n",
+    source,
+    count=1,
+)
+if count != 1:
+    raise SystemExit(f"VOR-049 syntax assertion replacement count was {count}")
+source = source.replace(
+    'assert.match(\n  integration,\n  /assertionText',
+    'assert.match(\n  liveEvalSurface,\n  /assertionText',
+)
+source, count = re.subn(
+    r'''\nassert\.match\(\n  integration,\n  /chainContractPaths/[\s\S]*?\n\);\nassert\.match\(\n  integration,\n  /VOR-049 integration is partially applied/[\s\S]*?\n\);\n''',
+    "\n",
+    source,
+    count=1,
+)
+if count != 1:
+    raise SystemExit(f"VOR-049 retired-chain assertion replacement count was {count}")
+path.write_text(source)
+
+
+# VOR-051: evidence navigation is canonical assistant source.
+replace_exact(
+    "scripts/vor-051-manager-demo-rehearsal-contracts.mjs",
+    '''const evidenceLinkIntegration = read("scripts/vor-051-integrate-evidence-links.mjs");
+const transformedAssistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");''',
+    '''const transformedAssistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
+const evidenceLinkIntegration = transformedAssistant;''',
+)
+replace_regex(
+    "scripts/vor-051-manager-demo-rehearsal-contracts.mjs",
+    r'''assert\.match\(\n  evidenceLinkIntegration,\n  /patchLegacyChainContracts/[\s\S]*?\n\);\n''',
+    "",
+)
+replace_exact(
+    "scripts/vor-051-manager-demo-rehearsal-contracts.mjs",
+    '  "scripts/vor-051-integrate-evidence-links.mjs",\n',
+    '  "src/screens/AiOperations/**",\n',
+)
+
+
+# VOR-053 must require retirement, not merely expose an optional check.
+replace_regex(
+    "scripts/vor-053-canonical-build-contracts.mjs",
+    r'''if \(process\.argv\.includes\("--require-retired-scaffolding"\)\) \{\n  for \(const script of legacyLifecycleScripts\) \{[\s\S]*?\n  \}\n\}''',
+    '''for (const script of legacyLifecycleScripts) {
+  assert.equal(existsSync(`scripts/${script}`), false, `${script} must be retired`);
+}''',
+)
+
+
+# Workflow path filters follow canonical source rather than deleted codemods.
+path = Path(".github/workflows/vor-052-apply-modularisation.yml")
+source = path.read_text()
+for line in [
+    '      - "scripts/vor-045-normalise-request-context.mjs"\n',
+    '      - "scripts/vor-048-integrate-routing-telemetry-feedback.mjs"\n',
+    '      - "scripts/vor-049-integrate-decision-ready-equipment.mjs"\n',
+]:
+    source = source.replace(line, "")
+marker = '      - "scripts/vor-052-backend-modularisation-contracts.mjs"\n'
+if source.count(marker) != 1:
+    raise SystemExit("VOR-052 workflow contract marker is missing or duplicated")
+source = source.replace(
+    marker,
+    marker + '      - "scripts/vor-053-canonical-build-contracts.mjs"\n',
+)
+path.write_text(source)
+
+path = Path(".github/workflows/vor-051-validation.yml")
+source = path.read_text().replace(
+    '      - "scripts/vor-051-integrate-evidence-links.mjs"\n',
+    "",
+)
+source = source.replace(
+    "Apply complete Ask Vorta integration chain",
+    "Write exact build metadata from canonical source",
+)
+path.write_text(source)
+
+
+obsolete_files = [
+    "scripts/templates/vor-046-image-backend-helpers.txt",
+    "scripts/templates/vor-049-answer-repair.txt",
+    "scripts/templates/vor-049-domain-selection.txt",
+    "scripts/templates/vor-049-trim-tool-result.txt",
+    "scripts/templates/vor-049-visible-eval-helpers.txt",
+    "scripts/vor-044-integrate-operational-value.mjs",
+    "scripts/vor-045-integrate-conversation-context.mjs",
+    "scripts/vor-045-normalise-request-context.mjs",
+    "scripts/vor-046-integrate-image-backend.mjs",
+    "scripts/vor-046-integrate-image-client.mjs",
+    "scripts/vor-047-integrate-confirmed-actions.mjs",
+    "scripts/vor-048-01-backend-1.patch",
+    "scripts/vor-048-02-backend-2.patch",
+    "scripts/vor-048-03-backend-3.patch",
+    "scripts/vor-048-04-backend-4.patch",
+    "scripts/vor-048-05-backend-5.patch",
+    "scripts/vor-048-06-service-1.patch",
+    "scripts/vor-048-07-ui-1.patch",
+    "scripts/vor-048-08-feedback-copy.patch",
+    "scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
+    "scripts/vor-049-integrate-decision-ready-equipment.mjs",
+    "scripts/vor-051-integrate-evidence-links.mjs",
+]
+for file_name in obsolete_files:
+    path = Path(file_name)
+    if not path.exists():
+        raise SystemExit(f"Expected obsolete file is already missing: {file_name}")
+    path.unlink()
+
+print(f"Retired {len(obsolete_files)} legacy Ask Vorta build files.")
