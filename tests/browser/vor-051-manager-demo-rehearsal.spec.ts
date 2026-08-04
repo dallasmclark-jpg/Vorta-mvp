@@ -43,6 +43,24 @@ function activeAssistantMessages(page: Page) {
   return page.locator('[data-vorta-global-ai-messages="true"]:visible').first();
 }
 
+async function expectResponsiveDashboardTitle(
+  page: Page,
+  projectName: string,
+): Promise<void> {
+  if (projectName === "phone-360") {
+    await expect(
+      page
+        .locator('[data-vorta-mobile-page-title="true"]:visible')
+        .filter({ hasText: "Operations Overview" })
+        .first(),
+    ).toBeVisible();
+    return;
+  }
+  await expect(
+    page.getByText("Operations Overview", { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
+}
+
 async function scrollAssistantToEnd(page: Page): Promise<void> {
   const messages = activeAssistantMessages(page);
   await expect(messages).toBeVisible({ timeout: 20_000 });
@@ -213,7 +231,7 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
   await signInMaintenanceManager(page);
   await page.goto("/dashboard");
   await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
-  await expect(page.getByText("Operations Overview", { exact: true })).toBeVisible();
+  await expectResponsiveDashboardTitle(page, testInfo.project.name);
 
   const fillFinish = page.getByRole("tab", { name: /Fill Finish/i }).first();
   await expect(fillFinish).toBeVisible({ timeout: 30_000 });
