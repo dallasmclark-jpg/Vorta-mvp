@@ -50,6 +50,7 @@ jobs:
       VITE_VORTA_DATA_MODE: demo
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
       EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PREVIEW_URL: https://deploy-preview-${{ github.event.pull_request.number }}--vorta-app.netlify.app
