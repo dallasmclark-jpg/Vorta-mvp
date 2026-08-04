@@ -35,14 +35,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: vor-049-${{ github.sha }}
+  group: ask-vorta-live-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   validate:
     name: Equipment decision quality and live golden set
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 75
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
