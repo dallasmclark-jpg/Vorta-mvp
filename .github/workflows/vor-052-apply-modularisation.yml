@@ -36,13 +36,21 @@ jobs:
               Path(".vor-052/modulariser-parts/02").read_bytes(),
               Path(".vor-052/modulariser-parts/03").read_bytes(),
           ]
-          for index, part in enumerate(parts):
-              print(index, len(part), part[-12:])
           reviewed = b"".join(part.rstrip(b"\r\n") for part in parts[:-1]) + parts[-1]
           Path("scripts/vor-052-modularise-backend.mjs").write_bytes(reviewed)
           PY
           wc -c scripts/vor-052-modularise-backend.mjs
           sha256sum scripts/vor-052-modularise-backend.mjs
+      - name: Retain transported modulariser
+        uses: actions/upload-artifact@v4
+        with:
+          name: vor-052-transported-modulariser
+          path: scripts/vor-052-modularise-backend.mjs
+          if-no-files-found: error
+          retention-days: 2
+      - name: Verify transported modulariser
+        run: |
+          echo "d48fdb54d8d360e982e3f91374691ab709eb61bfe4d83165c5e73d4f6211cffd  scripts/vor-052-modularise-backend.mjs" | sha256sum -c -
           node --check scripts/vor-052-modularise-backend.mjs
       - name: Materialise the validated VOR-044 to VOR-051 behaviour
         run: npm run predev
