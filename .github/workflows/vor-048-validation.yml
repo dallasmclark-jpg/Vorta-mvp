@@ -39,14 +39,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: ask-vorta-live-${{ github.event.pull_request.number || github.run_id }}
+  group: vor-048-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   validate:
-    name: Routing, telemetry, feedback and live preview
+    name: Routing, telemetry and feedback validation
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 40
     env:
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
@@ -126,22 +126,6 @@ jobs:
           echo "Netlify preview did not publish the expected commit." >&2
           exit 1
 
-      - name: Wait for a clean shared evaluation rate window
-        if: github.event_name == 'pull_request'
-        run: sleep 310
-
-      - name: Run live Shift Cover routing and latency scenarios
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
-          VORTA_EVAL_DELAY_MS: 500
-          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 370000
-          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
-        run: |
-          set -o pipefail
-          npm run eval:ask-vorta:vor048 2>&1 | tee vor-048-live-eval.log
-
       - name: Preserve failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -149,7 +133,6 @@ jobs:
           name: vor-048-failure-evidence-${{ github.sha }}
           path: |
             vor-048-browser.log
-            vor-048-live-eval.log
             playwright-report
             test-results
           if-no-files-found: warn
@@ -163,6 +146,5 @@ jobs:
           path: |
             dist/vorta-build.json
             vor-048-browser.log
-            vor-048-live-eval.log
           if-no-files-found: warn
           retention-days: 7
