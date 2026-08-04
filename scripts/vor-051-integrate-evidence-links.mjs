@@ -1,5 +1,57 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
+function replaceExpected(source, oldValue, newValue, expectedCount, label) {
+  const count = source.split(oldValue).length - 1;
+  if (count === 0 && source.includes(newValue)) return source;
+  if (count !== expectedCount) {
+    throw new Error(`${label}: expected ${expectedCount} matches, found ${count}.`);
+  }
+  return source.split(oldValue).join(newValue);
+}
+
+function patchLegacyChainContracts() {
+  const optionalVor049 =
+    "(?: && node scripts\\/vor-049-integrate-decision-ready-equipment\\.mjs)?";
+  const optionalVor051 =
+    "(?: && node scripts\\/vor-051-integrate-evidence-links\\.mjs)?";
+
+  for (const [path, expectedCount] of [
+    ["scripts/vor-044-operational-value-ranking-contracts.mjs", 2],
+    ["scripts/vor-045-conversation-context-contracts.mjs", 2],
+    ["scripts/vor-046-photo-ocr-contracts.mjs", 1],
+  ]) {
+    const current = readFileSync(path, "utf8");
+    const next = replaceExpected(
+      current,
+      optionalVor049,
+      optionalVor049 + optionalVor051,
+      expectedCount,
+      `${path} VOR-051 chain extension`,
+    );
+    if (next !== current) writeFileSync(path, next);
+  }
+
+  const vor049Path = "scripts/vor-049-decision-ready-equipment-contracts.mjs";
+  let vor049 = readFileSync(vor049Path, "utf8");
+  vor049 = replaceExpected(
+    vor049,
+    "vor-049-integrate-decision-ready-equipment\\.mjs$/",
+    "vor-049-integrate-decision-ready-equipment\\.mjs && node scripts\\/vor-051-integrate-evidence-links\\.mjs$/",
+    1,
+    "VOR-049 predev chain extension",
+  );
+  vor049 = replaceExpected(
+    vor049,
+    "vor-049-integrate-decision-ready-equipment\\.mjs && node scripts\\/write-build-metadata\\.mjs$/",
+    "vor-049-integrate-decision-ready-equipment\\.mjs && node scripts\\/vor-051-integrate-evidence-links\\.mjs && node scripts\\/write-build-metadata\\.mjs$/",
+    1,
+    "VOR-049 build chain extension",
+  );
+  writeFileSync(vor049Path, vor049);
+}
+
+patchLegacyChainContracts();
+
 const assistantPath = "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx";
 let source = readFileSync(assistantPath, "utf8");
 let changed = false;
