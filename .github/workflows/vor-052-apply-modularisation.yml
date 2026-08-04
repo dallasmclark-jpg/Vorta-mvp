@@ -7,6 +7,9 @@ on:
     paths:
       - "netlify/functions/ask-vorta.mts"
       - "netlify/functions/ask-vorta/**"
+      - "scripts/vor-045-normalise-request-context.mjs"
+      - "scripts/vor-048-integrate-routing-telemetry-feedback.mjs"
+      - "scripts/vor-048-*.patch"
       - "scripts/vor-052-backend-modularisation-contracts.mjs"
       - "scripts/run-contract-suite.mjs"
       - ".github/workflows/vor-052-apply-modularisation.yml"
@@ -22,6 +25,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Inspect VOR-048 patch boundaries
+        run: |
+          for patch in scripts/vor-048-*.patch; do
+            echo "::group::$patch"
+            grep '^diff --git ' "$patch" || true
+            echo "::endgroup::"
+          done
       - uses: actions/setup-node@v4
         with:
           node-version: 20
