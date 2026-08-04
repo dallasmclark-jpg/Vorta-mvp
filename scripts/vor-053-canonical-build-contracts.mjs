@@ -13,16 +13,29 @@ const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const liveEval = read("scripts/ask-vorta-live-evals.mjs");
 const controlledActions = read("src/screens/AiOperations/askVortaControlledActions.ts");
 
-const legacyLifecycleScripts = [
-  "vor-044-integrate-operational-value.mjs",
-  "vor-045-normalise-request-context.mjs",
-  "vor-045-integrate-conversation-context.mjs",
-  "vor-046-integrate-image-backend.mjs",
-  "vor-046-integrate-image-client.mjs",
-  "vor-047-integrate-confirmed-actions.mjs",
-  "vor-048-integrate-routing-telemetry-feedback.mjs",
-  "vor-049-integrate-decision-ready-equipment.mjs",
-  "vor-051-integrate-evidence-links.mjs",
+const retiredScaffolding = [
+  "scripts/templates/vor-046-image-backend-helpers.txt",
+  "scripts/templates/vor-049-answer-repair.txt",
+  "scripts/templates/vor-049-domain-selection.txt",
+  "scripts/templates/vor-049-trim-tool-result.txt",
+  "scripts/templates/vor-049-visible-eval-helpers.txt",
+  "scripts/vor-044-integrate-operational-value.mjs",
+  "scripts/vor-045-normalise-request-context.mjs",
+  "scripts/vor-045-integrate-conversation-context.mjs",
+  "scripts/vor-046-integrate-image-backend.mjs",
+  "scripts/vor-046-integrate-image-client.mjs",
+  "scripts/vor-047-integrate-confirmed-actions.mjs",
+  "scripts/vor-048-01-backend-1.patch",
+  "scripts/vor-048-02-backend-2.patch",
+  "scripts/vor-048-03-backend-3.patch",
+  "scripts/vor-048-04-backend-4.patch",
+  "scripts/vor-048-05-backend-5.patch",
+  "scripts/vor-048-06-service-1.patch",
+  "scripts/vor-048-07-ui-1.patch",
+  "scripts/vor-048-08-feedback-copy.patch",
+  "scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
+  "scripts/vor-049-integrate-decision-ready-equipment.mjs",
+  "scripts/vor-051-integrate-evidence-links.mjs",
 ];
 const lifecycle = [
   packageJson.scripts.predev,
@@ -49,12 +62,9 @@ assert.equal(
   packageJson.scripts.build,
   "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
 );
-for (const script of legacyLifecycleScripts) {
-  assert.equal(
-    lifecycle.includes(script),
-    false,
-    `${script} must not run from the package lifecycle`,
-  );
+for (const path of retiredScaffolding) {
+  assert.equal(lifecycle.includes(path.split("/").at(-1)), false, `${path} must not run from the package lifecycle`);
+  assert.equal(existsSync(path), false, `${path} must be retired`);
 }
 
 assert.doesNotMatch(entry, /VOR-052 legacy integration guards/);
@@ -110,14 +120,6 @@ for (const forbidden of [
   "create_maintenance_notification",
   "create_maintenance_work_request",
   "vorta_save_shift_handover_action",
-]) {
-  assert.equal(runtime.includes(forbidden), false, `Runtime crosses the SAP/action boundary with ${forbidden}`);
-}
-
-if (process.argv.includes("--require-retired-scaffolding")) {
-  for (const script of legacyLifecycleScripts) {
-    assert.equal(existsSync(`scripts/${script}`), false, `${script} must be retired`);
-  }
-}
+]) assert.equal(runtime.includes(forbidden), false, `Runtime crosses the SAP/action boundary with ${forbidden}`);
 
 console.log("VOR-053 canonical Ask Vorta build contracts passed.");
