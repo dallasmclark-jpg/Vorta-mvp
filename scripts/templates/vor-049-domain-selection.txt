@@ -53,7 +53,7 @@ function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName
     add("get_equipment_history");
   }
   if (
-    /\b(?:calibrat|conductivity|pressure|transmitter|probe|measurement|reading|reference instrument)\b/.test(
+    /\b(?:calibrat|conductivity|pressure|transmitter|probe|measurement|reading|reference instrument|instrument fault)\b/.test(
       lowered,
     )
   ) {
@@ -71,6 +71,17 @@ function equipmentDecisionDomains(question: string): EquipmentDecisionDomainName
   }
   if (/\bnext shift\b/.test(lowered)) {
     add("get_equipment_spares");
+  }
+  if (
+    /\bnext safe action\b/.test(lowered) &&
+    /\b(?:probe|sensor|deviation|repeat|disagreement)\b/.test(lowered)
+  ) {
+    add(
+      "get_equipment_work",
+      "get_equipment_calibrations",
+      "get_equipment_spares",
+      "get_equipment_documents",
+    );
   }
   if (/\b(?:risk reduction|what remains afterwards|leading intervention)\b/.test(lowered)) {
     add("get_equipment_risk_actions", "get_equipment_spares");
