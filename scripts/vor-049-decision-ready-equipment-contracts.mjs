@@ -6,6 +6,7 @@ const read = (path) => readFileSync(path, "utf8");
 const integration = read("scripts/vor-049-integrate-decision-ready-equipment.mjs");
 const backend = read("netlify/functions/ask-vorta.mts");
 const liveEval = read("scripts/ask-vorta-live-evals.mjs");
+const workflow = read(".github/workflows/vor-049-validation.yml");
 const modelPackTemplate = read("scripts/templates/vor-049-trim-tool-result.txt");
 const domainTemplate = read("scripts/templates/vor-049-domain-selection.txt");
 const answerRepairTemplate = read("scripts/templates/vor-049-answer-repair.txt");
@@ -84,6 +85,26 @@ assert.match(
   "Focused equipment questions must select only relevant evidence domains",
 );
 assert.match(
+  domainTemplate,
+  /add\("get_equipment_spares", "get_equipment_work", "get_equipment_risk_actions"\)/,
+  "Blocked interventions must include spares, work and the calculated risk-action domain",
+);
+assert.match(
+  answerRepairTemplate,
+  /if \(!originalUnavailable\)/,
+  "Valid model prose must still be enriched with the decisive verified fact",
+);
+assert.match(
+  answerRepairTemplate,
+  /label: "Verified evidence", value: primaryText/,
+  "The highest-relevance exact decision fact must be visible in decisionSummary",
+);
+assert.match(
+  answerRepairTemplate,
+  /title: "Verified decision fact",\s*detail: primaryText/,
+  "The exact decision fact must also remain visible in findings",
+);
+assert.match(
   integration,
   /repairEquipmentDecisionAnswer\(answer, questionPlan, toolOutcomes\);[\s\S]*?answer\.confidence = evidenceAwareConfidence/,
   "Deterministic completion must repair contradictions before confidence calibration",
@@ -97,6 +118,16 @@ assert.match(
   integration,
   /visibleDecisionUnavailable \? 50 : 95/,
   "Non-answerable visible decisions must not report confidence above 50 percent",
+);
+assert.match(
+  workflow,
+  /Wait for a clean shared evaluation rate window/,
+  "The live golden gate must isolate itself from parallel CI traffic",
+);
+assert.match(
+  workflow,
+  /run: sleep 310/,
+  "The shared evaluation account must receive a full production rate-window reset",
 );
 
 for (const marker of [
