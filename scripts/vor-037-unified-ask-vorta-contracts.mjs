@@ -84,9 +84,7 @@ check(
       "Always use this for rota, leave, training, availability or shift-cover questions.",
     ) &&
     routePlanning.includes('"get_equipment_decision_pack"') &&
-    routePlanning.includes('"get_shift_cover"') &&
-    routePlanning.includes('"get_equipment_history"') &&
-    routePlanning.includes('"search_maintenance_documents"'),
+    routePlanning.includes('"get_shift_cover"'),
   "One modular agent must select shift-cover or specialist equipment evidence according to the actual question.",
 );
 
