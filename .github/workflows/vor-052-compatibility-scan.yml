@@ -1,0 +1,28 @@
+name: VOR-052 compatibility scan
+
+on:
+  push:
+    branches:
+      - agent/vor-052-modularise-ask-vorta
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: node scripts/vor-052-scan-compatibility.mjs
+      - name: Commit compatibility report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .vor-052/compatibility.json
+          git diff --cached --quiet && exit 0
+          git commit -m "VOR-052 record integration compatibility"
+          git push
