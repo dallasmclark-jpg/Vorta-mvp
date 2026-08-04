@@ -44,7 +44,7 @@ if (!source.includes("Open in Vorta")) {
             {answer.evidenceLinks.slice(0, 8).map((link) => (
               <button
                 type="button"
-                key={\`${link.recordType}-${link.path}\`}
+                key={link.recordType + "-" + link.path}
                 data-vorta-ai-evidence-link={link.recordType}
                 onClick={() => navigate(link.path)}
                 className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-200 transition-colors hover:border-blue-400/50 hover:bg-blue-500/15"
