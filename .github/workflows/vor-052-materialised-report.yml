@@ -31,9 +31,13 @@ jobs:
       - name: Materialise validated Ask Vorta integrations
         run: npm run build:metadata
       - run: node scripts/vor-052-inspect-backend.mjs
+      - name: Retain materialised source
+        run: cp netlify/functions/ask-vorta.mts .vor-052/materialised-ask-vorta.mts
       - uses: actions/upload-artifact@v4
         with:
           name: vor-052-materialised-backend
-          path: .vor-052/ask-vorta-structure.json
+          path: |
+            .vor-052/ask-vorta-structure.json
+            .vor-052/materialised-ask-vorta.mts
           if-no-files-found: error
           retention-days: 7
