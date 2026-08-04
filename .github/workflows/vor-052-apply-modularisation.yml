@@ -1,0 +1,38 @@
+name: VOR-052 backend modularisation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "scripts/vor-045-normalise-request-context.mjs"
+      - "scripts/vor-048-integrate-routing-telemetry-feedback.mjs"
+      - "scripts/vor-049-integrate-decision-ready-equipment.mjs"
+      - "scripts/vor-052-backend-modularisation-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - ".github/workflows/vor-052-apply-modularisation.yml"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify function TypeScript
+        run: npm run typecheck:functions
+      - name: Verify VOR-052 architecture boundaries
+        run: node scripts/vor-052-backend-modularisation-contracts.mjs
+      - name: Verify runtime routes
+        run: npm run test:smoke

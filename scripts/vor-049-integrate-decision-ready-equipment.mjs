@@ -44,6 +44,92 @@ function extendIntegrationChainContracts() {
 
 let backend = readFileSync(backendPath, "utf8");
 let liveEval = readFileSync(liveEvalPath, "utf8");
+// VOR-049 modular backend compatibility
+const modularEntrypoint = 'export { default, config } from "./ask-vorta/runtime.mjs";';
+if (backend.includes(modularEntrypoint)) {
+  const equipmentEvidencePath = resolve(
+    repositoryRoot,
+    "netlify/functions/ask-vorta/equipment-evidence.mts",
+  );
+  const equipmentEvidence = readFileSync(equipmentEvidencePath, "utf8");
+  for (const requiredMarker of [backendMarker, repairMarker]) {
+    if (!equipmentEvidence.includes(requiredMarker)) {
+      throw new Error(
+        `VOR-049 modular equipment evidence is missing ${requiredMarker}.`,
+      );
+    }
+  }
+
+  if (!liveEval.includes(evalMarker)) {
+    const visibleEvalHelpers = readFileSync(
+      templatePath("vor-049-visible-eval-helpers.txt"),
+      "utf8",
+    );
+    liveEval = replaceOnce(
+      liveEval,
+      "function answerText(answer) {\n",
+      `${visibleEvalHelpers}function answerText(answer) {\n`,
+      "live-evaluation answer text helper",
+    );
+
+    const evalTextAnchor = [
+      "    const text = answerText(payload);",
+      "    const usedTools = new Set(payload.toolsUsed || []);",
+    ].join("\n");
+    const evalTextReplacement = [
+      "    const text = answerText(payload);",
+      "    const visibleText = visibleDecisionText(payload);",
+      "    const requireVisibleDecision =",
+      "      scenario.requireVisibleDecision === true ||",
+      "      /vor-033-demo-golden\\.json$/.test(scenarioFile);",
+      "    const assertionText = requireVisibleDecision ? visibleText : text;",
+      "    const usedTools = new Set(payload.toolsUsed || []);",
+    ].join("\n");
+    liveEval = replaceOnce(
+      liveEval,
+      evalTextAnchor,
+      evalTextReplacement,
+      "live-evaluation response assertions",
+    );
+    liveEval = liveEval.replaceAll(
+      "text.includes(phrase.toLowerCase())",
+      "assertionText.includes(phrase.toLowerCase())",
+    );
+
+    const contradictionAnchor = [
+      "    if (",
+      "      scenario.requireFindings !== false &&",
+    ].join("\n");
+    const contradictionChecks = [
+      "    if (requireVisibleDecision) {",
+      "      failures.push(...visibleDecisionContradictions(payload));",
+      "      if (",
+      "        /(?:decision pack|equipment evidence|authorised result)[^.]{0,120}(?:unavailable|too large)/.test(",
+      "          visibleText,",
+      "        )",
+      "      ) {",
+      "        failures.push(\"visible decision layer reports an unavailable or oversized equipment pack\");",
+      "      }",
+      "    }",
+      "",
+      contradictionAnchor,
+    ].join("\n");
+    liveEval = replaceOnce(
+      liveEval,
+      contradictionAnchor,
+      contradictionChecks,
+      "visible contradiction assertions",
+    );
+    writeFileSync(liveEvalPath, liveEval);
+  }
+
+  extendIntegrationChainContracts();
+  console.log(
+    "Applied VOR-049 visible-quality evaluation while preserving the modular Ask Vorta backend.",
+  );
+  process.exit(0);
+}
+
 const fullyApplied =
   backend.includes(backendMarker) &&
   backend.includes(repairMarker) &&

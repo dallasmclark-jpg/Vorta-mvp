@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const integrationPatch = readdirSync("scripts")
   .filter((name) => /^vor-048-\d{2}-.+\.patch$/.test(name))
@@ -9,7 +9,20 @@ const integrationScript = readFileSync(
   "scripts/vor-048-integrate-routing-telemetry-feedback.mjs",
   "utf8",
 );
-const backend = readFileSync("netlify/functions/ask-vorta.mts", "utf8") + integrationPatch;
+const backendPaths = [
+  "netlify/functions/ask-vorta.mts",
+  "netlify/functions/ask-vorta/contracts.mts",
+  "netlify/functions/ask-vorta/phase-runtime.mts",
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "netlify/functions/ask-vorta/decision-answer.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "netlify/functions/ask-vorta/telemetry.mts",
+];
+const backend =
+  backendPaths
+    .filter((path) => existsSync(path))
+    .map((path) => readFileSync(path, "utf8"))
+    .join("\n") + integrationPatch;
 const service = readFileSync("src/screens/AiOperations/vortaAgentService.ts", "utf8") + integrationPatch;
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8") + integrationPatch;
 const migration = readFileSync(

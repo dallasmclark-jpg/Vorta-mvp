@@ -1,8 +1,38 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const path = "netlify/functions/ask-vorta.mts";
 let source = readFileSync(path, "utf8");
 let changed = false;
+
+const modularEntrypoint = 'export { default, config } from "./ask-vorta/runtime.mjs";';
+if (source.includes(modularEntrypoint)) {
+  const contractsPath = "netlify/functions/ask-vorta/contracts.mts";
+  const requestContextPath = "netlify/functions/ask-vorta/request-context.mts";
+  const routePlanningPath = "netlify/functions/ask-vorta/route-planning.mts";
+  for (const modulePath of [contractsPath, requestContextPath, routePlanningPath]) {
+    if (!existsSync(modulePath)) {
+      throw new Error(`VOR-045 modular Ask Vorta source is missing ${modulePath}.`);
+    }
+  }
+
+  const contracts = readFileSync(contractsPath, "utf8");
+  const requestContext = readFileSync(requestContextPath, "utf8");
+  const routePlanning = readFileSync(routePlanningPath, "utf8");
+  const requiredMarkers = [
+    [contracts, "interface PageContext {", contractsPath],
+    [contracts, "pageContext: PageContext;", contractsPath],
+    [requestContext, "function equipmentReferenceFromQuestion(", requestContextPath],
+    [routePlanning, '{ role: "user", content: request.question.trim() },', routePlanningPath],
+  ];
+  for (const [moduleSource, marker, modulePath] of requiredMarkers) {
+    if (!moduleSource.includes(marker)) {
+      throw new Error(`VOR-045 modular Ask Vorta source is missing ${marker} in ${modulePath}.`);
+    }
+  }
+
+  console.log("VOR-045 Ask Vorta request, equipment reference and planner context shapes are already normalised in focused modules.");
+  process.exit(0);
+}
 
 const requestMarker = "interface AskVortaRequest {\n";
 const inlinePageContext = [

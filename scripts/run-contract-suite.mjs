@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,6 +36,7 @@ const contracts = [
   ["VOR-049 decision-ready equipment", "scripts/vor-049-decision-ready-equipment-contracts.mjs"],
   ["VOR-050 live evaluation orchestration", "scripts/vor-050-live-eval-orchestration-contracts.mjs"],
   ["VOR-051 Maintenance Manager demo rehearsal", "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"],
+  ["VOR-052 Ask Vorta backend modularisation", "scripts/vor-052-backend-modularisation-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
@@ -67,6 +69,27 @@ const contracts = [
   ["Repository hygiene", "scripts/repository-hygiene-contracts.mjs"],
 ];
 
+const legacyAskVortaContractLabels = new Set([
+  "VOR-033 Ask Vorta golden suite",
+  "VOR-037 unified Ask Vorta",
+  "VOR-038 Ask Vorta intelligence",
+  "VOR-039 Ask Vorta confidence and latency",
+  "VOR-040 natural Ask Vorta questions",
+  "VOR-043 exact document intelligence",
+  "Equipment people workflow",
+  "Ask Vorta agent",
+]);
+const askVortaEntrypoint = resolve(repositoryRoot, "netlify/functions/ask-vorta.mts");
+const askVortaModuleDirectory = resolve(repositoryRoot, "netlify/functions/ask-vorta");
+const askVortaEntrypointSource = readFileSync(askVortaEntrypoint, "utf8");
+const askVortaLegacyContractSurface = [
+  askVortaEntrypointSource,
+  ...readdirSync(askVortaModuleDirectory)
+    .filter((name) => name.endsWith(".mts"))
+    .sort()
+    .map((name) => readFileSync(resolve(askVortaModuleDirectory, name), "utf8")),
+].join("\n\n");
+
 const filters = process.argv.slice(2).map((value) => value.trim().toLowerCase()).filter(Boolean);
 const selectedContracts = filters.length === 0
   ? contracts
@@ -89,11 +112,22 @@ for (const [label, path] of selectedContracts) {
   const startedAt = Date.now();
   console.log(`\n▶ ${label}`);
 
-  const result = spawnSync(process.execPath, [resolve(repositoryRoot, path)], {
-    cwd: repositoryRoot,
-    env: process.env,
-    stdio: "inherit",
-  });
+  const useLegacyAskVortaSurface = legacyAskVortaContractLabels.has(label);
+  let result;
+  try {
+    if (useLegacyAskVortaSurface) {
+      writeFileSync(askVortaEntrypoint, askVortaLegacyContractSurface);
+    }
+    result = spawnSync(process.execPath, [resolve(repositoryRoot, path)], {
+      cwd: repositoryRoot,
+      env: process.env,
+      stdio: "inherit",
+    });
+  } finally {
+    if (useLegacyAskVortaSurface) {
+      writeFileSync(askVortaEntrypoint, askVortaEntrypointSource);
+    }
+  }
 
   const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
   if (result.status === 0) {

@@ -1,9 +1,13 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 const agent = read("netlify/functions/ask-vorta.mts");
+const authenticatedContextPath = "netlify/functions/ask-vorta/authenticated-context.mts";
+const authenticatedContext = existsSync(resolve(root, authenticatedContextPath))
+  ? read(authenticatedContextPath)
+  : agent;
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const shiftCoverService = read("src/screens/LabourRisk/shiftCoverService.ts");
@@ -50,10 +54,12 @@ for (const tool of requiredTools) {
 }
 
 check(
-  agent.includes('if (!bearer) return jsonResponse({ error: "Authentication is required." }, 401)') &&
-    agent.includes('.from("user_site_access")') &&
-    agent.includes('.eq("site_id", request.siteId)') &&
-    agent.includes('.eq("active", true)'),
+  authenticatedContext.includes('error: "Authentication is required."') &&
+    authenticatedContext.includes("supabase.auth.getUser(bearer)") &&
+    authenticatedContext.includes('.from("user_site_access")') &&
+    authenticatedContext.includes('.eq("user_id", userId)') &&
+    authenticatedContext.includes('.eq("site_id", request.siteId)') &&
+    authenticatedContext.includes('.eq("active", true)'),
   "Ask Vorta must authenticate the caller and verify active access to the requested site.",
 );
 
@@ -253,13 +259,18 @@ check(
   "Ask Vorta must retain an executable, authenticated golden-answer evaluation suite.",
 );
 
+const authenticatedQualityGrants = qualityMigration.match(
+  /grant select, insert, update on public\.ask_vorta_(?:interactions|action_drafts) to authenticated;/g,
+) ?? [];
 check(
   qualityMigration.includes("ask_vorta_interactions") &&
     qualityMigration.includes("ask_vorta_action_drafts") &&
     qualityMigration.includes("enable row level security") &&
     qualityMigration.includes("vorta_rls_has_site_access") &&
-    qualityMigration.includes("grant select, insert, update"),
-  "Ask Vorta telemetry and drafts must remain explicitly granted, RLS protected and site scoped.",
+    qualityMigration.includes("revoke all") &&
+    authenticatedQualityGrants.length === 2 &&
+    !qualityMigration.includes("grant select, insert, update, delete"),
+  "Ask Vorta quality telemetry and approval-only drafts must remain protected by site-aware RLS with least-privilege authenticated grants.",
 );
 
-console.log("Ask Vorta authenticated, Vorta-only, evidence and fallback contracts passed.");
+console.log("Ask Vorta agent contracts passed.");
