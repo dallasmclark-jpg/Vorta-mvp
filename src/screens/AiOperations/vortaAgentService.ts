@@ -1,8 +1,45 @@
 import { supabase } from "../../lib/supabaseClient";
+import type { PreparedAskVortaImage } from "./askVortaImageClient";
 
 export interface VortaAgentHistoryItem {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface VortaConversationContextOption {
+  position: number;
+  type: "equipment" | "ranked_action" | "cover" | "spare" | "document" | "work" | "skill";
+  label: string;
+  equipmentQuery?: string;
+  equipmentId?: string;
+  reference?: string;
+  value?: string;
+}
+
+export interface VortaConversationContext {
+  version: 1;
+  subject: string;
+  intent: string;
+  activeEquipment: {
+    query: string;
+    id?: string;
+    code?: string;
+    name?: string;
+  } | null;
+  area: string | null;
+  shift: {
+    team?: string;
+    type?: string;
+    date?: string;
+  } | null;
+  dateRange: {
+    startDate: string;
+    endDate: string;
+    timezone: string;
+  } | null;
+  orderedOptions: VortaConversationContextOption[];
+  selectedOption: VortaConversationContextOption | null;
+  updatedAt: string | null;
 }
 
 export interface VortaAgentFinding {
@@ -54,7 +91,17 @@ export interface VortaAgentAnswer {
   toolsUsed: string[];
   evidenceLinks: VortaAgentEvidenceLink[];
   evidenceGeneratedAt?: string;
+  conversationContext?: VortaConversationContext;
 }
+
+export type AskVortaFeedbackCategory =
+  | "wrong_route"
+  | "missing_evidence"
+  | "too_slow"
+  | "unclear"
+  | "incorrect"
+  | "too_much_detail"
+  | "other";
 
 export interface VortaAgentDecisionSummaryItem {
   label: string;
@@ -66,6 +113,8 @@ interface AskVortaAgentInput {
   role: string;
   siteId: string;
   history: VortaAgentHistoryItem[];
+  conversationContext?: VortaConversationContext;
+  image?: PreparedAskVortaImage;
   pagePath: string;
 }
 
@@ -167,6 +216,35 @@ function isEvidenceLinks(value: unknown): value is VortaAgentEvidenceLink[] {
   );
 }
 
+function isConversationContextOption(value: unknown): value is VortaConversationContextOption {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.position) &&
+    Number(value.position) >= 1 &&
+    Number(value.position) <= 8 &&
+    typeof value.type === "string" &&
+    typeof value.label === "string" &&
+    Boolean(value.label.trim())
+  );
+}
+
+function isConversationContext(value: unknown): value is VortaConversationContext {
+  return (
+    isRecord(value) &&
+    value.version === 1 &&
+    typeof value.subject === "string" &&
+    typeof value.intent === "string" &&
+    (value.activeEquipment === null || isRecord(value.activeEquipment)) &&
+    (value.area === null || typeof value.area === "string") &&
+    (value.shift === null || isRecord(value.shift)) &&
+    (value.dateRange === null || isRecord(value.dateRange)) &&
+    Array.isArray(value.orderedOptions) &&
+    value.orderedOptions.length <= 8 &&
+    value.orderedOptions.every(isConversationContextOption) &&
+    (value.selectedOption === null || isConversationContextOption(value.selectedOption))
+  );
+}
+
 function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   if (!isRecord(value)) {
     throw new Error("Ask Vorta returned an invalid response.");
@@ -220,13 +298,19 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
       Number.isFinite(new Date(record.evidenceGeneratedAt).getTime())
         ? record.evidenceGeneratedAt
         : undefined,
+    conversationContext: isConversationContext(record.conversationContext)
+      ? record.conversationContext
+      : undefined,
   };
 }
 
 export async function submitAskVortaFeedback(
   responseId: string,
   feedback: "helpful" | "not_helpful",
-  reason?: string,
+  options: {
+    category?: AskVortaFeedbackCategory;
+    reason?: string;
+  } = {},
 ): Promise<void> {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user.id) {
@@ -236,7 +320,12 @@ export async function submitAskVortaFeedback(
     .from("ask_vorta_interactions")
     .update({
       feedback,
-      feedback_reason: reason?.trim().slice(0, 500) || null,
+      feedback_category:
+        feedback === "not_helpful" ? options.category ?? null : null,
+      feedback_reason:
+        feedback === "not_helpful"
+          ? options.reason?.trim().slice(0, 500) || null
+          : null,
       feedback_at: new Date().toISOString(),
     })
     .eq("id", responseId)
@@ -253,28 +342,9 @@ export async function createAskVortaActionDraft({
   siteId: string;
   action: VortaAgentAction;
 }): Promise<string> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id;
-  if (!userId) throw new Error("Your Vorta session has expired.");
-  const { data, error } = await supabase
-    .from("ask_vorta_action_drafts")
-    .insert({
-      interaction_id: responseId || null,
-      site_id: siteId,
-      user_id: userId,
-      priority: action.priority,
-      action: action.action,
-      owner: action.owner,
-      expected_impact: action.expectedImpact,
-      verification: action.verification,
-      status: "draft",
-    })
-    .select("id")
-    .single();
-  if (error || !data?.id) {
-    throw new Error("Vorta could not prepare this action draft.");
-  }
-  return String(data.id);
+  throw new Error(
+    "Controlled Ask Vorta actions require the review dialog and explicit server confirmation.",
+  );
 }
 
 export async function markAskVortaFallback(responseId: string): Promise<void> {
@@ -296,6 +366,8 @@ export async function askVortaAgent({
   role,
   siteId,
   history,
+  conversationContext,
+  image,
   pagePath,
 }: AskVortaAgentInput): Promise<VortaAgentAnswer> {
   const {
@@ -321,6 +393,14 @@ export async function askVortaAgent({
         role,
         siteId,
         history: history.slice(-8),
+        conversationContext,
+        image: image
+          ? {
+              name: image.name,
+              mimeType: image.mimeType,
+              dataUrl: image.dataUrl,
+            }
+          : undefined,
         pageContext: {
           path: pagePath,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London",

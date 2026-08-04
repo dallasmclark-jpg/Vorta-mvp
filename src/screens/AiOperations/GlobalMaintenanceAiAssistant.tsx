@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ClipboardPlus,
   ExternalLink,
+  ImagePlus,
   Loader2,
   Maximize2,
   Mic,
@@ -49,16 +50,22 @@ import {
 import {
   askVortaAgent,
   AskVortaAgentError,
-  createAskVortaActionDraft,
   markAskVortaFallback,
   submitAskVortaFeedback,
+  type AskVortaFeedbackCategory,
   type VortaAgentAction,
   type VortaAgentCoverOption,
   type VortaAgentDecisionSummaryItem,
   type VortaAgentEvidenceLink,
   type VortaAgentFinding,
   type VortaAgentHistoryItem,
+  type VortaConversationContext,
 } from "./vortaAgentService";
+import { openAskVortaActionReviewDialog } from "./askVortaActionReviewLauncher";
+import {
+  prepareAskVortaImage,
+  type PreparedAskVortaImage,
+} from "./askVortaImageClient";
 import {
   AskVortaWorkspace,
   type AskVortaWorkspaceAnswer,
@@ -192,6 +199,7 @@ interface GlobalAiAnswer {
   missingData?: string[];
   evidenceLinks?: VortaAgentEvidenceLink[];
   evidenceGeneratedAt?: string;
+  conversationContext?: VortaConversationContext;
 }
 
 interface GlobalAiMessage {
@@ -202,6 +210,7 @@ interface GlobalAiMessage {
   answer?: GlobalAiAnswer;
   error?: string;
   retryQuestion?: string;
+  imageName?: string;
 }
 
 function conversationHistory(
@@ -231,6 +240,18 @@ function conversationHistory(
       return [];
     })
     .slice(-8);
+}
+
+function latestConversationContext(
+  messages: GlobalAiMessage[],
+): VortaConversationContext | undefined {
+  return [...messages]
+    .reverse()
+    .find(
+      (message) =>
+        message.role === "assistant" &&
+        message.answer?.conversationContext,
+    )?.answer?.conversationContext;
 }
 
 function agentRole(role: VortaAiRole): string {
@@ -2006,15 +2027,28 @@ function AnswerBlock({
     : null;
   const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | null>(null);
   const [feedbackPending, setFeedbackPending] = useState(false);
+  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<AskVortaFeedbackCategory | "">("");
+  const [feedbackReason, setFeedbackReason] = useState("");
   const [draftedActions, setDraftedActions] = useState<Set<number>>(() => new Set());
   const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
 
-  const recordFeedback = async (value: "helpful" | "not_helpful"): Promise<void> => {
+  const recordFeedback = async (
+    value: "helpful" | "not_helpful",
+    options: {
+      category?: AskVortaFeedbackCategory;
+      reason?: string;
+    } = {},
+  ): Promise<void> => {
     if (!answer.responseId || feedbackPending) return;
     setFeedbackPending(true);
+    setWorkflowMessage(null);
     try {
-      await submitAskVortaFeedback(answer.responseId, value);
+      await submitAskVortaFeedback(answer.responseId, value, options);
       setFeedback(value);
+      setFeedbackPromptOpen(false);
+      setFeedbackCategory("");
+      setFeedbackReason("");
     } catch (error) {
       setWorkflowMessage(error instanceof Error ? error.message : "Feedback could not be saved.");
     } finally {
@@ -2022,22 +2056,26 @@ function AnswerBlock({
     }
   };
 
-  const prepareDraft = async (item: VortaAgentAction, index: number): Promise<void> => {
-    if (!siteContext?.siteId || draftedActions.has(index)) return;
+  const prepareDraft = async (
+    item: VortaAgentAction,
+    index: number,
+  ): Promise<void> => {
+    if (!siteContext?.siteId || !answer.responseId || draftedActions.has(index)) return;
     setWorkflowMessage(null);
-    try {
-      await createAskVortaActionDraft({
-        responseId: answer.responseId,
-        siteId: siteContext.siteId,
-        action: item,
-      });
-      setDraftedActions((current) => new Set(current).add(index));
-      setWorkflowMessage("Action draft prepared for review. No source record was changed.");
-    } catch (error) {
-      setWorkflowMessage(
-        error instanceof Error ? error.message : "The action draft could not be prepared.",
-      );
-    }
+    setDraftedActions((current) => {
+      const next = new Set(current);
+      next.delete(index);
+      return next;
+    });
+    openAskVortaActionReviewDialog({
+      siteId: siteContext.siteId,
+      responseId: answer.responseId,
+      action: item,
+      evidence: answer.evidence,
+      sources: answer.sources,
+    });
+    setWorkflowMessage("Review the exact Vorta shift-handover action before confirmation.");
+    // VOR-047 controlled handover review: SAP and SAP-equivalent records remain read-only.
   };
 
   return (
@@ -2325,7 +2363,7 @@ function AnswerBlock({
       )}
 
       {answer.evidenceLinks && answer.evidenceLinks.length > 0 && (
-        <div>
+        <section data-vorta-ai-evidence-links="true">
           <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
             Open in Vorta
           </h4>
@@ -2342,7 +2380,7 @@ function AnswerBlock({
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {answer.sources.length > 0 && (
@@ -2402,39 +2440,121 @@ function AnswerBlock({
         </span>
       </div>
       {answer.responseId && (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-slate-500">
-            {feedback ? "Thanks—this improves Ask Vorta." : "Was this decision pack useful?"}
-          </span>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              aria-label="Mark this Ask Vorta response helpful"
-              disabled={feedbackPending}
-              onClick={() => void recordFeedback("helpful")}
-              className={`rounded-md border p-2 transition-colors ${
-                feedback === "helpful"
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                  : "border-gray-700 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
-              }`}
-            >
-              <ThumbsUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Mark this Ask Vorta response not helpful"
-              disabled={feedbackPending}
-              onClick={() => void recordFeedback("not_helpful")}
-              className={`rounded-md border p-2 transition-colors ${
-                feedback === "not_helpful"
-                  ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
-                  : "border-gray-700 text-slate-400 hover:border-amber-500/30 hover:text-amber-300"
-              }`}
-            >
-              <ThumbsDown className="h-3.5 w-3.5" />
-            </button>
+        <section
+          data-vorta-ai-feedback="true"
+          className="space-y-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">
+              {feedback ? "Thanks—this improves Ask Vorta." : "Was this decision pack useful?"}
+            </span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                aria-label="Mark this Ask Vorta response helpful"
+                disabled={feedbackPending}
+                onClick={() => void recordFeedback("helpful")}
+                className={`rounded-md border p-2 transition-colors ${
+                  feedback === "helpful"
+                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                    : "border-gray-700 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
+                }`}
+              >
+                <ThumbsUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Mark this Ask Vorta response not helpful"
+                aria-expanded={feedbackPromptOpen}
+                disabled={feedbackPending}
+                onClick={() => setFeedbackPromptOpen((current) => !current)}
+                className={`rounded-md border p-2 transition-colors ${
+                  feedback === "not_helpful"
+                    ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                    : "border-gray-700 text-slate-400 hover:border-amber-500/30 hover:text-amber-300"
+                }`}
+              >
+                <ThumbsDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
+
+          {feedbackPromptOpen && feedback !== "not_helpful" && (
+            <div
+              role="group"
+              aria-labelledby={`ask-vorta-feedback-${answer.responseId}`}
+              className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3"
+            >
+              <p
+                id={`ask-vorta-feedback-${answer.responseId}`}
+                className="text-xs font-semibold text-amber-100"
+              >
+                What was not useful? Choose a reason or add a brief detail to help improve the response.
+              </p>
+              <label className="block space-y-1 text-xs text-slate-300">
+                <span>Reason</span>
+                <select
+                  value={feedbackCategory}
+                  onChange={(event) =>
+                    setFeedbackCategory(event.target.value as AskVortaFeedbackCategory | "")
+                  }
+                  className="min-h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-sm text-slate-100"
+                >
+                  <option value="">No category selected</option>
+                  <option value="wrong_route">Answered the wrong question</option>
+                  <option value="missing_evidence">Missing important evidence</option>
+                  <option value="too_slow">Took too long</option>
+                  <option value="unclear">Unclear or difficult to scan</option>
+                  <option value="incorrect">Information looked incorrect</option>
+                  <option value="too_much_detail">Too much detail</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className="block space-y-1 text-xs text-slate-300">
+                <span>Brief detail</span>
+                <textarea
+                  value={feedbackReason}
+                  maxLength={500}
+                  rows={2}
+                  onChange={(event) => setFeedbackReason(event.target.value)}
+                  placeholder="Optional detail"
+                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-sm text-slate-100"
+                />
+              </label>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={feedbackPending}
+                  onClick={() => setFeedbackPromptOpen(false)}
+                  className="min-h-10 rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={feedbackPending}
+                  onClick={() => void recordFeedback("not_helpful")}
+                  className="min-h-10 rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-500/30"
+                >
+                  Skip reason
+                </button>
+                <button
+                  type="button"
+                  disabled={feedbackPending}
+                  onClick={() =>
+                    void recordFeedback("not_helpful", {
+                      category: feedbackCategory || undefined,
+                      reason: feedbackReason,
+                    })
+                  }
+                  className="min-h-10 rounded-md bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-500/30"
+                >
+                  Submit feedback
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
@@ -2462,6 +2582,9 @@ export function GlobalMaintenanceAiAssistant({
   const [minimised, setMinimised] = useState(false);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [pendingImage, setPendingImage] = useState<PreparedAskVortaImage | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const compactImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const speechRecognitionRef =
     useRef<VortaSpeechRecognition | null>(
@@ -2851,10 +2974,38 @@ export function GlobalMaintenanceAiAssistant({
       }
     };
 
+
+  const selectImageFile = async (
+    file: File | null | undefined,
+  ): Promise<void> => {
+    if (!file) return;
+    setImageError(null);
+    try {
+      const prepared = await prepareAskVortaImage(file);
+      setPendingImage(prepared);
+    } catch (error) {
+      setPendingImage(null);
+      setImageError(
+        error instanceof Error
+          ? error.message
+          : "The photo could not be prepared for Ask Vorta.",
+      );
+    }
+  };
+
+  const removePendingImage = (): void => {
+    setPendingImage(null);
+    setImageError(null);
+    if (compactImageInputRef.current) {
+      compactImageInputRef.current.value = "";
+    }
+  };
+
   const runQuestion = async (
     question: string,
     assistantId: string,
     history: VortaAgentHistoryItem[],
+    image?: PreparedAskVortaImage,
   ): Promise<void> => {
     try {
       let agentFailureMessage: string | null = null;
@@ -2867,6 +3018,8 @@ export function GlobalMaintenanceAiAssistant({
             role: agentRole(roleProfile.role),
             siteId: siteContext.siteId,
             history,
+            conversationContext: latestConversationContext(messages),
+            image,
             pagePath: window.location.pathname,
           });
 
@@ -2885,6 +3038,7 @@ export function GlobalMaintenanceAiAssistant({
             confidence: agentAnswer.confidence,
             evidenceLinks: agentAnswer.evidenceLinks,
             evidenceGeneratedAt: agentAnswer.evidenceGeneratedAt,
+            conversationContext: agentAnswer.conversationContext,
             roleLabel: roleProfile.label,
             responseBadge: roleProfile.responseBadge,
             intentLabel: agentAnswer.intentLabel,
@@ -2918,6 +3072,11 @@ export function GlobalMaintenanceAiAssistant({
             "Ask Vorta agent unavailable; using verified deterministic fallback:",
             agentFailureMessage,
           );
+          if (image) {
+            throw new Error(
+              `${agentFailureMessage} Reattach the photo before retrying; Vorta does not retain image uploads.`,
+            );
+          }
         }
       }
 
@@ -3117,7 +3276,7 @@ export function GlobalMaintenanceAiAssistant({
                   error:
                     displayError,
                   retryQuestion:
-                    question,
+                    image ? undefined : question,
                 }
               : message,
         ),
@@ -3128,40 +3287,30 @@ export function GlobalMaintenanceAiAssistant({
   const submitQuestion = (
     question: string,
   ): void => {
-    const trimmed =
-      question.trim();
-
-    if (!trimmed) {
-      return;
-    }
-
-    if (
-      !agentContextReady
-    ) {
-      return;
-    }
-
-    stopSpeechRecognition(
-      true,
+    const trimmed = question.trim();
+    const image = pendingImage;
+    const effectiveQuestion = trimmed || (
+      image
+        ? "Identify the visible equipment or fault and give the safest evidence-backed next checks."
+        : ""
     );
 
+    if (!effectiveQuestion || !agentContextReady) return;
+
+    stopSpeechRecognition(true);
+
     const requestId =
-      `${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`;
-
-    const userId =
-      `global-user-${requestId}`;
-
-    const assistantId =
-      `global-assistant-${requestId}`;
+      `1785872025758-${Math.random().toString(36).slice(2, 8)}`;
+    const userId = `global-user-${requestId}`;
+    const assistantId = `global-assistant-${requestId}`;
 
     setMessages((previous) => [
       ...previous,
       {
         id: userId,
         role: "user",
-        text: trimmed,
+        text: effectiveQuestion,
+        imageName: image?.name,
       },
       {
         id: assistantId,
@@ -3171,11 +3320,17 @@ export function GlobalMaintenanceAiAssistant({
     ]);
 
     setInput("");
+    setPendingImage(null);
+    setImageError(null);
+    if (compactImageInputRef.current) {
+      compactImageInputRef.current.value = "";
+    }
 
     void runQuestion(
-      trimmed,
+      effectiveQuestion,
       assistantId,
       conversationHistory(messages),
+      image ?? undefined,
     );
   };
 
@@ -3260,6 +3415,7 @@ export function GlobalMaintenanceAiAssistant({
   const resetWorkspaceConversation = (): void => {
     stopSpeechRecognition(true);
     setInput("");
+    removePendingImage();
     setMessages([
       {
         id: `global-mm-intro-${Date.now()}`,
@@ -3304,6 +3460,10 @@ export function GlobalMaintenanceAiAssistant({
         speechSupported={speechSupported}
         listening={listening}
         speechError={speechError}
+        pendingImage={pendingImage}
+        imageError={imageError}
+        onSelectImage={(file) => void selectImageFile(file)}
+        onRemoveImage={removePendingImage}
         promptPlaceholder={roleProfile.promptPlaceholder}
         onInputChange={setInput}
         onSubmit={submitQuestion}
@@ -3572,9 +3732,16 @@ export function GlobalMaintenanceAiAssistant({
                       }
                     />
                   ) : (
-                    <p className="text-xs leading-relaxed">
-                      {message.text}
-                    </p>
+                    <div className="space-y-1.5">
+                      {message.imageName ? (
+                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">
+                          Photo attached: {message.imageName}
+                        </p>
+                      ) : null}
+                      <p className="text-xs leading-relaxed">
+                        {message.text}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -3585,10 +3752,60 @@ export function GlobalMaintenanceAiAssistant({
             data-vorta-global-ai-composer="true"
             className="border-t border-gray-800 px-4 py-3 max-md:bg-[#0b0e14] max-md:px-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           >
+            <input
+              ref={compactImageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                void selectImageFile(file);
+              }}
+            />
+            {pendingImage ? (
+              <div className="mb-2 hidden items-center gap-3 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 md:flex">
+                <img
+                  src={pendingImage.dataUrl}
+                  alt="Selected maintenance evidence"
+                  className="h-10 w-10 rounded-md object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-200">{pendingImage.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {pendingImage.width} × {pendingImage.height} · Not saved to Vorta records or Recents
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removePendingImage}
+                  className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                  aria-label="Remove attached photo"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+            {imageError ? (
+              <p className="mb-2 hidden text-xs text-amber-300 md:block" role="alert">{imageError}</p>
+            ) : null}
             <div
               data-vorta-global-ai-composer-row="true"
               className="flex gap-2"
             >
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => compactImageInputRef.current?.click()}
+                disabled={!agentContextReady}
+                aria-label="Attach equipment or fault photo"
+                title="Attach one JPEG, PNG or WebP photo"
+                className="hidden h-8 w-8 shrink-0 border-gray-700 bg-transparent p-0 text-slate-400 hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-300 md:inline-flex"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -3670,7 +3887,7 @@ export function GlobalMaintenanceAiAssistant({
                   )
                 }
                 disabled={
-                  !input.trim() ||
+                  (!input.trim() && !pendingImage) ||
                   !agentContextReady
                 }
                 data-vorta-global-ai-send="true"

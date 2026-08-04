@@ -35,11 +35,11 @@ assert.equal(
 
 assert.match(
   packageJson.scripts.predev,
-  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs$/,
+  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs && node scripts\/vor-051-integrate-evidence-links\.mjs$/,
 );
 assert.match(
   packageJson.scripts["build:metadata"],
-  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs && node scripts\/write-build-metadata\.mjs$/,
+  /vor-048-integrate-routing-telemetry-feedback\.mjs && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs && node scripts\/vor-051-integrate-evidence-links\.mjs && node scripts\/write-build-metadata\.mjs$/,
 );
 assert.equal(
   packageJson.scripts["eval:ask-vorta:vor049"],
