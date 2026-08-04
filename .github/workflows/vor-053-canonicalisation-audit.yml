@@ -81,5 +81,6 @@ jobs:
         with:
           name: vor-053-canonicalisation-audit
           path: .vor-053
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
