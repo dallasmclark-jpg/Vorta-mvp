@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+const scriptsDirectory = resolve(repositoryRoot, "scripts");
 const backendPath = resolve(repositoryRoot, "netlify/functions/ask-vorta.mts");
 const assistantPath = resolve(
   repositoryRoot,
@@ -15,6 +16,22 @@ const sitePriorityPageExclusion =
   '!/\\bshift-cover\\b/.test(request.pageContext.path)';
 const deterministicPageContextMarker =
   "    (shiftCoverPageContext ||\n      (asksForCoverDecision &&";
+
+function applyPatches(patchNames) {
+  for (const patchName of patchNames) {
+    const result = spawnSync(
+      "git",
+      ["apply", "--whitespace=nowarn", resolve(scriptsDirectory, patchName)],
+      { cwd: repositoryRoot, encoding: "utf8" },
+    );
+    if (result.status !== 0) {
+      const detail = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+      throw new Error(
+        `VOR-048 integration patch ${patchName} failed.${detail ? `\n${detail}` : ""}`,
+      );
+    }
+  }
+}
 
 function applyFeedbackWrapper(source) {
   if (source.includes(feedbackMarker) && source.includes("<section")) {
@@ -74,12 +91,24 @@ if (backendSource.includes(modularEntrypoint)) {
     }
   }
 
-  const feedback = applyFeedbackWrapper(assistantSource);
+  if (!assistantSource.includes(feedbackMarker)) {
+    const frontendPatchNames = readdirSync(scriptsDirectory)
+      .filter((name) => /^vor-048-(?:06|07|08)-.+\.patch$/.test(name))
+      .sort();
+    if (frontendPatchNames.length !== 3) {
+      throw new Error(
+        `VOR-048 expected three frontend patches (06-08), found ${frontendPatchNames.length}.`,
+      );
+    }
+    applyPatches(frontendPatchNames);
+  }
+
+  const feedback = applyFeedbackWrapper(readFileSync(assistantPath, "utf8"));
   if (feedback.changed) writeFileSync(assistantPath, feedback.source);
   console.log(
-    feedback.changed
-      ? "Applied VOR-048 feedback integration while preserving the modular Ask Vorta backend."
-      : "VOR-048 routing, telemetry and feedback integration is already applied in focused modules.",
+    assistantSource.includes(feedbackMarker) && !feedback.changed
+      ? "VOR-048 routing, telemetry and feedback integration is already applied in focused modules."
+      : "Applied VOR-048 service, UI and feedback integration while preserving the modular Ask Vorta backend.",
   );
   process.exit(0);
 }
@@ -100,27 +129,13 @@ if (backendSource.includes(marker)) {
   );
 }
 
-const scriptsDirectory = resolve(repositoryRoot, "scripts");
 const patchNames = readdirSync(scriptsDirectory)
   .filter((name) => /^vor-048-\d{2}-.+\.patch$/.test(name))
   .sort();
 if (patchNames.length === 0) {
   throw new Error("VOR-048 integration patches were not found.");
 }
-
-for (const patchName of patchNames) {
-  const result = spawnSync(
-    "git",
-    ["apply", "--whitespace=nowarn", resolve(scriptsDirectory, patchName)],
-    { cwd: repositoryRoot, encoding: "utf8" },
-  );
-  if (result.status !== 0) {
-    const detail = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-    throw new Error(
-      `VOR-048 integration patch ${patchName} failed.${detail ? `\n${detail}` : ""}`,
-    );
-  }
-}
+applyPatches(patchNames);
 
 let transformedBackend = readFileSync(backendPath, "utf8");
 const sitePriorityIntent = '      "site_threat_prioritization",';
