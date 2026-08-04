@@ -129,6 +129,31 @@ assert.match(
   /run: sleep 310/,
   "The shared evaluation account must receive a full production rate-window reset",
 );
+assert.match(
+  workflow,
+  /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/,
+  "The dedicated gate must wait out a collided production rate window",
+);
+assert.match(
+  workflow,
+  /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/,
+  "The dedicated gate must retry the same blocked scenario without silently skipping it",
+);
+assert.match(
+  liveEval,
+  /while \(\s*requestResult\.response\?\.status === 429 &&\s*rateLimitRetries < rateLimitMaxRetries/,
+  "The evaluator must pause and retry a rate-limited scenario",
+);
+assert.match(
+  liveEval,
+  /retryDelayForRateLimit/,
+  "The evaluator must honour the configured or server-provided retry window",
+);
+assert.match(
+  liveEval,
+  /rateLimitRetries,/,
+  "Retry evidence must be included in the evaluation result",
+);
 
 for (const marker of [
   "function visibleDecisionText(answer)",
