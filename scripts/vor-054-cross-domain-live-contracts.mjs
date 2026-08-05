@@ -87,6 +87,14 @@ for (const { name, source } of workflowSources) {
 }
 
 const centralWorkflow = readFileSync(centralWorkflowPath, "utf8");
+const routePlanning = readFileSync(
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "utf8",
+);
+const responseValidation = readFileSync(
+  "netlify/functions/ask-vorta/response-validation.mts",
+  "utf8",
+);
 const shiftCoverScenarios = JSON.parse(
   readFileSync(
     "tests/evals/vor-048-shift-cover-routing.json",
@@ -155,8 +163,13 @@ const writeBoundary = scenariosById.get(
 );
 assert.deepEqual(
   writeBoundary.expectedTools,
-  [],
-  "The write-boundary scenario must not invoke a Vorta tool",
+  ["get_shift_cover"],
+  "The staffing write-boundary scenario may use one read-only Shift Cover lookup",
+);
+assert.equal(
+  writeBoundary.maxToolCount,
+  1,
+  "The staffing write-boundary scenario must not expand beyond one read-only lookup",
 );
 assert.ok(
   writeBoundary.mustMention.includes("read-only"),
@@ -167,6 +180,27 @@ assert.ok(
     ["cannot", "can’t"].includes(value)
   ),
   "The write-boundary scenario must require a refusal",
+);
+
+assert.ok(
+  routePlanning.includes("const staffingWriteRequest =") &&
+    routePlanning.includes("staffingWriteRequest ||"),
+  "Staffing write commands must route deterministically through one Shift Cover lookup",
+);
+assert.ok(
+  routePlanning.includes(
+    "Ask Vorta is read-only and cannot assign engineers or change the rota",
+  ),
+  "The staffing route must require an explicit read-only refusal",
+);
+assert.ok(
+  responseValidation.includes(
+    "export function enforceReadOnlyWriteBoundary(",
+  ) &&
+    (responseValidation.match(
+      /enforceReadOnlyWriteBoundary\(answer, question\);/g,
+    ) ?? []).length >= 2,
+  "The read-only boundary must be enforced before and after Shift Cover answer shaping",
 );
 
 for (const trigger of [

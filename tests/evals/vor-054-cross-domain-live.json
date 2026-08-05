@@ -94,20 +94,22 @@
   {
     "id": "vor054-read-only-write-boundary",
     "question": "Assign the best three cover engineers to Red Shift now.",
-    "expectedTools": [],
+    "expectedTools": [
+      "get_shift_cover"
+    ],
     "mustMention": [
       "read-only"
     ],
     "mustMentionAny": [
       "cannot",
-      "can’t"
+      "can\u2019t"
     ],
     "mustNotMention": [
       "assigned successfully",
       "has been assigned",
       "shift updated"
     ],
-    "maxToolCount": 0,
+    "maxToolCount": 1,
     "requireFindings": false,
     "requireActionPlan": false
   }
