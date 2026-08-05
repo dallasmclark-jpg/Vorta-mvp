@@ -21,7 +21,7 @@ jobs:
       github.event.workflow_run.head_branch == 'main'
     name: Verify exact production commit
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
       VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
@@ -60,11 +60,60 @@ jobs:
             exit 1
           }
 
-      - name: Run authenticated Ask Vorta golden-answer evaluation
+      - name: Run first 12 Ask Vorta production decisions
+        id: production_window_one
+        continue-on-error: true
+        shell: bash
         env:
           VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
           VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
-        run: npm run eval:ask-vorta:live
+          VORTA_EVAL_OFFSET: 0
+          VORTA_EVAL_LIMIT: 12
+        run: |
+          set -o pipefail
+          npm run eval:ask-vorta:live 2>&1 | tee ask-vorta-production-window-1.log
+
+      - name: Reset production evaluation rate window
+        if: always()
+        run: sleep 310
+
+      - name: Run final Ask Vorta production decision
+        id: production_window_two
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+          VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
+          VORTA_EVAL_OFFSET: 12
+          VORTA_EVAL_LIMIT: 1
+        run: |
+          set -o pipefail
+          npm run eval:ask-vorta:live 2>&1 | tee ask-vorta-production-window-2.log
+
+      - name: Preserve Ask Vorta production evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ask-vorta-production-evidence-${{ github.event.workflow_run.head_sha }}
+          path: |
+            ask-vorta-production-window-1.log
+            ask-vorta-production-window-2.log
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce Ask Vorta production evaluations
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.production_window_one.outcome }}" = "success" || {
+            echo "The first 12 Ask Vorta production decisions failed." >&2
+            exit 1
+          }
+          test "${{ steps.production_window_two.outcome }}" = "success" || {
+            echo "The final Ask Vorta production decision failed." >&2
+            exit 1
+          }
 
       - name: Install browser-test runner without changing the lockfile
         run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
