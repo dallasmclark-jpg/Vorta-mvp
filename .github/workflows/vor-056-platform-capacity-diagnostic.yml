@@ -1,0 +1,41 @@
+name: VOR-056 Netlify capacity diagnostic
+
+on:
+  push:
+    branches:
+      - agent/vor-056-backlog-action-plan
+    paths:
+      - .github/workflows/vor-056-platform-capacity-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production and preview before application logic
+        shell: bash
+        run: |
+          set -uo pipefail
+          for url in \
+            "https://vorta-app.netlify.app/api/ask-vorta" \
+            "https://deploy-preview-227--vorta-app.netlify.app/api/ask-vorta"
+          do
+            echo "=== $url ==="
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            status="$(curl --silent --show-error --location \
+              --request GET \
+              --dump-header "$headers" \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              "$url" || true)"
+            echo "status=$status"
+            echo "headers:"
+            sed -n '1,80p' "$headers"
+            echo "body:"
+            sed -n '1,120p' "$body"
+            rm -f "$headers" "$body"
+          done
