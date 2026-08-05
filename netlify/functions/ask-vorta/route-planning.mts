@@ -11,6 +11,85 @@ import { PLANNER_MODEL, PLANNER_TIMEOUT_MS, QUESTION_PLAN_SCHEMA, TOOLS } from "
 import { withPhaseTimeout } from "./phase-runtime.mjs";
 import { extractEquipmentReference, textValues } from "./utilities.mjs";
 
+function parseEnglishDateRange(
+  question: string,
+): { startDate: string; endDate: string } | null {
+  const months: Record<string, number> = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12,
+  };
+  const monthPattern =
+    "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+  const normalized = question
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/[,–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const toIsoDate = (
+    dayText: string,
+    monthText: string,
+    yearText: string,
+  ): string | null => {
+    const day = Number(dayText);
+    const month = months[monthText.slice(0, 3)];
+    const year = Number(yearText);
+    if (!month || !Number.isInteger(day) || !Number.isInteger(year)) return null;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return date.toISOString().slice(0, 10);
+  };
+
+  const rangeMatch = normalized.match(
+    new RegExp(
+      `\\b(?:from\\s+|between\\s+)(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})(?:\\s+(\\d{4}))?\\s+(?:to|and)\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})(?:\\s+(\\d{4}))?\\b`,
+      "i",
+    ),
+  );
+  if (rangeMatch) {
+    const sharedYear = rangeMatch[6] || rangeMatch[3];
+    if (!sharedYear) return null;
+    const startDate = toIsoDate(
+      rangeMatch[1],
+      rangeMatch[2],
+      rangeMatch[3] || sharedYear,
+    );
+    const endDate = toIsoDate(
+      rangeMatch[4],
+      rangeMatch[5],
+      rangeMatch[6] || sharedYear,
+    );
+    if (!startDate || !endDate || startDate > endDate) return null;
+    return { startDate, endDate };
+  }
+
+  const singleMatch = normalized.match(
+    new RegExp(
+      `\\b(?:on\\s+|for\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(\\d{4})\\b`,
+      "i",
+    ),
+  );
+  if (!singleMatch) return null;
+  const date = toIsoDate(singleMatch[1], singleMatch[2], singleMatch[3]);
+  return date ? { startDate: date, endDate: date } : null;
+}
+
 export function deterministicQuestionPlan(
   request: AskVortaRequest,
 ): JsonRecord | null {
@@ -26,6 +105,13 @@ export function deterministicQuestionPlan(
     .replace(/\bcalabrations?\b/g, "calibrations")
     .replace(/\bvacum\b/g, "vacuum")
     .replace(/\bwhats\b/g, "what is");
+
+  const explicitCoverRange = parseEnglishDateRange(request.question);
+  const absoluteWorkforceQuestion =
+    explicitCoverRange !== null &&
+    /\b(?:who(?:'s| is)? off|holiday|absence|leave|training|available|availability|cover|coverage|rest conflict|fatigue|rota|engineers?|team|shift)\b/.test(
+      question,
+    );
 
   const contextText = [...request.history.map((item) => item.content), request.question].join(" ");
   const explicitEquipment = extractEquipmentReference(request.question);
@@ -95,7 +181,7 @@ export function deterministicQuestionPlan(
     followUpLimit: options.followUpLimit ?? 1,
   });
 
-  if (equipmentQuery) {
+  if (equipmentQuery && !absoluteWorkforceQuestion) {
     const actionRequested = /\b(?:what (?:do|should)|do first|fix(?:ing|ed)?|repair(?:ing|ed)?|stopping|block(?:ing|ed)?|preventing|let .* run|next shift|can we|qualified|diagnos(?:e|is)|before acting|safest|next action|release(?:d)?|authori[sz]e|risk reduction|required action|must be verified|verify|verification|confirm(?:ed|ing)?|after repair|evidence (?:is )?required|required evidence|intervention|return(?:ing)?|calibrat|checked next|repeats?|what caused|which reading|at risk|instrument fault|permanent correction)\b/.test(
       question,
     );
@@ -148,15 +234,17 @@ export function deterministicQuestionPlan(
       endDate: end.toISOString().slice(0, 10),
     };
   };
-  const requestedCoverRange = nextWeek
-    ? nextWeekRange()
-    : thisWeek
-      ? thisWeekRange()
-      : { startDate: coverDate ?? today, endDate: coverDate ?? today };
+  const requestedCoverRange =
+    explicitCoverRange ??
+    (nextWeek
+      ? nextWeekRange()
+      : thisWeek
+        ? thisWeekRange()
+        : { startDate: coverDate ?? today, endDate: coverDate ?? today });
   const planAndCover =
     /\b(?:pm|calibration|maintenance plan|planned work|workload|jobs?)\b/.test(question) &&
     /\b(?:cover|coverage|people|available|availability|rota|complete|achievable|slip)\b/.test(question);
-  if (planAndCover && (coverDate || nextWeek || thisWeek)) {
+  if (planAndCover && (explicitCoverRange || coverDate || nextWeek || thisWeek)) {
     return fastPlan(
       "mixed",
       "maintenance_plan_cover_feasibility",
@@ -173,7 +261,7 @@ export function deterministicQuestionPlan(
   /^\s*(?:please\s+)?(?:assign|move|switch|update|change)\b/.test(question) &&
   /\b(?:cover|engineers?|people|team|shift|rota)\b/.test(question);
   const datedWorkforceQuestion =
-    (coverDate !== null || nextWeek || thisWeek) &&
+    (explicitCoverRange !== null || coverDate !== null || nextWeek || thisWeek) &&
     /\b(?:who(?:'s| is)? off|holiday|absence|leave|training|available|availability|cover|coverage|shift|engineers?|team|people)\b/.test(question);
   const shiftCoverPageContext = /\bshift-cover\b/.test(request.pageContext.path);
   const recentConversation = request.history
@@ -259,8 +347,8 @@ export function deterministicQuestionPlan(
       "contractor",
       "contractor_support",
       "get_contractor_availability",
-      "Report only recorded contractor skills and availability, with any confirmation caveat.",
-      { summaryItemLimit: 4 },
+      "Report only recorded contractor skills and availability, with the first confirmation action and any caveat.",
+      { summaryItemLimit: 4, forceActionPlan: true },
     );
   }
 
@@ -309,8 +397,8 @@ export function deterministicQuestionPlan(
       "work",
       "work_backlog",
       "get_site_work_backlog",
-      "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence.",
-      { summaryItemLimit: 4 },
+      "Prioritise the current work backlog using exact orders, assets, dates and readiness evidence, then state the first executable action.",
+      { summaryItemLimit: 4, forceActionPlan: true },
     );
   }
 

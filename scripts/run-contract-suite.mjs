@@ -38,6 +38,7 @@ const contracts = [
   ["VOR-051 Maintenance Manager demo rehearsal", "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"],
   ["VOR-052 Ask Vorta backend modularisation", "scripts/vor-052-backend-modularisation-contracts.mjs"],
   ["VOR-053 canonical Ask Vorta build", "scripts/vor-053-canonical-build-contracts.mjs"],
+  ["VOR-055 Ask Vorta production verification", "scripts/vor-055-production-verification-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
