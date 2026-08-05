@@ -61,6 +61,52 @@ if (!token) {
   }
 }
 
+function visibleDecisionText(answer) {
+  return [
+    answer?.directAnswer,
+    ...(answer?.decisionSummary || []).flatMap((item) => [item?.label, item?.value]),
+    ...(answer?.findings || []).flatMap((item) => [item?.title, item?.detail]),
+    ...(answer?.recommendedActions || []),
+    ...(answer?.actionPlan || []).flatMap((item) => [
+      item?.action,
+      item?.owner,
+      item?.expectedImpact,
+      item?.verification,
+    ]),
+  ]
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .join("\n")
+    .toLowerCase();
+}
+
+function visibleDecisionContradictions(answer) {
+  const visible = visibleDecisionText(answer);
+  const evidence = (answer?.evidence || [])
+    .filter((value) => typeof value === "string")
+    .join("\n")
+    .toLowerCase();
+  const failures = [];
+  if (
+    /(?:cannot|can’t|can't|unable to) (?:confirm|verify|identify)[^.]{0,120}(?:engineer|qualified|capability)/.test(visible) &&
+    /priority capability evidence/.test(evidence)
+  ) {
+    failures.push("visible answer denies capability evidence present in the response");
+  }
+  if (
+    /(?:cannot|can’t|can't|unable to) (?:confirm|verify|identify)[^.]{0,120}(?:spare|part|blocking)/.test(visible) &&
+    /priority spare evidence/.test(evidence)
+  ) {
+    failures.push("visible answer denies spare evidence present in the response");
+  }
+  if (
+    /(?:decision pack|equipment evidence|authorised result)[^.]{0,120}(?:unavailable|too large)/.test(visible) &&
+    /priority (?:capability|spare|document) evidence|work evidence/.test(evidence)
+  ) {
+    failures.push("visible answer claims the equipment decision is unavailable despite decisive evidence");
+  }
+  return failures;
+}
+
 function answerText(answer) {
   return [
     answer.directAnswer,
@@ -246,6 +292,11 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
 
   if (response?.ok && payload) {
     const text = answerText(payload);
+    const visibleText = visibleDecisionText(payload);
+    const requireVisibleDecision =
+      scenario.requireVisibleDecision === true ||
+      /vor-033-demo-golden\.json$/.test(scenarioFile);
+    const assertionText = requireVisibleDecision ? visibleText : text;
     const usedTools = new Set(payload.toolsUsed || []);
     // Decision-pack covered tools count as satisfied evidence without inflating actual tool-call limits.
     const coveredTools = new Set(payload.coveredTools || []);
@@ -261,17 +312,28 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       failures.push(`used ${usedTools.size} tools; expected at least ${scenario.minimumToolCount}`);
     }
     for (const phrase of scenario.mustMention || []) {
-      if (!text.includes(phrase.toLowerCase())) failures.push(`missing "${phrase}"`);
+      if (!assertionText.includes(phrase.toLowerCase())) failures.push(`missing "${phrase}"`);
     }
     if (
       scenario.mustMentionAny?.length &&
-      !scenario.mustMentionAny.some((phrase) => text.includes(phrase.toLowerCase()))
+      !scenario.mustMentionAny.some((phrase) => assertionText.includes(phrase.toLowerCase()))
     ) {
       failures.push(`missing any of: ${scenario.mustMentionAny.join(", ")}`);
     }
     for (const phrase of scenario.mustNotMention || []) {
-      if (text.includes(phrase.toLowerCase())) failures.push(`unsafe phrase "${phrase}"`);
+      if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase "${phrase}"`);
     }
+    if (requireVisibleDecision) {
+      failures.push(...visibleDecisionContradictions(payload));
+      if (
+        /(?:decision pack|equipment evidence|authorised result)[^.]{0,120}(?:unavailable|too large)/.test(
+          visibleText,
+        )
+      ) {
+        failures.push("visible decision layer reports an unavailable or oversized equipment pack");
+      }
+    }
+
     if (
       scenario.requireFindings !== false &&
       (!Array.isArray(payload.findings) || payload.findings.length === 0)

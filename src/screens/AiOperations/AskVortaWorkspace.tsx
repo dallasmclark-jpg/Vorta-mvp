@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   Clock3,
   FileSearch,
+  ImagePlus,
   ListChecks,
   Loader2,
   MessageSquare,
@@ -22,6 +23,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import type { PreparedAskVortaImage } from "./askVortaImageClient";
+import type { VortaConversationContext } from "./vortaAgentService";
 
 export type AskVortaWorkspaceTab = "conversation" | "evidence" | "actions";
 
@@ -59,6 +62,7 @@ export interface AskVortaWorkspaceAnswer {
   }>;
   confidence?: number;
   evidenceGeneratedAt?: string;
+  conversationContext?: VortaConversationContext;
 }
 
 export interface AskVortaWorkspaceMessage {
@@ -69,6 +73,7 @@ export interface AskVortaWorkspaceMessage {
   answer?: AskVortaWorkspaceAnswer;
   error?: string;
   retryQuestion?: string;
+  imageName?: string;
 }
 
 interface StoredConversation {
@@ -88,6 +93,10 @@ interface AskVortaWorkspaceProps {
   speechSupported: boolean;
   listening: boolean;
   speechError: string | null;
+  pendingImage: PreparedAskVortaImage | null;
+  imageError: string | null;
+  onSelectImage: (file: File) => void;
+  onRemoveImage: () => void;
   promptPlaceholder: string;
   onInputChange: (value: string) => void;
   onSubmit: (question: string) => void;
@@ -212,6 +221,10 @@ export function AskVortaWorkspace({
   speechSupported,
   listening,
   speechError,
+  pendingImage,
+  imageError,
+  onSelectImage,
+  onRemoveImage,
   promptPlaceholder,
   onInputChange,
   onSubmit,
@@ -496,7 +509,14 @@ export function AskVortaWorkspace({
                     ) : message.answer ? (
                       renderAnswer(message.answer)
                     ) : (
-                      <p className="text-sm leading-6">{message.text}</p>
+                      <div className="space-y-2">
+                        {message.imageName ? (
+                          <p className="text-xs font-semibold text-blue-100/80">
+                            Photo attached: {message.imageName}
+                          </p>
+                        ) : null}
+                        <p className="text-sm leading-6">{message.text}</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -709,7 +729,50 @@ export function AskVortaWorkspace({
         {activeTab === "conversation" && (
           <div className="shrink-0 border-t border-gray-800 bg-gray-950 px-6 py-4">
             <div className="mx-auto max-w-4xl">
+              {pendingImage ? (
+                <div className="mb-3 flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2.5">
+                  <img
+                    src={pendingImage.dataUrl}
+                    alt="Selected maintenance evidence"
+                    className="h-12 w-12 rounded-lg object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-200">{pendingImage.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {pendingImage.width} × {pendingImage.height} · Analyzed once and not saved to Vorta records or Recent conversations
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onRemoveImage}
+                    className="rounded-md p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+                    aria-label="Remove attached photo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+              {imageError ? (
+                <p className="mb-2 text-xs text-amber-300" role="alert">{imageError}</p>
+              ) : null}
               <div className="flex gap-2 rounded-xl border border-gray-700 bg-gray-900 p-2 focus-within:border-blue-500/50">
+                <label
+                  className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-700 bg-transparent text-slate-400 transition-colors hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-300"
+                  aria-label="Attach equipment or fault photo"
+                  title="Attach one JPEG, PNG or WebP photo"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onSelectImage(file);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
                 <Button
                   type="button"
                   variant="outline"
@@ -745,7 +808,7 @@ export function AskVortaWorkspace({
                 <Button
                   type="button"
                   onClick={() => onSubmit(input)}
-                  disabled={!input.trim() || !contextReady}
+                  disabled={(!input.trim() && !pendingImage) || !contextReady}
                   className="h-10 shrink-0 gap-2 bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" />

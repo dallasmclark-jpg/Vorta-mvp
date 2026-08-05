@@ -40,12 +40,8 @@ assert.match(gitignore, /^!\.env\.example$/m);
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(
   packageJson.scripts["test:contracts"],
-  "node scripts/vor-051-integrate-evidence-links.mjs && node scripts/run-contract-suite.mjs",
-);
-assert.match(
-  packageJson.scripts["test:contracts"],
-  /^node scripts\/vor-051-integrate-evidence-links\.mjs && node scripts\/run-contract-suite\.mjs$/,
-  "The contract command may run only the registered VOR-051 source preparation before the canonical suite",
+  "node scripts/run-contract-suite.mjs",
+  "The contract command must execute canonical source without preparation or mutation",
 );
 
 const contractRunner = read("scripts/run-contract-suite.mjs");

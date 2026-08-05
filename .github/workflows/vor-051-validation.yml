@@ -12,7 +12,6 @@ on:
       - "src/lib/maintenanceActions*"
       - "tests/browser/vor-051-manager-demo-rehearsal.spec.ts"
       - "tests/browser/maintenance-manager-test-helpers.ts"
-      - "scripts/vor-051-integrate-evidence-links.mjs"
       - "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"
       - "scripts/run-contract-suite.mjs"
       - "playwright.config.ts"
@@ -28,7 +27,6 @@ on:
       - "src/lib/maintenanceActions*"
       - "tests/browser/vor-051-manager-demo-rehearsal.spec.ts"
       - "tests/browser/maintenance-manager-test-helpers.ts"
-      - "scripts/vor-051-integrate-evidence-links.mjs"
       - "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"
       - "scripts/run-contract-suite.mjs"
       - "playwright.config.ts"
@@ -78,10 +76,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --silent
 
-      - name: Apply complete Ask Vorta integration chain
+      - name: Write exact build metadata from canonical source
         run: npm run build:metadata
 
-      - name: Run transformed-source TypeScript checks
+      - name: Run canonical-source TypeScript checks
         run: npm run typecheck -- --pretty false
 
       - name: Run permanent VOR-051 contracts

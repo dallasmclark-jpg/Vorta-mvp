@@ -1,0 +1,80 @@
+name: VOR-053 canonical Ask Vorta build
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/AiOperations/**"
+      - "scripts/ask-vorta-live-evals.mjs"
+      - "scripts/vor-04*-contracts.mjs"
+      - "scripts/vor-05*-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - ".github/workflows/vor-053-canonicalisation-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/AiOperations/**"
+      - "scripts/ask-vorta-live-evals.mjs"
+      - "scripts/vor-04*-contracts.mjs"
+      - "scripts/vor-05*-contracts.mjs"
+      - "scripts/run-contract-suite.mjs"
+      - ".github/workflows/vor-053-canonicalisation-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify canonical source and lifecycle purity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          clear_build_metadata() {
+            if git ls-files --error-unmatch public/vorta-build.json >/dev/null 2>&1; then
+              git checkout -- public/vorta-build.json
+            else
+              rm -f public/vorta-build.json
+            fi
+          }
+
+          assert_only_build_metadata_changed() {
+            unexpected="$(git status --porcelain --untracked-files=all | grep -vE '^( M|\?\?) public/vorta-build\.json$' || true)"
+            test -z "$unexpected"
+          }
+
+          node scripts/vor-053-canonical-build-contracts.mjs
+
+          npm run predev
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+          npm run build:metadata
+          assert_only_build_metadata_changed
+          clear_build_metadata
+
+          npm run test:contracts
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+          npm run build
+          assert_only_build_metadata_changed
+          clear_build_metadata
+          test -z "$(git status --porcelain --untracked-files=all)"

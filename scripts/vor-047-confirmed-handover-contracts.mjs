@@ -13,8 +13,8 @@ function excludes(source, forbidden, label) {
   );
 }
 
-const packageJson = read("package.json");
-const integration = read("scripts/vor-047-integrate-confirmed-actions.mjs");
+const packageJson = JSON.parse(read("package.json"));
+const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const controlledActions = read("src/screens/AiOperations/askVortaControlledActions.ts");
 const dialog = read("src/screens/AiOperations/AskVortaActionReviewDialog.tsx");
 const launcher = read("src/screens/AiOperations/askVortaActionReviewLauncher.tsx");
@@ -34,35 +34,29 @@ const reconciliationMigration = read(
   "supabase/migrations/20260803180000_vor_047_disable_work_requests.sql",
 );
 
-assert.match(
-  packageJson,
-  /vor-047-integrate-confirmed-actions\.mjs/,
-  "VOR-047 integration must run in the repository build workflow",
+assert.equal(
+  packageJson.scripts.predev,
+  "node scripts/vor-053-canonical-build-contracts.mjs --quick",
+  "Confirmed-action behaviour must be committed source rather than a build transform",
+);
+assert.equal(
+  packageJson.scripts.predev.includes("vor-047-integrate-confirmed-actions.mjs"),
+  false,
 );
 assert.match(
-  integration,
-  /scanClosingDelimiter\(source, parameterStart, "\(", "\)"\)/,
-  "The codemod must scan the complete TypeScript parameter list before locating the function body",
-);
-assert.match(
-  integration,
-  /source\.indexOf\("\{", parameterEnd \+ 1\)/,
-  "The codemod must not confuse a destructured parameter with the function body",
-);
-assert.match(
-  integration,
-  /findConstArrowRange\(source, "prepareDraft"\)/,
-  "VOR-047 must patch the prepareDraft function that actually exists",
-);
-assert.match(
-  integration,
-  /Controlled Ask Vorta actions require the review dialog/,
-  "The legacy direct draft writer must be disabled",
-);
-assert.match(
-  integration,
+  assistant,
   /openAskVortaActionReviewDialog/,
-  "The Ask Vorta action button must open the controlled review",
+  "The canonical Ask Vorta action button must open the controlled review",
+);
+excludes(
+  assistant,
+  "createAskVortaActionDraft",
+  "Canonical Ask Vorta assistant",
+);
+excludes(
+  assistant,
+  "confirmAskVortaActionDraft",
+  "Canonical Ask Vorta assistant",
 );
 
 assert.match(
@@ -167,6 +161,6 @@ assert.match(
 
 console.log("✓ VOR-047 is limited to confirmed Vorta shift-handover actions");
 console.log("✓ SAP and SAP-equivalent maintenance records remain read-only");
-console.log("✓ Destructured TypeScript signatures cannot be mistaken for function bodies");
+console.log("✓ Canonical source owns the confirmed-action workflow");
 console.log("✓ The unused spare-stock task queue is removed fail-closed");
 console.log("✓ The approved mobile Ask Vorta presentation remains unchanged");

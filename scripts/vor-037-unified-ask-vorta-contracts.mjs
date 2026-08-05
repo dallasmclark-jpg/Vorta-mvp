@@ -19,7 +19,9 @@ const workOrderBrowser = read(
   "tests/browser/maintenance-manager-work-orders.spec.ts",
 );
 const liveGolden = read("tests/evals/ask-vorta-live-golden.json");
-const agent = read("netlify/functions/ask-vorta.mts");
+const agentEntry = read("netlify/functions/ask-vorta.mts");
+const agentContracts = read("netlify/functions/ask-vorta/contracts.mts");
+const routePlanning = read("netlify/functions/ask-vorta/route-planning.mts");
 
 const check = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -43,6 +45,13 @@ check(
   "The Maintenance Manager shell must mount only the unified Ask Vorta compatibility wrapper.",
 );
 
+check(
+  agentEntry.includes('import handler from "./ask-vorta/runtime.mjs"') &&
+    agentEntry.includes('path: "/api/ask-vorta"') &&
+    agentEntry.includes('method: "POST"'),
+  "The modular Ask Vorta backend must preserve the canonical Netlify route and runtime entry point.",
+);
+
 for (const tool of [
   "get_equipment_work",
   "get_equipment_skills",
@@ -52,7 +61,7 @@ for (const tool of [
   "search_maintenance_documents",
 ]) {
   check(
-    agent.includes(`name: \"${tool}\"`),
+    agentContracts.includes(`name: "${tool}"`),
     `The unified agent must retain specialist fault evidence through ${tool}.`,
   );
 }
@@ -70,11 +79,13 @@ check(
 );
 
 check(
-  agent.includes("For shift-cover questions, always call get_shift_cover") &&
-    agent.includes("For equipment-specific questions, call get_equipment_risk first") &&
-    agent.includes("get_equipment_history") &&
-    agent.includes("search_maintenance_documents"),
-  "One agent must select shift-cover or specialist equipment evidence according to the actual question.",
+  agentContracts.includes('name: "get_shift_cover"') &&
+    agentContracts.includes(
+      "Always use this for rota, leave, training, availability or shift-cover questions.",
+    ) &&
+    routePlanning.includes('"get_equipment_decision_pack"') &&
+    routePlanning.includes('"get_shift_cover"'),
+  "One modular agent must select shift-cover or specialist equipment evidence according to the actual question.",
 );
 
 check(

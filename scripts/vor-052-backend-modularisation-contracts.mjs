@@ -42,14 +42,9 @@ requireText(entry, "export default handler;", "endpoint handler delegation");
 if (!/export const config: Config = \{[\s\S]*?path: "\/api\/ask-vorta",[\s\S]*?method: "POST",[\s\S]*?\};/.test(entry)) {
   fail("deployable endpoint config must be exported directly from netlify/functions/ask-vorta.mts");
 }
-for (const marker of [
-  'case "get_site_ranked_actions":',
-  'function buildConversationContext(',
-  'async function extractAskVortaImageEvidence(',
-  'type AskVortaPhase = "planner" | "evidence" | "answer";',
-  'function compactEquipmentDecisionPackForModel(',
-  'function repairEquipmentDecisionAnswer(',
-]) requireText(entry, marker, "legacy integration guard");
+if (/legacy integration guards|case "get_site_ranked_actions":/.test(entry)) {
+  fail("the deployable entrypoint still contains retired integration guards");
+}
 
 for (const moduleName of requiredModules) read(path.join(moduleRoot, moduleName));
 const manifest = JSON.parse(read(path.join(moduleRoot, "modularisation-manifest.json")));

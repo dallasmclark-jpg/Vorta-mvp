@@ -4,23 +4,33 @@ import { spawnSync } from "node:child_process";
 import "./vor-046-image-evidence-contracts.mjs";
 
 const read = (path) => readFileSync(path, "utf8");
-const backendIntegration = read("scripts/vor-046-integrate-image-backend.mjs");
-const backendHelpers = read("scripts/templates/vor-046-image-backend-helpers.txt");
-const backendSurface = `${backendIntegration}\n${backendHelpers}`;
-const clientIntegration = read("scripts/vor-046-integrate-image-client.mjs");
+const backendSurface = [
+  "netlify/functions/ask-vorta/image-diagnosis.mts",
+  "netlify/functions/ask-vorta/runtime.mts",
+  "netlify/functions/_shared/askVortaImageEvidence.mjs",
+  "netlify/functions/_shared/askVortaImageDiagnosis.mjs",
+].map(read).join("\n");
+const clientIntegration = [
+  "src/screens/AiOperations/askVortaImageClient.ts",
+  "src/screens/AiOperations/vortaAgentService.ts",
+  "src/screens/AiOperations/AskVortaWorkspace.tsx",
+  "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
+].map(read).join("\n");
 const imageValidation = read("netlify/functions/_shared/askVortaImageEvidence.mjs");
 const diagnosis = read("netlify/functions/_shared/askVortaImageDiagnosis.mjs");
 const clientImage = read("src/screens/AiOperations/askVortaImageClient.ts");
 const packageJson = JSON.parse(read("package.json"));
 
-for (const script of [
-  "scripts/vor-046-integrate-image-backend.mjs",
-  "scripts/vor-046-integrate-image-client.mjs",
-  "scripts/vor-046-image-diagnosis-evals.mjs",
-]) {
-  const syntax = spawnSync(process.execPath, ["--check", script], { encoding: "utf8" });
-  assert.equal(syntax.status, 0, `${script} has invalid syntax:\n${syntax.stderr}`);
-}
+const evalSyntax = spawnSync(
+  process.execPath,
+  ["--check", "scripts/vor-046-image-diagnosis-evals.mjs"],
+  { encoding: "utf8" },
+);
+assert.equal(
+  evalSyntax.status,
+  0,
+  `VOR-046 image evaluator has invalid syntax:\n${evalSyntax.stderr}`,
+);
 
 const diagnosisEval = spawnSync(
   process.execPath,
@@ -62,7 +72,6 @@ for (const marker of [
   "selectedEquipmentQuery",
 ]) assert.match(diagnosis, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-assert.match(backendIntegration, /vor-046-image-backend-helpers\.txt/);
 assert.match(backendSurface, /type: "input_image"/);
 assert.match(backendSurface, /image_url: image\.dataUrl/);
 assert.match(backendSurface, /store: false/);
@@ -72,7 +81,8 @@ assert.match(backendSurface, /equipment_components/);
 assert.match(backendSurface, /\.eq\("site_id", request\.siteId\)/);
 assert.match(backendSurface, /get_equipment_decision_pack/);
 assert.match(backendSurface, /approved\/current documents/);
-assert.match(backendSurface, /Do not recommend bypassing protection/);
+assert.match(backendSurface, /Do not recommend bypassing an interlock/);
+assert.match(backendSurface, /returning equipment to service from image evidence alone/);
 assert.match(backendSurface, /User-supplied image evidence/);
 assert.match(backendSurface, /imageFingerprint/);
 assert.doesNotMatch(backendSurface, /storage\.from|supabase\.storage|upload\(/);
@@ -103,9 +113,13 @@ assert.equal(
   packageJson.scripts.build,
   "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build",
 );
-assert.match(
+assert.equal(
   packageJson.scripts["build:metadata"],
-  /vor-045-integrate-conversation-context\.mjs && node scripts\/vor-046-integrate-image-backend\.mjs && node scripts\/vor-046-integrate-image-client\.mjs(?: && node scripts\/vor-047-integrate-confirmed-actions\.mjs)?(?: && node scripts\/vor-048-integrate-routing-telemetry-feedback\.mjs)?(?: && node scripts\/vor-049-integrate-decision-ready-equipment\.mjs)? && node scripts\/write-build-metadata\.mjs/,
+  "node scripts/write-build-metadata.mjs",
+);
+assert.equal(
+  packageJson.scripts.predev,
+  "node scripts/vor-053-canonical-build-contracts.mjs --quick",
 );
 assert.equal(
   packageJson.scripts["eval:ask-vorta:vor046"],
