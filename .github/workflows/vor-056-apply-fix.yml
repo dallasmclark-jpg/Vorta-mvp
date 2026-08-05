@@ -41,16 +41,8 @@ jobs:
 
           validation_path = Path("netlify/functions/ask-vorta/response-validation.mts")
           source = validation_path.read_text()
-          start_marker = '''  const summaryAction = records(answer.decisionSummary).find((item) =>
-            /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
-          );
-          '''
-          end_marker = '''  ];
-          }
-
-          export function enforcePlannedResponseShape'''
-          start = source.find(start_marker)
-          end = source.find(end_marker, start)
+          start = source.find("  const summaryAction = records(answer.decisionSummary)")
+          end = source.find("export function enforcePlannedResponseShape", start)
           if start < 0 or end < 0:
               raise AssertionError("Unable to locate deterministic action-plan guard")
           replacement = '''  const summaryAction = records(answer.decisionSummary).find((item) =>
@@ -65,10 +57,9 @@ jobs:
               : "";
           const action =
             textValues(answer.recommendedActions)[0] ??
-            (typeof summaryAction?.value === "string"
+            ((typeof summaryAction?.value === "string"
               ? summaryAction.value.trim()
-              : "") ||
-            evidenceBackedWorkAction;
+              : "") || evidenceBackedWorkAction);
 
           if (!action) return;
           if (textValues(answer.recommendedActions).length === 0) {
@@ -101,8 +92,8 @@ jobs:
           ];
           }
 
-          export function enforcePlannedResponseShape'''
-          source = source[:start] + replacement + source[end + len(end_marker):]
+          '''
+          source = source[:start] + replacement + source[end:]
           validation_path.write_text(source)
 
           suite_path = Path("scripts/run-contract-suite.mjs")
@@ -132,13 +123,13 @@ jobs:
                   '      - "tests/evals/vor-054-cross-domain-live.json"\n      - "tests/evals/vor-056-backlog-action-plan.json"',
               )
 
-          equipment_step = '''      - name: Run all 24 visible-answer golden decisions
-          '''
-          backlog_step = '''      - name: Run backlog action-plan decision
+          preview_expression = "$" + "{{ env.PREVIEW_URL }}"
+          equipment_step = "      - name: Run all 24 visible-answer golden decisions\n"
+          backlog_step = f'''      - name: Run backlog action-plan decision
             if: github.event_name == 'pull_request'
             shell: bash
             env:
-              VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
+              VORTA_EVAL_BASE_URL: {preview_expression}
               VORTA_EVAL_DELAY_MS: 500
               VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
               VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
@@ -151,7 +142,7 @@ jobs:
               if equipment_step not in workflow:
                   raise AssertionError("Missing equipment audit insertion point")
               workflow = workflow.replace(equipment_step, backlog_step + equipment_step, 1)
-          if workflow.count("            vor-056-live-eval.log") == 0:
+          if "            vor-056-live-eval.log" not in workflow:
               workflow = workflow.replace(
                   "            vor-054-live-eval.log\n            vor-049-live-eval.log",
                   "            vor-054-live-eval.log\n            vor-056-live-eval.log\n            vor-049-live-eval.log",
@@ -184,3 +175,5 @@ jobs:
             scripts/run-contract-suite.mjs
           git commit -m "Make backlog decisions actionable"
           git push origin HEAD:agent/vor-056-backlog-action-plan
+
+# Position-based patching avoids formatting-dependent source anchors.
