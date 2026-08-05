@@ -1,0 +1,212 @@
+name: VOR-056 runtime rebuild patch
+
+on:
+  push:
+    branches:
+      - agent/vor-056-backlog-action-plan
+    paths:
+      - .github/workflows/vor-056-runtime-rebuild-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out VOR-056 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/vor-056-backlog-action-plan
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply deployment-proof backlog boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          entry_path = Path("netlify/functions/ask-vorta.mts")
+          response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
+          runtime_path = Path("netlify/functions/ask-vorta/runtime.mts")
+          contract_path = Path("scripts/vor-056-backlog-action-plan-contracts.mjs")
+
+          entry = entry_path.read_text()
+          response = response_path.read_text()
+          runtime = runtime_path.read_text()
+          contract = contract_path.read_text()
+
+          revision = 'export const ASK_VORTA_RUNTIME_REVISION = "vor-056-backlog-action-plan-v2";\n'
+          if "ASK_VORTA_RUNTIME_REVISION" not in entry:
+              import_anchor = 'import handler from "./ask-vorta/runtime.mjs";\n'
+              if import_anchor not in entry:
+                  raise SystemExit("Ask Vorta entrypoint import anchor not found")
+              entry = entry.replace(import_anchor, import_anchor + "\n" + revision, 1)
+
+          old_status = '    backlogResult.status !== "ok" ||\n'
+          new_status = '    backlogResult.status === "unavailable" ||\n'
+          if old_status in response:
+              response = response.replace(old_status, new_status, 1)
+          elif new_status not in response:
+              raise SystemExit("Backlog result status guard anchor not found")
+
+          runtime = runtime.replace(
+              "    enforceBacklogActionPlan(answer, toolOutcomes);\n",
+              "",
+          )
+          runtime = runtime.replace(
+              "        enforceBacklogActionPlan(answer, toolOutcomes);\n",
+              "",
+          )
+          runtime = runtime.replace(
+              "      enforceBacklogActionPlan(verifiedFallback, toolOutcomes);\n",
+              "",
+          )
+
+          context_pattern = re.compile(
+              r'(?ms)(^(?P<indent>[ \t]*)answer\.conversationContext = buildConversationContext\(\n.*?^\s*\);\n)'
+          )
+          context_matches = list(context_pattern.finditer(runtime))
+          if len(context_matches) != 2:
+              raise SystemExit(f"Expected two final answer context boundaries, found {len(context_matches)}")
+          runtime = context_pattern.sub(
+              lambda match: match.group(1) + match.group("indent") +
+              "enforceBacklogActionPlan(answer, toolOutcomes);\n",
+              runtime,
+          )
+
+          fallback_anchor = "      verifiedFallback.responseId = interactionId;\n"
+          fallback_replacement = (
+              fallback_anchor +
+              "      enforceBacklogActionPlan(verifiedFallback, toolOutcomes);\n"
+          )
+          if fallback_anchor not in runtime:
+              raise SystemExit("Verified fallback response boundary not found")
+          runtime = runtime.replace(fallback_anchor, fallback_replacement, 1)
+
+          if 'const entrypoint = readFileSync(' not in contract:
+              contract_anchor = 'const responseValidation = readFileSync(\n'
+              entry_reader = '''const entrypoint = readFileSync(
+            "netlify/functions/ask-vorta.mts",
+            "utf8",
+          );
+          '''
+              if contract_anchor not in contract:
+                  raise SystemExit("VOR-056 contract entrypoint insertion anchor not found")
+              contract = contract.replace(contract_anchor, entry_reader + contract_anchor, 1)
+
+          contract = contract.replace(
+              '  \'backlogResult.status !== "ok"\',\n',
+              '  \'backlogResult.status === "unavailable"\',\n',
+          )
+          revision_assertion_anchor = 'assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");'
+          revision_assertion = '''assert.ok(
+            entrypoint.includes(
+              'export const ASK_VORTA_RUNTIME_REVISION = "vor-056-backlog-action-plan-v2";',
+            ),
+            "The Netlify entrypoint must rev when nested Ask Vorta runtime behaviour changes",
+          );
+          const deterministicContext = runtime.indexOf(
+            "answer.conversationContext = buildConversationContext(",
+          );
+          const deterministicGuard = runtime.indexOf(
+            "enforceBacklogActionPlan(answer, toolOutcomes);",
+            deterministicContext,
+          );
+          const deterministicUpdate = runtime.indexOf(
+            "await updateAskVortaInteraction(",
+            deterministicGuard,
+          );
+          const semanticContext = runtime.indexOf(
+            "answer.conversationContext = buildConversationContext(",
+            deterministicContext + 1,
+          );
+          const semanticGuard = runtime.indexOf(
+            "enforceBacklogActionPlan(answer, toolOutcomes);",
+            semanticContext,
+          );
+          const semanticUpdate = runtime.indexOf(
+            "await updateAskVortaInteraction(",
+            semanticGuard,
+          );
+          assert.ok(
+            deterministicContext >= 0 &&
+              deterministicGuard > deterministicContext &&
+              deterministicUpdate > deterministicGuard &&
+              semanticContext > deterministicUpdate &&
+              semanticGuard > semanticContext &&
+              semanticUpdate > semanticGuard,
+            "Backlog action enforcement must run after final response formatting on deterministic and semantic paths",
+          );
+          assert.ok(
+            runtime.indexOf("verifiedFallback.responseId = interactionId;") <
+              runtime.indexOf("enforceBacklogActionPlan(verifiedFallback, toolOutcomes);") &&
+              runtime.indexOf("enforceBacklogActionPlan(verifiedFallback, toolOutcomes);") <
+                runtime.indexOf(
+                  "await updateAskVortaInteraction(",
+                  runtime.indexOf("verifiedFallback.responseId = interactionId;"),
+                ),
+            "Verified fallback enforcement must run at its final response boundary",
+          );
+
+          '''
+          if "The Netlify entrypoint must rev" not in contract:
+              if revision_assertion_anchor not in contract:
+                  raise SystemExit("VOR-056 final assertion anchor not found")
+              contract = contract.replace(
+                  revision_assertion_anchor,
+                  revision_assertion + revision_assertion_anchor,
+                  1,
+              )
+
+          entry_path.write_text(entry)
+          response_path.write_text(response)
+          runtime_path.write_text(runtime)
+          contract_path.write_text(contract)
+          PY
+
+      - name: Verify focused and complete build
+        run: |
+          npm run build:metadata
+          npm run typecheck -- --pretty false
+          node scripts/vor-056-backlog-action-plan-contracts.mjs
+          npm run test:contracts
+          npm run test:smoke
+          npx vite build
+          npm run test:performance
+
+      - name: Enforce focused permanent diff
+        shell: bash
+        run: |
+          allowed='^(netlify/functions/ask-vorta\.mts|netlify/functions/ask-vorta/runtime\.mts|netlify/functions/ask-vorta/response-validation\.mts|scripts/vor-056-backlog-action-plan-contracts\.mjs)$'
+          unexpected="$(git diff --name-only | grep -Ev "$allowed" || true)"
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected changed files:" >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit verified runtime rebuild
+        shell: bash
+        run: |
+          git config user.name "Ask Vorta CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add netlify/functions/ask-vorta.mts \
+            netlify/functions/ask-vorta/runtime.mts \
+            netlify/functions/ask-vorta/response-validation.mts \
+            scripts/vor-056-backlog-action-plan-contracts.mjs
+          git diff --cached --quiet && { echo "No permanent changes to commit"; exit 1; }
+          git commit -m "Harden VOR-056 final response and function rebuild"
+          git push origin HEAD:agent/vor-056-backlog-action-plan
