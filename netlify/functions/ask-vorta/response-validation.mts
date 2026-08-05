@@ -212,31 +212,50 @@ export function enforceDeterministicResponseShape(
   if (!requiresAction || records(answer.actionPlan).length > 0) return;
 
   const summaryAction = records(answer.decisionSummary).find((item) =>
-    /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
-  );
-  const action =
-    textValues(answer.recommendedActions)[0] ??
-    (typeof summaryAction?.value === "string"
-      ? summaryAction.value.trim()
-      : "");
+  /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
+);
+const firstFinding = records(answer.findings)[0];
+const findingTitle =
+  typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+const evidenceBackedWorkAction =
+  scope === "work" && findingTitle
+    ? `Confirm scope, readiness and an authorised assignee for ${findingTitle}, then have the Maintenance Planner update and sequence the SAP work order before release.`
+    : "";
+const action =
+  textValues(answer.recommendedActions)[0] ??
+  ((typeof summaryAction?.value === "string"
+    ? summaryAction.value.trim()
+    : "") || evidenceBackedWorkAction);
 
-  if (!action) return;
+if (!action) return;
+if (textValues(answer.recommendedActions).length === 0) {
+  answer.recommendedActions = [action];
+}
 
-  answer.actionPlan = [
-    {
-      priority: "now",
-      action,
-      owner: scope === "spares" ? "Maintenance Manager / Stores" : "Maintenance Manager",
-      expectedImpact:
-        scope === "spares"
-          ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+answer.actionPlan = [
+  {
+    priority: "now",
+    action,
+    owner:
+      scope === "spares"
+        ? "Maintenance Manager / Stores"
+        : scope === "work"
+          ? "Maintenance Manager / Planner"
+          : "Maintenance Manager",
+    expectedImpact:
+      scope === "spares"
+        ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+        : scope === "work"
+          ? "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan."
           : "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
-      verification:
-        scope === "spares"
-          ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+    verification:
+      scope === "spares"
+        ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+        : scope === "work"
+          ? "Open the linked SAP work order evidence and confirm the assignee, readiness, due date and released sequence are recorded by an authorised user."
           : "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
-    },
-  ];
+  },
+];
 }
 
 export function enforcePlannedResponseShape(
