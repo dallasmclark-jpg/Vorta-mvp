@@ -43,19 +43,9 @@ jobs:
           harness = harness_path.read_text()
           contract = contract_path.read_text()
 
-          retry_function_end = '''function retryDelayForRateLimit(requestResult) {
-            const retryAfterValue =
-              requestResult.response?.headers.get("retry-after") ||
-              requestResult.payload?.retryAfterSeconds ||
-              null;
-            const retryAfterMs = Number.isFinite(Number(retryAfterValue))
-              ? Math.max(0, Number(retryAfterValue) * 1_000 + 1_000)
-              : 0;
-            return Math.max(rateLimitRetryMs, retryAfterMs);
-          }
-          '''
-          capacity_helpers = retry_function_end + '''
-          function isUsageExceeded(requestResult) {
+          if "function isUsageExceeded(" not in harness:
+              results_index = harness.index("const results = [];")
+              helpers = '''function isUsageExceeded(requestResult) {
             return (
               requestResult.response?.status === 503 &&
               String(requestResult.payload?.error ?? "").trim().toLowerCase() ===
@@ -66,73 +56,65 @@ jobs:
           function isRetryableCapacityResponse(requestResult) {
             return requestResult.response?.status === 429 || isUsageExceeded(requestResult);
           }
+
           '''
-          if "function isUsageExceeded(" not in harness:
-              if retry_function_end not in harness:
-                  raise SystemExit("retry-delay function marker not found")
-              harness = harness.replace(retry_function_end, capacity_helpers, 1)
+              harness = harness[:results_index] + helpers + harness[results_index:]
 
-          results_marker = '''const results = [];
-          let blockedByRateLimit = false;'''
-          results_replacement = '''const results = [];
-          let blockedByRateLimit = false;
-          let blockedByCapacity = false;'''
           if "let blockedByCapacity = false;" not in harness:
-              if results_marker not in harness:
-                  raise SystemExit("results state marker not found")
-              harness = harness.replace(results_marker, results_replacement, 1)
+              rate_state = "let blockedByRateLimit = false;"
+              if rate_state not in harness:
+                  raise SystemExit("rate-limit state marker not found")
+              harness = harness.replace(
+                  rate_state,
+                  rate_state + "\nlet blockedByCapacity = false;",
+                  1,
+              )
 
-          old_loop = '''  while (
-            requestResult.response?.status === 429 &&
-            rateLimitRetries < rateLimitMaxRetries
-          ) {
-            const pauseMs = retryDelayForRateLimit(requestResult);
-            rateLimitRetries += 1;
-            rateLimitWaitMs += pauseMs;
-            console.warn(
-              `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
-            );'''
-          new_loop = '''  while (
-            isRetryableCapacityResponse(requestResult) &&
-            rateLimitRetries < rateLimitMaxRetries
-          ) {
-            const pauseMs = retryDelayForRateLimit(requestResult);
-            const capacityLabel = isUsageExceeded(requestResult)
+          old_condition = "requestResult.response?.status === 429 &&"
+          if "isRetryableCapacityResponse(requestResult) &&" not in harness:
+              if old_condition not in harness:
+                  raise SystemExit("retry condition marker not found")
+              harness = harness.replace(
+                  old_condition,
+                  "isRetryableCapacityResponse(requestResult) &&",
+                  1,
+              )
+
+          pause_line = "    const pauseMs = retryDelayForRateLimit(requestResult);\n"
+          capacity_lines = pause_line + '''    const capacityLabel = isUsageExceeded(requestResult)
               ? "Netlify usage capacity"
               : "Rate limit";
-            rateLimitRetries += 1;
-            rateLimitWaitMs += pauseMs;
-            console.warn(
-              `${capacityLabel} reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
-            );'''
-          if "isRetryableCapacityResponse(requestResult)" not in harness.split("const { response, payload, error }")[0]:
-              if old_loop not in harness:
-                  raise SystemExit("429 retry loop marker not found")
-              harness = harness.replace(old_loop, new_loop, 1)
+          '''
+          if "const capacityLabel = isUsageExceeded(requestResult)" not in harness:
+              if pause_line not in harness:
+                  raise SystemExit("retry pause marker not found")
+              harness = harness.replace(pause_line, capacity_lines, 1)
 
-          old_classification = '''  if (response?.status === 429) {
-            const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
-            blockedByRateLimit = true;
-            failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
-          } else if (response && (!response.ok || !payload)) {'''
-          new_classification = '''  if (isUsageExceeded(requestResult)) {
+          old_warning = "`Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,"
+          new_warning = "`${capacityLabel} reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,"
+          if new_warning not in harness:
+              if old_warning not in harness:
+                  raise SystemExit("retry warning marker not found")
+              harness = harness.replace(old_warning, new_warning, 1)
+
+          if "platform usage capacity exceeded after configured retries" not in harness:
+              classification_marker = "  if (response?.status === 429) {"
+              if classification_marker not in harness:
+                  raise SystemExit("response classification marker not found")
+              capacity_classification = '''  if (isUsageExceeded(requestResult)) {
             blockedByCapacity = true;
             failures.push("platform usage capacity exceeded after configured retries");
-          } else if (response?.status === 429) {
-            const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
-            blockedByRateLimit = true;
-            failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
-          } else if (response && (!response.ok || !payload)) {'''
-          if "platform usage capacity exceeded after configured retries" not in harness:
-              if old_classification not in harness:
-                  raise SystemExit("response classification marker not found")
-              harness = harness.replace(old_classification, new_classification, 1)
+          } else if (response?.status === 429) {'''
+              harness = harness.replace(
+                  classification_marker,
+                  capacity_classification,
+                  1,
+              )
 
-          old_break = '''  if (blockedByRateLimit) {
-            console.error("Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.");
-            break;
-          }'''
-          new_break = '''  if (blockedByRateLimit || blockedByCapacity) {
+          if "blockedByRateLimit || blockedByCapacity" not in harness:
+              stop_start = harness.index("  if (blockedByRateLimit) {\n", harness.index("results.push({"))
+              stop_end = harness.index("\n  }\n}", stop_start) + len("\n  }")
+              stop_block = '''  if (blockedByRateLimit || blockedByCapacity) {
             console.error(
               blockedByCapacity
                 ? "Evaluation stopped because Netlify usage capacity remained unavailable after all configured retries."
@@ -140,46 +122,40 @@ jobs:
             );
             break;
           }'''
-          if "blockedByRateLimit || blockedByCapacity" not in harness:
-              if old_break not in harness:
-                  raise SystemExit("evaluation stop marker not found")
-              harness = harness.replace(old_break, new_break, 1)
+              harness = harness[:stop_start] + stop_block + harness[stop_end:]
 
-          old_summary = '''console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, results }, null, 2));
-          if (blockedByRateLimit) process.exit(3);'''
-          new_summary = '''console.log(
-            JSON.stringify(
-              {
-                scenarioFile,
-                offset,
-                requested: selectedScenarios.length,
-                blockedByRateLimit,
-                blockedByCapacity,
-                results,
-              },
-              null,
-              2,
-            ),
-          );
-          if (blockedByRateLimit || blockedByCapacity) process.exit(3);'''
-          if "blockedByCapacity,\n      results" not in harness:
-              if old_summary not in harness:
+          summary_line = "console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, results }, null, 2));"
+          if "blockedByCapacity, results" not in harness:
+              if summary_line not in harness:
                   raise SystemExit("evaluation summary marker not found")
-              harness = harness.replace(old_summary, new_summary, 1)
+              harness = harness.replace(
+                  summary_line,
+                  "console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, blockedByCapacity, results }, null, 2));",
+                  1,
+              )
+
+          final_exit = "if (blockedByRateLimit) process.exit(3);"
+          if "if (blockedByRateLimit || blockedByCapacity) process.exit(3);" not in harness:
+              if final_exit not in harness:
+                  raise SystemExit("capacity exit marker not found")
+              harness = harness.replace(
+                  final_exit,
+                  "if (blockedByRateLimit || blockedByCapacity) process.exit(3);",
+                  1,
+              )
 
           if 'const liveHarness = readFileSync(' not in contract:
-              reader_marker = 'const centralWorkflow = readFileSync(\n'
-              if reader_marker not in contract:
-                  raise SystemExit("contract live-harness reader marker not found")
+              reader_index = contract.index("const centralWorkflow = readFileSync(")
               reader = '''const liveHarness = readFileSync(
             "scripts/ask-vorta-live-evals.mjs",
             "utf8",
           );
           '''
-              contract = contract.replace(reader_marker, reader + reader_marker, 1)
+              contract = contract[:reader_index] + reader + contract[reader_index:]
 
-          insertion_marker = 'const resetIndex = centralWorkflow.indexOf(\n'
-          capacity_contract = '''for (const marker of [
+          if "The live evaluator capacity retry is missing" not in contract:
+              insertion_index = contract.index("const resetIndex = centralWorkflow.indexOf(")
+              capacity_contract = '''for (const marker of [
             "function isUsageExceeded(",
             'requestResult.response?.status === 503',
             '"usage_exceeded"',
@@ -201,13 +177,10 @@ jobs:
           );
 
           '''
-          if "The live evaluator capacity retry is missing" not in contract:
-              if insertion_marker not in contract:
-                  raise SystemExit("capacity contract insertion marker not found")
-              contract = contract.replace(
-                  insertion_marker,
-                  capacity_contract + insertion_marker,
-                  1,
+              contract = (
+                  contract[:insertion_index]
+                  + capacity_contract
+                  + contract[insertion_index:]
               )
 
           harness_path.write_text(harness)
