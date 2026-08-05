@@ -39,9 +39,11 @@ jobs:
 
           harness_path = Path("scripts/ask-vorta-live-evals.mjs")
           contract_path = Path("scripts/vor-056-backlog-action-plan-contracts.mjs")
+          vor49_path = Path("scripts/vor-049-decision-ready-equipment-contracts.mjs")
 
           harness = harness_path.read_text()
           contract = contract_path.read_text()
+          vor49 = vor49_path.read_text()
 
           if "function isUsageExceeded(" not in harness:
               results_index = harness.index("const results = [];")
@@ -183,8 +185,24 @@ jobs:
                   + contract[insertion_index:]
               )
 
+          old_assertion_start = 'assert.match(\n  liveEval,\n  /while \\(\\s*requestResult'
+          if "isRetryableCapacityResponse\\(requestResult\\)" not in vor49:
+              start = vor49.index(old_assertion_start)
+              end_marker = '\n);\nassert.match(liveEval, /retryDelayForRateLimit/);'
+              end = vor49.index(end_marker, start) + len('\n);')
+              new_assertion = '''assert.match(
+            liveEval,
+            /while \(\s*isRetryableCapacityResponse\(requestResult\) &&\s*rateLimitRetries < rateLimitMaxRetries/,
+          );
+          assert.match(
+            liveEval,
+            /requestResult\.response\?\.status === 429 \|\| isUsageExceeded\(requestResult\)/,
+          );'''
+              vor49 = vor49[:start] + new_assertion + vor49[end:]
+
           harness_path.write_text(harness)
           contract_path.write_text(contract)
+          vor49_path.write_text(vor49)
           PY
 
       - name: Run focused VOR-056 contracts
@@ -197,13 +215,14 @@ jobs:
         run: |
           git diff --check
           git status --short
-          git diff -- scripts/ask-vorta-live-evals.mjs scripts/vor-056-backlog-action-plan-contracts.mjs
+          git diff -- scripts/ask-vorta-live-evals.mjs scripts/vor-049-decision-ready-equipment-contracts.mjs scripts/vor-056-backlog-action-plan-contracts.mjs
 
       - name: Commit verified capacity retry
         run: |
           git config user.name "Ask Vorta CI"
           git config user.email "actions@users.noreply.github.com"
           git add scripts/ask-vorta-live-evals.mjs
+          git add scripts/vor-049-decision-ready-equipment-contracts.mjs
           git add scripts/vor-056-backlog-action-plan-contracts.mjs
           git diff --cached --quiet && { echo "No source changes to commit"; exit 1; }
           git commit -m "Retry transient Netlify usage capacity in live evaluations"
