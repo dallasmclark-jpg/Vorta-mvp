@@ -1,0 +1,237 @@
+name: VOR-056 usage capacity retry patch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/vor-056-backlog-action-plan
+    paths:
+      - .github/workflows/vor-056-usage-capacity-retry-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out VOR-056 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/vor-056-backlog-action-plan
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Add transient platform-capacity retry
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          harness_path = Path("scripts/ask-vorta-live-evals.mjs")
+          contract_path = Path("scripts/vor-056-backlog-action-plan-contracts.mjs")
+
+          harness = harness_path.read_text()
+          contract = contract_path.read_text()
+
+          retry_function_end = '''function retryDelayForRateLimit(requestResult) {
+            const retryAfterValue =
+              requestResult.response?.headers.get("retry-after") ||
+              requestResult.payload?.retryAfterSeconds ||
+              null;
+            const retryAfterMs = Number.isFinite(Number(retryAfterValue))
+              ? Math.max(0, Number(retryAfterValue) * 1_000 + 1_000)
+              : 0;
+            return Math.max(rateLimitRetryMs, retryAfterMs);
+          }
+          '''
+          capacity_helpers = retry_function_end + '''
+          function isUsageExceeded(requestResult) {
+            return (
+              requestResult.response?.status === 503 &&
+              String(requestResult.payload?.error ?? "").trim().toLowerCase() ===
+                "usage_exceeded"
+            );
+          }
+
+          function isRetryableCapacityResponse(requestResult) {
+            return requestResult.response?.status === 429 || isUsageExceeded(requestResult);
+          }
+          '''
+          if "function isUsageExceeded(" not in harness:
+              if retry_function_end not in harness:
+                  raise SystemExit("retry-delay function marker not found")
+              harness = harness.replace(retry_function_end, capacity_helpers, 1)
+
+          results_marker = '''const results = [];
+          let blockedByRateLimit = false;'''
+          results_replacement = '''const results = [];
+          let blockedByRateLimit = false;
+          let blockedByCapacity = false;'''
+          if "let blockedByCapacity = false;" not in harness:
+              if results_marker not in harness:
+                  raise SystemExit("results state marker not found")
+              harness = harness.replace(results_marker, results_replacement, 1)
+
+          old_loop = '''  while (
+            requestResult.response?.status === 429 &&
+            rateLimitRetries < rateLimitMaxRetries
+          ) {
+            const pauseMs = retryDelayForRateLimit(requestResult);
+            rateLimitRetries += 1;
+            rateLimitWaitMs += pauseMs;
+            console.warn(
+              `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
+            );'''
+          new_loop = '''  while (
+            isRetryableCapacityResponse(requestResult) &&
+            rateLimitRetries < rateLimitMaxRetries
+          ) {
+            const pauseMs = retryDelayForRateLimit(requestResult);
+            const capacityLabel = isUsageExceeded(requestResult)
+              ? "Netlify usage capacity"
+              : "Rate limit";
+            rateLimitRetries += 1;
+            rateLimitWaitMs += pauseMs;
+            console.warn(
+              `${capacityLabel} reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
+            );'''
+          if "isRetryableCapacityResponse(requestResult)" not in harness.split("const { response, payload, error }")[0]:
+              if old_loop not in harness:
+                  raise SystemExit("429 retry loop marker not found")
+              harness = harness.replace(old_loop, new_loop, 1)
+
+          old_classification = '''  if (response?.status === 429) {
+            const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
+            blockedByRateLimit = true;
+            failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
+          } else if (response && (!response.ok || !payload)) {'''
+          new_classification = '''  if (isUsageExceeded(requestResult)) {
+            blockedByCapacity = true;
+            failures.push("platform usage capacity exceeded after configured retries");
+          } else if (response?.status === 429) {
+            const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
+            blockedByRateLimit = true;
+            failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
+          } else if (response && (!response.ok || !payload)) {'''
+          if "platform usage capacity exceeded after configured retries" not in harness:
+              if old_classification not in harness:
+                  raise SystemExit("response classification marker not found")
+              harness = harness.replace(old_classification, new_classification, 1)
+
+          old_break = '''  if (blockedByRateLimit) {
+            console.error("Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.");
+            break;
+          }'''
+          new_break = '''  if (blockedByRateLimit || blockedByCapacity) {
+            console.error(
+              blockedByCapacity
+                ? "Evaluation stopped because Netlify usage capacity remained unavailable after all configured retries."
+                : "Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.",
+            );
+            break;
+          }'''
+          if "blockedByRateLimit || blockedByCapacity" not in harness:
+              if old_break not in harness:
+                  raise SystemExit("evaluation stop marker not found")
+              harness = harness.replace(old_break, new_break, 1)
+
+          old_summary = '''console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, results }, null, 2));
+          if (blockedByRateLimit) process.exit(3);'''
+          new_summary = '''console.log(
+            JSON.stringify(
+              {
+                scenarioFile,
+                offset,
+                requested: selectedScenarios.length,
+                blockedByRateLimit,
+                blockedByCapacity,
+                results,
+              },
+              null,
+              2,
+            ),
+          );
+          if (blockedByRateLimit || blockedByCapacity) process.exit(3);'''
+          if "blockedByCapacity,\n      results" not in harness:
+              if old_summary not in harness:
+                  raise SystemExit("evaluation summary marker not found")
+              harness = harness.replace(old_summary, new_summary, 1)
+
+          if 'const liveHarness = readFileSync(' not in contract:
+              reader_marker = 'const centralWorkflow = readFileSync(\n'
+              if reader_marker not in contract:
+                  raise SystemExit("contract live-harness reader marker not found")
+              reader = '''const liveHarness = readFileSync(
+            "scripts/ask-vorta-live-evals.mjs",
+            "utf8",
+          );
+          '''
+              contract = contract.replace(reader_marker, reader + reader_marker, 1)
+
+          insertion_marker = 'const resetIndex = centralWorkflow.indexOf(\n'
+          capacity_contract = '''for (const marker of [
+            "function isUsageExceeded(",
+            'requestResult.response?.status === 503',
+            '"usage_exceeded"',
+            "function isRetryableCapacityResponse(",
+            "blockedByCapacity",
+            "platform usage capacity exceeded after configured retries",
+            "blockedByRateLimit || blockedByCapacity",
+          ]) {
+            assert.ok(
+              liveHarness.includes(marker),
+              `The live evaluator capacity retry is missing ${marker}`,
+            );
+          }
+          assert.ok(
+            liveHarness.includes(
+              'String(requestResult.payload?.error ?? "").trim().toLowerCase()',
+            ),
+            "Only the exact usage_exceeded platform response may use the 503 retry path",
+          );
+
+          '''
+          if "The live evaluator capacity retry is missing" not in contract:
+              if insertion_marker not in contract:
+                  raise SystemExit("capacity contract insertion marker not found")
+              contract = contract.replace(
+                  insertion_marker,
+                  capacity_contract + insertion_marker,
+                  1,
+              )
+
+          harness_path.write_text(harness)
+          contract_path.write_text(contract)
+          PY
+
+      - name: Run focused VOR-056 contracts
+        run: node scripts/vor-056-backlog-action-plan-contracts.mjs
+
+      - name: Run complete canonical validation
+        run: npm run build
+
+      - name: Check final diff
+        run: |
+          git diff --check
+          git status --short
+          git diff -- scripts/ask-vorta-live-evals.mjs scripts/vor-056-backlog-action-plan-contracts.mjs
+
+      - name: Commit verified capacity retry
+        run: |
+          git config user.name "Ask Vorta CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add scripts/ask-vorta-live-evals.mjs
+          git add scripts/vor-056-backlog-action-plan-contracts.mjs
+          git diff --cached --quiet && { echo "No source changes to commit"; exit 1; }
+          git commit -m "Retry transient Netlify usage capacity in live evaluations"
+          git push origin HEAD:agent/vor-056-backlog-action-plan
