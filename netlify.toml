@@ -1,4 +1,5 @@
 [build]
+  ignore = "node ./scripts/netlify-ignore-build.mjs"
   command = "node scripts/validate-data-mode.mjs && npm run build"
   publish = "dist"
 

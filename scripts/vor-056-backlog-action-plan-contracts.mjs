@@ -33,6 +33,10 @@ const centralWorkflow = readFileSync(
   ".github/workflows/vor-049-validation.yml",
   "utf8",
 );
+const productionWorkflow = readFileSync(
+  ".github/workflows/maintenance-manager-production.yml",
+  "utf8",
+);
 const scenarios = JSON.parse(
   readFileSync("tests/evals/vor-056-backlog-action-plan.json", "utf8"),
 );
@@ -188,24 +192,24 @@ assert.ok(
   "Only the exact usage_exceeded platform response may use the 503 retry path",
 );
 
-const resetIndex = centralWorkflow.indexOf(
-  "Reset rate window before exhaustive equipment audit",
+const backlogIndex = productionWorkflow.indexOf(
+  "Run VOR-056 backlog production decision",
 );
-const backlogIndex = centralWorkflow.indexOf(
-  "Run backlog action-plan decision",
+const resetIndex = productionWorkflow.indexOf(
+  "Reset after backlog production decision",
 );
-const equipmentIndex = centralWorkflow.indexOf(
-  "Run all 24 visible-answer golden decisions",
-);
-assert.ok(
-  resetIndex >= 0 && backlogIndex > resetIndex && equipmentIndex > backlogIndex,
-  "The focused backlog decision must run after the reset and before the 24 equipment decisions",
+const productionWindowIndex = productionWorkflow.indexOf(
+  "Run first 12 Ask Vorta production decisions",
 );
 assert.ok(
-  centralWorkflow.includes(
+  backlogIndex >= 0 && resetIndex > backlogIndex && productionWindowIndex > resetIndex,
+  "The focused backlog decision must run once after deployment and before the production golden suite",
+);
+assert.ok(
+  productionWorkflow.includes(
     "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json",
-  ) && centralWorkflow.includes("vor-056-live-eval.log"),
-  "The central gate must run and preserve VOR-056 live evidence",
+  ) && productionWorkflow.includes("ask-vorta-production-backlog.log"),
+  "The daily production gate must run and preserve VOR-056 live evidence",
 );
 
 console.log("VOR-056 actionable backlog decision contracts passed.");

@@ -20,6 +20,7 @@ const liveEval = read("scripts/ask-vorta-live-evals.mjs");
 const visibleEvalTemplate = liveEval;
 const liveEvalSurface = liveEval;
 const workflow = read(".github/workflows/vor-049-validation.yml");
+const productionWorkflow = read(".github/workflows/maintenance-manager-production.yml");
 const packageJson = JSON.parse(read("package.json"));
 const golden = JSON.parse(read("tests/evals/vor-033-demo-golden.json"));
 
@@ -145,13 +146,14 @@ assert.match(
   "Non-answerable visible decisions must not report confidence above 50 percent",
 );
 assert.match(
-  workflow,
-  /Wait for a clean shared evaluation rate window/,
-  "The live golden gate must isolate itself from parallel CI traffic",
+  productionWorkflow,
+  /Reset production evaluation rate window/,
+  "The daily production gate must isolate live decisions from the shared rate window",
 );
-assert.match(workflow, /run: sleep 310/);
-assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/);
-assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/);
+assert.match(productionWorkflow, /run: sleep 310/);
+assert.match(productionWorkflow, /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/);
+assert.match(productionWorkflow, /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/);
+assert.doesNotMatch(workflow, /deploy-preview-|Wait for exact Netlify preview commit/);
 assert.match(
   liveEval,
   /while \(\s*isRetryableCapacityResponse\(requestResult\) &&\s*rateLimitRetries < rateLimitMaxRetries/,

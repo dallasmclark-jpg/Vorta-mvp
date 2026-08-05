@@ -9,6 +9,10 @@ const productionWorkflow = readFileSync(
   ".github/workflows/maintenance-manager-production.yml",
   "utf8",
 );
+const dailyWorkflow = readFileSync(
+  ".github/workflows/netlify-daily-release.yml",
+  "utf8",
+);
 const equipmentEvidence = readFileSync(
   "netlify/functions/ask-vorta/equipment-evidence.mts",
   "utf8",
@@ -220,5 +224,16 @@ for (const trigger of [
     `The central Ask Vorta gate is missing trigger ${trigger.trim()}`,
   );
 }
+
+assert.ok(
+  dailyWorkflow.includes("uses: ./.github/workflows/maintenance-manager-production.yml") &&
+    dailyWorkflow.includes("expected_commit:"),
+  "The single daily release must call the reusable exact-production verifier",
+);
+assert.ok(
+  productionWorkflow.includes("workflow_call:") &&
+    productionWorkflow.includes("Run VOR-056 backlog production decision"),
+  "Production verification must be reusable and retain the backlog decision gate",
+);
 
 console.log("VOR-055 Ask Vorta production verification contracts passed.");
