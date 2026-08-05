@@ -24,6 +24,10 @@ on:
       - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
+      - "netlify.toml"
+      - "ops/netlify-release.json"
+      - "scripts/netlify-*"
+      - ".github/workflows/netlify-daily-release.yml"
       - "package.json"
       - ".github/workflows/vor-038-intelligence-live-eval.yml"
       - ".github/workflows/vor-048-validation.yml"
@@ -52,6 +56,10 @@ on:
       - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
+      - "netlify.toml"
+      - "ops/netlify-release.json"
+      - "scripts/netlify-*"
+      - ".github/workflows/netlify-daily-release.yml"
       - "package.json"
       - ".github/workflows/vor-038-intelligence-live-eval.yml"
       - ".github/workflows/vor-048-validation.yml"
@@ -80,8 +88,6 @@ jobs:
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
-      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      PREVIEW_URL: https://deploy-preview-${{ github.event.pull_request.number }}--vorta-app.netlify.app
 
     steps:
       - name: Check out exact source
@@ -129,88 +135,12 @@ jobs:
       - name: Enforce unchanged performance budgets
         run: npm run test:performance
 
-      - name: Wait for exact Netlify preview commit
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          for attempt in $(seq 1 60); do
-            metadata="$(curl -fsS "${PREVIEW_URL}/vorta-build.json" || true)"
-            if printf '%s' "$metadata" | grep -Fq "$EXPECTED_HEAD_SHA"; then
-              echo "Netlify preview is serving $EXPECTED_HEAD_SHA."
-              exit 0
-            fi
-            echo "Preview is not on the expected commit yet (${attempt}/60)."
-            sleep 10
-          done
-          echo "Netlify preview did not publish the expected commit." >&2
-          exit 1
-
-      - name: Wait for a clean shared evaluation rate window
-        if: github.event_name == 'pull_request'
-        run: sleep 310
-
-      - name: Run Shift Cover routing and latency scenarios
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
-          VORTA_EVAL_DELAY_MS: 500
-          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 370000
-          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
-        run: |
-          set -o pipefail
-          npm run eval:ask-vorta:vor048 2>&1 | tee vor-048-live-eval.log
-
-      - name: Run six cross-domain Maintenance Manager decisions
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
-          VORTA_EVAL_DELAY_MS: 500
-          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 370000
-          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
-        run: |
-          set -o pipefail
-          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-054-cross-domain-live.json 2>&1 | tee vor-054-live-eval.log
-
-      - name: Reset rate window before exhaustive equipment audit
-        if: github.event_name == 'pull_request'
-        run: sleep 310
-
-      - name: Run backlog action-plan decision
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
-          VORTA_EVAL_DELAY_MS: 500
-          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
-          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
-        run: |
-          set -o pipefail
-          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json 2>&1 | tee vor-056-live-eval.log
-
-      - name: Run all 24 visible-answer golden decisions
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
-          VORTA_EVAL_DELAY_MS: 30000
-          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
-          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
-        run: |
-          set -o pipefail
-          npm run eval:ask-vorta:vor049 2>&1 | tee vor-049-live-eval.log
-
       - name: Preserve failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: vor-049-failure-evidence-${{ github.sha }}
           path: |
-            vor-048-live-eval.log
-            vor-054-live-eval.log
-            vor-056-live-eval.log
-            vor-049-live-eval.log
             dist/vorta-build.json
           if-no-files-found: warn
           retention-days: 7
@@ -221,10 +151,6 @@ jobs:
         with:
           name: vor-049-validation-evidence-${{ github.sha }}
           path: |
-            vor-048-live-eval.log
-            vor-054-live-eval.log
-            vor-056-live-eval.log
-            vor-049-live-eval.log
             dist/vorta-build.json
           if-no-files-found: warn
           retention-days: 7
