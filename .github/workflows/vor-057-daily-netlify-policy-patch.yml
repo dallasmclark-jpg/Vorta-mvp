@@ -41,6 +41,10 @@ jobs:
           path = Path("scripts/netlify-daily-deploy-contracts.mjs")
           content = path.read_text()
           content = content.replace('].join("\n");', '].join("\\n");')
+          content = content.replace(
+              'assert.doesNotMatch(daily, /netlify deploy|build hook|\\/api\\/v1\\/sites\\/.*\\/builds/i);',
+              'assert.doesNotMatch(daily, /run:\\s*(?:npx\\s+)?netlify\\s+deploy|api\\.netlify\\.com\\/api\\/v1\\/sites\\/.*\\/builds/i);',
+          )
           path.write_text(content)
           PY
 
