@@ -52,3 +52,5 @@ jobs:
           git add package-lock.json docs/locked-ci-dependencies.md scripts/run-contract-suite.mjs scripts/vor-064-locked-browser-runtime-contracts.mjs scripts/vor-064-prepare-locked-browser-runtime.mjs
           git commit -m "VOR-064: generate locked browser runtime [skip netlify]"
           git push origin HEAD:agent/vor-064-locked-browser-runtime
+
+# attempt 2
