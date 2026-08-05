@@ -10,6 +10,7 @@ on:
       - "scripts/vor-048*"
       - "scripts/vor-049*"
       - "scripts/vor-054*"
+      - "scripts/vor-055*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -20,10 +21,12 @@ on:
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-033-demo-golden.json"
+      - "tests/evals/ask-vorta-live-golden.json"
       - "package.json"
       - ".github/workflows/vor-038-intelligence-live-eval.yml"
       - ".github/workflows/vor-048-validation.yml"
       - ".github/workflows/vor-049-validation.yml"
+      - ".github/workflows/maintenance-manager-production.yml"
   push:
     branches:
       - main
@@ -33,6 +36,7 @@ on:
       - "scripts/vor-048*"
       - "scripts/vor-049*"
       - "scripts/vor-054*"
+      - "scripts/vor-055*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -43,10 +47,12 @@ on:
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-033-demo-golden.json"
+      - "tests/evals/ask-vorta-live-golden.json"
       - "package.json"
       - ".github/workflows/vor-038-intelligence-live-eval.yml"
       - ".github/workflows/vor-048-validation.yml"
       - ".github/workflows/vor-049-validation.yml"
+      - ".github/workflows/maintenance-manager-production.yml"
   workflow_dispatch:
 
 permissions:
