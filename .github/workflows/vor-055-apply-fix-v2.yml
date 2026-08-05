@@ -53,3 +53,5 @@ jobs:
           git add -A
           git commit -m "Fix VOR-055 production verification"
           git push origin HEAD:agent/vor-055-production-verifier
+
+# Structural VOR-037 compatibility check repaired before this rerun.
