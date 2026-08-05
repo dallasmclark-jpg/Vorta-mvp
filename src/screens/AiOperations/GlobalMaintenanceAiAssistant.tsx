@@ -3300,7 +3300,7 @@ export function GlobalMaintenanceAiAssistant({
     stopSpeechRecognition(true);
 
     const requestId =
-      `1785872025758-${Math.random().toString(36).slice(2, 8)}`;
+      `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const userId = `global-user-${requestId}`;
     const assistantId = `global-assistant-${requestId}`;
 

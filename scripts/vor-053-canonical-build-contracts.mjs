@@ -99,6 +99,17 @@ for (const marker of [
   "onRemoveImage",
   "Photo attached:",
 ]) assert.ok(workspace.includes(marker), `Canonical workspace is missing ${marker}`);
+assert.match(
+  assistant,
+  /const requestId\s*=\s*`\$\{Date\.now\(\)\}-\$\{Math\.random\(\)\.toString\(36\)\.slice\(2, 8\)\}`;/,
+  "Canonical assistant request IDs must use the current timestamp",
+);
+assert.doesNotMatch(
+  assistant,
+  /const requestId\s*=\s*`\d{10,}-\$\{Math\.random\(\)\.toString\(36\)\.slice\(2, 8\)\}`;/,
+  "Canonical assistant request IDs must not contain a fixed timestamp",
+);
+
 for (const marker of [
   "latestConversationContext",
   "openAskVortaActionReviewDialog",
