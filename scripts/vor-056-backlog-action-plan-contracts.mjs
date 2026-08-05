@@ -1,0 +1,112 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const responseValidation = readFileSync(
+  "netlify/functions/ask-vorta/response-validation.mts",
+  "utf8",
+);
+const routePlanning = readFileSync(
+  "netlify/functions/ask-vorta/route-planning.mts",
+  "utf8",
+);
+const contractSuite = readFileSync(
+  "scripts/run-contract-suite.mjs",
+  "utf8",
+);
+const centralWorkflow = readFileSync(
+  ".github/workflows/vor-049-validation.yml",
+  "utf8",
+);
+const scenarios = JSON.parse(
+  readFileSync("tests/evals/vor-056-backlog-action-plan.json", "utf8"),
+);
+
+const workRouteIndex = routePlanning.indexOf('"work_backlog"');
+assert.ok(workRouteIndex >= 0, "The deterministic backlog route must remain available");
+assert.ok(
+  routePlanning
+    .slice(workRouteIndex, workRouteIndex + 800)
+    .includes("forceActionPlan: true"),
+  "The backlog route must continue to require a decision-ready action plan",
+);
+
+for (const marker of [
+  "const firstFinding = records(answer.findings)[0]",
+  "const evidenceBackedWorkAction =",
+  'scope === "work" && findingTitle',
+  "Maintenance Manager / Planner",
+  "authorised assignee",
+  "SAP work order",
+  "assignee, readiness, due date and released sequence",
+]) {
+  assert.ok(
+    responseValidation.includes(marker),
+    `The deterministic response guard is missing ${marker}`,
+  );
+}
+assert.ok(
+  responseValidation.includes(
+    "answer.recommendedActions = [action]",
+  ),
+  "The evidence-backed fallback must keep recommended actions and the action plan aligned",
+);
+assert.ok(
+  responseValidation.includes(
+    'scope === "work"\n          ? "Moves the highest-priority overdue or unassigned work order',
+  ),
+  "The backlog action must state the decision impact without claiming a write",
+);
+assert.equal(
+  /assigned successfully|updated SAP|work order released/i.test(
+    responseValidation,
+  ),
+  false,
+  "Ask Vorta must not claim that it performed a backlog or SAP write",
+);
+
+assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");
+const scenario = scenarios[0];
+assert.equal(scenario.id, "vor-056-backlog-action-plan");
+assert.deepEqual(scenario.expectedTools, ["get_site_work_backlog"]);
+assert.ok(
+  scenario.mustNotMention.includes("updated SAP") &&
+    scenario.mustNotMention.includes("assigned successfully"),
+  "The live scenario must protect the read-only boundary",
+);
+
+assert.ok(
+  contractSuite.includes(
+    '["VOR-056 actionable backlog decisions", "scripts/vor-056-backlog-action-plan-contracts.mjs"]',
+  ),
+  "VOR-056 must remain in the permanent contract suite",
+);
+for (const trigger of [
+  '      - "scripts/vor-056*"',
+  '      - "tests/evals/vor-056-backlog-action-plan.json"',
+]) {
+  assert.ok(
+    centralWorkflow.includes(trigger),
+    `The central Ask Vorta gate is missing ${trigger.trim()}`,
+  );
+}
+const resetIndex = centralWorkflow.indexOf(
+  "Reset rate window before exhaustive equipment audit",
+);
+const backlogIndex = centralWorkflow.indexOf(
+  "Run backlog action-plan decision",
+);
+const equipmentIndex = centralWorkflow.indexOf(
+  "Run all 24 visible-answer golden decisions",
+);
+assert.ok(
+  resetIndex >= 0 && backlogIndex > resetIndex && equipmentIndex > backlogIndex,
+  "The focused backlog decision must run after the reset and before the 24 equipment decisions",
+);
+assert.ok(
+  centralWorkflow.includes(
+    "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json",
+  ) && centralWorkflow.includes("vor-056-live-eval.log"),
+  "The central gate must run and preserve VOR-056 live evidence",
+);
+
+console.log("VOR-056 actionable backlog decision contracts passed.");
