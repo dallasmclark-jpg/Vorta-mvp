@@ -13,6 +13,10 @@ const routePlanning = readFileSync(
   "netlify/functions/ask-vorta/route-planning.mts",
   "utf8",
 );
+const decisionAnswer = readFileSync(
+  "netlify/functions/ask-vorta/decision-answer.mts",
+  "utf8",
+);
 const runtime = readFileSync(
   "netlify/functions/ask-vorta/runtime.mts",
   "utf8",
@@ -111,6 +115,27 @@ assert.ok(
     'import handler from "./ask-vorta/runtime.mjs";',
   ) && entrypoint.includes("export default handler;"),
   "The deployment integrity check must preserve the thin Netlify handler delegation",
+);
+
+for (const marker of [
+  'intent === "work_backlog"',
+  'outcomeData(outcomes, "get_site_work_backlog")',
+  "records(backlogRecord.workOrders)",
+  "overdue work orders",
+  "unassigned work orders",
+  "Maintenance Manager / Planner",
+  "authorised assignee",
+  "released sequence are recorded by an authorised user",
+]) {
+  assert.ok(
+    decisionAnswer.includes(marker),
+    `The deterministic backlog answer is missing ${marker}`,
+  );
+}
+assert.ok(
+  decisionAnswer.indexOf('intent === "work_backlog"') <
+    decisionAnswer.indexOf('intent === "shift_cover_risk"'),
+  "The deterministic backlog answer must execute before the model-backed fallback path",
 );
 
 assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");

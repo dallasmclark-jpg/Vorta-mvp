@@ -110,6 +110,121 @@ export function deterministicOperationalAnswer(
     };
   }
 
+  if (intent === "work_backlog") {
+  const backlogData = outcomeData(outcomes, "get_site_work_backlog");
+  const backlogRecord =
+    backlogData && typeof backlogData === "object" && !Array.isArray(backlogData)
+      ? (backlogData as JsonRecord)
+      : {};
+  const summary =
+    backlogRecord.summary &&
+    typeof backlogRecord.summary === "object" &&
+    !Array.isArray(backlogRecord.summary)
+      ? (backlogRecord.summary as JsonRecord)
+      : {};
+  const workOrders = records(backlogRecord.workOrders);
+  const priorityOrders = workOrders.filter(
+    (item) => item.overdue === true || !firstDecisionText(item, ["assignedEngineer"]),
+  );
+  const rankedOrders = (priorityOrders.length ? priorityOrders : workOrders).slice(0, 4);
+  const topOrder = rankedOrders[0];
+  const openCount = numberValue(summary.openCount);
+  const overdueCount = numberValue(summary.overdueCount);
+  const unassignedCount = numberValue(summary.unassignedCount);
+  const criticalOrHighCount = numberValue(summary.criticalOrHighCount);
+  const topNumber = topOrder
+    ? firstDecisionText(topOrder, ["workOrderNumber"])
+    : "";
+  const topEquipment = topOrder
+    ? firstDecisionText(topOrder, ["equipmentCode", "equipmentName"])
+    : "";
+  const topPriority = topOrder
+    ? firstDecisionText(topOrder, ["priority"])
+    : "";
+  const topDueDate = topOrder
+    ? firstDecisionText(topOrder, ["dueDate"])
+    : "";
+  const topDescription = topOrder
+    ? firstDecisionText(topOrder, ["description"])
+    : "";
+  const topAssignee = topOrder
+    ? firstDecisionText(topOrder, ["assignedEngineer"])
+    : "";
+  const topLabel = [topNumber, topEquipment].filter(Boolean).join(" · ");
+  const action = topOrder
+    ? `Confirm scope, readiness and an authorised assignee for ${topLabel}, then have the Maintenance Planner update and sequence the SAP work order before release.`
+    : "Confirm the current SAP-backed work-order evidence before assigning or sequencing backlog work.";
+  const findings = rankedOrders.map((item) => {
+    const workOrderNumber = firstDecisionText(item, ["workOrderNumber"]);
+    const equipment = firstDecisionText(item, ["equipmentCode", "equipmentName"]);
+    const priority = firstDecisionText(item, ["priority"]);
+    const dueDate = firstDecisionText(item, ["dueDate"]);
+    const description = firstDecisionText(item, ["description"]);
+    const assignedEngineer = firstDecisionText(item, ["assignedEngineer"]);
+    return {
+      category: "work",
+      severity: /critical/i.test(priority)
+        ? "critical"
+        : /high/i.test(priority)
+          ? "high"
+          : "medium",
+      title: [workOrderNumber, equipment].filter(Boolean).join(" · ") || "Backlog work order",
+      detail: [
+        description,
+        priority ? `Priority ${priority}` : "",
+        dueDate ? `due ${dueDate}` : "",
+        assignedEngineer
+          ? `assigned to ${assignedEngineer}`
+          : "no engineer recorded",
+      ].filter(Boolean).join("; ") + ".",
+    };
+  });
+
+  return {
+    ...base,
+    directAnswer: topOrder
+      ? `${overdueCount} overdue work orders and ${unassignedCount} unassigned work orders need management attention; start with work order ${topLabel}${topDueDate ? `, due ${topDueDate}` : ""}.`
+      : "No open work order was returned by the current site backlog evidence.",
+    decisionSummary: [
+      {
+        label: "Highest priority",
+        value: topOrder
+          ? [topLabel, topPriority, topDueDate ? `due ${topDueDate}` : ""]
+              .filter(Boolean)
+              .join(" · ")
+          : "No current open order returned.",
+      },
+      { label: "Backlog", value: `${openCount} open · ${overdueCount} overdue.` },
+      { label: "Assignment", value: `${unassignedCount} open work orders have no recorded assignee.` },
+      { label: "Critical or high", value: `${criticalOrHighCount} open work orders are critical or high priority.` },
+    ],
+    evidence: rankedOrders.map((item) => {
+      const workOrderNumber = firstDecisionText(item, ["workOrderNumber"]);
+      const equipment = firstDecisionText(item, ["equipmentCode", "equipmentName"]);
+      const dueDate = firstDecisionText(item, ["dueDate"]);
+      const assignedEngineer = firstDecisionText(item, ["assignedEngineer"]);
+      return `${[workOrderNumber, equipment].filter(Boolean).join(" · ")}: ${dueDate ? `due ${dueDate}` : "due date not recorded"}; ${assignedEngineer ? `assigned to ${assignedEngineer}` : "unassigned"}.`;
+    }),
+    findings,
+    recommendedActions: topOrder ? [action] : [],
+    actionPlan: topOrder
+      ? [{
+          priority: "now",
+          action,
+          owner: "Maintenance Manager / Planner",
+          expectedImpact:
+            "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan.",
+          verification:
+            "Open the linked SAP work order evidence and confirm the authorised assignee, readiness, due date and released sequence are recorded by an authorised user.",
+        }]
+      : [],
+    missingData: unassignedCount > 0
+      ? [`${unassignedCount} open work orders have no recorded assignee.`]
+      : [],
+    confidence: topOrder ? 86 : 62,
+  };
+}
+
   if (intent === "shift_cover_risk") {
     const coverData = outcomeData(outcomes, "get_shift_cover");
     const calendar = records(
