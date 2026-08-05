@@ -19,10 +19,20 @@ jobs:
         shell: bash
         run: |
           mkdir -p vor-063-inventory
-          rg -n --hidden --glob '!node_modules/**' --glob '!dist/**' 'siteContext|site_id|siteId|organisationId|organisation_id|user_site_access|vorta_get_function_context|vorta_has_site_access|service_role|SUPABASE_SERVICE_ROLE' src supabase netlify tests scripts > vor-063-inventory/site-context.txt || true
-          rg -l --hidden --glob '!node_modules/**' --glob '!dist/**' 'useAuth|AuthProvider|PortalShell|invokeEvidenceFunction' src tests > vor-063-inventory/frontend-files.txt || true
-          rg -l --hidden --glob '!node_modules/**' --glob '!dist/**' 'createClient|service_role|SUPABASE_SERVICE_ROLE|siteId|site_id|vorta_get_function_context' supabase/functions netlify/functions > vor-063-inventory/privileged-readers.txt || true
+          grep -RInE --exclude-dir=node_modules --exclude-dir=dist --exclude='*.map' \
+            'siteContext|site_id|siteId|organisationId|organisation_id|user_site_access|vorta_get_function_context|vorta_has_site_access|service_role|SUPABASE_SERVICE_ROLE' \
+            src supabase netlify tests scripts > vor-063-inventory/site-context.txt
+          grep -RIlE --exclude-dir=node_modules --exclude-dir=dist \
+            'useAuth|AuthProvider|PortalShell|invokeEvidenceFunction' src tests \
+            | sort > vor-063-inventory/frontend-files.txt
+          grep -RIlE --exclude-dir=node_modules --exclude-dir=dist \
+            'createClient|service_role|SUPABASE_SERVICE_ROLE|siteId|site_id|vorta_get_function_context' \
+            supabase/functions netlify/functions \
+            | sort > vor-063-inventory/privileged-readers.txt
           find supabase/functions netlify/functions -maxdepth 3 -type f | sort > vor-063-inventory/function-files.txt
+          test -s vor-063-inventory/site-context.txt
+          test -s vor-063-inventory/frontend-files.txt
+          test -s vor-063-inventory/privileged-readers.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: vor-063-context-inventory
