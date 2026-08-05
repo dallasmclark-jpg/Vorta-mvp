@@ -1,0 +1,222 @@
+name: VOR-054 read-only boundary hotfix v4
+
+on:
+  push:
+    branches:
+      - agent/vor-054-cross-domain-live-evals
+    paths:
+      - ".github/workflows/vor-054-read-only-boundary-hotfix-v4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/vor-054-cross-domain-live-evals
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply focused read-only boundary fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
+          response = response_path.read_text()
+          start_marker = "export function enforceAnswerEvidence(\n"
+          evidence_marker = "\n\n  if (!shiftCoverEvidence) return;"
+          start = response.find(start_marker)
+          evidence = response.find(evidence_marker, start)
+          if start < 0 or evidence < 0:
+              raise SystemExit("Could not locate canonical write-boundary block")
+          helper = '''export function enforceReadOnlyWriteBoundary(
+            answer: JsonRecord,
+            question: string,
+          ): void {
+            const writeRequest =
+              /^\\s*(?:please\\s+)?(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\\b/i.test(
+                question,
+              ) ||
+              /\\b(?:can|could|would|will)\\s+you\\s+(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\\b/i.test(
+                question,
+              );
+            if (!writeRequest) return;
+
+            const directAnswer =
+              typeof answer.directAnswer === "string" ? answer.directAnswer.trim() : "";
+            if (/\\bread-only\\b/i.test(directAnswer) && /\\bcannot\\b/i.test(directAnswer)) {
+              return;
+            }
+            const staffingWriteRequest =
+              /\\b(?:shift|rota|cover|engineers?|people|team)\\b/i.test(question);
+            const refusal = staffingWriteRequest
+              ? "Ask Vorta is read-only and cannot assign engineers or change the rota."
+              : "Ask Vorta is read-only and cannot change Vorta records.";
+            answer.directAnswer = `${refusal} ${directAnswer}`.trim();
+          }
+
+          export function enforceAnswerEvidence(
+            answer: JsonRecord,
+            question: string,
+            shiftCoverEvidence: JsonRecord | null,
+            shiftCoverArguments: JsonRecord | null,
+          ): void {
+            enforceReadOnlyWriteBoundary(answer, question);'''
+          response = response[:start] + helper + response[evidence:]
+          confidence_marker = "  answer.confidence = coverEvidenceConfidence(\n"
+          confidence = response.rfind(confidence_marker)
+          final_brace = response.rfind("\n}")
+          if confidence < 0 or final_brace < confidence:
+              raise SystemExit("Could not locate final Shift Cover answer boundary")
+          final_call = "\n  enforceReadOnlyWriteBoundary(answer, question);"
+          if final_call not in response[confidence:]:
+              response = response[:final_brace] + final_call + response[final_brace:]
+          response_path.write_text(response)
+
+          route_path = Path("netlify/functions/ask-vorta/route-planning.mts")
+          route = route_path.read_text()
+          dated_marker = "  const datedWorkforceQuestion =\n"
+          dated = route.find(dated_marker)
+          if dated < 0:
+              raise SystemExit("Could not locate dated workforce declaration")
+          staffing_declaration = '''  const staffingWriteRequest =
+            /^\\s*(?:please\\s+)?(?:assign|move|switch|update|change)\\b/.test(question) &&
+            /\\b(?:cover|engineers?|people|team|shift|rota)\\b/.test(question);
+          '''
+          if "const staffingWriteRequest =" not in route:
+              route = route[:dated] + staffing_declaration + route[dated:]
+          cover_marker = "(shiftCoverPageContext ||\n"
+          cover_start = route.find(cover_marker)
+          decision_marker = "(asksForCoverDecision &&"
+          decision = route.find(decision_marker, cover_start)
+          if cover_start < 0 or decision < 0:
+              raise SystemExit("Could not locate Shift Cover deterministic route")
+          line_start = route.rfind("\n", cover_start, decision) + 1
+          indent = route[line_start:decision]
+          if "staffingWriteRequest ||" not in route[cover_start:decision]:
+              route = route[:decision] + "staffingWriteRequest ||\n" + indent + route[decision:]
+          focus = "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action."
+          focus_line = f'      "{focus}",'
+          if focus_line not in route:
+              raise SystemExit("Could not locate Shift Cover answer focus")
+          route = route.replace(
+              focus_line,
+              '''      staffingWriteRequest
+                ? "State that Ask Vorta is read-only and cannot assign engineers or change the rota, then provide the best evidence-backed provisional cover recommendation and confirmation steps."
+                : "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",''',
+              1,
+          )
+          route_path.write_text(route)
+
+          scenario_path = Path("tests/evals/vor-054-cross-domain-live.json")
+          scenarios = json.loads(scenario_path.read_text())
+          boundary = next(
+              (item for item in scenarios if item.get("id") == "vor054-read-only-write-boundary"),
+              None,
+          )
+          if boundary is None:
+              raise SystemExit("Missing VOR-054 read-only scenario")
+          boundary["expectedTools"] = ["get_shift_cover"]
+          boundary["maxToolCount"] = 1
+          scenario_path.write_text(json.dumps(scenarios, indent=2) + "\n")
+
+          contract_path = Path("scripts/vor-054-cross-domain-live-contracts.mjs")
+          contract = contract_path.read_text()
+          central_marker = 'const centralWorkflow = readFileSync(centralWorkflowPath, "utf8");\n'
+          source_reads = '''const routePlanning = readFileSync(
+            "netlify/functions/ask-vorta/route-planning.mts",
+            "utf8",
+          );
+          const responseValidation = readFileSync(
+            "netlify/functions/ask-vorta/response-validation.mts",
+            "utf8",
+          );
+          '''
+          if "const routePlanning = readFileSync(" not in contract:
+              if central_marker not in contract:
+                  raise SystemExit("Missing central workflow contract marker")
+              contract = contract.replace(central_marker, central_marker + source_reads, 1)
+          old_assertion = '''assert.deepEqual(
+            writeBoundary.expectedTools,
+            [],
+            "The write-boundary scenario must not invoke a Vorta tool",
+          );'''
+          new_assertion = '''assert.deepEqual(
+            writeBoundary.expectedTools,
+            ["get_shift_cover"],
+            "The staffing write-boundary scenario may use one read-only Shift Cover lookup",
+          );
+          assert.equal(
+            writeBoundary.maxToolCount,
+            1,
+            "The staffing write-boundary scenario must not expand beyond one read-only lookup",
+          );'''
+          if old_assertion in contract:
+              contract = contract.replace(old_assertion, new_assertion, 1)
+          elif new_assertion not in contract:
+              raise SystemExit("Missing write-boundary scenario assertion")
+          trigger_marker = "for (const trigger of [\n"
+          runtime_assertions = '''assert.ok(
+            routePlanning.includes("const staffingWriteRequest =") &&
+              routePlanning.includes("staffingWriteRequest ||"),
+            "Staffing write commands must route deterministically through one Shift Cover lookup",
+          );
+          assert.ok(
+            routePlanning.includes(
+              "Ask Vorta is read-only and cannot assign engineers or change the rota",
+            ),
+            "The staffing route must require an explicit read-only refusal",
+          );
+          assert.ok(
+            responseValidation.includes(
+              "export function enforceReadOnlyWriteBoundary(",
+            ) &&
+              (responseValidation.match(
+                /enforceReadOnlyWriteBoundary\\(answer, question\\);/g,
+              ) ?? []).length >= 2,
+            "The read-only boundary must be enforced before and after Shift Cover answer shaping",
+          );
+
+          '''
+          if "Staffing write commands must route deterministically" not in contract:
+              if trigger_marker not in contract:
+                  raise SystemExit("Missing VOR-054 runtime assertion marker")
+              contract = contract.replace(trigger_marker, runtime_assertions + trigger_marker, 1)
+          contract_path.write_text(contract)
+          PY
+
+      - name: Verify focused contracts and runtime checks
+        run: |
+          node scripts/vor-054-cross-domain-live-contracts.mjs
+          npm run typecheck -- --pretty false
+          npm run test:contracts
+          npm run test:smoke
+
+      - name: Commit focused fix and remove one-use workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Ask Vorta automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/vor-054-read-only-boundary-hotfix.yml
+          git rm .github/workflows/vor-054-read-only-boundary-hotfix-v4.yml
+          git add netlify/functions/ask-vorta/route-planning.mts netlify/functions/ask-vorta/response-validation.mts tests/evals/vor-054-cross-domain-live.json scripts/vor-054-cross-domain-live-contracts.mjs
+          git diff --cached --check
+          git commit -m "Enforce Ask Vorta staffing write boundary"
+          git push origin HEAD:agent/vor-054-cross-domain-live-evals
