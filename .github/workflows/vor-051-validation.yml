@@ -43,7 +43,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Exact-preview Maintenance Manager golden journey
+    name: Local Maintenance Manager golden journey
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -54,8 +54,6 @@ jobs:
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
-      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      PREVIEW_URL: https://deploy-preview-${{ github.event.pull_request.number }}--vorta-app.netlify.app
 
     steps:
       - name: Check out exact source
@@ -97,22 +95,6 @@ jobs:
       - name: Enforce unchanged performance budgets
         run: npm run test:performance
 
-      - name: Wait for exact Netlify preview commit
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          for attempt in $(seq 1 60); do
-            metadata="$(curl -fsS "${PREVIEW_URL}/vorta-build.json" || true)"
-            if printf '%s' "$metadata" | grep -Fq "$EXPECTED_HEAD_SHA"; then
-              echo "Netlify preview is serving $EXPECTED_HEAD_SHA."
-              exit 0
-            fi
-            echo "Preview is not on the expected commit yet (${attempt}/60)."
-            sleep 10
-          done
-          echo "Netlify preview did not publish the expected commit." >&2
-          exit 1
-
       - name: Install browser-test runner without changing lockfile
         if: github.event_name == 'pull_request'
         run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
@@ -124,8 +106,6 @@ jobs:
       - name: Run authenticated phone and laptop manager rehearsal
         if: github.event_name == 'pull_request'
         shell: bash
-        env:
-          VORTA_E2E_BASE_URL: ${{ env.PREVIEW_URL }}
         run: |
           set -o pipefail
           npm run test:browser:vor051 2>&1 | tee vor-051-browser.log

@@ -1,0 +1,120 @@
+name: Daily Netlify production release
+
+on:
+  schedule:
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-netlify-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Validate and request today's single deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    outputs:
+      deploy_requested: ${{ steps.plan.outputs.deploy_requested }}
+      release_commit: ${{ steps.commit.outputs.release_commit }}
+      release_date: ${{ steps.plan.outputs.release_date }}
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Plan the London-date release
+        id: plan
+        shell: bash
+        run: |
+          release_date="$(TZ=Europe/London date +%F)"
+          not_before_date="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).notBeforeDate || '0000-00-00'")"
+          previous_release_date="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).releaseDate || ''")"
+          previous_source_commit="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).sourceCommit || ''")"
+          source_commit="$(git rev-parse HEAD)"
+
+          echo "release_date=$release_date" >> "$GITHUB_OUTPUT"
+          echo "source_commit=$source_commit" >> "$GITHUB_OUTPUT"
+
+          if [[ "$release_date" < "$not_before_date" ]]; then
+            echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
+            echo "Daily deployment is not permitted before $not_before_date."
+            exit 0
+          fi
+
+          if [[ "$previous_release_date" == "$release_date" ]]; then
+            echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
+            echo "The single deployment for $release_date was already requested."
+            exit 0
+          fi
+
+          if [[ -n "$previous_source_commit" ]] && \
+             git cat-file -e "$previous_source_commit^{commit}" 2>/dev/null && \
+             git diff --quiet "$previous_source_commit" HEAD -- . ':(exclude)ops/netlify-release.json'; then
+            echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
+            echo "No unreleased product changes were found."
+            exit 0
+          fi
+
+          echo "deploy_requested=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run canonical release validation
+        if: steps.plan.outputs.deploy_requested == 'true'
+        run: |
+          npm run build
+          npm run test:performance
+
+      - name: Advance the controlled release marker
+        if: steps.plan.outputs.deploy_requested == 'true'
+        env:
+          RELEASE_DATE: ${{ steps.plan.outputs.release_date }}
+          SOURCE_COMMIT: ${{ steps.plan.outputs.source_commit }}
+        run: |
+          node - <<'NODE'
+          const { readFileSync, writeFileSync } = require("node:fs");
+          const marker = JSON.parse(readFileSync("ops/netlify-release.json", "utf8"));
+          marker.releaseDate = process.env.RELEASE_DATE;
+          marker.sourceCommit = process.env.SOURCE_COMMIT;
+          marker.requestedAtUtc = new Date().toISOString();
+          writeFileSync("ops/netlify-release.json", `${JSON.stringify(marker, null, 2)}\n`);
+          NODE
+
+      - name: Commit the single daily release request
+        id: commit
+        if: steps.plan.outputs.deploy_requested == 'true'
+        shell: bash
+        run: |
+          git config user.name "Vorta Daily Release"
+          git config user.email "actions@users.noreply.github.com"
+          git add ops/netlify-release.json
+          git commit -m "chore(release): daily Netlify deployment ${{ steps.plan.outputs.release_date }}"
+          git push origin HEAD:main
+          echo "release_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Record skipped release
+        if: steps.plan.outputs.deploy_requested != 'true'
+        run: echo "No Netlify deployment was requested by this run."
+
+  verify-production:
+    name: Verify the single daily production deployment
+    needs: release
+    if: needs.release.outputs.deploy_requested == 'true'
+    uses: ./.github/workflows/maintenance-manager-production.yml
+    with:
+      expected_commit: ${{ needs.release.outputs.release_commit }}
+    secrets: inherit

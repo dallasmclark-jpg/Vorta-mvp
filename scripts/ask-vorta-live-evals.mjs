@@ -221,8 +221,21 @@ function retryDelayForRateLimit(requestResult) {
   return Math.max(rateLimitRetryMs, retryAfterMs);
 }
 
+function isUsageExceeded(requestResult) {
+  return (
+    requestResult.response?.status === 503 &&
+    String(requestResult.payload?.error ?? "").trim().toLowerCase() ===
+      "usage_exceeded"
+  );
+}
+
+function isRetryableCapacityResponse(requestResult) {
+  return requestResult.response?.status === 429 || isUsageExceeded(requestResult);
+}
+
 const results = [];
 let blockedByRateLimit = false;
+let blockedByCapacity = false;
 for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   if (batchIndex > 0 && delayMs > 0) await sleep(delayMs);
 
@@ -247,14 +260,17 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   }
 
   while (
-    requestResult.response?.status === 429 &&
+    isRetryableCapacityResponse(requestResult) &&
     rateLimitRetries < rateLimitMaxRetries
   ) {
     const pauseMs = retryDelayForRateLimit(requestResult);
+    const capacityLabel = isUsageExceeded(requestResult)
+    ? "Netlify usage capacity"
+    : "Rate limit";
     rateLimitRetries += 1;
     rateLimitWaitMs += pauseMs;
     console.warn(
-      `Rate limit reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
+      `${capacityLabel} reached for ${scenario.id}; waiting ${pauseMs}ms before retry ${rateLimitRetries}/${rateLimitMaxRetries}.`,
     );
     await sleep(pauseMs);
     requestResult = await executeScenarioRequest(scenario, token, requestTimeoutMs);
@@ -275,7 +291,10 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
   const { response, payload, error } = requestResult;
   if (error) failures.push(`request failed: ${error}`);
 
-  if (response?.status === 429) {
+  if (isUsageExceeded(requestResult)) {
+  blockedByCapacity = true;
+  failures.push("platform usage capacity exceeded after configured retries");
+} else if (response?.status === 429) {
     const retryAfter = response.headers.get("retry-after") || payload?.retryAfterSeconds || null;
     blockedByRateLimit = true;
     failures.push(`rate limited${retryAfter ? `; retry after ${retryAfter}s` : ""}`);
@@ -395,14 +414,18 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       `${JSON.stringify(observed)}${failures.length ? ` — ${failures.join("; ")}` : ""}`,
   );
 
-  if (blockedByRateLimit) {
-    console.error("Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.");
-    break;
-  }
+  if (blockedByRateLimit || blockedByCapacity) {
+  console.error(
+    blockedByCapacity
+      ? "Evaluation stopped because Netlify usage capacity remained unavailable after all configured retries."
+      : "Evaluation stopped because the authenticated test account reached the production rate limit after all configured retries.",
+  );
+  break;
+}
 }
 
 const passed = results.filter((item) => item.passed).length;
 console.log(`Ask Vorta live eval (${scenarioFile}, offset ${offset}): ${passed}/${results.length} passed.`);
-console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, results }, null, 2));
-if (blockedByRateLimit) process.exit(3);
+console.log(JSON.stringify({ scenarioFile, offset, requested: selectedScenarios.length, blockedByRateLimit, blockedByCapacity, results }, null, 2));
+if (blockedByRateLimit || blockedByCapacity) process.exit(3);
 if (passed !== results.length) process.exit(1);

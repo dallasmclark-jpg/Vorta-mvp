@@ -3,6 +3,9 @@ import { decisionPackCoveringTool, successfulToolNames } from "./contracts.mjs";
 import { equipmentVisibleDecisionText, unavailableEquipmentDecisionClaim } from "./equipment-evidence.mjs";
 import { evidenceTimestamps, numberValue, records, textValues } from "./utilities.mjs";
 
+export const ASK_VORTA_RESPONSE_VALIDATION_REVISION =
+  "vor-056-final-backlog-boundary-v1";
+
 export function replaceReleasedWording(value: unknown): unknown {
   if (typeof value === "string") {
     return value.replace(/\breleased\b/gi, "approved for return to service");
@@ -185,6 +188,50 @@ export function evidenceAwareConfidence(
   );
 }
 
+export function enforceBacklogActionPlan(
+  answer: JsonRecord,
+  outcomes: Map<string, ToolResult>,
+  usedTools: Set<string>,
+): void {
+  const backlogResult = outcomes.get("get_site_work_backlog");
+  const backlogToolExecuted =
+    usedTools.has("get_site_work_backlog") || Boolean(backlogResult);
+  if (!backlogToolExecuted || records(answer.actionPlan).length > 0) {
+    return;
+  }
+
+  const firstFinding = records(answer.findings).find(
+    (item) => typeof item.title === "string" && item.title.trim().length > 0,
+  );
+  const prioritySummary = records(answer.decisionSummary).find((item) =>
+    /highest priority|first priority|first action/i.test(String(item.label ?? "")),
+  );
+  const findingTitle =
+    typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+  const summaryValue =
+    typeof prioritySummary?.value === "string" ? prioritySummary.value.trim() : "";
+  const target = findingTitle || summaryValue;
+  if (!target) return;
+
+  const action =
+    `Confirm scope, readiness and an authorised assignee for ${target}, then have the Maintenance Planner update and sequence the SAP work order before release.`;
+  const existingRecommendations = textValues(answer.recommendedActions).filter(
+    (item) => item !== action,
+  );
+  answer.recommendedActions = [action, ...existingRecommendations].slice(0, 4);
+  answer.actionPlan = [
+    {
+      priority: "now",
+      action,
+      owner: "Maintenance Manager / Planner",
+      expectedImpact:
+        "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan.",
+      verification:
+        "Open the linked SAP work order evidence and confirm the authorised assignee, readiness, due date and released sequence are recorded by an authorised user.",
+    },
+  ];
+}
+
 export function enforceDeterministicResponseShape(
   answer: JsonRecord,
   questionPlan: JsonRecord | null,
@@ -212,31 +259,50 @@ export function enforceDeterministicResponseShape(
   if (!requiresAction || records(answer.actionPlan).length > 0) return;
 
   const summaryAction = records(answer.decisionSummary).find((item) =>
-    /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
-  );
-  const action =
-    textValues(answer.recommendedActions)[0] ??
-    (typeof summaryAction?.value === "string"
-      ? summaryAction.value.trim()
-      : "");
+  /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
+);
+const firstFinding = records(answer.findings)[0];
+const findingTitle =
+  typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+const evidenceBackedWorkAction =
+  scope === "work" && findingTitle
+    ? `Confirm scope, readiness and an authorised assignee for ${findingTitle}, then have the Maintenance Planner update and sequence the SAP work order before release.`
+    : "";
+const action =
+  textValues(answer.recommendedActions)[0] ??
+  ((typeof summaryAction?.value === "string"
+    ? summaryAction.value.trim()
+    : "") || evidenceBackedWorkAction);
 
-  if (!action) return;
+if (!action) return;
+if (textValues(answer.recommendedActions).length === 0) {
+  answer.recommendedActions = [action];
+}
 
-  answer.actionPlan = [
-    {
-      priority: "now",
-      action,
-      owner: scope === "spares" ? "Maintenance Manager / Stores" : "Maintenance Manager",
-      expectedImpact:
-        scope === "spares"
-          ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+answer.actionPlan = [
+  {
+    priority: "now",
+    action,
+    owner:
+      scope === "spares"
+        ? "Maintenance Manager / Stores"
+        : scope === "work"
+          ? "Maintenance Manager / Planner"
+          : "Maintenance Manager",
+    expectedImpact:
+      scope === "spares"
+        ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+        : scope === "work"
+          ? "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan."
           : "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
-      verification:
-        scope === "spares"
-          ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+    verification:
+      scope === "spares"
+        ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+        : scope === "work"
+          ? "Open the linked SAP work order evidence and confirm the assignee, readiness, due date and released sequence are recorded by an authorised user."
           : "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
-    },
-  ];
+  },
+];
 }
 
 export function enforcePlannedResponseShape(

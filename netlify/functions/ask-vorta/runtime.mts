@@ -19,7 +19,7 @@ import { repairEquipmentDecisionAnswer, retainEquipmentDecisionFacts, trimToolRe
 import { buildAskVortaImageDiagnosis, directImageEvidenceAnswer, enforceImageDiagnosisAnswer, imageDiagnosisPrompt, imageDiagnosisQuestionPlan } from "./image-diagnosis.mjs";
 import { AskVortaPhaseTimeoutError, canonicalRouteKey, routingModeForPlan, withPhaseTimeout } from "./phase-runtime.mjs";
 import { buildConversationContext, enrichQuestionWithConversationContext, jsonResponse, parseRequest } from "./request-context.mjs";
-import { answerOutputTokenBudget, answerReasoningEffort, enforceAnswerEvidence, enforceDeterministicResponseShape, enforceEquipmentReturnToServiceSafety, enforcePlannedResponseShape, evidenceAwareConfidence } from "./response-validation.mjs";
+import { answerOutputTokenBudget, answerReasoningEffort, enforceAnswerEvidence, enforceBacklogActionPlan, enforceDeterministicResponseShape, enforceEquipmentReturnToServiceSafety, enforcePlannedResponseShape, evidenceAwareConfidence } from "./response-validation.mjs";
 import { buildQuestionPlan, deterministicQuestionPlan, systemInstructions } from "./route-planning.mjs";
 import { evidenceLinkForTool, executeTool } from "./tool-execution.mjs";
 import { normaliseRelativeShiftCoverArguments, numberValue, parseArguments, sha256Fingerprint, textValues } from "./utilities.mjs";
@@ -210,6 +210,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       answer,
       conversationResolution,
     );
+    enforceBacklogActionPlan(answer, toolOutcomes, usedTools);
     await updateAskVortaInteraction(
       supabase,
       interactionId,
@@ -401,7 +402,7 @@ export default async function handler(req: Request, _context: Context): Promise<
         enforcePlannedResponseShape(answer, questionPlan);
         retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
         repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-        enforceEquipmentReturnToServiceSafety(answer, questionPlan);
+            enforceEquipmentReturnToServiceSafety(answer, questionPlan);
         const calibratedConfidence = evidenceAwareConfidence(
           answer,
           questionPlan,
@@ -430,6 +431,7 @@ export default async function handler(req: Request, _context: Context): Promise<
           answer,
           conversationResolution,
         );
+        enforceBacklogActionPlan(answer, toolOutcomes, usedTools);
         await updateAskVortaInteraction(
           supabase,
           interactionId,
@@ -582,6 +584,7 @@ export default async function handler(req: Request, _context: Context): Promise<
         shiftCoverArguments,
       );
       enforceDeterministicResponseShape(verifiedFallback, questionPlan);
+      enforcePlannedResponseShape(verifiedFallback, questionPlan);
       verifiedFallback.confidence = evidenceAwareConfidence(
         verifiedFallback,
         questionPlan,
@@ -591,6 +594,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       verifiedFallback.toolsUsed = [...usedTools];
       verifiedFallback.evidenceLinks = [...evidenceLinks.values()];
       verifiedFallback.responseId = interactionId;
+      enforceBacklogActionPlan(verifiedFallback, toolOutcomes, usedTools);
       await updateAskVortaInteraction(
         supabase,
         interactionId,

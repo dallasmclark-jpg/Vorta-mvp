@@ -116,17 +116,18 @@ assert.equal(
 );
 
 for (const marker of [
-  "Wait for exact Netlify preview commit",
-  "EXPECTED_HEAD_SHA",
-  "VORTA_E2E_BASE_URL",
   "npm run test:browser:vor051",
   "dist/vorta-build.json",
   "playwright-report",
   "test-results",
   '"src/screens/AiOperations/**"',
 ]) assert.ok(workflow.includes(marker), `Missing VOR-051 workflow marker: ${marker}`);
+assert.doesNotMatch(
+  workflow,
+  /deploy-preview-|Wait for exact Netlify preview commit|VORTA_E2E_BASE_URL/,
+);
 assert.ok(
-  workflow.indexOf("Wait for exact Netlify preview commit") <
+  workflow.indexOf("Build production bundle") <
     workflow.indexOf("Run authenticated phone and laptop manager rehearsal"),
 );
 assert.doesNotMatch(workflow, /eval:ask-vorta:vor0(?:48|49)/);

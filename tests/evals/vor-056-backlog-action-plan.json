@@ -1,0 +1,21 @@
+[
+  {
+    "id": "vor-056-backlog-action-plan",
+    "question": "Which overdue and unassigned work orders need attention first?",
+    "expectedTools": [
+      "get_site_work_backlog"
+    ],
+    "mustMention": [
+      "work order"
+    ],
+    "mustMentionAny": [
+      "overdue",
+      "unassigned"
+    ],
+    "mustNotMention": [
+      "assigned successfully",
+      "updated SAP",
+      "work order released"
+    ]
+  }
+]

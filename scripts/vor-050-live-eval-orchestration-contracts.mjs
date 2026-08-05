@@ -5,8 +5,16 @@ const vor048Workflow = readFileSync(
   ".github/workflows/vor-048-validation.yml",
   "utf8",
 );
-const liveWorkflow = readFileSync(
+const prDecisionWorkflow = readFileSync(
   ".github/workflows/vor-049-validation.yml",
+  "utf8",
+);
+const dailyWorkflow = readFileSync(
+  ".github/workflows/netlify-daily-release.yml",
+  "utf8",
+);
+const productionWorkflow = readFileSync(
+  ".github/workflows/maintenance-manager-production.yml",
   "utf8",
 );
 const liveEvaluator = readFileSync(
@@ -20,84 +28,95 @@ const equipmentScenarios = JSON.parse(
   readFileSync("tests/evals/vor-033-demo-golden.json", "utf8"),
 );
 
+for (const workflow of [vor048Workflow, prDecisionWorkflow]) {
+  assert.doesNotMatch(
+    workflow,
+    /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49)/,
+    "Pull-request validation must not consume a Netlify deployment or the shared authenticated live-evaluation account",
+  );
+}
 assert.ok(
-  vor048Workflow.includes("group: vor-048-${{ github.sha }}"),
-  "VOR-048 static and browser validation must not compete in the authenticated live-evaluation queue",
+  vor048Workflow.includes("group: vor-048-") &&
+    prDecisionWorkflow.includes("group: ask-vorta-live-"),
+  "PR validation must retain deterministic concurrency even after remote live traffic is removed",
 );
 assert.ok(
-  !vor048Workflow.includes("npm run eval:ask-vorta:vor048"),
-  "VOR-048 must not independently consume the shared authenticated evaluation account",
+  dailyWorkflow.includes(
+    "uses: ./.github/workflows/maintenance-manager-production.yml",
+  ) && dailyWorkflow.includes("expected_commit:"),
+  "The single daily release must own exact-commit production verification",
 );
 assert.ok(
-  liveWorkflow.includes(
-    "group: ask-vorta-live-${{ github.event.pull_request.number || github.run_id }}",
-  ),
-  "One PR-scoped workflow must own authenticated Ask Vorta evaluation traffic",
-);
-assert.ok(
-  liveWorkflow.includes("cancel-in-progress: true"),
-  "A newer branch commit must cancel an obsolete authenticated live run so stale evidence cannot block the latest head",
-);
-assert.ok(
-  liveWorkflow.includes("timeout-minutes: 80"),
-  "The exhaustive live gate must have enough wall-clock allowance for deliberate rate-window resets and cross-domain coverage",
-);
-assert.ok(
-  liveWorkflow.includes('      - "scripts/vor-048*"') &&
-    liveWorkflow.includes('      - "tests/evals/vor-048-shift-cover-routing.json"') &&
-    liveWorkflow.includes('      - ".github/workflows/vor-048-validation.yml"'),
-  "VOR-048 routing or workflow changes must trigger the central authenticated live gate",
+  productionWorkflow.includes("workflow_call:") &&
+    productionWorkflow.includes("node scripts/verify-production-commit.mjs"),
+  "Authenticated evaluation must run only after the exact production commit is visible",
 );
 
-const shiftCoverIndex = liveWorkflow.indexOf(
-  "npm run eval:ask-vorta:vor048",
+const backlogIndex = productionWorkflow.indexOf(
+  "Run VOR-056 backlog production decision",
 );
-const resetIndex = liveWorkflow.indexOf(
-  "Reset rate window before exhaustive equipment audit",
+const firstResetIndex = productionWorkflow.indexOf(
+  "Reset after backlog production decision",
 );
-const equipmentIndex = liveWorkflow.indexOf(
-  "npm run eval:ask-vorta:vor049",
+const firstWindowIndex = productionWorkflow.indexOf(
+  "Run first 12 Ask Vorta production decisions",
 );
-assert.ok(
-  shiftCoverIndex >= 0 && resetIndex > shiftCoverIndex && equipmentIndex > resetIndex,
-  "The central gate must run Shift Cover, reset the account window, then run the exhaustive equipment audit",
+const secondResetIndex = productionWorkflow.indexOf(
+  "Reset production evaluation rate window",
 );
-assert.ok(
-  (liveWorkflow.match(/run: sleep 310/g) ?? []).length >= 2,
-  "The central gate must establish clean account windows before both authenticated suites",
+const finalWindowIndex = productionWorkflow.indexOf(
+  "Run final Ask Vorta production decision",
 );
 assert.ok(
-  liveWorkflow.includes("VORTA_EVAL_RATE_LIMIT_RETRY_MS: 370000") &&
-    liveWorkflow.includes("VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000") &&
-    (liveWorkflow.match(/VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/g) ?? []).length >= 2,
-  "Both live suites must retry the exact blocked scenario without running in lockstep",
+  backlogIndex >= 0 &&
+    firstResetIndex > backlogIndex &&
+    firstWindowIndex > firstResetIndex &&
+    secondResetIndex > firstWindowIndex &&
+    finalWindowIndex > secondResetIndex,
+  "The daily production gate must isolate backlog and golden decisions in separate account windows",
 );
 assert.ok(
-  liveWorkflow.includes("vor-048-live-eval.log") &&
-    liveWorkflow.includes("vor-049-live-eval.log"),
-  "Success and failure artifacts must preserve both authenticated suite logs",
+  (productionWorkflow.match(/run: sleep 310/g) ?? []).length >= 2,
+  "The daily production gate must retain two deliberate account-window resets",
 );
+assert.ok(
+  (productionWorkflow.match(/VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/g) ?? [])
+    .length >= 3 &&
+    (productionWorkflow.match(/VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/g) ?? [])
+      .length >= 3,
+  "Every authenticated production decision window must use the bounded retry policy",
+);
+for (const log of [
+  "ask-vorta-production-backlog.log",
+  "ask-vorta-production-window-1.log",
+  "ask-vorta-production-window-2.log",
+]) {
+  assert.ok(
+    productionWorkflow.includes(log),
+    `Production evidence must preserve ${log}`,
+  );
+}
 assert.ok(
   liveEvaluator.includes("rateLimitWaitMs") &&
     liveEvaluator.includes("activeDurationMs") &&
     liveEvaluator.includes("elapsedDurationMs"),
-  "Deliberate rate-window waiting must remain separate from active service latency",
+  "Deliberate capacity waiting must remain separate from active service latency",
 );
 assert.equal(
   shiftCoverScenarios.length,
   6,
-  "The central live gate must retain all six Shift Cover routing scenarios",
+  "All six Shift Cover scenarios must remain available for focused audits",
 );
 assert.equal(
   equipmentScenarios.length,
   24,
-  "The central live gate must retain all 24 maintenance-manager equipment decisions",
+  "All 24 equipment scenarios must remain available for exhaustive audits",
 );
 assert.ok(
   shiftCoverScenarios.every(
     (scenario) => Number(scenario.maxDurationMs) <= 12_000,
   ),
-  "VOR-050 must not relax the existing Shift Cover response-latency target",
+  "The daily deployment policy must not relax the Shift Cover latency target",
 );
 
-console.log("VOR-050 live evaluation orchestration contracts passed.");
+console.log("VOR-050 daily live evaluation orchestration contracts passed.");

@@ -13,6 +13,8 @@ const centralWorkflowPath =
   ".github/workflows/vor-049-validation.yml";
 const productionWorkflowPath =
   ".github/workflows/maintenance-manager-production.yml";
+const dailyWorkflowPath =
+  ".github/workflows/netlify-daily-release.yml";
 const crossDomainScenarioPath =
   "tests/evals/vor-054-cross-domain-live.json";
 
@@ -37,30 +39,30 @@ const authenticatedOwners = workflowSources.filter(({ source }) =>
 );
 assert.deepEqual(
   authenticatedOwners.map(({ name }) => name),
-  [
-    "maintenance-manager-production.yml",
-    "vor-049-validation.yml",
-  ],
-  "Only the PR gate and exact-production verifier may run authenticated Ask Vorta evaluations",
+  ["maintenance-manager-production.yml"],
+  "Only the exact daily production verifier may run authenticated Ask Vorta evaluations",
 );
 const pullRequestOwners = authenticatedOwners.filter(({ source }) =>
   source.includes("pull_request:"),
 );
 assert.deepEqual(
   pullRequestOwners.map(({ name }) => name),
-  ["vor-049-validation.yml"],
-  "Exactly one pull-request workflow must own authenticated Ask Vorta live traffic",
+  [],
+  "Pull-request workflows must not consume authenticated Ask Vorta traffic",
 );
+
 const productionWorkflow = readFileSync(
   productionWorkflowPath,
   "utf8",
 );
+const dailyWorkflow = readFileSync(dailyWorkflowPath, "utf8");
 assert.ok(
-  productionWorkflow.includes("workflow_run:") &&
-    productionWorkflow.includes(
-      "github.event.workflow_run.head_branch == 'main'",
+  productionWorkflow.includes("workflow_call:") &&
+    productionWorkflow.includes("expected_commit:") &&
+    dailyWorkflow.includes(
+      "uses: ./.github/workflows/maintenance-manager-production.yml",
     ),
-  "Production evaluation must run only after a successful main-branch quality workflow",
+  "Authenticated evaluation must be owned by the reusable verifier called from the single daily release",
 );
 const productionCommitCheck = productionWorkflow.indexOf(
   "node scripts/verify-production-commit.mjs",
@@ -111,22 +113,17 @@ const equipmentScenarios = JSON.parse(
 assert.equal(
   shiftCoverScenarios.length,
   6,
-  "The first authenticated window must retain six Shift Cover scenarios",
+  "The focused Shift Cover library must retain all six scenarios",
 );
 assert.equal(
   crossDomainScenarios.length,
   6,
-  "VOR-054 must add exactly six cross-domain scenarios",
-);
-assert.equal(
-  shiftCoverScenarios.length + crossDomainScenarios.length,
-  12,
-  "The first authenticated window must stay within the 12-request account limit",
+  "VOR-054 must retain exactly six cross-domain scenarios",
 );
 assert.equal(
   equipmentScenarios.length,
   24,
-  "The exhaustive equipment audit must retain all 24 decisions",
+  "The exhaustive equipment library must retain all 24 decisions",
 );
 
 const scenariosById = new Map(
@@ -219,32 +216,14 @@ assert.ok(
   ),
   "The central gate must run the permanent VOR-054 contract",
 );
-const shiftCoverIndex = centralWorkflow.indexOf(
-  "npm run eval:ask-vorta:vor048",
-);
-const crossDomainIndex = centralWorkflow.indexOf(
-  "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-054-cross-domain-live.json",
-);
-const resetIndex = centralWorkflow.indexOf(
-  "Reset rate window before exhaustive equipment audit",
-);
-const equipmentIndex = centralWorkflow.indexOf(
-  "npm run eval:ask-vorta:vor049",
-);
-assert.ok(
-  shiftCoverIndex >= 0 &&
-    crossDomainIndex > shiftCoverIndex &&
-    resetIndex > crossDomainIndex &&
-    equipmentIndex > resetIndex,
-  "The central gate must run Shift Cover, cross-domain decisions, reset, then equipment decisions",
-);
-assert.ok(
-  centralWorkflow.includes("vor-054-live-eval.log"),
-  "Success and failure artifacts must preserve the cross-domain live log",
+assert.doesNotMatch(
+  centralWorkflow,
+  /deploy-preview-|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49)|vor-054-live-eval\.log/,
+  "The PR gate must validate cross-domain coverage without remote deployment or authenticated traffic",
 );
 assert.ok(
   centralWorkflow.includes("timeout-minutes: 80"),
-  "The central gate must allow for the additional bounded cross-domain suite",
+  "The central static gate must retain its bounded timeout",
 );
 
-console.log("VOR-054 cross-domain live coverage contracts passed.");
+console.log("VOR-054 cross-domain daily-release coverage contracts passed.");
