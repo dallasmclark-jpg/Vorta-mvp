@@ -9,6 +9,10 @@ const productionWorkflow = readFileSync(
   ".github/workflows/maintenance-manager-production.yml",
   "utf8",
 );
+const equipmentEvidence = readFileSync(
+  "netlify/functions/ask-vorta/equipment-evidence.mts",
+  "utf8",
+);
 const centralWorkflow = readFileSync(
   ".github/workflows/vor-049-validation.yml",
   "utf8",
@@ -68,6 +72,53 @@ assert.ok(
   ),
   "Backlog decisions must include an executable next action",
 );
+
+assert.ok(
+  equipmentEvidence.includes("compactSiteOperationalSnapshotForModel") &&
+    equipmentEvidence.includes('result.source !== "Vorta operational decision snapshot"'),
+  "The site operational snapshot must have a dedicated model-facing compactor",
+);
+for (const domain of [
+  "rankedActions",
+  "siteRisk",
+  "workBacklog",
+  "sparesRisk",
+  "capability",
+  "handover",
+]) {
+  assert.ok(
+    equipmentEvidence.includes(`["${domain}",`),
+    `The compact operational snapshot must preserve ${domain} decision facts`,
+  );
+}
+const siteCompactorIndex = equipmentEvidence.indexOf(
+  "compactSiteOperationalSnapshotForModel(result)",
+);
+const genericOversizeIndex = equipmentEvidence.indexOf(
+  "const serialised = JSON.stringify(result)",
+);
+assert.ok(
+  siteCompactorIndex >= 0 && genericOversizeIndex > siteCompactorIndex,
+  "Site snapshot compaction must run before the generic oversized-result fallback",
+);
+assert.ok(
+  equipmentEvidence.includes("collectDecisionFacts(domainRecord.data)") &&
+    equipmentEvidence.includes('["rankedActions", 14]') &&
+    equipmentEvidence.includes("fact.text.slice(0, 650)"),
+  "The site snapshot must use bounded ranked decision facts",
+);
+for (const decisionField of [
+  "owner",
+  "block",
+  "depend",
+  "verification",
+  "priority",
+]) {
+  assert.ok(
+    equipmentEvidence.includes(decisionField),
+    `The model-facing fact collector must preserve ${decisionField} evidence`,
+  );
+}
 
 assert.equal(
   scenarios.length,
