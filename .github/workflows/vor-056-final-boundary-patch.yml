@@ -36,6 +36,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
           runtime_path = Path("netlify/functions/ask-vorta/runtime.mts")
@@ -98,61 +99,56 @@ jobs:
               response = response.replace(function_marker, guard + function_marker, 1)
 
           import_marker = "enforceAnswerEvidence, enforceDeterministicResponseShape,"
-          if "enforceBacklogActionPlan" not in runtime.split("from \"./response-validation.mjs\";")[0]:
+          import_replacement = (
+              "enforceAnswerEvidence, enforceBacklogActionPlan, "
+              "enforceDeterministicResponseShape,"
+          )
+          import_section = runtime.split('from "./response-validation.mjs";')[0]
+          if "enforceBacklogActionPlan" not in import_section:
               if import_marker not in runtime:
                   raise SystemExit("runtime import marker not found")
-              runtime = runtime.replace(
-                  import_marker,
-                  "enforceAnswerEvidence, enforceBacklogActionPlan, enforceDeterministicResponseShape,",
-                  1,
-              )
+              runtime = runtime.replace(import_marker, import_replacement, 1)
 
-          deterministic_marker = '''    repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-            answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);'''
-          deterministic_replacement = '''    repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-            enforceBacklogActionPlan(answer, toolOutcomes);
-            answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);'''
-          if deterministic_replacement not in runtime:
-              if deterministic_marker not in runtime:
-                  raise SystemExit("deterministic final-boundary marker not found")
-              runtime = runtime.replace(deterministic_marker, deterministic_replacement, 1)
+          repair_pattern = re.compile(
+              r"(?m)^([ \t]*)repairEquipmentDecisionAnswer\(answer, questionPlan, toolOutcomes\);\n"
+          )
+          if runtime.count("enforceBacklogActionPlan(answer, toolOutcomes);") < 2:
+              def add_guard(match):
+                  indent = match.group(1)
+                  return match.group(0) + f"{indent}enforceBacklogActionPlan(answer, toolOutcomes);\n"
+              runtime, inserted = repair_pattern.subn(add_guard, runtime, count=2)
+              if inserted != 2:
+                  raise SystemExit(
+                      f"expected two final answer repair boundaries, found {inserted}"
+                  )
 
-          semantic_marker = '''        repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-                enforceEquipmentReturnToServiceSafety(answer, questionPlan);'''
-          semantic_replacement = '''        repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-                enforceBacklogActionPlan(answer, toolOutcomes);
-                enforceEquipmentReturnToServiceSafety(answer, questionPlan);'''
-          if semantic_replacement not in runtime:
-              if semantic_marker not in runtime:
-                  raise SystemExit("semantic final-boundary marker not found")
-              runtime = runtime.replace(semantic_marker, semantic_replacement, 1)
+          fallback_pattern = re.compile(
+              r"(?m)^([ \t]*)enforceDeterministicResponseShape\(verifiedFallback, questionPlan\);\n"
+          )
+          if "enforceBacklogActionPlan(verifiedFallback, toolOutcomes);" not in runtime:
+              def add_fallback_guard(match):
+                  indent = match.group(1)
+                  return (
+                      match.group(0)
+                      + f"{indent}enforcePlannedResponseShape(verifiedFallback, questionPlan);\n"
+                      + f"{indent}enforceBacklogActionPlan(verifiedFallback, toolOutcomes);\n"
+                  )
+              runtime, inserted = fallback_pattern.subn(add_fallback_guard, runtime, count=1)
+              if inserted != 1:
+                  raise SystemExit("verified fallback final-boundary marker not found")
 
-          fallback_marker = '''      enforceDeterministicResponseShape(verifiedFallback, questionPlan);
-              verifiedFallback.confidence = evidenceAwareConfidence('''
-          fallback_replacement = '''      enforceDeterministicResponseShape(verifiedFallback, questionPlan);
-              enforcePlannedResponseShape(verifiedFallback, questionPlan);
-              enforceBacklogActionPlan(verifiedFallback, toolOutcomes);
-              verifiedFallback.confidence = evidenceAwareConfidence('''
-          if fallback_replacement not in runtime:
-              if fallback_marker not in runtime:
-                  raise SystemExit("fallback final-boundary marker not found")
-              runtime = runtime.replace(fallback_marker, fallback_replacement, 1)
-
-          runtime_read_marker = '''const routePlanning = readFileSync(
-            "netlify/functions/ask-vorta/route-planning.mts",
-            "utf8",
-          );'''
-          runtime_read_replacement = runtime_read_marker + '''
-          const runtime = readFileSync(
+          if 'const runtime = readFileSync(' not in contract:
+              contract_marker = "const contractSuite = readFileSync("
+              if contract_marker not in contract:
+                  raise SystemExit("contract runtime-read insertion marker not found")
+              runtime_reader = '''const runtime = readFileSync(
             "netlify/functions/ask-vorta/runtime.mts",
             "utf8",
-          );'''
-          if 'const runtime = readFileSync(' not in contract:
-              if runtime_read_marker not in contract:
-                  raise SystemExit("contract runtime-read marker not found")
-              contract = contract.replace(runtime_read_marker, runtime_read_replacement, 1)
+          );
+          '''
+              contract = contract.replace(contract_marker, runtime_reader + contract_marker, 1)
 
-          contract_marker = 'assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");'
+          assertion_marker = 'assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");'
           final_contract = '''for (const marker of [
             "export function enforceBacklogActionPlan(",
             'outcomes.get("get_site_work_backlog")',
@@ -169,15 +165,19 @@ jobs:
           }
           assert.ok(
             runtime.includes("enforceBacklogActionPlan") &&
-              (runtime.match(/enforceBacklogActionPlan\\(/g) ?? []).length >= 3,
-            "The backlog guard must run at deterministic, semantic and verified-fallback response boundaries",
+              (runtime.match(/enforceBacklogActionPlan\\(/g) ?? []).length >= 4,
+            "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
           );
 
           '''
           if "The final backlog response boundary is missing" not in contract:
-              if contract_marker not in contract:
+              if assertion_marker not in contract:
                   raise SystemExit("contract assertion insertion marker not found")
-              contract = contract.replace(contract_marker, final_contract + contract_marker, 1)
+              contract = contract.replace(
+                  assertion_marker,
+                  final_contract + assertion_marker,
+                  1,
+              )
 
           response_path.write_text(response)
           runtime_path.write_text(runtime)
