@@ -25,6 +25,10 @@ const contractSuite = readFileSync(
   "scripts/run-contract-suite.mjs",
   "utf8",
 );
+const liveHarness = readFileSync(
+  "scripts/ask-vorta-live-evals.mjs",
+  "utf8",
+);
 const centralWorkflow = readFileSync(
   ".github/workflows/vor-049-validation.yml",
   "utf8",
@@ -163,6 +167,27 @@ for (const trigger of [
     `The central Ask Vorta gate is missing ${trigger.trim()}`,
   );
 }
+for (const marker of [
+  "function isUsageExceeded(",
+  'requestResult.response?.status === 503',
+  '"usage_exceeded"',
+  "function isRetryableCapacityResponse(",
+  "blockedByCapacity",
+  "platform usage capacity exceeded after configured retries",
+  "blockedByRateLimit || blockedByCapacity",
+]) {
+  assert.ok(
+    liveHarness.includes(marker),
+    `The live evaluator capacity retry is missing ${marker}`,
+  );
+}
+assert.ok(
+  liveHarness.includes(
+    'String(requestResult.payload?.error ?? "").trim().toLowerCase()',
+  ),
+  "Only the exact usage_exceeded platform response may use the 503 retry path",
+);
+
 const resetIndex = centralWorkflow.indexOf(
   "Reset rate window before exhaustive equipment audit",
 );

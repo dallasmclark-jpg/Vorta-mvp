@@ -154,7 +154,11 @@ assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000/);
 assert.match(workflow, /VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/);
 assert.match(
   liveEval,
-  /while \(\s*requestResult\.response\?\.status === 429 &&\s*rateLimitRetries < rateLimitMaxRetries/,
+  /while \(\s*isRetryableCapacityResponse\(requestResult\) &&\s*rateLimitRetries < rateLimitMaxRetries/,
+);
+assert.match(
+  liveEval,
+  /requestResult\.response\?\.status === 429 \|\| isUsageExceeded\(requestResult\)/,
 );
 assert.match(liveEval, /retryDelayForRateLimit/);
 assert.match(liveEval, /rateLimitWaitMs \+= pauseMs/);
