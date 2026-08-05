@@ -169,6 +169,9 @@ export function deterministicQuestionPlan(
   const explicitShiftCoverQuestion =
     /\bshift[- ]?cover\b/.test(question) ||
     /\b(?:rota|off[- ]?rota|rest conflict|fatigue|reduced cover|skills? cover|labour cover)\b/.test(question);
+  const staffingWriteRequest =
+  /^\s*(?:please\s+)?(?:assign|move|switch|update|change)\b/.test(question) &&
+  /\b(?:cover|engineers?|people|team|shift|rota)\b/.test(question);
   const datedWorkforceQuestion =
     (coverDate !== null || nextWeek || thisWeek) &&
     /\b(?:who(?:'s| is)? off|holiday|absence|leave|training|available|availability|cover|coverage|shift|engineers?|team|people)\b/.test(question);
@@ -188,6 +191,7 @@ export function deterministicQuestionPlan(
     /\b(?:risk|issue|gap|short|cover|coverage|available|availability|off|holiday|absence|leave|training|rest|fatigue|rota|engineers?|team|people)\b/.test(question);
   if (
     (shiftCoverPageContext ||
+      staffingWriteRequest ||
       (asksForCoverDecision &&
         (explicitShiftCoverQuestion || datedWorkforceQuestion || inheritedShiftCoverContext))) &&
     !/\b(?:document cover|insurance cover|cover image|cover photo|cover page)\b/.test(question) &&
@@ -197,7 +201,9 @@ export function deterministicQuestionPlan(
       "shift_cover",
       "shift_cover_risk",
       "get_shift_cover",
-      "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",
+      staffingWriteRequest
+      ? "State that Ask Vorta is read-only and cannot assign engineers or change the rota, then provide the best evidence-backed provisional cover recommendation and confirmation steps."
+      : "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",
       { ...requestedCoverRange, summaryItemLimit: 5, forceActionPlan: true },
     );
   }

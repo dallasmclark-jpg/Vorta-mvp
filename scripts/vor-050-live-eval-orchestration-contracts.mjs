@@ -39,8 +39,8 @@ assert.ok(
   "A newer branch commit must cancel an obsolete authenticated live run so stale evidence cannot block the latest head",
 );
 assert.ok(
-  liveWorkflow.includes("timeout-minutes: 75"),
-  "The exhaustive live gate must have enough wall-clock allowance for deliberate rate-window resets",
+  liveWorkflow.includes("timeout-minutes: 80"),
+  "The exhaustive live gate must have enough wall-clock allowance for deliberate rate-window resets and cross-domain coverage",
 );
 assert.ok(
   liveWorkflow.includes('      - "scripts/vor-048*"') &&

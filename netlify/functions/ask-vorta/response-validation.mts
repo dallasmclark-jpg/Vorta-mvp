@@ -271,11 +271,9 @@ export function enforcePlannedResponseShape(
   ];
 }
 
-export function enforceAnswerEvidence(
+export function enforceReadOnlyWriteBoundary(
   answer: JsonRecord,
   question: string,
-  shiftCoverEvidence: JsonRecord | null,
-  shiftCoverArguments: JsonRecord | null,
 ): void {
   const writeRequest =
     /^\s*(?:please\s+)?(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\b/i.test(
@@ -284,14 +282,28 @@ export function enforceAnswerEvidence(
     /\b(?:can|could|would|will)\s+you\s+(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\b/i.test(
       question,
     );
-  if (writeRequest) {
-    const directAnswer =
-      typeof answer.directAnswer === "string" ? answer.directAnswer.trim() : "";
-    if (!/\bread-only\b/i.test(directAnswer) || !/\bcannot\b/i.test(directAnswer)) {
-      answer.directAnswer =
-        `Ask Vorta is read-only and cannot change Vorta records. ${directAnswer}`.trim();
-    }
+  if (!writeRequest) return;
+
+  const directAnswer =
+    typeof answer.directAnswer === "string" ? answer.directAnswer.trim() : "";
+  if (/\bread-only\b/i.test(directAnswer) && /\bcannot\b/i.test(directAnswer)) {
+    return;
   }
+  const staffingWriteRequest =
+    /\b(?:shift|rota|cover|engineers?|people|team)\b/i.test(question);
+  const refusal = staffingWriteRequest
+    ? "Ask Vorta is read-only and cannot assign engineers or change the rota."
+    : "Ask Vorta is read-only and cannot change Vorta records.";
+  answer.directAnswer = `${refusal} ${directAnswer}`.trim();
+}
+
+export function enforceAnswerEvidence(
+  answer: JsonRecord,
+  question: string,
+  shiftCoverEvidence: JsonRecord | null,
+  shiftCoverArguments: JsonRecord | null,
+): void {
+  enforceReadOnlyWriteBoundary(answer, question);
 
   if (!shiftCoverEvidence) return;
   const calendar = records(shiftCoverEvidence.calendar);
@@ -682,4 +694,5 @@ export function enforceAnswerEvidence(
     primarySkillRisks,
     offRotaNames,
   );
+  enforceReadOnlyWriteBoundary(answer, question);
 }

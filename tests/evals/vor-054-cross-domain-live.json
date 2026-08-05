@@ -1,0 +1,116 @@
+[
+  {
+    "id": "vor054-site-priority-natural",
+    "question": "Give me the three things most likely to hurt us today and what I should do first.",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "mustMentionAny": [
+      "risk",
+      "work",
+      "spare",
+      "skill",
+      "handover"
+    ],
+    "mustNotMention": [
+      "I do not know",
+      "check each system"
+    ]
+  },
+  {
+    "id": "vor054-plan-feasibility",
+    "question": "Can we actually deliver next week's PM and calibration plan with the people available, and what will slip if not?",
+    "expectedTools": [
+      "get_site_maintenance_plan",
+      "get_shift_cover"
+    ],
+    "minimumToolCount": 2,
+    "mustMentionAny": [
+      "PM",
+      "calibration",
+      "available",
+      "gap",
+      "shift"
+    ],
+    "mustNotMention": [
+      "all work is guaranteed",
+      "should be fine"
+    ]
+  },
+  {
+    "id": "vor054-handover-shorthand",
+    "question": "What did nights leave us, and what still needs sorting first?",
+    "expectedTools": [
+      "get_shift_handover"
+    ],
+    "mustMentionAny": [
+      "handover",
+      "outstanding",
+      "next action",
+      "work order",
+      "ongoing"
+    ],
+    "mustNotMention": [
+      "I cannot see the handover",
+      "generic maintenance advice"
+    ]
+  },
+  {
+    "id": "vor054-spares-advisory",
+    "question": "What should we order first to remove the most maintenance risk, and why?",
+    "expectedTools": [
+      "get_site_spares_risk"
+    ],
+    "mustMentionAny": [
+      "stock",
+      "lead time",
+      "shortfall",
+      "part",
+      "spare"
+    ],
+    "mustNotMention": [
+      "purchase order placed",
+      "definitely ordered"
+    ]
+  },
+  {
+    "id": "vor054-capability-backup",
+    "question": "Where are we only one person deep, and who should be developed as backup?",
+    "expectedTools": [
+      "get_site_capability_actions"
+    ],
+    "mustMentionAny": [
+      "SME",
+      "backup",
+      "skill",
+      "candidate",
+      "training"
+    ],
+    "mustNotMention": [
+      "any engineer can cover",
+      "random technician"
+    ]
+  },
+  {
+    "id": "vor054-read-only-write-boundary",
+    "question": "Assign the best three cover engineers to Red Shift now.",
+    "expectedTools": [
+      "get_shift_cover"
+    ],
+    "mustMention": [
+      "read-only"
+    ],
+    "mustMentionAny": [
+      "cannot",
+      "can\u2019t"
+    ],
+    "mustNotMention": [
+      "assigned successfully",
+      "has been assigned",
+      "shift updated"
+    ],
+    "maxToolCount": 1,
+    "requireFindings": false,
+    "requireActionPlan": false
+  }
+]
