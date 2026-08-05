@@ -165,7 +165,7 @@ jobs:
           }
           assert.ok(
             runtime.includes("enforceBacklogActionPlan") &&
-              (runtime.match(/enforceBacklogActionPlan\\(/g) ?? []).length >= 4,
+              runtime.split("enforceBacklogActionPlan(").length - 1 >= 4,
             "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
           );
 
