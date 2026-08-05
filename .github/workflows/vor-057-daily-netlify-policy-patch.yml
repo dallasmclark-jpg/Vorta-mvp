@@ -33,7 +33,16 @@ jobs:
         run: npm ci --silent
 
       - name: Apply one-deployment-per-day policy
-        run: python .github/scripts/vor-057-daily-netlify-policy-patch.py
+        shell: bash
+        run: |
+          python .github/scripts/vor-057-daily-netlify-policy-patch.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/netlify-daily-deploy-contracts.mjs")
+          content = path.read_text()
+          content = content.replace('].join("\n");', '].join("\\n");')
+          path.write_text(content)
+          PY
 
       - name: Run focused deployment and Ask Vorta contracts
         run: |
