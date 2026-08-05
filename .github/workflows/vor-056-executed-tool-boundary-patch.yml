@@ -45,20 +45,10 @@ jobs:
           runtime = runtime_path.read_text()
           contract = contract_path.read_text()
 
-          old_signature = '''export function enforceBacklogActionPlan(
-            answer: JsonRecord,
-            outcomes: Map<string, ToolResult>,
-          ): void {
-            const backlogResult = outcomes.get("get_site_work_backlog");
-            if (
-              !backlogResult ||
-              backlogResult.status !== "ok" ||
-              records(answer.actionPlan).length > 0
-            ) {
-              return;
-            }
-          '''
-          new_signature = '''export function enforceBacklogActionPlan(
+          function_start = response.index("export function enforceBacklogActionPlan(")
+          findings_start = response.index("  const firstFinding =", function_start)
+          current_header = response[function_start:findings_start]
+          desired_header = '''export function enforceBacklogActionPlan(
             answer: JsonRecord,
             outcomes: Map<string, ToolResult>,
             usedTools: Set<string>,
@@ -69,11 +59,10 @@ jobs:
             if (!backlogToolExecuted || records(answer.actionPlan).length > 0) {
               return;
             }
+
           '''
-          if new_signature not in response:
-              if old_signature not in response:
-                  raise SystemExit("existing backlog guard signature not found")
-              response = response.replace(old_signature, new_signature, 1)
+          if current_header != desired_header:
+              response = response[:function_start] + desired_header + response[findings_start:]
 
           old_call = "enforceBacklogActionPlan(answer, toolOutcomes);"
           new_call = "enforceBacklogActionPlan(answer, toolOutcomes, usedTools);"
@@ -91,22 +80,25 @@ jobs:
                   raise SystemExit("verified fallback backlog guard call not found")
               runtime = runtime.replace(old_fallback, new_fallback, 1)
 
-          old_marker = '  \'backlogResult.status !== "ok"\',\n'
-          new_marker = '  \'usedTools.has("get_site_work_backlog")\',\n'
+          old_marker = '\'backlogResult.status !== "ok"\''
+          new_marker = '\'usedTools.has("get_site_work_backlog")\''
           if new_marker not in contract:
               if old_marker not in contract:
                   raise SystemExit("obsolete outcome-status contract marker not found")
               contract = contract.replace(old_marker, new_marker, 1)
 
-          old_assertion = '''    runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,
-            "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",'''
-          new_assertion = '''    runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
-              runtime.split("toolOutcomes, usedTools").length - 1 >= 3,
-            "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",'''
-          if new_assertion not in contract:
-              if old_assertion not in contract:
-                  raise SystemExit("runtime contract assertion not found")
-              contract = contract.replace(old_assertion, new_assertion, 1)
+          old_count = 'runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,'
+          new_count = '''runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
+              runtime.split("toolOutcomes, usedTools").length - 1 >= 3,'''
+          if new_count not in contract:
+              if old_count not in contract:
+                  raise SystemExit("runtime call-count contract line not found")
+              contract = contract.replace(old_count, new_count, 1)
+          contract = contract.replace(
+              "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
+              "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",
+              1,
+          )
 
           response_path.write_text(response)
           runtime_path.write_text(runtime)
