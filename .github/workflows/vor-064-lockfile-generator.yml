@@ -1,4 +1,4 @@
-name: VOR-064 lockfile generator
+name: VOR-064 workflow transformer
 
 on:
   push:
@@ -8,15 +8,15 @@ on:
       - ".github/workflows/vor-064-lockfile-generator.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: vor-064-lockfile-generator
+  group: vor-064-workflow-transformer
   cancel-in-progress: false
 
 jobs:
-  generate:
-    name: Generate and verify locked browser runtime
+  transform:
+    name: Prepare and verify protected workflows
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -24,7 +24,6 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: agent/vor-064-locked-browser-runtime
-          fetch-depth: 0
           show-progress: false
 
       - name: Use Node.js 22
@@ -33,24 +32,24 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Generate permanent files
-        run: node scripts/vor-064-prepare-locked-browser-runtime.mjs
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --silent
 
-      - name: Regenerate package lock
-        run: npm install --package-lock-only --ignore-scripts --silent
+      - name: Generate workflow replacements
+        run: node scripts/vor-064-transform-workflows.mjs
 
-      - name: Verify clean locked install
+      - name: Verify transformed workflow policy
         run: |
-          npm ci --ignore-scripts --silent
-          node -e "const version=require('./node_modules/@playwright/test/package.json').version; if(version!=='1.55.0') throw new Error('Unexpected Playwright '+version);"
-          git diff --exit-code package.json
+          for file in vor-064-workflow-output/*.yml vor-064-workflow-output/*.yaml; do
+            test -f "$file" || continue
+            cp "$file" ".github/workflows/$(basename "$file")"
+          done
+          node scripts/vor-064-locked-browser-runtime-contracts.mjs
 
-      - name: Commit generated repository files
-        run: |
-          git config user.name "Vorta CI"
-          git config user.email "actions@users.noreply.github.com"
-          git add package-lock.json docs/locked-ci-dependencies.md scripts/run-contract-suite.mjs scripts/vor-064-locked-browser-runtime-contracts.mjs scripts/vor-064-prepare-locked-browser-runtime.mjs
-          git commit -m "VOR-064: generate locked browser runtime [skip netlify]"
-          git push origin HEAD:agent/vor-064-locked-browser-runtime
-
-# attempt 2
+      - name: Preserve exact workflow replacements
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-064-workflow-replacements
+          path: vor-064-workflow-output
+          if-no-files-found: error
+          retention-days: 7
