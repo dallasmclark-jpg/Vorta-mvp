@@ -193,13 +193,11 @@ jobs:
           git diff --check
           git status --short
 
-      - name: Commit verified daily deployment policy
+      - name: Commit verified non-workflow policy files
         run: |
           git config user.name "Ask Vorta CI"
           git config user.email "actions@users.noreply.github.com"
-          git add netlify.toml ops docs scripts .github/workflows
-          git reset .github/workflows/vor-057-daily-netlify-policy-patch.yml
-          git reset .github/scripts/vor-057-daily-netlify-policy-patch.py
-          git diff --cached --quiet && { echo "No policy changes to commit"; exit 1; }
-          git commit -m "VOR-057 enforce one daily Netlify deployment [skip netlify]"
+          git add netlify.toml ops docs scripts
+          git diff --cached --quiet && { echo "No non-workflow policy changes to commit"; exit 1; }
+          git commit -m "VOR-057 add daily Netlify release controls [skip netlify]"
           git push origin HEAD:agent/vor-056-backlog-action-plan
