@@ -185,6 +185,51 @@ export function evidenceAwareConfidence(
   );
 }
 
+export function enforceBacklogActionPlan(
+  answer: JsonRecord,
+  outcomes: Map<string, ToolResult>,
+): void {
+  const backlogResult = outcomes.get("get_site_work_backlog");
+  if (
+    !backlogResult ||
+    backlogResult.status !== "ok" ||
+    records(answer.actionPlan).length > 0
+  ) {
+    return;
+  }
+
+  const firstFinding = records(answer.findings).find(
+    (item) => typeof item.title === "string" && item.title.trim().length > 0,
+  );
+  const prioritySummary = records(answer.decisionSummary).find((item) =>
+    /highest priority|first priority|first action/i.test(String(item.label ?? "")),
+  );
+  const findingTitle =
+    typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+  const summaryValue =
+    typeof prioritySummary?.value === "string" ? prioritySummary.value.trim() : "";
+  const target = findingTitle || summaryValue;
+  if (!target) return;
+
+  const action =
+    `Confirm scope, readiness and an authorised assignee for ${target}, then have the Maintenance Planner update and sequence the SAP work order before release.`;
+  const existingRecommendations = textValues(answer.recommendedActions).filter(
+    (item) => item !== action,
+  );
+  answer.recommendedActions = [action, ...existingRecommendations].slice(0, 4);
+  answer.actionPlan = [
+    {
+      priority: "now",
+      action,
+      owner: "Maintenance Manager / Planner",
+      expectedImpact:
+        "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan.",
+      verification:
+        "Open the linked SAP work order evidence and confirm the authorised assignee, readiness, due date and released sequence are recorded by an authorised user.",
+    },
+  ];
+}
+
 export function enforceDeterministicResponseShape(
   answer: JsonRecord,
   questionPlan: JsonRecord | null,

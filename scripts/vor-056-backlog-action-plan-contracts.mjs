@@ -9,6 +9,10 @@ const routePlanning = readFileSync(
   "netlify/functions/ask-vorta/route-planning.mts",
   "utf8",
 );
+const runtime = readFileSync(
+  "netlify/functions/ask-vorta/runtime.mts",
+  "utf8",
+);
 const contractSuite = readFileSync(
   "scripts/run-contract-suite.mjs",
   "utf8",
@@ -62,6 +66,26 @@ assert.equal(
   ),
   false,
   "Ask Vorta must not claim that it performed a backlog or SAP write",
+);
+
+for (const marker of [
+  "export function enforceBacklogActionPlan(",
+  'outcomes.get("get_site_work_backlog")',
+  'backlogResult.status !== "ok"',
+  "records(answer.actionPlan).length > 0",
+  "authorised assignee",
+  "Maintenance Manager / Planner",
+  "released sequence are recorded by an authorised user",
+]) {
+  assert.ok(
+    responseValidation.includes(marker),
+    `The final backlog response boundary is missing ${marker}`,
+  );
+}
+assert.ok(
+  runtime.includes("enforceBacklogActionPlan") &&
+    runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,
+  "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
 );
 
 assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");
