@@ -1,0 +1,87 @@
+name: VOR-053 request ID hotfix
+
+on:
+  push:
+    branches:
+      - agent/vor-053-canonicalise-ask-vorta-build
+    paths:
+      - ".github/workflows/vor-053-request-id-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/vor-053-canonicalise-ask-vorta-build
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply focused canonical-source fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          assistant_path = Path("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx")
+          assistant = assistant_path.read_text()
+          old = '''    const requestId =
+                `1785872025758-${Math.random().toString(36).slice(2, 8)}`;'''
+          new = '''    const requestId =
+                `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;'''
+          if assistant.count(old) != 1:
+              raise SystemExit(f"Expected exactly one fixed request ID marker, found {assistant.count(old)}")
+          assistant_path.write_text(assistant.replace(old, new))
+
+          contract_path = Path("scripts/vor-053-canonical-build-contracts.mjs")
+          contract = contract_path.read_text()
+          anchor = '''for (const marker of [
+            "latestConversationContext",'''
+          guard = '''assert.match(
+            assistant,
+            /const requestId\\s*=\\s*`\\$\\{Date\\.now\\(\\)\\}-\\$\\{Math\\.random\\(\\)\\.toString\\(36\\)\\.slice\\(2, 8\\)\\}`;/,
+            "Canonical assistant request IDs must use the current timestamp",
+          );
+          assert.doesNotMatch(
+            assistant,
+            /const requestId\\s*=\\s*`\\d{10,}-\\$\\{Math\\.random\\(\\)\\.toString\\(36\\)\\.slice\\(2, 8\\)\\}`;/,
+            "Canonical assistant request IDs must not contain a fixed timestamp",
+          );
+
+          '''
+          if guard not in contract:
+              if contract.count(anchor) != 1:
+                  raise SystemExit(f"Expected one contract insertion anchor, found {contract.count(anchor)}")
+              contract = contract.replace(anchor, guard + anchor)
+              contract_path.write_text(contract)
+          PY
+
+      - name: Verify focused contracts and TypeScript
+        run: |
+          node scripts/vor-053-canonical-build-contracts.mjs
+          npm run typecheck -- --pretty false
+
+      - name: Commit focused fix and remove one-use workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Ask Vorta automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/vor-053-request-id-hotfix.yml
+          git add src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx scripts/vor-053-canonical-build-contracts.mjs
+          git diff --cached --check
+          git commit -m "Fix Ask Vorta request IDs"
+          git push origin HEAD:agent/vor-053-canonicalise-ask-vorta-build
