@@ -91,19 +91,22 @@ jobs:
                   raise SystemExit("verified fallback backlog guard call not found")
               runtime = runtime.replace(old_fallback, new_fallback, 1)
 
-          contract = contract.replace(
-              '  \'backlogResult.status !== "ok"\',\n',
-              '  \'usedTools.has("get_site_work_backlog")\',\n'
-          )
-          old_runtime_assert = '''  runtime.includes("enforceBacklogActionPlan") &&
-            runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,'''
-          new_runtime_assert = '''  runtime.includes("enforceBacklogActionPlan") &&
-            runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
-            runtime.split("toolOutcomes, usedTools").length - 1 >= 3,'''
-          if new_runtime_assert not in contract:
-              if old_runtime_assert not in contract:
+          old_marker = '  \'backlogResult.status !== "ok"\',\n'
+          new_marker = '  \'usedTools.has("get_site_work_backlog")\',\n'
+          if new_marker not in contract:
+              if old_marker not in contract:
+                  raise SystemExit("obsolete outcome-status contract marker not found")
+              contract = contract.replace(old_marker, new_marker, 1)
+
+          old_assertion = '''    runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,
+            "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",'''
+          new_assertion = '''    runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
+              runtime.split("toolOutcomes, usedTools").length - 1 >= 3,
+            "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",'''
+          if new_assertion not in contract:
+              if old_assertion not in contract:
                   raise SystemExit("runtime contract assertion not found")
-              contract = contract.replace(old_runtime_assert, new_runtime_assert, 1)
+              contract = contract.replace(old_assertion, new_assertion, 1)
 
           response_path.write_text(response)
           runtime_path.write_text(runtime)
