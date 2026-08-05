@@ -62,9 +62,6 @@ jobs:
       - name: Verify tablet recovery compiles
         run: npm run typecheck -- --pretty false
 
-      - name: Install browser-test runner
-        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
-
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 

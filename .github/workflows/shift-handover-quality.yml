@@ -83,9 +83,6 @@ jobs:
       - name: Verify authenticated browser-test secret
         run: test -n "$VORTA_E2E_PASSWORD"
 
-      - name: Install browser-test runner
-        run: npm install --no-save --package-lock=false --silent @playwright/test@1.55.0
-
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
