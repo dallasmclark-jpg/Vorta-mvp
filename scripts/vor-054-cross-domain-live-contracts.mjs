@@ -11,6 +11,8 @@ const retiredWorkflow =
   ".github/workflows/vor-038-intelligence-live-eval.yml";
 const centralWorkflowPath =
   ".github/workflows/vor-049-validation.yml";
+const productionWorkflowPath =
+  ".github/workflows/maintenance-manager-production.yml";
 const crossDomainScenarioPath =
   "tests/evals/vor-054-cross-domain-live.json";
 
@@ -35,8 +37,41 @@ const authenticatedOwners = workflowSources.filter(({ source }) =>
 );
 assert.deepEqual(
   authenticatedOwners.map(({ name }) => name),
+  [
+    "maintenance-manager-production.yml",
+    "vor-049-validation.yml",
+  ],
+  "Only the PR gate and exact-production verifier may run authenticated Ask Vorta evaluations",
+);
+const pullRequestOwners = authenticatedOwners.filter(({ source }) =>
+  source.includes("pull_request:"),
+);
+assert.deepEqual(
+  pullRequestOwners.map(({ name }) => name),
   ["vor-049-validation.yml"],
-  "Exactly one workflow must own authenticated Ask Vorta live traffic",
+  "Exactly one pull-request workflow must own authenticated Ask Vorta live traffic",
+);
+const productionWorkflow = readFileSync(
+  productionWorkflowPath,
+  "utf8",
+);
+assert.ok(
+  productionWorkflow.includes("workflow_run:") &&
+    productionWorkflow.includes(
+      "github.event.workflow_run.head_branch == 'main'",
+    ),
+  "Production evaluation must run only after a successful main-branch quality workflow",
+);
+const productionCommitCheck = productionWorkflow.indexOf(
+  "node scripts/verify-production-commit.mjs",
+);
+const productionEvaluation = productionWorkflow.indexOf(
+  "npm run eval:ask-vorta:live",
+);
+assert.ok(
+  productionCommitCheck >= 0 &&
+    productionEvaluation > productionCommitCheck,
+  "Production evaluation must verify the exact deployed commit before using the authenticated account",
 );
 for (const { name, source } of workflowSources) {
   assert.equal(
