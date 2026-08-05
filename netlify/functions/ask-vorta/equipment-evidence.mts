@@ -39,6 +39,76 @@ export function compactEquipmentDecisionPackForModel(
   };
 }
 
+export function compactSiteOperationalSnapshotForModel(
+  result: ToolResult,
+): ToolResult | null {
+  if (
+    result.source !== "Vorta operational decision snapshot" ||
+    !result.data ||
+    typeof result.data !== "object" ||
+    Array.isArray(result.data)
+  ) {
+    return null;
+  }
+
+  const data = result.data as JsonRecord;
+  const domains =
+    data.domains && typeof data.domains === "object" && !Array.isArray(data.domains)
+      ? (data.domains as JsonRecord)
+      : {};
+  const domainLimits: Array<[string, number]> = [
+    ["rankedActions", 14],
+    ["siteRisk", 6],
+    ["workBacklog", 6],
+    ["sparesRisk", 6],
+    ["capability", 6],
+    ["handover", 6],
+  ];
+  const compactDomains = Object.fromEntries(
+    domainLimits.flatMap(([domainName, limit]) => {
+      const domain = domains[domainName];
+      if (!domain || typeof domain !== "object" || Array.isArray(domain)) return [];
+      const domainRecord = domain as JsonRecord;
+      const seen = new Set<string>();
+      const decisionFacts = collectDecisionFacts(domainRecord.data)
+        .sort(
+          (first, second) =>
+            second.score - first.score || first.text.localeCompare(second.text),
+        )
+        .filter((fact) => {
+          const key = fact.text.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, limit)
+        .map((fact) => fact.text.slice(0, 650));
+      return [[
+        domainName,
+        {
+          source: domainRecord.source,
+          status: domainRecord.status,
+          message: domainRecord.message,
+          decisionFacts,
+        },
+      ]];
+    }),
+  );
+
+  return {
+    source: result.source,
+    status: result.status,
+    message: result.message,
+    data: {
+      generatedAt: data.generatedAt,
+      domains: compactDomains,
+      caveat: data.caveat,
+      detailScope:
+        "The model-facing snapshot preserves ranked actions plus bounded risk, work, spares, capability and handover decision facts, including owners, blockers, dependencies and verification evidence.",
+    },
+  };
+}
+
 export function trimToolResult(result: ToolResult): string {
   const compactEquipmentPack = compactEquipmentDecisionPackForModel(result);
   if (compactEquipmentPack) {
@@ -54,6 +124,36 @@ export function trimToolResult(result: ToolResult): string {
         decisionFacts: textValues(data.decisionFacts)
           .slice(0, 12)
           .map((fact) => fact.slice(0, 650)),
+      },
+    });
+  }
+
+  const compactSiteSnapshot = compactSiteOperationalSnapshotForModel(result);
+  if (compactSiteSnapshot) {
+    const compactSerialised = JSON.stringify(compactSiteSnapshot);
+    if (compactSerialised.length <= MAX_TOOL_OUTPUT_CHARACTERS) {
+      return compactSerialised;
+    }
+    const data = compactSiteSnapshot.data as JsonRecord;
+    const domains = data.domains as JsonRecord;
+    return JSON.stringify({
+      ...compactSiteSnapshot,
+      data: {
+        ...data,
+        domains: Object.fromEntries(
+          Object.entries(domains).map(([domainName, domain]) => {
+            const domainRecord = domain as JsonRecord;
+            return [
+              domainName,
+              {
+                ...domainRecord,
+                decisionFacts: textValues(domainRecord.decisionFacts)
+                  .slice(0, domainName === "rankedActions" ? 8 : 4)
+                  .map((fact) => fact.slice(0, 450)),
+              },
+            ];
+          }),
+        ),
       },
     });
   }
@@ -324,7 +424,7 @@ export function collectDecisionFacts(
       [...pathSegments].reverse().find((segment) => !/^\d+$/.test(segment)) ?? path;
     const keyScore = /code|number|reference|fault|component|part|skill|engineer|name/i.test(leafKey)
       ? 8
-      : /title|summary|description|action|outcome|status|quantity|stock|lead|risk|validation|calibration|cause|text|note|specialism|evidence/i.test(leafKey)
+      : /title|summary|description|action|owner|block|depend|verification|priority|outcome|status|quantity|stock|lead|risk|validation|calibration|cause|text|note|specialism|evidence/i.test(leafKey)
         ? 5
         : 1;
     const valueScore = /[A-Z]{2,}[-0-9]{2,}/.test(text) ? 5 : 0;
@@ -350,7 +450,7 @@ export function collectDecisionFacts(
     ) {
       const keyScore = /code|number|reference|fault|component|part|skill|engineer|name/i.test(key)
         ? 8
-        : /title|summary|description|action|outcome|status|quantity|stock|lead|risk|validation|calibration/i.test(key)
+        : /title|summary|description|action|owner|block|depend|verification|priority|outcome|status|quantity|stock|lead|risk|validation|calibration/i.test(key)
           ? 5
           : 1;
       const valueScore = /[A-Z]{2,}[-0-9]{2,}/.test(String(item)) ? 5 : 0;

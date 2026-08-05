@@ -19,6 +19,7 @@ const workOrderBrowser = read(
   "tests/browser/maintenance-manager-work-orders.spec.ts",
 );
 const liveGolden = read("tests/evals/ask-vorta-live-golden.json");
+const liveGoldenScenarios = JSON.parse(liveGolden);
 const agentEntry = read("netlify/functions/ask-vorta.mts");
 const agentContracts = read("netlify/functions/ask-vorta/contracts.mts");
 const routePlanning = read("netlify/functions/ask-vorta/route-planning.mts");
@@ -98,11 +99,16 @@ check(
   "The authenticated browser regression must use the reported wording and reject the retired fault presentation.",
 );
 
+const unifiedCoverScenario = liveGoldenScenarios.find(
+  (scenario) => scenario?.id === "golden-cover-today-unified",
+);
 check(
-  liveGolden.includes('"id": "golden-cover-today-unified"') &&
-    liveGolden.includes('"question": "What are the shift cover issues today?"') &&
-    liveGolden.includes('"expectedTools": ["get_shift_cover"]') &&
-    liveGolden.includes("FD-03 Approved Fault-Finding Guide"),
+  unifiedCoverScenario?.question === "What are the shift cover issues today?" &&
+    unifiedCoverScenario?.expectedTools?.length === 1 &&
+    unifiedCoverScenario.expectedTools[0] === "get_shift_cover" &&
+    unifiedCoverScenario?.mustNotMention?.includes(
+      "FD-03 Approved Fault-Finding Guide",
+    ),
   "The live agent evaluation must prove the reported wording selects Shift Cover and excludes unrelated fault evidence.",
 );
 
