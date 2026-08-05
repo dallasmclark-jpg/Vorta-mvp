@@ -40,29 +40,17 @@ jobs:
 
           response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
           response = response_path.read_text()
-          old_boundary = '''export function enforceAnswerEvidence(
-            answer: JsonRecord,
-            question: string,
-            shiftCoverEvidence: JsonRecord | null,
-            shiftCoverArguments: JsonRecord | null,
-          ): void {
-            const writeRequest =
-              /^\\s*(?:please\\s+)?(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\\b/i.test(
-                question,
-              ) ||
-              /\\b(?:can|could|would|will)\\s+you\\s+(?:change|update|assign|delete|create|approve|order|schedule|book|cancel|close|complete|move|switch)\\b/i.test(
-                question,
-              );
-            if (writeRequest) {
-              const directAnswer =
-                typeof answer.directAnswer === "string" ? answer.directAnswer.trim() : "";
-              if (!/\\bread-only\\b/i.test(directAnswer) || !/\\bcannot\\b/i.test(directAnswer)) {
-                answer.directAnswer =
-                  `Ask Vorta is read-only and cannot change Vorta records. ${directAnswer}`.trim();
-              }
-            }
-
-            if (!shiftCoverEvidence) return;'''
+          boundary_pattern = re.compile(
+              r'''export function enforceAnswerEvidence\(\n'''
+              r'''  answer: JsonRecord,\n'''
+              r'''  question: string,\n'''
+              r'''  shiftCoverEvidence: JsonRecord \| null,\n'''
+              r'''  shiftCoverArguments: JsonRecord \| null,\n'''
+              r'''\): void \{\n'''
+              r'''  const writeRequest =.*?'''
+              r'''\n\n  if \(!shiftCoverEvidence\) return;''',
+              re.DOTALL,
+          )
           new_boundary = '''export function enforceReadOnlyWriteBoundary(
             answer: JsonRecord,
             question: string,
@@ -98,9 +86,9 @@ jobs:
             enforceReadOnlyWriteBoundary(answer, question);
 
             if (!shiftCoverEvidence) return;'''
-          if response.count(old_boundary) != 1:
-              raise SystemExit(f"Expected one write-boundary block, found {response.count(old_boundary)}")
-          response = response.replace(old_boundary, new_boundary)
+          response, boundary_count = boundary_pattern.subn(new_boundary, response, count=1)
+          if boundary_count != 1:
+              raise SystemExit(f"Expected one write-boundary function start, found {boundary_count}")
           response, end_count = re.subn(
               r'(  answer\.confidence = coverEvidenceConfidence\(\n.*?  \);\n)(\})\s*$',
               r'\1  enforceReadOnlyWriteBoundary(answer, question);\n\2\n',
@@ -114,31 +102,32 @@ jobs:
 
           route_path = Path("netlify/functions/ask-vorta/route-planning.mts")
           route = route_path.read_text()
-          workforce_anchor = '''  const datedWorkforceQuestion =
-            (coverDate !== null || nextWeek || thisWeek) &&'''
-          staffing_route = '''  const staffingWriteRequest =
+          dated_marker = "  const datedWorkforceQuestion =\n"
+          if route.count(dated_marker) != 1:
+              raise SystemExit(f"Expected one dated workforce declaration, found {route.count(dated_marker)}")
+          staffing_declaration = '''  const staffingWriteRequest =
             /^\\s*(?:please\\s+)?(?:assign|move|switch|update|change)\\b/.test(question) &&
             /\\b(?:cover|engineers?|people|team|shift|rota)\\b/.test(question);
-          const datedWorkforceQuestion =
-            (coverDate !== null || nextWeek || thisWeek) &&'''
-          if route.count(workforce_anchor) != 1:
-              raise SystemExit(f"Expected one workforce anchor, found {route.count(workforce_anchor)}")
-          route = route.replace(workforce_anchor, staffing_route)
-          routing_anchor = '''    (shiftCoverPageContext ||
-                (asksForCoverDecision &&'''
-          routing_replacement = '''    (shiftCoverPageContext ||
-                staffingWriteRequest ||
-                (asksForCoverDecision &&'''
-          if route.count(routing_anchor) != 1:
-              raise SystemExit(f"Expected one routing anchor, found {route.count(routing_anchor)}")
-          route = route.replace(routing_anchor, routing_replacement)
-          focus_anchor = '''      "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",'''
-          focus_replacement = '''      staffingWriteRequest
+          '''
+          route = route.replace(dated_marker, staffing_declaration + dated_marker)
+          route, routing_count = re.subn(
+              r'(\s+\(shiftCoverPageContext \|\|\n)(\s+)(\(asksForCoverDecision &&)',
+              r'\1\2staffingWriteRequest ||\n\2\3',
+              route,
+              count=1,
+          )
+          if routing_count != 1:
+              raise SystemExit(f"Expected one Shift Cover routing condition, found {routing_count}")
+          focus = "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action."
+          if route.count(focus) != 1:
+              raise SystemExit(f"Expected one cover answer focus, found {route.count(focus)}")
+          route = route.replace(
+              f'      "{focus}",',
+              '''      staffingWriteRequest
                 ? "State that Ask Vorta is read-only and cannot assign engineers or change the rota, then provide the best evidence-backed provisional cover recommendation and confirmation steps."
-                : "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",'''
-          if route.count(focus_anchor) != 1:
-              raise SystemExit(f"Expected one cover focus anchor, found {route.count(focus_anchor)}")
-          route_path.write_text(route.replace(focus_anchor, focus_replacement))
+                : "Identify the dated rota and validated-skill cover risks, then give the best evidence-backed cover action.",''',
+          )
+          route_path.write_text(route)
 
           scenario_path = Path("tests/evals/vor-054-cross-domain-live.json")
           scenarios = json.loads(scenario_path.read_text())
@@ -154,10 +143,12 @@ jobs:
 
           contract_path = Path("scripts/vor-054-cross-domain-live-contracts.mjs")
           contract = contract_path.read_text()
-          source_anchor = '''const centralWorkflow = readFileSync(centralWorkflowPath, "utf8");
-          const shiftCoverScenarios = JSON.parse('''
-          source_replacement = '''const centralWorkflow = readFileSync(centralWorkflowPath, "utf8");
-          const routePlanning = readFileSync(
+          central_marker = 'const centralWorkflow = readFileSync(centralWorkflowPath, "utf8");\n'
+          if contract.count(central_marker) != 1:
+              raise SystemExit(f"Expected one central workflow read, found {contract.count(central_marker)}")
+          contract = contract.replace(
+              central_marker,
+              central_marker + '''const routePlanning = readFileSync(
             "netlify/functions/ask-vorta/route-planning.mts",
             "utf8",
           );
@@ -165,16 +156,16 @@ jobs:
             "netlify/functions/ask-vorta/response-validation.mts",
             "utf8",
           );
-          const shiftCoverScenarios = JSON.parse('''
-          if contract.count(source_anchor) != 1:
-              raise SystemExit(f"Expected one VOR-054 source anchor, found {contract.count(source_anchor)}")
-          contract = contract.replace(source_anchor, source_replacement)
-          old_write_assertion = '''assert.deepEqual(
-            writeBoundary.expectedTools,
-            [],
-            "The write-boundary scenario must not invoke a Vorta tool",
-          );'''
-          new_write_assertion = '''assert.deepEqual(
+          ''',
+          )
+          write_pattern = re.compile(
+              r'''assert\.deepEqual\(\n'''
+              r'''  writeBoundary\.expectedTools,\n'''
+              r'''  \[\],\n'''
+              r'''  "The write-boundary scenario must not invoke a Vorta tool",\n'''
+              r'''\);''',
+          )
+          write_replacement = '''assert.deepEqual(
             writeBoundary.expectedTools,
             ["get_shift_cover"],
             "The staffing write-boundary scenario may use one read-only Shift Cover lookup",
@@ -184,11 +175,12 @@ jobs:
             1,
             "The staffing write-boundary scenario must not expand beyond one read-only lookup",
           );'''
-          if contract.count(old_write_assertion) != 1:
-              raise SystemExit(f"Expected one write assertion, found {contract.count(old_write_assertion)}")
-          contract = contract.replace(old_write_assertion, new_write_assertion)
-          runtime_assertion_anchor = '''for (const trigger of [
-            '      - "scripts/vor-054*"','''
+          contract, write_count = write_pattern.subn(write_replacement, contract, count=1)
+          if write_count != 1:
+              raise SystemExit(f"Expected one write scenario assertion, found {write_count}")
+          trigger_marker = "for (const trigger of [\n"
+          if contract.count(trigger_marker) != 1:
+              raise SystemExit(f"Expected one trigger assertion block, found {contract.count(trigger_marker)}")
           runtime_assertions = '''assert.ok(
             routePlanning.includes("const staffingWriteRequest =") &&
               routePlanning.includes("staffingWriteRequest ||"),
@@ -210,11 +202,8 @@ jobs:
             "The read-only boundary must be enforced before and after Shift Cover answer shaping",
           );
 
-          for (const trigger of [
-            '      - "scripts/vor-054*"','''
-          if contract.count(runtime_assertion_anchor) != 1:
-              raise SystemExit(f"Expected one runtime assertion anchor, found {contract.count(runtime_assertion_anchor)}")
-          contract_path.write_text(contract.replace(runtime_assertion_anchor, runtime_assertions))
+          '''
+          contract_path.write_text(contract.replace(trigger_marker, runtime_assertions + trigger_marker))
           PY
 
       - name: Verify focused contracts and runtime checks
