@@ -41,6 +41,7 @@ const contracts = [
   ["VOR-055 Ask Vorta production verification", "scripts/vor-055-production-verification-contracts.mjs"],
   ["VOR-056 actionable backlog decisions", "scripts/vor-056-backlog-action-plan-contracts.mjs"],
   ["VOR-057 daily Netlify release", "scripts/netlify-daily-deploy-contracts.mjs"],
+  ["VOR-064 locked browser runtime", "scripts/vor-064-locked-browser-runtime-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
