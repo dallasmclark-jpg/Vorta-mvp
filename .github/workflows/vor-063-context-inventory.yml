@@ -33,9 +33,17 @@ jobs:
           test -s vor-063-inventory/site-context.txt
           test -s vor-063-inventory/frontend-files.txt
           test -s vor-063-inventory/privileged-readers.txt
+      - name: Pack reviewed source snapshot
+        run: tar --exclude=.git --exclude=node_modules --exclude=dist -czf vor-063-source.tgz .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: vor-063-context-inventory
           path: vor-063-inventory
           if-no-files-found: error
           retention-days: 3
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-063-source
+          path: vor-063-source.tgz
+          if-no-files-found: error
+          retention-days: 1
