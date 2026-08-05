@@ -197,7 +197,6 @@ export default async function handler(req: Request, _context: Context): Promise<
     enforcePlannedResponseShape(answer, questionPlan);
     retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
     repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-    enforceBacklogActionPlan(answer, toolOutcomes);
     answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);
     enforceImageDiagnosisAnswer(answer, imageDiagnosis);
     answer.sources = [...usedSources];
@@ -211,6 +210,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       answer,
       conversationResolution,
     );
+    enforceBacklogActionPlan(answer, toolOutcomes);
     await updateAskVortaInteraction(
       supabase,
       interactionId,
@@ -402,8 +402,7 @@ export default async function handler(req: Request, _context: Context): Promise<
         enforcePlannedResponseShape(answer, questionPlan);
         retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
         repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
-        enforceBacklogActionPlan(answer, toolOutcomes);
-        enforceEquipmentReturnToServiceSafety(answer, questionPlan);
+            enforceEquipmentReturnToServiceSafety(answer, questionPlan);
         const calibratedConfidence = evidenceAwareConfidence(
           answer,
           questionPlan,
@@ -432,6 +431,7 @@ export default async function handler(req: Request, _context: Context): Promise<
           answer,
           conversationResolution,
         );
+        enforceBacklogActionPlan(answer, toolOutcomes);
         await updateAskVortaInteraction(
           supabase,
           interactionId,
@@ -585,7 +585,6 @@ export default async function handler(req: Request, _context: Context): Promise<
       );
       enforceDeterministicResponseShape(verifiedFallback, questionPlan);
       enforcePlannedResponseShape(verifiedFallback, questionPlan);
-      enforceBacklogActionPlan(verifiedFallback, toolOutcomes);
       verifiedFallback.confidence = evidenceAwareConfidence(
         verifiedFallback,
         questionPlan,
@@ -595,6 +594,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       verifiedFallback.toolsUsed = [...usedTools];
       verifiedFallback.evidenceLinks = [...evidenceLinks.values()];
       verifiedFallback.responseId = interactionId;
+      enforceBacklogActionPlan(verifiedFallback, toolOutcomes);
       await updateAskVortaInteraction(
         supabase,
         interactionId,

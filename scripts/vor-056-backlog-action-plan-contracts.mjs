@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+const entrypoint = readFileSync(
+  "netlify/functions/ask-vorta.mts",
+  "utf8",
+);
 const responseValidation = readFileSync(
   "netlify/functions/ask-vorta/response-validation.mts",
   "utf8",
@@ -71,7 +75,7 @@ assert.equal(
 for (const marker of [
   "export function enforceBacklogActionPlan(",
   'outcomes.get("get_site_work_backlog")',
-  'backlogResult.status !== "ok"',
+  'backlogResult.status === "unavailable"',
   "records(answer.actionPlan).length > 0",
   "authorised assignee",
   "Maintenance Manager / Planner",
@@ -86,6 +90,55 @@ assert.ok(
   runtime.includes("enforceBacklogActionPlan") &&
     runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,
   "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
+);
+
+assert.ok(
+  entrypoint.includes(
+    'export const ASK_VORTA_RUNTIME_REVISION = "vor-056-backlog-action-plan-v2";',
+  ),
+  "The Netlify entrypoint must rev when nested Ask Vorta runtime behaviour changes",
+);
+const deterministicContext = runtime.indexOf(
+  "answer.conversationContext = buildConversationContext(",
+);
+const deterministicGuard = runtime.indexOf(
+  "enforceBacklogActionPlan(answer, toolOutcomes);",
+  deterministicContext,
+);
+const deterministicUpdate = runtime.indexOf(
+  "await updateAskVortaInteraction(",
+  deterministicGuard,
+);
+const semanticContext = runtime.indexOf(
+  "answer.conversationContext = buildConversationContext(",
+  deterministicContext + 1,
+);
+const semanticGuard = runtime.indexOf(
+  "enforceBacklogActionPlan(answer, toolOutcomes);",
+  semanticContext,
+);
+const semanticUpdate = runtime.indexOf(
+  "await updateAskVortaInteraction(",
+  semanticGuard,
+);
+assert.ok(
+  deterministicContext >= 0 &&
+    deterministicGuard > deterministicContext &&
+    deterministicUpdate > deterministicGuard &&
+    semanticContext > deterministicUpdate &&
+    semanticGuard > semanticContext &&
+    semanticUpdate > semanticGuard,
+  "Backlog action enforcement must run after final response formatting on deterministic and semantic paths",
+);
+assert.ok(
+  runtime.indexOf("verifiedFallback.responseId = interactionId;") <
+    runtime.indexOf("enforceBacklogActionPlan(verifiedFallback, toolOutcomes);") &&
+    runtime.indexOf("enforceBacklogActionPlan(verifiedFallback, toolOutcomes);") <
+      runtime.indexOf(
+        "await updateAskVortaInteraction(",
+        runtime.indexOf("verifiedFallback.responseId = interactionId;"),
+      ),
+  "Verified fallback enforcement must run at its final response boundary",
 );
 
 assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");

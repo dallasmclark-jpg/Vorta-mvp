@@ -192,7 +192,7 @@ export function enforceBacklogActionPlan(
   const backlogResult = outcomes.get("get_site_work_backlog");
   if (
     !backlogResult ||
-    backlogResult.status !== "ok" ||
+    backlogResult.status === "unavailable" ||
     records(answer.actionPlan).length > 0
   ) {
     return;
