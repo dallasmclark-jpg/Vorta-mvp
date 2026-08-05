@@ -158,6 +158,7 @@ for (const marker of [
   "VORTA_EVAL_OFFSET: 12",
   "VORTA_EVAL_LIMIT: 1",
   "run: sleep 310",
+  "ask-vorta-production-backlog.log",
   "ask-vorta-production-window-1.log",
   "ask-vorta-production-window-2.log",
 ]) {
@@ -197,9 +198,10 @@ assert.ok(
   "Both production windows must finish and preserve evidence before the result is enforced",
 );
 assert.ok(
-  productionWorkflow.includes("actions/upload-artifact@v4") &&
-    productionWorkflow.includes("if-no-files-found: error"),
-  "Both production evaluation logs must be preserved",
+  productionWorkflow.includes(
+    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+  ) && productionWorkflow.includes("if-no-files-found: error"),
+  "All production evaluation logs must be preserved with the reviewed artifact action",
 );
 assert.ok(
   productionWorkflow.includes(
