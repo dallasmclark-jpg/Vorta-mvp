@@ -1,0 +1,186 @@
+name: Apply VOR-056 backlog action plan
+
+on:
+  push:
+    branches:
+      - agent/vor-056-backlog-action-plan
+    paths:
+      - ".github/workflows/vor-056-apply-fix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-056-apply-fix
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out VOR-056 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/vor-056-backlog-action-plan
+          show-progress: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused VOR-056 patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          validation_path = Path("netlify/functions/ask-vorta/response-validation.mts")
+          source = validation_path.read_text()
+          start_marker = '''  const summaryAction = records(answer.decisionSummary).find((item) =>
+            /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
+          );
+          '''
+          end_marker = '''  ];
+          }
+
+          export function enforcePlannedResponseShape'''
+          start = source.find(start_marker)
+          end = source.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise AssertionError("Unable to locate deterministic action-plan guard")
+          replacement = '''  const summaryAction = records(answer.decisionSummary).find((item) =>
+            /first action|next action|required action|action|order|buy/i.test(String(item.label ?? "")),
+          );
+          const firstFinding = records(answer.findings)[0];
+          const findingTitle =
+            typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+          const evidenceBackedWorkAction =
+            scope === "work" && findingTitle
+              ? `Confirm scope, readiness and an authorised assignee for ${findingTitle}, then have the Maintenance Planner update and sequence the SAP work order before release.`
+              : "";
+          const action =
+            textValues(answer.recommendedActions)[0] ??
+            (typeof summaryAction?.value === "string"
+              ? summaryAction.value.trim()
+              : "") ||
+            evidenceBackedWorkAction;
+
+          if (!action) return;
+          if (textValues(answer.recommendedActions).length === 0) {
+            answer.recommendedActions = [action];
+          }
+
+          answer.actionPlan = [
+            {
+              priority: "now",
+              action,
+              owner:
+                scope === "spares"
+                  ? "Maintenance Manager / Stores"
+                  : scope === "work"
+                    ? "Maintenance Manager / Planner"
+                    : "Maintenance Manager",
+              expectedImpact:
+                scope === "spares"
+                  ? "Starts the highest-priority verified stock intervention identified by the current Vorta evidence."
+                  : scope === "work"
+                    ? "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan."
+                    : "Starts the highest-priority executable maintenance intervention identified by the current Vorta evidence.",
+              verification:
+                scope === "spares"
+                  ? "Open the linked Stores Inventory evidence and confirm the named part, shortfall, lead time and purchasing status."
+                  : scope === "work"
+                    ? "Open the linked SAP work order evidence and confirm the assignee, readiness, due date and released sequence are recorded by an authorised user."
+                    : "Open the linked Vorta evidence and confirm the named action has an owner and status before the next shift handover.",
+            },
+          ];
+          }
+
+          export function enforcePlannedResponseShape'''
+          source = source[:start] + replacement + source[end + len(end_marker):]
+          validation_path.write_text(source)
+
+          suite_path = Path("scripts/run-contract-suite.mjs")
+          suite = suite_path.read_text()
+          registration = '  ["VOR-056 actionable backlog decisions", "scripts/vor-056-backlog-action-plan-contracts.mjs"],\n'
+          if registration not in suite:
+              marker = '  ["VOR-055 Ask Vorta production verification", "scripts/vor-055-production-verification-contracts.mjs"],\n'
+              if marker not in suite:
+                  raise AssertionError("Missing VOR-055 contract registration")
+              suite = suite.replace(marker, marker + registration, 1)
+              suite_path.write_text(suite)
+
+          workflow_path = Path(".github/workflows/vor-049-validation.yml")
+          workflow = workflow_path.read_text()
+          if '      - "scripts/vor-056*"' not in workflow:
+              if workflow.count('      - "scripts/vor-055*"') != 2:
+                  raise AssertionError("Unexpected VOR-055 trigger count")
+              workflow = workflow.replace(
+                  '      - "scripts/vor-055*"',
+                  '      - "scripts/vor-055*"\n      - "scripts/vor-056*"',
+              )
+          if '      - "tests/evals/vor-056-backlog-action-plan.json"' not in workflow:
+              if workflow.count('      - "tests/evals/vor-054-cross-domain-live.json"') != 2:
+                  raise AssertionError("Unexpected VOR-054 eval trigger count")
+              workflow = workflow.replace(
+                  '      - "tests/evals/vor-054-cross-domain-live.json"',
+                  '      - "tests/evals/vor-054-cross-domain-live.json"\n      - "tests/evals/vor-056-backlog-action-plan.json"',
+              )
+
+          equipment_step = '''      - name: Run all 24 visible-answer golden decisions
+          '''
+          backlog_step = '''      - name: Run backlog action-plan decision
+            if: github.event_name == 'pull_request'
+            shell: bash
+            env:
+              VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
+              VORTA_EVAL_DELAY_MS: 500
+              VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+              VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
+            run: |
+              set -o pipefail
+              node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json 2>&1 | tee vor-056-live-eval.log
+
+          '''
+          if "Run backlog action-plan decision" not in workflow:
+              if equipment_step not in workflow:
+                  raise AssertionError("Missing equipment audit insertion point")
+              workflow = workflow.replace(equipment_step, backlog_step + equipment_step, 1)
+          if workflow.count("            vor-056-live-eval.log") == 0:
+              workflow = workflow.replace(
+                  "            vor-054-live-eval.log\n            vor-049-live-eval.log",
+                  "            vor-054-live-eval.log\n            vor-056-live-eval.log\n            vor-049-live-eval.log",
+              )
+          workflow_path.write_text(workflow)
+          PY
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Run focused VOR-056 contracts
+        run: node scripts/vor-056-backlog-action-plan-contracts.mjs
+
+      - name: Run canonical production build and permanent checks
+        run: npm run build
+
+      - name: Restore connector-owned workflow files
+        run: |
+          git checkout HEAD -- \
+            .github/workflows/vor-049-validation.yml \
+            .github/workflows/vor-056-apply-fix.yml
+
+      - name: Commit verified VOR-056 source patch
+        shell: bash
+        run: |
+          git config user.name "Vorta Engineering Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add \
+            netlify/functions/ask-vorta/response-validation.mts \
+            scripts/run-contract-suite.mjs
+          git commit -m "Make backlog decisions actionable"
+          git push origin HEAD:agent/vor-056-backlog-action-plan
