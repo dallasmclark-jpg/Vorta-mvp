@@ -1,29 +1,35 @@
 name: Maintenance Manager production verification
 
 on:
-  workflow_run:
-    workflows:
-      - Maintenance Manager quality gate
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      expected_commit:
+        required: true
+        type: string
+    secrets:
+      VORTA_E2E_PASSWORD:
+        required: true
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Exact deployed commit SHA to verify
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: maintenance-manager-production-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: true
+  group: maintenance-manager-production-${{ inputs.expected_commit }}
+  cancel-in-progress: false
 
 jobs:
   production:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
     name: Verify exact production commit
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
     env:
-      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      EXPECTED_COMMIT: ${{ inputs.expected_commit }}
       VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
       VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
@@ -37,7 +43,7 @@ jobs:
       - name: Check out deployed commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.expected_commit }}
           show-progress: false
 
       - name: Use Node.js
@@ -60,8 +66,26 @@ jobs:
             exit 1
           }
 
+      - name: Run VOR-056 backlog production decision
+        id: production_backlog
+        continue-on-error: true
+        shell: bash
+        env:
+          VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+          VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
+        run: |
+          set -o pipefail
+          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json 2>&1 | tee ask-vorta-production-backlog.log
+
+      - name: Reset after backlog production decision
+        if: always()
+        run: sleep 310
+
       - name: Run first 12 Ask Vorta production decisions
         id: production_window_one
+        if: always()
         continue-on-error: true
         shell: bash
         env:
@@ -69,6 +93,8 @@ jobs:
           VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
           VORTA_EVAL_OFFSET: 0
           VORTA_EVAL_LIMIT: 12
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
         run: |
           set -o pipefail
           npm run eval:ask-vorta:live 2>&1 | tee ask-vorta-production-window-1.log
@@ -87,6 +113,8 @@ jobs:
           VORTA_EVAL_SITE_ID: ${{ env.VORTA_E2E_SITE_ID }}
           VORTA_EVAL_OFFSET: 12
           VORTA_EVAL_LIMIT: 1
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
         run: |
           set -o pipefail
           npm run eval:ask-vorta:live 2>&1 | tee ask-vorta-production-window-2.log
@@ -95,8 +123,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ask-vorta-production-evidence-${{ github.event.workflow_run.head_sha }}
+          name: ask-vorta-production-evidence-${{ inputs.expected_commit }}
           path: |
+            ask-vorta-production-backlog.log
             ask-vorta-production-window-1.log
             ask-vorta-production-window-2.log
           if-no-files-found: error
@@ -106,6 +135,10 @@ jobs:
         if: always()
         shell: bash
         run: |
+          test "${{ steps.production_backlog.outcome }}" = "success" || {
+            echo "The VOR-056 backlog production decision failed." >&2
+            exit 1
+          }
           test "${{ steps.production_window_one.outcome }}" = "success" || {
             echo "The first 12 Ask Vorta production decisions failed." >&2
             exit 1
