@@ -47,7 +47,6 @@ jobs:
 
           function_start = response.index("export function enforceBacklogActionPlan(")
           findings_start = response.index("  const firstFinding =", function_start)
-          current_header = response[function_start:findings_start]
           desired_header = '''export function enforceBacklogActionPlan(
             answer: JsonRecord,
             outcomes: Map<string, ToolResult>,
@@ -61,8 +60,7 @@ jobs:
             }
 
           '''
-          if current_header != desired_header:
-              response = response[:function_start] + desired_header + response[findings_start:]
+          response = response[:function_start] + desired_header + response[findings_start:]
 
           old_call = "enforceBacklogActionPlan(answer, toolOutcomes);"
           new_call = "enforceBacklogActionPlan(answer, toolOutcomes, usedTools);"
@@ -80,25 +78,36 @@ jobs:
                   raise SystemExit("verified fallback backlog guard call not found")
               runtime = runtime.replace(old_fallback, new_fallback, 1)
 
-          old_marker = '\'backlogResult.status !== "ok"\''
-          new_marker = '\'usedTools.has("get_site_work_backlog")\''
-          if new_marker not in contract:
-              if old_marker not in contract:
-                  raise SystemExit("obsolete outcome-status contract marker not found")
-              contract = contract.replace(old_marker, new_marker, 1)
+          lines = contract.splitlines()
+          marker_changed = False
+          count_changed = False
+          output = []
+          for line in lines:
+              if "backlogResult.status" in line:
+                  output.append(line.replace(
+                      'backlogResult.status !== "ok"',
+                      'usedTools.has("get_site_work_backlog")',
+                  ))
+                  marker_changed = True
+                  continue
+              if 'runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,' in line:
+                  indent = line[: len(line) - len(line.lstrip())]
+                  output.append(line[:-1] + " &&")
+                  output.append(
+                      indent + '  runtime.split("toolOutcomes, usedTools").length - 1 >= 3,'
+                  )
+                  count_changed = True
+                  continue
+              output.append(line.replace(
+                  "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
+                  "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",
+              ))
 
-          old_count = 'runtime.split("enforceBacklogActionPlan(").length - 1 >= 3,'
-          new_count = '''runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
-              runtime.split("toolOutcomes, usedTools").length - 1 >= 3,'''
-          if new_count not in contract:
-              if old_count not in contract:
-                  raise SystemExit("runtime call-count contract line not found")
-              contract = contract.replace(old_count, new_count, 1)
-          contract = contract.replace(
-              "The backlog guard must be imported and run at deterministic, semantic and verified-fallback response boundaries",
-              "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",
-              1,
-          )
+          if not marker_changed and 'usedTools.has("get_site_work_backlog")' not in contract:
+              raise SystemExit("outcome-status contract line not found")
+          if not count_changed and 'toolOutcomes, usedTools' not in contract:
+              raise SystemExit("runtime call-count contract line not found")
+          contract = "\n".join(output) + "\n"
 
           response_path.write_text(response)
           runtime_path.write_text(runtime)
