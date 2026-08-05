@@ -11,6 +11,7 @@ on:
       - "scripts/vor-049*"
       - "scripts/vor-054*"
       - "scripts/vor-055*"
+      - "scripts/vor-056*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -20,6 +21,7 @@ on:
       - "tests/browser/vor-048-feedback.spec.ts"
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
+      - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "package.json"
@@ -37,6 +39,7 @@ on:
       - "scripts/vor-049*"
       - "scripts/vor-054*"
       - "scripts/vor-055*"
+      - "scripts/vor-056*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -46,6 +49,7 @@ on:
       - "tests/browser/vor-048-feedback.spec.ts"
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
+      - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "package.json"
@@ -110,6 +114,9 @@ jobs:
       - name: Run permanent VOR-054 contracts
         run: node scripts/vor-054-cross-domain-live-contracts.mjs
 
+      - name: Run permanent VOR-056 contracts
+        run: node scripts/vor-056-backlog-action-plan-contracts.mjs
+
       - name: Run complete contract suite
         run: npm run test:contracts
 
@@ -170,6 +177,18 @@ jobs:
         if: github.event_name == 'pull_request'
         run: sleep 310
 
+      - name: Run backlog action-plan decision
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          VORTA_EVAL_BASE_URL: ${{ env.PREVIEW_URL }}
+          VORTA_EVAL_DELAY_MS: 500
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3
+        run: |
+          set -o pipefail
+          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json 2>&1 | tee vor-056-live-eval.log
+
       - name: Run all 24 visible-answer golden decisions
         if: github.event_name == 'pull_request'
         shell: bash
@@ -190,6 +209,7 @@ jobs:
           path: |
             vor-048-live-eval.log
             vor-054-live-eval.log
+            vor-056-live-eval.log
             vor-049-live-eval.log
             dist/vorta-build.json
           if-no-files-found: warn
@@ -203,6 +223,7 @@ jobs:
           path: |
             vor-048-live-eval.log
             vor-054-live-eval.log
+            vor-056-live-eval.log
             vor-049-live-eval.log
             dist/vorta-build.json
           if-no-files-found: warn
