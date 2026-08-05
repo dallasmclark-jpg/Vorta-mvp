@@ -1,0 +1,208 @@
+name: VOR-056 final response boundary patch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/vor-056-backlog-action-plan
+    paths:
+      - .github/workflows/vor-056-final-boundary-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out VOR-056 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/vor-056-backlog-action-plan
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply final backlog response guard
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
+          runtime_path = Path("netlify/functions/ask-vorta/runtime.mts")
+          contract_path = Path("scripts/vor-056-backlog-action-plan-contracts.mjs")
+
+          response = response_path.read_text()
+          runtime = runtime_path.read_text()
+          contract = contract_path.read_text()
+
+          function_marker = "export function enforceDeterministicResponseShape(\n"
+          guard = '''export function enforceBacklogActionPlan(
+            answer: JsonRecord,
+            outcomes: Map<string, ToolResult>,
+          ): void {
+            const backlogResult = outcomes.get("get_site_work_backlog");
+            if (
+              !backlogResult ||
+              backlogResult.status !== "ok" ||
+              records(answer.actionPlan).length > 0
+            ) {
+              return;
+            }
+
+            const firstFinding = records(answer.findings).find(
+              (item) => typeof item.title === "string" && item.title.trim().length > 0,
+            );
+            const prioritySummary = records(answer.decisionSummary).find((item) =>
+              /highest priority|first priority|first action/i.test(String(item.label ?? "")),
+            );
+            const findingTitle =
+              typeof firstFinding?.title === "string" ? firstFinding.title.trim() : "";
+            const summaryValue =
+              typeof prioritySummary?.value === "string" ? prioritySummary.value.trim() : "";
+            const target = findingTitle || summaryValue;
+            if (!target) return;
+
+            const action =
+              `Confirm scope, readiness and an authorised assignee for ${target}, then have the Maintenance Planner update and sequence the SAP work order before release.`;
+            const existingRecommendations = textValues(answer.recommendedActions).filter(
+              (item) => item !== action,
+            );
+            answer.recommendedActions = [action, ...existingRecommendations].slice(0, 4);
+            answer.actionPlan = [
+              {
+                priority: "now",
+                action,
+                owner: "Maintenance Manager / Planner",
+                expectedImpact:
+                  "Moves the highest-priority overdue or unassigned work order from identified risk toward an owned, executable plan.",
+                verification:
+                  "Open the linked SAP work order evidence and confirm the authorised assignee, readiness, due date and released sequence are recorded by an authorised user.",
+              },
+            ];
+          }
+
+          '''
+          if "export function enforceBacklogActionPlan(" not in response:
+              if function_marker not in response:
+                  raise SystemExit("response-validation insertion marker not found")
+              response = response.replace(function_marker, guard + function_marker, 1)
+
+          import_marker = "enforceAnswerEvidence, enforceDeterministicResponseShape,"
+          if "enforceBacklogActionPlan" not in runtime.split("from \"./response-validation.mjs\";")[0]:
+              if import_marker not in runtime:
+                  raise SystemExit("runtime import marker not found")
+              runtime = runtime.replace(
+                  import_marker,
+                  "enforceAnswerEvidence, enforceBacklogActionPlan, enforceDeterministicResponseShape,",
+                  1,
+              )
+
+          deterministic_marker = '''    repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
+            answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);'''
+          deterministic_replacement = '''    repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
+            enforceBacklogActionPlan(answer, toolOutcomes);
+            answer.confidence = evidenceAwareConfidence(answer, questionPlan, toolOutcomes);'''
+          if deterministic_replacement not in runtime:
+              if deterministic_marker not in runtime:
+                  raise SystemExit("deterministic final-boundary marker not found")
+              runtime = runtime.replace(deterministic_marker, deterministic_replacement, 1)
+
+          semantic_marker = '''        repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
+                enforceEquipmentReturnToServiceSafety(answer, questionPlan);'''
+          semantic_replacement = '''        repairEquipmentDecisionAnswer(answer, questionPlan, toolOutcomes);
+                enforceBacklogActionPlan(answer, toolOutcomes);
+                enforceEquipmentReturnToServiceSafety(answer, questionPlan);'''
+          if semantic_replacement not in runtime:
+              if semantic_marker not in runtime:
+                  raise SystemExit("semantic final-boundary marker not found")
+              runtime = runtime.replace(semantic_marker, semantic_replacement, 1)
+
+          fallback_marker = '''      enforceDeterministicResponseShape(verifiedFallback, questionPlan);
+              verifiedFallback.confidence = evidenceAwareConfidence('''
+          fallback_replacement = '''      enforceDeterministicResponseShape(verifiedFallback, questionPlan);
+              enforcePlannedResponseShape(verifiedFallback, questionPlan);
+              enforceBacklogActionPlan(verifiedFallback, toolOutcomes);
+              verifiedFallback.confidence = evidenceAwareConfidence('''
+          if fallback_replacement not in runtime:
+              if fallback_marker not in runtime:
+                  raise SystemExit("fallback final-boundary marker not found")
+              runtime = runtime.replace(fallback_marker, fallback_replacement, 1)
+
+          runtime_read_marker = '''const routePlanning = readFileSync(
+            "netlify/functions/ask-vorta/route-planning.mts",
+            "utf8",
+          );'''
+          runtime_read_replacement = runtime_read_marker + '''
+          const runtime = readFileSync(
+            "netlify/functions/ask-vorta/runtime.mts",
+            "utf8",
+          );'''
+          if 'const runtime = readFileSync(' not in contract:
+              if runtime_read_marker not in contract:
+                  raise SystemExit("contract runtime-read marker not found")
+              contract = contract.replace(runtime_read_marker, runtime_read_replacement, 1)
+
+          contract_marker = 'assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");'
+          final_contract = '''for (const marker of [
+            "export function enforceBacklogActionPlan(",
+            'outcomes.get("get_site_work_backlog")',
+            'backlogResult.status !== "ok"',
+            "records(answer.actionPlan).length > 0",
+            "authorised assignee",
+            "Maintenance Manager / Planner",
+            "released sequence are recorded by an authorised user",
+          ]) {
+            assert.ok(
+              responseValidation.includes(marker),
+              `The final backlog response boundary is missing ${marker}`,
+            );
+          }
+          assert.ok(
+            runtime.includes("enforceBacklogActionPlan") &&
+              (runtime.match(/enforceBacklogActionPlan\\(/g) ?? []).length >= 3,
+            "The backlog guard must run at deterministic, semantic and verified-fallback response boundaries",
+          );
+
+          '''
+          if "The final backlog response boundary is missing" not in contract:
+              if contract_marker not in contract:
+                  raise SystemExit("contract assertion insertion marker not found")
+              contract = contract.replace(contract_marker, final_contract + contract_marker, 1)
+
+          response_path.write_text(response)
+          runtime_path.write_text(runtime)
+          contract_path.write_text(contract)
+          PY
+
+      - name: Run focused VOR-056 contracts
+        run: node scripts/vor-056-backlog-action-plan-contracts.mjs
+
+      - name: Run complete canonical validation
+        run: npm run build
+
+      - name: Check final diff
+        run: |
+          git diff --check
+          git status --short
+          git diff -- netlify/functions/ask-vorta/response-validation.mts netlify/functions/ask-vorta/runtime.mts scripts/vor-056-backlog-action-plan-contracts.mjs
+
+      - name: Commit verified source patch
+        run: |
+          git config user.name "Ask Vorta CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add netlify/functions/ask-vorta/response-validation.mts
+          git add netlify/functions/ask-vorta/runtime.mts
+          git add scripts/vor-056-backlog-action-plan-contracts.mjs
+          git diff --cached --quiet && { echo "No source changes to commit"; exit 1; }
+          git commit -m "Fix VOR-056 final backlog response boundary"
+          git push origin HEAD:agent/vor-056-backlog-action-plan
