@@ -210,7 +210,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       answer,
       conversationResolution,
     );
-    enforceBacklogActionPlan(answer, toolOutcomes);
+    enforceBacklogActionPlan(answer, toolOutcomes, usedTools);
     await updateAskVortaInteraction(
       supabase,
       interactionId,
@@ -431,7 +431,7 @@ export default async function handler(req: Request, _context: Context): Promise<
           answer,
           conversationResolution,
         );
-        enforceBacklogActionPlan(answer, toolOutcomes);
+        enforceBacklogActionPlan(answer, toolOutcomes, usedTools);
         await updateAskVortaInteraction(
           supabase,
           interactionId,
@@ -594,7 +594,7 @@ export default async function handler(req: Request, _context: Context): Promise<
       verifiedFallback.toolsUsed = [...usedTools];
       verifiedFallback.evidenceLinks = [...evidenceLinks.values()];
       verifiedFallback.responseId = interactionId;
-      enforceBacklogActionPlan(verifiedFallback, toolOutcomes);
+      enforceBacklogActionPlan(verifiedFallback, toolOutcomes, usedTools);
       await updateAskVortaInteraction(
         supabase,
         interactionId,

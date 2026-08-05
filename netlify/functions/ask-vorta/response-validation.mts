@@ -188,13 +188,12 @@ export function evidenceAwareConfidence(
 export function enforceBacklogActionPlan(
   answer: JsonRecord,
   outcomes: Map<string, ToolResult>,
+  usedTools: Set<string>,
 ): void {
   const backlogResult = outcomes.get("get_site_work_backlog");
-  if (
-    !backlogResult ||
-    backlogResult.status === "unavailable" ||
-    records(answer.actionPlan).length > 0
-  ) {
+  const backlogToolExecuted =
+    usedTools.has("get_site_work_backlog") || Boolean(backlogResult);
+  if (!backlogToolExecuted || records(answer.actionPlan).length > 0) {
     return;
   }
 
