@@ -93,6 +93,26 @@ assert.ok(
   "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",
 );
 
+for (const marker of [
+  "ASK_VORTA_RESPONSE_VALIDATION_REVISION",
+  '"vor-056-final-backlog-boundary-v1"',
+]) {
+  assert.ok(
+    responseValidation.includes(marker),
+    `The response-validation deployment revision is missing ${marker}`,
+  );
+  assert.ok(
+    entrypoint.includes(marker),
+    `The Netlify entrypoint deployment integrity check is missing ${marker}`,
+  );
+}
+assert.ok(
+  entrypoint.includes(
+    'import handler from "./ask-vorta/runtime.mjs";',
+  ) && entrypoint.includes("export default handler;"),
+  "The deployment integrity check must preserve the thin Netlify handler delegation",
+);
+
 assert.equal(scenarios.length, 1, "VOR-056 must retain one focused live scenario");
 const scenario = scenarios[0];
 assert.equal(scenario.id, "vor-056-backlog-action-plan");

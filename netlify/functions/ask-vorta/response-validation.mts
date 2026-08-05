@@ -3,6 +3,9 @@ import { decisionPackCoveringTool, successfulToolNames } from "./contracts.mjs";
 import { equipmentVisibleDecisionText, unavailableEquipmentDecisionClaim } from "./equipment-evidence.mjs";
 import { evidenceTimestamps, numberValue, records, textValues } from "./utilities.mjs";
 
+export const ASK_VORTA_RESPONSE_VALIDATION_REVISION =
+  "vor-056-final-backlog-boundary-v1";
+
 export function replaceReleasedWording(value: unknown): unknown {
   if (typeof value === "string") {
     return value.replace(/\breleased\b/gi, "approved for return to service");
