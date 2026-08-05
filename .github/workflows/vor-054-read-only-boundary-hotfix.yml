@@ -35,6 +35,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json
+          import re
           from pathlib import Path
 
           response_path = Path("netlify/functions/ask-vorta/response-validation.mts")
@@ -100,26 +101,16 @@ jobs:
           if response.count(old_boundary) != 1:
               raise SystemExit(f"Expected one write-boundary block, found {response.count(old_boundary)}")
           response = response.replace(old_boundary, new_boundary)
-          end_anchor = '''  answer.confidence = coverEvidenceConfidence(
-            shiftCoverEvidence,
-            primaryShift,
-            primaryPackage,
-            primarySkillRisks,
-            offRotaNames,
-          );
-          }'''
-          end_replacement = '''  answer.confidence = coverEvidenceConfidence(
-            shiftCoverEvidence,
-            primaryShift,
-            primaryPackage,
-            primarySkillRisks,
-            offRotaNames,
-          );
-            enforceReadOnlyWriteBoundary(answer, question);
-          }'''
-          if response.count(end_anchor) != 1:
-              raise SystemExit(f"Expected one Shift Cover end anchor, found {response.count(end_anchor)}")
-          response_path.write_text(response.replace(end_anchor, end_replacement))
+          response, end_count = re.subn(
+              r'(  answer\.confidence = coverEvidenceConfidence\(\n.*?  \);\n)(\})\s*$',
+              r'\1  enforceReadOnlyWriteBoundary(answer, question);\n\2\n',
+              response,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if end_count != 1:
+              raise SystemExit(f"Expected one Shift Cover function end, found {end_count}")
+          response_path.write_text(response)
 
           route_path = Path("netlify/functions/ask-vorta/route-planning.mts")
           route = route_path.read_text()
