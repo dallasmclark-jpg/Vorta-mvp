@@ -23,7 +23,9 @@ for (const required of [
   '["show", `${cachedCommit}:${markerPath}`]',
   "releaseDate <= previousReleaseDate",
   "process.exit(1)",
-]) assert.ok(ignore.includes(required), `Missing Netlify ignore control: ${required}`);
+]) {
+  assert.ok(ignore.includes(required), `Missing Netlify ignore control: ${required}`);
+}
 
 assert.equal(marker.notBeforeDate, "2026-08-06");
 assert.ok(
@@ -42,20 +44,69 @@ if (marker.releaseDate !== null) {
     "A dated release requires a valid request timestamp",
   );
 }
+if (marker.deployedCommit != null) {
+  assert.match(
+    marker.deployedCommit,
+    /^[0-9a-f]{40}$/,
+    "A verified deployment must record its exact commit",
+  );
+  assert.ok(
+    typeof marker.deployedAtUtc === "string" &&
+      !Number.isNaN(Date.parse(marker.deployedAtUtc)),
+    "A verified deployment must record its completion timestamp",
+  );
+}
 
 for (const required of [
   'cron: "30 20 * * *"',
+  "recover_failed_release:",
   "group: daily-netlify-production-release",
   "TZ=Europe/London date +%F",
-  "previous_release_date",
+  "production_release_date",
+  "A recovery cannot run until 30 minutes after the previous trigger",
   "No unreleased product changes were found",
+  "NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}",
+  "The release marker will not be changed",
   "npm run build",
   "npm run test:performance",
   "git add ops/netlify-release.json",
   "git push origin HEAD:main",
+  "Trigger the exact validated Netlify release",
+  '--request POST',
+  '"$NETLIFY_BUILD_HOOK_URL"',
+  "netlify-build-hook-response.json",
   "uses: ./.github/workflows/maintenance-manager-production.yml",
-]) assert.ok(daily.includes(required), `Missing daily release control: ${required}`);
-assert.doesNotMatch(daily, /run:\s*(?:npx\s+)?netlify\s+deploy|api\.netlify\.com\/api\/v1\/sites\/.*\/builds/i);
+  "Record the verified production release",
+  "marker.deployedCommit = process.env.DEPLOYED_COMMIT",
+]) {
+  assert.ok(daily.includes(required), `Missing daily release control: ${required}`);
+}
+
+const planIndex = daily.indexOf("Plan the London-date release");
+const secretIndex = daily.indexOf("Require the secure Netlify build trigger");
+const validationIndex = daily.indexOf("Run canonical release validation");
+const markerIndex = daily.indexOf("Advance the controlled release marker");
+const commitIndex = daily.indexOf("Commit the single daily release request");
+const triggerIndex = daily.indexOf("Trigger the exact validated Netlify release");
+assert.ok(
+  planIndex >= 0 &&
+    secretIndex > planIndex &&
+    validationIndex > secretIndex &&
+    markerIndex > validationIndex &&
+    commitIndex > markerIndex &&
+    triggerIndex > commitIndex,
+  "The release must plan, require a secure trigger and validate before changing the marker or triggering Netlify",
+);
+assert.doesNotMatch(
+  daily,
+  /run:\s*(?:npx\s+)?netlify\s+deploy|api\.netlify\.com\/api\/v1\/sites\/.*\/builds/i,
+  "The daily release must use the configured secret hook rather than ad-hoc CLI or raw Netlify API deployment",
+);
+assert.doesNotMatch(
+  daily,
+  /https:\/\/api\.netlify\.com\/build_hooks\//,
+  "The secret Netlify build hook URL must never be committed",
+);
 
 assert.doesNotMatch(
   prWorkflows,
@@ -76,13 +127,26 @@ for (const required of [
   "Run first 12 Ask Vorta production decisions",
   "Run final Ask Vorta production decision",
   "Run authenticated production regression",
-]) assert.ok(production.includes(required), `Missing production verification control: ${required}`);
+]) {
+  assert.ok(production.includes(required), `Missing production verification control: ${required}`);
+}
 
-assert.ok(docs.includes("one Netlify production deployment per Europe/London calendar day"));
+for (const required of [
+  "one Netlify production deployment per Europe/London calendar day",
+  "NETLIFY_BUILD_HOOK_URL",
+  "fails before changing the release marker",
+  "recover_failed_release",
+  "30 minutes",
+  "exact deployed commit",
+]) {
+  assert.ok(docs.includes(required), `Missing release documentation: ${required}`);
+}
 assert.ok(
   suite.includes(
     '["VOR-057 daily Netlify release", "scripts/netlify-daily-deploy-contracts.mjs"]',
   ),
 );
 
-console.log("VOR-057 one-deployment-per-day contracts passed.");
+console.log(
+  "VOR-057 explicit one-deployment-per-day contracts passed: secure trigger, fail-before-marker, bounded recovery and exact production verification are protected.",
+);
