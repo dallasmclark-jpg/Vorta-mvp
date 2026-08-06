@@ -140,6 +140,56 @@ try {
     null,
     "Workforce questions must not be reclassified as equipment merely because they contain the word issues",
   );
+
+  const plannerBundle = join(resolverTemp, "route-planning.mjs");
+  await build({
+    entryPoints: ["netlify/functions/ask-vorta/route-planning.mts"],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node22",
+    outfile: plannerBundle,
+    logLevel: "silent",
+  });
+  const planner = await import(
+    `${pathToFileURL(plannerBundle).href}?revision=${Date.now()}`
+  );
+  for (const question of naturalQuestions) {
+    const plan = planner.deterministicQuestionPlan({
+      question,
+      history: [],
+      pageContext: {
+        path: "/dashboard",
+        timezone: "Europe/London",
+      },
+    });
+    assert.ok(plan, `Natural equipment wording must produce a plan: ${question}`);
+    assert.equal(
+      plan.routingMode,
+      "deterministic",
+      `Natural equipment wording must bypass semantic replanning: ${question}`,
+    );
+    assert.equal(
+      plan.scope,
+      "equipment",
+      `Natural equipment wording must stay in equipment scope: ${question}`,
+    );
+    assert.equal(
+      plan.intentLabel,
+      "equipment_decision",
+      `Natural equipment wording must use the equipment decision route: ${question}`,
+    );
+    assert.equal(
+      plan.equipmentQuery,
+      "vial fill",
+      `Natural equipment wording must pass the bounded VF-02 query to evidence: ${question}`,
+    );
+    assert.deepEqual(
+      plan.requiredTools,
+      ["get_equipment_decision_pack"],
+      `Natural equipment wording must load the cross-domain equipment pack: ${question}`,
+    );
+  }
 } finally {
   rmSync(resolverTemp, { recursive: true, force: true });
 }
@@ -180,5 +230,5 @@ for (const scenario of productionScenarios) {
 }
 
 console.log(
-  "VOR-049 production equipment resolution contracts passed: the real resolver maps natural vial-filler sensor wording to VF-02, rejects unrelated equipment and retains authorised work, history and document evidence.",
+  "VOR-049 production equipment resolution contracts passed: the real resolver and planner map natural vial-filler sensor wording to the deterministic VF-02 equipment pack, reject unrelated equipment and retain authorised work, history and document evidence.",
 );
