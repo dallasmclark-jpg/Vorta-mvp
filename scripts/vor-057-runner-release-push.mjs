@@ -3,11 +3,12 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const workflowName = String(process.env.GITHUB_WORKFLOW ?? "");
 const authorisedRunner =
-  process.env.GITHUB_ACTIONS === "true" && /Emergency VOR-049/i.test(workflowName);
+  process.env.GITHUB_ACTIONS === "true" &&
+  /(Emergency VOR-049|VOR-057 immediate Netlify release)/i.test(workflowName);
 
 if (!authorisedRunner) {
   console.log(
-    "VOR-057 release push skipped outside the authorised emergency GitHub runner.",
+    "VOR-057 release push skipped outside an authorised release GitHub runner.",
   );
   process.exit(0);
 }
