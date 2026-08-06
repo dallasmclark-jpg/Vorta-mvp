@@ -1,4 +1,5 @@
 import type { Context } from "@netlify/functions";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import coreHandler from "./runtime-equipment-fallback.mjs";
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import type { JsonRecord } from "./contracts.mjs";
@@ -23,11 +24,7 @@ function record(value: unknown): JsonRecord | null {
 
 async function resolveEquipmentId(
   answer: JsonRecord,
-  supabase: Awaited<
-    ReturnType<typeof authenticateAskVortaRequest>
-  > extends { ok: true; supabase: infer Client }
-    ? Client
-    : never,
+  supabase: SupabaseClient,
   siteId: string,
 ): Promise<string | null> {
   const directId = equipmentIdFromAnswer(answer);
