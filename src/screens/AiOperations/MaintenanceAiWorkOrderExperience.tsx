@@ -272,7 +272,7 @@ export function MaintenanceAiWorkOrderExperience({
           aria-label="Back to Ask Vorta chat"
           title="Back to Ask Vorta chat"
           onClick={returnToAskVortaChat}
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-3 z-50 inline-flex min-h-11 items-center gap-2 rounded-full border border-blue-400/35 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.55)] transition-colors hover:bg-blue-500 active:bg-blue-500 md:left-5"
+          className="fixed bottom-4 left-4 z-50 inline-flex h-11 items-center gap-2 rounded-full border border-blue-500/30 bg-blue-600 px-4 text-sm font-bold text-white shadow-xl transition-colors hover:bg-blue-500"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to chat
