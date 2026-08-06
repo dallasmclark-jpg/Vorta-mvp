@@ -22,6 +22,14 @@ const localServerSource = readFileSync(
   "scripts/vor-058-local-eval-server.mjs",
   "utf8",
 );
+const errorBoundarySource = readFileSync(
+  "src/components/VortaErrorBoundary.tsx",
+  "utf8",
+);
+const netlifyHeadersSource = readFileSync(
+  "public/_headers",
+  "utf8",
+);
 const suiteSource = readFileSync("scripts/run-contract-suite.mjs", "utf8");
 const packageSource = readFileSync("package.json", "utf8");
 const scenarios = JSON.parse(
@@ -99,6 +107,14 @@ assert.ok(
 );
 
 assert.equal(scenarios.length, 6, "VOR-058 requires six natural variants");
+assert.ok(
+  scenarios.some(
+    (scenario) =>
+      scenario.question.trim().toLowerCase() ===
+      "what is the biggest risk today?",
+  ),
+  "The exact production question must remain in the authenticated VOR-058 suite",
+);
 for (const scenario of scenarios) {
   assert.deepEqual(
     scenario.expectedTools,
@@ -120,6 +136,39 @@ for (const scenario of scenarios) {
     `${scenario.id} must remain decision-ready`,
   );
 }
+
+for (const required of [
+  "failed to fetch dynamically imported module",
+  "STALE_ASSET_RECOVERY_KEY",
+  "STALE_ASSET_RECOVERY_WINDOW_MS",
+  "scheduleStaleAssetRecovery",
+  "window.location.reload()",
+  "data-stale-asset-recovery",
+]) {
+  assert.ok(
+    errorBoundarySource.includes(required),
+    `Stale application recovery must retain ${required}`,
+  );
+}
+assert.ok(
+  errorBoundarySource.includes("Without a loop guard an automatic reload could repeat forever."),
+  "Automatic stale-asset recovery must fail closed when the session loop guard is unavailable",
+);
+assert.match(
+  netlifyHeadersSource,
+  /\/\*\s+Cache-Control: no-store, no-cache, must-revalidate, max-age=0/,
+  "SPA and HTML responses must revalidate across production releases",
+);
+assert.match(
+  netlifyHeadersSource,
+  /\/assets\/\*\s+Cache-Control: public, max-age=31536000, immutable/,
+  "Content-hashed assets must remain immutable and long cached",
+);
+assert.match(
+  netlifyHeadersSource,
+  /\/vorta-build\.json\s+Cache-Control: no-store, no-cache, must-revalidate, max-age=0/,
+  "Build metadata must never be served stale",
+);
 
 for (const required of [
   '"netlify/functions/ask-vorta/**"',
@@ -163,5 +212,5 @@ assert.ok(
 );
 
 console.log(
-  "VOR-058 contracts passed: deterministic site-priority routing, one-snapshot tool suppression, decision-ready ranked answers, exact-source authenticated execution, latency limits and SAP read-only wording are protected.",
+  "VOR-058 contracts passed: deterministic site-priority routing, one-snapshot tool suppression, the exact production question, decision-ready ranked answers, bounded stale-asset recovery, coherent Netlify caching, exact-source authenticated execution, latency limits and SAP read-only wording are protected.",
 );
