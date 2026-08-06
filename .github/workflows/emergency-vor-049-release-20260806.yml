@@ -1,6 +1,8 @@
 name: Emergency VOR-049 production repair
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   issue_comment:
     types:
       - created
