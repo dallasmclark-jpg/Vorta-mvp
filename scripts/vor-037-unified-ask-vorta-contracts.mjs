@@ -21,6 +21,9 @@ const workOrderBrowser = read(
 const liveGolden = read("tests/evals/ask-vorta-live-golden.json");
 const liveGoldenScenarios = JSON.parse(liveGolden);
 const agentEntry = read("netlify/functions/ask-vorta.mts");
+const equipmentFallback = read(
+  "netlify/functions/ask-vorta/runtime-equipment-fallback.mts",
+);
 const agentContracts = read("netlify/functions/ask-vorta/contracts.mts");
 const routePlanning = read("netlify/functions/ask-vorta/route-planning.mts");
 
@@ -46,11 +49,20 @@ check(
   "The Maintenance Manager shell must mount only the unified Ask Vorta compatibility wrapper.",
 );
 
+const usesCanonicalRuntimeDirectly = agentEntry.includes(
+  'import handler from "./ask-vorta/runtime.mjs"',
+);
+const usesValidatedEquipmentFallback =
+  agentEntry.includes(
+    'import handler from "./ask-vorta/runtime-equipment-fallback.mjs"',
+  ) &&
+  equipmentFallback.includes('import coreHandler from "./runtime.mjs"') &&
+  equipmentFallback.includes("const primaryResponse = await coreHandler(");
 check(
-  agentEntry.includes('import handler from "./ask-vorta/runtime.mjs"') &&
+  (usesCanonicalRuntimeDirectly || usesValidatedEquipmentFallback) &&
     agentEntry.includes('path: "/api/ask-vorta"') &&
     agentEntry.includes('method: "POST"'),
-  "The modular Ask Vorta backend must preserve the canonical Netlify route and runtime entry point.",
+  "The modular Ask Vorta backend must preserve the canonical Netlify route and delegate to the canonical runtime, directly or through the validated equipment fallback wrapper.",
 );
 
 for (const tool of [
