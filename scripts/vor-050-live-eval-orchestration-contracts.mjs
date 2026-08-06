@@ -24,21 +24,37 @@ const liveEvaluator = readFileSync(
 const shiftCoverScenarios = JSON.parse(
   readFileSync("tests/evals/vor-048-shift-cover-routing.json", "utf8"),
 );
+const sitePriorityScenarios = JSON.parse(
+  readFileSync(
+    "tests/evals/vor-058-site-priority-performance.json",
+    "utf8",
+  ),
+);
 const equipmentScenarios = JSON.parse(
   readFileSync("tests/evals/vor-033-demo-golden.json", "utf8"),
 );
 
-for (const workflow of [vor048Workflow, prDecisionWorkflow]) {
-  assert.doesNotMatch(
-    workflow,
-    /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49)/,
-    "Pull-request validation must not consume a Netlify deployment or the shared authenticated live-evaluation account",
-  );
-}
+assert.doesNotMatch(
+  vor048Workflow,
+  /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49|58)/,
+  "VOR-048 pull-request validation must not consume a deployment or authenticated evaluation capacity",
+);
+assert.doesNotMatch(
+  prDecisionWorkflow,
+  /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL:\s*https:\/\/|eval:ask-vorta:vor0(?:48|49)/,
+  "The central pull-request gate must not consume a Netlify deployment, stale production or the competing legacy live suites",
+);
+assert.ok(
+  prDecisionWorkflow.includes(
+    "VORTA_EVAL_BASE_URL: http://127.0.0.1:8788",
+  ) &&
+    prDecisionWorkflow.includes("npm run eval:ask-vorta:vor058"),
+  "The central pull-request owner may run only the bounded VOR-058 suite against exact local branch source",
+);
 assert.ok(
   vor048Workflow.includes("group: vor-048-") &&
     prDecisionWorkflow.includes("group: ask-vorta-live-"),
-  "PR validation must retain deterministic concurrency even after remote live traffic is removed",
+  "PR validation must retain deterministic concurrency",
 );
 assert.ok(
   dailyWorkflow.includes(
@@ -49,7 +65,7 @@ assert.ok(
 assert.ok(
   productionWorkflow.includes("workflow_call:") &&
     productionWorkflow.includes("node scripts/verify-production-commit.mjs"),
-  "Authenticated evaluation must run only after the exact production commit is visible",
+  "Production evaluation must run only after the exact production commit is visible",
 );
 
 const backlogIndex = productionWorkflow.indexOf(
@@ -108,6 +124,19 @@ assert.equal(
   "All six Shift Cover scenarios must remain available for focused audits",
 );
 assert.equal(
+  sitePriorityScenarios.length,
+  6,
+  "The exact-source pull-request gate must remain bounded to six site-priority scenarios",
+);
+assert.ok(
+  sitePriorityScenarios.every(
+    (scenario) =>
+      Number(scenario.maxToolCount) === 1 &&
+      Number(scenario.maxDurationMs) <= 18_000,
+  ),
+  "VOR-058 must use one snapshot per question and retain the production p95 ceiling",
+);
+assert.equal(
   equipmentScenarios.length,
   24,
   "All 24 equipment scenarios must remain available for exhaustive audits",
@@ -119,4 +148,4 @@ assert.ok(
   "The daily deployment policy must not relax the Shift Cover latency target",
 );
 
-console.log("VOR-050 daily live evaluation orchestration contracts passed.");
+console.log("VOR-050 production and bounded exact-source evaluation orchestration contracts passed.");
