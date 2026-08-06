@@ -115,21 +115,23 @@ export function siteRiskMovementQuestionPlan(
     /^(?:what(?:'s| has| is)? changed|what changed|anything changed)\??$/.test(
       question,
     );
+  const siteRiskPhrase =
+    "(?:(?:overall|maintenance) site |(?:site|overall|maintenance) )?risk";
   const asksForMovement =
     bareChangeQuestion ||
     /\bwhat(?:'s| has| is)? changed\b/.test(question) ||
     /\bwhat changed since (?:yesterday|today|the last shift|last shift|the previous shift|previous shift)\b/.test(
       question,
     ) ||
-    /\bcompare (?:today|the latest|current risk) (?:with|to|against) (?:yesterday|the previous day|the prior day)\b/.test(
+    /\bcompare (?:today(?:'s)?(?: site)? risk|today|the latest(?: site)? risk|current(?: site)? risk) (?:with|to|against) (?:yesterday|the previous day|the prior day)\b/.test(
       question,
     ) ||
-    /\b(?:has|is|did) (?:the )?(?:site |overall )?risk (?:got|get|become|gone|go|move|changed|change|worsened|improved|worse|better)\b/.test(
-      question,
-    ) ||
-    /\b(?:is|was) (?:the )?(?:site |overall )?risk (?:worse|better|higher|lower)\b/.test(
-      question,
-    );
+    new RegExp(
+      `\\b(?:has|is|did) (?:the )?${siteRiskPhrase} (?:got|gotten|get|become|gone|go|move|changed|change|worsened|improved|worse|better)\\b`,
+    ).test(question) ||
+    new RegExp(
+      `\\b(?:is|was) (?:the )?${siteRiskPhrase} (?:worse|better|higher|lower)\\b`,
+    ).test(question);
   if (!asksForMovement) return null;
 
   const equipmentPage = /\/equipment(?:\/|$)/.test(request.pageContext.path);
