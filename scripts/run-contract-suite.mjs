@@ -43,6 +43,7 @@ const contracts = [
   ["VOR-057 daily Netlify release", "scripts/netlify-daily-deploy-contracts.mjs"],
   ["VOR-058 site-priority performance", "scripts/vor-058-site-priority-performance-contracts.mjs"],
   ["VOR-059 deterministic operational answers", "scripts/vor-059-deterministic-operational-answers-contracts.mjs"],
+  ["VOR-062 site risk movement", "scripts/vor-062-site-risk-movement-contracts.mjs"],
   ["VOR-064 locked browser runtime", "scripts/vor-064-locked-browser-runtime-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
