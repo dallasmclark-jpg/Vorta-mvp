@@ -2,7 +2,7 @@ name: Emergency VOR-049 production repair
 
 on:
   schedule:
-    - cron: "0 20 6 8 *"
+    - cron: "10 20 6 8 *"
   workflow_dispatch:
 
 permissions:
