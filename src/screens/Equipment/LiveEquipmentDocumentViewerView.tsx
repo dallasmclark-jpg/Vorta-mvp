@@ -13,7 +13,7 @@ import {
   loadLiveEquipmentDocument,
   type LiveDocumentCoverageMode,
   type LiveEquipmentDocument,
-} from "./equipmentPilotEvidence";
+} from "./equipmentDocumentCoverage";
 import {
   AskVortaButton,
   EvidenceStateMessage,
