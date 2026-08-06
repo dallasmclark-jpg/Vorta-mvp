@@ -21,6 +21,11 @@ import { AskVortaPhaseTimeoutError, canonicalRouteKey, routingModeForPlan, withP
 import { buildConversationContext, enrichQuestionWithConversationContext, jsonResponse, parseRequest } from "./request-context.mjs";
 import { answerOutputTokenBudget, answerReasoningEffort, enforceAnswerEvidence, enforceBacklogActionPlan, enforceDeterministicResponseShape, enforceEquipmentReturnToServiceSafety, enforcePlannedResponseShape, evidenceAwareConfidence } from "./response-validation.mjs";
 import { buildQuestionPlan, deterministicQuestionPlan, systemInstructions } from "./route-planning.mjs";
+import {
+  loadSiteRiskMovement,
+  siteRiskMovementAnswer,
+  siteRiskMovementQuestionPlan,
+} from "./site-risk-movement.mjs";
 import { evidenceLinkForTool, executeTool } from "./tool-execution.mjs";
 import { normaliseRelativeShiftCoverArguments, numberValue, parseArguments, sha256Fingerprint, textValues } from "./utilities.mjs";
 
@@ -33,7 +38,8 @@ export default async function handler(req: Request, _context: Context): Promise<
   if (!authenticated.ok) return authenticated.response;
   const { request, supabase, userId } = authenticated;
   const startedAt = Date.now();
-  const preliminaryPlan = deterministicQuestionPlan(request);
+  const preliminaryPlan =
+    siteRiskMovementQuestionPlan(request) ?? deterministicQuestionPlan(request);
   const preliminaryRouteKey = canonicalRouteKey(preliminaryPlan);
   const preliminaryRoutingMode = routingModeForPlan(preliminaryPlan);
   const imageFingerprint = request.image
@@ -95,7 +101,8 @@ export default async function handler(req: Request, _context: Context): Promise<
         answerFocus: "Ask one concise clarification and do not guess.",
         verificationChecks: ["Confirm the intended prior option or asset."],
       }
-      : deterministicQuestionPlan(planningRequest);
+      : siteRiskMovementQuestionPlan(planningRequest) ??
+        deterministicQuestionPlan(planningRequest);
   if (!questionPlan) {
     try {
       questionPlan = await buildQuestionPlan(client, planningRequest);
@@ -317,7 +324,10 @@ export default async function handler(req: Request, _context: Context): Promise<
             result = await withPhaseTimeout(
               "evidence",
               EVIDENCE_TIMEOUT_MS,
-              () => executeTool(toolName, toolArguments, supabase, request),
+              () =>
+                toolName === "get_site_risk_movement"
+                  ? loadSiteRiskMovement(supabase, request)
+                  : executeTool(toolName, toolArguments, supabase, request),
             );
           } catch (error) {
             result = {
@@ -340,7 +350,14 @@ export default async function handler(req: Request, _context: Context): Promise<
             shiftCoverEvidence = result.data as JsonRecord;
             shiftCoverArguments = toolArguments;
           }
-          const link = evidenceLinkForTool(toolName, toolArguments);
+          const link =
+            toolName === "get_site_risk_movement"
+              ? {
+                  label: "Open site risk",
+                  path: "/dashboard",
+                  recordType: "risk",
+                }
+              : evidenceLinkForTool(toolName, toolArguments);
           if (link) evidenceLinks.set(link.path, link);
           return { toolName, result };
         }),
@@ -353,11 +370,13 @@ export default async function handler(req: Request, _context: Context): Promise<
             `Verified Vorta evidence from ${toolName}. Use this evidence directly, do not request another tool, and answer only from this authorised result:\n${trimToolResult(result)}`,
         });
       }
-      const deterministicAnswer = deterministicOperationalAnswer(
-        request,
-        questionPlan,
-        toolOutcomes,
-      );
+      const deterministicAnswer =
+        siteRiskMovementAnswer(request, questionPlan, toolOutcomes) ??
+        deterministicOperationalAnswer(
+          request,
+          questionPlan,
+          toolOutcomes,
+        );
       if (deterministicAnswer) {
         return completeDeterministicAnswer(deterministicAnswer);
       }
@@ -600,11 +619,13 @@ export default async function handler(req: Request, _context: Context): Promise<
     if (error instanceof AskVortaPhaseTimeoutError) {
       failureStage = error.stage;
     }
-    const verifiedFallback = deterministicOperationalAnswer(
-      request,
-      questionPlan,
-      toolOutcomes,
-    );
+    const verifiedFallback =
+      siteRiskMovementAnswer(request, questionPlan, toolOutcomes) ??
+      deterministicOperationalAnswer(
+        request,
+        questionPlan,
+        toolOutcomes,
+      );
     if (verifiedFallback && usedSources.size > 0) {
       console.warn("Ask Vorta final reasoning failed; returning verified deterministic evidence", {
         requestId: _context.requestId,
