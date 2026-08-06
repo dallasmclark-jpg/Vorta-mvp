@@ -102,4 +102,6 @@ assert.doesNotMatch(
   "Selected styling must not leak globally outside the Vorta portal.",
 );
 
+await import("./vor-021-document-coverage-contracts.mjs");
+
 console.log("VOR-020 to VOR-024 canonical risk, evidence, performance and UI contracts passed.");
