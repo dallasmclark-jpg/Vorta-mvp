@@ -1,0 +1,59 @@
+name: Apply VOR-063 implementation
+
+on:
+  push:
+    branches:
+      - agent/vor-063-verified-pm-risk-drivers
+    paths:
+      - scripts/apply-vor-063.mjs
+      - .github/workflows/vor-063-apply.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-063-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out VOR-063 branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: agent/vor-063-verified-pm-risk-drivers
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Apply VOR-063 source changes
+        run: node scripts/apply-vor-063.mjs
+
+      - name: Verify focused contracts and TypeScript
+        run: |
+          node scripts/vor-062-site-risk-movement-contracts.mjs
+          node scripts/vor-063-pm-risk-driver-contracts.mjs
+          npm run typecheck:functions
+          npm run test:smoke
+
+      - name: Commit integrated implementation
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "VOR-063 source is already integrated."
+            exit 0
+          fi
+          git config user.name "Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git add netlify/functions/ask-vorta/site-risk-movement.mts scripts/vor-063-pm-risk-driver-contracts.mjs tests/evals/vor-063-pm-risk-drivers.json package.json scripts/run-contract-suite.mjs .github/workflows/vor-049-validation.yml
+          git commit -m "VOR-063: explain verified PM-driven risk movement"
+          git push origin HEAD:agent/vor-063-verified-pm-risk-drivers
