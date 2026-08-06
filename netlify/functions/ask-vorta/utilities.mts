@@ -89,6 +89,22 @@ const EQUIPMENT_QUERY_NOISE = new Set([
 const DESCRIPTIVE_EQUIPMENT_CUE =
   /\b(?:fault|sensor|probe|transmitter|alarm|trip|breakdown|failed|failure|diagnos|filler|filling|pump|motor|valve|conveyor|compressor|autoclave|rabs|ahu|isolator|palletiser|palletizer)\b/i;
 
+const SITE_EQUIPMENT_LANGUAGE_ALIASES: Array<{
+  pattern: RegExp;
+  equipmentReference: string;
+}> = [
+  {
+    pattern:
+      /\bvial\b[\s\S]{0,40}\b(?:fill|filler|filling)\b[\s\S]{0,40}\b(?:sensor|reject|false rejects?|f-204)\b/i,
+    equipmentReference: "VF-02",
+  },
+  {
+    pattern:
+      /\b(?:sensor|reject|false rejects?|f-204)\b[\s\S]{0,40}\bvial\b[\s\S]{0,40}\b(?:fill|filler|filling)\b/i,
+    equipmentReference: "VF-02",
+  },
+];
+
 function normaliseEquipmentWord(value: string): string {
   const token = value.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!token) return "";
@@ -184,6 +200,10 @@ export function extractEquipmentReference(value: string): string | null {
   );
   if (acronymMatches.length) {
     return acronymMatches[acronymMatches.length - 1];
+  }
+
+  for (const alias of SITE_EQUIPMENT_LANGUAGE_ALIASES) {
+    if (alias.pattern.test(value)) return alias.equipmentReference;
   }
 
   if (!DESCRIPTIVE_EQUIPMENT_CUE.test(value)) return null;
