@@ -9,6 +9,9 @@ const occurrences = (source, value) => source.split(value).length - 1;
 const migration = read(
   "supabase/migrations/20260806113000_vor_061_fail_closed_document_access.sql",
 );
+const manifestMigration = read(
+  "supabase/migrations/20260806113100_vor_061_register_document_access_state_rpc.sql",
+);
 const reader = read("src/screens/Equipment/equipmentDocumentCoverage.ts");
 const browser = read("tests/browser/vor-021-document-coverage.spec.ts");
 
@@ -87,6 +90,24 @@ assert.ok(!migration.toLowerCase().includes("security definer"));
 assert.ok(!migration.toLowerCase().includes("insert into public."));
 assert.ok(!migration.toLowerCase().includes("update public."));
 assert.ok(!migration.toLowerCase().includes("delete from public."));
+
+assert.ok(
+  manifestMigration.includes(
+    "'vorta_get_equipment_document_access_state(uuid,uuid)'",
+  ),
+  "The bounded read RPC must be registered in the reviewed security manifest.",
+);
+assert.ok(manifestMigration.includes("'read'"));
+assert.ok(manifestMigration.includes("'invoker'"));
+assert.ok(manifestMigration.includes("v_read <> 54"));
+assert.ok(manifestMigration.includes("v_invoker <> 4"));
+assert.ok(manifestMigration.includes("v_drift <> 0"));
+assert.ok(
+  manifestMigration.includes(
+    "It does not expose document identity, content, source, revision or chunks.",
+  ),
+);
+assert.ok(!manifestMigration.toLowerCase().includes("security definer"));
 
 assert.ok(reader.includes("export type LiveDocumentAccessState"));
 assert.ok(reader.includes("vorta_get_equipment_document_access_state"));
