@@ -21,7 +21,12 @@ for (const required of [
   "Deploy Previews and branch deploys are disabled",
   '["diff", "--quiet", cachedCommit, commit, "--", markerPath]',
   '["show", `${cachedCommit}:${markerPath}`]',
-  "releaseDate <= previousReleaseDate",
+  "positiveInteger",
+  "releaseAttempt !== previousAttempt + 1",
+  'triggerMode === "manual_same_day_exception"',
+  'triggerMode !== "manual_recovery"',
+  "sameDayExceptionApprovedAtUtc",
+  "the same-day release exception lacks valid approval evidence",
   "process.exit(1)",
 ]) {
   assert.ok(ignore.includes(required), `Missing Netlify ignore control: ${required}`);
@@ -36,12 +41,33 @@ assert.ok(
   marker.sourceCommit === null || /^[0-9a-f]{40}$/.test(marker.sourceCommit),
   "The release source must be empty or an exact Git commit",
 );
+assert.ok(
+  marker.attempt == null ||
+    (Number.isInteger(marker.attempt) && marker.attempt > 0),
+  "A release attempt must be a positive integer when present",
+);
 if (marker.releaseDate !== null) {
   assert.ok(marker.sourceCommit, "A dated release requires an exact source commit");
   assert.ok(
     typeof marker.requestedAtUtc === "string" &&
       !Number.isNaN(Date.parse(marker.requestedAtUtc)),
     "A dated release requires a valid request timestamp",
+  );
+}
+if (marker.triggerMode === "manual_same_day_exception") {
+  assert.ok(
+    Number.isInteger(marker.attempt) && marker.attempt >= 2,
+    "A same-day exception must advance the numbered release attempt",
+  );
+  assert.ok(
+    typeof marker.sameDayExceptionApprovedAtUtc === "string" &&
+      !Number.isNaN(Date.parse(marker.sameDayExceptionApprovedAtUtc)),
+    "A same-day exception requires a valid approval timestamp",
+  );
+  assert.ok(
+    typeof marker.sameDayExceptionReason === "string" &&
+      marker.sameDayExceptionReason.trim().length >= 20,
+    "A same-day exception requires a bounded recorded reason",
   );
 }
 if (marker.deployedCommit != null) {
@@ -148,5 +174,5 @@ assert.ok(
 );
 
 console.log(
-  "VOR-057 explicit one-deployment-per-day contracts passed: secure trigger, fail-before-marker, bounded recovery and exact production verification are protected.",
+  "VOR-057 release contracts passed: one-deployment-per-day remains the default, same-day recovery and user-approved exceptions require a one-step numbered attempt with recorded evidence, and exact production verification remains protected.",
 );
