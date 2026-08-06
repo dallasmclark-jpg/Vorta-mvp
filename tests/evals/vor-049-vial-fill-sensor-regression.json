@@ -21,7 +21,78 @@
     "mustNotMention": [
       "question does not match a specific risk category",
       "verified Vorta fallback response",
-      "site risk is"
+      "site risk is",
+      "No equipment matching",
+      "provide the filler asset code",
+      "Please provide the filler asset code/name"
+    ],
+    "requireVisibleDecision": true,
+    "requireActionPlan": false,
+    "confidenceMin": 60,
+    "maxDurationMs": 35000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "vor-049-vial-filling-sensor-production-wording",
+    "question": "Vial filling sensor issue",
+    "expectedTools": [
+      "get_equipment_history",
+      "get_equipment_documents"
+    ],
+    "mustMention": [
+      "VF-02",
+      "F-204",
+      "WO-",
+      "approved"
+    ],
+    "mustMentionAny": [
+      "Reject Monitoring",
+      "Fault Tree 2",
+      "Fault-Finding Guide",
+      "page 142"
+    ],
+    "mustNotMention": [
+      "question does not match a specific risk category",
+      "verified Vorta fallback response",
+      "site risk is",
+      "No equipment matching",
+      "provide the filler asset code",
+      "Please provide the filler asset code/name"
+    ],
+    "requireVisibleDecision": true,
+    "requireActionPlan": false,
+    "confidenceMin": 60,
+    "maxDurationMs": 35000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "vor-049-vial-filler-sensor-natural-variant",
+    "question": "vial filler sensor issue",
+    "expectedTools": [
+      "get_equipment_history",
+      "get_equipment_documents"
+    ],
+    "mustMention": [
+      "VF-02",
+      "F-204",
+      "WO-",
+      "approved"
+    ],
+    "mustMentionAny": [
+      "Reject Monitoring",
+      "Fault Tree 2",
+      "Fault-Finding Guide",
+      "page 142"
+    ],
+    "mustNotMention": [
+      "question does not match a specific risk category",
+      "verified Vorta fallback response",
+      "site risk is",
+      "No equipment matching",
+      "provide the filler asset code",
+      "Please provide the filler asset code/name"
     ],
     "requireVisibleDecision": true,
     "requireActionPlan": false,

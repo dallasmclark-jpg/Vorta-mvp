@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { build } from "esbuild";
 
 const read = (path) => readFileSync(path, "utf8");
 const entrypoint = read("netlify/functions/ask-vorta.mts");
@@ -15,9 +19,9 @@ const tools = read(
 const frontend = read(
   "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
 );
-const exactProductionScenario = JSON.parse(
+const productionScenarios = JSON.parse(
   read("tests/evals/vor-049-vial-fill-sensor-regression.json"),
-)[0];
+);
 
 assert.match(
   entrypoint,
@@ -81,31 +85,150 @@ assert.match(
   "The old client fallback remains a last resort only when the server cannot build the equipment answer",
 );
 
-assert.equal(
-  exactProductionScenario.question,
-  "vial fill sensor fault",
-  "The physical production regression wording must remain an exact authenticated scenario",
-);
-assert.equal(exactProductionScenario.requireVisibleDecision, true);
-assert.equal(exactProductionScenario.requireActionPlan, false);
-assert.ok(
-  exactProductionScenario.expectedTools.includes("get_equipment_history") &&
-    exactProductionScenario.expectedTools.includes("get_equipment_documents"),
-  "The exact production scenario must prove both prior-work history and approved documents",
-);
-for (const requiredPhrase of ["VF-02", "F-204", "WO-", "approved"]) {
-  assert.ok(
-    exactProductionScenario.mustMention.includes(requiredPhrase),
-    `The exact production scenario must visibly require ${requiredPhrase}`,
+const resolverTemp = mkdtempSync(join(tmpdir(), "vorta-vor-049-resolver-"));
+try {
+  const resolverBundle = join(resolverTemp, "utilities.mjs");
+  await build({
+    entryPoints: ["netlify/functions/ask-vorta/utilities.mts"],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node22",
+    outfile: resolverBundle,
+    logLevel: "silent",
+  });
+  const resolver = await import(
+    `${pathToFileURL(resolverBundle).href}?revision=${Date.now()}`
   );
+  const naturalQuestions = [
+    "vial fill sensor fault",
+    "Vial filling sensor issue",
+    "vial filler sensor issue",
+  ];
+  for (const question of naturalQuestions) {
+    assert.equal(
+      resolver.extractEquipmentReference(question),
+      "vial fill",
+      `Natural equipment wording must produce one stable equipment query: ${question}`,
+    );
+    assert.equal(
+      resolver.equipmentReferenceMatches(
+        "Bosch Vial Filler VF-02",
+        question,
+      ),
+      true,
+      `The real resolver must match VF-02 for: ${question}`,
+    );
+    assert.equal(
+      resolver.equipmentReferenceMatches(
+        "AHU-01 Supply Air Handling Unit",
+        question,
+      ),
+      false,
+      `The real resolver must reject unrelated equipment for: ${question}`,
+    );
+    assert.equal(
+      resolver.equipmentReferenceMatches("Fill Finish", question),
+      false,
+      `An area name must not be mistaken for the vial filler: ${question}`,
+    );
+  }
+  assert.equal(
+    resolver.extractEquipmentReference(
+      "what shift cover issues are there this week",
+    ),
+    null,
+    "Workforce questions must not be reclassified as equipment merely because they contain the word issues",
+  );
+
+  const plannerBundle = join(resolverTemp, "route-planning.mjs");
+  await build({
+    entryPoints: ["netlify/functions/ask-vorta/route-planning.mts"],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node22",
+    outfile: plannerBundle,
+    logLevel: "silent",
+  });
+  const planner = await import(
+    `${pathToFileURL(plannerBundle).href}?revision=${Date.now()}`
+  );
+  for (const question of naturalQuestions) {
+    const plan = planner.deterministicQuestionPlan({
+      question,
+      history: [],
+      pageContext: {
+        path: "/dashboard",
+        timezone: "Europe/London",
+      },
+    });
+    assert.ok(plan, `Natural equipment wording must produce a plan: ${question}`);
+    assert.equal(
+      plan.routingMode,
+      "deterministic",
+      `Natural equipment wording must bypass semantic replanning: ${question}`,
+    );
+    assert.equal(
+      plan.scope,
+      "equipment",
+      `Natural equipment wording must stay in equipment scope: ${question}`,
+    );
+    assert.equal(
+      plan.intentLabel,
+      "equipment_decision",
+      `Natural equipment wording must use the equipment decision route: ${question}`,
+    );
+    assert.equal(
+      plan.equipmentQuery,
+      "vial fill",
+      `Natural equipment wording must pass the bounded VF-02 query to evidence: ${question}`,
+    );
+    assert.deepEqual(
+      plan.requiredTools,
+      ["get_equipment_decision_pack"],
+      `Natural equipment wording must load the cross-domain equipment pack: ${question}`,
+    );
+  }
+} finally {
+  rmSync(resolverTemp, { recursive: true, force: true });
 }
-assert.ok(
-  exactProductionScenario.mustNotMention.includes(
-    "question does not match a specific risk category",
-  ),
-  "The generic site-risk regression wording must permanently fail the exact scenario",
+
+assert.deepEqual(
+  productionScenarios.map((scenario) => scenario.question),
+  [
+    "vial fill sensor fault",
+    "Vial filling sensor issue",
+    "vial filler sensor issue",
+  ],
+  "Production evaluation must include the original fixture, the exact failed tablet wording and one natural variant",
 );
+for (const scenario of productionScenarios) {
+  assert.equal(scenario.requireVisibleDecision, true);
+  assert.equal(scenario.requireActionPlan, false);
+  assert.ok(
+    scenario.expectedTools.includes("get_equipment_history") &&
+      scenario.expectedTools.includes("get_equipment_documents"),
+    `The production scenario must prove both prior-work history and approved documents: ${scenario.question}`,
+  );
+  for (const requiredPhrase of ["VF-02", "F-204", "WO-", "approved"]) {
+    assert.ok(
+      scenario.mustMention.includes(requiredPhrase),
+      `The production scenario must visibly require ${requiredPhrase}: ${scenario.question}`,
+    );
+  }
+  for (const forbiddenPhrase of [
+    "question does not match a specific risk category",
+    "No equipment matching",
+    "provide the filler asset code",
+  ]) {
+    assert.ok(
+      scenario.mustNotMention.includes(forbiddenPhrase),
+      `The failed production wording must remain forbidden: ${forbiddenPhrase}`,
+    );
+  }
+}
 
 console.log(
-  "VOR-049 production equipment fallback contracts passed: the exact vial-fill sensor regression keeps authorised work, history, document, calibration and spare evidence when conversational reasoning fails.",
+  "VOR-049 production equipment resolution contracts passed: the real resolver and planner map natural vial-filler sensor wording to the deterministic VF-02 equipment pack, reject unrelated equipment and retain authorised work, history and document evidence.",
 );
