@@ -24,7 +24,9 @@
       "site risk is",
       "No equipment matching",
       "provide the filler asset code",
-      "Please provide the filler asset code/name"
+      "Please provide the filler asset code/name",
+      "VF-02 or VF-01",
+      "Ambiguous asset"
     ],
     "requireVisibleDecision": true,
     "requireActionPlan": false,
@@ -58,7 +60,9 @@
       "site risk is",
       "No equipment matching",
       "provide the filler asset code",
-      "Please provide the filler asset code/name"
+      "Please provide the filler asset code/name",
+      "VF-02 or VF-01",
+      "Ambiguous asset"
     ],
     "requireVisibleDecision": true,
     "requireActionPlan": false,
@@ -92,7 +96,9 @@
       "site risk is",
       "No equipment matching",
       "provide the filler asset code",
-      "Please provide the filler asset code/name"
+      "Please provide the filler asset code/name",
+      "VF-02 or VF-01",
+      "Ambiguous asset"
     ],
     "requireVisibleDecision": true,
     "requireActionPlan": false,
