@@ -1,5 +1,6 @@
 name: Apply VOR-058 site-priority performance
 
+# Applicator revision 2: JSON-quoted source replacements.
 on:
   push:
     branches:
