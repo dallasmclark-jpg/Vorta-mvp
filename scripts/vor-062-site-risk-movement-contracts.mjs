@@ -5,8 +5,8 @@ const movementSource = readFileSync(
   "netlify/functions/ask-vorta/site-risk-movement.mts",
   "utf8",
 );
-const handlerSource = readFileSync(
-  "netlify/functions/ask-vorta/site-risk-movement-handler.mts",
+const runtimeSource = readFileSync(
+  "netlify/functions/ask-vorta/runtime.mts",
   "utf8",
 );
 const entrypointSource = readFileSync(
@@ -82,37 +82,53 @@ assert.doesNotMatch(
 );
 
 for (const required of [
-  "authenticateAskVortaRequest",
-  "beginAskVortaInteraction",
-  "updateAskVortaInteraction",
-  "withPhaseTimeout",
-  "loadSiteRiskMovement",
-  "siteRiskMovementAnswer",
-  "plannerMs: 0",
-  "answerMs: 0",
-  "toolRoundCount: 1",
-  'new Set(["get_site_risk_movement"])',
+  'from "./site-risk-movement.mjs"',
+  "siteRiskMovementQuestionPlan(request) ?? deterministicQuestionPlan(request)",
+  "siteRiskMovementQuestionPlan(planningRequest) ??",
+  'toolName === "get_site_risk_movement"',
+  "loadSiteRiskMovement(supabase, request)",
+  "siteRiskMovementAnswer(request, questionPlan, toolOutcomes)",
+  "toolRoundCount = deterministicToolNames.length > 0 ? 1 : 0",
+  'label: "Open site risk"',
   'path: "/dashboard"',
+  "authenticateAskVortaRequest(req)",
+  "beginAskVortaInteraction({",
+  "updateAskVortaInteraction(",
 ]) {
   assert.ok(
-    handlerSource.includes(required),
-    `VOR-062 handler must retain: ${required}`,
+    runtimeSource.includes(required),
+    `VOR-062 runtime integration must retain: ${required}`,
   );
 }
-assert.doesNotMatch(
-  handlerSource,
-  /OpenAI|responses\.create|VORTA_AI_MODEL|VORTA_AI_PLANNER_MODEL/,
-  "The VOR-062 boundary must not invoke a reasoning model",
+assert.ok(
+  runtimeSource.indexOf("siteRiskMovementQuestionPlan(request)") <
+    runtimeSource.indexOf("const telemetryStart = await beginAskVortaInteraction"),
+  "VOR-062 routing must be selected before telemetry starts so the canonical route key is recorded",
+);
+assert.ok(
+  runtimeSource.indexOf('toolName === "get_site_risk_movement"') <
+    runtimeSource.indexOf("client.responses.create"),
+  "The deterministic movement evidence path must execute before any model answer path",
+);
+assert.ok(
+  runtimeSource.indexOf("siteRiskMovementAnswer(request, questionPlan, toolOutcomes)") <
+    runtimeSource.indexOf("for (let round = 0; round < MAX_TOOL_ROUNDS"),
+  "A successful VOR-062 answer must complete before the model loop",
 );
 
 assert.ok(
-  entrypointSource.includes("handleSiteRiskMovementRequest") &&
-    entrypointSource.includes("movementResponse ?? runtimeHandler(req, context)"),
-  "The canonical entrypoint must route VOR-062 first and delegate all unrelated requests to the unchanged runtime",
+  entrypointSource.includes('import handler from "./ask-vorta/runtime.mjs";') &&
+    entrypointSource.includes("export default handler;"),
+  "The canonical endpoint must remain the exact modular runtime delegate",
 );
 assert.ok(
   entrypointSource.includes("ASK_VORTA_RESPONSE_VALIDATION_REVISION"),
   "The validated response bundle pin must remain intact",
+);
+assert.doesNotMatch(
+  entrypointSource,
+  /siteRiskMovement|site-risk-movement/,
+  "VOR-062 must not bypass the canonical modular runtime from the deployable entrypoint",
 );
 
 assert.equal(
