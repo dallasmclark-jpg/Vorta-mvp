@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260803175800",
-  "migrationName": "vor_047_register_action_rpcs",
+  "migrationVersion": "20260806113100",
+  "migrationName": "vor_061_register_document_access_state_rpc",
   "invariants": {
-    "authenticatedCallable": 74,
-    "reviewedRead": 53,
+    "authenticatedCallable": 75,
+    "reviewedRead": 54,
     "reviewedMutation": 21,
     "securityDefiner": 71,
-    "securityInvoker": 3,
+    "securityInvoker": 4,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },
@@ -91,6 +91,10 @@
     {
       "identity": "vorta_get_equipment_document(uuid,uuid)",
       "scope": "equipment and controlled-document row-level security"
+    },
+    {
+      "identity": "vorta_get_equipment_document_access_state(uuid,uuid)",
+      "scope": "equipment and controlled-document row-level security; bounded state and explanation only"
     }
   ],
   "revokedPublicHelpers": [
