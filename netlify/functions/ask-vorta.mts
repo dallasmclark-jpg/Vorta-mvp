@@ -6,6 +6,7 @@ import {
   ASK_VORTA_RESPONSE_VALIDATION_REVISION,
 } from "./ask-vorta/response-validation.mjs";
 
+// Production release marker: exact approved manual and drawing deep links.
 // Compatibility marker: runtime-document-links delegates to:
 // import handler from "./ask-vorta/runtime-equipment-fallback.mjs";
 if (
