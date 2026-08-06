@@ -1,8 +1,13 @@
 {
   "notBeforeDate": "2026-08-06",
   "releaseDate": "2026-08-06",
-  "sourceCommit": "a4c3227670c5bd1932a46a175348564c0d76c6bd",
-  "requestedAtUtc": "2026-08-06T06:31:07.268Z",
-  "retryRequestedAtUtc": "2026-08-06T07:07:15Z",
-  "retryReason": "linked Netlify build did not start from the GitHub Actions release commit"
+  "sourceCommit": "10d21d2fd85edd84cfb8771da7f84b410317e1fc",
+  "requestedAtUtc": "2026-08-06T18:38:45Z",
+  "triggeredAtUtc": "2026-08-06T18:38:45Z",
+  "triggerMode": "manual_same_day_exception",
+  "attempt": 2,
+  "sameDayExceptionApprovedAtUtc": "2026-08-06T18:15:00Z",
+  "sameDayExceptionReason": "User explicitly approved one additional 6 August production release for the Ask Vorta workspace, stale-runtime recovery and completed queued changes.",
+  "deployedCommit": null,
+  "deployedAtUtc": null
 }
