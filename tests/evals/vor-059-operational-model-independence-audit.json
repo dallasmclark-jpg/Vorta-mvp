@@ -1,0 +1,143 @@
+[
+  {
+    "id": "audit-handover-nights",
+    "question": "What did nights leave us, and what still needs sorting first?",
+    "expectedTools": ["get_shift_handover"],
+    "mustMentionAny": ["handover", "ongoing", "outstanding", "work order", "next action"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-handover-summary",
+    "question": "Summarise the previous shift handover and give me the first next action.",
+    "expectedTools": ["get_shift_handover"],
+    "mustMentionAny": ["handover", "completed", "ongoing", "waiting", "action"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-handover-ongoing",
+    "question": "What is still ongoing from the last shift and what should be checked first?",
+    "expectedTools": ["get_shift_handover"],
+    "mustMentionAny": ["ongoing", "handover", "work order", "check", "first"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-spares-order-first",
+    "question": "What should we order first to remove the most maintenance risk, and why?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["stock", "shortfall", "lead time", "part", "spare"],
+    "mustNotMention": ["purchase order placed", "ordered successfully", "stock updated"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-spares-risk-reduction",
+    "question": "Which spare should we order first to reduce site risk?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["stock", "shortfall", "risk", "part", "spare"],
+    "mustNotMention": ["purchase order placed", "ordered successfully", "stock updated"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-spares-stockout",
+    "question": "What stockout is the most urgent and what purchasing action should happen first?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["out of stock", "stock", "shortfall", "part", "lead time"],
+    "mustNotMention": ["purchase order placed", "ordered successfully", "stock updated"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-contractor-plc",
+    "question": "Which contractor can support the current PLC risk and what must I confirm first?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMentionAny": ["contractor", "available", "skill", "PLC", "confirm"],
+    "mustNotMention": ["contractor assigned", "booking confirmed", "attendance booked"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-contractor-urgent-work",
+    "question": "Do we have external support available and skilled enough for the urgent work, and what is the next action?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMentionAny": ["contractor", "support", "available", "skill", "action"],
+    "mustNotMention": ["contractor assigned", "booking confirmed", "attendance booked"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-contractor-best-option",
+    "question": "Who is the best recorded contractor support option and what is the first confirmation?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMentionAny": ["contractor", "support", "availability", "skill", "confirmation"],
+    "mustNotMention": ["contractor assigned", "booking confirmed", "attendance booked"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-backlog-priority",
+    "question": "Which open work order should we prioritise first and why?",
+    "expectedTools": ["get_site_work_backlog"],
+    "mustMentionAny": ["work order", "overdue", "unassigned", "priority", "SAP"],
+    "mustNotMention": ["assigned successfully", "work order released"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-backlog-overdue",
+    "question": "What overdue or unassigned work needs action first?",
+    "expectedTools": ["get_site_work_backlog"],
+    "mustMentionAny": ["overdue", "unassigned", "work order", "action", "planner"],
+    "mustNotMention": ["assigned successfully", "work order released"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  },
+  {
+    "id": "audit-backlog-planner",
+    "question": "Give me the top backlog action for the Maintenance Planner.",
+    "expectedTools": ["get_site_work_backlog"],
+    "mustMentionAny": ["backlog", "work order", "planner", "assignee", "sequence"],
+    "mustNotMention": ["assigned successfully", "work order released"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  }
+]

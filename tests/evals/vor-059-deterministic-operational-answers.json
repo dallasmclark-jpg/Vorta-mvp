@@ -1,0 +1,78 @@
+[
+  {
+    "id": "vor059-handover-summary",
+    "question": "Summarise the previous shift handover and give me the first next action.",
+    "expectedTools": ["get_shift_handover"],
+    "mustMentionAny": ["handover", "completed", "ongoing", "waiting", "action"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor059-handover-ongoing",
+    "question": "What is still ongoing from the last shift and what should be checked first?",
+    "expectedTools": ["get_shift_handover"],
+    "mustMentionAny": ["ongoing", "handover", "work order", "check", "first"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor059-spares-order-first",
+    "question": "What should we order first to remove the most maintenance risk, and why?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["stock", "shortfall", "lead time", "part", "spare"],
+    "mustNotMention": ["purchase order placed", "ordered successfully", "stock updated"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor059-spares-stockout",
+    "question": "What stockout is the most urgent and what purchasing action should happen first?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["out of stock", "stock", "shortfall", "part", "lead time"],
+    "mustNotMention": ["purchase order placed", "ordered successfully", "stock updated"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor059-contractor-plc",
+    "question": "Which contractor can support the current PLC risk and what must I confirm first?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMentionAny": ["contractor", "available", "skill", "PLC", "confirm"],
+    "mustNotMention": ["contractor assigned", "booking confirmed", "attendance booked"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor059-contractor-best-option",
+    "question": "Who is the best recorded contractor support option and what is the first confirmation?",
+    "expectedTools": ["get_contractor_availability"],
+    "mustMentionAny": ["contractor", "support", "availability", "skill", "confirmation"],
+    "mustNotMention": ["contractor assigned", "booking confirmed", "attendance booked"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  }
+]

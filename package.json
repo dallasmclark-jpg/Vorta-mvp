@@ -29,7 +29,9 @@
     "eval:ask-vorta:vor040": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-040-natural-questions.json",
     "eval:ask-vorta:vor048": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-048-shift-cover-routing.json",
     "eval:ask-vorta:vor049": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json",
-    "eval:ask-vorta:vor058": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-058-site-priority-performance.json"
+    "eval:ask-vorta:vor058": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-058-site-priority-performance.json",
+    "eval:ask-vorta:vor059": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-059-deterministic-operational-answers.json",
+    "eval:ask-vorta:vor059:audit": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-059-operational-model-independence-audit.json"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",

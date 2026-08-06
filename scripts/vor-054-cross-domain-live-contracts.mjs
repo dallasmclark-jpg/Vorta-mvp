@@ -225,8 +225,9 @@ assert.ok(
   centralWorkflow.includes(
     "VORTA_EVAL_BASE_URL: http://127.0.0.1:8788",
   ) &&
-    centralWorkflow.includes("npm run eval:ask-vorta:vor058"),
-  "The sole pull-request owner may run the bounded VOR-058 suite only against exact local branch source",
+    centralWorkflow.includes("npm run eval:ask-vorta:vor058") &&
+    centralWorkflow.includes("npm run eval:ask-vorta:vor059"),
+  "The sole pull-request owner may run the bounded VOR-058 and VOR-059 suites only against exact local branch source",
 );
 assert.ok(
   centralWorkflow.includes("timeout-minutes: 80"),
