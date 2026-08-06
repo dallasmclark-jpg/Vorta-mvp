@@ -350,7 +350,7 @@ export default async function handler(req: Request, _context: Context): Promise<
             shiftCoverEvidence = result.data as JsonRecord;
             shiftCoverArguments = toolArguments;
           }
-          const link =
+          const link: EvidenceLink | null =
             toolName === "get_site_risk_movement"
               ? {
                   label: "Open site risk",
