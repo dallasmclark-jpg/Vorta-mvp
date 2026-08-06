@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   BookOpen,
   ExternalLink,
@@ -10,6 +11,7 @@ import type { LiveEquipmentRecord } from "./equipmentLiveTrust";
 import {
   buildDocumentCitation,
   loadLiveEquipmentDocument,
+  type LiveDocumentCoverageMode,
   type LiveEquipmentDocument,
 } from "./equipmentPilotEvidence";
 import {
@@ -23,6 +25,22 @@ import {
   safeExternalUrl,
   usePilotEvidence,
 } from "./EquipmentPilotEvidenceShared";
+
+function coverageLabel(mode: LiveDocumentCoverageMode): string {
+  if (mode === "full_text") return "Full-text indexed";
+  if (mode === "summary_only") return "Summary-only coverage";
+  return "Evidence unavailable";
+}
+
+function coverageTone(mode: LiveDocumentCoverageMode): string {
+  if (mode === "full_text") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
+  }
+  if (mode === "summary_only") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-200";
+  }
+  return "border-red-500/30 bg-red-500/10 text-red-200";
+}
 
 export function LiveEquipmentDocumentViewerView({ record }: { record: LiveEquipmentRecord }): JSX.Element {
   const navigate = useNavigate();
@@ -44,13 +62,13 @@ export function LiveEquipmentDocumentViewerView({ record }: { record: LiveEquipm
       record={record}
       activeTab="documents"
       title={document?.title ?? "Document viewer"}
-      description="The viewer retains equipment and active-site context. Indexed sections are the citation boundary used by Ask Vorta."
+      description="The viewer retains equipment and active-site context. The displayed coverage state is the citation boundary used by Ask Vorta."
       icon={BookOpen}
       actions={
         <>
           {document ? (
             <AskVortaButton
-              question={`Use ${buildDocumentCitation(document)} to answer questions about ${record.name} (${record.assetNumber}). Cite these indexed sections: ${chunkCitations || "No indexed sections are available."}`}
+              question={`Use ${buildDocumentCitation(document)} to answer questions about ${record.name} (${record.assetNumber}). Coverage boundary: ${document.coverageReason} Never present summary-only evidence as full source text. Cite these indexed sections: ${chunkCitations || "No indexed sections are available."}`}
             />
           ) : null}
           <RefreshButton loading={loading} onClick={reload} />
@@ -76,6 +94,17 @@ export function LiveEquipmentDocumentViewerView({ record }: { record: LiveEquipm
                   <span className={`rounded border px-2 py-1 text-xs font-semibold ${documentStatusTone(document)}`}>{document.approvalStatus}</span>
                   <span className="rounded border border-gray-700 px-2 py-1 text-xs text-slate-300">{document.documentType}</span>
                   {document.revision ? <span className="rounded border border-gray-700 px-2 py-1 text-xs text-slate-300">Revision {document.revision}</span> : null}
+                  <span
+                    data-vorta-document-coverage={document.coverageMode}
+                    className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-semibold ${coverageTone(document.coverageMode)}`}
+                  >
+                    {document.coverageMode === "full_text" ? (
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                    {coverageLabel(document.coverageMode)}
+                  </span>
                 </div>
                 <p className="mt-4 max-w-4xl text-sm leading-6 text-slate-300">{document.summary ?? "No document summary is available."}</p>
                 <p className="mt-3 text-xs text-slate-500">
@@ -94,13 +123,31 @@ export function LiveEquipmentDocumentViewerView({ record }: { record: LiveEquipm
                 </a>
               ) : null}
             </div>
+            <div
+              role={document.coverageMode === "unavailable" ? "alert" : "status"}
+              data-vorta-document-coverage-note={document.coverageMode}
+              className={`mt-5 rounded-xl border p-4 ${coverageTone(document.coverageMode)}`}
+            >
+              <p className="text-sm font-semibold">{coverageLabel(document.coverageMode)}</p>
+              <p className="mt-1 text-xs leading-5">{document.coverageReason}</p>
+              <p className="mt-2 text-[11px] opacity-80">
+                {document.hasVerifiedLocator
+                  ? "At least one verified page, section, drawing, sheet or external reference is retained."
+                  : "No verified locator is available; Ask Vorta must cite the document reference only."}
+              </p>
+            </div>
           </div>
           <div className="space-y-3">
             {document.chunks.length ? document.chunks.map((chunk, index) => (
-              <article key={chunk.id || `${chunk.reference}-${index}`} className="rounded-xl border border-gray-800 bg-[#141820] p-5">
+              <article
+                key={chunk.id || `${chunk.reference}-${index}`}
+                className={`rounded-xl border bg-[#141820] p-5 ${document.coverageMode === "summary_only" ? "border-amber-500/25" : "border-gray-800"}`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-300">{chunk.reference}</p>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${document.coverageMode === "summary_only" ? "text-amber-300" : "text-blue-300"}`}>
+                      {document.coverageMode === "summary_only" ? "Approved summary" : chunk.reference}
+                    </p>
                     <h2 className="mt-1 text-sm font-semibold text-slate-100">{chunk.sectionTitle ?? `Evidence section ${index + 1}`}</h2>
                   </div>
                   <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
