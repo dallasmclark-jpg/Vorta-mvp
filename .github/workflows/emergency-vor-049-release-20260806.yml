@@ -1,8 +1,11 @@
 name: Emergency VOR-049 production repair
 
 on:
-  schedule:
-    - cron: "10 20 6 8 *"
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/emergency-vor-049-release-20260806.yml
   workflow_dispatch:
 
 permissions:
