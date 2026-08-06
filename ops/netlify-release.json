@@ -1,13 +1,13 @@
 {
   "notBeforeDate": "2026-08-06",
   "releaseDate": "2026-08-06",
-  "sourceCommit": "10d21d2fd85edd84cfb8771da7f84b410317e1fc",
-  "requestedAtUtc": "2026-08-06T18:38:45Z",
-  "triggeredAtUtc": "2026-08-06T18:38:45Z",
+  "sourceCommit": "9bdb2073ae88c7f9df602340a693bebf30412108",
+  "requestedAtUtc": "2026-08-06T19:42:00Z",
+  "triggeredAtUtc": "2026-08-06T19:42:00Z",
   "triggerMode": "manual_same_day_exception",
-  "attempt": 2,
-  "sameDayExceptionApprovedAtUtc": "2026-08-06T18:15:00Z",
-  "sameDayExceptionReason": "User explicitly approved one additional 6 August production release for the Ask Vorta workspace, stale-runtime recovery and completed queued changes.",
+  "attempt": 3,
+  "sameDayExceptionApprovedAtUtc": "2026-08-06T19:42:00Z",
+  "sameDayExceptionReason": "User explicitly instructed immediate production repair of the Ask Vorta equipment-fault regression and active-conversation viewport defect.",
   "deployedCommit": null,
   "deployedAtUtc": null
 }
