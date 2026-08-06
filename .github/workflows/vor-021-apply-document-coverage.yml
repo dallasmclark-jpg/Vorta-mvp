@@ -1,0 +1,200 @@
+name: VOR-021 apply document coverage
+
+on:
+  push:
+    branches:
+      - agent/vor-021-document-coverage-honesty
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.event.head_commit.message != 'VOR-021: map honest document coverage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply focused mapper and contract registration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          evidence_path = Path('src/screens/Equipment/equipmentPilotEvidence.ts')
+          source = evidence_path.read_text()
+
+          if 'export type LiveDocumentCoverageMode' not in source:
+              source = source.replace(
+                  'export interface LiveEquipmentDocumentSummary {',
+                  'export type LiveDocumentCoverageMode = "full_text" | "summary_only" | "unavailable";\n\nexport interface LiveEquipmentDocumentSummary {',
+                  1,
+              )
+
+          old_tail = '''  chunkCount: number;
+            firstSectionTitle: string | null;
+            firstPageNumber: number | null;
+          }'''
+          new_tail = '''  chunkCount: number;
+            firstSectionTitle: string | null;
+            firstPageNumber: number | null;
+            coverageMode: LiveDocumentCoverageMode;
+            fullDocumentIndexed: boolean;
+            hasVerifiedLocator: boolean;
+            coverageReason: string;
+          }'''
+          if old_tail in source:
+              source = source.replace(old_tail, new_tail, 1)
+          elif 'coverageMode: LiveDocumentCoverageMode;' not in source:
+              raise SystemExit('Live document summary interface anchor not found')
+
+          mapper = '''function mapDocumentSummary(row: Record<string, unknown>): LiveEquipmentDocumentSummary {
+            const chunkCount = numberValue(row.chunk_count) ?? 0;
+            const rawCoverageMode = stringValue(row.coverage_mode);
+            const coverageMode: LiveDocumentCoverageMode =
+              rawCoverageMode === "summary_only" || rawCoverageMode === "full_text" || rawCoverageMode === "unavailable"
+                ? rawCoverageMode
+                : chunkCount > 0
+                  ? "full_text"
+                  : "unavailable";
+            const fallbackReason =
+              coverageMode === "summary_only"
+                ? "Only the approved document summary is indexed; the full source text is not indexed."
+                : coverageMode === "full_text"
+                  ? "Approved full-text evidence sections are indexed and citation-ready."
+                  : "No authorised evidence chunks are indexed for this document.";
+
+            return {
+              documentId: String(row.document_id ?? ""),
+              title: String(row.title ?? "Untitled document"),
+              documentType: String(row.document_type ?? "Document"),
+              revision: stringValue(row.revision),
+              approvalStatus: String(row.approval_status ?? "Unknown"),
+              isCurrent: booleanValue(row.is_current),
+              effectiveDate: stringValue(row.effective_date),
+              ownerDepartment: stringValue(row.owner_department),
+              summary: stringValue(row.summary),
+              sourceSystem: String(row.source_system ?? "Unknown"),
+              sourceDocumentId: String(row.source_document_id ?? ""),
+              sourcePath: stringValue(row.source_path),
+              sourceUrl: stringValue(row.source_url),
+              fileId: stringValue(row.file_id),
+              externalReference: stringValue(row.external_reference),
+              drawingNumber: stringValue(row.drawing_number),
+              sheetNumber: stringValue(row.sheet_number),
+              manualSection: stringValue(row.manual_section),
+              pageNumber: numberValue(row.page_number),
+              faultCodes: asStringArray(row.fault_codes),
+              componentTags: asStringArray(row.component_tags),
+              oem: stringValue(row.oem),
+              status: String(row.status ?? "Unknown"),
+              lastIndexedAt: stringValue(row.last_indexed_at),
+              updatedAt: String(row.updated_at ?? ""),
+              chunkCount,
+              firstSectionTitle: stringValue(row.first_section_title),
+              firstPageNumber: numberValue(row.first_page_number),
+              coverageMode,
+              fullDocumentIndexed: booleanValue(row.full_document_indexed),
+              hasVerifiedLocator: booleanValue(row.has_verified_locator),
+              coverageReason: stringValue(row.coverage_reason) ?? fallbackReason,
+            };
+          }
+
+          function mapDocumentChunk'''
+          source, mapper_count = re.subn(
+              r'function mapDocumentSummary\(row: Record<string, unknown>\): LiveEquipmentDocumentSummary \{.*?\n\}\n\nfunction mapDocumentChunk',
+              mapper,
+              source,
+              count=1,
+              flags=re.S,
+          )
+          if mapper_count != 1:
+              raise SystemExit(f'Expected one document summary mapper replacement, got {mapper_count}')
+
+          citation = '''export function buildDocumentCitation(document: LiveEquipmentDocumentSummary): string {
+            const coverage =
+              document.coverageMode === "summary_only"
+                ? "summary-only coverage; full source text not indexed"
+                : document.coverageMode === "full_text"
+                  ? "full-text indexed"
+                  : "indexed evidence unavailable";
+            return [
+              document.title,
+              document.revision ? `rev ${document.revision}` : null,
+              document.externalReference ?? document.sourceDocumentId,
+              document.firstPageNumber ? `page ${document.firstPageNumber}` : null,
+              coverage,
+            ]
+              .filter((value): value is string => Boolean(value))
+              .join(" · ");
+          }'''
+          source, citation_count = re.subn(
+              r'export function buildDocumentCitation\(document: LiveEquipmentDocumentSummary\): string \{.*?\n\}',
+              citation,
+              source,
+              count=1,
+              flags=re.S,
+          )
+          if citation_count != 1:
+              raise SystemExit(f'Expected one citation replacement, got {citation_count}')
+
+          evidence_path.write_text(source)
+
+          suite_path = Path('scripts/run-contract-suite.mjs')
+          suite = suite_path.read_text()
+          contract_line = '  ["VOR-021 honest document coverage", "scripts/vor-021-document-coverage-contracts.mjs"],'
+          if contract_line not in suite:
+              anchor = '  ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],'
+              if anchor not in suite:
+                  raise SystemExit('Contract suite anchor not found')
+              suite = suite.replace(anchor, f'{anchor}\n{contract_line}', 1)
+              suite_path.write_text(suite)
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate TypeScript
+        run: npm run typecheck
+      - name: Run focused VOR-021 contract
+        run: node scripts/vor-021-document-coverage-contracts.mjs
+      - name: Run permanent contracts
+        run: npm run test:contracts
+      - name: Run route smoke
+        run: npm run test:smoke
+      - name: Build production bundle
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify phone tablet and laptop document coverage
+        run: >-
+          npx playwright test --config=playwright.config.ts
+          tests/browser/vor-021-document-coverage.spec.ts
+          --project=phone-360
+          --project=samsung-tablet-portrait
+          --project=laptop-1366
+      - name: Commit validated mapper changes
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name "Vorta Engineering Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/screens/Equipment/equipmentPilotEvidence.ts scripts/run-contract-suite.mjs
+          if git diff --cached --name-only | grep -q '^\.github/workflows/'; then
+            echo 'Refusing to stage workflow files'
+            exit 1
+          fi
+          git commit -m 'VOR-021: map honest document coverage'
+          git push origin HEAD:agent/vor-021-document-coverage-honesty
