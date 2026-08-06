@@ -1,0 +1,104 @@
+name: VOR-057 immediate Netlify release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/vor-057-immediate-netlify.yml
+      - .netlify-redeploy-20260806
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-057-immediate-netlify-release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Validate and deploy current main
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
+
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Capture exact release commit
+        id: release
+        shell: bash
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run focused release regressions
+        run: |
+          node scripts/vor-049-equipment-fallback-regression-contracts.mjs
+          node scripts/vor-066-active-conversation-viewport-contracts.mjs
+
+      - name: Build exact production source
+        run: npm run build
+
+      - name: Require Netlify build hook
+        shell: bash
+        run: |
+          test -n "$NETLIFY_BUILD_HOOK_URL" || {
+            echo "NETLIFY_BUILD_HOOK_URL is not configured." >&2
+            exit 1
+          }
+
+      - name: Trigger Netlify build
+        env:
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "content-type: application/json" \
+            --data "{\"trigger_title\":\"VOR-057 immediate release ${RELEASE_COMMIT}\"}" \
+            "$NETLIFY_BUILD_HOOK_URL" \
+            | tee netlify-build-hook-response.json
+
+      - name: Wait for exact production commit
+        env:
+          EXPECTED_COMMIT: ${{ steps.release.outputs.commit }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 120); do
+            deployed_commit="$(curl --fail --silent --show-error --no-cache \
+              "${VORTA_PRODUCTION_URL}/vorta-build.json?vor057=${GITHUB_RUN_ID}-${attempt}" \
+              | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { try { console.log(JSON.parse(input).commit || ""); } catch { console.log(""); } });' \
+              || true)"
+            echo "Production commit: ${deployed_commit:-unavailable}; expected: ${EXPECTED_COMMIT}"
+            if [[ "$deployed_commit" == "$EXPECTED_COMMIT" ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Production did not reach the exact current main commit." >&2
+          exit 1
+
+      - name: Preserve release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-057-immediate-netlify-${{ steps.release.outputs.commit }}
+          path: netlify-build-hook-response.json
+          if-no-files-found: warn
+          retention-days: 14
