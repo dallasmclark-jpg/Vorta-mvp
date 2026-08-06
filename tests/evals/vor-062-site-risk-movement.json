@@ -1,0 +1,63 @@
+[
+  {
+    "id": "vor062-what-changed",
+    "question": "What changed?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMentionAny": ["daily", "risk", "changed", "movement"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor062-since-yesterday",
+    "question": "What changed in site risk since yesterday?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMentionAny": ["yesterday", "daily", "risk", "overdue PM"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor062-compare-days",
+    "question": "Compare today's site risk with yesterday.",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMentionAny": ["site risk", "daily", "previous", "current"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor062-risk-worse",
+    "question": "Has the overall site risk got worse?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMentionAny": ["worsened", "improved", "stable", "risk"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor062-previous-shift-boundary",
+    "question": "What changed in site risk since the previous shift?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMentionAny": ["daily comparison", "no verified shift-level", "previous shift"],
+    "mustNotMention": ["the previous shift caused", "shift risk increased from"],
+    "confidenceMin": 65,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  }
+]
