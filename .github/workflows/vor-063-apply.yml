@@ -12,8 +12,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: vor-063-apply
-  cancel-in-progress: false
+  group: vor-063-source-publication
+  cancel-in-progress: true
 
 jobs:
   apply:
