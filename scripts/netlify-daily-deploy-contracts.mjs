@@ -26,8 +26,22 @@ for (const required of [
 ]) assert.ok(ignore.includes(required), `Missing Netlify ignore control: ${required}`);
 
 assert.equal(marker.notBeforeDate, "2026-08-06");
-assert.equal(marker.releaseDate, null);
-assert.equal(marker.sourceCommit, null);
+assert.ok(
+  marker.releaseDate === null || /^\d{4}-\d{2}-\d{2}$/.test(marker.releaseDate),
+  "The release marker must be empty or carry one valid London calendar date",
+);
+assert.ok(
+  marker.sourceCommit === null || /^[0-9a-f]{40}$/.test(marker.sourceCommit),
+  "The release source must be empty or an exact Git commit",
+);
+if (marker.releaseDate !== null) {
+  assert.ok(marker.sourceCommit, "A dated release requires an exact source commit");
+  assert.ok(
+    typeof marker.requestedAtUtc === "string" &&
+      !Number.isNaN(Date.parse(marker.requestedAtUtc)),
+    "A dated release requires a valid request timestamp",
+  );
+}
 
 for (const required of [
   'cron: "30 20 * * *"',

@@ -297,6 +297,30 @@ export function deterministicQuestionPlan(
   }
 
 
+  const sitePriorityQuestion =
+    !/\bshift-cover\b/.test(request.pageContext.path) &&
+    !equipmentQuery &&
+    (
+      /\b(?:top|main|biggest|highest|current)\s+(?:(?:current|site|maintenance)\s+){0,2}(?:risks?|threats?|priorities|problems?)\b/.test(question) ||
+      /\b(?:site|maintenance)\s+priorit(?:y|ies)\b/.test(question) ||
+      /\bwhat needs (?:my|our|your|the site's?|site)?\s*attention\b/.test(question) ||
+      /\bwhere should (?:maintenance|we|i) focus first\b/.test(question) ||
+      /\bwhat should (?:i|we) (?:do|review|prioriti[sz]e|focus on|worry about) first\b/.test(question) ||
+      /\b(?:things?|issues?|risks?|problems?)\s+(?:are\s+)?(?:most\s+)?likely to\s+(?:hurt|stop|disrupt|bite)(?:\s+us|\s+the site)?\b/.test(question) ||
+      /\bwhat (?:could|might|is likely to) (?:stop|hurt|disrupt|bite)(?:\s+us|\s+the site)?\b/.test(question)
+    ) &&
+    !/\b(?:how fresh|freshness|last updated|source update|updated evidence|evidence timestamp|cannot prove|can not prove|not prove|missing evidence|evidence .*missing|unproven|incomplete picture|morning maintenance meeting|morning meeting|single maintenance intervention|one maintenance intervention)\b/.test(question);
+
+  if (sitePriorityQuestion) {
+    return fastPlan(
+      "site_priorities",
+      "site_threat_prioritization",
+      "get_site_operational_snapshot",
+      "Rank the main current maintenance threats from the authorised operational-value evidence, state the first executable action and retain exact impact, blockers, owner and verification.",
+      { summaryItemLimit: 5, forceActionPlan: true, followUpLimit: 1 },
+    );
+  }
+
   if (hasConversationHistory) return null;
 
   const evidenceFreshnessRequest =

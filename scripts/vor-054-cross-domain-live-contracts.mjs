@@ -39,16 +39,16 @@ const authenticatedOwners = workflowSources.filter(({ source }) =>
 );
 assert.deepEqual(
   authenticatedOwners.map(({ name }) => name),
-  ["maintenance-manager-production.yml"],
-  "Only the exact daily production verifier may run authenticated Ask Vorta evaluations",
+  ["maintenance-manager-production.yml", "vor-049-validation.yml"],
+  "Authenticated Ask Vorta traffic must remain limited to the exact production verifier and the single central pull-request owner",
 );
 const pullRequestOwners = authenticatedOwners.filter(({ source }) =>
   source.includes("pull_request:"),
 );
 assert.deepEqual(
   pullRequestOwners.map(({ name }) => name),
-  [],
-  "Pull-request workflows must not consume authenticated Ask Vorta traffic",
+  ["vor-049-validation.yml"],
+  "Exactly one pull-request workflow may own authenticated Ask Vorta traffic",
 );
 
 const productionWorkflow = readFileSync(
@@ -62,7 +62,7 @@ assert.ok(
     dailyWorkflow.includes(
       "uses: ./.github/workflows/maintenance-manager-production.yml",
     ),
-  "Authenticated evaluation must be owned by the reusable verifier called from the single daily release",
+  "Production evaluation must be owned by the reusable verifier called from the single daily release",
 );
 const productionCommitCheck = productionWorkflow.indexOf(
   "node scripts/verify-production-commit.mjs",
@@ -218,12 +218,19 @@ assert.ok(
 );
 assert.doesNotMatch(
   centralWorkflow,
-  /deploy-preview-|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49)|vor-054-live-eval\.log/,
-  "The PR gate must validate cross-domain coverage without remote deployment or authenticated traffic",
+  /deploy-preview-|VORTA_EVAL_BASE_URL:\s*https:\/\/|eval:ask-vorta:vor0(?:48|49)|vor-054-live-eval\.log/,
+  "The PR gate must not target a remote preview, stale production or the competing legacy live suites",
+);
+assert.ok(
+  centralWorkflow.includes(
+    "VORTA_EVAL_BASE_URL: http://127.0.0.1:8788",
+  ) &&
+    centralWorkflow.includes("npm run eval:ask-vorta:vor058"),
+  "The sole pull-request owner may run the bounded VOR-058 suite only against exact local branch source",
 );
 assert.ok(
   centralWorkflow.includes("timeout-minutes: 80"),
-  "The central static gate must retain its bounded timeout",
+  "The central gate must retain its bounded timeout",
 );
 
-console.log("VOR-054 cross-domain daily-release coverage contracts passed.");
+console.log("VOR-054 cross-domain and exact-source ownership contracts passed.");

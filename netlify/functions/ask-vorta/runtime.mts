@@ -109,6 +109,40 @@ export default async function handler(req: Request, _context: Context): Promise<
       });
     }
   }
+  const plannedIntent = String(questionPlan?.intentLabel ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (
+    questionPlan?.routingMode !== "deterministic" &&
+    (
+      plannedIntent === "site_priorities" ||
+      plannedIntent === "site_threat_prioritization" ||
+      plannedIntent === "site_threat_prioritisation"
+    )
+  ) {
+    questionPlan = {
+      ...questionPlan,
+      scope: "site_priorities",
+      intentLabel: "site_threat_prioritization",
+      shouldUseTools: true,
+      requiredTools: ["get_site_operational_snapshot"],
+      optionalTools: [],
+      equipmentQuery: "",
+      ambiguity: "none",
+      answerFocus:
+        "Rank the main current maintenance threats from the authorised operational-value evidence, state the first executable action and retain exact impact, blockers, owner and verification.",
+      verificationChecks: [
+        "Use only the authorised site operational snapshot.",
+        "Do not repeat equipment specialist lookups unless the user explicitly names an asset.",
+      ],
+      routingMode: "deterministic",
+      summaryItemLimit: 5,
+      forceActionPlan: true,
+      followUpLimit: 1,
+    };
+  }
+
   const routeKey = canonicalRouteKey(questionPlan);
   const routingMode = routingModeForPlan(questionPlan);
   const input: ResponseInput = [

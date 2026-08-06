@@ -1,0 +1,152 @@
+[
+  {
+    "id": "vor058-three-threats",
+    "question": "Give me the three things most likely to hurt us today and what I should do first.",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  },
+  {
+    "id": "vor058-focus-first",
+    "question": "Where should maintenance focus first across the site?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  },
+  {
+    "id": "vor058-top-priorities",
+    "question": "What are the top maintenance priorities right now?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  },
+  {
+    "id": "vor058-manager-attention",
+    "question": "What needs my attention before today's production meeting?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  },
+  {
+    "id": "vor058-bite-next",
+    "question": "Which site problems are most likely to bite us next?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  },
+  {
+    "id": "vor058-first-executable",
+    "question": "What is the biggest current maintenance threat and the first executable action?",
+    "expectedTools": [
+      "get_site_operational_snapshot"
+    ],
+    "maxToolCount": 1,
+    "maxDurationMs": 18000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true,
+    "mustMentionAny": [
+      "risk",
+      "priority",
+      "maintenance",
+      "work order",
+      "calculated reduction"
+    ],
+    "mustNotMention": [
+      "has been updated",
+      "assigned successfully",
+      "work order released",
+      "purchase order placed"
+    ]
+  }
+]
