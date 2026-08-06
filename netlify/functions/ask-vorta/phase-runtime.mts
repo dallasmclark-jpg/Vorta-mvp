@@ -53,6 +53,9 @@ export function canonicalRouteKey(questionPlan: JsonRecord | null): string {
   if (intent === "maintenance_plan_cover_feasibility") {
     return "maintenance_plan_cover";
   }
+  if (intent === "site_risk_movement") {
+    return "site_risk_movement";
+  }
 
   const scope =
     typeof questionPlan?.scope === "string"
