@@ -1,6 +1,6 @@
 {
   "notBeforeDate": "2026-08-06",
-  "releaseDate": null,
-  "sourceCommit": null,
-  "requestedAtUtc": null
+  "releaseDate": "2026-08-06",
+  "sourceCommit": "a4c3227670c5bd1932a46a175348564c0d76c6bd",
+  "requestedAtUtc": "2026-08-06T06:31:07.268Z"
 }
