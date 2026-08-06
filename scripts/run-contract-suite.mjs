@@ -48,6 +48,7 @@ const contracts = [
   ["VOR-062 site risk movement", "scripts/vor-062-site-risk-movement-contracts.mjs"],
   ["VOR-064 locked browser runtime", "scripts/vor-064-locked-browser-runtime-contracts.mjs"],
   ["VOR-066 active conversation viewport", "scripts/vor-066-active-conversation-viewport-contracts.mjs"],
+  ["VOR-067 Ask Vorta navigation", "scripts/vor-067-ask-vorta-navigation-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
