@@ -4,6 +4,8 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 const ACTIVE_TAB_STORAGE_KEY = "vorta:ask-vorta:workspace-tab:v1";
 const SCROLL_STORAGE_KEY = "vorta:ask-vorta:workspace-scroll:v1";
 const WORKSPACE_SELECTOR = "[data-vorta-ai-workspace='true']";
+const CONVERSATION_SELECTOR =
+  "[data-vorta-ai-workspace-conversation='true']";
 const EXPAND_SELECTOR = "[data-vorta-global-ai-expand='true']";
 
 function readSessionValue(key: string): string | null {
@@ -24,6 +26,29 @@ function writeSessionValue(key: string, value: string): void {
 
 function workspaceScrollContainer(workspace: Element): HTMLElement | null {
   return workspace.querySelector<HTMLElement>("main > div");
+}
+
+function conversationMessages(workspace: Element): HTMLElement[] {
+  const conversation = workspace.querySelector<HTMLElement>(
+    CONVERSATION_SELECTOR,
+  );
+  return conversation
+    ? Array.from(
+        conversation.querySelectorAll<HTMLElement>(":scope > div"),
+      )
+    : [];
+}
+
+function messageTop(
+  scrollContainer: HTMLElement,
+  message: HTMLElement,
+): number {
+  const scrollRect = scrollContainer.getBoundingClientRect();
+  const messageRect = message.getBoundingClientRect();
+  return Math.max(
+    0,
+    scrollContainer.scrollTop + messageRect.top - scrollRect.top - 20,
+  );
 }
 
 function storeWorkspaceView(): void {
@@ -80,6 +105,13 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
     if (isPhone) return;
 
     const pendingTimers = new Set<number>();
+    let activeObserver: MutationObserver | null = null;
+    let activeScrollContainer: HTMLElement | null = null;
+    let activeScrollListener: (() => void) | null = null;
+    let activeAnchor: HTMLElement | null = null;
+    let followExpiryTimer: number | null = null;
+    let settleTimer: number | null = null;
+    let programmaticScrollUntil = 0;
 
     const schedule = (callback: () => void, delay: number): void => {
       const timer = window.setTimeout(() => {
@@ -89,8 +121,130 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
       pendingTimers.add(timer);
     };
 
+    const clearTimer = (timer: number | null): void => {
+      if (timer === null) return;
+      window.clearTimeout(timer);
+      pendingTimers.delete(timer);
+    };
+
+    const stopActiveMessageFollow = (): void => {
+      activeObserver?.disconnect();
+      activeObserver = null;
+      if (activeScrollContainer && activeScrollListener) {
+        activeScrollContainer.removeEventListener(
+          "scroll",
+          activeScrollListener,
+        );
+      }
+      activeScrollContainer = null;
+      activeScrollListener = null;
+      activeAnchor = null;
+      clearTimer(followExpiryTimer);
+      clearTimer(settleTimer);
+      followExpiryTimer = null;
+      settleTimer = null;
+    };
+
+    const positionActiveMessage = (): void => {
+      if (!activeScrollContainer || !activeAnchor) return;
+      programmaticScrollUntil = Date.now() + 500;
+      activeScrollContainer.scrollTo({
+        top: messageTop(activeScrollContainer, activeAnchor),
+        behavior: "smooth",
+      });
+    };
+
+    const beginActiveMessageFollow = (attempt = 0): void => {
+      const workspace = document.querySelector<HTMLElement>(
+        WORKSPACE_SELECTOR,
+      );
+      const visible =
+        workspace && window.getComputedStyle(workspace).display !== "none";
+      const conversation = workspace?.querySelector<HTMLElement>(
+        CONVERSATION_SELECTOR,
+      );
+      const scrollContainer = workspace
+        ? workspaceScrollContainer(workspace)
+        : null;
+
+      if (!workspace || !visible || !conversation || !scrollContainer) {
+        if (attempt < 12) {
+          schedule(() => beginActiveMessageFollow(attempt + 1), 50);
+        }
+        return;
+      }
+
+      stopActiveMessageFollow();
+      const baselineCount = conversationMessages(workspace).length;
+      activeScrollContainer = scrollContainer;
+
+      const userMovedAway = (): void => {
+        if (
+          Date.now() <= programmaticScrollUntil ||
+          !activeScrollContainer ||
+          !activeAnchor
+        ) {
+          return;
+        }
+        const expectedTop = messageTop(activeScrollContainer, activeAnchor);
+        if (Math.abs(activeScrollContainer.scrollTop - expectedTop) > 110) {
+          stopActiveMessageFollow();
+        }
+      };
+      activeScrollListener = userMovedAway;
+      scrollContainer.addEventListener("scroll", userMovedAway, {
+        passive: true,
+      });
+
+      const followNewExchange = (): void => {
+        if (!activeScrollContainer) return;
+        const messages = conversationMessages(workspace);
+        const newMessages = messages.slice(baselineCount);
+        if (!activeAnchor) {
+          activeAnchor =
+            newMessages.find((message) =>
+              message.classList.contains("justify-end"),
+            ) ?? null;
+        }
+        if (!activeAnchor) return;
+
+        positionActiveMessage();
+
+        const latestAssistant = [...newMessages]
+          .reverse()
+          .find((message) => message.classList.contains("justify-start"));
+        const responseComplete =
+          Boolean(latestAssistant) &&
+          !latestAssistant?.querySelector(".animate-spin");
+        if (responseComplete) {
+          clearTimer(settleTimer);
+          settleTimer = window.setTimeout(() => {
+            pendingTimers.delete(settleTimer as number);
+            positionActiveMessage();
+            stopActiveMessageFollow();
+          }, 650);
+          pendingTimers.add(settleTimer);
+        }
+      };
+
+      activeObserver = new MutationObserver(followNewExchange);
+      activeObserver.observe(conversation, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+      followExpiryTimer = window.setTimeout(() => {
+        pendingTimers.delete(followExpiryTimer as number);
+        stopActiveMessageFollow();
+      }, 60_000);
+      pendingTimers.add(followExpiryTimer);
+      followNewExchange();
+    };
+
     const openWorkspace = (attempt = 0): void => {
-      const expandButton = document.querySelector<HTMLButtonElement>(EXPAND_SELECTOR);
+      const expandButton = document.querySelector<HTMLButtonElement>(
+        EXPAND_SELECTOR,
+      );
       if (expandButton) {
         expandButton.click();
         schedule(() => restoreWorkspaceView(), 0);
@@ -102,6 +256,7 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
 
     const handlePrompt = (): void => {
       schedule(() => openWorkspace(), 0);
+      schedule(() => beginActiveMessageFollow(), 0);
     };
 
     const handleDocumentClick = (event: MouseEvent): void => {
@@ -110,10 +265,18 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
 
       const workspace = target.closest(WORKSPACE_SELECTOR);
       if (workspace) {
+        const button = target.closest("button") as HTMLButtonElement | null;
+        if (button?.textContent?.trim() === "Send") {
+          beginActiveMessageFollow();
+        }
+
         if (
           target.closest('[aria-label="Return to compact Ask Vorta panel"]') ||
-          target.closest("button")?.textContent?.includes("Return to compact panel")
+          target.closest("button")?.textContent?.includes(
+            "Return to compact panel",
+          )
         ) {
+          stopActiveMessageFollow();
           storeWorkspaceView();
         }
 
@@ -136,6 +299,7 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
     document.addEventListener("click", handleDocumentClick, true);
 
     return () => {
+      stopActiveMessageFollow();
       window.removeEventListener("vorta-global-ai-prompt", handlePrompt);
       document.removeEventListener("click", handleDocumentClick, true);
       pendingTimers.forEach((timer) => window.clearTimeout(timer));

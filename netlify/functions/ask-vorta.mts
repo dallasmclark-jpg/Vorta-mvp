@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import handler from "./ask-vorta/runtime.mjs";
+import handler from "./ask-vorta/runtime-equipment-fallback.mjs";
 import {
   ASK_VORTA_RESPONSE_VALIDATION_REVISION,
 } from "./ask-vorta/response-validation.mjs";
