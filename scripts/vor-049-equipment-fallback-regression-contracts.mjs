@@ -108,31 +108,39 @@ try {
   for (const question of naturalQuestions) {
     assert.equal(
       resolver.extractEquipmentReference(question),
-      "vial fill",
-      `Natural equipment wording must produce one stable equipment query: ${question}`,
+      "VF-02",
+      `Natural vial-sensor wording must resolve the evidence-backed asset instead of returning an ambiguous family query: ${question}`,
     );
     assert.equal(
       resolver.equipmentReferenceMatches(
         "Bosch Vial Filler VF-02",
-        question,
+        "VF-02",
       ),
       true,
       `The real resolver must match VF-02 for: ${question}`,
     );
     assert.equal(
       resolver.equipmentReferenceMatches(
+        "Bosch Vial Filler VF-01",
+        "VF-02",
+      ),
+      false,
+      `The resolved VF-02 reference must not retain VF-01 as an ambiguous match: ${question}`,
+    );
+    assert.equal(
+      resolver.equipmentReferenceMatches(
         "AHU-01 Supply Air Handling Unit",
-        question,
+        "VF-02",
       ),
       false,
       `The real resolver must reject unrelated equipment for: ${question}`,
     );
-    assert.equal(
-      resolver.equipmentReferenceMatches("Fill Finish", question),
-      false,
-      `An area name must not be mistaken for the vial filler: ${question}`,
-    );
   }
+  assert.equal(
+    resolver.extractEquipmentReference("VF-01 sensor issue"),
+    "VF-01",
+    "An explicit asset code must override the bounded site-language alias",
+  );
   assert.equal(
     resolver.extractEquipmentReference(
       "what shift cover issues are there this week",
@@ -181,8 +189,8 @@ try {
     );
     assert.equal(
       plan.equipmentQuery,
-      "vial fill",
-      `Natural equipment wording must pass the bounded VF-02 query to evidence: ${question}`,
+      "VF-02",
+      `Natural vial-sensor wording must pass the exact VF-02 reference to evidence: ${question}`,
     );
     assert.deepEqual(
       plan.requiredTools,
@@ -221,6 +229,8 @@ for (const scenario of productionScenarios) {
     "question does not match a specific risk category",
     "No equipment matching",
     "provide the filler asset code",
+    "VF-02 or VF-01",
+    "Ambiguous asset",
   ]) {
     assert.ok(
       scenario.mustNotMention.includes(forbiddenPhrase),
@@ -230,5 +240,5 @@ for (const scenario of productionScenarios) {
 }
 
 console.log(
-  "VOR-049 production equipment resolution contracts passed: the real resolver and planner map natural vial-filler sensor wording to the deterministic VF-02 equipment pack, reject unrelated equipment and retain authorised work, history and document evidence.",
+  "VOR-049 production equipment resolution contracts passed: natural vial-sensor wording resolves VF-02 before evidence loading, explicit asset codes still win, and the visible answer must retain authorised work, history and document evidence.",
 );
