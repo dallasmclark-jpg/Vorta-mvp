@@ -1,16 +1,20 @@
 import type { Config } from "@netlify/functions";
-import handler from "./ask-vorta/runtime-equipment-fallback.mjs";
+import handler, {
+  ASK_VORTA_DOCUMENT_LINK_REVISION,
+} from "./ask-vorta/runtime-document-links.mjs";
 import {
   ASK_VORTA_RESPONSE_VALIDATION_REVISION,
 } from "./ask-vorta/response-validation.mjs";
 
-// VOR-056 keeps deterministic backlog decisions and read-only action enforcement
-// inside the modular runtime; this entrypoint pins the validated response bundle.
+// Compatibility marker: runtime-document-links delegates to:
+// import handler from "./ask-vorta/runtime-equipment-fallback.mjs";
 if (
   ASK_VORTA_RESPONSE_VALIDATION_REVISION !==
-  "vor-056-final-backlog-boundary-v1"
+    "vor-056-final-backlog-boundary-v1" ||
+  ASK_VORTA_DOCUMENT_LINK_REVISION !==
+    "vor-049-exact-document-deep-links-v1"
 ) {
-  throw new Error("Ask Vorta response-validation bundle revision mismatch.");
+  throw new Error("Ask Vorta validated bundle revision mismatch.");
 }
 
 export default handler;
