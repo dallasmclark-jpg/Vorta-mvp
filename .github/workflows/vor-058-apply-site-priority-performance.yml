@@ -1,0 +1,71 @@
+name: Apply VOR-058 site-priority performance
+
+on:
+  push:
+    branches:
+      - agent/vor-058-site-priority-performance
+    paths:
+      - ".github/workflows/vor-058-apply-site-priority-performance.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-058-site-priority-apply
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out VOR-058 branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: agent/vor-058-site-priority-performance
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused VOR-058 source changes
+        run: node scripts/vor-058-apply-site-priority-performance.mjs
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run focused VOR-058 contracts
+        run: node scripts/vor-058-site-priority-performance-contracts.mjs
+
+      - name: Run strict TypeScript checks
+        run: npm run typecheck -- --pretty false
+
+      - name: Run complete permanent contract suite
+        run: npm run test:contracts
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Build production bundle and enforce performance budgets
+        run: npm run build
+
+      - name: Check patch integrity
+        run: git diff --check
+
+      - name: Remove temporary application machinery
+        run: |
+          rm scripts/vor-058-apply-site-priority-performance.mjs
+          rm .github/workflows/vor-058-apply-site-priority-performance.yml
+
+      - name: Commit verified VOR-058 implementation
+        run: |
+          git config user.name "Vorta Ask Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "VOR-058: make site-priority answers deterministic [skip netlify]"
+          git push origin HEAD:agent/vor-058-site-priority-performance
