@@ -15,12 +15,19 @@ The following workflows are release- or pilot-critical and must use immutable 40
 
 - `.github/workflows/maintenance-manager-quality.yml`
 - `.github/workflows/maintenance-manager-production.yml`
-- `.github/workflows/netlify-daily-release.yml`
 - `.github/workflows/vor-048-validation.yml`
 - `.github/workflows/vor-049-validation.yml`
 - `.github/workflows/vor-051-validation.yml`
 
 The reviewed action commits are recorded beside each `uses:` entry with the compatible major version as a comment.
+
+## Established deployment flow
+
+- Pull requests run the repository validation workflows without requiring a production deployment.
+- After an approved change is merged, Netlify automatically builds the merged `main` commit.
+- The Netlify build runs the canonical `npm run build` path, including TypeScript, permanent contracts, route smoke tests and performance checks.
+- The production verification workflow follows a successful Maintenance Manager quality run on `main`, confirms the exact deployed commit and runs the authenticated production checks.
+- Deployment is not restricted by a calendar-date marker or a scheduled daily release workflow.
 
 ## Update procedure
 
@@ -30,6 +37,6 @@ The reviewed action commits are recorded beside each `uses:` entry with the comp
 4. Update the exact package version or immutable action SHA and retain a human-readable version comment.
 5. Regenerate `package-lock.json` using Node.js 22 and the repository lockfile version.
 6. Run `npm ci`, the VOR-064 contract, the complete contract suite, TypeScript, route smoke, production build, performance and relevant browser gates.
-7. Merge through the normal deploy-free pull-request workflow. Production remains governed by the single daily Netlify release marker.
+7. Merge through the normal pull-request workflow. Netlify automatically builds the merged `main` commit and production verification checks that exact deployment.
 
 Do not update locked CI dependencies opportunistically inside unrelated product work.
