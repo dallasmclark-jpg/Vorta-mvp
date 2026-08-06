@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "30 20 * * *"
   workflow_dispatch:
+    inputs:
+      recover_failed_release:
+        description: Retry today's release only when production still serves an older release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -14,13 +20,16 @@ concurrency:
 
 jobs:
   release:
-    name: Validate and request today's single deployment
+    name: Validate and explicitly trigger today's single deployment
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
     outputs:
       deploy_requested: ${{ steps.plan.outputs.deploy_requested }}
       release_commit: ${{ steps.commit.outputs.release_commit }}
       release_date: ${{ steps.plan.outputs.release_date }}
+      recovery: ${{ steps.plan.outputs.recovery }}
     steps:
       - name: Check out current main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -40,16 +49,32 @@ jobs:
 
       - name: Plan the London-date release
         id: plan
+        env:
+          RECOVER_FAILED_RELEASE: ${{ inputs.recover_failed_release }}
         shell: bash
         run: |
           release_date="$(TZ=Europe/London date +%F)"
           not_before_date="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).notBeforeDate || '0000-00-00'")"
           previous_release_date="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).releaseDate || ''")"
           previous_source_commit="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).sourceCommit || ''")"
+          previous_triggered_at="$(node -p "JSON.parse(require('node:fs').readFileSync('ops/netlify-release.json','utf8')).triggeredAtUtc || ''")"
           source_commit="$(git rev-parse HEAD)"
+          production_commit="$(curl --fail --silent --show-error --no-cache \
+            "https://vorta-app.netlify.app/vorta-build.json?release-plan=$(date +%s)" \
+            | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => console.log(JSON.parse(input).commit || ""));' \
+            || true)"
+          production_release_date=""
+
+          if [[ -n "$production_commit" ]] && git cat-file -e "$production_commit^{commit}" 2>/dev/null; then
+            production_release_date="$(git show "$production_commit:ops/netlify-release.json" 2>/dev/null \
+              | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { try { console.log(JSON.parse(input).releaseDate || ""); } catch { console.log(""); } });' \
+              || true)"
+          fi
 
           echo "release_date=$release_date" >> "$GITHUB_OUTPUT"
           echo "source_commit=$source_commit" >> "$GITHUB_OUTPUT"
+          echo "production_commit=$production_commit" >> "$GITHUB_OUTPUT"
+          echo "recovery=false" >> "$GITHUB_OUTPUT"
 
           if [[ "$release_date" < "$not_before_date" ]]; then
             echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
@@ -57,21 +82,46 @@ jobs:
             exit 0
           fi
 
-          if [[ "$previous_release_date" == "$release_date" ]]; then
+          if [[ "$production_release_date" == "$release_date" ]]; then
             echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
-            echo "The single deployment for $release_date was already requested."
+            echo "Production already serves the successful release for $release_date."
             exit 0
           fi
 
-          if [[ -n "$previous_source_commit" ]] && \
-             git cat-file -e "$previous_source_commit^{commit}" 2>/dev/null && \
-             git diff --quiet "$previous_source_commit" HEAD -- . ':(exclude)ops/netlify-release.json'; then
+          if [[ "$previous_release_date" == "$release_date" ]]; then
+            if [[ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" || "${RECOVER_FAILED_RELEASE:-false}" != "true" ]]; then
+              echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
+              echo "A release was already requested for $release_date. Use the explicit recovery input only after confirming production still serves an older release."
+              exit 0
+            fi
+
+            if [[ -n "$previous_triggered_at" ]]; then
+              trigger_age_seconds="$(node -e 'const age = Date.now() - Date.parse(process.argv[1]); console.log(Number.isFinite(age) ? Math.floor(age / 1000) : 0);' "$previous_triggered_at")"
+              if (( trigger_age_seconds < 1800 )); then
+                echo "A recovery cannot run until 30 minutes after the previous trigger."
+                exit 1
+              fi
+            fi
+
+            echo "recovery=true" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$previous_source_commit" ]] && \
+               git cat-file -e "$previous_source_commit^{commit}" 2>/dev/null && \
+               git diff --quiet "$previous_source_commit" HEAD -- . ':(exclude)ops/netlify-release.json'; then
             echo "deploy_requested=false" >> "$GITHUB_OUTPUT"
             echo "No unreleased product changes were found."
             exit 0
           fi
 
           echo "deploy_requested=true" >> "$GITHUB_OUTPUT"
+
+      - name: Require the secure Netlify build trigger
+        if: steps.plan.outputs.deploy_requested == 'true'
+        shell: bash
+        run: |
+          if [[ -z "$NETLIFY_BUILD_HOOK_URL" ]]; then
+            echo "NETLIFY_BUILD_HOOK_URL is not configured. The release marker will not be changed."
+            exit 1
+          fi
 
       - name: Run canonical release validation
         if: steps.plan.outputs.deploy_requested == 'true'
@@ -84,13 +134,24 @@ jobs:
         env:
           RELEASE_DATE: ${{ steps.plan.outputs.release_date }}
           SOURCE_COMMIT: ${{ steps.plan.outputs.source_commit }}
+          RECOVERY: ${{ steps.plan.outputs.recovery }}
         run: |
           node - <<'NODE'
           const { readFileSync, writeFileSync } = require("node:fs");
           const marker = JSON.parse(readFileSync("ops/netlify-release.json", "utf8"));
+          const sameDate = marker.releaseDate === process.env.RELEASE_DATE;
           marker.releaseDate = process.env.RELEASE_DATE;
           marker.sourceCommit = process.env.SOURCE_COMMIT;
           marker.requestedAtUtc = new Date().toISOString();
+          marker.triggeredAtUtc = marker.requestedAtUtc;
+          marker.triggerMode = process.env.RECOVERY === "true"
+            ? "manual_recovery"
+            : "daily";
+          marker.attempt = sameDate ? Number(marker.attempt || 1) + 1 : 1;
+          marker.deployedCommit = null;
+          marker.deployedAtUtc = null;
+          delete marker.retryRequestedAtUtc;
+          delete marker.retryReason;
           writeFileSync("ops/netlify-release.json", `${JSON.stringify(marker, null, 2)}\n`);
           NODE
 
@@ -106,6 +167,28 @@ jobs:
           git push origin HEAD:main
           echo "release_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Trigger the exact validated Netlify release
+        if: steps.plan.outputs.deploy_requested == 'true'
+        env:
+          RELEASE_COMMIT: ${{ steps.commit.outputs.release_commit }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "content-type: application/json" \
+            --data "{\"trigger_title\":\"Vorta daily release ${{ steps.plan.outputs.release_date }} ${RELEASE_COMMIT}\"}" \
+            "$NETLIFY_BUILD_HOOK_URL" \
+            | tee netlify-build-hook-response.json
+
+      - name: Preserve explicit trigger evidence
+        if: steps.plan.outputs.deploy_requested == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: netlify-build-trigger-${{ steps.commit.outputs.release_commit }}
+          path: netlify-build-hook-response.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Record skipped release
         if: steps.plan.outputs.deploy_requested != 'true'
         run: echo "No Netlify deployment was requested by this run."
@@ -118,3 +201,37 @@ jobs:
     with:
       expected_commit: ${{ needs.release.outputs.release_commit }}
     secrets: inherit
+
+  record-success:
+    name: Record the verified production release
+    needs:
+      - release
+      - verify-production
+    if: needs.release.outputs.deploy_requested == 'true' && needs.verify-production.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Record exact deployed commit
+        env:
+          DEPLOYED_COMMIT: ${{ needs.release.outputs.release_commit }}
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const { readFileSync, writeFileSync } = require("node:fs");
+          const marker = JSON.parse(readFileSync("ops/netlify-release.json", "utf8"));
+          marker.deployedCommit = process.env.DEPLOYED_COMMIT;
+          marker.deployedAtUtc = new Date().toISOString();
+          writeFileSync("ops/netlify-release.json", `${JSON.stringify(marker, null, 2)}\n`);
+          NODE
+          git config user.name "Vorta Daily Release"
+          git config user.email "actions@users.noreply.github.com"
+          git add ops/netlify-release.json
+          git commit -m "chore(release): record verified Netlify deployment [skip netlify]"
+          git push origin HEAD:main
