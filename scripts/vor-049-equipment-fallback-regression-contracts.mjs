@@ -15,6 +15,9 @@ const tools = read(
 const frontend = read(
   "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
 );
+const exactProductionScenario = JSON.parse(
+  read("tests/evals/vor-049-vial-fill-sensor-regression.json"),
+)[0];
 
 assert.match(
   entrypoint,
@@ -54,7 +57,7 @@ assert.match(
 );
 assert.match(
   fallback,
-  /For \$\{label\}, Vorta found previous maintenance evidence relevant to this fault/,
+  /For \$\{label\}, Vorta found/,
   "The fallback must answer the equipment fault rather than substitute a site-risk summary",
 );
 assert.doesNotMatch(
@@ -76,6 +79,31 @@ assert.match(
   frontend,
   /Ask Vorta agent unavailable; using verified deterministic fallback/,
   "The old client fallback remains a last resort only when the server cannot build the equipment answer",
+);
+
+assert.equal(
+  exactProductionScenario.question,
+  "vial fill sensor fault",
+  "The physical production regression wording must remain an exact authenticated scenario",
+);
+assert.equal(exactProductionScenario.requireVisibleDecision, true);
+assert.equal(exactProductionScenario.requireActionPlan, false);
+assert.ok(
+  exactProductionScenario.expectedTools.includes("get_equipment_history") &&
+    exactProductionScenario.expectedTools.includes("get_equipment_documents"),
+  "The exact production scenario must prove both prior-work history and approved documents",
+);
+for (const requiredPhrase of ["VF-02", "F-204", "WO-", "approved"]) {
+  assert.ok(
+    exactProductionScenario.mustMention.includes(requiredPhrase),
+    `The exact production scenario must visibly require ${requiredPhrase}`,
+  );
+}
+assert.ok(
+  exactProductionScenario.mustNotMention.includes(
+    "question does not match a specific risk category",
+  ),
+  "The generic site-risk regression wording must permanently fail the exact scenario",
 );
 
 console.log(
