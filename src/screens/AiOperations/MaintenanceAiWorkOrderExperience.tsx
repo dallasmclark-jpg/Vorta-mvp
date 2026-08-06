@@ -20,6 +20,7 @@ import { prefetchMaintenancePortalRoute } from "../../lib/maintenancePortalPrefe
 import { trackPilotUsageEvent } from "../../lib/pilotUsage";
 import { getCachedEquipmentIdentity } from "../Equipment/equipmentService";
 import { MaintenanceWorkOrderExecutionOverlay } from "../Equipment/MaintenanceWorkOrderExecutionOverlay";
+import { AskVortaDesktopWorkspaceExperience } from "./AskVortaDesktopWorkspaceExperience";
 import { isFaultQuestion } from "./faultIntelligenceData";
 import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiAssistantWithFaultsV2";
 import { MobileAiPolishStyles } from "./MobileAiPolishStyles";
@@ -275,6 +276,7 @@ export function MaintenanceAiWorkOrderExperience({
           </span>
         </button>
       ) : null}
+      <AskVortaDesktopWorkspaceExperience />
       <GlobalMaintenanceAiAssistantWithFaultsV2
         role="maintenance-manager"
         showLauncher={showDesktopAssistantLauncher}
