@@ -127,9 +127,9 @@ jobs:
       - name: Remove temporary application machinery
         if: success()
         run: |
-          rm scripts/vor-059-apply-deterministic-operational-answers.mjs
-          rm scripts/vor-059-deterministic-operational-builders.txt
-          rm .github/workflows/vor-059-apply-deterministic-operational-answers.yml
+          rm -f scripts/vor-059-apply-deterministic-operational-answers.mjs
+          rm -f scripts/vor-059-deterministic-operational-builders.txt
+          rm -f .github/workflows/vor-059-apply-deterministic-operational-answers.yml
 
       - name: Commit verified VOR-059 implementation
         if: success()
