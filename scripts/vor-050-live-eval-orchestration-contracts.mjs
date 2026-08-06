@@ -9,10 +9,6 @@ const prDecisionWorkflow = readFileSync(
   ".github/workflows/vor-049-validation.yml",
   "utf8",
 );
-const dailyWorkflow = readFileSync(
-  ".github/workflows/netlify-daily-release.yml",
-  "utf8",
-);
 const productionWorkflow = readFileSync(
   ".github/workflows/maintenance-manager-production.yml",
   "utf8",
@@ -43,12 +39,12 @@ const equipmentScenarios = JSON.parse(
 assert.doesNotMatch(
   vor048Workflow,
   /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49|58|59)/,
-  "VOR-048 pull-request validation must not consume a deployment or authenticated evaluation capacity",
+  "VOR-048 pull-request validation must not consume authenticated evaluation capacity",
 );
 assert.doesNotMatch(
   prDecisionWorkflow,
   /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL:\s*https:\/\/|eval:ask-vorta:vor0(?:48|49)/,
-  "The central pull-request gate must not consume a Netlify deployment, stale production or the competing legacy live suites",
+  "The central pull-request gate must not consume stale production or competing legacy live suites",
 );
 assert.ok(
   prDecisionWorkflow.includes(
@@ -64,15 +60,16 @@ assert.ok(
   "PR validation must retain deterministic concurrency",
 );
 assert.ok(
-  dailyWorkflow.includes(
-    "uses: ./.github/workflows/maintenance-manager-production.yml",
-  ) && dailyWorkflow.includes("expected_commit:"),
-  "The single daily release must own exact-commit production verification",
-);
-assert.ok(
-  productionWorkflow.includes("workflow_call:") &&
+  productionWorkflow.includes("workflow_run:") &&
+    productionWorkflow.includes("Maintenance Manager quality gate") &&
+    productionWorkflow.includes("github.event.workflow_run.head_sha") &&
     productionWorkflow.includes("node scripts/verify-production-commit.mjs"),
-  "Production evaluation must run only after the exact production commit is visible",
+  "Production evaluation must automatically follow a successful main quality run and verify the exact Netlify commit",
+);
+assert.doesNotMatch(
+  productionWorkflow,
+  /workflow_call:|expected_commit:/,
+  "Production evaluation must not wait for a scheduled daily release caller",
 );
 
 const backlogIndex = productionWorkflow.indexOf(
@@ -96,11 +93,11 @@ assert.ok(
     firstWindowIndex > firstResetIndex &&
     secondResetIndex > firstWindowIndex &&
     finalWindowIndex > secondResetIndex,
-  "The daily production gate must isolate backlog and golden decisions in separate account windows",
+  "The automatic production gate must isolate backlog and golden decisions in separate account windows",
 );
 assert.ok(
   (productionWorkflow.match(/run: sleep 310/g) ?? []).length >= 2,
-  "The daily production gate must retain two deliberate account-window resets",
+  "The production gate must retain two deliberate account-window resets",
 );
 assert.ok(
   (productionWorkflow.match(/VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 3/g) ?? [])
@@ -170,7 +167,7 @@ assert.ok(
   shiftCoverScenarios.every(
     (scenario) => Number(scenario.maxDurationMs) <= 12_000,
   ),
-  "The daily deployment policy must not relax the Shift Cover latency target",
+  "The restored automatic deployment policy must not relax the Shift Cover latency target",
 );
 
-console.log("VOR-050 production and bounded exact-source evaluation orchestration contracts passed.");
+console.log("VOR-050 automatic production and bounded exact-source evaluation orchestration contracts passed.");
