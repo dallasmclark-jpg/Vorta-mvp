@@ -13,6 +13,14 @@ const answerSource = readFileSync(
   "netlify/functions/ask-vorta/decision-answer.mts",
   "utf8",
 );
+const workflowSource = readFileSync(
+  ".github/workflows/vor-049-validation.yml",
+  "utf8",
+);
+const localServerSource = readFileSync(
+  "scripts/vor-058-local-eval-server.mjs",
+  "utf8",
+);
 const suiteSource = readFileSync("scripts/run-contract-suite.mjs", "utf8");
 const packageSource = readFileSync("package.json", "utf8");
 const scenarios = JSON.parse(
@@ -111,6 +119,38 @@ for (const scenario of scenarios) {
   );
 }
 
+for (const required of [
+  '"netlify/functions/ask-vorta/**"',
+  '"scripts/vor-058*"',
+  '"tests/evals/vor-058-site-priority-performance.json"',
+  "Start exact-source Ask Vorta evaluation server",
+  "Run six authenticated VOR-058 site-priority decisions",
+  "VORTA_EVAL_BASE_URL: http://127.0.0.1:8788",
+  "npm run eval:ask-vorta:vor058",
+  "vor-058-live-eval.log",
+]) {
+  assert.ok(
+    workflowSource.includes(required),
+    `The central exact-source gate must retain ${required}`,
+  );
+}
+assert.doesNotMatch(
+  workflowSource,
+  /VORTA_EVAL_BASE_URL:\s*https:\/\/vorta-app\.netlify\.app/,
+  "VOR-058 pull-request decisions must not run against stale production",
+);
+for (const required of [
+  'entryPoints: ["netlify/functions/ask-vorta.mts"]',
+  'globalThis.Netlify =',
+  'requestId: randomUUID()',
+  'server.listen(port, host',
+]) {
+  assert.ok(
+    localServerSource.includes(required),
+    `The exact-source local function wrapper must retain ${required}`,
+  );
+}
+
 assert.ok(
   suiteSource.includes("VOR-058 site-priority performance"),
   "The permanent contract suite must register VOR-058",
@@ -121,5 +161,5 @@ assert.ok(
 );
 
 console.log(
-  "VOR-058 contracts passed: deterministic site-priority routing, one-snapshot tool suppression, decision-ready ranked answers, latency limits and SAP read-only wording are protected.",
+  "VOR-058 contracts passed: deterministic site-priority routing, one-snapshot tool suppression, decision-ready ranked answers, exact-source authenticated execution, latency limits and SAP read-only wording are protected.",
 );
