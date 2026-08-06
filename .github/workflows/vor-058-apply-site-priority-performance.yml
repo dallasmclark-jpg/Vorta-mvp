@@ -1,6 +1,6 @@
 name: Apply VOR-058 site-priority performance
 
-# Applicator revision 2: JSON-quoted source replacements.
+# Applicator revision 3: handle the advanced daily release marker.
 on:
   push:
     branches:
@@ -35,6 +35,39 @@ jobs:
 
       - name: Apply focused VOR-058 source changes
         run: node scripts/vor-058-apply-site-priority-performance.mjs
+
+      - name: Make the VOR-057 contract lifecycle-aware
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const { readFileSync, writeFileSync } = require("node:fs");
+          const path = "scripts/netlify-daily-deploy-contracts.mjs";
+          const source = readFileSync(path, "utf8");
+          const before = `assert.equal(marker.notBeforeDate, "2026-08-06");
+          assert.equal(marker.releaseDate, null);
+          assert.equal(marker.sourceCommit, null);`;
+          const after = `assert.equal(marker.notBeforeDate, "2026-08-06");
+          assert.ok(
+            marker.releaseDate === null || /^\\d{4}-\\d{2}-\\d{2}$/.test(marker.releaseDate),
+            "The release marker must be empty or carry one valid London calendar date",
+          );
+          assert.ok(
+            marker.sourceCommit === null || /^[0-9a-f]{40}$/.test(marker.sourceCommit),
+            "The release source must be empty or an exact Git commit",
+          );
+          if (marker.releaseDate !== null) {
+            assert.ok(marker.sourceCommit, "A dated release requires an exact source commit");
+            assert.ok(
+              typeof marker.requestedAtUtc === "string" &&
+                !Number.isNaN(Date.parse(marker.requestedAtUtc)),
+              "A dated release requires a valid request timestamp",
+            );
+          }`;
+          if (!source.includes(before)) {
+            throw new Error("VOR-057 marker-state assertion anchor was not found");
+          }
+          writeFileSync(path, source.replace(before, after));
+          NODE
 
       - name: Install locked dependencies
         run: npm ci --silent
