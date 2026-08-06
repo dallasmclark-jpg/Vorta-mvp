@@ -97,7 +97,7 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
         return;
       }
 
-      if (attempt < 10) schedule(() => openWorkspace(attempt + 1), 50);
+      if (attempt < 12) schedule(() => openWorkspace(attempt + 1), 50);
     };
 
     const handlePrompt = (): void => {
