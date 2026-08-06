@@ -1,0 +1,89 @@
+name: Publish verified VOR-059 source
+
+on:
+  push:
+    branches:
+      - agent/vor-059-deterministic-operational-answers
+    paths:
+      - ".github/workflows/vor-059-publish-verified-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-059-publish-verified-source
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+
+    steps:
+      - name: Check out VOR-059 branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: agent/vor-059-deterministic-operational-answers
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply exact VOR-059 implementation
+        run: node scripts/vor-059-apply-deterministic-operational-answers.mjs
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Reconfirm focused contracts and source integrity
+        shell: bash
+        run: |
+          node scripts/vor-059-deterministic-operational-answers-contracts.mjs
+          npm run typecheck -- --pretty false
+          npm run test:contracts
+          npm run test:smoke
+          git diff --check
+
+      - name: Prepare workflow-free source commit
+        shell: bash
+        run: |
+          git checkout HEAD -- .github/workflows/vor-049-validation.yml
+          rm -rf .vor-058-local
+          rm -f vor-059-audit-server.pid vor-059-audit-server.log vor-059-full-audit.log
+          rm -f scripts/vor-059-apply-deterministic-operational-answers.mjs
+          rm -f scripts/vor-059-deterministic-operational-answers.fragment.txt
+          rm -f scripts/vor-059-deterministic-operational-builders.txt
+          git add -A
+          if git diff --cached --name-only | grep -q '^.github/workflows/'; then
+            echo "A workflow file is staged; refusing publication."
+            git diff --cached --name-only
+            exit 1
+          fi
+          git diff --cached --check
+          test -n "$(git diff --cached --name-only)"
+
+      - name: Commit verified application source
+        shell: bash
+        run: |
+          git config user.name "Vorta Ask Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "VOR-059: make operational routes model-independent [skip netlify]"
+          git push origin HEAD:agent/vor-059-deterministic-operational-answers
