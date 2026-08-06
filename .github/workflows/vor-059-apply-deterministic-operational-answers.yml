@@ -1,0 +1,134 @@
+name: Apply VOR-059 deterministic operational answers
+
+on:
+  push:
+    branches:
+      - agent/vor-059-deterministic-operational-answers
+    paths:
+      - ".github/workflows/vor-059-apply-deterministic-operational-answers.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-059-deterministic-operational-answers
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      OPENAI_API_KEY: vor-059-deterministic-model-unavailable
+      OPENAI_BASE_URL: https://api.openai.com/v1
+
+    steps:
+      - name: Check out VOR-059 branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: agent/vor-059-deterministic-operational-answers
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused VOR-059 source changes
+        run: node scripts/vor-059-apply-deterministic-operational-answers.mjs
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run focused VOR-059 contracts
+        run: node scripts/vor-059-deterministic-operational-answers-contracts.mjs
+
+      - name: Run strict TypeScript checks
+        run: npm run typecheck -- --pretty false
+
+      - name: Run complete permanent contract suite
+        run: npm run test:contracts
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Build production bundle and enforce performance budgets
+        run: npm run build
+
+      - name: Start exact-source Ask Vorta audit server
+        shell: bash
+        run: |
+          node scripts/vor-058-local-eval-server.mjs > vor-059-audit-server.log 2>&1 &
+          echo $! > vor-059-audit-server.pid
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8788/api/ask-vorta; then
+              echo "Exact-source Ask Vorta server is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat vor-059-audit-server.log
+          exit 1
+
+      - name: Run full 12-question authenticated VOR-059 audit
+        env:
+          VORTA_EVAL_BASE_URL: http://127.0.0.1:8788
+          VORTA_EVAL_DELAY_MS: 250
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+        shell: bash
+        run: npm run eval:ask-vorta:vor059:audit | tee vor-059-full-audit.log
+
+      - name: Stop exact-source audit server
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f vor-059-audit-server.pid ]]; then
+            kill "$(cat vor-059-audit-server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Preserve failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-059-failure-${{ github.sha }}
+          path: |
+            vor-059-audit-server.log
+            vor-059-full-audit.log
+            dist/vorta-build.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Check patch integrity
+        if: success()
+        run: git diff --check
+
+      - name: Remove temporary application machinery
+        if: success()
+        run: |
+          rm scripts/vor-059-apply-deterministic-operational-answers.mjs
+          rm .github/workflows/vor-059-apply-deterministic-operational-answers.yml
+
+      - name: Commit verified VOR-059 implementation
+        if: success()
+        run: |
+          git config user.name "Vorta Ask Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "VOR-059: make operational routes model-independent [skip netlify]"
+          git push origin HEAD:agent/vor-059-deterministic-operational-answers
