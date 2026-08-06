@@ -105,6 +105,7 @@ function equipmentIdentityTokens(value: unknown): string[] {
   return [
     ...new Set(
       (value.toLowerCase().match(/[a-z0-9-]+/g) ?? [])
+        .filter((token) => !EQUIPMENT_QUERY_NOISE.has(token))
         .map(normaliseEquipmentWord)
         .filter(
           (token) =>
