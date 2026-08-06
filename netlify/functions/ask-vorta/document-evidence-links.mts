@@ -42,7 +42,10 @@ function record(value: unknown): JsonRecord | null {
 }
 
 function stringValue(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  if (typeof value === "string") return value.trim();
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : "";
 }
 
 function textArray(value: unknown): string[] {
