@@ -13,6 +13,13 @@ function continueBuild(reason) {
   process.exit(1);
 }
 
+function positiveInteger(value, fallback = 1) {
+  const parsed = Number(value ?? fallback);
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
+    : null;
+}
+
 const context = String(process.env.CONTEXT ?? "").trim();
 const branch = String(process.env.BRANCH ?? "").trim();
 
@@ -29,11 +36,15 @@ try {
 
 const releaseDate = String(marker.releaseDate ?? "").trim();
 const notBeforeDate = String(marker.notBeforeDate ?? "0000-00-00").trim();
+const releaseAttempt = positiveInteger(marker.attempt);
 if (!/^\d{4}-\d{2}-\d{2}$/.test(releaseDate)) {
   skipBuild("no dated production release has been requested");
 }
 if (releaseDate < notBeforeDate) {
   skipBuild(`release date ${releaseDate} is before the permitted date ${notBeforeDate}`);
+}
+if (releaseAttempt === null) {
+  skipBuild("the controlled release attempt is invalid");
 }
 
 const cachedCommit = String(process.env.CACHED_COMMIT_REF ?? "").trim();
@@ -54,25 +65,60 @@ if (markerDiff.status !== 1) {
   skipBuild("the daily release marker change could not be verified safely");
 }
 
-let previousReleaseDate = "";
-const previousMarker = spawnSync(
+let previousMarker = null;
+const previousMarkerResult = spawnSync(
   "git",
   ["show", `${cachedCommit}:${markerPath}`],
   { encoding: "utf8" },
 );
-if (previousMarker.status === 0) {
+if (previousMarkerResult.status === 0) {
   try {
-    previousReleaseDate = String(
-      JSON.parse(previousMarker.stdout).releaseDate ?? "",
-    ).trim();
+    previousMarker = JSON.parse(previousMarkerResult.stdout);
   } catch {
     skipBuild("the previously deployed release marker is invalid");
   }
 }
 
-if (previousReleaseDate && releaseDate <= previousReleaseDate) {
+const previousReleaseDate = String(previousMarker?.releaseDate ?? "").trim();
+const previousAttempt = positiveInteger(previousMarker?.attempt);
+if (previousReleaseDate && releaseDate < previousReleaseDate) {
   skipBuild(
-    `release date ${releaseDate} does not advance the previous deployment date ${previousReleaseDate}`,
+    `release date ${releaseDate} is earlier than the previous deployment date ${previousReleaseDate}`,
+  );
+}
+
+if (previousReleaseDate && releaseDate === previousReleaseDate) {
+  if (
+    previousAttempt === null ||
+    releaseAttempt !== previousAttempt + 1
+  ) {
+    skipBuild(
+      `same-day release attempt ${releaseAttempt} does not advance previous attempt ${previousAttempt ?? "invalid"} by exactly one`,
+    );
+  }
+
+  const triggerMode = String(marker.triggerMode ?? "").trim();
+  if (triggerMode === "manual_same_day_exception") {
+    const approvedAt = String(
+      marker.sameDayExceptionApprovedAtUtc ?? "",
+    ).trim();
+    const reason = String(
+      marker.sameDayExceptionReason ?? "",
+    ).trim();
+
+    if (
+      !approvedAt ||
+      Number.isNaN(Date.parse(approvedAt)) ||
+      reason.length < 20
+    ) {
+      skipBuild("the same-day release exception lacks valid approval evidence");
+    }
+  } else if (triggerMode !== "manual_recovery") {
+    skipBuild("a same-day build requires an explicit recovery or approved exception mode");
+  }
+
+  continueBuild(
+    `approved same-day release ${releaseDate}, attempt ${releaseAttempt}`,
   );
 }
 
