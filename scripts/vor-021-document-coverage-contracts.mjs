@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 const migration = read("supabase/migrations/20260806101500_vor_021_document_coverage_semantics.sql");
-const evidence = read("src/screens/Equipment/equipmentPilotEvidence.ts");
+const evidence = read("src/screens/Equipment/equipmentDocumentCoverage.ts");
 const listView = read("src/screens/Equipment/LiveEquipmentDocumentsView.tsx");
 const viewer = read("src/screens/Equipment/LiveEquipmentDocumentViewerView.tsx");
 const browser = read("tests/browser/vor-021-document-coverage.spec.ts");
@@ -18,9 +18,11 @@ const checks = [
   ["functions remain security invoker", (migration.match(/security invoker/g) ?? []).length === 2],
   ["anonymous execution remains revoked", migration.includes("revoke all on function public.vorta_get_equipment_documents(uuid) from public, anon")],
   ["authenticated execution remains explicit", migration.includes("grant execute on function public.vorta_get_equipment_document(uuid, uuid) to authenticated, service_role")],
-  ["live mapper carries coverage mode", evidence.includes("coverageMode: LiveDocumentCoverageMode") && evidence.includes("row.coverage_mode")],
-  ["live mapper carries verified locator", evidence.includes("hasVerifiedLocator") && evidence.includes("row.has_verified_locator")],
+  ["live reader carries coverage mode", evidence.includes("coverageMode: LiveDocumentCoverageMode") && evidence.includes("row.coverage_mode")],
+  ["live reader carries verified locator", evidence.includes("hasVerifiedLocator") && evidence.includes("row.has_verified_locator")],
   ["citations disclose summary-only state", evidence.includes("summary-only coverage; full source text not indexed")],
+  ["document list uses focused reader", listView.includes('from "./equipmentDocumentCoverage"')],
+  ["document viewer uses focused reader", viewer.includes('from "./equipmentDocumentCoverage"')],
   ["document list labels full text", listView.includes("Full-text indexed")],
   ["document list labels summary-only", listView.includes("Summary-only coverage")],
   ["document list exposes coverage test hook", listView.includes("data-vorta-document-coverage")],
