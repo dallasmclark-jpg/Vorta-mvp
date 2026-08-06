@@ -1,3 +1,4 @@
+// VOR-058 runs six authenticated decisions against the exact bundled PR source.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
