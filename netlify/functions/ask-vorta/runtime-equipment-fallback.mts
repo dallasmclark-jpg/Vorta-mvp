@@ -93,7 +93,32 @@ function equipmentSearchText(row: JsonRecord): string {
     .toLowerCase();
 }
 
-function equipmentMatchScore(question: string, row: JsonRecord): number {
+function conversationEquipmentHints(request: AskVortaRequest): string[] {
+  const context = request.conversationContext;
+  if (!context) return [];
+  return [
+    context.activeEquipment?.query,
+    context.activeEquipment?.id,
+    context.activeEquipment?.code,
+    context.activeEquipment?.name,
+    context.selectedOption?.equipmentQuery,
+    context.selectedOption?.equipmentId,
+    context.selectedOption?.label,
+    ...context.orderedOptions.flatMap((option) => [
+      option.equipmentQuery,
+      option.equipmentId,
+      option.label,
+    ]),
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.toLowerCase());
+}
+
+function equipmentMatchScore(
+  request: AskVortaRequest,
+  row: JsonRecord,
+): number {
+  const question = request.question;
   const candidate = equipmentSearchText(row);
   if (!candidate) return 0;
 
@@ -112,12 +137,24 @@ function equipmentMatchScore(question: string, row: JsonRecord): number {
   if (phrase.length >= 4 && candidate.includes(phrase)) score += 260;
 
   const loweredQuestion = question.toLowerCase();
+  const id = equipmentId(row).toLowerCase();
   const code = decisionField(row, ["equipment_code", "equipmentCode", "code"])
     .toLowerCase();
   const name = decisionField(row, ["equipment_name", "equipmentName", "name"])
     .toLowerCase();
   if (code && loweredQuestion.includes(code)) score += 800;
   if (name && loweredQuestion.includes(name)) score += 900;
+
+  for (const hint of conversationEquipmentHints(request)) {
+    if (
+      (id && hint.includes(id)) ||
+      (code && hint.includes(code)) ||
+      (name && hint.includes(name))
+    ) {
+      score += 340;
+      break;
+    }
+  }
 
   return score;
 }
@@ -128,11 +165,11 @@ interface EquipmentResolution {
 }
 
 function resolveEquipment(
-  question: string,
+  request: AskVortaRequest,
   equipmentRows: JsonRecord[],
 ): EquipmentResolution {
   const ranked = equipmentRows
-    .map((row) => ({ row, score: equipmentMatchScore(question, row) }))
+    .map((row) => ({ row, score: equipmentMatchScore(request, row) }))
     .filter((item) => item.score > 0)
     .sort((first, second) => second.score - first.score);
 
@@ -216,8 +253,40 @@ function packSources(pack: ToolResult, packData: JsonRecord): string[] {
   ];
 }
 
-function findFact(facts: string[], pattern: RegExp): string | undefined {
-  return facts.find((fact) => pattern.test(fact));
+function visibleFact(fact: string, maximum = 360): string {
+  const text = readableEquipmentDecisionFact(fact);
+  return text.length > maximum
+    ? `${text.slice(0, Math.max(0, maximum - 1)).trimEnd()}…`
+    : text;
+}
+
+function rankedFacts(
+  facts: string[],
+  pattern: RegExp,
+  question: string,
+): string[] {
+  const tokens = meaningfulTokens(question);
+  return [...new Set(facts)]
+    .filter((fact) => pattern.test(fact))
+    .map((fact, index) => {
+      const lowered = fact.toLowerCase();
+      let score = /^priority /i.test(fact) ? 140 : 0;
+      if (/\bcompleted\b|temporary fix|recurred|success|outcome/i.test(fact)) {
+        score += 70;
+      }
+      if (/sensor|probe|transmitter|false reject|fault|f-20[47]|f-211/i.test(fact)) {
+        score += 70;
+      }
+      if (/approved|revision|section|page|fault tree|drawing/i.test(fact)) {
+        score += 55;
+      }
+      for (const token of tokens) {
+        if (lowered.includes(token)) score += 12;
+      }
+      return { fact, score, index };
+    })
+    .sort((first, second) => second.score - first.score || first.index - second.index)
+    .map((item) => item.fact);
 }
 
 function clarificationAnswer(
@@ -309,7 +378,7 @@ function buildEquipmentFallbackAnswer(
     missingData: [],
     confidence: 50,
     intentLabel: "equipment_fault_history",
-    toolsUsed: ["get_equipment_decision_pack"],
+    toolsUsed: ["get_equipment_risk", "get_equipment_decision_pack"],
     evidenceLinks: evidenceLinks(selected),
     evidenceGeneratedAt: new Date().toISOString(),
   };
@@ -322,32 +391,46 @@ function buildEquipmentFallbackAnswer(
     decisionFacts,
   );
   const allFacts = [...relevantFacts, ...decisionFacts];
-  const workFact = findFact(allFacts, /work evidence|work order|WO-/i);
-  const documentFact = findFact(
+  const workFacts = rankedFacts(
     allFacts,
-    /priority document evidence|document evidence|manual|procedure|drawing/i,
-  );
-  const calibrationFact = findFact(
+    /work evidence|work order|WO-/i,
+    originalQuestion,
+  ).slice(0, 3);
+  const documentFacts = rankedFacts(
     allFacts,
-    /calibrat|reference instrument|measurement|reading/i,
-  );
-  const spareFact = findFact(
+    /priority document evidence|document evidence|manual|procedure|drawing|fault tree/i,
+    originalQuestion,
+  ).slice(0, 2);
+  const calibrationFact = rankedFacts(
+    allFacts,
+    /calibrat|reference instrument|measurement|reading|verification record/i,
+    originalQuestion,
+  )[0];
+  const spareFact = rankedFacts(
     allFacts,
     /priority spare evidence|spare evidence|component|part number|stock/i,
-  );
+    originalQuestion,
+  )[0];
+  const workFact = workFacts[0];
+  const documentFact = documentFacts[0];
   const label = equipmentLabel(selected);
 
   if (workFact && documentFact) {
+    const historyLead =
+      workFacts.length > 1
+        ? "a repeated fault pattern in previous maintenance records"
+        : "previous maintenance evidence relevant to this fault";
     answer.directAnswer =
-      `For ${label}, Vorta found previous maintenance evidence relevant to this fault: ${readableEquipmentDecisionFact(workFact)}. ` +
-      `The approved guidance returned is ${readableEquipmentDecisionFact(documentFact)}.`;
+      `For ${label}, Vorta found ${historyLead}: ${visibleFact(workFact, 300)}. ` +
+      `${workFacts[1] ? `A second related record is ${visibleFact(workFacts[1], 240)}. ` : ""}` +
+      `The approved guidance returned is ${visibleFact(documentFact, 300)}.`;
   } else if (workFact) {
     answer.directAnswer =
-      `For ${label}, the previous maintenance evidence relevant to this fault is ${readableEquipmentDecisionFact(workFact)}. ` +
+      `For ${label}, the previous maintenance evidence relevant to this fault is ${visibleFact(workFact, 320)}. ` +
       "No verified document section was returned, so Vorta is not inventing one.";
   } else if (documentFact) {
     answer.directAnswer =
-      `For ${label}, the approved guidance returned for this fault is ${readableEquipmentDecisionFact(documentFact)}. ` +
+      `For ${label}, the approved guidance returned for this fault is ${visibleFact(documentFact, 320)}. ` +
       "No matching previous corrective-work detail was returned.";
   } else {
     answer.directAnswer =
@@ -355,27 +438,33 @@ function buildEquipmentFallbackAnswer(
   }
 
   const summaryFacts = [
-    workFact
-      ? { label: "Previous work", value: readableEquipmentDecisionFact(workFact) }
+    workFacts[0]
+      ? { label: "Previous work", value: visibleFact(workFacts[0]) }
       : null,
-    documentFact
-      ? { label: "Approved guidance", value: readableEquipmentDecisionFact(documentFact) }
+    workFacts[1]
+      ? { label: "Repeat history", value: visibleFact(workFacts[1]) }
       : null,
-    calibrationFact
-      ? { label: "Instrument evidence", value: readableEquipmentDecisionFact(calibrationFact) }
+    documentFacts[0]
+      ? { label: "Approved guidance", value: visibleFact(documentFacts[0]) }
       : null,
     spareFact
-      ? { label: "Relevant spare", value: readableEquipmentDecisionFact(spareFact) }
-      : null,
+      ? { label: "Relevant spare", value: visibleFact(spareFact) }
+      : calibrationFact
+        ? { label: "Instrument evidence", value: visibleFact(calibrationFact) }
+        : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item));
   answer.decisionSummary = [
     { label: "Equipment", value: label },
     ...summaryFacts,
   ].slice(0, 5);
 
-  const visibleFacts = [workFact, documentFact, calibrationFact, spareFact]
-    .filter((fact): fact is string => Boolean(fact));
-  answer.findings = visibleFacts.map((fact, index) => {
+  const visibleFacts = [
+    ...workFacts,
+    ...documentFacts,
+    calibrationFact,
+    spareFact,
+  ].filter((fact): fact is string => Boolean(fact));
+  answer.findings = visibleFacts.slice(0, 6).map((fact, index) => {
     const category = equipmentFactCategory(fact);
     return {
       category,
@@ -386,7 +475,7 @@ function buildEquipmentFallbackAnswer(
           : category === "document"
             ? "Approved source evidence"
             : "Supporting equipment evidence",
-      detail: readableEquipmentDecisionFact(fact),
+      detail: visibleFact(fact),
     };
   });
   answer.evidence = [
@@ -403,7 +492,7 @@ function buildEquipmentFallbackAnswer(
     ...(!workFact ? ["No matching previous corrective-work detail was returned."] : []),
     ...(!documentFact ? ["No verified manual, SOP or drawing section was returned."] : []),
   ];
-  answer.confidence = workFact && documentFact ? 84 : workFact || documentFact ? 68 : 42;
+  answer.confidence = workFact && documentFact ? 86 : workFact || documentFact ? 70 : 42;
   answer.sources = packSources(pack, packData);
 
   return answer;
@@ -416,6 +505,8 @@ async function writeFallbackTelemetry({
   interaction,
   answer,
   fallbackEvidenceMs,
+  fallbackTools,
+  fallbackRounds,
 }: {
   supabase: SupabaseClient;
   userId: string;
@@ -423,11 +514,19 @@ async function writeFallbackTelemetry({
   interaction: JsonRecord | null;
   answer: JsonRecord;
   fallbackEvidenceMs: number;
+  fallbackTools: string[];
+  fallbackRounds: number;
 }): Promise<void> {
   const createdAt =
     typeof interaction?.created_at === "string"
       ? Date.parse(interaction.created_at)
       : Number.NaN;
+  const previousToolCount =
+    typeof interaction?.tool_count === "number" ? interaction.tool_count : 0;
+  const previousToolRounds =
+    typeof interaction?.tool_round_count === "number"
+      ? interaction.tool_round_count
+      : 0;
   await updateAskVortaInteraction(supabase, responseId, userId, {
     route_key: "equipment",
     routing_mode: "fallback",
@@ -439,14 +538,24 @@ async function writeFallbackTelemetry({
       fallbackEvidenceMs,
     answer_ms:
       typeof interaction?.answer_ms === "number" ? interaction.answer_ms : 0,
-    tool_count: 1,
-    tool_round_count: 1,
+    tool_count: previousToolCount + fallbackTools.length,
+    tool_round_count: previousToolRounds + fallbackRounds,
     failure_stage: "answer",
     duration_ms: Number.isFinite(createdAt) ? Date.now() - createdAt : 0,
     status: "fallback",
     completed_at: new Date().toISOString(),
-    tools_used: ["get_equipment_decision_pack"],
-    sources: textValues(answer.sources),
+    tools_used: [
+      ...new Set([
+        ...textValues(interaction?.tools_used),
+        ...fallbackTools,
+      ]),
+    ],
+    sources: [
+      ...new Set([
+        ...textValues(interaction?.sources),
+        ...textValues(answer.sources),
+      ]),
+    ],
     confidence:
       typeof answer.confidence === "number" ? Math.round(answer.confidence) : 0,
     missing_data_count: textValues(answer.missingData).length,
@@ -481,7 +590,9 @@ export default async function equipmentFallbackHandler(
 
   const { data: interactionData } = await supabase
     .from("ask_vorta_interactions")
-    .select("route_key,created_at,planner_ms,evidence_ms,answer_ms,status")
+    .select(
+      "route_key,created_at,planner_ms,evidence_ms,answer_ms,status,tool_count,tool_round_count,tools_used,sources",
+    )
     .eq("id", responseId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -502,7 +613,7 @@ export default async function equipmentFallbackHandler(
     supabase,
     request,
   );
-  const resolution = resolveEquipment(request.question, records(riskResult.data));
+  const resolution = resolveEquipment(request, records(riskResult.data));
 
   if (!resolution.selected) {
     if (resolution.alternatives.length === 0) return primaryResponse;
@@ -514,6 +625,8 @@ export default async function equipmentFallbackHandler(
       interaction,
       answer: clarification,
       fallbackEvidenceMs: Date.now() - fallbackEvidenceStartedAt,
+      fallbackTools: ["get_equipment_risk"],
+      fallbackRounds: 1,
     });
     return jsonResponse(clarification);
   }
@@ -553,6 +666,8 @@ export default async function equipmentFallbackHandler(
     interaction,
     answer,
     fallbackEvidenceMs: Date.now() - fallbackEvidenceStartedAt,
+    fallbackTools: ["get_equipment_risk", "get_equipment_decision_pack"],
+    fallbackRounds: 2,
   });
   return jsonResponse(answer);
 }
