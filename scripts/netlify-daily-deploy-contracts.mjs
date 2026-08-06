@@ -23,13 +23,21 @@ for (const removedPath of [
   ".github/workflows/netlify-daily-release.yml",
   ".github/workflows/emergency-vor-049-release-20260806.yml",
   "scripts/netlify-ignore-build.mjs",
-  "ops/netlify-release.json",
   "docs/netlify-daily-release.md",
 ]) {
   assert.equal(
     existsSync(removedPath),
     false,
     `The obsolete VOR-057 deployment gate must remain removed: ${removedPath}`,
+  );
+}
+
+if (existsSync("ops/netlify-release.json")) {
+  const bootstrapMarker = JSON.parse(read("ops/netlify-release.json"));
+  assert.equal(
+    bootstrapMarker.temporaryBootstrap,
+    true,
+    "A release marker may exist only as the temporary VOR-057 recovery bootstrap",
   );
 }
 
