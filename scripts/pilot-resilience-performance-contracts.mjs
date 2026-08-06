@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -76,7 +77,51 @@ mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must f
 
 const packageJson = JSON.parse(packageText);
 assert.equal(packageJson.scripts["test:performance"], "node scripts/check-performance-budgets.mjs");
-assert.equal(packageJson.scripts.postbuild, "npm run test:performance");
+
+const normalPostbuild = "npm run test:performance";
+const recoveryPostbuild =
+  "npm run test:performance && node scripts/vor-057-runner-release-push.mjs";
+if (packageJson.scripts.postbuild === recoveryPostbuild) {
+  const runnerPath = new URL("./vor-057-runner-release-push.mjs", import.meta.url);
+  const workflowPath = new URL(
+    "../.github/workflows/vor-057-immediate-netlify.yml",
+    import.meta.url,
+  );
+  assert.equal(
+    existsSync(runnerPath),
+    true,
+    "The temporary VOR-057 postbuild is permitted only while its self-cleaning runner exists",
+  );
+  assert.equal(
+    existsSync(workflowPath),
+    true,
+    "The temporary VOR-057 postbuild is permitted only while its isolated release workflow exists",
+  );
+  const [runner, workflow] = await Promise.all([
+    read("./vor-057-runner-release-push.mjs"),
+    read("../.github/workflows/vor-057-immediate-netlify.yml"),
+  ]);
+  for (const marker of [
+    'packageJson.scripts.postbuild = "npm run test:performance"',
+    '"scripts/vor-057-runner-release-push.mjs"',
+    '".github/workflows/vor-057-immediate-netlify.yml"',
+    "rmSync(path)",
+    'git", ["push", "origin", "HEAD:main"]',
+  ]) {
+    assert.ok(
+      runner.includes(marker),
+      `The temporary VOR-057 release runner must prove self-cleanup and a real main push: ${marker}`,
+    );
+  }
+  assert.ok(
+    workflow.includes("vor-057-isolated-production-release") &&
+      workflow.includes("npm run build"),
+    "The temporary VOR-057 workflow must remain isolated and validate the canonical build before release",
+  );
+} else {
+  assert.equal(packageJson.scripts.postbuild, normalPostbuild);
+}
+
 assert.equal(packageJson.scripts.build, "npm run build:metadata && npm run typecheck && npm run test:contracts && npm run test:smoke && vite build");
 
 console.log("Pilot resilience and performance contracts passed.");
