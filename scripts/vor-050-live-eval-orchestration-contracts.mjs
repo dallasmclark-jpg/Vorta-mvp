@@ -30,13 +30,19 @@ const sitePriorityScenarios = JSON.parse(
     "utf8",
   ),
 );
+const operationalScenarios = JSON.parse(
+  readFileSync(
+    "tests/evals/vor-059-deterministic-operational-answers.json",
+    "utf8",
+  ),
+);
 const equipmentScenarios = JSON.parse(
   readFileSync("tests/evals/vor-033-demo-golden.json", "utf8"),
 );
 
 assert.doesNotMatch(
   vor048Workflow,
-  /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49|58)/,
+  /deploy-preview-|Wait for exact Netlify preview commit|VORTA_EVAL_BASE_URL|eval:ask-vorta:vor0(?:48|49|58|59)/,
   "VOR-048 pull-request validation must not consume a deployment or authenticated evaluation capacity",
 );
 assert.doesNotMatch(
@@ -48,8 +54,9 @@ assert.ok(
   prDecisionWorkflow.includes(
     "VORTA_EVAL_BASE_URL: http://127.0.0.1:8788",
   ) &&
-    prDecisionWorkflow.includes("npm run eval:ask-vorta:vor058"),
-  "The central pull-request owner may run only the bounded VOR-058 suite against exact local branch source",
+    prDecisionWorkflow.includes("npm run eval:ask-vorta:vor058") &&
+    prDecisionWorkflow.includes("npm run eval:ask-vorta:vor059"),
+  "The central pull-request owner must run the bounded VOR-058 and VOR-059 suites against exact local branch source",
 );
 assert.ok(
   vor048Workflow.includes("group: vor-048-") &&
@@ -135,6 +142,24 @@ assert.ok(
       Number(scenario.maxDurationMs) <= 18_000,
   ),
   "VOR-058 must use one snapshot per question and retain the production p95 ceiling",
+);
+assert.equal(
+  operationalScenarios.length,
+  6,
+  "The exact-source pull-request gate must retain six model-independent operational scenarios",
+);
+assert.ok(
+  operationalScenarios.every(
+    (scenario) =>
+      Number(scenario.maxToolCount) === 1 &&
+      Number(scenario.maxDurationMs) <= 18_000,
+  ),
+  "VOR-059 must use one authorised tool per question and retain the production p95 ceiling",
+);
+assert.equal(
+  sitePriorityScenarios.length + operationalScenarios.length,
+  12,
+  "The exact-source account window must remain bounded to 12 total requests",
 );
 assert.equal(
   equipmentScenarios.length,
