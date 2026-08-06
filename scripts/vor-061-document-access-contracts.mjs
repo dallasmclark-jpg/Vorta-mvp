@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const resolve = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
 const read = (path) => readFileSync(resolve(path), "utf8");
+const occurrences = (source, value) => source.split(value).length - 1;
 
 const migration = read(
   "supabase/migrations/20260806113000_vor_061_fail_closed_document_access.sql",
@@ -11,105 +12,127 @@ const migration = read(
 const reader = read("src/screens/Equipment/equipmentDocumentCoverage.ts");
 const browser = read("tests/browser/vor-021-document-coverage.spec.ts");
 
-assert.ok(
-  (migration.match(/security invoker/g) ?? []).length === 3,
+assert.equal(
+  occurrences(migration, "security invoker"),
+  3,
   "The list, detail and bounded access-state readers must all remain security invoker.",
 );
 assert.ok(
-  (migration.match(/document\.is_current is true/g) ?? []).length >= 2,
+  occurrences(migration, "document.is_current is true") >= 2,
   "Both content readers must exclude non-current documents.",
 );
 assert.ok(
-  (migration.match(/lower\(coalesce\(document\.approval_status, ''\)\) in \('approved', 'current'\)/g) ?? [])
-    .length >= 2,
+  occurrences(
+    migration,
+    "lower(coalesce(document.approval_status, '')) in ('approved', 'current')",
+  ) >= 2,
   "Both content readers must require approved/current evidence.",
 );
 assert.ok(
-  (migration.match(/lower\(coalesce\(document\.status, ''\)\) !~ '\(obsolete\|superseded\|withdrawn\|retired\)'/g) ?? [])
-    .length >= 2,
+  occurrences(
+    migration,
+    "lower(coalesce(document.status, '')) !~ '(obsolete|superseded|withdrawn|retired)'",
+  ) >= 2,
   "Both content readers must exclude obsolete and superseded states.",
 );
 
-assert.match(
-  migration,
-  /create or replace function public\.vorta_get_equipment_document_access_state\(/,
-  "A bounded access-state reader must explain authorised stale or unapproved documents.",
+const accessFunctionStart = migration.indexOf(
+  "create or replace function public.vorta_get_equipment_document_access_state(",
 );
-assert.match(
-  migration,
-  /returns table\(\s*access_state text,\s*explanation text\s*\)/,
+const accessFunctionEnd = migration.indexOf(
+  "revoke all on function public.vorta_get_equipment_documents(uuid)",
+  accessFunctionStart,
+);
+assert.ok(
+  accessFunctionStart >= 0 && accessFunctionEnd > accessFunctionStart,
+  "The bounded access-state function must exist before the execution grants.",
+);
+const accessFunction = migration.slice(accessFunctionStart, accessFunctionEnd);
+
+assert.ok(
+  accessFunction.includes(
+    "returns table(\n  access_state text,\n  explanation text\n)",
+  ),
   "The access-state RPC must return only state and explanation.",
 );
-assert.match(migration, /'available_current'/);
-assert.match(migration, /'superseded_or_obsolete'/);
-assert.match(migration, /'not_approved'/);
-assert.match(
-  migration,
-  /This document is superseded or obsolete and cannot be used as current Ask Vorta evidence\./,
+assert.ok(accessFunction.includes("'available_current'"));
+assert.ok(accessFunction.includes("'superseded_or_obsolete'"));
+assert.ok(accessFunction.includes("'not_approved'"));
+assert.ok(
+  accessFunction.includes(
+    "This document is superseded or obsolete and cannot be used as current Ask Vorta evidence.",
+  ),
 );
-assert.match(
-  migration,
-  /This document is not approved for current use and cannot be used as Ask Vorta evidence\./,
+assert.ok(
+  accessFunction.includes(
+    "This document is not approved for current use and cannot be used as Ask Vorta evidence.",
+  ),
 );
+assert.ok(!accessFunction.includes("returns table(\n  document_id"));
+assert.ok(!accessFunction.includes("chunk_text"));
+assert.ok(!accessFunction.includes("source_url"));
+assert.ok(!accessFunction.includes("revision text"));
 
-const accessReturnBlock = migration.match(
-  /create or replace function public\.vorta_get_equipment_document_access_state[\s\S]*?returns table\(([\s\S]*?)\)\s*language sql/,
-)?.[1] ?? "";
-assert.equal(
-  accessReturnBlock.replace(/\s+/g, " ").trim(),
-  "access_state text, explanation text",
-  "The access-state contract must not return document identity, content, source or revision metadata.",
+assert.ok(
+  migration.includes(
+    "revoke all on function public.vorta_get_equipment_document_access_state(uuid, uuid)\n  from public, anon;",
+  ),
 );
+assert.ok(
+  migration.includes(
+    "grant execute on function public.vorta_get_equipment_document_access_state(uuid, uuid)\n  to authenticated, service_role;",
+  ),
+);
+assert.ok(!migration.toLowerCase().includes("security definer"));
+assert.ok(!migration.toLowerCase().includes("insert into public."));
+assert.ok(!migration.toLowerCase().includes("update public."));
+assert.ok(!migration.toLowerCase().includes("delete from public."));
 
-assert.match(
-  migration,
-  /revoke all on function public\.vorta_get_equipment_document_access_state\(uuid, uuid\)[\s\S]*from public, anon/,
-);
-assert.match(
-  migration,
-  /grant execute on function public\.vorta_get_equipment_document_access_state\(uuid, uuid\)[\s\S]*to authenticated, service_role/,
-);
-assert.doesNotMatch(migration, /security definer/i);
-assert.doesNotMatch(migration, /insert\s+into\s+public\./i);
-assert.doesNotMatch(migration, /update\s+public\./i);
-assert.doesNotMatch(migration, /delete\s+from\s+public\./i);
-
-assert.match(reader, /export type LiveDocumentAccessState/);
-assert.match(reader, /vorta_get_equipment_document_access_state/);
-assert.match(reader, /superseded_or_obsolete/);
-assert.match(reader, /not_approved/);
-assert.match(
-  reader,
-  /This document is not available for the authorised equipment and site\./,
+assert.ok(reader.includes("export type LiveDocumentAccessState"));
+assert.ok(reader.includes("vorta_get_equipment_document_access_state"));
+assert.ok(reader.includes("superseded_or_obsolete"));
+assert.ok(reader.includes("not_approved"));
+assert.ok(
+  reader.includes(
+    "This document is not available for the authorised equipment and site.",
+  ),
   "Unknown, cross-site or role-blocked documents must retain the generic non-disclosing message.",
 );
-assert.match(
-  reader,
-  /This document is superseded or obsolete and cannot be used as current Ask Vorta evidence\./,
+assert.ok(
+  reader.includes(
+    "This document is superseded or obsolete and cannot be used as current Ask Vorta evidence.",
+  ),
 );
-assert.match(
-  reader,
-  /This document is not approved for current use and cannot be used as Ask Vorta evidence\./,
+assert.ok(
+  reader.includes(
+    "This document is not approved for current use and cannot be used as Ask Vorta evidence.",
+  ),
 );
 
-const missingRowIndex = reader.indexOf("if (!row)");
-const accessStateCallIndex = reader.indexOf(
-  "loadBlockedDocumentExplanation",
-  missingRowIndex,
+const detailEmptyBranch = reader.indexOf(
+  "const blockedExplanation = await loadBlockedDocumentExplanation(",
 );
-assert.ok(missingRowIndex >= 0 && accessStateCallIndex > missingRowIndex,
-  "The bounded access-state query must run only after the content RPC returns no row.");
+const detailRowCheck = reader.lastIndexOf("if (!row)", detailEmptyBranch);
+assert.ok(
+  detailRowCheck >= 0 && detailEmptyBranch > detailRowCheck,
+  "The bounded access-state query must run only after the content RPC returns no row.",
+);
 
-assert.match(browser, /56b3db95-78f2-4b62-80fa-7daf97767563/);
-assert.match(browser, /037752d4-6e63-41ec-bee9-2f98489be484/);
-assert.match(browser, /Full-text indexed/);
-assert.match(browser, /Summary-only coverage/);
-assert.match(browser, /unknown or role-inaccessible document does not disclose access state/);
-assert.match(
-  browser,
-  /This document is not available for the authorised equipment and site\./,
+assert.ok(browser.includes("56b3db95-78f2-4b62-80fa-7daf97767563"));
+assert.ok(browser.includes("037752d4-6e63-41ec-bee9-2f98489be484"));
+assert.ok(browser.includes("Full-text indexed"));
+assert.ok(browser.includes("Summary-only coverage"));
+assert.ok(
+  browser.includes(
+    "unknown or role-inaccessible document does not disclose access state",
+  ),
 );
-assert.match(browser, /superseded\|obsolete\|not approved/);
-assert.match(browser, /toHaveCount\(0\)/);
+assert.ok(
+  browser.includes(
+    "This document is not available for the authorised equipment and site.",
+  ),
+);
+assert.ok(browser.includes("superseded|obsolete|not approved"));
+assert.ok(browser.includes("toHaveCount(0)"));
 
 console.log("VOR-061 fail-closed document access contracts passed.");
