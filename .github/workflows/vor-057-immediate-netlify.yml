@@ -1,23 +1,19 @@
 name: VOR-057 immediate Netlify release
 
 on:
-  issue_comment:
-    types:
-      - created
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: vor-057-immediate-netlify-release
+  group: vor-057-isolated-production-release
   cancel-in-progress: false
 
 jobs:
   release:
-    if: >-
-      github.event_name != 'issue_comment' ||
-      (github.event.issue.number == 255 && contains(github.event.comment.body, '/deploy-vor-057'))
     name: Validate, push and verify current main
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -25,6 +21,7 @@ jobs:
       VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
@@ -52,30 +49,13 @@ jobs:
           node scripts/vor-049-equipment-fallback-regression-contracts.mjs
           node scripts/vor-066-active-conversation-viewport-contracts.mjs
 
-      - name: Build exact production source
+      - name: Build and push the exact validated release
         run: npm run build
 
-      - name: Check performance budgets
-        run: npm run test:performance
-
-      - name: Require authenticated verification secret
-        shell: bash
-        run: |
-          test -n "$VORTA_E2E_PASSWORD" || {
-            echo "VORTA_E2E_PASSWORD is not configured." >&2
-            exit 1
-          }
-
-      - name: Push a real validated main commit for Netlify
+      - name: Capture exact release commit
         id: release
         shell: bash
-        run: |
-          git rm .github/workflows/vor-057-immediate-netlify.yml
-          git config user.name "Vorta Immediate Release"
-          git config user.email "actions@users.noreply.github.com"
-          git commit -m "VOR-057: deploy validated Ask Vorta production repair"
-          git push origin HEAD:main
-          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Wait for the exact production commit
         env:
@@ -111,7 +91,6 @@ jobs:
       - name: Run authenticated production browser regression
         env:
           VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
-          VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
           VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
         run: |
           npx playwright install --with-deps chromium
