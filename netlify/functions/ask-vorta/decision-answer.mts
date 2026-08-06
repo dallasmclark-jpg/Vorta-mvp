@@ -61,6 +61,188 @@ export function deterministicOperationalAnswer(
     evidenceGeneratedAt: generatedAt,
   };
 
+  if (
+    intent === "site_priorities" ||
+    intent === "site_threat_prioritization"
+  ) {
+    const snapshot = outcomeData(outcomes, "get_site_operational_snapshot");
+    const riskData = operationalDomainData(snapshot, "siteRisk");
+    const rankedData = operationalDomainData(snapshot, "rankedActions");
+    const rankedActions = records(rankedData)
+      .sort(
+        (first, second) =>
+          numberValue(first.action_rank ?? first.actionRank) -
+          numberValue(second.action_rank ?? second.actionRank),
+      )
+      .slice(0, 3);
+    const riskScore = firstDecisionNumber(riskData, ["riskScore"]) ?? 0;
+    const highestArea =
+      firstDecisionText(riskData, ["highestArea"]) ||
+      "highest-risk area not returned";
+
+    const actionDetails = rankedActions.map((item, index) => {
+      const workOrder = firstDecisionText(item, [
+        "work_order_number",
+        "workOrderNumber",
+      ]);
+      const equipmentCode = firstDecisionText(item, [
+        "equipment_code",
+        "equipmentCode",
+      ]);
+      const actionTitle = firstDecisionText(item, [
+        "action_title",
+        "actionTitle",
+      ]);
+      const action = [workOrder, equipmentCode, actionTitle]
+        .filter(Boolean)
+        .join(" · ");
+      const currentRisk = firstDecisionNumber(item, [
+        "current_risk_score",
+        "currentRiskScore",
+      ]);
+      const projectedRisk = firstDecisionNumber(item, [
+        "projected_risk_score",
+        "projectedRiskScore",
+      ]);
+      const reduction = firstDecisionNumber(item, [
+        "calculated_risk_reduction",
+        "calculatedRiskReduction",
+      ]);
+      const operationalValue = firstDecisionNumber(item, [
+        "operational_value_score",
+        "operationalValueScore",
+      ]);
+      const feasibility = firstDecisionText(item, [
+        "feasibility_state",
+        "feasibilityState",
+      ]);
+      const owner =
+        firstDecisionText(item, ["owner"]) ||
+        "Maintenance Manager / Planner";
+      const verification =
+        firstDecisionText(item, ["verification"]) ||
+        "Open the operational dashboard and confirm the owner, readiness, dependencies and projected risk change before the authorised SAP user releases or sequences work.";
+      const hardDependencies = textValues(
+        item.hard_dependencies ?? item.hardDependencies,
+      );
+      const advisoryDependencies = textValues(
+        item.advisory_dependencies ?? item.advisoryDependencies,
+      );
+      const impact =
+        currentRisk !== null &&
+        projectedRisk !== null &&
+        reduction !== null
+          ? `risk ${currentRisk.toFixed(1)} → ${projectedRisk.toFixed(1)} (${reduction.toFixed(1)} calculated reduction)`
+          : "exact projected risk change not returned";
+      const dependencyText = hardDependencies.length
+        ? `blockers ${hardDependencies.join(", ")}`
+        : advisoryDependencies.length
+          ? `confirm ${advisoryDependencies.join(", ")}`
+          : "no recorded blocker returned";
+      return {
+        rank: index + 1,
+        action:
+          action ||
+          `Ranked maintenance intervention ${index + 1}`,
+        impact,
+        operationalValue,
+        feasibility: feasibility
+          ? feasibility.replace(/_/g, " ")
+          : "not verified",
+        owner,
+        verification,
+        dependencyText,
+      };
+    });
+
+    const topAction = actionDetails[0];
+    const unavailableDomains =
+      snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+        ? Object.entries(
+            ((snapshot as JsonRecord).domains &&
+            typeof (snapshot as JsonRecord).domains === "object" &&
+            !Array.isArray((snapshot as JsonRecord).domains)
+              ? (snapshot as JsonRecord).domains
+              : {}) as JsonRecord,
+          )
+            .filter(
+              ([, value]) =>
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value) &&
+                (value as JsonRecord).status === "unavailable",
+            )
+            .map(([name]) => name)
+        : [];
+
+    return {
+      ...base,
+      directAnswer: topAction
+        ? `The first current maintenance priority is ${topAction.action}; it is the highest-value recorded intervention and ${topAction.impact}.`
+        : `The operational snapshot returned site risk ${riskScore}, but no ranked executable maintenance intervention was available.`,
+      decisionSummary: topAction
+        ? [
+            {
+              label: "Site context",
+              value: `Site risk ${riskScore}; highest-risk area ${highestArea}.`,
+            },
+            ...actionDetails.map((item) => ({
+              label: `#${item.rank} priority`,
+              value: `${item.action}; ${item.impact}; feasibility ${item.feasibility}; owner ${item.owner}.`,
+            })),
+            {
+              label: "First verification",
+              value: topAction.verification,
+            },
+          ].slice(0, 5)
+        : [
+            {
+              label: "Site context",
+              value: `Site risk ${riskScore}; highest-risk area ${highestArea}.`,
+            },
+            {
+              label: "Ranked action",
+              value: "No executable ranked action was returned.",
+            },
+          ],
+      evidence: actionDetails.map(
+        (item) =>
+          `#${item.rank} ${item.action}: ${item.impact}; ${item.dependencyText}; feasibility ${item.feasibility}; owner ${item.owner}.`,
+      ),
+      findings: actionDetails.map((item) => ({
+        category: "risk",
+        severity: item.rank === 1 ? "high" : "medium",
+        title: `#${item.rank} current maintenance priority`,
+        detail: `${item.action}. ${item.impact}; ${item.dependencyText}; feasibility ${item.feasibility}; owner ${item.owner}.`,
+      })),
+      recommendedActions: actionDetails.map((item) => item.action),
+      actionPlan: topAction
+        ? [{
+            priority: "now",
+            action: topAction.action,
+            owner: topAction.owner,
+            expectedImpact: topAction.impact,
+            verification: topAction.verification,
+          }]
+        : [],
+      missingData: [
+        ...(unavailableDomains.length
+          ? [`Unavailable operational domains: ${unavailableDomains.join(", ")}.`]
+          : []),
+        ...(topAction
+          ? []
+          : ["No executable ranked operational action was returned."]),
+      ],
+      confidence: topAction
+        ? unavailableDomains.length
+          ? 72
+          : actionDetails.length >= 3
+            ? 86
+            : 80
+        : 48,
+    };
+  }
+
   if (intent === "maintenance_plan_cover_feasibility") {
     const planData = outcomeData(outcomes, "get_site_maintenance_plan");
     const coverData = outcomeData(outcomes, "get_shift_cover");
