@@ -28,19 +28,22 @@ const operationalValueManifestMigration = read(
 const askVortaActionManifestMigration = read(
   "supabase/migrations/20260803175800_vor_047_register_action_rpcs.sql",
 );
+const documentAccessManifestMigration = read(
+  "supabase/migrations/20260806113100_vor_061_register_document_access_state_rpc.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260803175800");
-assert.equal(manifest.migrationName, "vor_047_register_action_rpcs");
+assert.equal(manifest.migrationVersion, "20260806113100");
+assert.equal(manifest.migrationName, "vor_061_register_document_access_state_rpc");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 74,
-  reviewedRead: 53,
+  authenticatedCallable: 75,
+  reviewedRead: 54,
   reviewedMutation: 21,
   securityDefiner: 71,
-  securityInvoker: 3,
+  securityInvoker: 4,
   anonymousCallable: 0,
   manifestDrift: 0,
 });
@@ -162,11 +165,14 @@ for (const expected of [
   );
 }
 
-const invokerRpcs = [
+const legacyInvokerRpcs = [
   "vorta_get_equipment_history(uuid)",
   "vorta_get_equipment_documents(uuid)",
   "vorta_get_equipment_document(uuid,uuid)",
 ];
+const documentAccessRpc =
+  "vorta_get_equipment_document_access_state(uuid,uuid)";
+const invokerRpcs = [...legacyInvokerRpcs, documentAccessRpc];
 const healthEvidenceRpcs = [
   "vorta_get_system_health_summary()",
   "vorta_get_system_health_incidents(integer)",
@@ -188,10 +194,30 @@ assert.deepEqual(
 );
 assert.deepEqual(manifest.revokedPublicHelpers, revokedHelpers);
 
-for (const rpcIdentity of invokerRpcs) {
+for (const rpcIdentity of legacyInvokerRpcs) {
   assert.ok(
     baseMigration.includes(`'${rpcIdentity}'`),
     `Missing invoker RPC manifest row: ${rpcIdentity}`,
+  );
+}
+assert.ok(
+  documentAccessManifestMigration.includes(`'${documentAccessRpc}'`) &&
+    documentAccessManifestMigration.includes("'read'") &&
+    documentAccessManifestMigration.includes("'invoker'") &&
+    documentAccessManifestMigration.includes("false"),
+  "The bounded document access-state RPC is missing from the reviewed manifest migration",
+);
+for (const expected of [
+  "v_drift <> 0",
+  "v_read <> 54",
+  "v_mutation <> 21",
+  "v_definer <> 71",
+  "v_invoker <> 4",
+  "v_anon <> 0",
+]) {
+  assert.ok(
+    documentAccessManifestMigration.includes(expected),
+    `Missing VOR-061 RPC manifest invariant: ${expected}`,
   );
 }
 for (const rpcIdentity of healthEvidenceRpcs) {
@@ -260,8 +286,9 @@ for (const expected of [
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
   "21",
-  "53",
+  "54",
   "71",
+  "4",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),
