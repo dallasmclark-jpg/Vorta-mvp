@@ -1,4 +1,5 @@
 import type { Context } from "@netlify/functions";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import coreHandler from "./runtime.mjs";
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import type {
@@ -14,22 +15,28 @@ import {
   retainEquipmentDecisionFacts,
 } from "./equipment-evidence.mjs";
 import { jsonResponse } from "./request-context.mjs";
+import { updateAskVortaInteraction } from "./telemetry.mjs";
 import { executeTool } from "./tool-execution.mjs";
 import {
   decisionField,
   records,
   textValues,
 } from "./utilities.mjs";
-import { updateAskVortaInteraction } from "./telemetry.mjs";
 
+// Permanent production regression: "vial fill sensor fault" must resolve to
+// equipment evidence and must never collapse into the generic site-risk fallback.
 const EQUIPMENT_FAULT_PATTERN =
   /\b(?:fault|sensor|probe|transmitter|alarm|trip|reject|filler|fill|vial|instrument|breakdown|failed|failure|diagnos|cause|problem)\b/i;
 
-const EQUIPMENT_QUERY_STOP_WORDS = new Set([
+const QUERY_STOP_WORDS = new Set([
   "a",
   "an",
   "and",
   "at",
+  "error",
+  "failed",
+  "failure",
+  "fault",
   "for",
   "from",
   "in",
@@ -38,16 +45,10 @@ const EQUIPMENT_QUERY_STOP_WORDS = new Set([
   "machine",
   "on",
   "problem",
+  "sensor",
   "the",
   "this",
   "with",
-  "fault",
-  "failed",
-  "failure",
-  "sensor",
-  "probe",
-  "alarm",
-  "error",
 ]);
 
 function normaliseToken(value: string): string {
@@ -60,36 +61,46 @@ function normaliseToken(value: string): string {
   return token;
 }
 
-function queryTokens(question: string): string[] {
+function meaningfulTokens(question: string): string[] {
   return [
     ...new Set(
       (question.toLowerCase().match(/[a-z0-9-]+/g) ?? [])
-        .filter((token) => !EQUIPMENT_QUERY_STOP_WORDS.has(token))
+        .filter((token) => !QUERY_STOP_WORDS.has(token))
         .map(normaliseToken)
         .filter((token) => token.length >= 2),
     ),
   ];
 }
 
-function assetIdentity(row: JsonRecord): string {
+function equipmentLabel(row: JsonRecord): string {
+  const name = decisionField(row, ["equipment_name", "equipmentName", "name"]);
+  const code = decisionField(row, ["equipment_code", "equipmentCode", "code"]);
+  return [name, code].filter(Boolean).join(" · ") || "the matched equipment";
+}
+
+function equipmentId(row: JsonRecord): string {
+  return decisionField(row, ["equipment_id", "equipmentId", "id"]);
+}
+
+function equipmentSearchText(row: JsonRecord): string {
   return [
     decisionField(row, ["equipment_name", "equipmentName", "name"]),
     decisionField(row, ["equipment_code", "equipmentCode", "code"]),
     decisionField(row, ["area"]),
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(" ")
+    .toLowerCase();
 }
 
-function scoreEquipmentMatch(question: string, row: JsonRecord): number {
-  const candidate = assetIdentity(row).toLowerCase();
+function equipmentMatchScore(question: string, row: JsonRecord): number {
+  const candidate = equipmentSearchText(row);
   if (!candidate) return 0;
 
-  const tokens = queryTokens(question);
+  const tokens = meaningfulTokens(question);
   const candidateTokens = new Set(
     (candidate.match(/[a-z0-9-]+/g) ?? []).map(normaliseToken),
   );
-  const meaningfulPhrase = tokens.join(" ");
   let score = 0;
 
   for (const token of tokens) {
@@ -97,17 +108,16 @@ function scoreEquipmentMatch(question: string, row: JsonRecord): number {
     else if (candidate.includes(token)) score += 45;
   }
 
-  if (meaningfulPhrase.length >= 4 && candidate.includes(meaningfulPhrase)) {
-    score += 260;
-  }
+  const phrase = tokens.join(" ");
+  if (phrase.length >= 4 && candidate.includes(phrase)) score += 260;
 
+  const loweredQuestion = question.toLowerCase();
   const code = decisionField(row, ["equipment_code", "equipmentCode", "code"])
     .toLowerCase();
-  if (code && question.toLowerCase().includes(code)) score += 800;
-
   const name = decisionField(row, ["equipment_name", "equipmentName", "name"])
     .toLowerCase();
-  if (name && question.toLowerCase().includes(name)) score += 900;
+  if (code && loweredQuestion.includes(code)) score += 800;
+  if (name && loweredQuestion.includes(name)) score += 900;
 
   return score;
 }
@@ -122,7 +132,7 @@ function resolveEquipment(
   equipmentRows: JsonRecord[],
 ): EquipmentResolution {
   const ranked = equipmentRows
-    .map((row) => ({ row, score: scoreEquipmentMatch(question, row) }))
+    .map((row) => ({ row, score: equipmentMatchScore(question, row) }))
     .filter((item) => item.score > 0)
     .sort((first, second) => second.score - first.score);
 
@@ -131,62 +141,22 @@ function resolveEquipment(
   }
 
   const top = ranked[0];
-  const alternatives = ranked
+  const closeAlternatives = ranked
     .slice(1, 4)
     .filter((item) => item.score >= Math.max(80, top.score * 0.82))
     .map((item) => item.row);
 
-  if (alternatives.length > 0 && top.score < 500) {
+  if (closeAlternatives.length > 0 && top.score < 500) {
     return {
       selected: null,
-      alternatives: [top.row, ...alternatives],
+      alternatives: [top.row, ...closeAlternatives],
     };
   }
 
   return { selected: top.row, alternatives: [] };
 }
 
-function equipmentId(row: JsonRecord): string {
-  return decisionField(row, ["equipment_id", "equipmentId", "id"]);
-}
-
-function equipmentLabel(row: JsonRecord): string {
-  const name = decisionField(row, ["equipment_name", "equipmentName", "name"]);
-  const code = decisionField(row, ["equipment_code", "equipmentCode", "code"]);
-  return [name, code].filter(Boolean).join(" · ") || "the matched equipment";
-}
-
-function domainSources(packData: JsonRecord): string[] {
-  const domains =
-    packData.domains &&
-    typeof packData.domains === "object" &&
-    !Array.isArray(packData.domains)
-      ? (packData.domains as JsonRecord)
-      : {};
-
-  return [
-    ...new Set(
-      Object.values(domains)
-        .filter(
-          (value): value is JsonRecord =>
-            Boolean(value) && typeof value === "object" && !Array.isArray(value),
-        )
-        .map((value) =>
-          typeof value.source === "string" ? value.source.trim() : "",
-        )
-        .filter(Boolean),
-    ),
-  ];
-}
-
-function firstFact(
-  facts: string[],
-  pattern: RegExp,
-): string | undefined {
-  return facts.find((fact) => pattern.test(fact));
-}
-
-function buildEvidenceLinks(row: JsonRecord): JsonRecord[] {
+function evidenceLinks(row: JsonRecord): JsonRecord[] {
   const id = equipmentId(row);
   if (!id) {
     return [
@@ -221,6 +191,33 @@ function buildEvidenceLinks(row: JsonRecord): JsonRecord[] {
       recordType: "spare",
     },
   ];
+}
+
+function packSources(pack: ToolResult, packData: JsonRecord): string[] {
+  const domains =
+    packData.domains &&
+    typeof packData.domains === "object" &&
+    !Array.isArray(packData.domains)
+      ? (packData.domains as JsonRecord)
+      : {};
+  return [
+    ...new Set([
+      pack.source,
+      ...Object.values(domains)
+        .filter(
+          (value): value is JsonRecord =>
+            Boolean(value) && typeof value === "object" && !Array.isArray(value),
+        )
+        .map((value) =>
+          typeof value.source === "string" ? value.source.trim() : "",
+        )
+        .filter(Boolean),
+    ]),
+  ];
+}
+
+function findFact(facts: string[], pattern: RegExp): string | undefined {
+  return facts.find((fact) => pattern.test(fact));
 }
 
 function clarificationAnswer(
@@ -265,7 +262,7 @@ function clarificationAnswer(
   };
 }
 
-function deterministicEquipmentAnswer(
+function buildEquipmentFallbackAnswer(
   responseId: string,
   originalQuestion: string,
   selected: JsonRecord,
@@ -293,6 +290,7 @@ function deterministicEquipmentAnswer(
     ["get_equipment_decision_pack", pack],
   ]);
   const answer: JsonRecord = {
+    responseId,
     directAnswer:
       "The equipment evidence could not be analysed by the conversational reasoning service.",
     decisionSummary: [
@@ -312,9 +310,8 @@ function deterministicEquipmentAnswer(
     confidence: 50,
     intentLabel: "equipment_fault_history",
     toolsUsed: ["get_equipment_decision_pack"],
-    evidenceLinks: buildEvidenceLinks(selected),
+    evidenceLinks: evidenceLinks(selected),
     evidenceGeneratedAt: new Date().toISOString(),
-    responseId,
   };
 
   retainEquipmentDecisionFacts(answer, questionPlan, toolOutcomes);
@@ -324,18 +321,20 @@ function deterministicEquipmentAnswer(
     decisionGoal,
     decisionFacts,
   );
-  const workFact =
-    firstFact(relevantFacts, /work evidence|work order|WO-/i) ??
-    firstFact(decisionFacts, /work evidence|work order|WO-/i);
-  const documentFact =
-    firstFact(relevantFacts, /priority document evidence|document evidence|manual|procedure|drawing/i) ??
-    firstFact(decisionFacts, /priority document evidence|document evidence|manual|procedure|drawing/i);
-  const calibrationFact =
-    firstFact(relevantFacts, /calibrat|reference instrument|measurement|reading/i) ??
-    firstFact(decisionFacts, /calibrat|reference instrument|measurement|reading/i);
-  const spareFact =
-    firstFact(relevantFacts, /priority spare evidence|spare evidence|component|part number|stock/i) ??
-    firstFact(decisionFacts, /priority spare evidence|spare evidence|component|part number|stock/i);
+  const allFacts = [...relevantFacts, ...decisionFacts];
+  const workFact = findFact(allFacts, /work evidence|work order|WO-/i);
+  const documentFact = findFact(
+    allFacts,
+    /priority document evidence|document evidence|manual|procedure|drawing/i,
+  );
+  const calibrationFact = findFact(
+    allFacts,
+    /calibrat|reference instrument|measurement|reading/i,
+  );
+  const spareFact = findFact(
+    allFacts,
+    /priority spare evidence|spare evidence|component|part number|stock/i,
+  );
   const label = equipmentLabel(selected);
 
   if (workFact && documentFact) {
@@ -376,17 +375,20 @@ function deterministicEquipmentAnswer(
 
   const visibleFacts = [workFact, documentFact, calibrationFact, spareFact]
     .filter((fact): fact is string => Boolean(fact));
-  answer.findings = visibleFacts.map((fact, index) => ({
-    category: equipmentFactCategory(fact),
-    severity: index === 0 ? "high" : "info",
-    title:
-      equipmentFactCategory(fact) === "work"
-        ? "Previous maintenance evidence"
-        : equipmentFactCategory(fact) === "document"
-          ? "Approved source evidence"
-          : "Supporting equipment evidence",
-    detail: readableEquipmentDecisionFact(fact),
-  }));
+  answer.findings = visibleFacts.map((fact, index) => {
+    const category = equipmentFactCategory(fact);
+    return {
+      category,
+      severity: index === 0 ? "high" : "info",
+      title:
+        category === "work"
+          ? "Previous maintenance evidence"
+          : category === "document"
+            ? "Approved source evidence"
+            : "Supporting equipment evidence",
+      detail: readableEquipmentDecisionFact(fact),
+    };
+  });
   answer.evidence = [
     ...new Set([...visibleFacts, ...decisionFacts]),
   ].slice(0, 16);
@@ -402,9 +404,7 @@ function deterministicEquipmentAnswer(
     ...(!documentFact ? ["No verified manual, SOP or drawing section was returned."] : []),
   ];
   answer.confidence = workFact && documentFact ? 84 : workFact || documentFact ? 68 : 42;
-  answer.sources = [
-    ...new Set([pack.source, ...domainSources(packData)]),
-  ];
+  answer.sources = packSources(pack, packData);
 
   return answer;
 }
@@ -417,11 +417,7 @@ async function writeFallbackTelemetry({
   answer,
   fallbackEvidenceMs,
 }: {
-  supabase: Awaited<
-    ReturnType<typeof authenticateAskVortaRequest>
-  > extends { ok: true; supabase: infer Client }
-    ? Client
-    : never;
+  supabase: SupabaseClient;
   userId: string;
   responseId: string;
   interaction: JsonRecord | null;
@@ -446,7 +442,7 @@ async function writeFallbackTelemetry({
     tool_count: 1,
     tool_round_count: 1,
     failure_stage: "answer",
-    duration_ms: Number.isFinite(createdAt) ? Date.now() - createdAt : null,
+    duration_ms: Number.isFinite(createdAt) ? Date.now() - createdAt : 0,
     status: "fallback",
     completed_at: new Date().toISOString(),
     tools_used: ["get_equipment_decision_pack"],
@@ -464,18 +460,19 @@ export default async function equipmentFallbackHandler(
   const primaryRequest = req.clone();
   const fallbackRequest = req.clone();
   const primaryResponse = await coreHandler(primaryRequest, context);
-  if (primaryResponse.ok || primaryResponse.status !== 503) {
+  if (
+    primaryResponse.ok ||
+    (primaryResponse.status !== 503 && primaryResponse.status !== 504)
+  ) {
     return primaryResponse;
   }
 
-  const primaryPayload = await primaryResponse
+  const payload = (await primaryResponse
     .clone()
     .json()
-    .catch(() => null) as JsonRecord | null;
+    .catch(() => null)) as JsonRecord | null;
   const responseId =
-    typeof primaryPayload?.responseId === "string"
-      ? primaryPayload.responseId
-      : "";
+    typeof payload?.responseId === "string" ? payload.responseId : "";
   if (!responseId) return primaryResponse;
 
   const authenticated = await authenticateAskVortaRequest(fallbackRequest);
@@ -484,9 +481,7 @@ export default async function equipmentFallbackHandler(
 
   const { data: interactionData } = await supabase
     .from("ask_vorta_interactions")
-    .select(
-      "route_key,created_at,planner_ms,evidence_ms,answer_ms,status",
-    )
+    .select("route_key,created_at,planner_ms,evidence_ms,answer_ms,status")
     .eq("id", responseId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -500,6 +495,7 @@ export default async function equipmentFallbackHandler(
     return primaryResponse;
   }
 
+  const fallbackEvidenceStartedAt = Date.now();
   const riskResult = await executeTool(
     "get_equipment_risk",
     {},
@@ -507,6 +503,7 @@ export default async function equipmentFallbackHandler(
     request,
   );
   const resolution = resolveEquipment(request.question, records(riskResult.data));
+
   if (!resolution.selected) {
     if (resolution.alternatives.length === 0) return primaryResponse;
     const clarification = clarificationAnswer(responseId, resolution.alternatives);
@@ -516,7 +513,7 @@ export default async function equipmentFallbackHandler(
       responseId,
       interaction,
       answer: clarification,
-      fallbackEvidenceMs: 0,
+      fallbackEvidenceMs: Date.now() - fallbackEvidenceStartedAt,
     });
     return jsonResponse(clarification);
   }
@@ -527,7 +524,6 @@ export default async function equipmentFallbackHandler(
     decisionField(selected, ["equipment_name", "equipmentName", "name"]);
   if (!selectedQuery) return primaryResponse;
 
-  const fallbackEvidenceStartedAt = Date.now();
   const toolRequest: AskVortaRequest = {
     ...request,
     question:
@@ -540,10 +536,9 @@ export default async function equipmentFallbackHandler(
     supabase,
     toolRequest,
   );
-  const fallbackEvidenceMs = Date.now() - fallbackEvidenceStartedAt;
   if (pack.status !== "ok") return primaryResponse;
 
-  const answer = deterministicEquipmentAnswer(
+  const answer = buildEquipmentFallbackAnswer(
     responseId,
     request.question,
     selected,
@@ -557,7 +552,7 @@ export default async function equipmentFallbackHandler(
     responseId,
     interaction,
     answer,
-    fallbackEvidenceMs,
+    fallbackEvidenceMs: Date.now() - fallbackEvidenceStartedAt,
   });
   return jsonResponse(answer);
 }
