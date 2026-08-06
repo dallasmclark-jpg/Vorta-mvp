@@ -35,6 +35,7 @@ const contracts = [
   ["VOR-048 routing, telemetry and feedback", "scripts/vor-048-routing-telemetry-feedback-contracts.mjs"],
   ["VOR-049 decision-ready equipment", "scripts/vor-049-decision-ready-equipment-contracts.mjs"],
   ["VOR-049 equipment fallback regression", "scripts/vor-049-equipment-fallback-regression-contracts.mjs"],
+  ["VOR-049 exact document deep links", "scripts/vor-049-document-deep-link-contracts.mjs"],
   ["VOR-050 live evaluation orchestration", "scripts/vor-050-live-eval-orchestration-contracts.mjs"],
   ["VOR-051 Maintenance Manager demo rehearsal", "scripts/vor-051-manager-demo-rehearsal-contracts.mjs"],
   ["VOR-052 Ask Vorta backend modularisation", "scripts/vor-052-backend-modularisation-contracts.mjs"],
