@@ -125,8 +125,8 @@
     ]
   },
   {
-    "id": "vor058-first-executable",
-    "question": "What is the biggest current maintenance threat and the first executable action?",
+    "id": "vor058-biggest-risk-today",
+    "question": "What is the biggest risk today?",
     "expectedTools": [
       "get_site_operational_snapshot"
     ],
