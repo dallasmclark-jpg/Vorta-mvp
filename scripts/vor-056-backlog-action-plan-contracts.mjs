@@ -5,6 +5,10 @@ const entrypoint = readFileSync(
   "netlify/functions/ask-vorta.mts",
   "utf8",
 );
+const equipmentFallback = readFileSync(
+  "netlify/functions/ask-vorta/runtime-equipment-fallback.mts",
+  "utf8",
+);
 const responseValidation = readFileSync(
   "netlify/functions/ask-vorta/response-validation.mts",
   "utf8",
@@ -118,11 +122,19 @@ for (const marker of [
     `The Netlify entrypoint deployment integrity check is missing ${marker}`,
   );
 }
-assert.ok(
+const delegatesDirectly = entrypoint.includes(
+  'import handler from "./ask-vorta/runtime.mjs";',
+);
+const delegatesThroughFallback =
   entrypoint.includes(
-    'import handler from "./ask-vorta/runtime.mjs";',
-  ) && entrypoint.includes("export default handler;"),
-  "The deployment integrity check must preserve the thin Netlify handler delegation",
+    'import handler from "./ask-vorta/runtime-equipment-fallback.mjs";',
+  ) &&
+  equipmentFallback.includes('import coreHandler from "./runtime.mjs";') &&
+  equipmentFallback.includes("const primaryResponse = await coreHandler(");
+assert.ok(
+  (delegatesDirectly || delegatesThroughFallback) &&
+    entrypoint.includes("export default handler;"),
+  "The deployment integrity check must preserve a thin Netlify delegation to the canonical runtime, directly or through the validated equipment fallback wrapper",
 );
 
 for (const marker of [
@@ -209,7 +221,7 @@ assert.ok(
   productionWorkflow.includes(
     "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-056-backlog-action-plan.json",
   ) && productionWorkflow.includes("ask-vorta-production-backlog.log"),
-  "The daily production gate must run and preserve VOR-056 live evidence",
+  "The production verifier must run and preserve VOR-056 live evidence",
 );
 
 console.log("VOR-056 actionable backlog decision contracts passed.");
