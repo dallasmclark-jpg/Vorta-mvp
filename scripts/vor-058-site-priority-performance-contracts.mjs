@@ -40,7 +40,8 @@ assert.ok(
   "Site-priority follow-ups must be handled before semantic-history fallback",
 );
 for (const phrase of [
-  "most\\s+)?likely to",
+  "(?:are\\s+)?(?:most\\s+)?likely to",
+  "(?:current|site|maintenance)\\s+){0,2}",
   "where should",
   "what needs",
   "get_site_operational_snapshot",
