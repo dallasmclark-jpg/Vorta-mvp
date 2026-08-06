@@ -126,7 +126,11 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   await expectOperationalTouchTarget(askButton);
   await askButton.click();
 
-  const unifiedAssistant = page.locator('[data-vorta-global-ai-panel="true"]');
+  const unifiedAssistant = page
+    .locator(
+      '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
+    )
+    .first();
   await expect(unifiedAssistant).toBeVisible();
   await expect(page.locator('[data-vorta-fault-panel="true"]')).toHaveCount(0);
   await expect(unifiedAssistant.getByText(coverQuestion)).toBeVisible();
