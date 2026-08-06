@@ -54,7 +54,11 @@ function json(route: Route, body: unknown): Promise<void> {
 }
 
 function activeAssistantMessages(page: Page): Locator {
-  return page.locator('[data-vorta-global-ai-messages="true"]:visible').first();
+  return page
+    .locator(
+      '[data-vorta-global-ai-messages="true"]:visible, [data-vorta-ai-workspace="true"]:visible [data-vorta-ai-workspace-conversation="true"]',
+    )
+    .first();
 }
 
 function feedbackButton(page: Page, label: string): Locator {
@@ -74,8 +78,13 @@ async function scrollAssistantToEnd(page: Page): Promise<void> {
   const messages = activeAssistantMessages(page);
   await expect(messages).toBeVisible({ timeout: 20_000 });
   await messages.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+    const workspace = element.closest('[data-vorta-ai-workspace="true"]');
+    const scrollContainer = workspace
+      ? element.parentElement
+      : element;
+    if (!scrollContainer) return;
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
   await page.waitForTimeout(100);
 }
