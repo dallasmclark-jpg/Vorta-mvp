@@ -17,6 +17,7 @@ const requiredModules = [
   "request-context.mts",
   "response-validation.mts",
   "route-planning.mts",
+  "runtime-equipment-fallback.mts",
   "runtime.mts",
   "telemetry.mts",
   "tool-execution.mts",
@@ -36,8 +37,20 @@ function requireText(source, text, label) {
 }
 
 const entry = read(entryPath);
+const equipmentFallback = read(path.join(moduleRoot, "runtime-equipment-fallback.mts"));
 if (entry.split("\n").length > 40) fail("Ask Vorta endpoint entrypoint exceeds 40 lines");
-requireText(entry, 'import handler from "./ask-vorta/runtime.mjs";', "endpoint handler delegation");
+const delegatesDirectly = entry.includes(
+  'import handler from "./ask-vorta/runtime.mjs";',
+);
+const delegatesThroughFallback =
+  entry.includes(
+    'import handler from "./ask-vorta/runtime-equipment-fallback.mjs";',
+  ) &&
+  equipmentFallback.includes('import coreHandler from "./runtime.mjs";') &&
+  equipmentFallback.includes("const primaryResponse = await coreHandler(");
+if (!delegatesDirectly && !delegatesThroughFallback) {
+  fail("endpoint handler delegation must reach the canonical runtime directly or through the validated equipment fallback wrapper");
+}
 requireText(entry, "export default handler;", "endpoint handler delegation");
 if (!/export const config: Config = \{[\s\S]*?path: "\/api\/ask-vorta",[\s\S]*?method: "POST",[\s\S]*?\};/.test(entry)) {
   fail("deployable endpoint config must be exported directly from netlify/functions/ask-vorta.mts");

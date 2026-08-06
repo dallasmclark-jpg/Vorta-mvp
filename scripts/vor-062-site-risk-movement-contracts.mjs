@@ -9,6 +9,10 @@ const runtimeSource = readFileSync(
   "netlify/functions/ask-vorta/runtime.mts",
   "utf8",
 );
+const equipmentFallbackSource = readFileSync(
+  "netlify/functions/ask-vorta/runtime-equipment-fallback.mts",
+  "utf8",
+);
 const phaseRuntimeSource = readFileSync(
   "netlify/functions/ask-vorta/phase-runtime.mts",
   "utf8",
@@ -130,10 +134,19 @@ assert.ok(
   "VOR-062 telemetry must retain a specific site_risk_movement route key instead of falling back to general",
 );
 
+const delegatesDirectly = entrypointSource.includes(
+  'import handler from "./ask-vorta/runtime.mjs";',
+);
+const delegatesThroughFallback =
+  entrypointSource.includes(
+    'import handler from "./ask-vorta/runtime-equipment-fallback.mjs";',
+  ) &&
+  equipmentFallbackSource.includes('import coreHandler from "./runtime.mjs";') &&
+  equipmentFallbackSource.includes("const primaryResponse = await coreHandler(");
 assert.ok(
-  entrypointSource.includes('import handler from "./ask-vorta/runtime.mjs";') &&
+  (delegatesDirectly || delegatesThroughFallback) &&
     entrypointSource.includes("export default handler;"),
-  "The canonical endpoint must remain the exact modular runtime delegate",
+  "The canonical endpoint must delegate to the exact modular runtime directly or through the validated equipment fallback wrapper",
 );
 assert.ok(
   entrypointSource.includes("ASK_VORTA_RESPONSE_VALIDATION_REVISION"),

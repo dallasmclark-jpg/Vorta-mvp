@@ -5,6 +5,9 @@ const read = (path) => readFileSync(path, "utf8");
 const packageJson = JSON.parse(read("package.json"));
 const entry = read("netlify/functions/ask-vorta.mts");
 const runtime = read("netlify/functions/ask-vorta/runtime.mts");
+const equipmentFallback = read(
+  "netlify/functions/ask-vorta/runtime-equipment-fallback.mts",
+);
 const contracts = read("netlify/functions/ask-vorta/contracts.mts");
 const authentication = read("netlify/functions/ask-vorta/authenticated-context.mts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
@@ -69,7 +72,17 @@ for (const path of retiredScaffolding) {
 
 assert.doesNotMatch(entry, /VOR-052 legacy integration guards/);
 assert.doesNotMatch(entry, /case "get_site_ranked_actions":/);
-assert.match(entry, /import handler from "\.\/ask-vorta\/runtime\.mjs"/);
+const canonicalDelegate =
+  /import handler from "\.\/ask-vorta\/runtime\.mjs"/.test(entry) ||
+  (/import handler from "\.\/ask-vorta\/runtime-equipment-fallback\.mjs"/.test(
+    entry,
+  ) &&
+    /import coreHandler from "\.\/runtime\.mjs"/.test(equipmentFallback) &&
+    equipmentFallback.includes("const primaryResponse = await coreHandler("));
+assert.ok(
+  canonicalDelegate,
+  "The deployable Ask Vorta entrypoint must reach the canonical runtime directly or through the validated equipment fallback wrapper",
+);
 assert.match(entry, /export default handler/);
 assert.match(entry, /path: "\/api\/ask-vorta"/);
 assert.match(entry, /method: "POST"/);
