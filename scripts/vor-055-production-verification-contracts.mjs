@@ -9,10 +9,6 @@ const productionWorkflow = readFileSync(
   ".github/workflows/maintenance-manager-production.yml",
   "utf8",
 );
-const dailyWorkflow = readFileSync(
-  ".github/workflows/netlify-daily-release.yml",
-  "utf8",
-);
 const equipmentEvidence = readFileSync(
   "netlify/functions/ask-vorta/equipment-evidence.mts",
   "utf8",
@@ -153,6 +149,11 @@ assert.equal(
 );
 
 for (const marker of [
+  "workflow_run:",
+  "Maintenance Manager quality gate",
+  "github.event.workflow_run.conclusion == 'success'",
+  "github.event.workflow_run.head_branch == 'main'",
+  "github.event.workflow_run.head_sha",
   "VORTA_EVAL_OFFSET: 0",
   "VORTA_EVAL_LIMIT: 12",
   "VORTA_EVAL_OFFSET: 12",
@@ -161,6 +162,8 @@ for (const marker of [
   "ask-vorta-production-backlog.log",
   "ask-vorta-production-window-1.log",
   "ask-vorta-production-window-2.log",
+  "node scripts/verify-production-commit.mjs",
+  "Run authenticated production regression",
 ]) {
   assert.ok(
     productionWorkflow.includes(marker),
@@ -203,11 +206,10 @@ assert.ok(
   ) && productionWorkflow.includes("if-no-files-found: error"),
   "All production evaluation logs must be preserved with the reviewed artifact action",
 );
-assert.ok(
-  productionWorkflow.includes(
-    "node scripts/verify-production-commit.mjs",
-  ),
-  "Exact production commit verification must remain the first operational gate",
+assert.doesNotMatch(
+  productionWorkflow,
+  /workflow_call:|expected_commit:/,
+  "Production verification must follow the successful main quality run rather than wait for a daily release caller",
 );
 
 assert.ok(
@@ -227,15 +229,6 @@ for (const trigger of [
   );
 }
 
-assert.ok(
-  dailyWorkflow.includes("uses: ./.github/workflows/maintenance-manager-production.yml") &&
-    dailyWorkflow.includes("expected_commit:"),
-  "The single daily release must call the reusable exact-production verifier",
+console.log(
+  "VOR-055 Ask Vorta production verification contracts passed: successful main quality runs automatically verify the exact Netlify deployment and retain the full evidence and browser gates.",
 );
-assert.ok(
-  productionWorkflow.includes("workflow_call:") &&
-    productionWorkflow.includes("Run VOR-056 backlog production decision"),
-  "Production verification must be reusable and retain the backlog decision gate",
-);
-
-console.log("VOR-055 Ask Vorta production verification contracts passed.");

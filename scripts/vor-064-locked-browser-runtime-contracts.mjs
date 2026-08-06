@@ -62,7 +62,6 @@ for (const name of browserWorkflows) {
 const protectedWorkflows = [
   "maintenance-manager-quality.yml",
   "maintenance-manager-production.yml",
-  "netlify-daily-release.yml",
   "vor-048-validation.yml",
   "vor-049-validation.yml",
   "vor-051-validation.yml",
@@ -105,13 +104,18 @@ for (const phrase of [
   "npm ci",
   "40-character commit SHAs",
   "Update procedure",
-  "single daily Netlify release marker",
+  "Netlify automatically builds the merged `main` commit",
 ]) {
   assert.ok(
     documentation.includes(phrase),
     `Locked CI dependency documentation is missing: ${phrase}`,
   );
 }
+assert.doesNotMatch(
+  documentation,
+  /single daily Netlify release marker|one Netlify production deployment per/i,
+  "Locked dependency documentation must not reintroduce the removed daily deployment gate",
+);
 
 const suite = readFileSync("scripts/run-contract-suite.mjs", "utf8");
 assert.ok(
