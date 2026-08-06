@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
       - "src/screens/AiOperations/**"
       - "scripts/vor-048*"
       - "scripts/vor-049*"
       - "scripts/vor-054*"
       - "scripts/vor-055*"
       - "scripts/vor-056*"
+      - "scripts/vor-058*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -22,6 +24,7 @@ on:
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-056-backlog-action-plan.json"
+      - "tests/evals/vor-058-site-priority-performance.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -38,12 +41,14 @@ on:
       - main
     paths:
       - "netlify/functions/ask-vorta.mts"
+      - "netlify/functions/ask-vorta/**"
       - "src/screens/AiOperations/**"
       - "scripts/vor-048*"
       - "scripts/vor-049*"
       - "scripts/vor-054*"
       - "scripts/vor-055*"
       - "scripts/vor-056*"
+      - "scripts/vor-058*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -54,6 +59,7 @@ on:
       - "tests/evals/vor-048-shift-cover-routing.json"
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-056-backlog-action-plan.json"
+      - "tests/evals/vor-058-site-priority-performance.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -88,6 +94,8 @@ jobs:
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
       VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      OPENAI_API_KEY: vor-058-deterministic-local-only
+      OPENAI_BASE_URL: https://api.openai.com/v1
 
     steps:
       - name: Check out exact source
@@ -123,6 +131,9 @@ jobs:
       - name: Run permanent VOR-056 contracts
         run: node scripts/vor-056-backlog-action-plan-contracts.mjs
 
+      - name: Run permanent VOR-058 contracts
+        run: node scripts/vor-058-site-priority-performance-contracts.mjs
+
       - name: Run complete contract suite
         run: npm run test:contracts
 
@@ -135,6 +146,38 @@ jobs:
       - name: Enforce unchanged performance budgets
         run: npm run test:performance
 
+      - name: Start exact-source Ask Vorta evaluation server
+        shell: bash
+        run: |
+          node scripts/vor-058-local-eval-server.mjs > vor-058-local-server.log 2>&1 &
+          echo $! > vor-058-local-server.pid
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8788/api/ask-vorta; then
+              echo "Exact-source Ask Vorta server is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat vor-058-local-server.log
+          exit 1
+
+      - name: Run six authenticated VOR-058 site-priority decisions
+        env:
+          VORTA_EVAL_BASE_URL: http://127.0.0.1:8788
+          VORTA_EVAL_DELAY_MS: 250
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+        shell: bash
+        run: npm run eval:ask-vorta:vor058 | tee vor-058-live-eval.log
+
+      - name: Stop exact-source Ask Vorta evaluation server
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f vor-058-local-server.pid ]]; then
+            kill "$(cat vor-058-local-server.pid)" 2>/dev/null || true
+          fi
+
       - name: Preserve failure evidence
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -142,6 +185,8 @@ jobs:
           name: vor-049-failure-evidence-${{ github.sha }}
           path: |
             dist/vorta-build.json
+            vor-058-local-server.log
+            vor-058-live-eval.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -152,5 +197,7 @@ jobs:
           name: vor-049-validation-evidence-${{ github.sha }}
           path: |
             dist/vorta-build.json
-          if-no-files-found: warn
+            vor-058-local-server.log
+            vor-058-live-eval.log
+          if-no-files-found: error
           retention-days: 7
