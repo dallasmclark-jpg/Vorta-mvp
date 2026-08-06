@@ -1,0 +1,33 @@
+[
+  {
+    "id": "vor-049-vial-fill-sensor-regression",
+    "question": "vial fill sensor fault",
+    "expectedTools": [
+      "get_equipment_history",
+      "get_equipment_documents"
+    ],
+    "mustMention": [
+      "VF-02",
+      "F-204",
+      "WO-",
+      "approved"
+    ],
+    "mustMentionAny": [
+      "Reject Monitoring",
+      "Fault Tree 2",
+      "Fault-Finding Guide",
+      "page 142"
+    ],
+    "mustNotMention": [
+      "question does not match a specific risk category",
+      "verified Vorta fallback response",
+      "site risk is"
+    ],
+    "requireVisibleDecision": true,
+    "requireActionPlan": false,
+    "confidenceMin": 60,
+    "maxDurationMs": 35000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1
+  }
+]
