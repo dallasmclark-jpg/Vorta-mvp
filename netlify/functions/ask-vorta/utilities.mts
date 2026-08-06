@@ -1,6 +1,120 @@
 import type { JsonRecord } from "./contracts.mjs";
 import { DATE_ONLY_PATTERN } from "./contracts.mjs";
 
+const EQUIPMENT_QUERY_NOISE = new Set([
+  "a",
+  "about",
+  "active",
+  "action",
+  "alarm",
+  "alarms",
+  "an",
+  "and",
+  "are",
+  "at",
+  "be",
+  "breakdown",
+  "can",
+  "cause",
+  "caused",
+  "causing",
+  "code",
+  "could",
+  "current",
+  "diagnose",
+  "diagnosis",
+  "diagnostic",
+  "do",
+  "does",
+  "exact",
+  "failed",
+  "failure",
+  "failures",
+  "fault",
+  "faults",
+  "for",
+  "from",
+  "give",
+  "has",
+  "have",
+  "history",
+  "how",
+  "i",
+  "in",
+  "is",
+  "issue",
+  "issues",
+  "it",
+  "me",
+  "my",
+  "name",
+  "need",
+  "next",
+  "of",
+  "on",
+  "open",
+  "our",
+  "part",
+  "please",
+  "probe",
+  "probes",
+  "problem",
+  "problems",
+  "provide",
+  "related",
+  "sensor",
+  "sensors",
+  "should",
+  "show",
+  "tag",
+  "the",
+  "this",
+  "to",
+  "transmitter",
+  "transmitters",
+  "trip",
+  "trips",
+  "us",
+  "what",
+  "which",
+  "who",
+  "why",
+  "with",
+  "would",
+  "wrong",
+  "you",
+  "your",
+]);
+
+const DESCRIPTIVE_EQUIPMENT_CUE =
+  /\b(?:fault|sensor|probe|transmitter|alarm|trip|breakdown|failed|failure|diagnos|filler|filling|pump|motor|valve|conveyor|compressor|autoclave|rabs|ahu|isolator|palletiser|palletizer)\b/i;
+
+function normaliseEquipmentWord(value: string): string {
+  const token = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!token) return "";
+  if (token.length > 5 && token.endsWith("ing")) return token.slice(0, -3);
+  if (token.length > 4 && token.endsWith("ers")) return token.slice(0, -3);
+  if (token.length > 4 && token.endsWith("er")) return token.slice(0, -2);
+  if (token.length > 4 && token.endsWith("ed")) return token.slice(0, -2);
+  if (token.length > 4 && token.endsWith("s")) return token.slice(0, -1);
+  return token;
+}
+
+function equipmentIdentityTokens(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  return [
+    ...new Set(
+      (value.toLowerCase().match(/[a-z0-9-]+/g) ?? [])
+        .map(normaliseEquipmentWord)
+        .filter(
+          (token) =>
+            token.length >= 2 &&
+            !EQUIPMENT_QUERY_NOISE.has(token),
+        ),
+    ),
+  ];
+}
+
 export function requiredText(value: unknown, maximumLength: number): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
@@ -20,15 +134,29 @@ export function equipmentReferenceMatches(candidate: unknown, query: string): bo
   if (typeof candidate !== "string") return false;
   const rawCandidate = candidate.trim().toLowerCase();
   const rawQuery = query.trim().toLowerCase();
+  if (!rawCandidate || !rawQuery) return false;
   if (rawCandidate.includes(rawQuery) || rawQuery.includes(rawCandidate)) return true;
+
   const normalisedCandidate = normaliseEquipmentReference(candidate);
   const normalisedQuery = normaliseEquipmentReference(query);
-  return Boolean(
+  if (
     normalisedCandidate.length >= 3 &&
-      normalisedQuery.length >= 3 &&
-      (normalisedCandidate.includes(normalisedQuery) ||
-        normalisedQuery.includes(normalisedCandidate)),
-  );
+    normalisedQuery.length >= 3 &&
+    (normalisedCandidate.includes(normalisedQuery) ||
+      normalisedQuery.includes(normalisedCandidate))
+  ) {
+    return true;
+  }
+
+  const queryTokens = equipmentIdentityTokens(query);
+  if (queryTokens.length < 2) return false;
+  const candidateTokens = new Set(equipmentIdentityTokens(candidate));
+  const matchedTokens = queryTokens.filter((token) => candidateTokens.has(token));
+  const requiredMatches =
+    queryTokens.length <= 2
+      ? queryTokens.length
+      : Math.max(2, Math.ceil(queryTokens.length * 0.67));
+  return matchedTokens.length >= requiredMatches;
 }
 
 export function extractEquipmentReference(value: string): string | null {
@@ -53,7 +181,14 @@ export function extractEquipmentReference(value: string): string | null {
   const acronymMatches = (value.match(/\b[A-Z]{3,5}\b/g) ?? []).filter(
     (candidate) => !excludedAcronyms.has(candidate),
   );
-  return acronymMatches.length ? acronymMatches[acronymMatches.length - 1] : null;
+  if (acronymMatches.length) {
+    return acronymMatches[acronymMatches.length - 1];
+  }
+
+  if (!DESCRIPTIVE_EQUIPMENT_CUE.test(value)) return null;
+  const descriptiveTokens = equipmentIdentityTokens(value);
+  if (descriptiveTokens.length < 2 || descriptiveTokens.length > 8) return null;
+  return descriptiveTokens.slice(0, 6).join(" ");
 }
 
 export function parseArguments(value: string): JsonRecord {
