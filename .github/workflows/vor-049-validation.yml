@@ -14,6 +14,7 @@ on:
       - "scripts/vor-055*"
       - "scripts/vor-056*"
       - "scripts/vor-058*"
+      - "scripts/vor-059*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -25,6 +26,8 @@ on:
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-058-site-priority-performance.json"
+      - "tests/evals/vor-059-deterministic-operational-answers.json"
+      - "tests/evals/vor-059-operational-model-independence-audit.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -49,6 +52,7 @@ on:
       - "scripts/vor-055*"
       - "scripts/vor-056*"
       - "scripts/vor-058*"
+      - "scripts/vor-059*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -60,6 +64,8 @@ on:
       - "tests/evals/vor-054-cross-domain-live.json"
       - "tests/evals/vor-056-backlog-action-plan.json"
       - "tests/evals/vor-058-site-priority-performance.json"
+      - "tests/evals/vor-059-deterministic-operational-answers.json"
+      - "tests/evals/vor-059-operational-model-independence-audit.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -134,6 +140,9 @@ jobs:
       - name: Run permanent VOR-058 contracts
         run: node scripts/vor-058-site-priority-performance-contracts.mjs
 
+      - name: Run permanent VOR-059 contracts
+        run: node scripts/vor-059-deterministic-operational-answers-contracts.mjs
+
       - name: Run complete contract suite
         run: npm run test:contracts
 
@@ -170,6 +179,15 @@ jobs:
         shell: bash
         run: npm run eval:ask-vorta:vor058 | tee vor-058-live-eval.log
 
+      - name: Run six authenticated VOR-059 operational decisions
+        env:
+          VORTA_EVAL_BASE_URL: http://127.0.0.1:8788
+          VORTA_EVAL_DELAY_MS: 250
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+        shell: bash
+        run: npm run eval:ask-vorta:vor059 | tee vor-059-live-eval.log
+
       - name: Stop exact-source Ask Vorta evaluation server
         if: always()
         shell: bash
@@ -187,6 +205,7 @@ jobs:
             dist/vorta-build.json
             vor-058-local-server.log
             vor-058-live-eval.log
+            vor-059-live-eval.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -199,5 +218,6 @@ jobs:
             dist/vorta-build.json
             vor-058-local-server.log
             vor-058-live-eval.log
+            vor-059-live-eval.log
           if-no-files-found: error
           retention-days: 7
