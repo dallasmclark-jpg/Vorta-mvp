@@ -6,6 +6,13 @@ on:
       - agent/vor-059-deterministic-operational-answers
     paths:
       - ".github/workflows/vor-059-apply-deterministic-operational-answers.yml"
+      - "scripts/vor-059-apply-deterministic-operational-answers.mjs"
+      - "scripts/vor-059-deterministic-operational-builders.txt"
+      - "scripts/vor-059-deterministic-operational-answers-contracts.mjs"
+      - "tests/evals/vor-059-deterministic-operational-answers.json"
+      - "tests/evals/ask-vorta-operational-confidence-audit.json"
+      - "package.json"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -121,6 +128,7 @@ jobs:
         if: success()
         run: |
           rm scripts/vor-059-apply-deterministic-operational-answers.mjs
+          rm scripts/vor-059-deterministic-operational-builders.txt
           rm .github/workflows/vor-059-apply-deterministic-operational-answers.yml
 
       - name: Commit verified VOR-059 implementation
