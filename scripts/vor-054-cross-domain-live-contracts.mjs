@@ -13,8 +13,6 @@ const centralWorkflowPath =
   ".github/workflows/vor-049-validation.yml";
 const productionWorkflowPath =
   ".github/workflows/maintenance-manager-production.yml";
-const dailyWorkflowPath =
-  ".github/workflows/netlify-daily-release.yml";
 const crossDomainScenarioPath =
   "tests/evals/vor-054-cross-domain-live.json";
 
@@ -22,6 +20,11 @@ assert.equal(
   existsSync(retiredWorkflow),
   false,
   "The branch-pinned VOR-038 live workflow must be retired",
+);
+assert.equal(
+  existsSync(".github/workflows/netlify-daily-release.yml"),
+  false,
+  "Production verification must not depend on the removed daily Netlify release workflow",
 );
 
 const workflowFiles = readdirSync(workflowDirectory)
@@ -55,14 +58,16 @@ const productionWorkflow = readFileSync(
   productionWorkflowPath,
   "utf8",
 );
-const dailyWorkflow = readFileSync(dailyWorkflowPath, "utf8");
 assert.ok(
-  productionWorkflow.includes("workflow_call:") &&
-    productionWorkflow.includes("expected_commit:") &&
-    dailyWorkflow.includes(
-      "uses: ./.github/workflows/maintenance-manager-production.yml",
-    ),
-  "Production evaluation must be owned by the reusable verifier called from the single daily release",
+  productionWorkflow.includes("workflow_run:") &&
+    productionWorkflow.includes("Maintenance Manager quality gate") &&
+    productionWorkflow.includes("github.event.workflow_run.head_sha"),
+  "Production evaluation must automatically follow the successful main quality run",
+);
+assert.doesNotMatch(
+  productionWorkflow,
+  /workflow_call:|expected_commit:/,
+  "Production evaluation must not wait for a scheduled daily release caller",
 );
 const productionCommitCheck = productionWorkflow.indexOf(
   "node scripts/verify-production-commit.mjs",
@@ -234,4 +239,4 @@ assert.ok(
   "The central gate must retain its bounded timeout",
 );
 
-console.log("VOR-054 cross-domain and exact-source ownership contracts passed.");
+console.log("VOR-054 cross-domain and automatic exact-production ownership contracts passed.");
