@@ -22,14 +22,24 @@ for (const marker of [
 
 assert.match(
   source,
-  /const openedFromAskVorta =[\s\S]*?ASK_VORTA_DOCUMENT_ROUTE\.test\(location\.pathname\)[\s\S]*?searchParams|const openedFromAskVorta =[\s\S]*?ASK_VORTA_DOCUMENT_ROUTE\.test\(location\.pathname\)[\s\S]*?new URLSearchParams\(location\.search\)\.get\("from"\) === "ai"/,
+  /const openedFromAskVorta =\s*ASK_VORTA_DOCUMENT_ROUTE\.test\(location\.pathname\) &&\s*new URLSearchParams\(location\.search\)\.get\("from"\) === "ai";/,
   "Back to chat must be restricted to an internal Ask Vorta-origin document route",
 );
+
+const returnFunction = source.match(
+  /const returnToAskVortaChat = useCallback\(\(\): void => \{[\s\S]*?\n  \}, \[navigate\]\);/,
+)?.[0];
+assert.ok(returnFunction, "The governed Back to chat handler must exist");
 assert.match(
-  source,
-  /const returnToAskVortaChat = useCallback\([\s\S]*?navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)[\s\S]*?openMaintenanceAiAssistant\(\{ submit: false \}\)/,
+  returnFunction,
+  /navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)[\s\S]*?openMaintenanceAiAssistant\(\{ submit: false \}\)/,
   "Returning from a document must use internal history with a safe dashboard fallback and reopen Ask Vorta without submitting a question",
 );
+assert.ok(
+  !returnFunction.includes("question:") && !returnFunction.includes("submit: true"),
+  "Back to chat must never manufacture or submit a question",
+);
+
 assert.match(
   source,
   /\{openedFromAskVorta \? \([\s\S]*?data-vorta-back-to-ask-vorta="true"[\s\S]*?Back to chat[\s\S]*?\) : null\}/,
@@ -39,11 +49,6 @@ assert.match(
   source,
   /showLauncher=\{showDesktopAssistantLauncher\}/,
   "The existing governed assistant must remain the desktop and tablet direct-open entry point",
-);
-assert.doesNotMatch(
-  source,
-  /returnToAskVortaChat[\s\S]*?openMaintenanceAiAssistant\(\{[\s\S]*?question\s*:/,
-  "Back to chat must never manufacture or submit a question",
 );
 
 console.log(
