@@ -13,6 +13,11 @@ const entrypointSource = readFileSync(
   "netlify/functions/ask-vorta.mts",
   "utf8",
 );
+const packageSource = readFileSync("package.json", "utf8");
+const workflowSource = readFileSync(
+  ".github/workflows/vor-049-validation.yml",
+  "utf8",
+);
 const suiteSource = readFileSync(
   "scripts/run-contract-suite.mjs",
   "utf8",
@@ -166,11 +171,34 @@ assert.ok(
   "The previous-shift scenario must disclose the daily-only evidence boundary",
 );
 
+for (const required of [
+  '"eval:ask-vorta:vor062"',
+  'tests/evals/vor-062-site-risk-movement.json',
+]) {
+  assert.ok(
+    packageSource.includes(required),
+    `package.json must expose the authenticated VOR-062 evaluator: ${required}`,
+  );
+}
+for (const required of [
+  '"scripts/vor-062*"',
+  '"tests/evals/vor-062-site-risk-movement.json"',
+  "Run permanent VOR-062 contracts",
+  "Run five authenticated VOR-062 site-risk movement decisions",
+  "npm run eval:ask-vorta:vor062",
+  "vor-062-live-eval.log",
+]) {
+  assert.ok(
+    workflowSource.includes(required),
+    `The exact-source validation workflow must retain: ${required}`,
+  );
+}
+
 assert.ok(
   suiteSource.includes("VOR-062 site risk movement"),
   "The permanent contract suite must register VOR-062",
 );
 
 console.log(
-  "VOR-062 contracts passed: site-scoped daily risk movement is deterministic, one-tool, fail-closed and does not invent shift precision or causation.",
+  "VOR-062 contracts passed: site-scoped daily risk movement is deterministic, one-tool, authenticated, fail-closed and does not invent shift precision or causation.",
 );
