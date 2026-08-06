@@ -14,7 +14,7 @@ The repository must contain a GitHub Actions secret named `NETLIFY_BUILD_HOOK_UR
 
 - The value is the production build hook created for the `vorta-app` site and the `main` branch.
 - The URL must remain a secret. It must not be committed, printed in logs or placed in documentation.
-- If the secret is missing, `.github/workflows/netlify-daily-release.yml` fails before changing `ops/netlify-release.json`.
+- If the secret is missing, the workflow fails before changing the release marker (`ops/netlify-release.json`).
 - The workflow does not use an ad-hoc Netlify CLI deployment or embed a raw Netlify API credential.
 
 ## Daily release
