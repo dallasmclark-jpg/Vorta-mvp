@@ -1,35 +1,29 @@
 name: Maintenance Manager production verification
 
 on:
-  workflow_call:
-    inputs:
-      expected_commit:
-        required: true
-        type: string
-    secrets:
-      VORTA_E2E_PASSWORD:
-        required: true
-  workflow_dispatch:
-    inputs:
-      expected_commit:
-        description: Exact deployed commit SHA to verify
-        required: true
-        type: string
+  workflow_run:
+    workflows:
+      - Maintenance Manager quality gate
+    types:
+      - completed
 
 permissions:
   contents: read
 
 concurrency:
-  group: maintenance-manager-production-${{ inputs.expected_commit }}
-  cancel-in-progress: false
+  group: maintenance-manager-production-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
 
 jobs:
   production:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
     name: Verify exact production commit
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
-      EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
       VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
       VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
@@ -43,7 +37,7 @@ jobs:
       - name: Check out deployed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.expected_commit }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           show-progress: false
 
       - name: Use Node.js
@@ -123,7 +117,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ask-vorta-production-evidence-${{ inputs.expected_commit }}
+          name: ask-vorta-production-evidence-${{ github.event.workflow_run.head_sha }}
           path: |
             ask-vorta-production-backlog.log
             ask-vorta-production-window-1.log
