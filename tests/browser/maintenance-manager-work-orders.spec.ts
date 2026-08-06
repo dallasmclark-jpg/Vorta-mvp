@@ -89,7 +89,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
-  ).toBeHidden();
+  ).toBeVisible();
 
   const firstWorkOrderButton = page.locator("#work-order-register tbody button").first();
   await expect(firstWorkOrderButton).toBeVisible({ timeout: 30_000 });
