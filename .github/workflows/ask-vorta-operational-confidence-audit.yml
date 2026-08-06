@@ -1,0 +1,99 @@
+name: Ask Vorta operational confidence audit
+
+on:
+  push:
+    branches:
+      - agent/ask-vorta-operational-confidence-audit
+    paths:
+      - ".github/workflows/ask-vorta-operational-confidence-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ask-vorta-operational-confidence-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      OPENAI_API_KEY: operational-confidence-audit-deterministic-only
+      OPENAI_BASE_URL: https://api.openai.com/v1
+
+    steps:
+      - name: Check out exact audit source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: agent/ask-vorta-operational-confidence-audit
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run exact-source TypeScript checks
+        run: npm run typecheck -- --pretty false
+
+      - name: Start exact-source Ask Vorta server
+        shell: bash
+        run: |
+          node scripts/vor-058-local-eval-server.mjs > operational-confidence-server.log 2>&1 &
+          echo $! > operational-confidence-server.pid
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8788/api/ask-vorta; then
+              echo "Exact-source Ask Vorta server is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat operational-confidence-server.log
+          exit 1
+
+      - name: Run 12 authenticated operational decisions
+        env:
+          VORTA_EVAL_BASE_URL: http://127.0.0.1:8788
+          VORTA_EVAL_DELAY_MS: 250
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+        shell: bash
+        run: |
+          node scripts/ask-vorta-live-evals.mjs tests/evals/ask-vorta-operational-confidence-audit.json \
+            | tee operational-confidence-audit.log
+
+      - name: Stop exact-source server
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f operational-confidence-server.pid ]]; then
+            kill "$(cat operational-confidence-server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ask-vorta-operational-confidence-${{ github.sha }}
+          path: |
+            operational-confidence-server.log
+            operational-confidence-audit.log
+          if-no-files-found: warn
+          retention-days: 7
