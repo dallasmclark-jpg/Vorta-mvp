@@ -8,6 +8,7 @@ const fullTextEquipmentId = "40000000-0000-0000-0000-000000000003";
 const fullTextDocumentId = "56b3db95-78f2-4b62-80fa-7daf97767563";
 const summaryOnlyEquipmentId = "25862bbb-e6b7-47d0-b987-f1985d8a4a81";
 const summaryOnlyDocumentId = "037752d4-6e63-41ec-bee9-2f98489be484";
+const unavailableDocumentId = "dddddddd-1111-2222-3333-444444444444";
 
 async function expectCoverage(
   page: Page,
@@ -24,7 +25,7 @@ async function expectCoverage(
   await expectNoPageOverflow(page);
 }
 
-test.describe("VOR-021 honest document coverage", () => {
+test.describe("VOR-021 and VOR-061 governed document evidence", () => {
   test("full-text drawing remains citation-ready with exact revision and locator", async ({ page }) => {
     await signInMaintenanceManager(page);
     await page.goto(`/equipment/${fullTextEquipmentId}/documents/${fullTextDocumentId}`);
@@ -75,6 +76,21 @@ test.describe("VOR-021 honest document coverage", () => {
       "Summary-only coverage",
     );
     await expect(card).toContainText("full source text is not indexed");
+    await expectNoPageOverflow(page);
+  });
+
+  test("unknown or role-inaccessible document does not disclose access state", async ({ page }) => {
+    await signInMaintenanceManager(page);
+    await page.goto(`/equipment/${fullTextEquipmentId}/documents/${unavailableDocumentId}`);
+
+    await expect(
+      page.getByText(
+        "This document is not available for the authorised equipment and site.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.getByText(/superseded|obsolete|not approved/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Ask Vorta", exact: true })).toHaveCount(0);
     await expectNoPageOverflow(page);
   });
 });

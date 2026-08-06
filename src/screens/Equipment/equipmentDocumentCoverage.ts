@@ -6,6 +6,11 @@ export type LiveDocumentCoverageMode =
   | "summary_only"
   | "unavailable";
 
+export type LiveDocumentAccessState =
+  | "available_current"
+  | "superseded_or_obsolete"
+  | "not_approved";
+
 export interface LiveEquipmentDocumentSummary {
   documentId: string;
   title: string;
@@ -187,6 +192,41 @@ function failure<T>(error: unknown, fallback: string): LiveDataState<T> {
   };
 }
 
+function isDocumentAccessState(value: string | null): value is LiveDocumentAccessState {
+  return value === "available_current"
+    || value === "superseded_or_obsolete"
+    || value === "not_approved";
+}
+
+async function loadBlockedDocumentExplanation(
+  equipmentId: string,
+  documentId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc(
+    "vorta_get_equipment_document_access_state",
+    {
+      p_equipment_id: equipmentId,
+      p_document_id: documentId,
+    },
+  );
+
+  if (error) return null;
+  const row = asRows(data)[0];
+  if (!row) return null;
+
+  const accessState = stringValue(row.access_state);
+  if (!isDocumentAccessState(accessState) || accessState === "available_current") {
+    return null;
+  }
+
+  const explanation = stringValue(row.explanation);
+  if (explanation) return explanation;
+
+  return accessState === "superseded_or_obsolete"
+    ? "This document is superseded or obsolete and cannot be used as current Ask Vorta evidence."
+    : "This document is not approved for current use and cannot be used as Ask Vorta evidence.";
+}
+
 export async function loadLiveEquipmentDocuments(
   equipmentId: string,
 ): Promise<LiveDataState<LiveEquipmentDocumentSummary[]>> {
@@ -209,7 +249,7 @@ export async function loadLiveEquipmentDocuments(
     if (!rows.length) {
       return {
         status: "empty",
-        message: "No controlled documents are available for this equipment and active site.",
+        message: "No current approved documents are available for this equipment and active site.",
       };
     }
     return { status: "ready", data: rows.map(mapDocumentSummary) };
@@ -242,6 +282,16 @@ export async function loadLiveEquipmentDocument(
     }
     const row = asRows(data)[0];
     if (!row) {
+      const blockedExplanation = await loadBlockedDocumentExplanation(
+        equipmentId,
+        documentId,
+      );
+      if (blockedExplanation) {
+        return {
+          status: "unavailable",
+          message: blockedExplanation,
+        };
+      }
       return {
         status: "empty",
         message: "This document is not available for the authorised equipment and site.",

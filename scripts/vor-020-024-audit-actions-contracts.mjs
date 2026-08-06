@@ -104,5 +104,6 @@ assert.doesNotMatch(
 
 await import("./vor-021-document-coverage-contracts.mjs");
 await import("./vor-060-document-health-contracts.mjs");
+await import("./vor-061-document-access-contracts.mjs");
 
 console.log("VOR-020 to VOR-024 canonical risk, evidence, performance and UI contracts passed.");
