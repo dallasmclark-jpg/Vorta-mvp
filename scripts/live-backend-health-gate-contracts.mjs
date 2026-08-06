@@ -43,6 +43,13 @@ assert.ok(
   "The production contract manifest must invoke live backend health contracts",
 );
 
+const configuredEmail = String(process.env.VORTA_E2E_EMAIL ?? "").trim();
+const configuredSiteId = String(process.env.VORTA_E2E_SITE_ID ?? "").trim();
+const demoSiteId = "11000000-0000-0000-0000-000000000001";
+if (!configuredSiteId && configuredEmail === "demo@vorta.network") {
+  process.env.VORTA_E2E_SITE_ID = demoSiteId;
+}
+
 const hasMaintenanceTestContext = Boolean(
   process.env.VORTA_E2E_EMAIL ||
     process.env.VORTA_E2E_SITE_ID ||
