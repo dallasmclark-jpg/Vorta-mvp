@@ -143,7 +143,7 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
   }, [isPhone]);
 
   return (
-    <style>{`
+    <style data-vorta-ask-vorta-desktop-experience="true">{`
       @media (min-width: 768px) {
         [data-vorta-global-ai-panel="true"] {
           display: flex !important;
