@@ -9,6 +9,10 @@ const runtimeSource = readFileSync(
   "netlify/functions/ask-vorta/runtime.mts",
   "utf8",
 );
+const phaseRuntimeSource = readFileSync(
+  "netlify/functions/ask-vorta/phase-runtime.mts",
+  "utf8",
+);
 const entrypointSource = readFileSync(
   "netlify/functions/ask-vorta.mts",
   "utf8",
@@ -120,6 +124,11 @@ assert.ok(
     runtimeSource.indexOf("for (let round = 0; round < MAX_TOOL_ROUNDS"),
   "A successful VOR-062 answer must complete before the model loop",
 );
+assert.ok(
+  phaseRuntimeSource.includes('if (intent === "site_risk_movement")') &&
+    phaseRuntimeSource.includes('return "site_risk_movement";'),
+  "VOR-062 telemetry must retain a specific site_risk_movement route key instead of falling back to general",
+);
 
 assert.ok(
   entrypointSource.includes('import handler from "./ask-vorta/runtime.mjs";') &&
@@ -200,5 +209,5 @@ assert.ok(
 );
 
 console.log(
-  "VOR-062 contracts passed: site-scoped daily risk movement is deterministic, one-tool, authenticated, fail-closed and does not invent shift precision or causation.",
+  "VOR-062 contracts passed: site-scoped daily risk movement is deterministic, one-tool, authenticated, correctly classified, fail-closed and does not invent shift precision or causation.",
 );
