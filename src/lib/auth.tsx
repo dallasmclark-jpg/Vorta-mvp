@@ -55,6 +55,8 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   role: null,
   siteContext: null,
+  siteAccesses: [],
+  selectSite: () => false,
   isDemoAdmin: false,
   loading: true,
   roleResolutionFailed: false,
