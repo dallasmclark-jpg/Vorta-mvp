@@ -23,7 +23,23 @@ interface VortaErrorBoundaryProps {
 interface VortaErrorBoundaryState {
   hasError: boolean;
   errorReference: string;
+  staleAssetFailure: boolean;
+  recoveryScheduled: boolean;
 }
+
+interface StaleAssetRecoveryRecord {
+  pathname: string;
+  attemptedAt: number;
+}
+
+const STALE_ASSET_RECOVERY_KEY =
+  "vorta:stale-asset-recovery:v1";
+
+const STALE_ASSET_RECOVERY_WINDOW_MS =
+  5 * 60_000;
+
+const STALE_ASSET_RECOVERY_DELAY_MS =
+  350;
 
 function createErrorReference(): string {
   const timestamp = Date.now()
@@ -38,10 +54,112 @@ function createErrorReference(): string {
   return `VRT-${timestamp}-${randomPart}`;
 }
 
+function isStaleAssetFailure(
+  error: unknown,
+): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const diagnostic =
+    `${error.name} ${error.message}`
+      .toLowerCase();
+
+  return [
+    "failed to fetch dynamically imported module",
+    "importing a module script failed",
+    "chunkloaderror",
+    "loading chunk",
+    "dynamically imported module",
+  ].some((pattern) =>
+    diagnostic.includes(pattern),
+  );
+}
+
+function readRecoveryRecord():
+  | StaleAssetRecoveryRecord
+  | null {
+  try {
+    const stored =
+      window.sessionStorage.getItem(
+        STALE_ASSET_RECOVERY_KEY,
+      );
+
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(
+      stored,
+    ) as Partial<StaleAssetRecoveryRecord>;
+
+    if (
+      typeof parsed.pathname !==
+        "string" ||
+      typeof parsed.attemptedAt !==
+        "number" ||
+      !Number.isFinite(
+        parsed.attemptedAt,
+      )
+    ) {
+      return null;
+    }
+
+    return {
+      pathname: parsed.pathname,
+      attemptedAt:
+        parsed.attemptedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function scheduleStaleAssetRecovery(
+  pathname: string,
+): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const now = Date.now();
+  const previous =
+    readRecoveryRecord();
+
+  if (
+    previous?.pathname === pathname &&
+    now - previous.attemptedAt <
+      STALE_ASSET_RECOVERY_WINDOW_MS
+  ) {
+    return false;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      STALE_ASSET_RECOVERY_KEY,
+      JSON.stringify({
+        pathname,
+        attemptedAt: now,
+      } satisfies StaleAssetRecoveryRecord),
+    );
+  } catch {
+    // Without a loop guard an automatic reload could repeat forever.
+    return false;
+  }
+
+  window.setTimeout(() => {
+    window.location.reload();
+  }, STALE_ASSET_RECOVERY_DELAY_MS);
+
+  return true;
+}
+
 function createInitialState(): VortaErrorBoundaryState {
   return {
     hasError: false,
     errorReference: createErrorReference(),
+    staleAssetFailure: false,
+    recoveryScheduled: false,
   };
 }
 
@@ -52,9 +170,13 @@ export class VortaErrorBoundary extends Component<
   public state: VortaErrorBoundaryState =
     createInitialState();
 
-  public static getDerivedStateFromError(): Partial<VortaErrorBoundaryState> {
+  public static getDerivedStateFromError(
+    error: Error,
+  ): Partial<VortaErrorBoundaryState> {
     return {
       hasError: true,
+      staleAssetFailure:
+        isStaleAssetFailure(error),
     };
   }
 
@@ -70,6 +192,9 @@ export class VortaErrorBoundary extends Component<
         ? `${window.location.pathname}${window.location.search}`
         : "unknown";
 
+    const staleAssetFailure =
+      isStaleAssetFailure(error);
+
     const diagnostic = {
       reference: this.state.errorReference,
       scope,
@@ -79,6 +204,7 @@ export class VortaErrorBoundary extends Component<
       componentStack:
         errorInfo.componentStack ?? null,
       occurredAt: new Date().toISOString(),
+      staleAssetFailure,
     };
 
     console.error(
@@ -95,6 +221,17 @@ export class VortaErrorBoundary extends Component<
           },
         ),
       );
+
+      if (
+        staleAssetFailure &&
+        scheduleStaleAssetRecovery(
+          pathname,
+        )
+      ) {
+        this.setState({
+          recoveryScheduled: true,
+        });
+      }
     }
   }
 
@@ -129,13 +266,23 @@ export class VortaErrorBoundary extends Component<
     const isApplicationFailure =
       scope === "application";
 
-    const title = isApplicationFailure
-      ? "Vorta could not start"
-      : "This workspace could not load";
+    const title =
+      this.state.staleAssetFailure
+        ? this.state.recoveryScheduled
+          ? "Updating Vorta"
+          : "Vorta update could not load"
+        : isApplicationFailure
+          ? "Vorta could not start"
+          : "This workspace could not load";
 
-    const description = isApplicationFailure
-      ? "An unexpected application error prevented Vorta from loading. Reload the application to restore the current session."
-      : "An unexpected error affected this section of Vorta. Your operational data has not been changed.";
+    const description =
+      this.state.staleAssetFailure
+        ? this.state.recoveryScheduled
+          ? "Vorta detected an outdated application file and is refreshing the current page once. Your operational data has not been changed."
+          : "One application file for the current release could not be loaded. Reload Vorta to request a coherent copy of the application. Your operational data has not been changed."
+        : isApplicationFailure
+          ? "An unexpected application error prevented Vorta from loading. Reload the application to restore the current session."
+          : "An unexpected error affected this section of Vorta. Your operational data has not been changed.";
 
     return (
       <main
@@ -144,6 +291,16 @@ export class VortaErrorBoundary extends Component<
         aria-live="assertive"
         data-error-reference={
           this.state.errorReference
+        }
+        data-stale-asset-failure={
+          this.state.staleAssetFailure
+            ? "true"
+            : "false"
+        }
+        data-stale-asset-recovery={
+          this.state.recoveryScheduled
+            ? "scheduled"
+            : "idle"
         }
       >
         <section className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-700/70 bg-[#121821] shadow-2xl shadow-black/40">
@@ -196,10 +353,16 @@ export class VortaErrorBoundary extends Component<
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#121821]"
               >
                 <RefreshCw
-                  className="size-4"
+                  className={`size-4 ${
+                    this.state.recoveryScheduled
+                      ? "animate-spin"
+                      : ""
+                  }`}
                   aria-hidden="true"
                 />
-                Reload Vorta
+                {this.state.recoveryScheduled
+                  ? "Refreshing Vorta"
+                  : "Reload Vorta"}
               </button>
 
               <button
