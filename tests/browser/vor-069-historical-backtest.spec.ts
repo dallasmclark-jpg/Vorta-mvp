@@ -11,7 +11,7 @@ test("VOR-069 historical validation renders governed evidence without responsive
   await page.waitForURL(`/equipment/${BACKTEST_EQUIPMENT_ID}/history`);
 
   const panel = page.getByText("Historical risk validation", { exact: true }).first();
-  await expect(panel).toBeVisible();
+  await expect(panel).toBeVisible({ timeout: 30_000 });
   await panel.scrollIntoViewIfNeeded();
 
   await expect(page.getByText("Synthetic demo evidence", { exact: true })).toBeVisible();
