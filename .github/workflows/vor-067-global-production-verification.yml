@@ -52,7 +52,7 @@ jobs:
             exit 1
           }
 
-      - name: Install complete global-navigation production test
+      - name: Install exact user-journey production test
         shell: bash
         run: |
           cat > tests/browser/vor-067-global-production-final.spec.ts <<'EOF'
@@ -63,8 +63,8 @@ jobs:
           const equipmentId = "40000000-0000-0000-0000-000000000007";
           const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
 
-          test("VOR-067 production keeps Back to chat global for every internal Ask Vorta destination", async ({ page }) => {
-            test.setTimeout(180_000);
+          test("VOR-067 production gives every internal Ask Vorta destination a global Back to chat journey", async ({ page }) => {
+            test.setTimeout(240_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
             await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
@@ -82,64 +82,63 @@ jobs:
             await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
               .toBeVisible({ timeout: 30_000 });
 
-            const latestAssistantMessage = assistant.locator(".justify-start").last();
-            await expect(latestAssistantMessage).toBeVisible({ timeout: 90_000 });
-            await expect(latestAssistantMessage.locator(".animate-spin")).toHaveCount(0, { timeout: 90_000 });
-
-            await page.evaluate(() => {
-              const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
-                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
-              ));
-              const surface = surfaces.find((element) => {
-                const rect = element.getBoundingClientRect();
-                return rect.width > 0 && rect.height > 0;
-              });
-              if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
-              const link = document.createElement("a");
-              link.href = "/engineers";
-              link.textContent = "VOR-067 internal navigation verification";
-              surface.appendChild(link);
-              link.click();
-            });
-
-            await page.waitForURL(/\/engineers(?:\?.*)?$/, { timeout: 30_000 });
-            const backToChat = page.getByRole("button", {
-              name: "Back to Ask Vorta chat",
-              exact: true,
-            });
-            await expect(backToChat).toBeVisible({ timeout: 30_000 });
-
-            const representativeDestinations = [
+            const destinations = [
               `/equipment/${equipmentId}/work-orders`,
               `/equipment/${equipmentId}/spares`,
               `/equipment/${equipmentId}/documents/${guideId}`,
               "/stores-inventory",
               "/skills-matrix",
+              "/engineers",
             ];
-            for (const destination of representativeDestinations) {
-              await page.goto(destination, { waitUntil: "domcontentloaded" });
-              console.log("VOR067 ROUTE", destination, page.url());
+
+            for (const [index, destination] of destinations.entries()) {
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
+                .toBeVisible({ timeout: 30_000 });
+
+              await page.evaluate((path) => {
+                const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
+                  '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+                ));
+                const surface = surfaces.find((element) => {
+                  const rect = element.getBoundingClientRect();
+                  return rect.width > 0 && rect.height > 0;
+                });
+                if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
+                const link = document.createElement("a");
+                link.href = path;
+                link.textContent = `VOR-067 verify ${path}`;
+                link.setAttribute("data-vor067-internal-link", "true");
+                surface.appendChild(link);
+                link.click();
+              }, destination);
+
+              await page.waitForURL((url) => url.pathname === destination, { timeout: 30_000 });
+
+              const backToChat = page.getByRole("button", {
+                name: "Back to Ask Vorta chat",
+                exact: true,
+              });
               await expect(backToChat).toBeVisible({ timeout: 30_000 });
+
+              // Prove the control is durable and not query-string magic on a
+              // representative deep route during the same Ask Vorta excursion.
+              if (index === 0) {
+                await page.reload({ waitUntil: "domcontentloaded" });
+                await expect(backToChat).toBeVisible({ timeout: 30_000 });
+              }
+
+              await backToChat.click();
+              await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
+                .toBeVisible({ timeout: 30_000 });
             }
-
-            await page.reload({ waitUntil: "domcontentloaded" });
-            await expect(backToChat).toBeVisible({ timeout: 30_000 });
-
-            await backToChat.click();
-            await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
-
-            const restoredAssistant = page
-              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
-              .first();
-            await expect(restoredAssistant).toBeVisible({ timeout: 30_000 });
-            await expect(
-              restoredAssistant.locator(".justify-end p").filter({ hasText: question }).first(),
-            ).toBeVisible({ timeout: 30_000 });
           });
           EOF
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify exact production global Ask Vorta return journey
+      - name: Verify exact production Ask Vorta return journeys
         run: npx playwright test tests/browser/vor-067-global-production-final.spec.ts --project=samsung-tablet-landscape
