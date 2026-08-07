@@ -79,6 +79,18 @@ function markAskVortaConversationForReturn(): void {
   }
 }
 
+function shouldRestoreAskVortaConversation(): boolean {
+  try {
+    return (
+      window.sessionStorage.getItem(
+        ASK_VORTA_RETURN_ACTIVE_CONVERSATION_KEY,
+      ) === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function mobileAssistantPrompt(pathname: string): string {
   const equipmentId = equipmentIdFromPath(pathname);
   if (equipmentId) {
@@ -124,6 +136,16 @@ export function MaintenanceAiWorkOrderExperience({
   useEffect(() => {
     warmMaintenancePortalDataFast();
   }, []);
+
+  useEffect(() => {
+    if (openedFromAskVorta || !shouldRestoreAskVortaConversation()) return;
+
+    const reopenTimer = window.setTimeout(() => {
+      openMaintenanceAiAssistant({ submit: false });
+    }, 0);
+
+    return () => window.clearTimeout(reopenTimer);
+  }, [location.pathname, location.search, openedFromAskVorta]);
 
   useEffect(() => {
     const reloadCurrentDataRoute = (): void => {
@@ -254,10 +276,6 @@ export function MaintenanceAiWorkOrderExperience({
     } else {
       navigate("/dashboard", { replace: true });
     }
-
-    window.setTimeout(() => {
-      openMaintenanceAiAssistant({ submit: false });
-    }, 0);
   }, [navigate]);
 
   return (
