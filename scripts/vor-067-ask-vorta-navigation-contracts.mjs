@@ -21,6 +21,9 @@ for (const marker of [
   'document.addEventListener(\n      "click",',
   "markAskVortaNavigationOrigin()",
   "readAskVortaNavigationContext()",
+  "writeAskVortaNavigationContext",
+  "destinationPath",
+  "showBackToAskVorta",
   "clearAskVortaNavigationContext()",
   "data-vorta-back-to-ask-vorta",
   'aria-label="Back to Ask Vorta chat"',
@@ -69,6 +72,24 @@ assert.match(
   "Every Ask Vorta internal navigation must be captured by the native document capture phase before any link or button can navigate away",
 );
 
+assert.match(
+  source,
+  /const context = \{\s*returnPath: currentRoutePath\(\),\s*destinationPath: null,\s*\};[\s\S]*?writeAskVortaNavigationContext\(context\)/,
+  "A new Ask Vorta link must start a fresh excursion rather than inheriting stale destination state",
+);
+
+assert.match(
+  source,
+  /if \(!context\.destinationPath\) \{[\s\S]*?const scopedContext = \{ \.\.\.context, destinationPath: route \};[\s\S]*?writeAskVortaNavigationContext\(scopedContext\)[\s\S]*?setAskVortaNavigationContext\(scopedContext\)/,
+  "The first route reached after an Ask Vorta click must become the one scoped destination",
+);
+
+assert.match(
+  source,
+  /if \(context\.destinationPath !== route\) \{[\s\S]*?clearAskVortaNavigationContext\(\);[\s\S]*?setAskVortaNavigationContext\(null\)/,
+  "Ordinary navigation away from the Ask Vorta destination must clear the return control",
+);
+
 const returnFunction = source.match(
   /const returnToAskVortaChat = useCallback\(\(\): void => \{[\s\S]*?\n  \}, \[askVortaNavigationContext, navigate\]\);/,
 )?.[0];
@@ -99,8 +120,13 @@ assert.match(
 
 assert.match(
   source,
-  /\{askVortaNavigationContext \? \([\s\S]*?data-vorta-back-to-ask-vorta="true"[\s\S]*?Back to chat[\s\S]*?\) : null\}/,
-  "The application shell must own one global Back to chat control for the whole Ask Vorta excursion",
+  /const showBackToAskVorta =[\s\S]*?destinationPath === activeRoutePath/,
+  "Back to chat must render only on the exact destination opened from Ask Vorta",
+);
+assert.match(
+  source,
+  /\{showBackToAskVorta \? \([\s\S]*?data-vorta-back-to-ask-vorta="true"[\s\S]*?Back to chat[\s\S]*?\) : null\}/,
+  "The application shell must own one destination-scoped Back to chat control",
 );
 assert.match(
   source,
@@ -109,5 +135,5 @@ assert.match(
 );
 
 console.log(
-  "VOR-067 Ask Vorta navigation contracts passed: native application-shell capture covers every internal chat destination before navigation, Back to chat is destination-type agnostic, independent of query parameters and browser-history guessing, and restores the active conversation.",
+  "VOR-067 Ask Vorta navigation contracts passed: native capture covers every internal chat destination, Back to chat is destination-type agnostic but scoped to the direct destination, ordinary navigation clears it, and returning restores the active conversation.",
 );
