@@ -1,4 +1,4 @@
-name: VOR-067 deep-route context diagnostic
+name: VOR-067 global Back to chat preview verification
 
 on:
   pull_request:
@@ -11,9 +11,9 @@ permissions:
 jobs:
   verify:
     if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Inspect deep-route Back to chat context
+    name: Verify real global Ask Vorta return journeys
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       VORTA_E2E_BASE_URL: https://deploy-preview-272--vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
@@ -44,52 +44,111 @@ jobs:
         run: |
           test -n "$VORTA_E2E_PASSWORD" || exit 1
 
-      - name: Install route-context diagnostic
+      - name: Install global Ask Vorta journey test
         shell: bash
         run: |
-          cat > tests/browser/vor-067-route-context-diagnostic.spec.ts <<'EOF'
+          cat > tests/browser/vor-067-global-preview.spec.ts <<'EOF'
           import { expect, test } from "@playwright/test";
           import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
-          const key = "vorta:ask-vorta:navigation-context:v1";
-          const destination = "/equipment/40000000-0000-0000-0000-000000000007/work-orders";
+          const question = "Vial filling sensor fault";
+          const equipmentId = "40000000-0000-0000-0000-000000000007";
+          const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
 
-          test("inspect deep route context hydration", async ({ page }) => {
-            test.setTimeout(90_000);
+          test("VOR-067 gives every internal Ask Vorta destination one global Back to chat journey", async ({ page }) => {
+            test.setTimeout(240_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
             await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
 
-            await page.evaluate((storageKey) => {
-              window.sessionStorage.setItem(storageKey, JSON.stringify({ returnPath: "/dashboard" }));
-            }, key);
+            await page.evaluate((prompt) => {
+              window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt", {
+                detail: { question: prompt, submit: true, role: "maintenance-manager" },
+              }));
+            }, question);
 
-            const before = await page.evaluate((storageKey) => ({
-              url: window.location.href,
-              value: window.sessionStorage.getItem(storageKey),
-            }), key);
-            console.log("VOR067 BEFORE GOTO", JSON.stringify(before));
+            const assistant = page
+              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
+              .first();
+            const activeQuestion = assistant
+              .locator(".justify-end p")
+              .filter({ hasText: question })
+              .first();
+            await expect(assistant).toBeVisible({ timeout: 30_000 });
+            await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
 
-            await page.goto(destination, { waitUntil: "domcontentloaded" });
-            await page.waitForTimeout(3000);
+            // Prove the real governed evidence renderer marks the Ask Vorta
+            // excursion before React Router opens the destination.
+            const guideLink = assistant
+              .locator('[data-vorta-ai-evidence-links="true"]')
+              .getByRole("button", { name: /VF-02 Reject Station Fault-Finding Guide/i })
+              .first();
+            await expect(guideLink).toBeVisible({ timeout: 90_000 });
+            await guideLink.click();
+            await page.waitForURL(
+              (url) => url.pathname === `/equipment/${equipmentId}/documents/${guideId}`,
+              { timeout: 30_000 },
+            );
 
-            const after = await page.evaluate((storageKey) => ({
-              url: window.location.href,
-              value: window.sessionStorage.getItem(storageKey),
-              shellCount: document.querySelectorAll('[data-vorta-maintenance-portal="true"]').length,
-              buttonCount: document.querySelectorAll('[data-vorta-back-to-ask-vorta="true"]').length,
-              body: document.body.innerText.slice(0, 500),
-            }), key);
-            console.log("VOR067 AFTER GOTO", JSON.stringify(after));
+            const backToChat = page.getByRole("button", {
+              name: "Back to Ask Vorta chat",
+              exact: true,
+            });
+            await expect(backToChat).toBeVisible({ timeout: 30_000 });
+            await backToChat.click();
+            await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+            await expect(assistant).toBeVisible({ timeout: 30_000 });
+            await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
 
-            expect(after.value).toContain('"returnPath":"/dashboard"');
-            expect(after.shellCount).toBeGreaterThan(0);
-            expect(after.buttonCount).toBeGreaterThan(0);
+            // Exercise representative future/internal destination types using
+            // the same native capture path, while keeping navigation inside the
+            // running SPA exactly as the real Ask Vorta evidence buttons do.
+            const destinations = [
+              `/equipment/${equipmentId}/work-orders`,
+              `/equipment/${equipmentId}/spares`,
+              "/stores-inventory",
+              "/skills-matrix",
+              "/engineers",
+            ];
+
+            for (const destination of destinations) {
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+
+              await page.evaluate((path) => {
+                const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
+                  '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+                ));
+                const surface = surfaces.find((element) => {
+                  const rect = element.getBoundingClientRect();
+                  return rect.width > 0 && rect.height > 0;
+                });
+                if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
+
+                const link = document.createElement("a");
+                link.href = path;
+                link.textContent = `VOR-067 verify ${path}`;
+                link.addEventListener("click", (event) => event.preventDefault());
+                surface.appendChild(link);
+                link.click();
+
+                window.history.pushState(window.history.state, "", path);
+                window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+              }, destination);
+
+              await page.waitForURL((url) => url.pathname === destination, { timeout: 30_000 });
+              await expect(backToChat).toBeVisible({ timeout: 30_000 });
+
+              await backToChat.click();
+              await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+            }
           });
           EOF
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run route-context diagnostic
-        run: npx playwright test tests/browser/vor-067-route-context-diagnostic.spec.ts --project=samsung-tablet-landscape
+      - name: Verify exact preview Ask Vorta return journeys
+        run: npx playwright test tests/browser/vor-067-global-preview.spec.ts --project=samsung-tablet-landscape
