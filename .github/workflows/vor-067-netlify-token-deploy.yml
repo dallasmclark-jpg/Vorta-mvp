@@ -1,0 +1,74 @@
+name: VOR-067 Netlify auth-token deploy
+
+on:
+  push:
+    branches:
+      - ops/vor-067-netlify-token
+    paths:
+      - .github/workflows/vor-067-netlify-token-deploy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: 4672c4a4-53eb-475d-ae88-a9de4ecdeae8
+      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
+    steps:
+      - name: Check out exact current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Require configured Netlify auth token
+        shell: bash
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || {
+            echo "NETLIFY_AUTH_TOKEN is not configured." >&2
+            exit 1
+          }
+
+      - name: Deploy exact current main to Netlify production
+        id: deploy
+        shell: bash
+        run: |
+          release_commit="$(git rev-parse HEAD)"
+          echo "commit=${release_commit}" >> "$GITHUB_OUTPUT"
+          npx --yes netlify-cli@latest deploy \
+            --build \
+            --prod \
+            --site "$NETLIFY_SITE_ID" \
+            --auth "$NETLIFY_AUTH_TOKEN" \
+            --message "VOR-067 Back to chat header ${release_commit}" \
+            --json
+
+      - name: Verify production serves the exact deployed commit
+        env:
+          EXPECTED_COMMIT: ${{ steps.deploy.outputs.commit }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 100); do
+            deployed_commit="$(curl --fail --silent --show-error \
+              --header "Cache-Control: no-cache" \
+              "${VORTA_PRODUCTION_URL}/vorta-build.json?vor067token=${GITHUB_RUN_ID}-${attempt}" \
+              | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { try { console.log(JSON.parse(input).commit || ""); } catch { console.log(""); } });' \
+              || true)"
+            if [ "$deployed_commit" = "$EXPECTED_COMMIT" ]; then
+              echo "Production is serving $EXPECTED_COMMIT"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Production did not reach $EXPECTED_COMMIT" >&2
+          exit 1
