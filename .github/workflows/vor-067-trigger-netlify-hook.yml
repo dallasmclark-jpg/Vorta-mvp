@@ -1,0 +1,34 @@
+name: VOR-067 trigger Netlify build hook
+
+on:
+  push:
+    branches:
+      - ops/vor-067-netlify-build-hook
+    paths:
+      - .github/workflows/vor-067-trigger-netlify-hook.yml
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+    steps:
+      - name: Require configured build hook
+        shell: bash
+        run: |
+          test -n "$NETLIFY_BUILD_HOOK_URL" || {
+            echo "NETLIFY_BUILD_HOOK_URL is not configured." >&2
+            exit 1
+          }
+      - name: Trigger production build from main
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "content-type: application/json" \
+            --data '{"trigger_title":"VOR-067 Back to chat header production release"}' \
+            "$NETLIFY_BUILD_HOOK_URL"
