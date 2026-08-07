@@ -49,8 +49,104 @@ jobs:
         run: |
           test -n "$VORTA_E2E_PASSWORD" || exit 1
 
+      - name: Install deterministic production journey
+        shell: bash
+        run: |
+          cat > tests/browser/vor-067-exact-production-global-return.spec.ts <<'EOF'
+          import { expect, test } from "@playwright/test";
+          import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
+
+          const question = "Vial filling sensor fault";
+          const navigationKey = "vorta:ask-vorta:navigation-context:v1";
+          const equipmentId = "40000000-0000-0000-0000-000000000007";
+          const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
+
+          test("VOR-067 exact production gives every internal Ask Vorta destination one global Back to chat journey", async ({ page }) => {
+            test.setTimeout(180_000);
+            await signInMaintenanceManager(page);
+            await page.goto("/dashboard");
+            await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
+
+            await page.evaluate((prompt) => {
+              window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt", {
+                detail: { question: prompt, submit: true, role: "maintenance-manager" },
+              }));
+            }, question);
+
+            const assistant = page
+              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
+              .first();
+            const activeQuestion = assistant
+              .locator(".justify-end p")
+              .filter({ hasText: question })
+              .first();
+
+            await expect(assistant).toBeVisible({ timeout: 30_000 });
+            await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+
+            const destinations = [
+              `/equipment/${equipmentId}/work-orders`,
+              `/equipment/${equipmentId}/spares`,
+              `/equipment/${equipmentId}/documents/${guideId}`,
+              "/stores-inventory",
+              "/skills-matrix",
+              "/engineers",
+            ];
+
+            for (const destination of destinations) {
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+
+              // Create an ordinary same-origin link inside the live Ask Vorta surface.
+              // The production shell must capture it before navigation without knowing
+              // whether it targets a work order, spare, document, store, skill or engineer.
+              const capturedContext = await page.evaluate(({ path, key }) => {
+                const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
+                  '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+                ));
+                const surface = surfaces.find((element) => {
+                  const rect = element.getBoundingClientRect();
+                  return rect.width > 0 && rect.height > 0;
+                });
+                if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
+
+                window.sessionStorage.removeItem(key);
+                const link = document.createElement("a");
+                link.href = path;
+                link.textContent = `VOR-067 verify ${path}`;
+                link.addEventListener("click", (event) => event.preventDefault());
+                surface.appendChild(link);
+                link.click();
+
+                const stored = window.sessionStorage.getItem(key);
+
+                // Continue using the SPA after the real capture-phase click has marked
+                // the Ask Vorta excursion. This avoids turning the test into a Netlify
+                // hard-refresh test, which is a different concern entirely.
+                window.history.pushState(window.history.state, "", path);
+                window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+                return stored;
+              }, { path: destination, key: navigationKey });
+
+              expect(capturedContext).toContain('"returnPath":"/dashboard"');
+              await page.waitForURL((url) => url.pathname === destination, { timeout: 30_000 });
+
+              const backToChat = page.getByRole("button", {
+                name: "Back to Ask Vorta chat",
+                exact: true,
+              });
+              await expect(backToChat).toBeVisible({ timeout: 30_000 });
+
+              await backToChat.click();
+              await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+              await expect(assistant).toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+            }
+          });
+          EOF
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run permanent VOR-067 production regression
-        run: npx playwright test tests/browser/vor-067-production-chat-return.spec.ts --project=samsung-tablet-landscape
+      - name: Run exact production global-return regression
+        run: npx playwright test tests/browser/vor-067-exact-production-global-return.spec.ts --project=samsung-tablet-landscape
