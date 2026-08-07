@@ -13,6 +13,7 @@ on:
       - "scripts/run-contract-suite.mjs"
       - "scripts/rpc-security-manifest-contracts.mjs"
       - "scripts/live-demo-backend-health.mjs"
+      - "tests/browser/vor-069-historical-backtest.spec.ts"
       - ".github/workflows/vor-069-historical-backtest.yml"
   push:
     branches:
@@ -26,6 +27,7 @@ on:
       - "scripts/run-contract-suite.mjs"
       - "scripts/rpc-security-manifest-contracts.mjs"
       - "scripts/live-demo-backend-health.mjs"
+      - "tests/browser/vor-069-historical-backtest.spec.ts"
       - ".github/workflows/vor-069-historical-backtest.yml"
   workflow_dispatch:
 
@@ -107,3 +109,16 @@ jobs:
 
       - name: Enforce production performance budgets
         run: node scripts/check-performance-budgets.mjs
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify responsive historical backtest UI
+        run: |
+          npx playwright test \
+            tests/browser/vor-069-historical-backtest.spec.ts \
+            --project=phone-360 \
+            --project=samsung-tablet-portrait \
+            --project=samsung-tablet-landscape \
+            --project=desktop-1920 \
+            --config=playwright.config.ts
