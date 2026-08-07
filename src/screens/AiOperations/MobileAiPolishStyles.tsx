@@ -6,6 +6,12 @@ const MOBILE_AI_POLISH_STYLES = `
   display: none;
 }
 
+@media (min-width: 768px) {
+  [data-vorta-back-to-ask-vorta="true"] {
+    inset: 0.75rem 12.5rem auto auto;
+  }
+}
+
 @media (max-width: 639px) {
   :is(
     [data-vorta-global-ai-header="true"],
