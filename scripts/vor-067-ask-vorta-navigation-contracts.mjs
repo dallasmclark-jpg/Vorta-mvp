@@ -28,6 +28,7 @@ for (const marker of [
   "data-vorta-back-to-ask-vorta",
   'aria-label="Back to Ask Vorta chat"',
   "markAskVortaConversationForReturn();",
+  "shouldRestoreAskVortaConversation()",
   "navigate(-1)",
   'navigate("/dashboard", { replace: true })',
   "openMaintenanceAiAssistant({ submit: false })",
@@ -83,12 +84,21 @@ const returnFunction = source.match(
 assert.ok(returnFunction, "The governed Back to chat handler must exist");
 assert.match(
   returnFunction,
-  /markAskVortaConversationForReturn\(\)[\s\S]*?navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)[\s\S]*?openMaintenanceAiAssistant\(\{ submit: false \}\)/,
-  "Returning from a document must mark the active conversation, use internal history with a safe dashboard fallback, and reopen Ask Vorta without submitting a question",
+  /markAskVortaConversationForReturn\(\)[\s\S]*?navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)/,
+  "Returning from a document must mark the active conversation before using internal history with a safe dashboard fallback",
 );
 assert.ok(
-  !returnFunction.includes("question:") && !returnFunction.includes("submit: true"),
-  "Back to chat must never manufacture or submit a question",
+  !returnFunction.includes("openMaintenanceAiAssistant") &&
+    !returnFunction.includes("setTimeout") &&
+    !returnFunction.includes("question:") &&
+    !returnFunction.includes("submit: true"),
+  "The document route must not race the destination by reopening Ask Vorta before navigation has mounted the destination assistant",
+);
+
+assert.match(
+  source,
+  /useEffect\(\(\) => \{\s*if \(openedFromAskVorta \|\| !shouldRestoreAskVortaConversation\(\)\) return;[\s\S]*?setTimeout\(\(\) => \{\s*openMaintenanceAiAssistant\(\{ submit: false \}\);\s*\}, 0\)[\s\S]*?\}, \[location\.pathname, location\.search, openedFromAskVorta\]\);/,
+  "The mounted destination route must reopen Ask Vorta only after it sees the one-shot return marker",
 );
 
 assert.match(
@@ -150,5 +160,5 @@ try {
 }
 
 console.log(
-  "VOR-067 Ask Vorta navigation contracts passed: real document evidence links carry from=ai into the viewer, Back to chat reloads the active Recent conversation, desktop/tablet can open the assistant directly, and no artificial question is submitted.",
+  "VOR-067 Ask Vorta navigation contracts passed: real document evidence links carry from=ai into the viewer, the mounted destination reopens Ask Vorta and reloads the active Recent conversation, desktop/tablet can open the assistant directly, and no artificial question is submitted.",
 );
