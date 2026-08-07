@@ -1,0 +1,63 @@
+name: VOR-067 header immediate Netlify release
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-067-header-immediate-netlify-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.issue.number == 255 &&
+      github.actor == 'dallasmclark-jpg' &&
+      contains(github.event.comment.body, '/deploy-vor-067-header')
+    name: Push and verify current main
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
+
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create real runner push for Netlify
+        id: release
+        shell: bash
+        run: |
+          git rm .github/workflows/vor-067-header-immediate-netlify.yml
+          git config user.name "Vorta Immediate Release"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "VOR-067: publish Back to chat header placement"
+          git push origin HEAD:main
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for exact production commit
+        env:
+          EXPECTED_COMMIT: ${{ steps.release.outputs.commit }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 100); do
+            deployed_commit="$(curl --fail --silent --show-error \
+              --header "Cache-Control: no-cache" \
+              "${VORTA_PRODUCTION_URL}/vorta-build.json?vor067header=${GITHUB_RUN_ID}-${attempt}" \
+              | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { try { console.log(JSON.parse(input).commit || ""); } catch { console.log(""); } });' \
+              || true)"
+            if [ "$deployed_commit" = "$EXPECTED_COMMIT" ]; then
+              echo "Production is serving $EXPECTED_COMMIT"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Production did not reach $EXPECTED_COMMIT" >&2
+          exit 1
