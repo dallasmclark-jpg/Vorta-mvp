@@ -222,6 +222,26 @@ export function MaintenanceAiWorkOrderExperience({
   }, [location.pathname, location.search]);
 
   useEffect(() => {
+    const captureAskVortaInternalNavigation = (event: MouseEvent): void => {
+      if (!isAskVortaInternalNavigationTarget(event.target)) return;
+      setAskVortaNavigationContext(markAskVortaNavigationOrigin());
+    };
+
+    document.addEventListener(
+      "click",
+      captureAskVortaInternalNavigation,
+      true,
+    );
+    return () => {
+      document.removeEventListener(
+        "click",
+        captureAskVortaInternalNavigation,
+        true,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     const reloadCurrentDataRoute = (): void => {
       setDataRecoveryRevision((current) => current + 1);
     };
@@ -326,10 +346,6 @@ export function MaintenanceAiWorkOrderExperience({
 
   const trackRecommendationFollowThrough = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>): void => {
-      if (isAskVortaInternalNavigationTarget(event.target)) {
-        setAskVortaNavigationContext(markAskVortaNavigationOrigin());
-      }
-
       const routeUrl = routeUrlFromTarget(event.target);
       const siteId = siteContext?.siteId;
       if (!routeUrl || !siteId || routeUrl.searchParams.get("from") !== "ai") return;
