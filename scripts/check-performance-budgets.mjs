@@ -6,10 +6,12 @@ const budgets = {
   // Shift Handover and Stores Inventory are route-level lazy workspaces. The
   // existing reviewed allowance includes the shared nested-surface correction.
   // VOR-014 adds a measured 2.3 KiB without changing the largest-JavaScript or
-  // total-distribution ceilings.
+  // total-distribution ceilings. VOR-068 adds the verified rota headcount/status
+  // surface; its measured production CSS is 166,364 bytes, so keep a deliberately
+  // tight 136-byte margin rather than relaxing the JavaScript or total-dist limits.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 166_000,
+  totalCssBytes: 166_500,
   totalDistBytes: 3_600_000,
 };
 
