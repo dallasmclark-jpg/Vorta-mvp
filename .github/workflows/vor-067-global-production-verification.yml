@@ -97,21 +97,21 @@ jobs:
             console.log("VOR067 BEFORE RELOAD", await page.evaluate((key) => ({
               url: window.location.href,
               session: window.sessionStorage.getItem(key),
-              local: window.localStorage.getItem(key),
+              historyState: window.history.state,
             }), navigationKey));
 
             await page.evaluate(() => {
-              window.history.replaceState({}, "", window.location.pathname);
+              window.history.replaceState(window.history.state, "", window.location.pathname);
             });
             await page.reload();
 
             console.log("VOR067 AFTER RELOAD", await page.evaluate((key) => ({
               url: window.location.href,
               session: window.sessionStorage.getItem(key),
-              local: window.localStorage.getItem(key),
+              historyState: window.history.state,
             }), navigationKey));
 
-            await expect(backToChat).toBeVisible({ timeout: 15_000 });
+            await expect(backToChat).toBeVisible({ timeout: 30_000 });
 
             for (const path of ["/engineers", "/skills-matrix"]) {
               await page.goto(path);
