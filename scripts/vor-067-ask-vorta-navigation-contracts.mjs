@@ -1,9 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { build } from "esbuild";
+import { readFileSync } from "node:fs";
 
 const source = readFileSync(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
@@ -13,29 +9,37 @@ const workspaceExperience = readFileSync(
   "src/screens/AiOperations/AskVortaDesktopWorkspaceExperience.tsx",
   "utf8",
 );
-const documentRuntime = readFileSync(
-  "netlify/functions/ask-vorta/runtime-document-links.mts",
-  "utf8",
-);
-const documentOrigin = readFileSync(
-  "netlify/functions/ask-vorta/document-link-origin.mts",
-  "utf8",
-);
 
 for (const marker of [
-  "ASK_VORTA_DOCUMENT_ROUTE",
-  'new URLSearchParams(location.search).get("from") === "ai"',
+  '"vorta:ask-vorta:navigation-context:v1"',
+  '"vorta:ask-vorta:return-active-conversation:v1"',
+  "isAskVortaInternalNavigationTarget",
+  'data-vorta-ai-evidence-links="true"',
+  'data-vorta-global-ai-panel="true"',
+  'data-vorta-ai-workspace="true"',
+  "markAskVortaNavigationOrigin()",
+  "readAskVortaNavigationContext()",
+  "clearAskVortaNavigationContext()",
   "data-vorta-back-to-ask-vorta",
   'aria-label="Back to Ask Vorta chat"',
   "markAskVortaConversationForReturn();",
   "shouldRestoreAskVortaConversation()",
-  "navigate(-1)",
-  'navigate("/dashboard", { replace: true })',
   "openMaintenanceAiAssistant({ submit: false })",
   "const showDesktopAssistantLauncher = !isPhone;",
   'data-vorta-shared-mobile-ai-launcher="true"',
 ]) {
   assert.ok(source.includes(marker), `Missing VOR-067 navigation marker: ${marker}`);
+}
+
+for (const forbidden of [
+  "ASK_VORTA_DOCUMENT_ROUTE",
+  'new URLSearchParams(location.search).get("from") === "ai"',
+  "openedFromAskVorta",
+]) {
+  assert.ok(
+    !source.includes(forbidden),
+    `Back to chat must not depend on a document-only route flag: ${forbidden}`,
+  );
 }
 
 for (const marker of [
@@ -51,54 +55,38 @@ for (const marker of [
   );
 }
 
-for (const marker of [
-  'import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs"',
-  "path: withAskVortaDocumentOrigin(link.path)",
-  '"vor-067-production-chat-return-v2"',
-]) {
-  assert.ok(
-    documentRuntime.includes(marker),
-    `Missing VOR-067 production document-origin marker: ${marker}`,
-  );
-}
-
-for (const marker of [
-  'export const ASK_VORTA_DOCUMENT_ORIGIN = "ai"',
-  'params.set("from", ASK_VORTA_DOCUMENT_ORIGIN)',
-]) {
-  assert.ok(
-    documentOrigin.includes(marker),
-    `Missing VOR-067 document-origin helper marker: ${marker}`,
-  );
-}
+assert.match(
+  source,
+  /function isAskVortaInternalNavigationTarget[\s\S]*?data-vorta-ai-evidence-links="true"[\s\S]*?data-vorta-global-ai-panel="true"[\s\S]*?data-vorta-ai-workspace="true"[\s\S]*?url\.origin === window\.location\.origin/,
+  "The application shell must recognise Ask Vorta evidence buttons and same-origin links without knowing their destination type",
+);
 
 assert.match(
   source,
-  /const openedFromAskVorta =\s*ASK_VORTA_DOCUMENT_ROUTE\.test\(location\.pathname\) &&\s*new URLSearchParams\(location\.search\)\.get\("from"\) === "ai";/,
-  "Back to chat must be restricted to an internal Ask Vorta-origin document route",
+  /const trackRecommendationFollowThrough = useCallback\([\s\S]*?isAskVortaInternalNavigationTarget\(event\.target\)[\s\S]*?setAskVortaNavigationContext\(markAskVortaNavigationOrigin\(\)\)/,
+  "Every internal Ask Vorta navigation click must establish global return context before the destination opens",
 );
 
 const returnFunction = source.match(
-  /const returnToAskVortaChat = useCallback\(\(\): void => \{[\s\S]*?\n  \}, \[navigate\]\);/,
+  /const returnToAskVortaChat = useCallback\(\(\): void => \{[\s\S]*?\n  \}, \[askVortaNavigationContext, navigate\]\);/,
 )?.[0];
-assert.ok(returnFunction, "The governed Back to chat handler must exist");
+assert.ok(returnFunction, "The global Back to chat handler must exist");
 assert.match(
   returnFunction,
-  /markAskVortaConversationForReturn\(\)[\s\S]*?navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)/,
-  "Returning from a document must mark the active conversation before using internal history with a safe dashboard fallback",
+  /markAskVortaConversationForReturn\(\)[\s\S]*?clearAskVortaNavigationContext\(\)[\s\S]*?setAskVortaNavigationContext\(null\)[\s\S]*?navigate\(returnPath\)/,
+  "Back to chat must mark the active conversation, clear excursion state and return to the recorded chat route",
 );
 assert.ok(
-  !returnFunction.includes("openMaintenanceAiAssistant") &&
-    !returnFunction.includes("setTimeout") &&
-    !returnFunction.includes("question:") &&
-    !returnFunction.includes("submit: true"),
-  "The document route must not race the destination by reopening Ask Vorta before navigation has mounted the destination assistant",
+  !returnFunction.includes("submit: true") &&
+    !returnFunction.includes("?from=ai") &&
+    !returnFunction.includes("navigate(-1)"),
+  "Back to chat must not manufacture a question, depend on query magic or guess using browser history",
 );
 
 assert.match(
   source,
-  /useEffect\(\(\) => \{\s*if \(openedFromAskVorta \|\| !shouldRestoreAskVortaConversation\(\)\) return;[\s\S]*?setTimeout\(\(\) => \{\s*openMaintenanceAiAssistant\(\{ submit: false \}\);\s*\}, 0\)[\s\S]*?\}, \[location\.pathname, location\.search, openedFromAskVorta\]\);/,
-  "The mounted destination route must reopen Ask Vorta only after it sees the one-shot return marker",
+  /useEffect\(\(\) => \{\s*if \(!shouldRestoreAskVortaConversation\(\)\) return;[\s\S]*?setTimeout\(\(\) => \{\s*openMaintenanceAiAssistant\(\{ submit: false \}\);\s*\}, 0\)[\s\S]*?\}, \[location\.pathname, location\.search\]\);/,
+  "The mounted return route must reopen Ask Vorta after navigation without any destination-specific condition",
 );
 
 assert.match(
@@ -109,8 +97,8 @@ assert.match(
 
 assert.match(
   source,
-  /\{openedFromAskVorta \? \([\s\S]*?data-vorta-back-to-ask-vorta="true"[\s\S]*?Back to chat[\s\S]*?\) : null\}/,
-  "The Back to chat control must render only for Ask Vorta-origin document views",
+  /\{askVortaNavigationContext \? \([\s\S]*?data-vorta-back-to-ask-vorta="true"[\s\S]*?Back to chat[\s\S]*?\) : null\}/,
+  "The application shell must own one global Back to chat control for the whole Ask Vorta excursion",
 );
 assert.match(
   source,
@@ -118,47 +106,6 @@ assert.match(
   "The existing governed assistant must remain the desktop and tablet direct-open entry point",
 );
 
-const temp = mkdtempSync(join(tmpdir(), "vorta-ask-vorta-document-origin-"));
-try {
-  const bundle = join(temp, "document-link-origin.mjs");
-  await build({
-    entryPoints: ["netlify/functions/ask-vorta/document-link-origin.mts"],
-    bundle: true,
-    platform: "node",
-    format: "esm",
-    target: "node22",
-    outfile: bundle,
-    logLevel: "silent",
-  });
-  const origin = await import(`${pathToFileURL(bundle).href}?revision=${Date.now()}`);
-
-  const equipmentId = "40000000-0000-0000-0000-000000000007";
-  const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
-  const bareGuidePath = `/equipment/${equipmentId}/documents/${guideId}`;
-  const pageGuidePath = `${bareGuidePath}?page=12`;
-
-  assert.equal(
-    origin.withAskVortaDocumentOrigin(bareGuidePath),
-    `${bareGuidePath}?from=ai`,
-    "The production VF-02 guide route must retain Ask Vorta origin even when the stored source has no page query",
-  );
-  assert.equal(
-    origin.withAskVortaDocumentOrigin(pageGuidePath),
-    `${pageGuidePath}&from=ai`,
-    "The production VF-02 guide page must preserve page 12 and add Ask Vorta origin",
-  );
-  assert.equal(
-    new URL(
-      origin.withAskVortaDocumentOrigin(pageGuidePath),
-      "https://vorta-app.netlify.app",
-    ).searchParams.get("from"),
-    "ai",
-    "The document viewer must receive the exact from=ai signal used to render Back to chat",
-  );
-} finally {
-  rmSync(temp, { recursive: true, force: true });
-}
-
 console.log(
-  "VOR-067 Ask Vorta navigation contracts passed: real document evidence links carry from=ai into the viewer, the mounted destination reopens Ask Vorta and reloads the active Recent conversation, desktop/tablet can open the assistant directly, and no artificial question is submitted.",
+  "VOR-067 Ask Vorta navigation contracts passed: Back to chat is application-shell owned, destination-type agnostic, independent of query parameters and browser-history guessing, and restores the active conversation.",
 );

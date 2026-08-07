@@ -9,7 +9,7 @@ const question = "Vial filling sensor fault";
 const equipmentId = "40000000-0000-0000-0000-000000000007";
 const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
 
-test("VOR-067 production Ask Vorta document returns to the same chat", async ({
+test("VOR-067 production Ask Vorta keeps a global Back to chat journey", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -58,12 +58,9 @@ test("VOR-067 production Ask Vorta document returns to the same chat", async ({
   await guideLink.click();
 
   await page.waitForURL(
-    (url) =>
-      url.pathname === `/equipment/${equipmentId}/documents/${guideId}` &&
-      url.searchParams.get("from") === "ai",
+    (url) => url.pathname === `/equipment/${equipmentId}/documents/${guideId}`,
     { timeout: 30_000 },
   );
-  expect(new URL(page.url()).searchParams.get("from")).toBe("ai");
   await expect(page.getByText("Page 12 of 20", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
@@ -73,6 +70,23 @@ test("VOR-067 production Ask Vorta document returns to the same chat", async ({
     exact: true,
   });
   await expect(backToChat).toBeVisible({ timeout: 15_000 });
+
+  // The return control belongs to the global Ask Vorta navigation context, not
+  // a document query parameter. Strip every query parameter and reload to prove
+  // that the button remains available without `?from=ai` or any route magic.
+  await page.evaluate(() => {
+    window.history.replaceState({}, "", window.location.pathname);
+  });
+  await page.reload();
+  await expect(backToChat).toBeVisible({ timeout: 15_000 });
+
+  // Once an Ask Vorta excursion has started, the application-shell control is
+  // route-agnostic. It follows the user across ordinary Vorta destinations.
+  for (const path of ["/engineers", "/skills-matrix"]) {
+    await page.goto(path);
+    await expect(backToChat).toBeVisible({ timeout: 15_000 });
+  }
+
   await backToChat.click();
 
   await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
