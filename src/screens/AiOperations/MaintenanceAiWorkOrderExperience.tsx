@@ -28,9 +28,10 @@ import { MobilePageHeaderExperience } from "./MobilePageHeaderExperience";
 import { MobileTypographyStyles } from "./MobileTypographyStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
-const ASK_VORTA_DOCUMENT_ROUTE = /^\/equipment\/[^/]+\/documents\/[^/]+$/;
 const ASK_VORTA_RETURN_ACTIVE_CONVERSATION_KEY =
   "vorta:ask-vorta:return-active-conversation:v1";
+const ASK_VORTA_NAVIGATION_CONTEXT_KEY =
+  "vorta:ask-vorta:navigation-context:v1";
 const MAINTENANCE_DATA_RECOVERED_EVENT =
   "vorta:maintenance-data-recovered";
 
@@ -38,6 +39,10 @@ interface GlobalAiPromptEventDetail {
   question?: string;
   submit?: boolean;
   role?: "maintenance-manager";
+}
+
+interface AskVortaNavigationContext {
+  returnPath: string;
 }
 
 function decodeEquipmentId(value: string): string {
@@ -66,6 +71,70 @@ function routeUrlFromTarget(target: EventTarget | null): URL | null {
 
 function routePathFromTarget(target: EventTarget | null): string | null {
   return routeUrlFromTarget(target)?.pathname ?? null;
+}
+
+function currentRoutePath(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function readAskVortaNavigationContext(): AskVortaNavigationContext | null {
+  try {
+    const stored = window.sessionStorage.getItem(
+      ASK_VORTA_NAVIGATION_CONTEXT_KEY,
+    );
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored) as Partial<AskVortaNavigationContext>;
+    return typeof parsed.returnPath === "string" && parsed.returnPath.startsWith("/")
+      ? { returnPath: parsed.returnPath }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function markAskVortaNavigationOrigin(): AskVortaNavigationContext {
+  const existing = readAskVortaNavigationContext();
+  if (existing) return existing;
+
+  const context = { returnPath: currentRoutePath() };
+  try {
+    window.sessionStorage.setItem(
+      ASK_VORTA_NAVIGATION_CONTEXT_KEY,
+      JSON.stringify(context),
+    );
+  } catch {
+    // The in-memory React state still keeps the return control available.
+  }
+  return context;
+}
+
+function clearAskVortaNavigationContext(): void {
+  try {
+    window.sessionStorage.removeItem(ASK_VORTA_NAVIGATION_CONTEXT_KEY);
+  } catch {
+    // The visible state is cleared even when browser storage is unavailable.
+  }
+}
+
+function isAskVortaInternalNavigationTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+
+  if (target.closest('[data-vorta-ai-evidence-links="true"] button')) {
+    return true;
+  }
+
+  const assistantSurface = target.closest(
+    '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+  );
+  if (!assistantSurface) return false;
+
+  const anchor = target.closest<HTMLAnchorElement>("a[href]");
+  const href = anchor?.getAttribute("href")?.trim();
+  if (!href) return false;
+
+  const url = new URL(href, window.location.origin);
+  return url.origin === window.location.origin;
 }
 
 function markAskVortaConversationForReturn(): void {
@@ -128,9 +197,10 @@ export function MaintenanceAiWorkOrderExperience({
   const navigate = useNavigate();
   const isPhone = useMediaQuery("(max-width: 767px)");
   const [dataRecoveryRevision, setDataRecoveryRevision] = useState(0);
-  const openedFromAskVorta =
-    ASK_VORTA_DOCUMENT_ROUTE.test(location.pathname) &&
-    new URLSearchParams(location.search).get("from") === "ai";
+  const [askVortaNavigationContext, setAskVortaNavigationContext] =
+    useState<AskVortaNavigationContext | null>(() =>
+      readAskVortaNavigationContext(),
+    );
   const showDesktopAssistantLauncher = !isPhone;
 
   useEffect(() => {
@@ -138,14 +208,18 @@ export function MaintenanceAiWorkOrderExperience({
   }, []);
 
   useEffect(() => {
-    if (openedFromAskVorta || !shouldRestoreAskVortaConversation()) return;
+    setAskVortaNavigationContext(readAskVortaNavigationContext());
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    if (!shouldRestoreAskVortaConversation()) return;
 
     const reopenTimer = window.setTimeout(() => {
       openMaintenanceAiAssistant({ submit: false });
     }, 0);
 
     return () => window.clearTimeout(reopenTimer);
-  }, [location.pathname, location.search, openedFromAskVorta]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const reloadCurrentDataRoute = (): void => {
@@ -252,6 +326,10 @@ export function MaintenanceAiWorkOrderExperience({
 
   const trackRecommendationFollowThrough = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>): void => {
+      if (isAskVortaInternalNavigationTarget(event.target)) {
+        setAskVortaNavigationContext(markAskVortaNavigationOrigin());
+      }
+
       const routeUrl = routeUrlFromTarget(event.target);
       const siteId = siteContext?.siteId;
       if (!routeUrl || !siteId || routeUrl.searchParams.get("from") !== "ai") return;
@@ -269,14 +347,18 @@ export function MaintenanceAiWorkOrderExperience({
   );
 
   const returnToAskVortaChat = useCallback((): void => {
+    const returnPath = askVortaNavigationContext?.returnPath ?? "/dashboard";
     markAskVortaConversationForReturn();
+    clearAskVortaNavigationContext();
+    setAskVortaNavigationContext(null);
 
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/dashboard", { replace: true });
+    if (currentRoutePath() === returnPath) {
+      openMaintenanceAiAssistant({ submit: false });
+      return;
     }
-  }, [navigate]);
+
+    navigate(returnPath);
+  }, [askVortaNavigationContext, navigate]);
 
   return (
     <div
@@ -298,7 +380,7 @@ export function MaintenanceAiWorkOrderExperience({
       >
         {children}
       </div>
-      {openedFromAskVorta ? (
+      {askVortaNavigationContext ? (
         <button
           type="button"
           data-vorta-back-to-ask-vorta="true"
