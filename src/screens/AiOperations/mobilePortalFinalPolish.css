@@ -1,14 +1,3 @@
-@media (min-width: 768px) {
-  /* Keep the working Ask Vorta return logic untouched; only move its global
-     control into the top content-header area on tablet and desktop. */
-  [data-vorta-back-to-ask-vorta="true"] {
-    top: 0.75rem;
-    right: 12.5rem;
-    bottom: auto;
-    left: auto;
-  }
-}
-
 @media (max-width: 767px) {
   /* Legacy embedded assistants opt into this semantic boundary. The global
      assistant owns its responsive layout in React and must remain visible. */
