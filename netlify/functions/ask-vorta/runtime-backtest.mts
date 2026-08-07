@@ -214,28 +214,31 @@ function classificationLabels(item: BacktestCase): string[] {
 function evidenceLinks(item: BacktestCase): JsonRecord[] {
   const id = text(item.equipment.id);
   if (!id) return [];
-  const wo = text(item.workOrder?.number);
-  return [
+
+  const links: JsonRecord[] = [
     {
       label: `${text(item.equipment.code) || "Equipment"} history evidence`,
       path: `/equipment/${id}/history`,
       recordType: "equipment_history",
     },
-    wo
-      ? {
-          label: `Work order ${wo}`,
-          path: `/equipment/${id}/work-orders?workOrder=${encodeURIComponent(wo)}`,
-          recordType: "work_order",
-        }
-      : null,
-    text(item.stock.materialNumber)
-      ? {
-          label: `Spare ${text(item.stock.materialNumber)}`,
-          path: `/equipment/${id}/spares`,
-          recordType: "spare",
-        }
-      : null,
-  ].filter((item): item is JsonRecord => Boolean(item));
+  ];
+  const wo = text(item.workOrder?.number);
+  if (wo) {
+    links.push({
+      label: `Work order ${wo}`,
+      path: `/equipment/${id}/work-orders?workOrder=${encodeURIComponent(wo)}`,
+      recordType: "work_order",
+    });
+  }
+  const materialNumber = text(item.stock.materialNumber);
+  if (materialNumber) {
+    links.push({
+      label: `Spare ${materialNumber}`,
+      path: `/equipment/${id}/spares`,
+      recordType: "spare",
+    });
+  }
+  return links;
 }
 
 function equipmentAnswer(responseId: string, payload: BacktestPayload): JsonRecord {
@@ -292,7 +295,7 @@ function equipmentAnswer(responseId: string, payload: BacktestPayload): JsonReco
       `${code} had elevated historical risk ${warning ?? "—"}/100, rising to ${preOutcome ?? "—"}/100 before the recorded breakdown, with a ${warningDays ?? "—"}-day warning period. ` +
       `The linked critical spare ${material || "material"} was at ${available ?? "—"} available at failure. ` +
       `${reservation ? `Reservation ${reservation}` : "A linked reservation"}${materialDocument ? ` and 261 material document ${materialDocument}` : ""} show material issue ${formatMinutes(wait)} after failure; the linked work order${wo ? ` ${wo}` : ""} records ${formatMinutes(downtime)} downtime. ` +
-      "This supports a material-related recovery delay. It does not prove the stock-out caused the breakdown or that an earlier intervention would have prevented it.";
+      "This supports a material-related recovery delay. It does not prove the stock-out caused the breakdown, and the evidence does not establish that an earlier intervention was preventative.";
   } else if (item.scenarioType === "successful_intervention") {
     directAnswer =
       `${code} moved from ${warning ?? "—"}/100 historical risk to ${preOutcome ?? "—"}/100 before intervention. ` +
