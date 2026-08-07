@@ -1,0 +1,33 @@
+name: Package exact current main source
+
+on:
+  push:
+    branches:
+      - ops/package-current-netlify-client
+    paths:
+      - .github/workflows/package-current-main-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Package exact source including Git metadata
+        shell: bash
+        run: tar -czf /tmp/vorta-current-main.tar.gz --exclude=node_modules --exclude=dist .
+
+      - name: Upload exact source
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vorta-current-main-source
+          path: /tmp/vorta-current-main.tar.gz
+          retention-days: 1
