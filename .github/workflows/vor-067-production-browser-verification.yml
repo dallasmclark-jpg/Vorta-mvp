@@ -52,6 +52,21 @@ jobs:
             exit 1
           }
 
+      - name: Narrow duplicate page label in verification copy
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const path = "tests/browser/vor-067-production-chat-return.spec.ts";
+          let source = fs.readFileSync(path, "utf8");
+          const before = 'page.getByText("Page 12 of 20", { exact: true })';
+          const after = 'page.getByText("Page 12 of 20", { exact: true }).first()';
+          if (!source.includes(before)) {
+            throw new Error("Expected VOR-067 page locator was not found in the exact deployed source.");
+          }
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
