@@ -189,11 +189,13 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   await page.goto("/engineers");
   const originalRota = page.locator('[data-vorta-original-shift-rota="true"]');
   await expect(originalRota).toBeVisible({ timeout: 30_000 });
-  await expect(
-    page.getByRole("heading", { name: "Shift Cover Risk", exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('[data-vorta-verified-operational-rota="true"]')).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Operational Rota Risk Map", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("VERIFIED SHIFT CALENDAR", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/Fully Covered requires the configured team headcount/i),
   ).toBeVisible();
   await expect(page.getByText("Verified weekly coverage", { exact: true })).toHaveCount(0);
   await expect(page.locator('[data-vorta-live-engineers="true"]')).toHaveCount(0);
@@ -211,9 +213,9 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   for (const legend of [
     "Fully Covered",
     "Reduced Cover",
+    "Partial Cover",
     "Critical Gap",
     "Contractor Cover",
-    "Off Shift",
     "Missing Skill",
     "Reduced Resilience",
     "SME Dependency",
@@ -222,18 +224,13 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
     await expect(page.getByText(legend, { exact: true }).first()).toBeVisible();
   }
 
-  await expect(page.getByText("Tonight's Risk", { exact: true })).toBeVisible();
+  await expect(page.getByText("4/4", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Shift .* [23] of 4 engineers, Fully Covered/i }),
+  ).toHaveCount(0);
   await expectNoGenericDataFailure(page);
   await expectNoPageOverflow(page);
-  await captureEvidence(page, testInfo, "engineers-original-rota-samsung");
-
-  await page
-    .getByRole("button", { name: "Resolve Tonight's Cover", exact: true })
-    .first()
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Tonight's Risk Summary", exact: true }),
-  ).toBeVisible();
+  await captureEvidence(page, testInfo, "engineers-verified-rota-samsung");
 
   await page.goto("/stores-inventory");
   await expect(page.locator('[data-vorta-stores-inventory="true"]')).toBeVisible();
