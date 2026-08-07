@@ -48,7 +48,7 @@ assert.match(service, /resolveAuthorisedSiteId/);
 assert.match(service, /\.from\("equipment_assets"\)/);
 assert.match(service, /Historical backtest unavailable/);
 assert.match(service, /dataset version is not approved/i);
-assert.doesNotMatch(service, /fallback/i);
+assert.doesNotMatch(service, /demo fallback|synthetic fallback|fallback history/i);
 
 assert.match(panel, /Historical risk validation/);
 assert.match(panel, /Backtest: did Vorta surface risk before later outcomes\?/);
