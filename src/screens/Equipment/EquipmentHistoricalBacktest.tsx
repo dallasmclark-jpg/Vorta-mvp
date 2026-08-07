@@ -26,30 +26,6 @@ interface Props {
   onAskVorta: (prompt: string) => void;
 }
 
-interface SummaryMetricProps {
-  label: string;
-  value: string | number;
-  detail: string;
-  tone?: string;
-}
-
-function SummaryMetric({
-  label,
-  value,
-  detail,
-  tone = "text-slate-100",
-}: SummaryMetricProps): JSX.Element {
-  return (
-    <div className="rounded-xl border border-gray-800 bg-[#0b1017]/80 p-3.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-        {label}
-      </p>
-      <p className={`mt-1.5 text-2xl font-semibold ${tone}`}>{value}</p>
-      <p className="mt-1 text-[11px] leading-4 text-slate-500">{detail}</p>
-    </div>
-  );
-}
-
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "Not recorded";
   const date = new Date(value);
@@ -69,19 +45,6 @@ function formatMinutes(value: number | null | undefined): string {
   const minutes = value % 60;
   if (hours <= 0) return `${minutes} min`;
   return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-}
-
-function classificationTone(item: HistoricalBacktestClassification): string {
-  if (item.evidenceLevel === "supported_impact") {
-    return "border-orange-500/30 bg-orange-500/10 text-orange-200";
-  }
-  if (item.evidenceLevel === "validation_counterexample") {
-    return "border-cyan-500/30 bg-cyan-500/10 text-cyan-200";
-  }
-  if (item.evidenceLevel === "plausible_relevance") {
-    return "border-violet-500/30 bg-violet-500/10 text-violet-200";
-  }
-  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
 }
 
 function caseHeading(item: HistoricalBacktestCase): string {
@@ -106,25 +69,61 @@ function casePrompt(item: HistoricalBacktestCase): string {
   ].join(" ");
 }
 
-function TimelinePoint({
-  title,
+function SummaryMetric({
+  label,
   value,
   detail,
-  tone,
 }: {
-  title: string;
-  value: string;
+  label: string;
+  value: string | number;
   detail: string;
-  tone: string;
 }): JSX.Element {
   return (
-    <div className="relative min-w-0 rounded-xl border border-gray-800 bg-[#0a0f16] p-3">
-      <span className={`absolute left-3 top-3 h-2 w-2 rounded-full ${tone}`} />
-      <p className="pl-4 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
-        {title}
-      </p>
-      <p className="mt-2 text-sm font-semibold text-slate-100">{value}</p>
-      <p className="mt-1 text-[11px] leading-4 text-slate-500">{detail}</p>
+    <div className="rounded-xl border border-gray-800 bg-gray-900 p-3">
+      <p className="text-xs font-semibold text-slate-400">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-100">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function ClassificationChip({
+  item,
+}: {
+  item: HistoricalBacktestClassification;
+}): JSX.Element {
+  const className =
+    item.evidenceLevel === "supported_impact"
+      ? "border-orange-500/30 text-orange-200"
+      : item.evidenceLevel === "validation_counterexample"
+        ? "border-cyan-500/30 text-cyan-200"
+        : item.evidenceLevel === "plausible_relevance"
+          ? "border-violet-500/30 text-violet-200"
+          : "border-emerald-500/30 text-emerald-200";
+
+  return (
+    <span className={`rounded-full border px-2 py-1 text-xs ${className}`}>
+      {item.label} · {item.confidence}%
+    </span>
+  );
+}
+
+function EvidenceRow({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}): JSX.Element {
+  return (
+    <div className="border-b border-gray-800 py-3 last:border-b-0">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <p className="text-xs font-semibold text-slate-400">{label}</p>
+        <p className="text-sm font-semibold text-slate-100">{value}</p>
+      </div>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
     </div>
   );
 }
@@ -137,12 +136,7 @@ function CaseCard({
   onAskVorta: (prompt: string) => void;
 }): JSX.Element {
   const stockout = item.stock.availableQuantity === 0;
-  const outcomeDate = item.timeframe.failureAt ?? item.timeframe.interventionAt;
-  const outcomeLabel = item.timeframe.failureAt
-    ? "Breakdown"
-    : item.timeframe.interventionAt
-      ? "Intervention"
-      : "Validation window";
+  const outcomeAt = item.timeframe.failureAt ?? item.timeframe.interventionAt;
   const outcomeValue = item.timeframe.failureAt
     ? item.workOrder?.number || "Breakdown recorded"
     : item.timeframe.interventionAt
@@ -150,21 +144,21 @@ function CaseCard({
       : "No breakdown recorded";
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-[#10151d] p-4 md:p-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="h-auto rounded border border-violet-500/25 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-200 shadow-none">
+    <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex flex-wrap gap-2">
+            <Badge className="bg-transparent text-violet-200 shadow-none">
               {caseHeading(item)}
             </Badge>
-            <Badge className="h-auto rounded border border-gray-700 bg-gray-800/50 px-2 py-1 text-[10px] font-semibold text-slate-300 shadow-none">
+            <Badge className="bg-transparent text-slate-300 shadow-none">
               {item.confidence}% evidence confidence
             </Badge>
           </div>
           <h4 className="mt-3 text-base font-semibold text-slate-100">
             {item.equipment.name} · {item.equipment.code}
           </h4>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs text-slate-500">
             {item.scenarioKey} · {item.equipment.area} · model {item.risk.modelVersion || "not recorded"}
           </p>
         </div>
@@ -172,79 +166,59 @@ function CaseCard({
           type="button"
           variant="outline"
           onClick={() => onAskVorta(casePrompt(item))}
-          className="h-auto shrink-0 gap-2 border-violet-500/25 bg-violet-500/[0.06] px-3 py-2 text-xs text-violet-200 hover:bg-violet-500/10 hover:text-violet-100"
+          className="h-auto gap-2 px-3 py-2 text-xs"
         >
-          <BrainCircuit className="h-3.5 w-3.5" />
+          <BrainCircuit className="h-4 w-4" />
           Ask Vorta about evidence
         </Button>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <TimelinePoint
-          title="Warning risk"
-          value={`${item.risk.warningScore ?? "—"}/100`}
-          detail={`${formatDateTime(item.risk.warningCapturedAt)} · ${item.risk.primaryDriver || "driver unavailable"}`}
-          tone="bg-orange-400"
-        />
-        <TimelinePoint
-          title="Pre-outcome"
-          value={`${item.risk.preOutcomeScore ?? "—"}/100`}
-          detail={`${item.timeframe.warningLeadDays} days from warning to ${item.timeframe.failureAt ? "failure" : item.timeframe.interventionAt ? "intervention" : "validation"}`}
-          tone="bg-red-400"
-        />
-        <TimelinePoint
-          title={outcomeLabel}
-          value={outcomeValue}
-          detail={formatDateTime(outcomeDate ?? item.timeframe.validationWindowEnd)}
-          tone={item.timeframe.failureAt ? "bg-red-500" : "bg-emerald-400"}
-        />
-        <TimelinePoint
-          title={stockout ? "Material recovery" : "Post outcome"}
-          value={
-            stockout
-              ? formatMinutes(item.stock.verifiedMaterialWaitMinutes)
-              : item.risk.postInterventionScore != null
-                ? `${item.risk.postInterventionScore}/100 risk`
-                : "No later failure"
-          }
-          detail={
-            stockout
-              ? `${item.stock.materialNumber || "Material"} · 261 ${item.stock.materialDocumentNumber || "not recorded"}`
-              : item.risk.observedPostInterventionReduction != null
-                ? `${item.risk.observedPostInterventionReduction} point observed reduction`
-                : `${item.validation.windowDays}-day validation window`
-          }
-          tone={stockout ? "bg-orange-400" : "bg-emerald-400"}
-        />
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {item.classifications.map((classification) => (
-          <span
-            key={`${item.scenarioKey}-${classification.code}`}
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold ${classificationTone(classification)}`}
-          >
-            {classification.label} · {classification.confidence}%
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-800 bg-[#0b1017]/70 p-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Vorta action at the time
-          </p>
-          <p className="mt-2 text-xs leading-5 text-slate-300">
-            {item.risk.recommendedActionAtTime}
-          </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-lg border border-gray-800 p-3">
+          <EvidenceRow
+            label="Warning risk"
+            value={`${item.risk.warningScore ?? "—"}/100`}
+            detail={`${formatDateTime(item.risk.warningCapturedAt)} · ${item.risk.primaryDriver || "driver unavailable"}`}
+          />
+          <EvidenceRow
+            label="Pre-outcome risk"
+            value={`${item.risk.preOutcomeScore ?? "—"}/100`}
+            detail={`${item.timeframe.warningLeadDays} days from warning to recorded outcome`}
+          />
+          <EvidenceRow
+            label="Recorded outcome"
+            value={outcomeValue}
+            detail={formatDateTime(outcomeAt ?? item.timeframe.validationWindowEnd)}
+          />
         </div>
-        <div className="rounded-xl border border-gray-800 bg-[#0b1017]/70 p-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Exact linked evidence
-          </p>
-          <p className="mt-2 break-words font-mono text-[11px] leading-5 text-slate-400">
-            {[
-              item.workOrder?.number,
+
+        <div className="rounded-lg border border-gray-800 p-3">
+          <EvidenceRow
+            label={stockout ? "Material recovery" : "Post outcome"}
+            value={
+              stockout
+                ? formatMinutes(item.stock.verifiedMaterialWaitMinutes)
+                : item.risk.postInterventionScore != null
+                  ? `${item.risk.postInterventionScore}/100 risk`
+                  : "No later failure"
+            }
+            detail={
+              stockout
+                ? `${item.stock.materialNumber || "Material"} · 261 ${item.stock.materialDocumentNumber || "not recorded"}`
+                : item.risk.observedPostInterventionReduction != null
+                  ? `${item.risk.observedPostInterventionReduction} point observed reduction`
+                  : `${item.validation.windowDays}-day validation window`
+            }
+          />
+          <EvidenceRow
+            label="Vorta action at the time"
+            value={item.risk.primaryDriver || "Verified risk review"}
+            detail={item.risk.recommendedActionAtTime}
+          />
+          <EvidenceRow
+            label="Linked evidence"
+            value={item.workOrder?.number || item.scenarioKey}
+            detail={[
               item.stock.reservationNumber,
               item.stock.materialDocumentNumber
                 ? `261 ${item.stock.materialDocumentNumber}`
@@ -252,9 +226,18 @@ function CaseCard({
               item.stock.snapshotAt ? `stock ${formatDateTime(item.stock.snapshotAt)}` : null,
             ]
               .filter(Boolean)
-              .join(" · ") || "Timestamped risk evidence only"}
-          </p>
+              .join(" · ") || "Timestamped risk evidence"}
+          />
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {item.classifications.map((classification) => (
+          <ClassificationChip
+            key={`${item.scenarioKey}-${classification.code}`}
+            item={classification}
+          />
+        ))}
       </div>
     </div>
   );
@@ -294,8 +277,8 @@ export function EquipmentHistoricalBacktest({
 
   const siteSummary = bundle?.site.summary;
   const equipmentCases = bundle?.equipment.cases ?? [];
-  const siteProvenance = bundle?.site.summary.evidenceProvenance ?? [];
-  const isSynthetic = siteProvenance.includes("synthetic_demo");
+  const isSynthetic =
+    bundle?.site.summary.evidenceProvenance.includes("synthetic_demo") ?? false;
   const headline = useMemo(() => {
     if (!siteSummary) return "";
     if (siteSummary.breakdownCount === 0) {
@@ -306,18 +289,15 @@ export function EquipmentHistoricalBacktest({
 
   if (loading) {
     return (
-      <Card className="rounded-2xl border border-gray-800 bg-[#141820] shadow-none">
-        <CardContent className="p-5 md:p-6">
+      <Card className="rounded-xl border-gray-800 bg-[#141820] shadow-none">
+        <CardContent className="p-5">
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <RefreshCw className="h-4 w-4 animate-spin text-violet-400" />
+            <RefreshCw className="h-4 w-4 animate-spin" />
             Reconstructing historical risk, stock and breakdown evidence…
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-24 animate-pulse rounded-xl border border-gray-800 bg-[#0b1017]"
-              />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="h-20 animate-pulse rounded-lg bg-gray-900" />
             ))}
           </div>
         </CardContent>
@@ -327,24 +307,19 @@ export function EquipmentHistoricalBacktest({
 
   if (error || !bundle || !siteSummary) {
     return (
-      <Card className="rounded-2xl border border-red-500/25 bg-red-500/[0.04] shadow-none">
-        <CardContent className="p-5 md:p-6">
+      <Card className="rounded-xl border-red-500/30 bg-[#141820] shadow-none">
+        <CardContent className="p-5">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+            <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-red-300" />
             <div className="min-w-0 flex-1">
               <h3 className="text-sm font-semibold text-red-100">
                 Historical validation unavailable
               </h3>
-              <p className="mt-1 text-xs leading-5 text-red-100/65">
+              <p className="mt-1 text-xs leading-5 text-slate-400">
                 {error || "The governed backtest payload was not available."}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void load()}
-              className="h-auto border-red-500/25 bg-transparent px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/10"
-            >
+            <Button type="button" variant="outline" onClick={() => void load()}>
               Retry
             </Button>
           </div>
@@ -354,105 +329,95 @@ export function EquipmentHistoricalBacktest({
   }
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-cyan-500/20 bg-[linear-gradient(135deg,#111923_0%,#10151d_55%,#111a20_100%)] shadow-none">
+    <Card className="overflow-hidden rounded-xl border-gray-800 bg-[#141820] shadow-none">
       <CardContent className="p-5 md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 max-w-4xl">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="h-auto rounded bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200 shadow-none">
+              <Badge className="bg-transparent text-cyan-200 shadow-none">
                 Historical risk validation
               </Badge>
               {isSynthetic ? (
-                <Badge className="h-auto rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-200 shadow-none">
+                <Badge className="bg-transparent text-amber-200 shadow-none">
                   Synthetic demo evidence
                 </Badge>
               ) : null}
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
-                <Database className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                <Database className="h-4 w-4" />
                 {bundle.site.datasetVersion} · {bundle.site.validationWindowDays}-day validation window
               </span>
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-slate-50">
+            <h2 className="mt-3 text-lg font-semibold text-slate-50">
               Backtest: did Vorta surface risk before later outcomes?
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{headline}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              {headline}
+            </p>
           </div>
 
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3.5 xl:max-w-sm">
+          <div className="rounded-lg border border-amber-500/30 p-3 xl:max-w-sm">
             <div className="flex items-center gap-2 text-amber-200">
               <ShieldCheck className="h-4 w-4" />
               <span className="text-xs font-semibold">Evidence boundary</span>
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-amber-100/70">
-              Preventability is not established from sequence alone. A warning before a failure proves timing, not causation. Recovery impact is only shown where stock, reservation, 261 movement and repair timestamps align.
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              Preventability is not established from sequence alone. Temporal sequence does not by itself prove causation. Recovery impact is only shown where stock, reservation, 261 movement and repair timestamps align.
             </p>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <SummaryMetric
             label="Breakdowns warned"
             value={`${siteSummary.elevatedRiskPrecededBreakdownCount}/${siteSummary.breakdownCount}`}
-            detail="Elevated risk recorded before controlled breakdown cases"
-            tone="text-orange-300"
+            detail="Elevated risk before controlled breakdown cases"
           />
           <SummaryMetric
             label="Median warning"
             value={`${siteSummary.medianWarningDays ?? "—"}d`}
             detail="Warning start to recorded outcome"
-            tone="text-cyan-300"
           />
           <SummaryMetric
             label="Pre-failure stock-outs"
             value={siteSummary.preFailureStockoutCount}
-            detail="Critical material at zero before/at failure"
-            tone="text-red-300"
+            detail="Critical material at zero before or at failure"
           />
           <SummaryMetric
             label="Recovery impacts"
             value={siteSummary.stockoutExtendedRecoveryCount}
             detail={`${formatMinutes(siteSummary.medianVerifiedMaterialWaitMinutes)} median verified material wait`}
-            tone="text-orange-300"
           />
           <SummaryMetric
             label="Successful interventions"
             value={siteSummary.successfulInterventionCount}
-            detail="Risk fell and no breakdown followed in validation window"
-            tone="text-emerald-300"
+            detail="Observed risk reduction with no breakdown in the validation window"
           />
           <SummaryMetric
             label="False positives"
             value={siteSummary.falsePositiveCount}
             detail="Retained to prevent hindsight-only validation"
-            tone="text-cyan-300"
           />
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
-          <span className="inline-flex items-center gap-1.5">
-            <Clock3 className="h-3.5 w-3.5 text-cyan-400" />
-            Exact timestamp sequence
+        <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <Clock3 className="h-4 w-4" /> Exact timestamp sequence
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <PackageX className="h-3.5 w-3.5 text-orange-400" />
-            Stock + reservation + 261 recovery evidence
+          <span className="inline-flex items-center gap-1">
+            <PackageX className="h-4 w-4" /> Stock + reservation + 261 evidence
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <TrendingDown className="h-3.5 w-3.5 text-emerald-400" />
-            Observed intervention risk reduction retained
+          <span className="inline-flex items-center gap-1">
+            <TrendingDown className="h-4 w-4" /> Observed risk reduction
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Wrench className="h-3.5 w-3.5 text-violet-400" />
-            Work-order outcomes linked
+          <span className="inline-flex items-center gap-1">
+            <Wrench className="h-4 w-4" /> Work-order outcomes linked
           </span>
         </div>
 
         <div className="mt-6 border-t border-gray-800 pt-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-100">
-                This equipment
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-100">This equipment</h3>
               <p className="mt-1 text-xs leading-5 text-slate-500">
                 Controlled cases linked to the selected asset. Exact source identities remain attached to every classification.
               </p>
@@ -465,9 +430,9 @@ export function EquipmentHistoricalBacktest({
                   "Backtest the site historical risk evidence against later breakdowns and interventions. Summarise warning lead time, pre-failure critical stock-outs, material-related recovery delays, successful interventions and false positives. Do not claim causation or preventability from timing alone.",
                 )
               }
-              className="h-auto gap-2 border-cyan-500/25 bg-cyan-500/[0.05] px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-500/10 hover:text-cyan-100"
+              className="h-auto gap-2 px-3 py-2 text-xs"
             >
-              <BrainCircuit className="h-3.5 w-3.5" />
+              <BrainCircuit className="h-4 w-4" />
               Ask Vorta for site backtest
             </Button>
           </div>
@@ -483,9 +448,9 @@ export function EquipmentHistoricalBacktest({
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-gray-800 bg-[#0b1017]/70 p-4">
+            <div className="mt-4 rounded-lg border border-gray-800 p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-cyan-300" />
                 <div>
                   <p className="text-sm font-semibold text-slate-200">
                     No controlled VOR-069 case for this equipment
