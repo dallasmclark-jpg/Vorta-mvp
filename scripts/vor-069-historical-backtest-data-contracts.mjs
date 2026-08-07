@@ -9,7 +9,8 @@ const schema = read("supabase/migrations/20260807215524_vor_069_historical_backt
 const baseline = read("supabase/migrations/20260807215601_vor_069_historical_backtest_baseline.sql");
 const scenarios = read("supabase/migrations/20260807215912_vor_069_historical_backtest_scenario_core.sql");
 const health = read("supabase/migrations/20260807215938_vor_069_historical_backtest_evidence_health.sql");
-const all = [schema, baseline, scenarios, health].join("\n");
+const indexes = read("supabase/migrations/20260807221404_vor_069_historical_backtest_indexes.sql");
+const all = [schema, baseline, scenarios, health, indexes].join("\n");
 
 assert.match(schema, /create table if not exists public\.equipment_risk_event_history/i);
 assert.match(schema, /create table if not exists public\.site_material_stock_history/i);
@@ -70,6 +71,10 @@ assert.match(health, /scenario_count >= 24/i);
 assert.match(health, /raise exception 'VOR-069 historical dataset health contract failed/i);
 assert.match(health, /grant execute[\s\S]*service_role/i);
 assert.doesNotMatch(health, /grant execute[\s\S]*authenticated/i);
+
+assert.match(indexes, /vorta_demo_backtest_scenarios_equipment_idx/i);
+assert.match(indexes, /vorta_demo_backtest_scenarios_component_idx/i);
+assert.match(indexes, /vorta_demo_backtest_scenarios_work_order_idx/i);
 
 assert.match(all, /risk_model_version/i);
 assert.match(all, /evidence_provenance/i);
