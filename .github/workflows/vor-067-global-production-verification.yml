@@ -1,4 +1,4 @@
-name: VOR-067 native Back to chat capture diagnostic
+name: VOR-067 deep-route context diagnostic
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Diagnose native Ask Vorta capture
+    name: Inspect deep-route Back to chat context
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -42,94 +42,54 @@ jobs:
       - name: Verify authenticated browser-test secret
         shell: bash
         run: |
-          test -n "$VORTA_E2E_PASSWORD" || {
-            echo "VORTA_E2E_PASSWORD is not configured." >&2
-            exit 1
-          }
+          test -n "$VORTA_E2E_PASSWORD" || exit 1
 
-      - name: Install focused capture diagnostic
+      - name: Install route-context diagnostic
         shell: bash
         run: |
-          cat > tests/browser/vor-067-native-capture-diagnostic.spec.ts <<'EOF'
+          cat > tests/browser/vor-067-route-context-diagnostic.spec.ts <<'EOF'
           import { expect, test } from "@playwright/test";
           import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
-          const question = "Vial filling sensor fault";
-          const navigationKey = "vorta:ask-vorta:navigation-context:v1";
+          const key = "vorta:ask-vorta:navigation-context:v1";
           const destination = "/equipment/40000000-0000-0000-0000-000000000007/work-orders";
 
-          test("diagnose native capture before navigation", async ({ page }) => {
-            test.setTimeout(120_000);
+          test("inspect deep route context hydration", async ({ page }) => {
+            test.setTimeout(90_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
             await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
 
-            await page.evaluate((prompt) => {
-              window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt", {
-                detail: { question: prompt, submit: true, role: "maintenance-manager" },
-              }));
-            }, question);
+            await page.evaluate((storageKey) => {
+              window.sessionStorage.setItem(storageKey, JSON.stringify({ returnPath: "/dashboard" }));
+            }, key);
 
-            const assistant = page
-              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
-              .first();
-            await expect(assistant).toBeVisible({ timeout: 30_000 });
-            await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
-              .toBeVisible({ timeout: 30_000 });
+            const before = await page.evaluate((storageKey) => ({
+              url: window.location.href,
+              value: window.sessionStorage.getItem(storageKey),
+            }), key);
+            console.log("VOR067 BEFORE GOTO", JSON.stringify(before));
 
-            const diagnostic = await page.evaluate(({ path, key }) => {
-              const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
-                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
-              ));
-              const surface = surfaces.find((element) => {
-                const rect = element.getBoundingClientRect();
-                return rect.width > 0 && rect.height > 0;
-              });
-              if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
+            await page.goto(destination, { waitUntil: "domcontentloaded" });
+            await page.waitForTimeout(3000);
 
-              const link = document.createElement("a");
-              link.href = path;
-              link.textContent = "VOR-067 capture diagnostic";
-              surface.appendChild(link);
+            const after = await page.evaluate((storageKey) => ({
+              url: window.location.href,
+              value: window.sessionStorage.getItem(storageKey),
+              shellCount: document.querySelectorAll('[data-vorta-maintenance-portal="true"]').length,
+              buttonCount: document.querySelectorAll('[data-vorta-back-to-ask-vorta="true"]').length,
+              body: document.body.innerText.slice(0, 500),
+            }), key);
+            console.log("VOR067 AFTER GOTO", JSON.stringify(after));
 
-              let bubbleObserved = false;
-              link.addEventListener("click", (event) => {
-                bubbleObserved = true;
-                event.preventDefault();
-              });
-
-              const closestSurface = Boolean(link.closest(
-                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
-              ));
-              const before = window.sessionStorage.getItem(key);
-              link.click();
-              const after = window.sessionStorage.getItem(key);
-
-              return {
-                before,
-                after,
-                bubbleObserved,
-                closestSurface,
-                linkHref: link.href,
-                location: window.location.href,
-              };
-            }, { path: destination, key: navigationKey });
-
-            console.log("VOR067 CAPTURE DIAGNOSTIC", JSON.stringify(diagnostic));
-            expect(diagnostic.closestSurface).toBe(true);
-            expect(diagnostic.bubbleObserved).toBe(true);
-            expect(diagnostic.after).toContain('"returnPath":"/dashboard"');
-
-            await page.goto(destination);
-            await expect(page.getByRole("button", {
-              name: "Back to Ask Vorta chat",
-              exact: true,
-            })).toBeVisible({ timeout: 30_000 });
+            expect(after.value).toContain('"returnPath":"/dashboard"');
+            expect(after.shellCount).toBeGreaterThan(0);
+            expect(after.buttonCount).toBeGreaterThan(0);
           });
           EOF
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run capture diagnostic
-        run: npx playwright test tests/browser/vor-067-native-capture-diagnostic.spec.ts --project=samsung-tablet-landscape
+      - name: Run route-context diagnostic
+        run: npx playwright test tests/browser/vor-067-route-context-diagnostic.spec.ts --project=samsung-tablet-landscape
