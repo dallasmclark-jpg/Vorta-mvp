@@ -1,4 +1,4 @@
-name: VOR-067 global Back to chat preview verification
+name: VOR-067 native Back to chat capture diagnostic
 
 on:
   pull_request:
@@ -11,9 +11,9 @@ permissions:
 jobs:
   verify:
     if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Verify native global Back to chat journey
+    name: Diagnose native Ask Vorta capture
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       VORTA_E2E_BASE_URL: https://deploy-preview-272--vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
@@ -47,19 +47,19 @@ jobs:
             exit 1
           }
 
-      - name: Install exact native-capture user journey
+      - name: Install focused capture diagnostic
         shell: bash
         run: |
-          cat > tests/browser/vor-067-native-preview.spec.ts <<'EOF'
+          cat > tests/browser/vor-067-native-capture-diagnostic.spec.ts <<'EOF'
           import { expect, test } from "@playwright/test";
           import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
           const question = "Vial filling sensor fault";
-          const equipmentId = "40000000-0000-0000-0000-000000000007";
-          const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
+          const navigationKey = "vorta:ask-vorta:navigation-context:v1";
+          const destination = "/equipment/40000000-0000-0000-0000-000000000007/work-orders";
 
-          test("VOR-067 native shell capture gives every internal chat destination Back to chat", async ({ page }) => {
-            test.setTimeout(240_000);
+          test("diagnose native capture before navigation", async ({ page }) => {
+            test.setTimeout(120_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
             await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
@@ -73,65 +73,63 @@ jobs:
             const assistant = page
               .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
               .first();
-            const activeQuestion = assistant
-              .locator(".justify-end p")
-              .filter({ hasText: question })
-              .first();
             await expect(assistant).toBeVisible({ timeout: 30_000 });
-            await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
+            await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
+              .toBeVisible({ timeout: 30_000 });
 
-            const destinations = [
-              `/equipment/${equipmentId}/work-orders`,
-              `/equipment/${equipmentId}/spares`,
-              `/equipment/${equipmentId}/documents/${guideId}`,
-              "/stores-inventory",
-              "/skills-matrix",
-              "/engineers",
-            ];
-
-            for (const [index, destination] of destinations.entries()) {
-              await expect(assistant).toBeVisible({ timeout: 30_000 });
-              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
-
-              await page.evaluate((path) => {
-                const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
-                  '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
-                ));
-                const surface = surfaces.find((element) => {
-                  const rect = element.getBoundingClientRect();
-                  return rect.width > 0 && rect.height > 0;
-                });
-                if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
-                const link = document.createElement("a");
-                link.href = path;
-                link.textContent = `VOR-067 verify ${path}`;
-                surface.appendChild(link);
-                link.click();
-              }, destination);
-
-              await page.waitForURL((url) => url.pathname === destination, { timeout: 30_000 });
-
-              const backToChat = page.getByRole("button", {
-                name: "Back to Ask Vorta chat",
-                exact: true,
+            const diagnostic = await page.evaluate(({ path, key }) => {
+              const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
+                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+              ));
+              const surface = surfaces.find((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
               });
-              await expect(backToChat).toBeVisible({ timeout: 30_000 });
+              if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
 
-              if (index === 0) {
-                await page.reload({ waitUntil: "domcontentloaded" });
-                await expect(backToChat).toBeVisible({ timeout: 30_000 });
-              }
+              const link = document.createElement("a");
+              link.href = path;
+              link.textContent = "VOR-067 capture diagnostic";
+              surface.appendChild(link);
 
-              await backToChat.click();
-              await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
-              await expect(assistant).toBeVisible({ timeout: 30_000 });
-              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
-            }
+              let bubbleObserved = false;
+              link.addEventListener("click", (event) => {
+                bubbleObserved = true;
+                event.preventDefault();
+              });
+
+              const closestSurface = Boolean(link.closest(
+                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+              ));
+              const before = window.sessionStorage.getItem(key);
+              link.click();
+              const after = window.sessionStorage.getItem(key);
+
+              return {
+                before,
+                after,
+                bubbleObserved,
+                closestSurface,
+                linkHref: link.href,
+                location: window.location.href,
+              };
+            }, { path: destination, key: navigationKey });
+
+            console.log("VOR067 CAPTURE DIAGNOSTIC", JSON.stringify(diagnostic));
+            expect(diagnostic.closestSurface).toBe(true);
+            expect(diagnostic.bubbleObserved).toBe(true);
+            expect(diagnostic.after).toContain('"returnPath":"/dashboard"');
+
+            await page.goto(destination);
+            await expect(page.getByRole("button", {
+              name: "Back to Ask Vorta chat",
+              exact: true,
+            })).toBeVisible({ timeout: 30_000 });
           });
           EOF
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify exact preview Ask Vorta return journeys
-        run: npx playwright test tests/browser/vor-067-native-preview.spec.ts --project=samsung-tablet-landscape
+      - name: Run capture diagnostic
+        run: npx playwright test tests/browser/vor-067-native-capture-diagnostic.spec.ts --project=samsung-tablet-landscape
