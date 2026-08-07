@@ -89,7 +89,7 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
-  ).toBeHidden();
+  ).toBeVisible();
 
   const firstWorkOrderButton = page.locator("#work-order-register tbody button").first();
   await expect(firstWorkOrderButton).toBeVisible({ timeout: 30_000 });
@@ -126,10 +126,16 @@ test("Equipment work-order overlays and Ask Vorta remain on the originating page
   await expectOperationalTouchTarget(askButton);
   await askButton.click();
 
-  const unifiedAssistant = page.locator('[data-vorta-global-ai-panel="true"]');
+  const unifiedAssistant = page
+    .locator(
+      '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
+    )
+    .first();
   await expect(unifiedAssistant).toBeVisible();
   await expect(page.locator('[data-vorta-fault-panel="true"]')).toHaveCount(0);
-  await expect(unifiedAssistant.getByText(coverQuestion)).toBeVisible();
+  await expect(
+    unifiedAssistant.locator(".justify-end p").filter({ hasText: coverQuestion }).first(),
+  ).toBeVisible();
 
   // The local Vite browser gate does not host the Netlify /api/ask-vorta function.
   // It verifies routing and presentation here; the deployed live-agent evaluation

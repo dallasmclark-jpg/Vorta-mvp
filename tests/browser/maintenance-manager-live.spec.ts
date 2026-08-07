@@ -93,19 +93,30 @@ test("live Equipment routes remain active-site scoped and expose verified Histor
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/spares$`));
   await expect(page.getByRole("heading", { name: "Spares", exact: true })).toBeVisible();
 
+  const activeAssistant = page
+    .locator(
+      '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
+    )
+    .first();
+  const closeActiveAssistant = page
+    .locator(
+      'button[aria-label="Close global assistant"]:visible, button[aria-label="Close Ask Vorta"]:visible',
+    )
+    .first();
+
   const pageAskVorta = page
     .getByRole("button", { name: "Ask Vorta", exact: true })
     .first();
   await pageAskVorta.click();
-  const closeAssistant = page.getByRole("button", { name: "Close global assistant" });
-  await expect(closeAssistant).toBeVisible();
+  await expect(activeAssistant).toBeVisible();
+  await expect(closeActiveAssistant).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/equipment/${equipmentId}/spares$`));
-  await closeAssistant.click();
-  await expect(closeAssistant).toBeHidden();
+  await closeActiveAssistant.click();
+  await expect(activeAssistant).toBeHidden();
 
   await openEquipmentSection("ai-insights", "Ask Vorta");
   await page.waitForURL(new RegExp(`/equipment/${equipmentId}/overview$`));
-  await expect(page.getByRole("button", { name: "Close global assistant" })).toBeVisible();
+  await expect(activeAssistant).toBeVisible();
   await expectNoPageOverflow(page);
 });
 

@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type PropsWithChildren,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DataTrustBanner } from "../../components/DataTrustBanner";
 import { MaintenanceActionEvidenceHardening } from "../../components/MaintenanceActionEvidenceHardening";
 import { MaintenancePortalHardening } from "../../components/MaintenancePortalHardening";
@@ -28,6 +28,7 @@ import { MobilePageHeaderExperience } from "./MobilePageHeaderExperience";
 import { MobileTypographyStyles } from "./MobileTypographyStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
+const ASK_VORTA_DOCUMENT_ROUTE = /^\/equipment\/[^/]+\/documents\/[^/]+$/;
 const MAINTENANCE_DATA_RECOVERED_EVENT =
   "vorta:maintenance-data-recovered";
 
@@ -99,12 +100,13 @@ export function MaintenanceAiWorkOrderExperience({
 }: PropsWithChildren): JSX.Element {
   const { siteContext } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isPhone = useMediaQuery("(max-width: 767px)");
   const [dataRecoveryRevision, setDataRecoveryRevision] = useState(0);
-  const showDesktopAssistantLauncher =
-    !isPhone &&
-    location.pathname !== "/dashboard" &&
-    !/^\/equipment\/[^/]+(?:\/|$)/.test(location.pathname);
+  const openedFromAskVorta =
+    ASK_VORTA_DOCUMENT_ROUTE.test(location.pathname) &&
+    new URLSearchParams(location.search).get("from") === "ai";
+  const showDesktopAssistantLauncher = !isPhone;
 
   useEffect(() => {
     warmMaintenancePortalDataFast();
@@ -231,6 +233,18 @@ export function MaintenanceAiWorkOrderExperience({
     [siteContext?.siteId],
   );
 
+  const returnToAskVortaChat = useCallback((): void => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+
+    window.setTimeout(() => {
+      openMaintenanceAiAssistant({ submit: false });
+    }, 0);
+  }, [navigate]);
+
   return (
     <div
       className="contents"
@@ -251,6 +265,19 @@ export function MaintenanceAiWorkOrderExperience({
       >
         {children}
       </div>
+      {openedFromAskVorta ? (
+        <button
+          type="button"
+          data-vorta-back-to-ask-vorta="true"
+          aria-label="Back to Ask Vorta chat"
+          title="Back to Ask Vorta chat"
+          onClick={returnToAskVortaChat}
+          className="fixed bottom-4 left-4 z-50 inline-flex h-11 items-center gap-2 rounded-full border border-blue-500/30 bg-blue-600 px-4 text-sm font-bold text-white shadow-xl transition-colors hover:bg-blue-500"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to chat
+        </button>
+      ) : null}
       {isPhone ? (
         <div
           aria-hidden="true"

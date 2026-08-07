@@ -139,9 +139,23 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(sharedMobileAi).toBeVisible();
   } else {
     await expect(dashboardHeading).toBeVisible();
+    const directAskVortaLauncher = page.getByRole("button", {
+      name: "Ask Vorta AI",
+      exact: true,
+    });
+    await expect(directAskVortaLauncher).toBeVisible();
+    await directAskVortaLauncher.click();
     await expect(
-      page.getByRole("button", { name: "Ask Vorta AI", exact: true }),
-    ).toBeHidden();
+      page.locator(
+        '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
+      ),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+    await expect(
+      page.locator(
+        '[data-vorta-global-ai-messages="true"] .justify-end, [data-vorta-ai-workspace-conversation="true"] .justify-end',
+      ),
+    ).toHaveCount(0);
   }
 });
 
