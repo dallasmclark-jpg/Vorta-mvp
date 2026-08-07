@@ -2,25 +2,25 @@
   /* Keep the working Ask Vorta return logic untouched; only move its global
      control into the top content-header area on tablet and desktop. */
   [data-vorta-back-to-ask-vorta="true"] {
-    top: 0.75rem !important;
-    right: 12.5rem !important;
-    bottom: auto !important;
-    left: auto !important;
-    height: 2.25rem !important;
-    border-radius: 0.5rem !important;
-    border-color: rgb(59 130 246 / 0.35) !important;
-    background: rgb(59 130 246 / 0.12) !important;
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
-    color: rgb(191 219 254) !important;
-    font-size: 0.8125rem !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
+    top: 0.75rem;
+    right: 12.5rem;
+    bottom: auto;
+    left: auto;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    border-color: rgb(59 130 246 / 0.35);
+    background: rgb(59 130 246 / 0.12);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    color: rgb(191 219 254);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    box-shadow: none;
   }
 
   [data-vorta-back-to-ask-vorta="true"]:hover {
-    background: rgb(59 130 246 / 0.2) !important;
-    color: rgb(219 234 254) !important;
+    background: rgb(59 130 246 / 0.2);
+    color: rgb(219 234 254);
   }
 }
 
