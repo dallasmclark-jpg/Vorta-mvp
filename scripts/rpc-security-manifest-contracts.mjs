@@ -31,18 +31,21 @@ const askVortaActionManifestMigration = read(
 const documentAccessManifestMigration = read(
   "supabase/migrations/20260806113100_vor_061_register_document_access_state_rpc.sql",
 );
+const historicalBacktestManifestMigration = read(
+  "supabase/migrations/20260807224558_vor_069_register_historical_backtest_rpc.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260806113100");
-assert.equal(manifest.migrationName, "vor_061_register_document_access_state_rpc");
+assert.equal(manifest.migrationVersion, "20260807224558");
+assert.equal(manifest.migrationName, "vor_069_register_historical_backtest_rpc");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 75,
-  reviewedRead: 54,
+  authenticatedCallable: 76,
+  reviewedRead: 55,
   reviewedMutation: 21,
-  securityDefiner: 71,
+  securityDefiner: 72,
   securityInvoker: 4,
   anonymousCallable: 0,
   manifestDrift: 0,
@@ -66,6 +69,35 @@ assert.ok(
   ),
   "The canonical manifest does not list the Ask Vorta operational-value RPC",
 );
+assert.ok(
+  manifest.askVortaEvidenceRpcs.some(
+    ({ identity }) => identity === "vorta_get_historical_backtest(uuid,uuid,text,integer)",
+  ),
+  "The canonical manifest does not list the VOR-069 historical backtest RPC",
+);
+assert.ok(
+  historicalBacktestManifestMigration.includes(
+    "'vorta_get_historical_backtest(uuid,uuid,text,integer)'",
+  ) &&
+    historicalBacktestManifestMigration.includes("'read'") &&
+    historicalBacktestManifestMigration.includes("'definer'") &&
+    historicalBacktestManifestMigration.includes("false") &&
+    historicalBacktestManifestMigration.includes("vorta_has_site_access"),
+  "VOR-069 historical backtest RPC is missing from the reviewed security manifest migration",
+);
+for (const expected of [
+  "v_drift <> 0",
+  "v_read <> 55",
+  "v_mutation <> 21",
+  "v_definer <> 72",
+  "v_invoker <> 4",
+  "v_anon <> 0",
+]) {
+  assert.ok(
+    historicalBacktestManifestMigration.includes(expected),
+    `Missing VOR-069 RPC manifest invariant: ${expected}`,
+  );
+}
 
 const askVortaActionRpcs = [
   {
@@ -286,8 +318,8 @@ for (const expected of [
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
   "21",
-  "54",
-  "71",
+  "55",
+  "72",
   "4",
 ]) {
   assert.ok(
