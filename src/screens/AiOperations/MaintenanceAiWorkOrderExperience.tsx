@@ -43,6 +43,7 @@ interface GlobalAiPromptEventDetail {
 
 interface AskVortaNavigationContext {
   returnPath: string;
+  destinationPath: string | null;
 }
 
 function decodeEquipmentId(value: string): string {
@@ -85,19 +86,24 @@ function readAskVortaNavigationContext(): AskVortaNavigationContext | null {
     if (!stored) return null;
 
     const parsed = JSON.parse(stored) as Partial<AskVortaNavigationContext>;
-    return typeof parsed.returnPath === "string" && parsed.returnPath.startsWith("/")
-      ? { returnPath: parsed.returnPath }
-      : null;
+    const returnPath =
+      typeof parsed.returnPath === "string" && parsed.returnPath.startsWith("/")
+        ? parsed.returnPath
+        : null;
+    const destinationPath =
+      typeof parsed.destinationPath === "string" &&
+      parsed.destinationPath.startsWith("/")
+        ? parsed.destinationPath
+        : null;
+    return returnPath ? { returnPath, destinationPath } : null;
   } catch {
     return null;
   }
 }
 
-function markAskVortaNavigationOrigin(): AskVortaNavigationContext {
-  const existing = readAskVortaNavigationContext();
-  if (existing) return existing;
-
-  const context = { returnPath: currentRoutePath() };
+function writeAskVortaNavigationContext(
+  context: AskVortaNavigationContext,
+): void {
   try {
     window.sessionStorage.setItem(
       ASK_VORTA_NAVIGATION_CONTEXT_KEY,
@@ -106,6 +112,14 @@ function markAskVortaNavigationOrigin(): AskVortaNavigationContext {
   } catch {
     // The in-memory React state still keeps the return control available.
   }
+}
+
+function markAskVortaNavigationOrigin(): AskVortaNavigationContext {
+  const context = {
+    returnPath: currentRoutePath(),
+    destinationPath: null,
+  };
+  writeAskVortaNavigationContext(context);
   return context;
 }
 
@@ -202,13 +216,42 @@ export function MaintenanceAiWorkOrderExperience({
       readAskVortaNavigationContext(),
     );
   const showDesktopAssistantLauncher = !isPhone;
+  const activeRoutePath = `${location.pathname}${location.search}${location.hash}`;
+  const showBackToAskVorta =
+    askVortaNavigationContext?.destinationPath === activeRoutePath;
 
   useEffect(() => {
     warmMaintenancePortalDataFast();
   }, []);
 
   useEffect(() => {
-    setAskVortaNavigationContext(readAskVortaNavigationContext());
+    const context = readAskVortaNavigationContext();
+    if (!context) {
+      setAskVortaNavigationContext(null);
+      return;
+    }
+
+    const route = currentRoutePath();
+    if (!context.destinationPath) {
+      if (route === context.returnPath) {
+        clearAskVortaNavigationContext();
+        setAskVortaNavigationContext(null);
+        return;
+      }
+
+      const scopedContext = { ...context, destinationPath: route };
+      writeAskVortaNavigationContext(scopedContext);
+      setAskVortaNavigationContext(scopedContext);
+      return;
+    }
+
+    if (context.destinationPath !== route) {
+      clearAskVortaNavigationContext();
+      setAskVortaNavigationContext(null);
+      return;
+    }
+
+    setAskVortaNavigationContext(context);
   }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
@@ -396,7 +439,7 @@ export function MaintenanceAiWorkOrderExperience({
       >
         {children}
       </div>
-      {askVortaNavigationContext ? (
+      {showBackToAskVorta ? (
         <button
           type="button"
           data-vorta-back-to-ask-vorta="true"
