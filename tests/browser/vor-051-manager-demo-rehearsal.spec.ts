@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import {
   expectNoPageOverflow,
@@ -40,8 +40,12 @@ function json(route: Route, body: unknown): Promise<void> {
   });
 }
 
-function activeAssistantMessages(page: Page) {
-  return page.locator('[data-vorta-global-ai-messages="true"]:visible').first();
+function activeAssistantMessages(page: Page): Locator {
+  return page
+    .locator(
+      '[data-vorta-global-ai-messages="true"]:visible, [data-vorta-ai-workspace="true"]:visible [data-vorta-ai-workspace-conversation="true"]',
+    )
+    .first();
 }
 
 async function expectResponsiveDashboardTitle(
@@ -70,8 +74,11 @@ async function scrollAssistantToEnd(page: Page): Promise<void> {
   const messages = activeAssistantMessages(page);
   await expect(messages).toBeVisible({ timeout: 20_000 });
   await messages.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+    const workspace = element.closest('[data-vorta-ai-workspace="true"]');
+    const scrollContainer = workspace ? element.parentElement : element;
+    if (!scrollContainer) return;
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    scrollContainer.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
   await page.waitForTimeout(100);
 }
@@ -349,10 +356,11 @@ test("VOR-051 Maintenance Manager demo stays coherent from risk to exact evidenc
     ),
   );
 
-  const closeAssistant = page.getByRole("button", {
-    name: "Close global assistant",
-    exact: true,
-  });
+  const closeAssistant = page
+    .locator(
+      'button[aria-label="Close global assistant"]:visible, button[aria-label="Close Ask Vorta"]:visible',
+    )
+    .first();
   if (await closeAssistant.isVisible().catch(() => false)) {
     await closeAssistant.click();
   }
