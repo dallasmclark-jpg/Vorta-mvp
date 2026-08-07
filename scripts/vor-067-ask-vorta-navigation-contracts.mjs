@@ -9,6 +9,10 @@ const source = readFileSync(
   "src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx",
   "utf8",
 );
+const workspaceExperience = readFileSync(
+  "src/screens/AiOperations/AskVortaDesktopWorkspaceExperience.tsx",
+  "utf8",
+);
 const documentRuntime = readFileSync(
   "netlify/functions/ask-vorta/runtime-document-links.mts",
   "utf8",
@@ -23,6 +27,7 @@ for (const marker of [
   'new URLSearchParams(location.search).get("from") === "ai"',
   "data-vorta-back-to-ask-vorta",
   'aria-label="Back to Ask Vorta chat"',
+  "markAskVortaConversationForReturn();",
   "navigate(-1)",
   'navigate("/dashboard", { replace: true })',
   "openMaintenanceAiAssistant({ submit: false })",
@@ -30,6 +35,19 @@ for (const marker of [
   'data-vorta-shared-mobile-ai-launcher="true"',
 ]) {
   assert.ok(source.includes(marker), `Missing VOR-067 navigation marker: ${marker}`);
+}
+
+for (const marker of [
+  '"vorta:ask-vorta:return-active-conversation:v1"',
+  'readSessionValue(RETURN_ACTIVE_CONVERSATION_KEY) === "1"',
+  'aside button[aria-current="page"]',
+  "activeRecent.click();",
+  "removeSessionValue(RETURN_ACTIVE_CONVERSATION_KEY);",
+]) {
+  assert.ok(
+    workspaceExperience.includes(marker),
+    `Missing VOR-067 active-conversation restoration marker: ${marker}`,
+  );
 }
 
 for (const marker of [
@@ -65,12 +83,18 @@ const returnFunction = source.match(
 assert.ok(returnFunction, "The governed Back to chat handler must exist");
 assert.match(
   returnFunction,
-  /navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)[\s\S]*?openMaintenanceAiAssistant\(\{ submit: false \}\)/,
-  "Returning from a document must use internal history with a safe dashboard fallback and reopen Ask Vorta without submitting a question",
+  /markAskVortaConversationForReturn\(\)[\s\S]*?navigate\(-1\)[\s\S]*?navigate\("\/dashboard", \{ replace: true \}\)[\s\S]*?openMaintenanceAiAssistant\(\{ submit: false \}\)/,
+  "Returning from a document must mark the active conversation, use internal history with a safe dashboard fallback, and reopen Ask Vorta without submitting a question",
 );
 assert.ok(
   !returnFunction.includes("question:") && !returnFunction.includes("submit: true"),
   "Back to chat must never manufacture or submit a question",
+);
+
+assert.match(
+  workspaceExperience,
+  /readSessionValue\(RETURN_ACTIVE_CONVERSATION_KEY\) === "1"[\s\S]*?aside button\[aria-current="page"\][\s\S]*?activeRecent\.click\(\)[\s\S]*?removeSessionValue\(RETURN_ACTIVE_CONVERSATION_KEY\)/,
+  "The reopened desktop/tablet workspace must reload the active Recent before clearing the one-shot return marker",
 );
 
 assert.match(
@@ -126,5 +150,5 @@ try {
 }
 
 console.log(
-  "VOR-067 Ask Vorta navigation contracts passed: real document evidence links carry from=ai into the viewer, AI-origin documents return to the active chat, desktop/tablet can open the assistant directly, and no artificial question is submitted.",
+  "VOR-067 Ask Vorta navigation contracts passed: real document evidence links carry from=ai into the viewer, Back to chat reloads the active Recent conversation, desktop/tablet can open the assistant directly, and no artificial question is submitted.",
 );

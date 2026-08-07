@@ -29,6 +29,8 @@ import { MobileTypographyStyles } from "./MobileTypographyStyles";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
 const ASK_VORTA_DOCUMENT_ROUTE = /^\/equipment\/[^/]+\/documents\/[^/]+$/;
+const ASK_VORTA_RETURN_ACTIVE_CONVERSATION_KEY =
+  "vorta:ask-vorta:return-active-conversation:v1";
 const MAINTENANCE_DATA_RECOVERED_EVENT =
   "vorta:maintenance-data-recovered";
 
@@ -64,6 +66,17 @@ function routeUrlFromTarget(target: EventTarget | null): URL | null {
 
 function routePathFromTarget(target: EventTarget | null): string | null {
   return routeUrlFromTarget(target)?.pathname ?? null;
+}
+
+function markAskVortaConversationForReturn(): void {
+  try {
+    window.sessionStorage.setItem(
+      ASK_VORTA_RETURN_ACTIVE_CONVERSATION_KEY,
+      "1",
+    );
+  } catch {
+    // Returning still works as normal navigation when session storage is unavailable.
+  }
 }
 
 function mobileAssistantPrompt(pathname: string): string {
@@ -234,6 +247,8 @@ export function MaintenanceAiWorkOrderExperience({
   );
 
   const returnToAskVortaChat = useCallback((): void => {
+    markAskVortaConversationForReturn();
+
     if (window.history.length > 1) {
       navigate(-1);
     } else {

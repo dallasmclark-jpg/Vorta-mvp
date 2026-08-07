@@ -3,6 +3,8 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const ACTIVE_TAB_STORAGE_KEY = "vorta:ask-vorta:workspace-tab:v1";
 const SCROLL_STORAGE_KEY = "vorta:ask-vorta:workspace-scroll:v1";
+const RETURN_ACTIVE_CONVERSATION_KEY =
+  "vorta:ask-vorta:return-active-conversation:v1";
 const WORKSPACE_SELECTOR = "[data-vorta-ai-workspace='true']";
 const CONVERSATION_SELECTOR =
   "[data-vorta-ai-workspace-conversation='true']";
@@ -19,6 +21,14 @@ function readSessionValue(key: string): string | null {
 function writeSessionValue(key: string, value: string): void {
   try {
     window.sessionStorage.setItem(key, value);
+  } catch {
+    // Ask Vorta still works when browser storage is unavailable.
+  }
+}
+
+function removeSessionValue(key: string): void {
+  try {
+    window.sessionStorage.removeItem(key);
   } catch {
     // Ask Vorta still works when browser storage is unavailable.
   }
@@ -76,6 +86,22 @@ function restoreWorkspaceView(attempt = 0): void {
       window.setTimeout(() => restoreWorkspaceView(attempt + 1), 50);
     }
     return;
+  }
+
+  if (readSessionValue(RETURN_ACTIVE_CONVERSATION_KEY) === "1") {
+    const activeRecent = workspace.querySelector<HTMLButtonElement>(
+      'aside button[aria-current="page"]',
+    );
+
+    if (!activeRecent) {
+      if (attempt < 8) {
+        window.setTimeout(() => restoreWorkspaceView(attempt + 1), 50);
+      }
+      return;
+    }
+
+    activeRecent.click();
+    removeSessionValue(RETURN_ACTIVE_CONVERSATION_KEY);
   }
 
   const savedTab = readSessionValue(ACTIVE_TAB_STORAGE_KEY);
