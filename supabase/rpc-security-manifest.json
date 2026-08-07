@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260806113100",
-  "migrationName": "vor_061_register_document_access_state_rpc",
+  "migrationVersion": "20260807224558",
+  "migrationName": "vor_069_register_historical_backtest_rpc",
   "invariants": {
-    "authenticatedCallable": 75,
-    "reviewedRead": 54,
+    "authenticatedCallable": 76,
+    "reviewedRead": 55,
     "reviewedMutation": 21,
-    "securityDefiner": 71,
+    "securityDefiner": 72,
     "securityInvoker": 4,
     "anonymousCallable": 0,
     "manifestDrift": 0
@@ -19,6 +19,10 @@
     {
       "identity": "vorta_get_ranked_operational_actions(uuid,integer)",
       "scope": "authenticated authorised-demo-site access with optional validated equipment scope"
+    },
+    {
+      "identity": "vorta_get_historical_backtest(uuid,uuid,text,integer)",
+      "scope": "authenticated authorised-site access with optional equipment scope; version-pinned historical risk, stock and work evidence only"
     }
   ],
   "askVortaActionRpcs": [
