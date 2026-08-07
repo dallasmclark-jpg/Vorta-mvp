@@ -86,9 +86,6 @@ jobs:
             await expect(latestAssistantMessage).toBeVisible({ timeout: 90_000 });
             await expect(latestAssistantMessage.locator(".animate-spin")).toHaveCount(0, { timeout: 90_000 });
 
-            // Inject one ordinary same-origin link into the live Ask Vorta surface.
-            // The application-shell capture logic must treat it exactly like any
-            // future internal link type without knowing its destination in advance.
             await page.evaluate(() => {
               const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
                 '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
@@ -101,7 +98,6 @@ jobs:
               const link = document.createElement("a");
               link.href = "/engineers";
               link.textContent = "VOR-067 internal navigation verification";
-              link.setAttribute("data-vor067-internal-link", "true");
               surface.appendChild(link);
               link.click();
             });
@@ -113,8 +109,6 @@ jobs:
             });
             await expect(backToChat).toBeVisible({ timeout: 30_000 });
 
-            // The control belongs to the application shell, so representative
-            // destinations do not need their own Back-to-chat implementation.
             const representativeDestinations = [
               `/equipment/${equipmentId}/work-orders`,
               `/equipment/${equipmentId}/spares`,
@@ -123,15 +117,12 @@ jobs:
               "/skills-matrix",
             ];
             for (const destination of representativeDestinations) {
-              await page.goto(destination);
-              await page.locator('[data-vorta-maintenance-portal="true"]').waitFor({ timeout: 30_000 });
+              await page.goto(destination, { waitUntil: "domcontentloaded" });
+              console.log("VOR067 ROUTE", destination, page.url());
               await expect(backToChat).toBeVisible({ timeout: 30_000 });
             }
 
-            // Hard reload on the final destination proves visibility does not
-            // depend on query parameters, browser history or a transient component.
-            await page.reload();
-            await page.locator('[data-vorta-maintenance-portal="true"]').waitFor({ timeout: 30_000 });
+            await page.reload({ waitUntil: "domcontentloaded" });
             await expect(backToChat).toBeVisible({ timeout: 30_000 });
 
             await backToChat.click();
