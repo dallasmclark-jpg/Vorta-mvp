@@ -161,6 +161,11 @@ if (failures.length > 0) {
   for (const failure of failures) {
     const reason = failure.signal ? `signal ${failure.signal}` : `exit ${failure.status ?? "unknown"}`;
     console.error(`- ${failure.label}: ${failure.path} (${reason})`);
+    if (process.env.GITHUB_ACTIONS === "true") {
+      console.error(
+        `::error title=Contract failure::${failure.label} failed in ${failure.path} (${reason})`,
+      );
+    }
   }
   process.exit(1);
 }
