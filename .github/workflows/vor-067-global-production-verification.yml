@@ -52,59 +52,103 @@ jobs:
             exit 1
           }
 
-      - name: Install deterministic shell-hydration production test
+      - name: Install complete global-navigation production test
         shell: bash
         run: |
-          cat > tests/browser/vor-067-global-production-diagnostic.spec.ts <<'EOF'
+          cat > tests/browser/vor-067-global-production-final.spec.ts <<'EOF'
           import { expect, test } from "@playwright/test";
           import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
-          const navigationKey = "vorta:ask-vorta:navigation-context:v1";
-          const destination = "/engineers";
+          const question = "Vial filling sensor fault";
+          const equipmentId = "40000000-0000-0000-0000-000000000007";
+          const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
 
-          test("VOR-067 application shell rehydrates Back to chat from durable navigation context", async ({ page }) => {
-            test.setTimeout(120_000);
+          test("VOR-067 production keeps Back to chat global for every internal Ask Vorta destination", async ({ page }) => {
+            test.setTimeout(180_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
             await page.locator('[data-vorta-dashboard-root="true"]').waitFor();
 
-            await page.evaluate((key) => {
-              window.sessionStorage.setItem(key, JSON.stringify({ returnPath: "/dashboard" }));
-            }, navigationKey);
+            await page.evaluate((prompt) => {
+              window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt", {
+                detail: { question: prompt, submit: true, role: "maintenance-manager" },
+              }));
+            }, question);
 
-            await page.goto(destination);
-            await page.locator('[data-vorta-maintenance-portal="true"]').waitFor({ timeout: 30_000 });
+            const assistant = page
+              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
+              .first();
+            await expect(assistant).toBeVisible({ timeout: 30_000 });
+            await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
+              .toBeVisible({ timeout: 30_000 });
 
+            const latestAssistantMessage = assistant.locator(".justify-start").last();
+            await expect(latestAssistantMessage).toBeVisible({ timeout: 90_000 });
+            await expect(latestAssistantMessage.locator(".animate-spin")).toHaveCount(0, { timeout: 90_000 });
+
+            // Inject one ordinary same-origin link into the live Ask Vorta surface.
+            // The application-shell capture logic must treat it exactly like any
+            // future internal link type without knowing its destination in advance.
+            await page.evaluate(() => {
+              const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
+                '[data-vorta-global-ai-panel="true"], [data-vorta-ai-workspace="true"]',
+              ));
+              const surface = surfaces.find((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+              });
+              if (!surface) throw new Error("Visible Ask Vorta surface was not found.");
+              const link = document.createElement("a");
+              link.href = "/engineers";
+              link.textContent = "VOR-067 internal navigation verification";
+              link.setAttribute("data-vor067-internal-link", "true");
+              surface.appendChild(link);
+              link.click();
+            });
+
+            await page.waitForURL(/\/engineers(?:\?.*)?$/, { timeout: 30_000 });
             const backToChat = page.getByRole("button", {
               name: "Back to Ask Vorta chat",
               exact: true,
             });
             await expect(backToChat).toBeVisible({ timeout: 30_000 });
 
-            console.log("VOR067 SEEDED BEFORE RELOAD", await page.evaluate((key) => ({
-              url: window.location.href,
-              session: window.sessionStorage.getItem(key),
-              shellCount: document.querySelectorAll('[data-vorta-maintenance-portal="true"]').length,
-              buttonCount: document.querySelectorAll('[data-vorta-back-to-ask-vorta="true"]').length,
-            }), navigationKey));
+            // The control belongs to the application shell, so representative
+            // destinations do not need their own Back-to-chat implementation.
+            const representativeDestinations = [
+              `/equipment/${equipmentId}/work-orders`,
+              `/equipment/${equipmentId}/spares`,
+              `/equipment/${equipmentId}/documents/${guideId}`,
+              "/stores-inventory",
+              "/skills-matrix",
+            ];
+            for (const destination of representativeDestinations) {
+              await page.goto(destination);
+              await page.locator('[data-vorta-maintenance-portal="true"]').waitFor({ timeout: 30_000 });
+              await expect(backToChat).toBeVisible({ timeout: 30_000 });
+            }
 
+            // Hard reload on the final destination proves visibility does not
+            // depend on query parameters, browser history or a transient component.
             await page.reload();
             await page.locator('[data-vorta-maintenance-portal="true"]').waitFor({ timeout: 30_000 });
-
-            console.log("VOR067 SEEDED AFTER RELOAD", await page.evaluate((key) => ({
-              url: window.location.href,
-              session: window.sessionStorage.getItem(key),
-              shellCount: document.querySelectorAll('[data-vorta-maintenance-portal="true"]').length,
-              buttonCount: document.querySelectorAll('[data-vorta-back-to-ask-vorta="true"]').length,
-              bodyStart: document.body.innerText.slice(0, 400),
-            }), navigationKey));
-
             await expect(backToChat).toBeVisible({ timeout: 30_000 });
+
+            await backToChat.click();
+            await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+
+            const restoredAssistant = page
+              .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
+              .first();
+            await expect(restoredAssistant).toBeVisible({ timeout: 30_000 });
+            await expect(
+              restoredAssistant.locator(".justify-end p").filter({ hasText: question }).first(),
+            ).toBeVisible({ timeout: 30_000 });
           });
           EOF
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify exact production application-shell hydration
-        run: npx playwright test tests/browser/vor-067-global-production-diagnostic.spec.ts --project=samsung-tablet-landscape
+      - name: Verify exact production global Ask Vorta return journey
+        run: npx playwright test tests/browser/vor-067-global-production-final.spec.ts --project=samsung-tablet-landscape
