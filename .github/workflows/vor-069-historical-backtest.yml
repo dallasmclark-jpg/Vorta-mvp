@@ -1,0 +1,124 @@
+name: VOR-069 historical backtest
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/Equipment/**"
+      - "supabase/migrations/**"
+      - "supabase/rpc-security-manifest.json"
+      - "scripts/vor-069-*"
+      - "scripts/run-contract-suite.mjs"
+      - "scripts/rpc-security-manifest-contracts.mjs"
+      - "scripts/live-demo-backend-health.mjs"
+      - "tests/browser/vor-069-historical-backtest.spec.ts"
+      - ".github/workflows/vor-069-historical-backtest.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/ask-vorta/**"
+      - "src/screens/Equipment/**"
+      - "supabase/migrations/**"
+      - "supabase/rpc-security-manifest.json"
+      - "scripts/vor-069-*"
+      - "scripts/run-contract-suite.mjs"
+      - "scripts/rpc-security-manifest-contracts.mjs"
+      - "scripts/live-demo-backend-health.mjs"
+      - "tests/browser/vor-069-historical-backtest.spec.ts"
+      - ".github/workflows/vor-069-historical-backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-069-backtest-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Backtest evidence and compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Verify VOR-069 intelligence contract
+        run: node scripts/vor-069-historical-backtest-intelligence-contracts.mjs
+
+      - name: Verify VOR-033 Ask Vorta compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-033 Ask Vorta golden suite"
+
+      - name: Verify VOR-037 Ask Vorta compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-037 unified Ask Vorta"
+
+      - name: Verify VOR-038 Ask Vorta compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-038 Ask Vorta intelligence"
+
+      - name: Verify VOR-039 Ask Vorta compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-039 Ask Vorta confidence and latency"
+
+      - name: Verify VOR-040 Ask Vorta compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-040 natural Ask Vorta questions"
+
+      - name: Verify VOR-043 document intelligence compatibility
+        run: node scripts/run-contract-suite.mjs "VOR-043 exact document intelligence"
+
+      - name: Verify Equipment people compatibility
+        run: node scripts/run-contract-suite.mjs "Equipment people workflow"
+
+      - name: Verify Ask Vorta agent compatibility
+        run: node scripts/run-contract-suite.mjs "Ask Vorta agent"
+
+      - name: Verify authenticated historical backtest RPC
+        run: node scripts/vor-069-historical-backtest-rpc-smoke.mjs
+
+      - name: Verify application TypeScript
+        run: npm run typecheck
+
+      - name: Build Vite production assets
+        run: npx vite build
+
+      - name: Enforce production performance budgets
+        run: node scripts/check-performance-budgets.mjs
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify responsive historical backtest UI
+        run: |
+          npx playwright test \
+            tests/browser/vor-069-historical-backtest.spec.ts \
+            --project=phone-360 \
+            --project=samsung-tablet-portrait \
+            --project=samsung-tablet-landscape \
+            --project=desktop-1920 \
+            --config=playwright.config.ts

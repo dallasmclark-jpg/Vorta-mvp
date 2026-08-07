@@ -8,13 +8,16 @@ import { build } from "esbuild";
 const read = (path) => readFileSync(path, "utf8");
 const entrypoint = read("netlify/functions/ask-vorta.mts");
 const wrapper = read("netlify/functions/ask-vorta/runtime-document-links.mts");
+const backtestWrapper = read("netlify/functions/ask-vorta/runtime-backtest.mts");
 const helper = read("netlify/functions/ask-vorta/document-evidence-links.mts");
 const frontend = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 
 assert.match(entrypoint, /runtime-document-links\.mjs/);
 assert.match(entrypoint, /runtime-equipment-fallback\.mjs/);
 for (const marker of [
-  'import coreHandler from "./runtime-equipment-fallback.mjs"',
+  'import coreHandler, {',
+  'from "./runtime-backtest.mjs"',
+  "ASK_VORTA_BACKTEST_REVISION",
   "authenticateAskVortaRequest",
   '.from("knowledge_documents")',
   "source_url",
@@ -25,6 +28,8 @@ for (const marker of [
 ]) {
   assert.ok(wrapper.includes(marker), `Missing document-link runtime marker: ${marker}`);
 }
+assert.match(backtestWrapper, /import coreHandler from "\.\/runtime-equipment-fallback\.mjs"/);
+assert.match(backtestWrapper, /return coreHandler\(req, context\)/);
 for (const marker of [
   "DOCUMENT_PATH_PATTERN",
   "safeDocumentPath",

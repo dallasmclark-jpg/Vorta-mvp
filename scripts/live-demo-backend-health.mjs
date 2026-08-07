@@ -73,12 +73,12 @@ try {
   );
   assert.equal(
     Number(data.security.reviewedAuthenticatedReadRpcCount),
-    54,
+    55,
     "Authenticated read RPC manifest count has drifted",
   );
   assert.equal(
     Number(data.security.authenticatedSecurityDefinerRpcCount),
-    71,
+    72,
     "Authenticated SECURITY DEFINER RPC count has drifted",
   );
   assert.equal(

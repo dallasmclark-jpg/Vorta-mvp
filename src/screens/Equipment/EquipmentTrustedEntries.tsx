@@ -4,6 +4,7 @@ import { getConfiguredDataMode } from "../../lib/dataTrust";
 import { EquipmentAiInsights } from "./EquipmentAiInsights";
 import { EquipmentDocuments } from "./EquipmentDocuments";
 import { EquipmentHistory } from "./EquipmentHistory";
+import { EquipmentHistoricalBacktest } from "./EquipmentHistoricalBacktest";
 import {
   EquipmentTabNavigation,
   type EquipmentTabRoute,
@@ -81,9 +82,32 @@ function LiveEvidenceUnavailable({
   );
 }
 
+function DemoEquipmentHistoryWithBacktest(): JSX.Element {
+  const navigate = useNavigate();
+  const { equipmentId = "" } = useParams();
+
+  return (
+    <>
+      <EquipmentHistory />
+      {equipmentId ? (
+        <div className="-mt-6 px-4 pb-10 md:px-6">
+          <EquipmentHistoricalBacktest
+            equipmentId={equipmentId}
+            onAskVorta={(prompt) =>
+              navigate(
+                `/equipment/${equipmentId}/ai-insights?prompt=${encodeURIComponent(prompt)}`,
+              )
+            }
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function EquipmentHistoryEntry(): JSX.Element {
   return getConfiguredDataMode() === "demo" ? (
-    <EquipmentHistory />
+    <DemoEquipmentHistoryWithBacktest />
   ) : (
     <LiveEvidenceUnavailable
       title="Equipment History"

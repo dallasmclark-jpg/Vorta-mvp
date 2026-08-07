@@ -1,6 +1,8 @@
 import type { Context } from "@netlify/functions";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import coreHandler from "./runtime-equipment-fallback.mjs";
+import coreHandler, {
+  ASK_VORTA_BACKTEST_REVISION,
+} from "./runtime-backtest.mjs";
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import type { JsonRecord } from "./contracts.mjs";
 import {
@@ -16,6 +18,10 @@ import { jsonResponse } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
   "vor-067-production-chat-return-v2";
+
+if (ASK_VORTA_BACKTEST_REVISION !== "vor-069-historical-backtest-intelligence-v1") {
+  throw new Error("Ask Vorta historical backtest runtime revision mismatch.");
+}
 
 function record(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)

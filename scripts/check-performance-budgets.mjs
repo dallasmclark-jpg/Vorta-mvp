@@ -71,7 +71,12 @@ const failures = checks.filter(([, actual, budget]) => actual > budget);
 if (failures.length > 0) {
   console.error("\nPerformance budget exceeded:");
   for (const [label, actual, budget] of failures) {
-    console.error(`- ${label}: ${formatBytes(actual)} exceeds ${formatBytes(budget)}`);
+    const over = actual - budget;
+    const message = `${label}: ${formatBytes(actual)} exceeds ${formatBytes(budget)} by ${formatBytes(over)}`;
+    console.error(`- ${message}`);
+    if (process.env.GITHUB_ACTIONS === "true") {
+      console.error(`::error title=Performance budget exceeded::${message}`);
+    }
   }
   process.exit(1);
 }
