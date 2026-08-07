@@ -11,10 +11,11 @@ import {
   equipmentIdFromAnswer,
   mergeEvidenceLinks,
 } from "./document-evidence-links.mjs";
+import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs";
 import { jsonResponse } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
-  "vor-049-exact-document-deep-links-v1";
+  "vor-067-production-chat-return-v2";
 
 function record(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -90,7 +91,10 @@ export default async function documentLinkHandler(
   const documentLinks = buildDocumentEvidenceLinks(
     data as JsonRecord[],
     evidenceText,
-  );
+  ).map((link) => ({
+    ...link,
+    path: withAskVortaDocumentOrigin(link.path),
+  }));
   if (documentLinks.length === 0) return primaryResponse;
 
   answer.evidenceLinks = mergeEvidenceLinks(
