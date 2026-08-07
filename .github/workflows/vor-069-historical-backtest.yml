@@ -98,3 +98,12 @@ jobs:
 
       - name: Verify authenticated historical backtest RPC
         run: node scripts/vor-069-historical-backtest-rpc-smoke.mjs
+
+      - name: Verify application TypeScript
+        run: npm run typecheck
+
+      - name: Build Vite production assets
+        run: npx vite build
+
+      - name: Enforce production performance budgets
+        run: node scripts/check-performance-budgets.mjs
