@@ -1,4 +1,4 @@
-name: VOR-067 current-main build diagnostic
+name: VOR-067 header fix production build diagnostic
 
 on:
   push:
@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Check out exact current main
+      - name: Check out exact header fix
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: fix/vor-067-header-build-contract
           fetch-depth: 0
 
       - name: Use Node.js
