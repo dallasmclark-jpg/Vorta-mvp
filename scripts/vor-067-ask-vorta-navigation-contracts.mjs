@@ -17,6 +17,8 @@ for (const marker of [
   'data-vorta-ai-evidence-links="true"',
   'data-vorta-global-ai-panel="true"',
   'data-vorta-ai-workspace="true"',
+  "captureAskVortaInternalNavigation",
+  'document.addEventListener(\n      "click",',
   "markAskVortaNavigationOrigin()",
   "readAskVortaNavigationContext()",
   "clearAskVortaNavigationContext()",
@@ -63,8 +65,8 @@ assert.match(
 
 assert.match(
   source,
-  /const trackRecommendationFollowThrough = useCallback\([\s\S]*?isAskVortaInternalNavigationTarget\(event\.target\)[\s\S]*?setAskVortaNavigationContext\(markAskVortaNavigationOrigin\(\)\)/,
-  "Every internal Ask Vorta navigation click must establish global return context before the destination opens",
+  /const captureAskVortaInternalNavigation = \(event: MouseEvent\): void => \{[\s\S]*?isAskVortaInternalNavigationTarget\(event\.target\)[\s\S]*?setAskVortaNavigationContext\(markAskVortaNavigationOrigin\(\)\)[\s\S]*?document\.addEventListener\([\s\S]*?"click"[\s\S]*?captureAskVortaInternalNavigation[\s\S]*?true[\s\S]*?document\.removeEventListener\([\s\S]*?"click"[\s\S]*?captureAskVortaInternalNavigation[\s\S]*?true/,
+  "Every Ask Vorta internal navigation must be captured by the native document capture phase before any link or button can navigate away",
 );
 
 const returnFunction = source.match(
@@ -107,5 +109,5 @@ assert.match(
 );
 
 console.log(
-  "VOR-067 Ask Vorta navigation contracts passed: Back to chat is application-shell owned, destination-type agnostic, independent of query parameters and browser-history guessing, and restores the active conversation.",
+  "VOR-067 Ask Vorta navigation contracts passed: native application-shell capture covers every internal chat destination before navigation, Back to chat is destination-type agnostic, independent of query parameters and browser-history guessing, and restores the active conversation.",
 );
