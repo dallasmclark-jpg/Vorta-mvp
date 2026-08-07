@@ -6,14 +6,14 @@ import {
   ASK_VORTA_RESPONSE_VALIDATION_REVISION,
 } from "./ask-vorta/response-validation.mjs";
 
-// Production release marker: exact approved manual and drawing deep links.
+// Production release marker: exact approved manual and drawing deep links retain Ask Vorta return context.
 // Compatibility marker: runtime-document-links delegates to:
 // import handler from "./ask-vorta/runtime-equipment-fallback.mjs";
 if (
   ASK_VORTA_RESPONSE_VALIDATION_REVISION !==
     "vor-056-final-backlog-boundary-v1" ||
   ASK_VORTA_DOCUMENT_LINK_REVISION !==
-    "vor-049-exact-document-deep-links-v1"
+    "vor-067-production-chat-return-v2"
 ) {
   throw new Error("Ask Vorta validated bundle revision mismatch.");
 }
