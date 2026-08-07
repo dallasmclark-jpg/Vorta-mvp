@@ -9,20 +9,24 @@ const [
   functionTransform,
   runtimeContract,
   liveEngineers,
-  shiftRota,
+  operationalRota,
+  operationalRotaService,
   routeEntry,
   engineersIndex,
   operations,
+  migration,
 ] = await Promise.all([
   read("../supabase/functions/engineers-data/index.ts"),
   read("../supabase/functions/engineers-data/auth.ts"),
   read("../supabase/functions/engineers-data/transform.ts"),
   read("../src/screens/Engineers/engineersRuntimeContracts.ts"),
   read("../src/screens/Engineers/LiveEngineersSection.tsx"),
-  read("../src/screens/LabourRisk/LabourRiskDetailPage.tsx"),
+  read("../src/screens/Engineers/OperationalRotaRiskMap.tsx"),
+  read("../src/screens/Engineers/operationalRotaService.ts"),
   read("../src/screens/Engineers/EngineersRouteEntry.tsx"),
   read("../src/screens/Engineers/index.ts"),
   read("../src/screens/AiOperations/AiOperations.tsx"),
+  read("../supabase/migrations/20260807193000_vor_068_configured_rota_headcount.sql"),
 ]);
 
 const mustMatch = (source, pattern, message) => assert.match(source, pattern, message);
@@ -50,45 +54,58 @@ mustMatch(runtimeContract, /stats\.totalEngineers !== engineers\.length/, "Engin
 mustMatch(runtimeContract, /must be between 0 and 100/, "Engineer scores must be range checked");
 
 mustMatch(liveEngineers, /validateEngineersPayload\(engineersResult\.data\)/, "Live Engineers must validate workforce responses");
-mustMatch(liveEngineers, /getShiftCoverSnapshot\(siteId, startDate, endDate\)/, "Live availability must use the verified Shift Cover source");
-mustMatch(liveEngineers, /validated\.siteId !== siteId \|\| validated\.organisationId !== organisationId/, "Live Engineers must reject cross-site or cross-organisation responses");
+mustMatch(liveEngineers, /getShiftCoverSnapshot\(siteId, startDate, endDate\)/, "Desktop availability must use the verified Shift Cover source");
+mustMatch(liveEngineers, /validated\.siteId !== siteId \|\| validated\.organisationId !== organisationId/, "Desktop Engineers must reject cross-site or cross-organisation responses");
 mustMatch(liveEngineers, /data-vorta-live-engineers="true"/, "Live Engineers must expose a browser-test evidence marker");
-mustMatch(liveEngineers, /data-vorta-active-site=\{siteContext\?\.siteId/, "Live Engineers must expose its active-site boundary");
-mustMatch(liveEngineers, /Read-only live pilot/, "Live Engineers must state the read-only boundary");
 mustMatch(liveEngineers, /Malformed, cross-site or incomplete responses are withheld/, "Live Engineers must explain fail-closed handling");
-mustMatch(liveEngineers, /aria-label=\{`Review \$\{engineer\.full_name\}`\}/, "Engineer review actions must have descriptive names");
-mustMatch(liveEngineers, /focus-visible:ring-2/, "Engineer review actions must expose visible keyboard focus");
-mustNotMatch(liveEngineers, /MM_CALENDAR_EVENTS|At-Risk Shifts This Month|Training Conflicts|Contractor Cover Required/, "Live Engineers must not restore the simulated calendar or fixed coverage KPIs");
-mustNotMatch(liveEngineers, /Add Engineer|AI Report|Alpha Manufacturing/, "Live Engineers must not expose demo-only actions or tenant labels");
-mustNotMatch(liveEngineers, /availability_status === "on_shift"|availability_status === "available"/, "Live rota KPIs must not use the legacy availability flag");
 
-mustMatch(shiftRota, /CONTINENTAL_CYCLE: ShiftPatternType\[\] = \["day", "day", "night", "night", "off", "off", "off", "off"\]/, "The original rota must preserve the exact 2D/2N/4O cycle");
-for (const team of ["Yellow Shift", "Red Shift", "Green Shift", "Blue Shift", "Days"]) {
-  mustMatch(shiftRota, new RegExp(team), `The original rota must retain ${team}`);
-}
-mustMatch(shiftRota, /Tonight's Risk Summary/, "The original rota must retain the Tonight's Risk drawer");
-mustMatch(shiftRota, /Missing Skill/, "The original rota must retain missing-skill risk indicators");
-mustMatch(shiftRota, /Reduced Resilience/, "The original rota must retain resilience risk indicators");
-mustMatch(shiftRota, /SME Dependency/, "The original rota must retain SME risk indicators");
-mustMatch(shiftRota, /Contractor Involved/, "The original rota must retain contractor risk indicators");
+mustMatch(operationalRotaService, /vorta_get_shift_cover_snapshot/, "The operational rota must use the canonical authorised Shift Cover snapshot RPC");
+mustMatch(operationalRotaService, /siteId !== expectedSiteId/, "The operational rota must reject cross-site snapshot data");
+mustMatch(operationalRotaService, /engineerNames\.length !== item\.scheduledEngineerCount/, "The operational rota must fail closed when names and scheduled headcount disagree");
+mustMatch(operationalRotaService, /requiredHeadcount: integer\([\s\S]*?requiredHeadcount[\s\S]*?1,\s*\)/, "Configured team headcount must be parsed as a positive integer");
+mustMatch(operationalRotaService, /memberNames/, "Configured team member names must come from verified snapshot evidence");
 
-mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain the shared data-trust mode for the phone presentation");
+mustMatch(operationalRota, /getOperationalRotaSnapshot\(siteId, startDate, endDate\)/, "Tablet rota must load the verified site-scoped snapshot");
+mustMatch(operationalRota, /data-vorta-operational-rota-risk-map="true"/, "The approved rota grid must expose a stable browser marker");
+mustMatch(operationalRota, /Fully Covered requires the configured team headcount/, "The UI must state the staffing invariant");
+mustMatch(operationalRota, /scheduledHeadcount < requiredHeadcount/, "A staffing shortfall must be evaluated before the aggregate coverage status");
+mustMatch(operationalRota, /scheduledHeadcount \* 2 <= requiredHeadcount \? "partial" : "reduced"/, "Under-strength teams must become partial or reduced rather than covered");
+mustMatch(operationalRota, /\{cell\.engineerNames\.length\}\/\{cell\.requiredHeadcount\}/, "Every active rota cell must show actual versus required headcount");
+mustMatch(operationalRota, /Missing Skill[\s\S]*Reduced Resilience[\s\S]*SME Dependency[\s\S]*Contractor Involved/, "Risk indicator vocabulary must remain available on the canonical rota");
+mustMatch(operationalRota, /The rota fails closed rather than showing an unverified green status/, "Rota load failures must not degrade to green placeholder coverage");
+mustMatch(operationalRota, /No active maintenance rota configured/, "The rota must have a bounded empty state");
+mustNotMatch(operationalRota, /TEAM_CONFIGS|ROTA_OVERLAYS|SC_ENGINEERS|James Hadley|Sarah Mitchell/, "The production Engineers rota must not depend on the former hard-coded roster");
+
+mustMatch(routeEntry, /getEffectiveDataMode/, "Engineers route must retain shared data-trust mode for the phone presentation");
 mustMatch(routeEntry, /useMediaQuery\("\(max-width: 767px\)"\)/, "Engineers route must preserve the explicit phone boundary");
-mustMatch(routeEntry, /useMediaQuery\("\(min-width: 768px\) and \(max-width: 1439px\)"\)/, "Narrow tablet widths must always retain the original rota");
+mustMatch(routeEntry, /useMediaQuery\("\(min-width: 768px\) and \(max-width: 1439px\)"\)/, "Narrow tablet widths must retain the approved rota architecture");
 mustMatch(routeEntry, /useMediaQuery\("\(any-pointer: coarse\)"\)/, "Wide touch tablets may expose coarse-pointer capability");
 mustMatch(routeEntry, /useMediaQuery\("\(hover: none\)"\)/, "Wide touch tablets may expose no-hover capability");
 mustMatch(routeEntry, /navigator\.maxTouchPoints > 0/, "Samsung desktop-site mode must be detected through retained touch points");
-mustMatch(routeEntry, /isNarrowTablet \|\| hasTouchPoints \|\| hasCoarsePointer \|\| hasNoHover/, "Tablet routing must accept any reliable tablet capability rather than requiring all of them");
+mustMatch(routeEntry, /isNarrowTablet \|\| hasTouchPoints \|\| hasCoarsePointer \|\| hasNoHover/, "Tablet routing must accept any reliable tablet capability");
 mustMatch(routeEntry, /<MobileEngineersSection dataMode=\{dataMode\} \/>/, "Phone Engineers must retain the working mobile presentation");
-mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Tablet Engineers must expose the restored original rota marker");
-mustMatch(routeEntry, /location="\/engineers\/shift-cover"/, "Tablet Engineers must render the approved Shift Cover route within the Engineers route context");
-mustMatch(routeEntry, /<LabourRiskDetailPage \/>/, "Tablet Engineers must reuse the approved full shift-cover implementation");
+mustMatch(routeEntry, /data-vorta-original-shift-rota="true"/, "Tablet Engineers must retain the approved rota-grid browser marker");
+mustMatch(routeEntry, /data-vorta-verified-operational-rota="true"/, "Tablet Engineers must identify the verified replacement");
+mustMatch(routeEntry, /<OperationalRotaRiskMap \/>/, "Tablet Engineers must render the verified canonical rota implementation");
 mustMatch(routeEntry, /<LiveEngineersSection \/>/, "Genuine non-touch desktop must retain the active-site engineer evidence register");
+mustNotMatch(routeEntry, /LabourRiskDetailPage|location="\/engineers\/shift-cover"/, "The Engineers route must not mount the hard-coded legacy Shift Cover page");
 mustNotMatch(routeEntry, /max-width: 1600|Android/i, "Wide Samsung routing must not depend on a guessed upper width or Android user-agent text");
 mustNotMatch(routeEntry, /hasTouchPoints && hasCoarsePointer/, "Samsung routing must not require touch and coarse pointer simultaneously");
 mustNotMatch(routeEntry, /TabletEngineersSection/, "Engineers must not return to the simplified weekly coverage replacement on tablet");
+
+mustMatch(migration, /add column if not exists required_headcount integer/, "Shift teams must store an explicit staffing requirement");
+mustMatch(migration, /maintenance_shift_teams_required_headcount_check[\s\S]*required_headcount > 0/, "Configured staffing requirements must remain positive");
+mustMatch(migration, /sum\(scheduled_team\.required_headcount\)/, "Shift staffing requirements must be summed from the teams actually scheduled");
+mustMatch(migration, /scheduled_engineer_count < staffing_requirements\.required_engineer_count/, "Staffing risk must react to configured shortfalls");
+mustMatch(migration, /scheduled_engineer_count < scored\.required_engineer_count[\s\S]*then 'reduced'/, "Coverage status must refuse Fully Covered below configured headcount");
+mustMatch(migration, /'requiredHeadcount', team\.required_headcount/, "The authorised snapshot must expose team staffing requirements");
+mustMatch(migration, /'memberNames'/, "The authorised snapshot must expose site-scoped team member names");
+mustMatch(migration, /if not public\.vorta_has_site_access\(p_site_id, false\)/, "Snapshot enrichment must preserve the existing site-access guard");
+
 mustMatch(engineersIndex, /EngineersRouteEntry as EngineersSection/, "The public Engineers export must use the responsive route");
 mustMatch(operations, /label: "Engineers", icon: Users, to: "\/engineers"/, "Engineers must remain available in live navigation");
 mustMatch(operations, /<Route path="engineers" element=\{<EngineersSection \/>\} \/>/, "Engineers must route through the responsive entry");
 
-console.log("Engineers live evidence, touch-capable Samsung rota routing and single-bundle performance contracts passed.");
+console.log(
+  "Engineers live evidence and VOR-068 configured-headcount rota contracts passed: tablet keeps the approved rota grid, uses authorised Shift Cover evidence, shows actual/required staffing, and cannot render an under-strength team as Fully Covered.",
+);

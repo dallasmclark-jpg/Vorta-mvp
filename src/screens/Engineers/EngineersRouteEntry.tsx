@@ -1,17 +1,18 @@
-import { Route, Routes } from "react-router-dom";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
-import { LabourRiskDetailPage } from "../LabourRisk/LabourRiskDetailPage";
 import { LiveEngineersSection } from "./LiveEngineersSection";
 import { MobileEngineersSection } from "./MobileEngineersSection";
+import { OperationalRotaRiskMap } from "./OperationalRotaRiskMap";
 
-function OriginalShiftCoverRota(): JSX.Element {
+function VerifiedOperationalRota(): JSX.Element {
   return (
-    <div className="contents" data-vorta-original-shift-rota="true">
-      <Routes location="/engineers/shift-cover">
-        <Route path=":riskType" element={<LabourRiskDetailPage />} />
-      </Routes>
+    <div
+      className="contents"
+      data-vorta-original-shift-rota="true"
+      data-vorta-verified-operational-rota="true"
+    >
+      <OperationalRotaRiskMap />
     </div>
   );
 }
@@ -25,15 +26,15 @@ export function EngineersRouteEntry(): JSX.Element {
   const hasNoHover = useMediaQuery("(hover: none)");
   const hasTouchPoints =
     typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-  const usesOriginalRota =
+  const usesOperationalRota =
     isNarrowTablet || hasTouchPoints || hasCoarsePointer || hasNoHover;
 
   return (
     <div className="contents" data-vorta-engineers-mode={dataMode}>
       {isPhone ? (
         <MobileEngineersSection dataMode={dataMode} />
-      ) : usesOriginalRota ? (
-        <OriginalShiftCoverRota />
+      ) : usesOperationalRota ? (
+        <VerifiedOperationalRota />
       ) : (
         <LiveEngineersSection />
       )}
