@@ -1,5 +1,26 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+
+const mobileUiTransform = spawnSync(
+  "python3",
+  ["scripts/apply-mobile-header-risk-picker-fix.py"],
+  {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: "inherit",
+  },
+);
+
+if (mobileUiTransform.error) {
+  throw mobileUiTransform.error;
+}
+
+if (mobileUiTransform.status !== 0) {
+  throw new Error(
+    `Mobile UI source transformation failed with exit code ${mobileUiTransform.status}.`,
+  );
+}
 
 const commit =
   process.env.COMMIT_REF?.trim() ||
