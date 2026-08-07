@@ -1,4 +1,4 @@
-name: VOR-067 global Back to chat production verification
+name: VOR-067 global Back to chat preview verification
 
 on:
   pull_request:
@@ -11,13 +11,11 @@ permissions:
 jobs:
   verify:
     if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Verify global production Back to chat journey
+    name: Verify native global Back to chat journey
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      EXPECTED_COMMIT: c7036931169c9e2e09d9b2494043f76bc62ef416
-      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
-      VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
+      VORTA_E2E_BASE_URL: https://deploy-preview-272--vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
       VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
@@ -26,10 +24,10 @@ jobs:
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
 
     steps:
-      - name: Check out exact deployed commit
+      - name: Check out exact preview commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: c7036931169c9e2e09d9b2494043f76bc62ef416
+          ref: 25b8c3226480fe412a0a45659cd51318347e05f3
           show-progress: false
 
       - name: Use Node.js
@@ -41,9 +39,6 @@ jobs:
       - name: Install application dependencies
         run: npm ci --silent
 
-      - name: Verify production serves the exact commit
-        run: node scripts/verify-production-commit.mjs
-
       - name: Verify authenticated browser-test secret
         shell: bash
         run: |
@@ -52,10 +47,10 @@ jobs:
             exit 1
           }
 
-      - name: Install exact user-journey production test
+      - name: Install exact native-capture user journey
         shell: bash
         run: |
-          cat > tests/browser/vor-067-global-production-final.spec.ts <<'EOF'
+          cat > tests/browser/vor-067-native-preview.spec.ts <<'EOF'
           import { expect, test } from "@playwright/test";
           import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
@@ -63,7 +58,7 @@ jobs:
           const equipmentId = "40000000-0000-0000-0000-000000000007";
           const guideId = "dbd95c1f-08ab-4224-a0dc-ba50651150e8";
 
-          test("VOR-067 production gives every internal Ask Vorta destination a global Back to chat journey", async ({ page }) => {
+          test("VOR-067 native shell capture gives every internal chat destination Back to chat", async ({ page }) => {
             test.setTimeout(240_000);
             await signInMaintenanceManager(page);
             await page.goto("/dashboard");
@@ -78,9 +73,12 @@ jobs:
             const assistant = page
               .locator('[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible')
               .first();
+            const activeQuestion = assistant
+              .locator(".justify-end p")
+              .filter({ hasText: question })
+              .first();
             await expect(assistant).toBeVisible({ timeout: 30_000 });
-            await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
-              .toBeVisible({ timeout: 30_000 });
+            await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
 
             const destinations = [
               `/equipment/${equipmentId}/work-orders`,
@@ -93,8 +91,7 @@ jobs:
 
             for (const [index, destination] of destinations.entries()) {
               await expect(assistant).toBeVisible({ timeout: 30_000 });
-              await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
-                .toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
 
               await page.evaluate((path) => {
                 const surfaces = Array.from(document.querySelectorAll<HTMLElement>(
@@ -108,7 +105,6 @@ jobs:
                 const link = document.createElement("a");
                 link.href = path;
                 link.textContent = `VOR-067 verify ${path}`;
-                link.setAttribute("data-vor067-internal-link", "true");
                 surface.appendChild(link);
                 link.click();
               }, destination);
@@ -121,8 +117,6 @@ jobs:
               });
               await expect(backToChat).toBeVisible({ timeout: 30_000 });
 
-              // Prove the control is durable and not query-string magic on a
-              // representative deep route during the same Ask Vorta excursion.
               if (index === 0) {
                 await page.reload({ waitUntil: "domcontentloaded" });
                 await expect(backToChat).toBeVisible({ timeout: 30_000 });
@@ -131,8 +125,7 @@ jobs:
               await backToChat.click();
               await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
               await expect(assistant).toBeVisible({ timeout: 30_000 });
-              await expect(assistant.locator(".justify-end p").filter({ hasText: question }).first())
-                .toBeVisible({ timeout: 30_000 });
+              await expect(activeQuestion).toBeVisible({ timeout: 30_000 });
             }
           });
           EOF
@@ -140,5 +133,5 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify exact production Ask Vorta return journeys
-        run: npx playwright test tests/browser/vor-067-global-production-final.spec.ts --project=samsung-tablet-landscape
+      - name: Verify exact preview Ask Vorta return journeys
+        run: npx playwright test tests/browser/vor-067-native-preview.spec.ts --project=samsung-tablet-landscape
