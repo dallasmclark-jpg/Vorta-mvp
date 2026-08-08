@@ -30,7 +30,7 @@ function assistantJson(value) {
   return {
     role: "assistant",
     status: "completed",
-    content: [{ type: "output_text", text: JSON.stringify(value) }],
+    content: JSON.stringify(value),
   };
 }
 
