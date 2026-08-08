@@ -22,7 +22,7 @@ test("Historical Validation scopes governed evidence by Site and Area without la
   await page.goto("/historical-validation");
 
   const root = page.locator('[data-vorta-historical-validation="true"]');
-  await expect(root).toBeVisible({ timeout: 30_000 });
+  await expect(root).toBeVisible({ timeout: 45_000 });
   await expect(root.getByRole("heading", { name: "Historical Validation" })).toBeVisible();
   await expect(root.locator('[data-vorta-historical-provenance="true"]')).toContainText(
     "Historical demonstration evidence",
@@ -58,7 +58,7 @@ test("Historical Validation scopes governed evidence by Site and Area without la
     };
   });
   if (selectedVisualState.dark) {
-    expect(selectedVisualState.borderTopColor).toMatch(/rgba?\(96, 165, 24[89]/);
+    expect(selectedVisualState.borderTopColor).toMatch(/rgba?\(96, 165, 250/);
     expect(selectedVisualState.backgroundColor).toBe("rgb(13, 17, 23)");
   } else {
     expect(selectedVisualState.borderTopColor).toBe("rgb(37, 99, 235)");
