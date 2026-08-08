@@ -162,7 +162,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
       data-vorta-historical-case={item.scenarioKey}
       className="rounded-xl border border-gray-800 bg-[#141820] p-4 sm:p-5"
     >
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-gray-700 px-2 py-1 text-xs font-semibold text-blue-200">
@@ -182,7 +182,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
         <button
           type="button"
           onClick={() => navigate(`/equipment/${item.equipment.id}/history`)}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-gray-600 hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-gray-600 hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <History className="h-4 w-4" aria-hidden="true" />
           Equipment history
