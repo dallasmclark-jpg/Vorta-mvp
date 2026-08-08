@@ -23,6 +23,7 @@ jobs:
       WORKFLOW_FILE: .github/workflows/vor-049-diagnostic-contrast-repair.yml
       PATCH_FILE: scripts/tmp-vor049-diagnostic-contrast-patch.py
       CONTRACT_PATCH_FILE: scripts/tmp-vor049-contract-adjust.py
+      UNCERTAINTY_PATCH_FILE: scripts/tmp-vor049-uncertainty-adjust.py
 
     steps:
       - name: Check out repair branch
@@ -35,16 +36,17 @@ jobs:
         run: |
           git merge-base --is-ancestor "$EXPECTED_MAIN" HEAD
           git diff --name-only "$EXPECTED_MAIN" HEAD | sort > /tmp/before.txt
-          printf '%s\n' "$WORKFLOW_FILE" "$PATCH_FILE" "$CONTRACT_PATCH_FILE" | sort > /tmp/expected-before.txt
+          printf '%s\n' "$WORKFLOW_FILE" "$PATCH_FILE" "$CONTRACT_PATCH_FILE" "$UNCERTAINTY_PATCH_FILE" | sort > /tmp/expected-before.txt
           diff -u /tmp/expected-before.txt /tmp/before.txt
 
       - name: Apply bounded VOR-049 patch
         run: |
           python "$PATCH_FILE"
+          python "$UNCERTAINTY_PATCH_FILE"
           python "$CONTRACT_PATCH_FILE"
 
       - name: Remove temporary scaffolding from candidate tree
-        run: rm "$WORKFLOW_FILE" "$PATCH_FILE" "$CONTRACT_PATCH_FILE"
+        run: rm "$WORKFLOW_FILE" "$PATCH_FILE" "$CONTRACT_PATCH_FILE" "$UNCERTAINTY_PATCH_FILE"
 
       - name: Verify exact four-file candidate scope
         shell: bash
