@@ -21,375 +21,41 @@ jobs:
     env:
       EXPECTED_MAIN: 5a9c496fd1e2056d651cbff1a5a0da72818a2393
       WORKFLOW_FILE: .github/workflows/vor-049-diagnostic-contrast-repair.yml
+      PATCH_FILE: scripts/tmp-vor049-diagnostic-contrast-patch.py
 
     steps:
       - name: Check out repair branch
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
-      - name: Verify branch starts from protected production main
+      - name: Verify temporary branch scope
         shell: bash
         run: |
           git merge-base --is-ancestor "$EXPECTED_MAIN" HEAD
-          test "$(git rev-list --count "$EXPECTED_MAIN"..HEAD)" -eq 1
-          test "$(git diff --name-only "$EXPECTED_MAIN" HEAD | tr -d '\r')" = "$WORKFLOW_FILE"
+          git diff --name-only "$EXPECTED_MAIN" HEAD | sort > /tmp/before.txt
+          printf '%s\n' "$WORKFLOW_FILE" "$PATCH_FILE" | sort > /tmp/expected-before.txt
+          diff -u /tmp/expected-before.txt /tmp/before.txt
 
-      - name: Apply bounded VOR-049 repair
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import json
+      - name: Apply bounded VOR-049 patch
+        run: python "$PATCH_FILE"
 
-          equipment_path = Path('netlify/functions/ask-vorta/equipment-evidence.mts')
-          equipment = equipment_path.read_text()
-
-          anchor = '  const loweredGoal = goal.toLowerCase();\n  const capabilityFact = selectedFacts.find((fact) =>\n'
-          insert = '''  const loweredGoal = goal.toLowerCase();
-  const asksForDiagnosticContrast =
-    /\\b(?:or|versus|vs\\.?|rather than)\\b/.test(loweredGoal) &&
-    /\\b(?:instrument|sensor|probe|transmitter|measurement|reading)\\b/.test(
-      loweredGoal,
-    ) &&
-    /\\b(?:fault|drift|bias|risk|condition|excursion|room|process)\\b/.test(
-      loweredGoal,
-    );
-  const diagnosticObservationPattern =
-    /(?:transmitter|sensor|probe|instrument|dpt-\\d+)[\\s\\S]{0,220}(?:drift|unstable|fluctuat|bias|fault|failed)|(?:calibrated|independent|portable) reference[\\s\\S]{0,180}(?:stable|normal|agree|within)/i;
-  const diagnosticInstrumentFact = asksForDiagnosticContrast
-    ? decisionFacts.find(
-        (fact) =>
-          /(?:work evidence|work order|WO-)/i.test(fact) &&
-          diagnosticObservationPattern.test(fact),
-      ) ?? decisionFacts.find((fact) => diagnosticObservationPattern.test(fact))
-    : undefined;
-  const diagnosticProcessPattern =
-    /(?:calibrated|independent|portable) reference[\\s\\S]{0,180}(?:high|low|outside|deviation|failed|out of)|(?:room|process|pressure cascade|airflow)[\\s\\S]{0,180}(?:failed|out of spec|excursion|outside limit|deviation confirmed)/i;
-  const diagnosticProcessFact = asksForDiagnosticContrast
-    ? decisionFacts.find(
-        (fact) =>
-          /(?:work evidence|work order|WO-)/i.test(fact) &&
-          diagnosticProcessPattern.test(fact),
-      )
-    : undefined;
-  const diagnosticImpactFact = asksForDiagnosticContrast
-    ? decisionFacts.find(
-        (fact) =>
-          /(?:work evidence|work order|WO-)/i.test(fact) &&
-          /(?:impact assessment|independent reference monitoring|pressure cascade|room.?status|process condition|continued.?operation)/i.test(
-            fact,
-          ),
-      )
-    : undefined;
-  const currentDirectAnswer =
-    typeof answer.directAnswer === "string" ? answer.directAnswer : "";
-  const diagnosticContrastAnswerIsDirect =
-    /(?:instrument|sensor|probe|transmitter|dpt-\\d+)[^.]{0,140}(?:fault|drift|bias|unstable|fluctuat)|(?:fault|drift|bias|unstable|fluctuat)[^.]{0,140}(?:instrument|sensor|probe|transmitter|dpt-\\d+)|(?:cannot|can’t|can't|insufficient|not enough)[^.]{0,180}(?:distinguish|determine)/i.test(
-      currentDirectAnswer,
-    );
-  const diagnosticContrastNeedsRepair =
-    asksForDiagnosticContrast && !diagnosticContrastAnswerIsDirect;
-  const boundedDiagnosticFact = (
-    fact: string | undefined,
-    maximum = 340,
-  ): string => {
-    if (!fact) return "";
-    const text = readableEquipmentDecisionFact(fact);
-    return text.length > maximum
-      ? `${text.slice(0, Math.max(0, maximum - 1)).trimEnd()}…`
-      : text;
-  };
-  const capabilityFact = selectedFacts.find((fact) =>
-'''
-          if anchor not in equipment:
-              raise SystemExit('equipment loweredGoal anchor not found')
-          equipment = equipment.replace(anchor, insert, 1)
-
-          old_valid = '  if (!originalUnavailable) {\n'
-          new_valid = '  if (!originalUnavailable && !diagnosticContrastNeedsRepair) {\n'
-          if equipment.count(old_valid) != 1:
-              raise SystemExit(f'expected one originalUnavailable branch, found {equipment.count(old_valid)}')
-          equipment = equipment.replace(old_valid, new_valid, 1)
-
-          direct_anchor = '''  if (/\\b(?:who|qualified|engineer|skill|authori[sz]e|can lead|can verify)\\b/.test(loweredGoal)) {
-'''
-          contrast_branch = '''  if (diagnosticContrastNeedsRepair) {
-    const instrumentText = boundedDiagnosticFact(diagnosticInstrumentFact);
-    const processText = boundedDiagnosticFact(diagnosticProcessFact);
-    const impactText = boundedDiagnosticFact(diagnosticImpactFact, 300);
-    const hasInstrumentEvidence = Boolean(diagnosticInstrumentFact);
-    const hasProcessEvidence = Boolean(diagnosticProcessFact);
-
-    if (hasInstrumentEvidence && !hasProcessEvidence) {
-      answer.directAnswer =
-        `The current authorised evidence points to an instrument fault; a genuine room or process failure is not proven: ${instrumentText}.`;
-      answer.decisionSummary = [
-        {
-          label: "Decision",
-          value:
-            "Instrument fault is the leading evidence; a genuine room or process failure is not proven.",
-        },
-        {
-          label: "Diagnostic evidence",
-          value: instrumentText,
-        },
-        ...(impactText
-          ? [{ label: "Impact boundary", value: impactText }]
-          : []),
-      ].slice(0, 5);
-      answer.findings = [
-        {
-          category: "data",
-          severity: "high",
-          title: "Instrument-side evidence",
-          detail: instrumentText,
-        },
-        ...(impactText
-          ? [
-              {
-                category: "data",
-                severity: "info",
-                title: "Room or process impact still requires confirmation",
-                detail: impactText,
-              },
-            ]
-          : []),
-      ];
-    } else if (hasProcessEvidence && !hasInstrumentEvidence) {
-      answer.directAnswer =
-        `The current authorised evidence points to a genuine room or process condition rather than an instrument-only fault: ${processText}.`;
-      answer.decisionSummary = [
-        {
-          label: "Decision",
-          value:
-            "The monitored condition is supported by independent evidence; an instrument-only explanation is not sufficient.",
-        },
-        { label: "Condition evidence", value: processText },
-      ];
-      answer.findings = [
-        {
-          category: "data",
-          severity: "high",
-          title: "Independent condition evidence",
-          detail: processText,
-        },
-      ];
-    } else {
-      answer.directAnswer =
-        "The current authorised evidence is insufficient to distinguish an instrument fault from a genuine room or process condition, so neither is confirmed yet.";
-      answer.decisionSummary = [
-        {
-          label: "Decision",
-          value:
-            "Do not treat either explanation as confirmed until the instrument indication and the monitored condition are independently verified.",
-        },
-        ...(instrumentText
-          ? [{ label: "Instrument evidence", value: instrumentText }]
-          : []),
-        ...(processText
-          ? [{ label: "Condition evidence", value: processText }]
-          : []),
-      ].slice(0, 5);
-      answer.findings = [
-        ...(instrumentText
-          ? [
-              {
-                category: "data",
-                severity: "info",
-                title: "Instrument-side evidence",
-                detail: instrumentText,
-              },
-            ]
-          : []),
-        ...(processText
-          ? [
-              {
-                category: "data",
-                severity: "info",
-                title: "Condition-side evidence",
-                detail: processText,
-              },
-            ]
-          : []),
-      ].slice(0, 6);
-    }
-
-    answer.missingData = textValues(answer.missingData).filter(
-      (item) => !unavailableEquipmentDecisionClaim(item),
-    );
-    if (questionPlan.forceActionPlan === true) {
-      const referenceAvailable = /reference/i.test(
-        `${instrumentText} ${processText} ${impactText}`,
-      );
-      answer.actionPlan = [
-        {
-          priority: "now",
-          action: referenceAvailable
-            ? "Confirm the suspect instrument against the calibrated or independent reference and verify the affected room or process condition before treating the indication as a genuine process failure."
-            : "Complete the approved instrument verification and independently confirm the affected room or process condition before treating the indication as a genuine process failure.",
-          owner: "Maintenance Manager",
-          expectedImpact:
-            "Separates an instrument indication fault from a genuine monitored-condition deviation before maintenance or quality escalation.",
-          verification:
-            impactText || instrumentText || processText ||
-            "Record the independent instrument and monitored-condition results before closing the diagnosis.",
-        },
-      ];
-      answer.recommendedActions = [
-        referenceAvailable
-          ? "Compare the suspect instrument with the calibrated or independent reference and confirm the monitored room or process condition."
-          : "Complete the approved instrument check and independently confirm the monitored room or process condition.",
-      ];
-    }
-    return;
-  }
-
-  if (/\\b(?:who|qualified|engineer|skill|authori[sz]e|can lead|can verify)\\b/.test(loweredGoal)) {
-'''
-          if direct_anchor not in equipment:
-              raise SystemExit('equipment direct-answer anchor not found')
-          equipment = equipment.replace(direct_anchor, contrast_branch, 1)
-          equipment_path.write_text(equipment)
-
-          eval_path = Path('scripts/ask-vorta-live-evals.mjs')
-          live_eval = eval_path.read_text()
-          eval_anchor = '''    const assertionText = requireVisibleDecision ? visibleText : text;
-    const usedTools = new Set(payload.toolsUsed || []);
-'''
-          eval_insert = '''    const assertionText = requireVisibleDecision ? visibleText : text;
-    const directAnswerText = String(payload.directAnswer ?? "").toLowerCase();
-    const usedTools = new Set(payload.toolsUsed || []);
-'''
-          if eval_anchor not in live_eval:
-              raise SystemExit('live eval assertion anchor not found')
-          live_eval = live_eval.replace(eval_anchor, eval_insert, 1)
-
-          mention_anchor = '''    if (
-      scenario.mustMentionAny?.length &&
-      !scenario.mustMentionAny.some((phrase) => assertionText.includes(phrase.toLowerCase()))
-    ) {
-      failures.push(`missing any of: ${scenario.mustMentionAny.join(", ")}`);
-    }
-    for (const phrase of scenario.mustNotMention || []) {
-'''
-          mention_insert = '''    if (
-      scenario.mustMentionAny?.length &&
-      !scenario.mustMentionAny.some((phrase) => assertionText.includes(phrase.toLowerCase()))
-    ) {
-      failures.push(`missing any of: ${scenario.mustMentionAny.join(", ")}`);
-    }
-    for (const phrase of scenario.directAnswerMustMention || []) {
-      if (!directAnswerText.includes(phrase.toLowerCase())) {
-        failures.push(`direct answer missing "${phrase}"`);
-      }
-    }
-    if (
-      scenario.directAnswerMustMentionAny?.length &&
-      !scenario.directAnswerMustMentionAny.some((phrase) =>
-        directAnswerText.includes(phrase.toLowerCase()),
-      )
-    ) {
-      failures.push(
-        `direct answer missing any of: ${scenario.directAnswerMustMentionAny.join(", ")}`,
-      );
-    }
-    for (const phrase of scenario.directAnswerMustNotMention || []) {
-      if (directAnswerText.includes(phrase.toLowerCase())) {
-        failures.push(`unsafe direct-answer phrase "${phrase}"`);
-      }
-    }
-    for (const phrase of scenario.mustNotMention || []) {
-'''
-          if mention_anchor not in live_eval:
-              raise SystemExit('live eval mention anchor not found')
-          live_eval = live_eval.replace(mention_anchor, mention_insert, 1)
-          eval_path.write_text(live_eval)
-
-          golden_path = Path('tests/evals/vor-033-demo-golden.json')
-          golden = json.loads(golden_path.read_text())
-          ahu = next((item for item in golden if item.get('id') == 'vor033-ahu01-diagnosis'), None)
-          if not ahu:
-              raise SystemExit('AHU diagnosis fixture not found')
-          ahu['directAnswerMustMention'] = ['instrument fault', 'not proven']
-          ahu['directAnswerMustMentionAny'] = ['DPT-17', 'calibrated reference', 'transmitter drift']
-          ahu['directAnswerMustNotMention'] = ['the authorised diagnosis is supported by']
-          golden_path.write_text(json.dumps(golden, indent=2) + '\n')
-
-          contract_path = Path('scripts/vor-049-decision-ready-equipment-contracts.mjs')
-          contract = contract_path.read_text()
-          marker_anchor = '''  "repairEquipmentDecisionAnswer",
-  "unavailableEquipmentDecisionClaim",
-'''
-          marker_insert = '''  "repairEquipmentDecisionAnswer",
-  "diagnosticContrastNeedsRepair",
-  "unavailableEquipmentDecisionClaim",
-'''
-          if marker_anchor not in contract:
-              raise SystemExit('contract backend marker anchor not found')
-          contract = contract.replace(marker_anchor, marker_insert, 1)
-
-          eval_marker_anchor = '''  "assertionText",
-  "visible answer denies capability evidence",
-'''
-          eval_marker_insert = '''  "assertionText",
-  "directAnswerMustMention",
-  "directAnswerMustMentionAny",
-  "directAnswerMustNotMention",
-  "visible answer denies capability evidence",
-'''
-          if eval_marker_anchor not in contract:
-              raise SystemExit('contract eval marker anchor not found')
-          contract = contract.replace(eval_marker_anchor, eval_marker_insert, 1)
-
-          ahu_anchor = '''const ahuDiagnosis = golden.find((scenario) => scenario.id === "vor033-ahu01-diagnosis");
-assert.ok(ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"));
-'''
-          ahu_insert = '''const ahuDiagnosis = golden.find((scenario) => scenario.id === "vor033-ahu01-diagnosis");
-assert.ok(ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"));
-assert.deepEqual(ahuDiagnosis?.directAnswerMustMention, ["instrument fault", "not proven"]);
-assert.deepEqual(ahuDiagnosis?.directAnswerMustMentionAny, [
-  "DPT-17",
-  "calibrated reference",
-  "transmitter drift",
-]);
-assert.ok(
-  ahuDiagnosis?.directAnswerMustNotMention?.includes(
-    "the authorised diagnosis is supported by",
-  ),
-);
-assert.match(
-  answerRepairTemplate,
-  /The current authorised evidence points to an instrument fault; a genuine room or process failure is not proven/,
-  "Contrast diagnosis repair must state the evidence-backed side and the safety boundary directly",
-);
-'''
-          if ahu_anchor not in contract:
-              raise SystemExit('contract AHU anchor not found')
-          contract = contract.replace(ahu_anchor, ahu_insert, 1)
-          contract_path.write_text(contract)
-          PY
-
-      - name: Remove temporary repair workflow from candidate tree
-        run: rm "$WORKFLOW_FILE"
+      - name: Remove temporary scaffolding from candidate tree
+        run: rm "$WORKFLOW_FILE" "$PATCH_FILE"
 
       - name: Verify exact four-file candidate scope
         shell: bash
         run: |
-          mapfile -t files < <(git diff --name-only "$EXPECTED_MAIN" | sort)
-          printf '%s\n' "${files[@]}"
-          expected=(
-            netlify/functions/ask-vorta/equipment-evidence.mts
-            scripts/ask-vorta-live-evals.mjs
-            scripts/vor-049-decision-ready-equipment-contracts.mjs
-            tests/evals/vor-033-demo-golden.json
-          )
-          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
-          test "${#files[@]}" -eq "${#expected_sorted[@]}"
-          diff -u <(printf '%s\n' "${expected_sorted[@]}") <(printf '%s\n' "${files[@]}")
+          git diff --name-only "$EXPECTED_MAIN" | sort > /tmp/after.txt
+          printf '%s\n' \
+            netlify/functions/ask-vorta/equipment-evidence.mts \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-049-decision-ready-equipment-contracts.mjs \
+            tests/evals/vor-033-demo-golden.json | sort > /tmp/expected-after.txt
+          diff -u /tmp/expected-after.txt /tmp/after.txt
 
       - name: Use Node.js 22
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
@@ -400,96 +66,11 @@ assert.match(
       - name: Run focused VOR-049 contract
         run: node scripts/vor-049-decision-ready-equipment-contracts.mjs
 
-      - name: Prove contrast repair behaviour directly
+      - name: Prove diagnostic contrast behaviour
         shell: bash
         run: |
-          cat > .tmp-vor049-tsconfig.json <<'JSON'
-          {
-            "compilerOptions": {
-              "target": "ES2022",
-              "module": "NodeNext",
-              "moduleResolution": "NodeNext",
-              "outDir": ".tmp-vor049-build",
-              "rootDir": ".",
-              "skipLibCheck": true,
-              "strict": false,
-              "noEmit": false
-            },
-            "include": [
-              "netlify/functions/ask-vorta/equipment-evidence.mts",
-              "netlify/functions/ask-vorta/contracts.mts",
-              "netlify/functions/ask-vorta/utilities.mts",
-              "netlify/functions/_shared/askVortaImageEvidence.mts",
-              "netlify/functions/_shared/askVortaConversationContext.mts"
-            ]
-          }
-          JSON
           npx tsc -p .tmp-vor049-tsconfig.json
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          const { repairEquipmentDecisionAnswer } = await import('./.tmp-vor049-build/netlify/functions/ask-vorta/equipment-evidence.mjs');
-
-          const answer = {
-            directAnswer: 'I cannot confirm the current room condition from the available authorised evidence.',
-            decisionSummary: [],
-            findings: [],
-            actionPlan: [],
-            recommendedActions: [],
-            missingData: ['Current room result needs confirmation.'],
-          };
-          const questionPlan = {
-            scope: 'equipment',
-            decisionGoal: 'Is the Grade B room currently at risk, or is AHU-01 showing an instrument fault?',
-            forceActionPlan: true,
-          };
-          const decisionFacts = [
-            'priority document evidence: AHU-01 HEPA Differential Pressure Fault-Finding Guide | revision Rev C | approval Approved | page 9',
-            'equipment: Grade B Cleanroom HVAC AHU-01',
-            'work evidence WO-250447 | fault AHU-DP-104 | DPT-17 fluctuates at the upper operating range while the calibrated reference remains stable | waiting for replacement transmitter',
-            'work evidence WO-250448 | Grade B airflow and pressure-cascade impact assessment remains open | independent reference monitoring in place'
-          ];
-          const outcomes = new Map([
-            ['get_equipment_decision_pack', {
-              source: 'Equipment cross-domain decision pack',
-              status: 'ok',
-              data: { decisionFacts },
-            }],
-          ]);
-
-          repairEquipmentDecisionAnswer(answer, questionPlan, outcomes);
-          assert.match(answer.directAnswer, /instrument fault/i);
-          assert.match(answer.directAnswer, /not proven/i);
-          assert.match(answer.directAnswer, /DPT-17|calibrated reference/i);
-          assert.doesNotMatch(answer.directAnswer, /^The authorised diagnosis is supported by/i);
-          assert.equal(answer.decisionSummary[0]?.label, 'Decision');
-          assert.match(answer.decisionSummary[0]?.value ?? '', /instrument fault/i);
-          assert.match(answer.actionPlan[0]?.action ?? '', /reference/i);
-          assert.match(answer.actionPlan[0]?.action ?? '', /room or process condition/i);
-
-          const uncertainAnswer = {
-            directAnswer: 'I cannot determine this from the available evidence.',
-            decisionSummary: [],
-            findings: [],
-            actionPlan: [],
-            recommendedActions: [],
-            missingData: [],
-          };
-          const uncertainFacts = [
-            'priority document evidence: Generic instrument fault-finding guide | approval Approved'
-          ];
-          repairEquipmentDecisionAnswer(
-            uncertainAnswer,
-            questionPlan,
-            new Map([['get_equipment_decision_pack', {
-              source: 'Equipment cross-domain decision pack',
-              status: 'ok',
-              data: { decisionFacts: uncertainFacts },
-            }]]),
-          );
-          assert.match(uncertainAnswer.directAnswer, /insufficient to distinguish/i);
-          assert.match(uncertainAnswer.directAnswer, /neither is confirmed/i);
-          NODE
-          rm -rf .tmp-vor049-build .tmp-vor049-tsconfig.json
+          node .tmp-vor049-behaviour.mjs
 
       - name: Run TypeScript
         run: npm run typecheck
@@ -506,30 +87,23 @@ assert.match(
       - name: Run performance budget
         run: npm run test:performance
 
-      - name: Verify clean candidate scope after tests
+      - name: Clean temporary test files and recheck scope
         shell: bash
         run: |
-          rm -rf .tmp-vor049-build .tmp-vor049-tsconfig.json
-          mapfile -t files < <(git diff --name-only "$EXPECTED_MAIN" | sort)
-          expected=(
-            netlify/functions/ask-vorta/equipment-evidence.mts
-            scripts/ask-vorta-live-evals.mjs
-            scripts/vor-049-decision-ready-equipment-contracts.mjs
-            tests/evals/vor-033-demo-golden.json
-          )
-          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
-          diff -u <(printf '%s\n' "${expected_sorted[@]}") <(printf '%s\n' "${files[@]}")
+          rm -rf .tmp-vor049-build .tmp-vor049-tsconfig.json .tmp-vor049-behaviour.mjs
+          git diff --name-only "$EXPECTED_MAIN" | sort > /tmp/final.txt
+          printf '%s\n' \
+            netlify/functions/ask-vorta/equipment-evidence.mts \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-049-decision-ready-equipment-contracts.mjs \
+            tests/evals/vor-033-demo-golden.json | sort > /tmp/expected-final.txt
+          diff -u /tmp/expected-final.txt /tmp/final.txt
 
       - name: Commit only after every gate passes
         shell: bash
         run: |
           git config user.name "Vorta Engineering"
           git config user.email "actions@users.noreply.github.com"
-          git add \
-            netlify/functions/ask-vorta/equipment-evidence.mts \
-            scripts/ask-vorta-live-evals.mjs \
-            scripts/vor-049-decision-ready-equipment-contracts.mjs \
-            tests/evals/vor-033-demo-golden.json \
-            "$WORKFLOW_FILE"
+          git add -A
           git commit -m "VOR-049: make diagnostic contrast answers decision-first"
           git push origin HEAD:${GITHUB_REF_NAME}
