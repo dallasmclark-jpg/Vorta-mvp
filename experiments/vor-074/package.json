@@ -1,0 +1,16 @@
+{
+  "name": "vorta-vor-074-agents-sdk-shadow",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --check sdk-shadow.mjs && node boundary-check.mjs",
+    "shadow": "node sdk-shadow.mjs"
+  },
+  "dependencies": {
+    "@openai/agents": "0.14.0",
+    "zod": "^4.0.0"
+  }
+}
