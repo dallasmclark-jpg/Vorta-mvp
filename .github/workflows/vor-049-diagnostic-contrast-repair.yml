@@ -69,11 +69,11 @@ jobs:
       - name: Run focused VOR-049 contract
         run: node scripts/vor-049-decision-ready-equipment-contracts.mjs
 
+      - name: Compile diagnostic contrast harness
+        run: npx tsc -p .tmp-vor049-tsconfig.json
+
       - name: Prove diagnostic contrast behaviour
-        shell: bash
-        run: |
-          npx tsc -p .tmp-vor049-tsconfig.json
-          node .tmp-vor049-behaviour.mjs
+        run: node .tmp-vor049-behaviour.mjs
 
       - name: Run TypeScript
         run: npm run typecheck
