@@ -316,6 +316,7 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       scenario.requireVisibleDecision === true ||
       /vor-033-demo-golden\.json$/.test(scenarioFile);
     const assertionText = requireVisibleDecision ? visibleText : text;
+    const directAnswerText = String(payload.directAnswer ?? "").toLowerCase();
     const usedTools = new Set(payload.toolsUsed || []);
     // Decision-pack covered tools count as satisfied evidence without inflating actual tool-call limits.
     const coveredTools = new Set(payload.coveredTools || []);
@@ -338,6 +339,26 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       !scenario.mustMentionAny.some((phrase) => assertionText.includes(phrase.toLowerCase()))
     ) {
       failures.push(`missing any of: ${scenario.mustMentionAny.join(", ")}`);
+    }
+    for (const phrase of scenario.directAnswerMustMention || []) {
+      if (!directAnswerText.includes(phrase.toLowerCase())) {
+        failures.push(`direct answer missing "${phrase}"`);
+      }
+    }
+    if (
+      scenario.directAnswerMustMentionAny?.length &&
+      !scenario.directAnswerMustMentionAny.some((phrase) =>
+        directAnswerText.includes(phrase.toLowerCase()),
+      )
+    ) {
+      failures.push(
+        `direct answer missing any of: ${scenario.directAnswerMustMentionAny.join(", ")}`,
+      );
+    }
+    for (const phrase of scenario.directAnswerMustNotMention || []) {
+      if (directAnswerText.includes(phrase.toLowerCase())) {
+        failures.push(`unsafe direct-answer phrase "${phrase}"`);
+      }
     }
     for (const phrase of scenario.mustNotMention || []) {
       if (assertionText.includes(phrase.toLowerCase())) failures.push(`unsafe phrase "${phrase}"`);
