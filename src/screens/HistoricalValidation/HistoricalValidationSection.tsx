@@ -128,7 +128,7 @@ function MetricCard({ metric }: { metric: MetricDefinition }): JSX.Element {
   return (
     <article
       data-vorta-historical-metric={metric.key}
-      className="min-h-28 rounded-xl border border-gray-800 bg-[#141820] p-4"
+      className="rounded-xl border border-gray-800 bg-[#141820] p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -165,7 +165,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-blue-800 px-2 py-1 text-xs font-semibold text-blue-200">
+            <span className="rounded-full border border-gray-700 px-2 py-1 text-xs font-semibold text-blue-200">
               {scenarioLabel(item)}
             </span>
             <span className="rounded-full border border-gray-700 px-2 py-1 text-xs text-slate-400">
@@ -282,7 +282,7 @@ function LoadingState(): JSX.Element {
         {Array.from({ length: 8 }).map((_, index) => (
           <div
             key={index}
-            className="h-28 animate-pulse rounded-xl border border-gray-800 bg-[#141820]"
+            className="h-24 animate-pulse rounded-xl border border-gray-800 bg-[#141820]"
           />
         ))}
       </div>
@@ -302,7 +302,7 @@ function UnavailableState({
   onRetry?: () => void;
 }): JSX.Element {
   return (
-    <section className="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6">
+    <section className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
       <div className="w-full rounded-xl border border-gray-800 bg-[#141820] p-6 text-center sm:p-8">
         <Database className="mx-auto h-9 w-9 text-slate-500" aria-hidden="true" />
         <h1 className="mt-4 text-xl font-semibold text-slate-50">{title}</h1>
@@ -564,7 +564,7 @@ export function HistoricalValidationSection(): JSX.Element {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
             {metrics.map((metric) => (
               <MetricCard key={metric.key} metric={metric} />
             ))}
