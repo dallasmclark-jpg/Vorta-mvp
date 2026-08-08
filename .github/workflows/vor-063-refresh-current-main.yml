@@ -24,11 +24,15 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
-      - name: Verify refresh base
+      - name: Verify refresh branch still contains only workflow scaffolding above protected main
         shell: bash
         run: |
-          test "$(git rev-parse HEAD^)" = "5a9c496fd1e2056d651cbff1a5a0da72818a2393" || {
-            echo "Refresh workflow must start directly from protected current main." >&2
+          base=5a9c496fd1e2056d651cbff1a5a0da72818a2393
+          test "$(git merge-base HEAD "$base")" = "$base"
+          current=$(git diff --name-only "$base"...HEAD | sort)
+          test "$current" = ".github/workflows/vor-063-refresh-current-main.yml" || {
+            echo "Refresh branch contains unexpected committed changes before the validated port:" >&2
+            printf '%s\n' "$current" >&2
             exit 1
           }
 
@@ -46,21 +50,10 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           auth_path = Path('src/lib/auth.tsx')
           auth = auth_path.read_text()
-          old = '''              .order(
-                          "created_at",
-                          {
-                            ascending:
-                              true,
-                          },
-                        )
-                        .limit(1)
-                        .maybeSingle(),'''
-          # The source uses 14-space indentation inside the fluent chain. Use a
-          # whitespace-tolerant replacement rather than relying on that formatting.
-          import re
           updated, count = re.subn(
               r'(\.order\(\s*"created_at",\s*\{\s*ascending:\s*true,?\s*\},\s*\))\s*\.limit\(1\)\s*\.maybeSingle\(\)',
               r'\1',
@@ -91,13 +84,14 @@ jobs:
       - name: Verify exact five-file scope before tests
         shell: bash
         run: |
+          base=5a9c496fd1e2056d651cbff1a5a0da72818a2393
           expected=$(printf '%s\n' \
             scripts/run-contract-suite.mjs \
             scripts/vor-063-multi-site-context-contracts.mjs \
             scripts/vor-063-multi-site-context-tests.mjs \
             src/lib/auth.tsx \
             src/lib/siteAccessContext.ts | sort)
-          actual=$(git diff --name-only | sort)
+          actual=$({ git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
           printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "$actual"
           test "$actual" = "$expected"
 
