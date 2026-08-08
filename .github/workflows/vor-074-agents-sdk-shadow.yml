@@ -1,0 +1,46 @@
+name: VOR-074 Agents SDK shadow proof
+
+on:
+  push:
+    branches:
+      - agent/vor-074-agents-sdk-shadow
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-074-agents-sdk-shadow-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  structural-proof:
+    name: Isolated SDK structural proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out shadow branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Install isolated experiment dependencies only
+        working-directory: experiments/vor-074
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Enforce production isolation boundary
+        working-directory: experiments/vor-074
+        run: npm run check
+
+      - name: Run credential-free SDK structural proof
+        working-directory: experiments/vor-074
+        env:
+          NODE_ENV: test
+          OPENAI_AGENTS_DISABLE_TRACING: "1"
+          OPENAI_AGENTS_TRACE_INCLUDE_SENSITIVE_DATA: "0"
+          OPENAI_AGENTS_DONT_LOG_MODEL_DATA: "1"
+          OPENAI_AGENTS_DONT_LOG_TOOL_DATA: "1"
+        run: npm run structural
