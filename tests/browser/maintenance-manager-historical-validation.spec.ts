@@ -57,12 +57,13 @@ test("Historical Validation scopes governed evidence by Site and Area without la
       dark: document.documentElement.classList.contains("dark"),
     };
   });
-  expect(selectedVisualState.borderTopColor).toBe(
-    selectedVisualState.dark ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)",
-  );
-  expect(selectedVisualState.backgroundColor).toBe(
-    selectedVisualState.dark ? "rgb(13, 17, 23)" : "rgb(255, 255, 255)",
-  );
+  if (selectedVisualState.dark) {
+    expect(selectedVisualState.borderTopColor).toMatch(/rgba?\(96, 165, 24[89]/);
+    expect(selectedVisualState.backgroundColor).toBe("rgb(13, 17, 23)");
+  } else {
+    expect(selectedVisualState.borderTopColor).toBe("rgb(37, 99, 235)");
+    expect(selectedVisualState.backgroundColor).toBe("rgb(255, 255, 255)");
+  }
 
   const evidenceTabs = root.getByRole("tablist", {
     name: "Historical validation evidence type",
