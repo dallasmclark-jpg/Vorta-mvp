@@ -4,10 +4,10 @@ import {
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
-test("Historical Validation tells the governed Site and Area history without layout regression", async ({
+test("Historical Validation provides interactive scoped evidence without layout regression", async ({
   page,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
 
   await signInMaintenanceManager(page);
   await page.goto("/historical-validation");
@@ -40,6 +40,26 @@ test("Historical Validation tells the governed Site and Area history without lay
   const timeline = root.locator('[data-vorta-historical-timeline="true"]');
   await expect(timeline).toBeVisible();
   await expect(timeline.getByRole("img")).toBeVisible();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "quarter");
+
+  const quarterControl = timeline.locator('[data-vorta-historical-scale-control="quarter"]');
+  const monthControl = timeline.locator('[data-vorta-historical-scale-control="month"]');
+  const weekControl = timeline.locator('[data-vorta-historical-scale-control="week"]');
+  const yearControl = timeline.locator('[data-vorta-historical-scale-control="year"]');
+  await expect(quarterControl).toHaveAttribute("aria-pressed", "true");
+
+  await monthControl.click();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "month");
+  await expect(monthControl).toHaveAttribute("aria-pressed", "true");
+  await weekControl.click();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "week");
+  await expect(weekControl).toHaveAttribute("aria-pressed", "true");
+  await yearControl.click();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "year");
+  await expect(yearControl).toHaveAttribute("aria-pressed", "true");
+  await quarterControl.click();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "quarter");
+
   for (const kind of [
     "warning",
     "stockout",
@@ -47,8 +67,38 @@ test("Historical Validation tells the governed Site and Area history without lay
     "intervention",
     "false-positive",
   ]) {
-    await expect(timeline.locator(`[data-vorta-historical-legend="${kind}"]`)).toBeVisible();
-    await expect(timeline.locator(`[data-vorta-historical-event="${kind}"]`).first()).toBeAttached();
+    await expect(timeline.locator(`[data-vorta-historical-event="${kind}"]`).first()).toBeVisible();
+  }
+
+  const breakdownControl = timeline.locator('[data-vorta-historical-event="breakdown"]').first();
+  await expect(breakdownControl).toHaveAttribute("role", "button");
+  await expect(breakdownControl).toHaveAttribute("tabindex", "0");
+  await breakdownControl.focus();
+  await page.keyboard.press("Enter");
+
+  const panel = page.locator('[data-vorta-historical-event-panel="true"]');
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("dialog")).toBeVisible();
+  await expect(panel).toContainText("Last Vorta risk before breakdown");
+  await expect(panel).toContainText("First elevated warning");
+  await expect(panel).toContainText("Primary risk driver");
+  await expect(panel).toContainText("Evidence boundary");
+  await expect(panel).toContainText("does not prove that the risk condition caused the breakdown");
+  await expect(panel.getByRole("button", { name: "Open equipment history" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(breakdownControl).toBeFocused();
+
+  const aggregateBreakdown = timeline.locator(
+    '[data-vorta-historical-event="breakdown"][aria-label^="2 breakdown"]',
+  ).first();
+  if (await aggregateBreakdown.count()) {
+    await aggregateBreakdown.click();
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("2 events in this period");
+    await panel.getByRole("button", { name: "Close timeline evidence panel" }).click();
+    await expect(panel).toBeHidden();
   }
 
   const scopeTabs = root.getByRole("tablist", {
@@ -58,6 +108,9 @@ test("Historical Validation tells the governed Site and Area history without lay
   await expect(siteTab).toHaveAttribute("aria-selected", "true");
   await expect(root).toHaveAttribute("data-vorta-historical-scope", "Site");
 
+  await weekControl.click();
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "week");
+
   const utilitiesTab = scopeTabs.getByRole("tab", { name: /^Utilities\s+6$/ });
   await expect(utilitiesTab).toBeVisible();
   await utilitiesTab.click();
@@ -66,6 +119,7 @@ test("Historical Validation tells the governed Site and Area history without lay
   await expect(briefing).toContainText("Across 6 historical validation cases in Utilities");
   await expect(briefing).toContainText("4 of 4 recorded breakdown cases");
   await expect(warningFinding).toContainText("4/4 breakdowns warned");
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "week");
 
   const selectedVisualState = await utilitiesTab.evaluate((element) => {
     const style = window.getComputedStyle(element);
@@ -98,6 +152,12 @@ test("Historical Validation tells the governed Site and Area history without lay
   await expect(root.locator("[data-vorta-historical-case]")).toHaveCount(1);
   await expect(root.locator("[data-vorta-historical-case]").first()).toContainText("No breakdown");
 
+  const searchInput = root.getByPlaceholder("Search equipment, work order, spare...");
+  await searchInput.fill("GEA");
+  await expect(root.locator("[data-vorta-historical-case]")).toHaveCount(0);
+  await searchInput.fill("");
+  await expect(root.locator("[data-vorta-historical-case]")).toHaveCount(1);
+
   const sparesTab = evidenceTabs.getByRole("tab", { name: /^Spares impact\s+/ });
   await sparesTab.click();
   await expect(sparesTab).toHaveAttribute("aria-selected", "true");
@@ -109,6 +169,7 @@ test("Historical Validation tells the governed Site and Area history without lay
   await siteTab.click();
   await expect(root).toHaveAttribute("data-vorta-historical-scope", "Site");
   await expect(briefing).toContainText("Across 24 historical validation cases in Site");
+  await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "week");
 
   await expectNoPageOverflow(page);
 });
