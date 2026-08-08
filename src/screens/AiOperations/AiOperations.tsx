@@ -13,6 +13,7 @@ import {
   Cog,
   GraduationCap,
   Headphones,
+  History,
   LayoutDashboard,
   Network,
   RefreshCw,
@@ -49,6 +50,7 @@ const ShiftCoverPageEntry = lazy(() => import("../LabourRisk/ShiftCoverPageEntry
 const LabourRiskDetailPage = lazy(() => import("../LabourRisk").then((module) => ({ default: module.LabourRiskDetailPage })));
 const ShiftHandoverSection = lazy(() => import("../ShiftHandover").then((module) => ({ default: module.ShiftHandoverSection })));
 const StoresInventorySection = lazy(() => import("../StoresInventory/StoresInventorySection").then((module) => ({ default: module.StoresInventorySection })));
+const HistoricalValidationSection = lazy(() => import("../HistoricalValidation").then((module) => ({ default: module.HistoricalValidationSection })));
 
 const EquipmentSection = lazy(() => import("../Equipment").then((module) => ({ default: module.EquipmentSection })));
 const EquipmentOverview = lazy(() => import("../Equipment").then((module) => ({ default: module.EquipmentOverview })));
@@ -83,6 +85,7 @@ const nav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+      { label: "Historical Validation", icon: History, to: "/historical-validation" },
       { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Stores Inventory", icon: Warehouse, to: "/stores-inventory" },
@@ -120,6 +123,7 @@ const liveNav: NavGroup[] = [
     groupLabel: "Operations",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+      { label: "Historical Validation", icon: History, to: "/historical-validation" },
       { label: "Shift Handover", icon: Clock3, to: "/shift-handover" },
       { label: "Equipment", icon: Wrench, to: "/equipment" },
       { label: "Stores Inventory", icon: Warehouse, to: "/stores-inventory" },
@@ -188,6 +192,7 @@ export const AiOperations = (): JSX.Element => {
         <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="dashboard" element={<MaintenanceDashboardExperience />} />
+            <Route path="historical-validation" element={<HistoricalValidationSection />} />
             <Route path="shift-handover" element={<ShiftHandoverSection />} />
             <Route path="stores-inventory" element={<StoresInventorySection />} />
             <Route
