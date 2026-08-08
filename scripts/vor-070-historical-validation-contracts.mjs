@@ -189,7 +189,8 @@ const assertions = [
   ],
   [
     "Historical Validation remains read-only",
-    !/\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(/.test(service + page),
+    !page.includes("supabase.") &&
+      !/\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(/.test(service),
   ],
 ];
 
