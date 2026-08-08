@@ -51,6 +51,7 @@ const contracts = [
   ["VOR-067 Ask Vorta navigation", "scripts/vor-067-ask-vorta-navigation-contracts.mjs"],
   ["VOR-069 historical backtest data", "scripts/vor-069-historical-backtest-data-contracts.mjs"],
   ["VOR-069 historical backtest intelligence", "scripts/vor-069-historical-backtest-intelligence-contracts.mjs"],
+  ["VOR-070 Historical Validation", "scripts/vor-070-historical-validation-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],
