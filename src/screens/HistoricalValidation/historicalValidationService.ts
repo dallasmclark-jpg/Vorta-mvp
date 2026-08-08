@@ -79,18 +79,10 @@ export function summariseHistoricalValidationCases(
 
   const unmitigatedPopulation = breakdownCount + falsePositiveCount;
   const riskModelVersions = Array.from(
-    new Set(
-      cases
-        .map((item) => item.provenance.riskModelVersion)
-        .filter(Boolean),
-    ),
+    new Set(cases.map((item) => item.provenance.riskModelVersion).filter(Boolean)),
   );
   const evidenceProvenance = Array.from(
-    new Set(
-      cases
-        .map((item) => item.provenance.evidenceProvenance)
-        .filter(Boolean),
-    ),
+    new Set(cases.map((item) => item.provenance.evidenceProvenance).filter(Boolean)),
   );
 
   return {
@@ -171,9 +163,10 @@ export function filterHistoricalValidationCases(
   if (view === "spares") {
     return cases.filter(
       (item) =>
-        Boolean(item.stock.materialNumber) ||
+        item.stock.availableQuantity === 0 ||
         hasClassification(item, "stockout_preceded_breakdown") ||
-        hasClassification(item, "stockout_materially_extended_recovery"),
+        hasClassification(item, "stockout_materially_extended_recovery") ||
+        hasClassification(item, "stockout_constrained_preventive_intervention"),
     );
   }
 
