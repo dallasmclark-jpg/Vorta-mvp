@@ -570,7 +570,7 @@ export function HistoricalValidationSection(): JSX.Element {
             ))}
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-[#10151d] p-3 sm:p-4">
+          <div className="rounded-xl border border-gray-800 bg-[#141820] p-3 sm:p-4">
             <div className="overflow-x-auto">
               <div
                 className="flex min-w-max items-center gap-2"
