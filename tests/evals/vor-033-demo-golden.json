@@ -133,7 +133,10 @@
     "expectedTools": ["get_equipment_risk", "get_equipment_history", "get_equipment_calibrations"],
     "mustMention": ["AHU-01"],
     "mustMentionAny": ["calibrated reference", "transmitter drift", "pressure cascade"],
-    "mustNotMention": ["room definitely failed"]
+    "mustNotMention": ["room definitely failed"],
+    "directAnswerMustMention": ["instrument fault"],
+    "directAnswerMustMentionAny": ["not confirmed", "not proven", "not demonstrated", "rather than confirmed"],
+    "directAnswerMustNotMention": ["the authorised diagnosis is supported by"]
   },
   {
     "id": "vor033-ahu01-spare",
