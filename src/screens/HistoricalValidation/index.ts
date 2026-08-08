@@ -1,1 +1,1 @@
-export { HistoricalValidationSection } from "./HistoricalValidationSection";
+export { HistoricalValidationExperience as HistoricalValidationSection } from "./HistoricalValidationExperience";
