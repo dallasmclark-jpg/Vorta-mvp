@@ -112,7 +112,7 @@ function ScopeTab({
       onClick={onClick}
       className={`inline-flex min-h-11 items-center gap-2 rounded-lg border bg-[#0d1117] px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         selected
-          ? "border-blue-400 text-blue-200"
+          ? "text-blue-200"
           : "border-gray-800 text-slate-400 hover:border-gray-700 hover:text-slate-200"
       }`}
     >
