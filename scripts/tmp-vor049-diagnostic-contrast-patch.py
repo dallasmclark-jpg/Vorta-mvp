@@ -31,7 +31,7 @@ equipment = replace_once(
         (fact) =>
           /(?:work evidence|work order|WO-)/i.test(fact) &&
           diagnosticObservationPattern.test(fact),
-      ) ?? decisionFacts.find((fact) => diagnosticObservationPattern.test(fact))
+      )
     : undefined;
   const diagnosticProcessPattern =
     /(?:calibrated|independent|portable) reference[\\s\\S]{0,180}(?:high|low|outside|deviation|failed|out of)|(?:room|process|pressure cascade|airflow)[\\s\\S]{0,180}(?:failed|out of spec|excursion|outside limit|deviation confirmed)/i;
