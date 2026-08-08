@@ -732,7 +732,7 @@ function HistoricalValidationTimeline({
   const selectedTriggerKey = useRef<string | null>(null);
   const events = useMemo(() => buildTimelineEvents(cases), [cases]);
   const buckets = useMemo(() => buildTimelineBuckets(events, scale), [events, scale]);
-  const spacing = scale === "week" ? 74 : scale === "month" ? 88 : scale === "quarter" ? 104 : 128;
+  const spacing = 104;
   const width = Math.max(980, 190 + buckets.length * spacing);
   const height = 315;
   const left = 178;
@@ -742,8 +742,7 @@ function HistoricalValidationTimeline({
   const plotBottom = plotTop + (TIMELINE_ROWS.length - 1) * rowGap;
   const labelY = plotBottom + 47;
   const sublabelY = plotBottom + 64;
-  const xForBucket = (index: number) =>
-    left + index * ((width - left - right) / Math.max(1, buckets.length - 1));
+  const xForBucket = (index: number) => left + index * spacing;
   const yForRow = (index: number) => plotTop + index * rowGap;
 
   const closePanel = useCallback(() => {
@@ -819,11 +818,17 @@ function HistoricalValidationTimeline({
           No timestamped historical events are available in this scope.
         </div>
       ) : (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-gray-800 bg-[#0b1017]/70 p-3">
+        <div
+          data-vorta-historical-timeline-scroll="true"
+          className="mt-5 overflow-x-auto rounded-xl border border-gray-800 bg-[#0b1017]/70 p-3"
+        >
           <svg
+            data-vorta-historical-timeline-canvas="true"
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full"
-            style={{ minWidth: 840 }}
+            width={width}
+            height={height}
+            className="max-w-none shrink-0"
+            style={{ width, minWidth: width, height }}
             role="img"
             aria-label={`Historical risk warning, stock-out, breakdown, intervention and false-positive timeline grouped by ${scale}`}
           >
