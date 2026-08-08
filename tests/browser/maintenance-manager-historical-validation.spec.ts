@@ -42,21 +42,68 @@ test("Historical Validation provides interactive scoped evidence without layout 
   await expect(timeline.getByRole("img")).toBeVisible();
   await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "quarter");
 
+  const timelineScroll = timeline.locator('[data-vorta-historical-timeline-scroll="true"]');
+  const timelineCanvas = timeline.locator('[data-vorta-historical-timeline-canvas="true"]');
+  await expect(timelineScroll).toBeVisible();
+  await expect(timelineCanvas).toBeVisible();
+
   const quarterControl = timeline.locator('[data-vorta-historical-scale-control="quarter"]');
   const monthControl = timeline.locator('[data-vorta-historical-scale-control="month"]');
   const weekControl = timeline.locator('[data-vorta-historical-scale-control="week"]');
   const yearControl = timeline.locator('[data-vorta-historical-scale-control="year"]');
   await expect(quarterControl).toHaveAttribute("aria-pressed", "true");
 
+  const quarterGeometry = await timelineCanvas.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  });
+  expect(quarterGeometry.height).toBeGreaterThanOrEqual(314);
+  expect(quarterGeometry.height).toBeLessThanOrEqual(316);
+
   await monthControl.click();
   await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "month");
   await expect(monthControl).toHaveAttribute("aria-pressed", "true");
+  const monthGeometry = await timelineCanvas.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  });
+  const monthOverflow = await timelineScroll.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(monthGeometry.height).toBe(quarterGeometry.height);
+  expect(monthGeometry.width).toBeGreaterThan(quarterGeometry.width);
+  expect(monthOverflow.scrollWidth).toBeGreaterThan(monthOverflow.clientWidth);
+
+  await timelineScroll.evaluate((element) => {
+    element.scrollLeft = Math.floor(element.scrollWidth / 2);
+  });
+  expect(await timelineScroll.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+
   await weekControl.click();
   await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "week");
   await expect(weekControl).toHaveAttribute("aria-pressed", "true");
+  const weekGeometry = await timelineCanvas.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  });
+  const weekOverflow = await timelineScroll.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(weekGeometry.height).toBe(quarterGeometry.height);
+  expect(weekGeometry.width).toBeGreaterThan(monthGeometry.width);
+  expect(weekOverflow.scrollWidth).toBeGreaterThan(weekOverflow.clientWidth);
+
   await yearControl.click();
   await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "year");
   await expect(yearControl).toHaveAttribute("aria-pressed", "true");
+  const yearGeometry = await timelineCanvas.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  });
+  expect(yearGeometry.height).toBe(quarterGeometry.height);
+
   await quarterControl.click();
   await expect(timeline).toHaveAttribute("data-vorta-historical-scale", "quarter");
 
