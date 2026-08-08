@@ -28,9 +28,10 @@ const toolDefinitions = [
 
 function assistantJson(value) {
   return {
+    type: "message",
     role: "assistant",
     status: "completed",
-    content: JSON.stringify(value),
+    content: [{ type: "output_text", text: JSON.stringify(value) }],
   };
 }
 
