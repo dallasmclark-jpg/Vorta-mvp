@@ -135,7 +135,7 @@
     "mustMentionAny": ["calibrated reference", "transmitter drift", "pressure cascade"],
     "mustNotMention": ["room definitely failed"],
     "directAnswerMustMention": ["instrument fault"],
-    "directAnswerMustMentionAny": ["not confirmed", "not proven", "not demonstrated"],
+    "directAnswerMustMentionAny": ["not confirmed", "not proven", "not demonstrated", "rather than confirmed"],
     "directAnswerMustNotMention": ["the authorised diagnosis is supported by"]
   },
   {

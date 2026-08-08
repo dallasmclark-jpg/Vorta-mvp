@@ -316,7 +316,11 @@ for (const [batchIndex, scenario] of selectedScenarios.entries()) {
       scenario.requireVisibleDecision === true ||
       /vor-033-demo-golden\.json$/.test(scenarioFile);
     const assertionText = requireVisibleDecision ? visibleText : text;
-    const directAnswerText = String(payload.directAnswer ?? "").toLowerCase();
+    const directAnswerText = String(payload.directAnswer ?? "")
+      .toLowerCase()
+      .replace(/[-–—]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     const usedTools = new Set(payload.toolsUsed || []);
     // Decision-pack covered tools count as satisfied evidence without inflating actual tool-call limits.
     const coveredTools = new Set(payload.coveredTools || []);

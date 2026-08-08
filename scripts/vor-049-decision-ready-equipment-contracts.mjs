@@ -223,7 +223,13 @@ assert.deepEqual(ahuDiagnosis?.directAnswerMustMentionAny, [
   "not confirmed",
   "not proven",
   "not demonstrated",
+  "rather than confirmed",
 ]);
+assert.match(
+  liveEvalSurface,
+  /directAnswerText[\s\S]*?replace\(\/\[-–—\]\+\/g, " "\)[\s\S]*?replace\(\/\\s\+\/g, " "\)/,
+  "Direct-answer phrase assertions must normalize punctuation and whitespace",
+);
 assert.ok(
   ahuDiagnosis?.directAnswerMustNotMention?.includes(
     "the authorised diagnosis is supported by",
