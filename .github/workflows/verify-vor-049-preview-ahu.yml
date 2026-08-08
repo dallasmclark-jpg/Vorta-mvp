@@ -1,0 +1,69 @@
+name: VERIFY ONLY VOR-049 AHU deploy preview
+
+on:
+  push:
+    branches:
+      - verify/vor-049-preview-ahu
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-vor-049-preview-ahu
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Strengthened AHU direct-answer preview gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EXPECTED_CANDIDATE: 109ecb97552f944133cfb994c9b986887680eecd
+      VORTA_EVAL_BASE_URL: https://deploy-preview-292--vorta-app.netlify.app
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_OFFSET: 16
+      VORTA_EVAL_LIMIT: 1
+      VORTA_EVAL_DELAY_MS: 0
+      VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+      VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+
+    steps:
+      - name: Check out verification branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Verify branch contains only workflow above candidate
+        shell: bash
+        run: |
+          git merge-base --is-ancestor "$EXPECTED_CANDIDATE" HEAD
+          test "$(git rev-list --count "$EXPECTED_CANDIDATE"..HEAD)" -eq 1
+          test "$(git diff --name-only "$EXPECTED_CANDIDATE" HEAD | tr -d '\r')" = ".github/workflows/verify-vor-049-preview-ahu.yml"
+
+      - name: Verify protected evaluation secret
+        shell: bash
+        run: |
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured." >&2
+            exit 1
+          }
+
+      - name: Run strengthened AHU direct-answer gate against PR deploy preview
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json 2>&1 | tee vor-049-preview-ahu.log
+
+      - name: Preserve deployed-preview evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vor-049-preview-ahu-${{ github.sha }}
+          path: vor-049-preview-ahu.log
+          if-no-files-found: error
+          retention-days: 14
