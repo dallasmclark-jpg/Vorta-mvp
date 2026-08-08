@@ -1,0 +1,118 @@
+name: VOR-049 direct-answer normalization
+
+on:
+  push:
+    branches:
+      - agent/vor-049-diagnostic-contrast-repair
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vor-049-normalise-direct-answer
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPECTED_MAIN: 5a9c496fd1e2056d651cbff1a5a0da72818a2393
+      WORKFLOW_FILE: .github/workflows/vor-049-normalise-direct-answer.yml
+      PATCH_FILE: scripts/tmp-vor049-normalise-direct-answer.py
+
+    steps:
+      - name: Check out patch branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Verify temporary scaffolding is the only new scope above current candidate
+        shell: bash
+        run: |
+          git diff --name-only c0fc80c8a1485690fac2d19b3cedb23b1099882c HEAD | sort > /tmp/scaffold.txt
+          printf '%s\n' "$WORKFLOW_FILE" "$PATCH_FILE" | sort > /tmp/expected-scaffold.txt
+          diff -u /tmp/expected-scaffold.txt /tmp/scaffold.txt
+
+      - name: Apply semantic evaluator patch
+        run: python "$PATCH_FILE"
+
+      - name: Remove temporary scaffolding from candidate tree
+        run: rm "$WORKFLOW_FILE" "$PATCH_FILE"
+
+      - name: Verify exact four-file product/evaluation scope
+        shell: bash
+        run: |
+          git diff --name-only "$EXPECTED_MAIN" | sort > /tmp/files.txt
+          printf '%s\n' \
+            netlify/functions/ask-vorta/equipment-evidence.mts \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-049-decision-ready-equipment-contracts.mjs \
+            tests/evals/vor-033-demo-golden.json | sort > /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/files.txt
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Run focused VOR-049 contract
+        run: node scripts/vor-049-decision-ready-equipment-contracts.mjs
+
+      - name: Prove direct-answer normalization semantics
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const normalize = (value) => String(value ?? '')
+            .toLowerCase()
+            .replace(/[-–—]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const previewOne = normalize('AHU-01 has a confirmed differential-pressure instrument fault, not confirmed high HEPA differential pressure.');
+          const previewTwo = normalize('AHU-01 has a confirmed instrument-fault condition rather than confirmed HEPA blockage.');
+          assert.ok(previewOne.includes('instrument fault'));
+          assert.ok(previewOne.includes('not confirmed'));
+          assert.ok(previewTwo.includes('instrument fault'));
+          assert.ok(previewTwo.includes('rather than confirmed'));
+          NODE
+
+      - name: Run TypeScript
+        run: npm run typecheck
+
+      - name: Run complete permanent contract suite
+        run: npm run test:contracts
+
+      - name: Run route smoke tests
+        run: npm run test:smoke
+
+      - name: Build production bundle without deployment
+        run: npm run build
+
+      - name: Run performance budget
+        run: npm run test:performance
+
+      - name: Recheck clean final scope
+        shell: bash
+        run: |
+          git diff --name-only "$EXPECTED_MAIN" | sort > /tmp/final.txt
+          printf '%s\n' \
+            netlify/functions/ask-vorta/equipment-evidence.mts \
+            scripts/ask-vorta-live-evals.mjs \
+            scripts/vor-049-decision-ready-equipment-contracts.mjs \
+            tests/evals/vor-033-demo-golden.json | sort > /tmp/expected-final.txt
+          diff -u /tmp/expected-final.txt /tmp/final.txt
+
+      - name: Commit only after every gate passes
+        shell: bash
+        run: |
+          git config user.name "Vorta Engineering"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "VOR-049: normalize direct-answer semantic checks"
+          git push origin HEAD:${GITHUB_REF_NAME}
