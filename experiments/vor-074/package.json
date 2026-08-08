@@ -6,8 +6,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "node --check sdk-shadow.mjs && node --check compare-endpoints.mjs && node boundary-check.mjs",
+    "check": "node --check sdk-shadow.mjs && node --check compare-endpoints.mjs && node --check mock-structural-proof.mjs && node boundary-check.mjs",
     "shadow": "node sdk-shadow.mjs",
+    "structural": "node mock-structural-proof.mjs",
     "compare": "node compare-endpoints.mjs"
   },
   "dependencies": {
