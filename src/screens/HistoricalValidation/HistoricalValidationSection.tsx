@@ -199,7 +199,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
             {item.timeframe.warningLeadDays} days before outcome · {item.risk.primaryDriver || "driver unavailable"}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Captured {formatDateTime(item.timeframe.warningAt)}
+            Captured {formatDateTime(item.timeframe.warningStartAt)}
           </p>
         </div>
 
