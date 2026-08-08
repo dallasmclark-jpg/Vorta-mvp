@@ -77,6 +77,10 @@ export async function createAskVortaSdkShadow(options) {
       strict: definition.strict,
       timeoutMs: VOR074_TOOL_TIMEOUT_MS,
       timeoutBehavior: "raise_exception",
+      // Vorta remains the runtime safety boundary. Do not convert validation or
+      // execution failures into model-visible tool-error text that can be retried
+      // or reasoned around inside the SDK loop.
+      errorFunction: null,
       async execute(args, context, details) {
         const guard = await validateToolCall({
           name: definition.name,
