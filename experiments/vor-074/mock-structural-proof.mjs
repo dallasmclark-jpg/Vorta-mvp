@@ -117,7 +117,12 @@ async function malformedArgumentsProof() {
     instructions: "Attempt the fixture tool call.",
     answerSchema,
     toolDefinitions,
-    validateToolCall: async () => ({ ok: true }),
+    // SDK `strict` is a model/provider contract, not Vorta's runtime safety gate.
+    // Vorta must independently validate every tool call before the executor runs.
+    validateToolCall: async ({ args }) => ({
+      ok: typeof args?.query === "string" && args.query.trim().length > 0,
+      message: "Vorta rejected malformed tool arguments.",
+    }),
     executeTool: async () => {
       toolExecutions += 1;
       return { status: "ok" };
@@ -126,9 +131,11 @@ async function malformedArgumentsProof() {
   });
 
   await expectReject(
-    "strict malformed tool arguments",
+    "malformed arguments blocked by Vorta before execution",
     () => shadow.run("Call the tool with malformed arguments."),
-    () => toolExecutions === 0,
+    (error) =>
+      toolExecutions === 0 &&
+      /Vorta rejected malformed tool arguments/i.test(String(error)),
   );
 }
 
