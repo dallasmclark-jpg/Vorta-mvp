@@ -100,6 +100,18 @@ const assertions = [
       page.includes("data-vorta-historical-scale-control"),
   ],
   [
+    "Timeline preserves readable geometry and uses local horizontal overflow",
+    page.includes("const spacing = 104") &&
+      page.includes("const xForBucket = (index: number) => left + index * spacing") &&
+      page.includes('data-vorta-historical-timeline-scroll="true"') &&
+      page.includes('data-vorta-historical-timeline-canvas="true"') &&
+      page.includes("width={width}") &&
+      page.includes("height={height}") &&
+      page.includes("style={{ width, minWidth: width, height }}") &&
+      page.includes('className="max-w-none shrink-0"') &&
+      !page.includes('className="w-full"\n            style={{ minWidth: 840 }}'),
+  ],
+  [
     "Timeline dots are keyboard-accessible interactive evidence controls",
     page.includes('role="button"') &&
       page.includes("tabIndex={0}") &&
