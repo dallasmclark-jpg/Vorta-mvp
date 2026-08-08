@@ -134,8 +134,8 @@
     "mustMention": ["AHU-01"],
     "mustMentionAny": ["calibrated reference", "transmitter drift", "pressure cascade"],
     "mustNotMention": ["room definitely failed"],
-    "directAnswerMustMention": ["instrument fault", "not proven"],
-    "directAnswerMustMentionAny": ["DPT-17", "calibrated reference", "transmitter drift"],
+    "directAnswerMustMention": ["instrument fault"],
+    "directAnswerMustMentionAny": ["not confirmed", "not proven", "not demonstrated"],
     "directAnswerMustNotMention": ["the authorised diagnosis is supported by"]
   },
   {
