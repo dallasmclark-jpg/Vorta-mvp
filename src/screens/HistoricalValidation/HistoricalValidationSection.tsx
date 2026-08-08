@@ -132,7 +132,7 @@ function MetricCard({ metric }: { metric: MetricDefinition }): JSX.Element {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase text-slate-500">
             {metric.label}
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">
@@ -191,7 +191,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Warning</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">Warning</p>
           <p className="mt-1 text-lg font-semibold text-slate-50">
             {item.risk.warningScore ?? "—"}/100 risk
           </p>
@@ -204,7 +204,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
         </div>
 
         <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase text-slate-500">
             Recorded outcome
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-50">{outcomeLabel(item)}</p>
@@ -212,7 +212,7 @@ function CaseCard({ item }: { item: HistoricalBacktestCase }): JSX.Element {
         </div>
 
         <div className="rounded-lg border border-gray-800 bg-[#0d1117] p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase text-slate-500">
             {spareRelevant ? "Spare evidence" : "Validation"}
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-50">
@@ -500,11 +500,11 @@ export function HistoricalValidationSection(): JSX.Element {
     >
       <header className="flex flex-col gap-3 border-b border-gray-800 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">Risk intelligence</p>
+          <p className="text-xs font-semibold uppercase text-blue-300">Risk intelligence</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
             Historical Validation
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-slate-400">
             Review what Vorta risk and spare evidence showed before recorded outcomes, including breakdowns, interventions and validation counterexamples.
           </p>
         </div>
