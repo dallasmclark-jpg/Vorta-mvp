@@ -822,7 +822,8 @@ function HistoricalValidationTimeline({
         <div className="mt-5 overflow-x-auto rounded-xl border border-gray-800 bg-[#0b1017]/70 p-3">
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="min-w-[840px] w-full"
+            className="w-full"
+            style={{ minWidth: 840 }}
             role="img"
             aria-label={`Historical risk warning, stock-out, breakdown, intervention and false-positive timeline grouped by ${scale}`}
           >
@@ -1327,7 +1328,7 @@ export function HistoricalValidationInteractiveExperience(): JSX.Element {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <label className="flex min-h-11 items-center gap-2 rounded-lg border border-gray-800 bg-[#0d1117] px-3">
                   <Search className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
                   <span className="sr-only">Search historical evidence</span>
