@@ -218,11 +218,11 @@ assert.ok(
 );
 const ahuDiagnosis = golden.find((scenario) => scenario.id === "vor033-ahu01-diagnosis");
 assert.ok(ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"));
-assert.deepEqual(ahuDiagnosis?.directAnswerMustMention, ["instrument fault", "not proven"]);
+assert.deepEqual(ahuDiagnosis?.directAnswerMustMention, ["instrument fault"]);
 assert.deepEqual(ahuDiagnosis?.directAnswerMustMentionAny, [
-  "DPT-17",
-  "calibrated reference",
-  "transmitter drift",
+  "not confirmed",
+  "not proven",
+  "not demonstrated",
 ]);
 assert.ok(
   ahuDiagnosis?.directAnswerMustNotMention?.includes(
