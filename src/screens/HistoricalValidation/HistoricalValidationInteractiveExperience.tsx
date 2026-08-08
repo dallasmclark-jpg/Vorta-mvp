@@ -491,14 +491,14 @@ function TimelineEvidencePanel({
       <button
         type="button"
         aria-label="Close historical event details"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="historical-event-panel-title"
-        className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col border-l border-gray-800 bg-[#0b0e14] shadow-2xl"
+        className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col border-l border-gray-800 bg-[#0b0e14]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-gray-800 p-4">
           <div className="min-w-0">
@@ -565,7 +565,7 @@ function TimelineEvidencePanel({
           </div>
 
           {event.kind === "breakdown" ? (
-            <div className="mt-4 rounded-xl border border-orange-500/30 bg-orange-500/[0.05] p-4">
+            <div className="mt-4 rounded-xl border border-gray-800 bg-[#0d1117] p-4">
               <p className="text-xs font-semibold uppercase text-orange-300">Last Vorta risk before breakdown</p>
               <div className="mt-2 flex flex-wrap items-end gap-3">
                 <span className="text-3xl font-semibold text-orange-200">
@@ -622,7 +622,7 @@ function TimelineEvidencePanel({
           ) : null}
 
           {event.kind === "stockout" ? (
-            <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-4">
+            <div className="mt-4 rounded-xl border border-gray-800 bg-[#0d1117] p-4">
               <p className="text-xs font-semibold uppercase text-violet-300">Critical spare evidence</p>
               <p className="mt-2 text-lg font-semibold text-slate-50">
                 {item.stock.materialNumber || "Critical spare"} · {item.stock.availableQuantity ?? 0} available
@@ -646,7 +646,7 @@ function TimelineEvidencePanel({
           ) : null}
 
           {event.kind === "intervention" ? (
-            <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-4">
+            <div className="mt-4 rounded-xl border border-gray-800 bg-[#0d1117] p-4">
               <p className="text-xs font-semibold uppercase text-emerald-300">Intervention outcome</p>
               <div className="mt-2 flex items-center gap-4">
                 <div>
@@ -668,7 +668,7 @@ function TimelineEvidencePanel({
           ) : null}
 
           {event.kind === "false-positive" ? (
-            <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/[0.05] p-4">
+            <div className="mt-4 rounded-xl border border-gray-800 bg-[#0d1117] p-4">
               <p className="text-xs font-semibold uppercase text-blue-300">Model-control evidence</p>
               <p className="mt-2 text-lg font-semibold text-slate-50">
                 Elevated risk {item.risk.warningScore ?? "—"}/100, no later breakdown
