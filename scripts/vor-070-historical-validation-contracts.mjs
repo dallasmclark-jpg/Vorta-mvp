@@ -3,7 +3,11 @@ import { resolve } from "node:path";
 
 const root = process.cwd();
 const page = readFileSync(
-  resolve(root, "src/screens/HistoricalValidation/HistoricalValidationExperience.tsx"),
+  resolve(root, "src/screens/HistoricalValidation/HistoricalValidationInteractiveExperience.tsx"),
+  "utf8",
+);
+const index = readFileSync(
+  resolve(root, "src/screens/HistoricalValidation/index.ts"),
   "utf8",
 );
 const service = readFileSync(
@@ -24,7 +28,8 @@ const assertions = [
   [
     "Historical Validation has a protected portal route",
     portal.includes('path="historical-validation"') &&
-      portal.includes("<HistoricalValidationSection />"),
+      portal.includes("<HistoricalValidationSection />") &&
+      index.includes("HistoricalValidationInteractiveExperience"),
   ],
   [
     "Historical Validation loads the canonical VOR-069 governed RPC",
@@ -63,14 +68,15 @@ const assertions = [
       page.includes('label="Site"'),
   ],
   [
-    "The page now leads with a plain-English Historical Risk Briefing",
+    "Historical Risk Briefing is split into readable operational statements",
     page.includes("Historical Risk Briefing") &&
       page.includes('data-vorta-historical-briefing="true"') &&
+      page.includes("buildBriefingLines") &&
       page.includes("recorded breakdown cases were preceded by elevated Vorta risk") &&
       page.includes("model-control evidence"),
   ],
   [
-    "Historical Validation uses a timestamped dot timeline for the five evidence event types",
+    "Historical Validation retains the five governed timeline event types",
     page.includes("Historical Risk Timeline") &&
       page.includes('data-vorta-historical-timeline="true"') &&
       [
@@ -80,14 +86,63 @@ const assertions = [
         'kind: "intervention"',
         'kind: "false-positive"',
       ].every((token) => page.includes(token)) &&
-      page.includes("item.timeframe.warningStartAt") &&
-      page.includes("item.stock.stockoutStartAt") &&
       page.includes("item.timeframe.failureAt") &&
       page.includes("item.timeframe.interventionAt") &&
       page.includes("item.timeframe.validationWindowEnd"),
   ],
   [
-    "Nine isolated KPI tiles are replaced by three grouped decision findings",
+    "Timeline supports Week Month Quarter and Year regrouping from governed timestamps",
+    ['key: "week"', 'key: "month"', 'key: "quarter"', 'key: "year"'].every((token) =>
+      page.includes(token),
+    ) &&
+      page.includes("buildTimelineBuckets") &&
+      page.includes('useState<TimelineScale>("quarter")') &&
+      page.includes("data-vorta-historical-scale-control"),
+  ],
+  [
+    "Timeline dots are keyboard-accessible interactive evidence controls",
+    page.includes('role="button"') &&
+      page.includes("tabIndex={0}") &&
+      page.includes("data-vorta-historical-event-control") &&
+      page.includes('event.key === "Enter"') &&
+      page.includes('event.key === " "'),
+  ],
+  [
+    "Breakdown timeline evidence exposes the last recorded risk before failure",
+    page.includes("Last Vorta risk before breakdown") &&
+      page.includes("item.risk.preOutcomeScore ?? item.risk.warningScore") &&
+      page.includes("item.risk.preOutcomeCapturedAt") &&
+      page.includes("First elevated warning") &&
+      page.includes("Primary risk driver"),
+  ],
+  [
+    "Aggregated timeline dots expose their underlying events",
+    page.includes("events in this period") &&
+      page.includes("group.events.map") &&
+      page.includes("onActiveIndexChange"),
+  ],
+  [
+    "Timeline evidence opens in a modal right-side panel without route mutation",
+    page.includes('data-vorta-historical-event-panel="true"') &&
+      page.includes('role="dialog"') &&
+      page.includes('aria-modal="true"') &&
+      page.includes("absolute inset-y-0 right-0") &&
+      page.includes("max-w-lg"),
+  ],
+  [
+    "Timeline panel supports Escape dismissal and focus return",
+    page.includes('event.key === "Escape"') &&
+      page.includes("closeButtonRef.current?.focus()") &&
+      page.includes("triggerRefs.current.get(key)?.focus()"),
+  ],
+  [
+    "Timeline panel retains explicit causation and preventability boundaries",
+    page.includes("This timeline proves sequence and recorded association only") &&
+      page.includes("does not prove that the risk condition caused the breakdown") &&
+      page.includes("recommended intervention would definitely have prevented it"),
+  ],
+  [
+    "Nine isolated KPI tiles remain replaced by three grouped decision findings",
     [
       'keyName="warning"',
       'keyName="spares"',
@@ -99,24 +154,22 @@ const assertions = [
       !page.includes('data-vorta-historical-metric='),
   ],
   [
-    "Historical evidence views remain available below the visual story",
+    "Evidence Register retains category tabs and adds search and sorting",
     [
       'key: "breakdowns"',
       'key: "interventions"',
       'key: "false-positives"',
       'key: "spares"',
       "Historical Evidence Register",
+      "Search historical evidence",
+      "Sort historical evidence",
+      "Highest warning risk",
     ].every((token) => page.includes(token)),
   ],
   [
-    "Synthetic demonstration evidence stays explicit while causation is bounded",
+    "Synthetic demonstration evidence stays explicit while live mode fails closed",
     page.includes("Synthetic demonstration history · not imported pilot SAP history") &&
-      page.includes("does not prove that Vorta would have prevented a breakdown") &&
-      page.includes("stock-out caused it"),
-  ],
-  [
-    "Live mode fails closed instead of showing synthetic evidence",
-    page.includes('dataMode === "live"') &&
+      page.includes('dataMode === "live"') &&
       page.includes("does not substitute synthetic demonstration history for a live site"),
   ],
   [
@@ -136,7 +189,8 @@ const assertions = [
   ],
   [
     "Historical Validation remains read-only",
-    !/\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(/.test(service + page),
+    !page.includes("supabase.") &&
+      !/\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(/.test(service),
   ],
 ];
 
