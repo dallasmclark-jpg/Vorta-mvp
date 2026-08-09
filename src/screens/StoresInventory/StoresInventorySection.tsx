@@ -597,12 +597,16 @@ function InventoryItemDisclosure({
       </summary>
 
       <div className="border-t border-gray-800 px-4 pb-4 pt-4">
-        <div className="grid gap-4 md:grid-cols-4 md:items-start">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start">
           <div
             data-vorta-spare-image="true"
-            className="overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
+            className="w-full shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
+            style={{ maxWidth: "10rem" }}
           >
-            <div className="flex aspect-square items-center justify-center bg-[#0d1117]">
+            <div
+              className="flex items-center justify-center bg-[#0d1117]"
+              style={{ aspectRatio: "1 / 1" }}
+            >
               {showVerifiedImage ? (
                 <img
                   src={item.imageUrl ?? undefined}
@@ -614,7 +618,7 @@ function InventoryItemDisclosure({
                 />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-slate-500">
-                  <Package className="h-7 w-7" aria-hidden="true" />
+                  <Package className="h-8 w-8" aria-hidden="true" />
                   <span className="text-xs font-medium leading-5">
                     No verified image available
                   </span>
@@ -626,7 +630,7 @@ function InventoryItemDisclosure({
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:col-span-3 lg:grid-cols-4">
+          <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
             <DetailValue label="Manufacturer" value={item.manufacturer} />
             <DetailValue
               label="OEM part number"
