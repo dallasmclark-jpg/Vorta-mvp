@@ -247,10 +247,10 @@ export function siteRiskMovementQuestionPlan(
   const siteRiskPhrase =
     "(?:(?:overall|maintenance) site |(?:site|overall|maintenance) )?risk";
   const asksForCause =
-    /\b(?:why|what caused|what drove|what is behind|what's behind)\b.*\b(?:site|overall|maintenance)?\s*risk\b/.test(
+    /\b(?:why|what caused|what drove|what is behind|what's behind)\b.*\b(?:(?:overall|maintenance)\s+site\s+risk|site\s+risk|overall\s+risk)\b/.test(
       question,
     ) ||
-    /\b(?:site|overall|maintenance)?\s*risk\b.*\b(?:cause|caused|driver|drove|behind|why)\b/.test(
+    /\b(?:(?:overall|maintenance)\s+site\s+risk|site\s+risk|overall\s+risk)\b.*\b(?:cause|caused|driver|drove|behind|why)\b/.test(
       question,
     );
   const asksForMovement =
