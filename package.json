@@ -32,7 +32,8 @@
     "eval:ask-vorta:vor058": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-058-site-priority-performance.json",
     "eval:ask-vorta:vor059": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-059-deterministic-operational-answers.json",
     "eval:ask-vorta:vor059:audit": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-059-operational-model-independence-audit.json",
-    "eval:ask-vorta:vor062": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-062-site-risk-movement.json"
+    "eval:ask-vorta:vor062": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-062-site-risk-movement.json",
+    "eval:ask-vorta:vor065": "node scripts/ask-vorta-live-evals.mjs tests/evals/vor-065-pm-risk-movement.json"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.0",
