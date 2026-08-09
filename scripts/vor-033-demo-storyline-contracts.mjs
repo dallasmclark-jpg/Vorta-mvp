@@ -4,7 +4,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const readMigration = (filename) => readFileSync(resolve(repositoryRoot, "supabase/migrations", filename), "utf8");
+const readMigration = (filename) =>
+  readFileSync(resolve(repositoryRoot, "supabase/migrations", filename), "utf8");
 
 const storylineEvidence = readMigration("20260801180721_enrich_demo_storyline_evidence.sql");
 const visibleLanguage = readMigration("20260801180802_remove_remaining_visible_demo_language.sql");
@@ -12,6 +13,9 @@ const healthGate = readMigration("20260801180839_add_demo_storyline_health_gate.
 const indexMigration = readMigration("20260801180925_index_demo_storyline_site_reference.sql");
 const historicalCoexistence = readMigration(
   "20260809141000_scope_vor033_prominent_narrative_health_away_from_historical_backtest.sql",
+);
+const rollingRefreshCoexistence = readMigration(
+  "20260809144500_vor_033_preserve_vor_069_history_during_rolling_refresh.sql",
 );
 
 const requireText = (source, expected, message) => {
@@ -115,10 +119,46 @@ assert.equal(
   "The coexistence repair must not rewrite or delete historical backtest evidence.",
 );
 
+for (const required of [
+  "date '2024-01-05'",
+  "work_order.source_system = 'vorta_demo_backtest'",
+  "work_order.source_record_key ~ '^vor069:.*:[0-9]{3}$'",
+  "work_order.source_record_key = 'scenario:' || scenario.scenario_key",
+  "scenario.dataset_version = 'vor069-historical-backtest-v1'",
+  "coalesce(work_order.source_system,'') <> 'vorta_demo_backtest'",
+  "v_open_count <> 1 or v_completed_count <> 1",
+  "drop function if exists private.vorta_refresh_demo_dataset_dates_phase1_pre_backtest_guard_inte",
+]) {
+  requireText(
+    rollingRefreshCoexistence,
+    required,
+    `Rolling refresh / historical-backtest coexistence must retain ${required}`,
+  );
+}
+assert.ok(
+  rollingRefreshCoexistence.match(/coalesce\(work_order\.source_system,''\) <> 'vorta_demo_backtest'/g)?.length >= 2,
+  "Both open/current and completed VOR-033 rankings must exclude governed VOR-069 work orders.",
+);
+assert.equal(
+  /\b(delete|truncate)\s+from\s+public\./i.test(rollingRefreshCoexistence),
+  false,
+  "The rolling coexistence repair must never delete historical evidence.",
+);
+assert.equal(
+  rollingRefreshCoexistence.includes("set status = null"),
+  false,
+  "The rolling coexistence repair must not bypass the work-order NOT NULL status contract.",
+);
+
 requireText(indexMigration, "vorta_demo_storylines_site_active_idx");
 requireText(indexMigration, "(site_id, active, story_key)");
 
-for (const source of [storylineEvidence, healthGate, historicalCoexistence]) {
+for (const source of [
+  storylineEvidence,
+  healthGate,
+  historicalCoexistence,
+  rollingRefreshCoexistence,
+]) {
   assert.equal(
     /create\s+(or\s+replace\s+)?function\s+public\.vorta_(get|refresh|apply)_demo_(dataset|storyline)/i.test(source),
     false,
@@ -126,4 +166,6 @@ for (const source of [storylineEvidence, healthGate, historicalCoexistence]) {
   );
 }
 
-console.log("VOR-033 connected demo storyline contracts passed, including VOR-069 historical-backtest coexistence.");
+console.log(
+  "VOR-033 connected demo storyline contracts passed, including VOR-069 historical-backtest coexistence and rolling-refresh isolation.",
+);
