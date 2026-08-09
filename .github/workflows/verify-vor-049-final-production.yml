@@ -1,0 +1,103 @@
+name: VERIFY ONLY VOR-049 final production review
+
+on:
+  push:
+    branches:
+      - verify/vor-049-final-production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-vor-049-final-production
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Run and preserve 24 visible production answers
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EXPECTED_PRODUCTION_COMMIT: db693559b9dd55c174f96a25c899f1dd44eb3935
+      VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EVAL_DELAY_MS: 0
+      VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+      VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+
+    steps:
+      - name: Check out verification branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Verify branch is one workflow-only commit above exact production
+        shell: bash
+        run: |
+          git merge-base --is-ancestor "$EXPECTED_PRODUCTION_COMMIT" HEAD
+          test "$(git rev-list --count "$EXPECTED_PRODUCTION_COMMIT"..HEAD)" -eq 1
+          test "$(git diff --name-only "$EXPECTED_PRODUCTION_COMMIT" HEAD | tr -d '\r')" = ".github/workflows/verify-vor-049-final-production.yml"
+
+      - name: Verify protected evaluation secret
+        shell: bash
+        run: test -n "$VORTA_E2E_PASSWORD"
+
+      - name: Record externally verified production identity
+        shell: bash
+        run: |
+          echo "Production identity was verified before this run through the Netlify deployment API."
+          echo "Expected commit: $EXPECTED_PRODUCTION_COMMIT"
+          echo "Expected deploy: 6a77b9da07035b00084007fb"
+
+      - name: Run permanent VOR-049 contract
+        run: node scripts/vor-049-decision-ready-equipment-contracts.mjs
+
+      - name: Run production questions 1 to 12
+        shell: bash
+        env:
+          VORTA_EVAL_OFFSET: 0
+          VORTA_EVAL_LIMIT: 12
+        run: |
+          set -o pipefail
+          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json 2>&1 | tee vor-049-final-q01-q12.log
+
+      - name: Reset production evaluation rate window
+        run: sleep 310
+
+      - name: Run production questions 13 to 24
+        shell: bash
+        env:
+          VORTA_EVAL_OFFSET: 12
+          VORTA_EVAL_LIMIT: 12
+        run: |
+          set -o pipefail
+          node scripts/ask-vorta-live-evals.mjs tests/evals/vor-033-demo-golden.json 2>&1 | tee vor-049-final-q13-q24.log
+
+      - name: Combine review logs
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '===== QUESTIONS 1-12 ====='
+            cat vor-049-final-q01-q12.log 2>/dev/null || true
+            echo
+            echo '===== QUESTIONS 13-24 ====='
+            cat vor-049-final-q13-q24.log 2>/dev/null || true
+          } > vor-049-final-24-answers.log
+
+      - name: Preserve 24-answer review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vor-049-final-production-answers-${{ github.sha }}
+          path: |
+            vor-049-final-q01-q12.log
+            vor-049-final-q13-q24.log
+            vor-049-final-24-answers.log
+          if-no-files-found: error
+          retention-days: 14
