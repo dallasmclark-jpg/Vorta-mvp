@@ -1,5 +1,8 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { expectNoPageOverflow } from "./maintenance-manager-test-helpers";
+import {
+  expectNoPageOverflow,
+  signInMaintenanceManager,
+} from "./maintenance-manager-test-helpers";
 
 const userSiteAccessRoute = "**/rest/v1/user_site_access*";
 const profileRoute = "**/rest/v1/profiles*";
@@ -125,44 +128,49 @@ async function expectHonestUnavailableState(page: Page): Promise<void> {
   await expectNoPageOverflow(page);
 }
 
-test("Maintenance Manager remains blocked from future-role portal boundaries", async ({ page }) => {
+test("authenticated Maintenance Manager remains blocked from future-role portal boundaries", async ({ page }) => {
+  // The Vorta Supabase client deliberately keeps a non-remembered session in
+  // sessionStorage, which Playwright storageState does not serialise. Sign in on
+  // the actual project page so this is a real role-isolation assertion rather
+  // than an unauthenticated redirect that happens to look correct.
+  await signInMaintenanceManager(page);
+
   for (const route of crossRoleRoutes) {
     await page.goto(route);
     await expect(page).not.toHaveURL(routePattern(route));
+    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
     await expect(
       page.getByText("Prototype · non-operational", { exact: true }),
     ).toHaveCount(0);
   }
 });
 
-test("authorised future-role shells show honest non-operational evidence state", async ({ context }) => {
-  // Keep the real authenticated JWT and real RLS-visible site/organisation rows.
-  // Install the response override on the BrowserContext before each fresh page is
-  // created so AuthProvider cannot hydrate the Maintenance Manager role first.
-  // No Supabase grant is mutated by this browser-only proof.
+test("authorised future-role shells show honest non-operational evidence state", async ({ page, context }) => {
+  // Establish the real protected Supabase session in this tab first. Full page
+  // navigations retain the same tab's sessionStorage, then AuthProvider performs
+  // fresh profile/site-access hydration through the browser-only role override.
+  // Real JWT plus RLS-visible site/organisation rows are retained and no grant is
+  // mutated in Supabase.
+  await signInMaintenanceManager(page);
+
   for (const roleCase of roleCases) {
     const observation = await installAuthorisedRoleOverride(
       context,
       roleCase.role,
     );
-    const rolePage = await context.newPage();
 
-    try {
-      for (const route of roleCase.routes) {
-        await rolePage.goto(route);
+    for (const route of roleCase.routes) {
+      await page.goto(route);
 
-        await expect
-          .poll(() => observation.siteAccessLookups)
-          .toBeGreaterThan(0);
-        await expect
-          .poll(() => observation.profileLookups)
-          .toBeGreaterThan(0);
+      await expect
+        .poll(() => observation.siteAccessLookups)
+        .toBeGreaterThan(0);
+      await expect
+        .poll(() => observation.profileLookups)
+        .toBeGreaterThan(0);
 
-        await expect(rolePage).toHaveURL(routePattern(route));
-        await expectHonestUnavailableState(rolePage);
-      }
-    } finally {
-      await rolePage.close();
+      await expect(page).toHaveURL(routePattern(route));
+      await expectHonestUnavailableState(page);
     }
   }
 
