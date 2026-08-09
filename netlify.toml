@@ -5,6 +5,36 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[images]
+  # VOR-034: only verified spare-image source hosts currently present in the
+  # Wrexham catalogue are allowed through Netlify Image CDN. Keep this list
+  # explicit so the public transform endpoint cannot proxy arbitrary domains.
+  remote_images = [
+    "https://assets\\.rs-online\\.com/.*",
+    "https://caas\\.phoenixcontact\\.com/.*",
+    "https://content\\.spiraxsarco\\.com/.*",
+    "https://files\\.pepperl-fuchs\\.com/.*",
+    "https://mall\\.industry\\.siemens\\.com/.*",
+    "https://media\\.rs-online\\.com/.*",
+    "https://pall\\.scene7\\.com/.*",
+    "https://res\\.cloudinary\\.com/.*",
+    "https://support\\.cognex\\.com/.*",
+    "https://uk\\.shop\\.leybold\\.com/.*",
+    "https://vaisalaeur\\.vaisalaws1\\.smilehouse\\.com/.*",
+    "https://watsonmarlow-api\\.perfioncloud\\.com/.*",
+    "https://www\\.acquahome\\.it/.*",
+    "https://www\\.buschvacuum\\.com/.*",
+    "https://www\\.camfil\\.com/.*",
+    "https://www\\.cse-distributors\\.co\\.uk/.*",
+    "https://www\\.endress\\.com/.*",
+    "https://www\\.gemu-group\\.com/.*",
+    "https://www\\.pilz\\.com/.*",
+    "https://www\\.uk\\.endress\\.com/.*",
+    "https://www\\.vedgroup\\.net/.*",
+    "https://www\\.watlow\\.com/.*",
+    "https://www\\.wika\\.com/.*"
+  ]
+
 [context.production.environment]
   # The public Vorta site remains a demonstration deployment.
   VITE_VORTA_DATA_MODE = "demo"
