@@ -29,7 +29,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Apply exact guarded replacements
+      - name: Apply guarded source edits
         shell: python
         run: |
           from pathlib import Path
@@ -37,88 +37,71 @@ jobs:
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
               text = file.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected exactly one guarded match, found {count}")
+              if text.count(old) != 1:
+                  raise SystemExit(f"{path}: guarded marker count for {old[:60]!r} was {text.count(old)}, expected 1")
               file.write_text(text.replace(old, new, 1))
+
+          def replace_block(path: str, start: str, end: str, replacement: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              if text.count(start) != 1:
+                  raise SystemExit(f"{path}: block start count was {text.count(start)}, expected 1")
+              start_index = text.index(start)
+              next_case = text.find('\n    case "', start_index + len(start))
+              end_index = text.find(end, start_index + len(start))
+              if end_index < 0 or (next_case >= 0 and end_index > next_case):
+                  raise SystemExit(f"{path}: guarded block end was not found inside the intended case")
+              file.write_text(text[:start_index] + replacement + text[end_index + len(end):])
 
           replace_once(
               "netlify/functions/ask-vorta/runtime.mts",
-              '''  const deterministicArgumentsFor = (toolName: string): JsonRecord => {
-              if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {''',
-              '''  const deterministicArgumentsFor = (toolName: string): JsonRecord => {
-              if (
-                toolName === "get_site_operational_snapshot" &&
-                (
-                  plannedIntent === "site_priorities" ||
-                  plannedIntent === "site_threat_prioritization" ||
-                  plannedIntent === "site_threat_prioritisation"
-                )
-              ) {
-                return { priority_fast_path: true };
-              }
-              if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {''',
+              '  const deterministicArgumentsFor = (toolName: string): JsonRecord => {\n    if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {',
+              '  const deterministicArgumentsFor = (toolName: string): JsonRecord => {\n    if (\n      toolName === "get_site_operational_snapshot" &&\n      (\n        plannedIntent === "site_priorities" ||\n        plannedIntent === "site_threat_prioritization" ||\n        plannedIntent === "site_threat_prioritisation"\n      )\n    ) {\n      return { priority_fast_path: true };\n    }\n    if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {',
+          )
+
+          replace_block(
+              "netlify/functions/ask-vorta/tool-execution.mts",
+              '    case "get_site_operational_snapshot": {\n',
+              '      const domainEntries = await Promise.all(\n',
+              '''    case "get_site_operational_snapshot": {
+                const priorityFastPath = args.priority_fast_path === true;
+                const coreDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
+                  ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
+                  ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
+                ];
+                const supplementaryDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
+                  ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
+                  ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
+                  ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
+                  ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
+                ];
+                const domainDefinitions = priorityFastPath
+                  ? coreDomainDefinitions
+                  : [...coreDomainDefinitions, ...supplementaryDomainDefinitions];
+                const domainEntries = await Promise.all(
+          ''',
           )
 
           replace_once(
               "netlify/functions/ask-vorta/tool-execution.mts",
-              '''    case "get_site_operational_snapshot": {
-              const domainDefinitions: Array<[string, Promise<ToolResult>]> = [
-                ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
-                ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
-                ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
-                ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
-                ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
-                ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
-              ];''',
-              '''    case "get_site_operational_snapshot": {
-              const priorityFastPath = args.priority_fast_path === true;
-              const coreDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
-                ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
-                ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
-              ];
-              const supplementaryDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
-                ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
-                ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
-                ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
-                ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
-              ];
-              const domainDefinitions = priorityFastPath
-                ? coreDomainDefinitions
-                : [...coreDomainDefinitions, ...supplementaryDomainDefinitions];''',
-          )
-
-          replace_once(
-              "netlify/functions/ask-vorta/tool-execution.mts",
-              '''          caveat:
-                    "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",''',
-              '''          caveat: priorityFastPath
-                    ? "This priority snapshot uses current site risk plus the ranked operational-action model. Ranked actions already score risk reduction, urgency, labour/spares/procedure readiness, asset criticality, execution efficiency and evidence confidence. Ask a specialist follow-up when the decision needs the underlying work, spare, capability or handover records."
-                    : "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",''',
+              '"This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record."',
+              'priorityFastPath\n              ? "This priority snapshot uses current site risk plus the ranked operational-action model. Ranked actions already score risk reduction, urgency, labour/spares/procedure readiness, asset criticality, execution efficiency and evidence confidence. Ask a specialist follow-up when the decision needs the underlying work, spare, capability or handover records."\n              : "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record."',
           )
 
           contract = Path("scripts/vor-058-site-priority-performance-contracts.mjs")
           contract_text = contract.read_text()
-          marker = '''const answerSource = readFileSync(
-            "netlify/functions/ask-vorta/decision-answer.mts",
-            "utf8",
-          );'''
-          replacement = marker + '''
-          const toolExecutionSource = readFileSync(
-            "netlify/functions/ask-vorta/tool-execution.mts",
-            "utf8",
-          );'''
-          if contract_text.count(marker) != 1:
+          answer_marker = 'const answerSource = readFileSync(\n  "netlify/functions/ask-vorta/decision-answer.mts",\n  "utf8",\n);'
+          if contract_text.count(answer_marker) != 1:
               raise SystemExit("VOR-058 contract: answerSource marker drifted")
-          contract_text = contract_text.replace(marker, replacement, 1)
-
-          insert_marker = '''assert.ok(
-            !runtimeSource.includes(
-              'requiredTools: ["get_site_operational_snapshot", "get_equipment_risk"]',
-            ),
-            "Site-priority normalisation must not add equipment specialist lookups",
-          );'''
-          assertions = insert_marker + '''
+          contract_text = contract_text.replace(
+              answer_marker,
+              answer_marker + '\nconst toolExecutionSource = readFileSync(\n  "netlify/functions/ask-vorta/tool-execution.mts",\n  "utf8",\n);',
+              1,
+          )
+          normalisation_marker = '  "Site-priority normalisation must not add equipment specialist lookups",\n);'
+          if contract_text.count(normalisation_marker) != 1:
+              raise SystemExit("VOR-058 contract: normalisation marker drifted")
+          extra_assertions = normalisation_marker + '''
           assert.ok(
             runtimeSource.includes('return { priority_fast_path: true };'),
             "Deterministic site-priority execution must request the bounded operational-snapshot fast path",
@@ -142,18 +125,16 @@ jobs:
               `Site-priority snapshot fast path must retain ${required}`,
             );
           }'''
-          if contract_text.count(insert_marker) != 1:
-              raise SystemExit("VOR-058 contract: normalisation assertion marker drifted")
-          contract.write_text(contract_text.replace(insert_marker, assertions, 1))
+          contract.write_text(contract_text.replace(normalisation_marker, extra_assertions, 1))
 
-      - name: Validate the patched exact source before committing
+      - name: Validate patched exact source before committing
         run: |
           git diff --check
           npm ci --silent
           npm run typecheck:functions -- --pretty false
           node scripts/vor-058-site-priority-performance-contracts.mjs
 
-      - name: Commit the guarded patch and remove this one-shot workflow
+      - name: Commit guarded patch and remove this one-shot workflow
         shell: bash
         run: |
           set -euo pipefail
