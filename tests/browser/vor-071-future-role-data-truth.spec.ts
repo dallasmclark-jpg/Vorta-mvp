@@ -22,8 +22,7 @@ async function expectHonestUnavailableState(page: Page): Promise<void> {
     page.getByText("Prototype · non-operational", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: "Operational data is not connected for this role yet",
+    page.getByText("Operational data is not connected for this role yet", {
       exact: true,
     }),
   ).toBeVisible();
