@@ -109,14 +109,20 @@ export async function executeTool(
       );
 
     case "get_site_operational_snapshot": {
-      const domainDefinitions: Array<[string, Promise<ToolResult>]> = [
+      const priorityFastPath = args.priority_fast_path === true;
+      const coreDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
         ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
         ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
+      ];
+      const supplementaryDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
         ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
         ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
         ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
         ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
       ];
+      const domainDefinitions = priorityFastPath
+        ? coreDomainDefinitions
+        : [...coreDomainDefinitions, ...supplementaryDomainDefinitions];
       const domainEntries = await Promise.all(
         domainDefinitions.map(async ([key, pending]) => [
           key,
@@ -137,7 +143,9 @@ export async function executeTool(
           generatedAt: new Date().toISOString(),
           domains,
           caveat:
-            "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",
+            priorityFastPath
+              ? "This priority snapshot uses current site risk plus the ranked operational-action model. Ranked actions already score risk reduction, urgency, labour/spares/procedure readiness, asset criticality, execution efficiency and evidence confidence. Ask a specialist follow-up when the decision needs the underlying work, spare, capability or handover records."
+              : "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",
         },
       };
     }

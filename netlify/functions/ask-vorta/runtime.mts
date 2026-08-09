@@ -188,6 +188,16 @@ export default async function handler(req: Request, _context: Context): Promise<
       : [];
   const hasDeterministicRouting = deterministicToolNames.length > 0;
   const deterministicArgumentsFor = (toolName: string): JsonRecord => {
+    if (
+      toolName === "get_site_operational_snapshot" &&
+      (
+        plannedIntent === "site_priorities" ||
+        plannedIntent === "site_threat_prioritization" ||
+        plannedIntent === "site_threat_prioritisation"
+      )
+    ) {
+      return { priority_fast_path: true };
+    }
     if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {
       return {
         start_date:
