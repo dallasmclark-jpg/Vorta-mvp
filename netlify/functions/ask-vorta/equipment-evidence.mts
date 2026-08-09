@@ -1167,6 +1167,65 @@ export function repairEquipmentDecisionAnswer(
   if (selectedFacts.length === 0) return;
 
   const loweredGoal = goal.toLowerCase();
+  const asksForDiagnosticContrast =
+    /\b(?:or|versus|vs\.?|rather than)\b/.test(loweredGoal) &&
+    /\b(?:instrument|sensor|probe|transmitter|measurement|reading)\b/.test(
+      loweredGoal,
+    ) &&
+    /\b(?:fault|drift|bias|risk|condition|excursion|room|process)\b/.test(
+      loweredGoal,
+    );
+  const diagnosticObservationPattern =
+    /(?:transmitter|sensor|probe|instrument|dpt-\d+)[\s\S]{0,220}(?:drift|unstable|fluctuat|bias|fault|failed)|(?:calibrated|independent|portable) reference[\s\S]{0,180}(?:stable|normal|agree|within)/i;
+  const diagnosticInstrumentFact = asksForDiagnosticContrast
+    ? decisionFacts.find(
+        (fact) =>
+          /(?:work evidence|work order|WO-)/i.test(fact) &&
+          diagnosticObservationPattern.test(fact),
+      )
+    : undefined;
+  const diagnosticProcessPattern =
+    /(?:calibrated|independent|portable) reference[\s\S]{0,180}(?:high|low|outside|deviation|failed|out of)|(?:room|process|pressure cascade|airflow)[\s\S]{0,180}(?:failed|out of spec|excursion|outside limit|deviation confirmed)/i;
+  const diagnosticProcessFact = asksForDiagnosticContrast
+    ? decisionFacts.find(
+        (fact) =>
+          /(?:work evidence|work order|WO-)/i.test(fact) &&
+          diagnosticProcessPattern.test(fact),
+      )
+    : undefined;
+  const diagnosticImpactFact = asksForDiagnosticContrast
+    ? decisionFacts.find(
+        (fact) =>
+          /(?:work evidence|work order|WO-)/i.test(fact) &&
+          /(?:impact assessment|independent reference monitoring|pressure cascade|room.?status|process condition|continued.?operation)/i.test(
+            fact,
+          ),
+      )
+    : undefined;
+  const currentDirectAnswer =
+    typeof answer.directAnswer === "string" ? answer.directAnswer : "";
+  const diagnosticContrastAnswerIsDirect =
+    /(?:instrument|sensor|probe|transmitter|dpt-\d+)[^.]{0,140}(?:fault|drift|bias|unstable|fluctuat)|(?:fault|drift|bias|unstable|fluctuat)[^.]{0,140}(?:instrument|sensor|probe|transmitter|dpt-\d+)|(?:cannot|can’t|can't|insufficient|not enough)[^.]{0,180}(?:distinguish|determine)/i.test(
+      currentDirectAnswer,
+    );
+  const diagnosticContrastAnswerIsExplicitlyUncertain =
+    /(?:cannot|can’t|can't|insufficient|not enough)[^.]{0,180}(?:distinguish|determine)/i.test(
+      currentDirectAnswer,
+    );
+  const diagnosticContrastNeedsRepair =
+    asksForDiagnosticContrast &&
+    (!diagnosticContrastAnswerIsDirect ||
+      diagnosticContrastAnswerIsExplicitlyUncertain);
+  const boundedDiagnosticFact = (
+    fact: string | undefined,
+    maximum = 340,
+  ): string => {
+    if (!fact) return "";
+    const text = readableEquipmentDecisionFact(fact);
+    return text.length > maximum
+      ? `${text.slice(0, Math.max(0, maximum - 1)).trimEnd()}…`
+      : text;
+  };
   const capabilityFact = selectedFacts.find((fact) =>
     /priority capability evidence/i.test(fact),
   );
@@ -1238,7 +1297,7 @@ export function repairEquipmentDecisionAnswer(
     ? readableEquipmentDecisionFact(supportingFact)
     : "";
 
-  if (!originalUnavailable) {
+  if (!originalUnavailable && !diagnosticContrastNeedsRepair) {
     const primaryTextSet = new Set(
       primaryTexts.map((text) => text.toLowerCase()),
     );
@@ -1269,6 +1328,128 @@ export function repairEquipmentDecisionAnswer(
       })),
       ...existingFindings,
     ].slice(0, 6);
+    return;
+  }
+
+  if (diagnosticContrastNeedsRepair) {
+    const instrumentText = boundedDiagnosticFact(diagnosticInstrumentFact);
+    const processText = boundedDiagnosticFact(diagnosticProcessFact);
+    const impactText = boundedDiagnosticFact(diagnosticImpactFact, 300);
+    const hasInstrumentEvidence = Boolean(diagnosticInstrumentFact);
+    const hasProcessEvidence = Boolean(diagnosticProcessFact);
+
+    if (hasInstrumentEvidence && !hasProcessEvidence) {
+      answer.directAnswer =
+        `The current authorised evidence points to an instrument fault; a genuine room or process failure is not proven: ${instrumentText}.`;
+      answer.decisionSummary = [
+        {
+          label: "Decision",
+          value:
+            "Instrument fault is the leading evidence; a genuine room or process failure is not proven.",
+        },
+        { label: "Diagnostic evidence", value: instrumentText },
+        ...(impactText ? [{ label: "Impact boundary", value: impactText }] : []),
+      ].slice(0, 5);
+      answer.findings = [
+        {
+          category: "data",
+          severity: "high",
+          title: "Instrument-side evidence",
+          detail: instrumentText,
+        },
+        ...(impactText
+          ? [
+              {
+                category: "data",
+                severity: "info",
+                title: "Room or process impact still requires confirmation",
+                detail: impactText,
+              },
+            ]
+          : []),
+      ];
+    } else if (hasProcessEvidence && !hasInstrumentEvidence) {
+      answer.directAnswer =
+        `The current authorised evidence points to a genuine room or process condition rather than an instrument-only fault: ${processText}.`;
+      answer.decisionSummary = [
+        {
+          label: "Decision",
+          value:
+            "The monitored condition is supported by independent evidence; an instrument-only explanation is not sufficient.",
+        },
+        { label: "Condition evidence", value: processText },
+      ];
+      answer.findings = [
+        {
+          category: "data",
+          severity: "high",
+          title: "Independent condition evidence",
+          detail: processText,
+        },
+      ];
+    } else {
+      answer.directAnswer =
+        "The current authorised evidence is insufficient to distinguish an instrument fault from a genuine room or process condition, so neither is confirmed yet.";
+      answer.decisionSummary = [
+        {
+          label: "Decision",
+          value:
+            "Do not treat either explanation as confirmed until the instrument indication and the monitored condition are independently verified.",
+        },
+        ...(instrumentText ? [{ label: "Instrument evidence", value: instrumentText }] : []),
+        ...(processText ? [{ label: "Condition evidence", value: processText }] : []),
+      ].slice(0, 5);
+      answer.findings = [
+        ...(instrumentText
+          ? [
+              {
+                category: "data",
+                severity: "info",
+                title: "Instrument-side evidence",
+                detail: instrumentText,
+              },
+            ]
+          : []),
+        ...(processText
+          ? [
+              {
+                category: "data",
+                severity: "info",
+                title: "Condition-side evidence",
+                detail: processText,
+              },
+            ]
+          : []),
+      ].slice(0, 6);
+    }
+
+    answer.missingData = textValues(answer.missingData).filter(
+      (item) => !unavailableEquipmentDecisionClaim(item),
+    );
+    if (questionPlan.forceActionPlan === true) {
+      const referenceAvailable = /reference/i.test(
+        `${instrumentText} ${processText} ${impactText}`,
+      );
+      answer.actionPlan = [
+        {
+          priority: "now",
+          action: referenceAvailable
+            ? "Confirm the suspect instrument against the calibrated or independent reference and verify the affected room or process condition before treating the indication as a genuine process failure."
+            : "Complete the approved instrument verification and independently confirm the affected room or process condition before treating the indication as a genuine process failure.",
+          owner: "Maintenance Manager",
+          expectedImpact:
+            "Separates an instrument indication fault from a genuine monitored-condition deviation before maintenance or quality escalation.",
+          verification:
+            impactText || instrumentText || processText ||
+            "Record the independent instrument and monitored-condition results before closing the diagnosis.",
+        },
+      ];
+      answer.recommendedActions = [
+        referenceAvailable
+          ? "Compare the suspect instrument with the calibrated or independent reference and confirm the monitored room or process condition."
+          : "Complete the approved instrument check and independently confirm the monitored room or process condition.",
+      ];
+    }
     return;
   }
 

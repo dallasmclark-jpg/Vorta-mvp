@@ -45,6 +45,7 @@ for (const marker of [
   "omittedDomains",
   ".slice(0, 24)",
   "repairEquipmentDecisionAnswer",
+  "diagnosticContrastNeedsRepair",
   "unavailableEquipmentDecisionClaim",
   "visibleDecisionUnavailable ? 50 : 95",
 ]) {
@@ -107,8 +108,8 @@ assert.match(
 );
 assert.match(
   answerRepairTemplate,
-  /if \(!originalUnavailable\)/,
-  "Valid model prose must still be enriched with decisive verified facts",
+  /if \(!originalUnavailable && !diagnosticContrastNeedsRepair\)/,
+  "Valid non-contrast model prose must still be enriched with decisive verified facts",
 );
 assert.match(
   answerRepairTemplate,
@@ -178,6 +179,9 @@ for (const marker of [
   "function visibleDecisionContradictions(answer)",
   "requireVisibleDecision",
   "assertionText",
+  "directAnswerMustMention",
+  "directAnswerMustMentionAny",
+  "directAnswerMustNotMention",
   "visible answer denies capability evidence",
   "visible answer denies spare evidence",
   "visible decision layer reports an unavailable or oversized equipment pack",
@@ -214,6 +218,28 @@ assert.ok(
 );
 const ahuDiagnosis = golden.find((scenario) => scenario.id === "vor033-ahu01-diagnosis");
 assert.ok(ahuDiagnosis?.expectedTools?.includes("get_equipment_calibrations"));
+assert.deepEqual(ahuDiagnosis?.directAnswerMustMention, ["instrument fault"]);
+assert.deepEqual(ahuDiagnosis?.directAnswerMustMentionAny, [
+  "not confirmed",
+  "not proven",
+  "not demonstrated",
+  "rather than confirmed",
+]);
+assert.match(
+  liveEvalSurface,
+  /directAnswerText[\s\S]*?replace\(\/\[-–—\]\+\/g, " "\)[\s\S]*?replace\(\/\\s\+\/g, " "\)/,
+  "Direct-answer phrase assertions must normalize punctuation and whitespace",
+);
+assert.ok(
+  ahuDiagnosis?.directAnswerMustNotMention?.includes(
+    "the authorised diagnosis is supported by",
+  ),
+);
+assert.match(
+  answerRepairTemplate,
+  /The current authorised evidence points to an instrument fault; a genuine room or process failure is not proven/,
+  "Contrast diagnosis repair must state the evidence-backed side and the safety boundary directly",
+);
 const coldNextAction = golden.find((scenario) => scenario.id === "vor033-cold01-next-action");
 assert.ok(
   coldNextAction?.expectedTools?.includes("get_equipment_spares") &&
