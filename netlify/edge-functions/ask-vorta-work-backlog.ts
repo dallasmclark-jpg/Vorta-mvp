@@ -731,6 +731,9 @@ export default async function handler(request: Request, context: EdgeContext): P
         typeof item.updatedAt === "string" ? Date.parse(item.updatedAt) : Number.NaN,
       )
       .filter(Number.isFinite);
+    const backlogAction = top
+      ? `Review ${topOrderNumber} against the authorised SAP-backed work-order evidence, confirm scope, readiness, assignee, due date and sequence, then have the Maintenance Planner make any required record change in SAP.`
+      : "";
     const answer = {
       directAnswer: top
         ? `${overdueCount} overdue work order${overdueCount === 1 ? "" : "s"} need management attention; start with ${topOrderNumber} on ${topAsset}, a ${topPriority} priority order due ${topDueDate}.`
@@ -739,8 +742,20 @@ export default async function handler(request: Request, context: EdgeContext): P
       evidence,
       findings,
       coverOptions: [],
-      recommendedActions: [],
-      actionPlan: [],
+      recommendedActions: backlogAction ? [backlogAction] : [],
+      actionPlan: backlogAction
+        ? [
+            {
+              priority: "now",
+              action: backlogAction,
+              owner: "Maintenance Manager / Planner",
+              expectedImpact:
+                "Moves the highest-priority evidenced work-order risk toward an owned, executable maintenance plan.",
+              verification:
+                `Open the authorised ${topOrderNumber} evidence and confirm readiness, assignee, due date and sequence are recorded in SAP by an authorised user.`,
+            },
+          ]
+        : [],
       followUpQuestions: [],
       sources: ["Site maintenance work backlog"],
       missingData,

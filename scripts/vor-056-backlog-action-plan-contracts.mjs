@@ -17,6 +17,10 @@ const finalResponseBoundary = readFileSync(
   "netlify/functions/ask-vorta/runtime-document-links.mts",
   "utf8",
 );
+const backlogEdge = readFileSync(
+  "netlify/edge-functions/ask-vorta-work-backlog.ts",
+  "utf8",
+);
 const routePlanning = readFileSync(
   "netlify/functions/ask-vorta/route-planning.mts",
   "utf8",
@@ -160,6 +164,34 @@ assert.equal(
   /assigned successfully|updated SAP/i.test(finalResponseBoundary),
   false,
   "The final response guard must not claim that Ask Vorta performed an SAP or assignment write",
+);
+
+for (const marker of [
+  'const OPEN_WORK_PATTERN =',
+  'overdue work|unassigned work',
+  'toolsUsed: ["get_site_work_backlog"]',
+  'const backlogAction = top',
+  'authorised SAP-backed work-order evidence',
+  'recommendedActions: backlogAction ? [backlogAction] : []',
+  'actionPlan: backlogAction',
+  'owner: "Maintenance Manager / Planner"',
+  'have the Maintenance Planner make any required record change in SAP',
+  'recorded in SAP by an authorised user',
+]) {
+  assert.ok(
+    backlogEdge.includes(marker),
+    `The factual backlog edge response is missing ${marker}`,
+  );
+}
+assert.ok(
+  backlogEdge.indexOf('const backlogAction = top') <
+    backlogEdge.indexOf('toolsUsed: ["get_site_work_backlog"]'),
+  "The edge backlog action plan must be created in the same governed response that declares the backlog tool evidence",
+);
+assert.equal(
+  /assigned successfully|updated SAP/i.test(backlogEdge),
+  false,
+  "The edge backlog response must not claim that Vorta performed an SAP or assignment write",
 );
 
 for (const marker of [
