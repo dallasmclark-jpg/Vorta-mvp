@@ -11,9 +11,11 @@
   # explicit so the public transform endpoint cannot proxy arbitrary domains.
   remote_images = [
     "https://assets\\.rs-online\\.com/.*",
+    "https://bts\\.net\\.ua/.*",
     "https://caas\\.phoenixcontact\\.com/.*",
     "https://content\\.spiraxsarco\\.com/.*",
     "https://files\\.pepperl-fuchs\\.com/.*",
+    "https://img1\\.ecerimg\\.com/.*",
     "https://mall\\.industry\\.siemens\\.com/.*",
     "https://media\\.rs-online\\.com/.*",
     "https://pall\\.scene7\\.com/.*",
