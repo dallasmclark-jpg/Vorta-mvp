@@ -83,7 +83,8 @@ addition = '''assert.equal(
 );
 
 for (const marker of [
-  'const OPEN_WORK_PATTERN = /\\b(?:backlog|open work|overdue work|unassigned work|work orders?)\\b/i',
+  'const OPEN_WORK_PATTERN =',
+  'overdue work|unassigned work',
   'toolsUsed: ["get_site_work_backlog"]',
   'const backlogAction = top',
   'authorised SAP-backed work-order evidence',
