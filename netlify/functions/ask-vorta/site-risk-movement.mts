@@ -8,6 +8,34 @@ import type {
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const MAX_LATEST_SNAPSHOT_AGE_DAYS = 2;
+const SITE_RISK_MOVEMENT_MAX_ROWS = 60;
+
+const MONTH_NUMBERS: Record<string, string> = {
+  january: "01",
+  jan: "01",
+  february: "02",
+  feb: "02",
+  march: "03",
+  mar: "03",
+  april: "04",
+  apr: "04",
+  may: "05",
+  june: "06",
+  jun: "06",
+  july: "07",
+  jul: "07",
+  august: "08",
+  aug: "08",
+  september: "09",
+  sep: "09",
+  sept: "09",
+  october: "10",
+  oct: "10",
+  november: "11",
+  nov: "11",
+  december: "12",
+  dec: "12",
+};
 
 interface SiteRiskSnapshot {
   snapshotDate: string;
@@ -24,6 +52,36 @@ interface SiteRiskSnapshot {
   scheduledEngineerCount: number;
   labourShiftType: string;
   createdAt: string;
+}
+
+interface RequestedDateRange {
+  startDate: string;
+  endDate: string;
+}
+
+interface VerifiedPmDriverRecord {
+  pmNumber: string;
+  title: string;
+  dueDate: string;
+  criticality: string;
+  status: string;
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentName: string;
+  area: string;
+}
+
+interface PmDriverVerification {
+  verificationState:
+    | "verified"
+    | "count_mismatch"
+    | "unavailable"
+    | "no_pm_increase"
+    | "non_consecutive";
+  snapshotOverduePmDelta: number;
+  matchedRecordCount: number;
+  matchedRecords: VerifiedPmDriverRecord[];
+  message: string;
 }
 
 function finiteNumber(value: unknown): number {
@@ -98,6 +156,77 @@ function formatted(value: number, integer: boolean): string {
   return integer ? String(Math.round(value)) : value.toFixed(1);
 }
 
+function requestedDateRange(
+  question: string,
+  timezone: string,
+): RequestedDateRange | null {
+  const isoDates = [...question.matchAll(/\b(20\d{2}-\d{2}-\d{2})\b/g)]
+    .map((match) => match[1])
+    .filter((value) => DATE_ONLY_PATTERN.test(value));
+  if (isoDates.length >= 2) {
+    return isoDates[0] <= isoDates[1]
+      ? { startDate: isoDates[0], endDate: isoDates[1] }
+      : { startDate: isoDates[1], endDate: isoDates[0] };
+  }
+
+  const fallbackYear = Number(localDate(timezone).slice(0, 4));
+  const naturalDates = [...question.toLowerCase().matchAll(
+    /\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(20\d{2}))?\b/g,
+  )]
+    .map((match) => {
+      const day = Number(match[1]);
+      const month = MONTH_NUMBERS[match[2]];
+      const year = Number(match[3] ?? fallbackYear);
+      if (!month || !Number.isInteger(day) || day < 1 || day > 31) return "";
+      const value = `${year}-${month}-${String(day).padStart(2, "0")}`;
+      const parsed = new Date(`${value}T12:00:00Z`);
+      return Number.isFinite(parsed.getTime()) &&
+        parsed.getUTCDate() === day &&
+        parsed.getUTCMonth() + 1 === Number(month)
+        ? value
+        : "";
+    })
+    .filter(Boolean);
+
+  if (naturalDates.length < 2) return null;
+  return naturalDates[0] <= naturalDates[1]
+    ? { startDate: naturalDates[0], endDate: naturalDates[1] }
+    : { startDate: naturalDates[1], endDate: naturalDates[0] };
+}
+
+function pmDriverFromOutcome(value: unknown): PmDriverVerification | null {
+  if (!isRecord(value)) return null;
+  const verificationState = stringValue(value.verificationState);
+  if (![
+    "verified",
+    "count_mismatch",
+    "unavailable",
+    "no_pm_increase",
+    "non_consecutive",
+  ].includes(verificationState)) {
+    return null;
+  }
+  return {
+    verificationState: verificationState as PmDriverVerification["verificationState"],
+    snapshotOverduePmDelta: finiteNumber(value.snapshotOverduePmDelta),
+    matchedRecordCount: finiteNumber(value.matchedRecordCount),
+    matchedRecords: Array.isArray(value.matchedRecords)
+      ? value.matchedRecords.filter(isRecord).map((record) => ({
+          pmNumber: stringValue(record.pmNumber),
+          title: stringValue(record.title),
+          dueDate: stringValue(record.dueDate),
+          criticality: stringValue(record.criticality),
+          status: stringValue(record.status),
+          equipmentId: stringValue(record.equipmentId),
+          equipmentCode: stringValue(record.equipmentCode),
+          equipmentName: stringValue(record.equipmentName),
+          area: stringValue(record.area),
+        }))
+      : [],
+    message: stringValue(value.message),
+  };
+}
+
 export function siteRiskMovementQuestionPlan(
   request: AskVortaRequest,
 ): JsonRecord | null {
@@ -117,7 +246,15 @@ export function siteRiskMovementQuestionPlan(
     );
   const siteRiskPhrase =
     "(?:(?:overall|maintenance) site |(?:site|overall|maintenance) )?risk";
+  const asksForCause =
+    /\b(?:why|what caused|what drove|what is behind|what's behind)\b.*\b(?:site|overall|maintenance)?\s*risk\b/.test(
+      question,
+    ) ||
+    /\b(?:site|overall|maintenance)?\s*risk\b.*\b(?:cause|caused|driver|drove|behind|why)\b/.test(
+      question,
+    );
   const asksForMovement =
+    asksForCause ||
     bareChangeQuestion ||
     /\bwhat(?:'s| has| is)? changed\b/.test(question) ||
     /\bwhat changed since (?:yesterday|today|the last shift|last shift|the previous shift|previous shift)\b/.test(
@@ -144,6 +281,7 @@ export function siteRiskMovementQuestionPlan(
   const requestedShiftComparison =
     /\b(?:last|previous) shift\b/.test(question) ||
     /\bshift[- ]level\b/.test(question);
+  const explicitRange = requestedDateRange(question, request.pageContext.timezone);
 
   return {
     routingMode: "deterministic",
@@ -154,20 +292,167 @@ export function siteRiskMovementQuestionPlan(
     requiredTools: ["get_site_risk_movement"],
     optionalTools: [],
     equipmentQuery: "",
-    startDate: "",
-    endDate: "",
+    startDate: explicitRange?.startDate ?? "",
+    endDate: explicitRange?.endDate ?? "",
     ambiguity: "none",
     answerFocus:
-      "Compare the latest two verified daily site-risk snapshots, rank material movement, state unchanged metrics and fail closed on shift-level precision or unsupported causation.",
+      "Compare two verified daily site-risk snapshots and explain a positive overdue-PM movement only when exact site-scoped PM due-date crossings reconcile to the snapshot delta. Never generalise that verified PM component into proof of every cause of the overall risk score.",
     verificationChecks: [
-      "Use only site-scoped daily risk history visible through authenticated row-level security.",
+      "Use only site-scoped daily risk history and PM/equipment records visible through authenticated row-level security.",
       "State exact snapshot dates and never describe daily history as a previous-shift comparison.",
-      "Report movement without inventing its cause.",
+      "Claim a recorded PM driver only when consecutive daily snapshots, due-date crossings and the overdue-PM count reconcile exactly.",
+      "If record counts disagree or other metrics lack record-level evidence, state the mismatch and do not claim verified causation.",
     ],
     summaryItemLimit: 5,
     forceActionPlan: false,
     followUpLimit: 1,
     requestedShiftComparison,
+    asksForCause,
+  };
+}
+
+async function verifyPmDriver(
+  supabase: SupabaseClient,
+  request: AskVortaRequest,
+  previous: SiteRiskSnapshot,
+  current: SiteRiskSnapshot,
+  dayGap: number,
+): Promise<PmDriverVerification> {
+  const snapshotOverduePmDelta = Math.round(
+    current.overduePmCount - previous.overduePmCount,
+  );
+  if (dayGap !== 1) {
+    return {
+      verificationState: "non_consecutive",
+      snapshotOverduePmDelta,
+      matchedRecordCount: 0,
+      matchedRecords: [],
+      message:
+        "The selected daily snapshots are not consecutive, so PM due-date crossings cannot be reconciled safely to the overdue-PM movement.",
+    };
+  }
+  if (snapshotOverduePmDelta <= 0) {
+    return {
+      verificationState: "no_pm_increase",
+      snapshotOverduePmDelta,
+      matchedRecordCount: 0,
+      matchedRecords: [],
+      message:
+        "There is no positive overdue-PM count movement to explain between these two daily snapshots.",
+    };
+  }
+
+  const { data: pmData, error: pmError } = await supabase
+    .from("preventive_maintenance")
+    .select(
+      "id,equipment_id,pm_number,title,next_due_date,criticality,status",
+    )
+    .eq("site_id", request.siteId)
+    .gte("next_due_date", previous.snapshotDate)
+    .lt("next_due_date", current.snapshotDate)
+    .order("next_due_date", { ascending: true })
+    .order("pm_number", { ascending: true });
+
+  if (pmError) {
+    return {
+      verificationState: "unavailable",
+      snapshotOverduePmDelta,
+      matchedRecordCount: 0,
+      matchedRecords: [],
+      message:
+        `The overdue-PM count increased by ${snapshotOverduePmDelta}, but the site-scoped PM crossing records could not be read, so no verified PM cause is claimed.`,
+    };
+  }
+
+  const pmRows = (pmData ?? []).filter(isRecord);
+  const equipmentIds = [...new Set(
+    pmRows.map((row) => stringValue(row.equipment_id)).filter(Boolean),
+  )];
+  if (equipmentIds.length === 0 && pmRows.length > 0) {
+    return {
+      verificationState: "unavailable",
+      snapshotOverduePmDelta,
+      matchedRecordCount: pmRows.length,
+      matchedRecords: [],
+      message:
+        "PM due-date crossings were found, but their equipment identities could not be verified inside the authorised site context, so no verified PM cause is claimed.",
+    };
+  }
+
+  let equipmentById = new Map<string, JsonRecord>();
+  if (equipmentIds.length > 0) {
+    const { data: equipmentData, error: equipmentError } = await supabase
+      .from("equipment_assets")
+      .select("id,equipment_code,name,area")
+      .eq("site_id", request.siteId)
+      .in("id", equipmentIds);
+    if (equipmentError) {
+      return {
+        verificationState: "unavailable",
+        snapshotOverduePmDelta,
+        matchedRecordCount: pmRows.length,
+        matchedRecords: [],
+        message:
+          "PM due-date crossings were found, but the linked equipment could not be verified inside the authorised site context, so no verified PM cause is claimed.",
+      };
+    }
+    equipmentById = new Map(
+      (equipmentData ?? [])
+        .filter(isRecord)
+        .map((row) => [stringValue(row.id), row]),
+    );
+  }
+
+  const matchedRecords: VerifiedPmDriverRecord[] = [];
+  for (const row of pmRows) {
+    const equipmentId = stringValue(row.equipment_id);
+    const equipment = equipmentById.get(equipmentId);
+    if (!equipment) continue;
+    const equipmentCode = stringValue(equipment.equipment_code);
+    const equipmentName = stringValue(equipment.name);
+    const area = stringValue(equipment.area);
+    const pmNumber = stringValue(row.pm_number);
+    const title = stringValue(row.title);
+    const dueDate = stringValue(row.next_due_date);
+    if (!pmNumber || !title || !DATE_ONLY_PATTERN.test(dueDate) ||
+        !equipmentCode || !equipmentName || !area) {
+      continue;
+    }
+    matchedRecords.push({
+      pmNumber,
+      title,
+      dueDate,
+      criticality: stringValue(row.criticality) || "Not recorded",
+      status: stringValue(row.status) || "Not recorded",
+      equipmentId,
+      equipmentCode,
+      equipmentName,
+      area,
+    });
+  }
+
+  const matchedRecordCount = matchedRecords.length;
+  if (
+    matchedRecordCount !== pmRows.length ||
+    matchedRecordCount !== snapshotOverduePmDelta
+  ) {
+    return {
+      verificationState: "count_mismatch",
+      snapshotOverduePmDelta,
+      matchedRecordCount,
+      matchedRecords,
+      message:
+        `The overdue-PM count increased by ${snapshotOverduePmDelta}, but ${matchedRecordCount} fully verified site-scoped PM crossing record${matchedRecordCount === 1 ? "" : "s"} were found. The counts do not reconcile, so Ask Vorta will not claim a verified PM cause.`,
+    };
+  }
+
+  return {
+    verificationState: "verified",
+    snapshotOverduePmDelta,
+    matchedRecordCount,
+    matchedRecords,
+    message:
+      `${matchedRecordCount} site-scoped PM record${matchedRecordCount === 1 ? "" : "s"} crossed from due to overdue between the snapshots and exactly reconcile to the +${snapshotOverduePmDelta} overdue-PM count movement.`,
   };
 }
 
@@ -175,6 +460,10 @@ export async function loadSiteRiskMovement(
   supabase: SupabaseClient,
   request: AskVortaRequest,
 ): Promise<ToolResult> {
+  const explicitRange = requestedDateRange(
+    request.question,
+    request.pageContext.timezone,
+  );
   const { data, error } = await supabase
     .from("site_risk_history")
     .select(
@@ -183,7 +472,7 @@ export async function loadSiteRiskMovement(
     .eq("site_id", request.siteId)
     .order("snapshot_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(SITE_RISK_MOVEMENT_MAX_ROWS);
 
   if (error) {
     return {
@@ -204,22 +493,43 @@ export async function loadSiteRiskMovement(
     right.snapshotDate.localeCompare(left.snapshotDate),
   );
 
-  if (snapshots.length < 2) {
-    return {
-      source: "Verified daily site risk history",
-      status: "empty",
-      data: {
-        comparisonBasis: "daily",
-        snapshotCount: snapshots.length,
-        shiftLevelAvailable: false,
-      },
-      message:
-        "At least two distinct authorised daily site-risk snapshots are required to prove movement.",
-    };
+  let current: SiteRiskSnapshot | undefined;
+  let previous: SiteRiskSnapshot | undefined;
+  if (explicitRange) {
+    previous = distinct.get(explicitRange.startDate);
+    current = distinct.get(explicitRange.endDate);
+    if (!current || !previous) {
+      return {
+        source: "Verified daily site risk history",
+        status: "empty",
+        data: {
+          comparisonBasis: "daily",
+          requestedStartDate: explicitRange.startDate,
+          requestedEndDate: explicitRange.endDate,
+          shiftLevelAvailable: false,
+        },
+        message:
+          `Both requested authorised daily site-risk snapshots (${explicitRange.startDate} and ${explicitRange.endDate}) are required to prove movement.`,
+      };
+    }
+  } else {
+    if (snapshots.length < 2) {
+      return {
+        source: "Verified daily site risk history",
+        status: "empty",
+        data: {
+          comparisonBasis: "daily",
+          snapshotCount: snapshots.length,
+          shiftLevelAvailable: false,
+        },
+        message:
+          "At least two distinct authorised daily site-risk snapshots are required to prove movement.",
+      };
+    }
+    current = snapshots[0];
+    previous = snapshots[1];
   }
 
-  const current = snapshots[0];
-  const previous = snapshots[1];
   const dayGap = dateDifferenceDays(current.snapshotDate, previous.snapshotDate);
   const latestAgeDays = dateDifferenceDays(
     localDate(request.pageContext.timezone),
@@ -233,7 +543,7 @@ export async function loadSiteRiskMovement(
         "The authorised site-risk history contains invalid or non-sequential snapshot dates.",
     };
   }
-  if (latestAgeDays > MAX_LATEST_SNAPSHOT_AGE_DAYS) {
+  if (!explicitRange && latestAgeDays > MAX_LATEST_SNAPSHOT_AGE_DAYS) {
     return {
       source: "Verified daily site risk history",
       status: "unavailable",
@@ -248,18 +558,28 @@ export async function loadSiteRiskMovement(
     };
   }
 
+  const pmDriver = await verifyPmDriver(
+    supabase,
+    request,
+    previous,
+    current,
+    dayGap,
+  );
+
   return {
     source: "Verified daily site risk history",
     status: "ok",
     data: {
       comparisonBasis: "daily",
+      comparisonMode: explicitRange ? "requested_daily_range" : "latest_daily",
       shiftLevelAvailable: false,
       dayGap,
       latestAgeDays,
       current,
       previous,
+      pmDriver,
       caveat:
-        "These records prove daily site-risk movement only. They do not prove shift-level movement or the cause of a change.",
+        "Daily snapshots prove movement, not its cause unless a specific record-level component is independently reconciled. A verified PM driver proves only the overdue-PM count movement and does not prove every cause of the overall risk score.",
     },
   };
 }
@@ -442,64 +762,135 @@ export function siteRiskMovementAnswer(
   const topChangeText = topChange
     ? ` The largest recorded metric movement was ${topChange.label.toLowerCase()}, ${formatted(topChange.previous, topChange.integer)} → ${formatted(topChange.current, topChange.integer)} (${signed(topChange.delta, topChange.integer ? 0 : 1)}).`
     : " No supporting metric changed in the two returned daily snapshots.";
+  const pmDriver = pmDriverFromOutcome(outcome.data.pmDriver);
+
+  let pmDriverText = "";
+  let pmDriverSummary: JsonRecord | null = null;
+  let pmEvidence: string[] = [];
+  let pmFindings: JsonRecord[] = [];
+  let causeBoundary =
+    "The daily snapshots do not prove which work, spare, skill, absence or equipment event caused the movement.";
+
+  if (pmDriver?.verificationState === "verified") {
+    const recordText = pmDriver.matchedRecords
+      .map((record) => `${record.pmNumber} (${record.equipmentCode}, ${record.area})`)
+      .join("; ");
+    pmDriverText =
+      ` The recorded PM driver of the overdue-count movement is verified: ${pmDriver.matchedRecordCount} PM${pmDriver.matchedRecordCount === 1 ? "" : "s"} crossed into overdue and exactly reconcile to the +${pmDriver.snapshotOverduePmDelta} snapshot movement: ${recordText}. This verifies the overdue-PM component only; it does not prove every cause of the overall site-risk score change.`;
+    pmDriverSummary = {
+      label: "Verified PM driver",
+      value:
+        `${pmDriver.matchedRecordCount} exact PM due-date crossing${pmDriver.matchedRecordCount === 1 ? "" : "s"} reconcile to the +${pmDriver.snapshotOverduePmDelta} overdue-PM movement.`,
+    };
+    pmEvidence = pmDriver.matchedRecords.map(
+      (record) =>
+        `${record.pmNumber}: ${record.title}; due ${record.dueDate}; ${record.criticality}; ${record.equipmentCode} ${record.equipmentName}; ${record.area}; status ${record.status}.`,
+    );
+    pmFindings = pmDriver.matchedRecords.map((record) => ({
+      category: "pm",
+      severity: /critical/i.test(record.criticality) ? "high" : "medium",
+      title: `${record.pmNumber} crossed into overdue`,
+      detail:
+        `${record.title}; ${record.equipmentCode} ${record.equipmentName}, ${record.area}; due ${readableDate(record.dueDate)}; ${record.criticality}.`,
+    }));
+    causeBoundary =
+      "The PM crossings verify only the recorded overdue-PM count movement. Other movement in the overall risk score is not attributed without matching record-level evidence.";
+  } else if (pmDriver?.verificationState === "count_mismatch") {
+    pmDriverText = ` ${pmDriver.message}`;
+    pmDriverSummary = {
+      label: "PM cause not verified",
+      value: pmDriver.message,
+    };
+    pmEvidence = pmDriver.matchedRecords.map(
+      (record) =>
+        `${record.pmNumber}: due ${record.dueDate}; ${record.equipmentCode} ${record.equipmentName}; ${record.area}.`,
+    );
+    causeBoundary =
+      "The PM record count does not reconcile to the snapshot overdue-PM delta, so Ask Vorta does not claim those PMs caused the recorded count or the overall risk movement.";
+  } else if (pmDriver?.verificationState === "unavailable") {
+    pmDriverText = ` ${pmDriver.message}`;
+    pmDriverSummary = {
+      label: "PM verification unavailable",
+      value: pmDriver.message,
+    };
+    causeBoundary = pmDriver.message;
+  } else if (pmDriver?.verificationState === "no_pm_increase") {
+    pmDriverText =
+      " There was no positive overdue-PM count movement between these snapshots, so no PM due-date crossing is claimed as a driver.";
+    causeBoundary =
+      "There was no positive overdue-PM count movement to attribute; other metric movement remains unexplained without record-level evidence.";
+  } else if (pmDriver?.verificationState === "non_consecutive") {
+    pmDriverText = ` ${pmDriver.message}`;
+    causeBoundary = pmDriver.message;
+  }
+
+  const summaryItems: JsonRecord[] = [
+    {
+      label: "Overall movement",
+      value:
+        `${previous.riskScore.toFixed(1)} ${previous.riskLevel} on ${previousDate} → ${current.riskScore.toFixed(1)} ${current.riskLevel} on ${currentDate} (${signed(riskDelta)}).`,
+    },
+  ];
+  if (pmDriverSummary) summaryItems.push(pmDriverSummary);
+  summaryItems.push(
+    ...changes
+      .filter((item) => item.key !== "riskScore")
+      .slice(0, pmDriverSummary ? 1 : 2)
+      .map((item) => ({
+        label: item.label,
+        value:
+          `${formatted(item.previous, item.integer)} → ${formatted(item.current, item.integer)} (${signed(item.delta, item.integer ? 0 : 1)}).`,
+      })),
+    {
+      label: "Highest-risk area",
+      value:
+        `${previous.highestArea} ${previous.highestAreaScore.toFixed(1)} → ${current.highestArea} ${current.highestAreaScore.toFixed(1)}.`,
+    },
+    {
+      label: "Unchanged / evidence boundary",
+      value:
+        `${unchanged.length ? unchanged.map((item) => item.label.toLowerCase()).join(", ") + " did not change. " : ""}${causeBoundary}${requestedShiftComparison ? " No verified shift-level comparison is available." : ""}`,
+    },
+  );
 
   return {
     ...base,
     directAnswer:
-      `Verified daily site risk ${direction} from ${current.riskScore.toFixed(1)} on ${previousDate} to ${current.riskScore.toFixed(1)} on ${currentDate} (${signed(riskDelta)}).${topChangeText}${shiftBoundary}`
-        .replace(
-          `from ${current.riskScore.toFixed(1)} on ${previousDate}`,
-          `from ${previous.riskScore.toFixed(1)} on ${previousDate}`,
-        ),
-    decisionSummary: [
-      {
-        label: "Overall movement",
-        value:
-          `${previous.riskScore.toFixed(1)} ${previous.riskLevel} on ${previousDate} → ${current.riskScore.toFixed(1)} ${current.riskLevel} on ${currentDate} (${signed(riskDelta)}).`,
-      },
-      ...changes
-        .filter((item) => item.key !== "riskScore")
-        .slice(0, 2)
-        .map((item) => ({
-          label: item.label,
-          value:
-            `${formatted(item.previous, item.integer)} → ${formatted(item.current, item.integer)} (${signed(item.delta, item.integer ? 0 : 1)}).`,
-        })),
-      {
-        label: "Highest-risk area",
-        value:
-          `${previous.highestArea} ${previous.highestAreaScore.toFixed(1)} → ${current.highestArea} ${current.highestAreaScore.toFixed(1)}.`,
-      },
-      {
-        label: "Unchanged / evidence boundary",
-        value:
-          `${unchanged.length ? unchanged.map((item) => item.label.toLowerCase()).join(", ") + " did not change. " : ""}Daily snapshots prove movement, not its cause${requestedShiftComparison ? ", and no verified shift-level comparison is available" : ""}.`,
-      },
+      `Verified daily site risk ${direction} from ${previous.riskScore.toFixed(1)} on ${previousDate} to ${current.riskScore.toFixed(1)} on ${currentDate} (${signed(riskDelta)}).${topChangeText}${pmDriverText}${shiftBoundary}`,
+    decisionSummary: summaryItems.slice(0, 5),
+    evidence: [
+      ...metrics.map(
+        (item) =>
+          `${item.label}: ${formatted(item.previous, item.integer)} on ${previous.snapshotDate} → ${formatted(item.current, item.integer)} on ${current.snapshotDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
+      ),
+      ...pmEvidence,
+    ],
+    findings: [
+      ...pmFindings,
+      ...changes.slice(0, Math.max(0, 5 - pmFindings.length)).map((item, index) => ({
+        category: "risk",
+        severity:
+          index === 0 && direction === "worsened"
+            ? "high"
+            : Math.abs(item.delta) > 0
+              ? "medium"
+              : "info",
+        title: item.label,
+        detail:
+          `${formatted(item.previous, item.integer)} on ${previousDate} → ${formatted(item.current, item.integer)} on ${currentDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
+      })),
     ].slice(0, 5),
-    evidence: metrics.map(
-      (item) =>
-        `${item.label}: ${formatted(item.previous, item.integer)} on ${previous.snapshotDate} → ${formatted(item.current, item.integer)} on ${current.snapshotDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
-    ),
-    findings: changes.slice(0, 5).map((item, index) => ({
-      category: "risk",
-      severity:
-        index === 0 && direction === "worsened"
-          ? "high"
-          : Math.abs(item.delta) > 0
-            ? "medium"
-            : "info",
-      title: item.label,
-      detail:
-        `${formatted(item.previous, item.integer)} on ${previousDate} → ${formatted(item.current, item.integer)} on ${currentDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
-    })),
     missingData: [
-      "The daily snapshots do not prove which work, spare, skill, absence or equipment event caused the movement.",
+      causeBoundary,
       ...(requestedShiftComparison
         ? [
             "No verified shift-level site-risk snapshot is available; the comparison uses the latest two distinct daily snapshots.",
           ]
         : []),
     ],
-    confidence: requestedShiftComparison ? 82 : 90,
+    confidence:
+      pmDriver?.verificationState === "verified"
+        ? requestedShiftComparison ? 88 : 94
+        : requestedShiftComparison ? 78 : 86,
   };
 }
