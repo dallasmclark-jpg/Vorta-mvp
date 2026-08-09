@@ -555,6 +555,22 @@ function InventoryItemDisclosure({
   item: StoresInventoryItem;
   onOpen: (item: StoresInventoryItem) => void;
 }): JSX.Element {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [item.imageUrl]);
+
+  const showVerifiedImage = Boolean(item.imageUrl) && !imageFailed;
+  const imageSourceLabel =
+    item.imageSourceType === "manufacturer"
+      ? "Verified manufacturer image"
+      : item.imageSourceType === "authorised_supplier"
+        ? "Verified supplier image"
+        : item.imageSourceType === "site_photo"
+          ? "Verified site image"
+          : "Verified spare image";
+
   return (
     <details
       data-vorta-inventory-disclosure="true"
@@ -581,17 +597,56 @@ function InventoryItemDisclosure({
       </summary>
 
       <div className="border-t border-gray-800 px-4 pb-4 pt-4">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
-          <DetailValue label="Stock" value={integer.format(item.stock)} />
-          <DetailValue label="Minimum" value={integer.format(item.minimum)} />
-          <DetailValue label="Target" value={integer.format(item.target)} />
-          <DetailValue
-            label="Lead time"
-            value={item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
-          />
-          <DetailValue label="Supplier" value={item.supplier} />
-          <DetailValue label="Location" value={item.storageLocation} />
-        </dl>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start">
+          <div
+            data-vorta-spare-image="true"
+            className="w-full shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
+            style={{ maxWidth: "10rem" }}
+          >
+            <div
+              className="flex items-center justify-center bg-[#0d1117]"
+              style={{ aspectRatio: "1 / 1" }}
+            >
+              {showVerifiedImage ? (
+                <img
+                  src={item.imageUrl ?? undefined}
+                  alt={item.imageAltText}
+                  loading="lazy"
+                  decoding="async"
+                  onError={() => setImageFailed(true)}
+                  className="h-full w-full object-contain p-3"
+                />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-slate-500">
+                  <Package className="h-8 w-8" aria-hidden="true" />
+                  <span className="text-xs font-medium leading-5">
+                    No verified image available
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="border-t border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500">
+              {showVerifiedImage ? imageSourceLabel : "Image unavailable"}
+            </p>
+          </div>
+
+          <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
+            <DetailValue label="Manufacturer" value={item.manufacturer} />
+            <DetailValue
+              label="OEM part number"
+              value={item.oemPartNumber ?? "Not recorded"}
+            />
+            <DetailValue label="Stock" value={integer.format(item.stock)} />
+            <DetailValue label="Minimum" value={integer.format(item.minimum)} />
+            <DetailValue label="Target" value={integer.format(item.target)} />
+            <DetailValue
+              label="Lead time"
+              value={item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
+            />
+            <DetailValue label="Supplier" value={item.supplier} />
+            <DetailValue label="Location" value={item.storageLocation} />
+          </dl>
+        </div>
 
         <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
@@ -778,6 +833,8 @@ export function StoresInventorySection(): JSX.Element {
         [
           item.partName,
           item.partNumber,
+          item.oemPartNumber ?? "",
+          item.manufacturer,
           item.equipmentName,
           item.equipmentCode,
           item.storageLocation,

@@ -23,9 +23,13 @@ export interface StoresInventoryItem {
   equipmentCriticality: string;
   partName: string;
   partNumber: string;
+  oemPartNumber: string | null;
   supplier: string;
   manufacturer: string;
   storageLocation: string;
+  imageUrl: string | null;
+  imageAltText: string;
+  imageSourceType: string | null;
   stock: number;
   minimum: number;
   target: number;
@@ -73,8 +77,14 @@ interface ComponentRow {
   equipment_id: unknown;
   component_name: unknown;
   component_code: unknown;
+  oem_part_number: unknown;
   vendor_name: unknown;
   maker_name: unknown;
+  image_url: unknown;
+  image_source_type: unknown;
+  image_match_basis: unknown;
+  image_alt_text: unknown;
+  image_verification_status: unknown;
   quantity_available: unknown;
   quantity_target: unknown;
   minimum_quantity: unknown;
@@ -117,10 +127,11 @@ interface RiskEvidence {
 }
 
 const COMPONENT_SELECT = `
-  id, equipment_id, component_name, component_code, vendor_name, maker_name,
-  quantity_available, quantity_target, minimum_quantity, unit_cost, lead_days,
-  storage_location, availability_status, criticality, source_system,
-  source_updated_at, updated_at
+  id, equipment_id, component_name, component_code, oem_part_number,
+  vendor_name, maker_name, image_url, image_source_type, image_match_basis,
+  image_alt_text, image_verification_status, quantity_available,
+  quantity_target, minimum_quantity, unit_cost, lead_days, storage_location,
+  availability_status, criticality, source_system, source_updated_at, updated_at
 `;
 
 const ASSET_SELECT = `
@@ -326,6 +337,18 @@ function mapInventoryItem(
   const stockState = deriveStockState(stock, minimum, target);
   const asset = assets.get(equipmentId);
   const risk = riskByEquipment.get(equipmentId);
+  const manufacturer = textValue(row.maker_name, "Not recorded");
+  const oemPartNumber = textValue(row.oem_part_number) || null;
+  const imageVerificationStatus = textValue(row.image_verification_status);
+  const imageMatchBasis = textValue(row.image_match_basis);
+  const candidateImageUrl = textValue(row.image_url);
+  const imageUrl =
+    imageVerificationStatus === "verified" &&
+    imageMatchBasis === "exact_part" &&
+    Boolean(oemPartNumber) &&
+    Boolean(candidateImageUrl)
+      ? candidateImageUrl
+      : null;
   const componentCriticality = normaliseCriticality(
     textValue(row.criticality, "Unknown"),
   );
@@ -357,9 +380,18 @@ function mapInventoryItem(
     equipmentCriticality,
     partName,
     partNumber,
+    oemPartNumber,
     supplier: textValue(row.vendor_name, "Not recorded"),
-    manufacturer: textValue(row.maker_name, "Not recorded"),
+    manufacturer,
     storageLocation: textValue(row.storage_location, "Location not recorded"),
+    imageUrl,
+    imageAltText: imageUrl
+      ? textValue(
+          row.image_alt_text,
+          `${manufacturer} ${oemPartNumber ?? partName} spare part`,
+        )
+      : "No verified image available",
+    imageSourceType: imageUrl ? textValue(row.image_source_type) || null : null,
     stock,
     minimum,
     target,
