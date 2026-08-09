@@ -1,0 +1,168 @@
+name: One-shot VOR-058 latency branch patch
+
+on:
+  push:
+    branches:
+      - agent/vor-058-site-priority-latency-budget
+    paths:
+      - ".github/workflows/vor-058-latency-branch-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    name: Apply guarded site-priority evidence fast path
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: agent/vor-058-site-priority-latency-budget
+          fetch-depth: 1
+          show-progress: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply exact guarded replacements
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one guarded match, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "netlify/functions/ask-vorta/runtime.mts",
+              '''  const deterministicArgumentsFor = (toolName: string): JsonRecord => {
+              if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {''',
+              '''  const deterministicArgumentsFor = (toolName: string): JsonRecord => {
+              if (
+                toolName === "get_site_operational_snapshot" &&
+                (
+                  plannedIntent === "site_priorities" ||
+                  plannedIntent === "site_threat_prioritization" ||
+                  plannedIntent === "site_threat_prioritisation"
+                )
+              ) {
+                return { priority_fast_path: true };
+              }
+              if (toolName === "get_shift_cover" || toolName === "get_site_maintenance_plan") {''',
+          )
+
+          replace_once(
+              "netlify/functions/ask-vorta/tool-execution.mts",
+              '''    case "get_site_operational_snapshot": {
+              const domainDefinitions: Array<[string, Promise<ToolResult>]> = [
+                ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
+                ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
+                ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
+                ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
+                ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
+                ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
+              ];''',
+              '''    case "get_site_operational_snapshot": {
+              const priorityFastPath = args.priority_fast_path === true;
+              const coreDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
+                ["siteRisk", executeTool("get_site_risk", {}, supabase, request)],
+                ["rankedActions", executeTool("get_site_ranked_actions", {}, supabase, request)],
+              ];
+              const supplementaryDomainDefinitions: Array<[string, Promise<ToolResult>]> = [
+                ["workBacklog", executeTool("get_site_work_backlog", {}, supabase, request)],
+                ["sparesRisk", executeTool("get_site_spares_risk", {}, supabase, request)],
+                ["capability", executeTool("get_site_capability_actions", {}, supabase, request)],
+                ["shiftHandover", executeTool("get_shift_handover", {}, supabase, request)],
+              ];
+              const domainDefinitions = priorityFastPath
+                ? coreDomainDefinitions
+                : [...coreDomainDefinitions, ...supplementaryDomainDefinitions];''',
+          )
+
+          replace_once(
+              "netlify/functions/ask-vorta/tool-execution.mts",
+              '''          caveat:
+                    "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",''',
+              '''          caveat: priorityFastPath
+                    ? "This priority snapshot uses current site risk plus the ranked operational-action model. Ranked actions already score risk reduction, urgency, labour/spares/procedure readiness, asset criticality, execution efficiency and evidence confidence. Ask a specialist follow-up when the decision needs the underlying work, spare, capability or handover records."
+                    : "This snapshot combines decision evidence from several Vorta sources. Use a specialist tool as well when the question needs a date range, a named shift, a named person or one exact equipment record.",''',
+          )
+
+          contract = Path("scripts/vor-058-site-priority-performance-contracts.mjs")
+          contract_text = contract.read_text()
+          marker = '''const answerSource = readFileSync(
+            "netlify/functions/ask-vorta/decision-answer.mts",
+            "utf8",
+          );'''
+          replacement = marker + '''
+          const toolExecutionSource = readFileSync(
+            "netlify/functions/ask-vorta/tool-execution.mts",
+            "utf8",
+          );'''
+          if contract_text.count(marker) != 1:
+              raise SystemExit("VOR-058 contract: answerSource marker drifted")
+          contract_text = contract_text.replace(marker, replacement, 1)
+
+          insert_marker = '''assert.ok(
+            !runtimeSource.includes(
+              'requiredTools: ["get_site_operational_snapshot", "get_equipment_risk"]',
+            ),
+            "Site-priority normalisation must not add equipment specialist lookups",
+          );'''
+          assertions = insert_marker + '''
+          assert.ok(
+            runtimeSource.includes('return { priority_fast_path: true };'),
+            "Deterministic site-priority execution must request the bounded operational-snapshot fast path",
+          );
+          for (const required of [
+            'const priorityFastPath = args.priority_fast_path === true',
+            'const coreDomainDefinitions',
+            '["siteRisk", executeTool("get_site_risk"',
+            '["rankedActions", executeTool("get_site_ranked_actions"',
+            'const supplementaryDomainDefinitions',
+            '["workBacklog", executeTool("get_site_work_backlog"',
+            '["sparesRisk", executeTool("get_site_spares_risk"',
+            '["capability", executeTool("get_site_capability_actions"',
+            '["shiftHandover", executeTool("get_shift_handover"',
+            '? coreDomainDefinitions',
+            ': [...coreDomainDefinitions, ...supplementaryDomainDefinitions]',
+            'ranked operational-action model',
+          ]) {
+            assert.ok(
+              toolExecutionSource.includes(required),
+              `Site-priority snapshot fast path must retain ${required}`,
+            );
+          }'''
+          if contract_text.count(insert_marker) != 1:
+              raise SystemExit("VOR-058 contract: normalisation assertion marker drifted")
+          contract.write_text(contract_text.replace(insert_marker, assertions, 1))
+
+      - name: Validate the patched exact source before committing
+        run: |
+          git diff --check
+          npm ci --silent
+          npm run typecheck:functions -- --pretty false
+          node scripts/vor-058-site-priority-performance-contracts.mjs
+
+      - name: Commit the guarded patch and remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Ask Vorta engineering"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/vor-058-latency-branch-patch.yml
+          git add netlify/functions/ask-vorta/runtime.mts \
+                  netlify/functions/ask-vorta/tool-execution.mts \
+                  scripts/vor-058-site-priority-performance-contracts.mjs
+          git diff --cached --check
+          git commit -m "VOR-058 bound deterministic site-priority evidence fan-out"
+          git push origin HEAD:agent/vor-058-site-priority-latency-budget
