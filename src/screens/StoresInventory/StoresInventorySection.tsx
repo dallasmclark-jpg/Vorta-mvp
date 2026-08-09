@@ -597,12 +597,12 @@ function InventoryItemDisclosure({
       </summary>
 
       <div className="border-t border-gray-800 px-4 pb-4 pt-4">
-        <div className="grid gap-4 md:grid-cols-[10rem_minmax(0,1fr)] md:items-start">
+        <div className="grid gap-4 md:grid-cols-4 md:items-start">
           <div
             data-vorta-spare-image="true"
             className="overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
           >
-            <div className="flex aspect-square items-center justify-center bg-white/[0.03]">
+            <div className="flex aspect-square items-center justify-center bg-[#0d1117]">
               {showVerifiedImage ? (
                 <img
                   src={item.imageUrl ?? undefined}
@@ -626,7 +626,7 @@ function InventoryItemDisclosure({
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:col-span-3 lg:grid-cols-4">
             <DetailValue label="Manufacturer" value={item.manufacturer} />
             <DetailValue
               label="OEM part number"
