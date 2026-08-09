@@ -14,7 +14,7 @@ import {
   mergeEvidenceLinks,
 } from "./document-evidence-links.mjs";
 import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs";
-import { jsonResponse, parseRequest } from "./request-context.mjs";
+import { jsonResponse } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
   "vor-067-production-chat-return-v3";
@@ -80,8 +80,16 @@ export function enforceFinalOperationalActionPlan(
   const workOrderId = visibleWorkOrderId(answer);
   if (!workOrderId) return false;
 
-  const backlog = requiresBacklogActionPlan(question);
-  const handover = requiresHandoverActionPlan(question);
+  const evidenceTools = new Set([
+    ...textValues(answer.toolsUsed),
+    ...textValues(answer.coveredTools),
+  ]);
+  const backlog =
+    evidenceTools.has("get_site_work_backlog") ||
+    requiresBacklogActionPlan(question);
+  const handover =
+    evidenceTools.has("get_shift_handover") ||
+    requiresHandoverActionPlan(question);
   if (!backlog && !handover) return false;
 
   const action = backlog
@@ -145,23 +153,18 @@ export default async function documentLinkHandler(
   );
   if (!answer) return primaryResponse;
 
-  const finalRequest = parseRequest(
-    await evidenceRequest
-      .clone()
-      .json()
-      .catch(() => null),
+  const authenticated = await authenticateAskVortaRequest(evidenceRequest);
+  if (!authenticated.ok) return primaryResponse;
+  const { request, supabase } = authenticated;
+
+  const actionPlanRepaired = enforceFinalOperationalActionPlan(
+    answer,
+    request.question,
   );
-  const actionPlanRepaired = finalRequest
-    ? enforceFinalOperationalActionPlan(answer, finalRequest.question)
-    : false;
   const responseWithFinalGuard = () =>
     actionPlanRepaired
       ? jsonResponse(answer, primaryResponse.status)
       : primaryResponse;
-
-  const authenticated = await authenticateAskVortaRequest(evidenceRequest);
-  if (!authenticated.ok) return responseWithFinalGuard();
-  const { request, supabase } = authenticated;
 
   const evidenceText = answerDocumentEvidenceText(answer, request.question);
   if (!answerReferencesDocuments(evidenceText)) return responseWithFinalGuard();
