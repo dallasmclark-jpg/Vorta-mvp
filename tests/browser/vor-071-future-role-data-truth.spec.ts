@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { expectNoPageOverflow } from "./maintenance-manager-test-helpers";
 
 const userSiteAccessRoute = "**/rest/v1/user_site_access*";
+const profileRoute = "**/rest/v1/profiles*";
 
 const roleCases = [
   {
@@ -20,42 +21,84 @@ const roleCases = [
 
 const crossRoleRoutes = roleCases.map(({ routes }) => routes[0]);
 
+type FutureRole = (typeof roleCases)[number]["role"];
+
+type RoleOverrideObservation = {
+  siteAccessLookups: number;
+  profileLookups: number;
+};
+
 function routePattern(route: string): RegExp {
   return new RegExp(`${route.replaceAll("/", "\\/")}(?:\\?.*)?$`);
 }
 
-async function mockAuthorisedSiteRole(
-  page: Page,
-  role: (typeof roleCases)[number]["role"],
-): Promise<void> {
-  await page.unroute(userSiteAccessRoute);
-
-  await page.route(userSiteAccessRoute, async (route) => {
-    const response = await route.fetch();
-    const payload: unknown = await response.json();
-
-    if (!Array.isArray(payload) || payload.length === 0) {
+function withRoleOverride(payload: unknown, role: FutureRole): unknown {
+  if (Array.isArray(payload)) {
+    if (payload.length === 0) {
       throw new Error(
-        "Future-role browser proof requires at least one real RLS-visible site-access grant.",
+        "Future-role browser proof requires at least one real RLS-visible access row.",
       );
     }
 
-    const roleScopedPayload = payload.map((row) => {
+    return payload.map((row) => {
       if (!row || typeof row !== "object") {
-        throw new Error("Unexpected user_site_access response shape.");
+        throw new Error("Unexpected authenticated access response shape.");
       }
 
       return {
         ...row,
         app_role: role,
+        role,
       };
     });
+  }
+
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Unexpected authenticated profile response shape.");
+  }
+
+  return {
+    ...payload,
+    app_role: role,
+    role,
+  };
+}
+
+async function installAuthorisedRoleOverride(
+  context: BrowserContext,
+  role: FutureRole,
+): Promise<RoleOverrideObservation> {
+  await context.unroute(userSiteAccessRoute);
+  await context.unroute(profileRoute);
+
+  const observation: RoleOverrideObservation = {
+    siteAccessLookups: 0,
+    profileLookups: 0,
+  };
+
+  await context.route(userSiteAccessRoute, async (route) => {
+    observation.siteAccessLookups += 1;
+    const response = await route.fetch();
+    const payload: unknown = await response.json();
 
     await route.fulfill({
       response,
-      json: roleScopedPayload,
+      json: withRoleOverride(payload, role),
     });
   });
+
+  await context.route(profileRoute, async (route) => {
+    observation.profileLookups += 1;
+    const response = await route.fetch();
+    const payload: unknown = await response.json();
+
+    await route.fulfill({
+      response,
+      json: withRoleOverride(payload, role),
+    });
+  });
+
+  return observation;
 }
 
 async function expectHonestUnavailableState(page: Page): Promise<void> {
@@ -92,19 +135,37 @@ test("Maintenance Manager remains blocked from future-role portal boundaries", a
   }
 });
 
-test("authorised future-role shells show honest non-operational evidence state", async ({ page }) => {
+test("authorised future-role shells show honest non-operational evidence state", async ({ context }) => {
   // Keep the real authenticated JWT and real RLS-visible site/organisation rows.
-  // Only the browser-test response's site-specific role is substituted so each
-  // future portal can be rendered without mutating Supabase access grants.
+  // Install the response override on the BrowserContext before each fresh page is
+  // created so AuthProvider cannot hydrate the Maintenance Manager role first.
+  // No Supabase grant is mutated by this browser-only proof.
   for (const roleCase of roleCases) {
-    await mockAuthorisedSiteRole(page, roleCase.role);
+    const observation = await installAuthorisedRoleOverride(
+      context,
+      roleCase.role,
+    );
+    const rolePage = await context.newPage();
 
-    for (const route of roleCase.routes) {
-      await page.goto(route);
-      await expect(page).toHaveURL(routePattern(route));
-      await expectHonestUnavailableState(page);
+    try {
+      for (const route of roleCase.routes) {
+        await rolePage.goto(route);
+
+        await expect
+          .poll(() => observation.siteAccessLookups)
+          .toBeGreaterThan(0);
+        await expect
+          .poll(() => observation.profileLookups)
+          .toBeGreaterThan(0);
+
+        await expect(rolePage).toHaveURL(routePattern(route));
+        await expectHonestUnavailableState(rolePage);
+      }
+    } finally {
+      await rolePage.close();
     }
   }
 
-  await page.unroute(userSiteAccessRoute);
+  await context.unroute(userSiteAccessRoute);
+  await context.unroute(profileRoute);
 });
