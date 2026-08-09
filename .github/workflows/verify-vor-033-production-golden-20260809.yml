@@ -1,0 +1,52 @@
+name: VERIFY ONLY VOR-033 refreshed production golden audit
+
+on:
+  push:
+    branches:
+      - verify/vor-033-production-golden-20260809
+    paths:
+      - ".github/workflows/verify-vor-033-production-golden-20260809.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  golden:
+    name: 24-question visible decision quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_EXPECTED_PRODUCTION_COMMIT: beffbed84fce32a9d31f594e2bc7617dfd394104
+      VORTA_EVAL_DELAY_MS: "15000"
+    steps:
+      - name: Check out verification source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Verify exact production and run all 24 visible-decision questions
+        run: node scripts/vor-033-production-golden-human-quality.mjs
+
+      - name: Preserve production audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vor-033-refreshed-production-golden-${{ github.sha }}
+          path: artifacts/vor-033-production-golden-human-quality.json
+          if-no-files-found: error
+          retention-days: 14
