@@ -16,6 +16,7 @@ on:
       - "scripts/vor-058*"
       - "scripts/vor-059*"
       - "scripts/vor-062*"
+      - "scripts/vor-065*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -30,6 +31,7 @@ on:
       - "tests/evals/vor-059-deterministic-operational-answers.json"
       - "tests/evals/vor-059-operational-model-independence-audit.json"
       - "tests/evals/vor-062-site-risk-movement.json"
+      - "tests/evals/vor-065-pm-risk-movement.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -56,6 +58,7 @@ on:
       - "scripts/vor-058*"
       - "scripts/vor-059*"
       - "scripts/vor-062*"
+      - "scripts/vor-065*"
       - "scripts/ask-vorta-live-evals.mjs"
       - "scripts/run-contract-suite.mjs"
       - "scripts/vor-044-operational-value-ranking-contracts.mjs"
@@ -70,6 +73,7 @@ on:
       - "tests/evals/vor-059-deterministic-operational-answers.json"
       - "tests/evals/vor-059-operational-model-independence-audit.json"
       - "tests/evals/vor-062-site-risk-movement.json"
+      - "tests/evals/vor-065-pm-risk-movement.json"
       - "tests/evals/vor-033-demo-golden.json"
       - "tests/evals/ask-vorta-live-golden.json"
       - "netlify.toml"
@@ -150,6 +154,9 @@ jobs:
       - name: Run permanent VOR-062 contracts
         run: node scripts/vor-062-site-risk-movement-contracts.mjs
 
+      - name: Run permanent VOR-065 contracts
+        run: node scripts/vor-065-pm-risk-movement-contracts.mjs
+
       - name: Run complete contract suite
         run: npm run test:contracts
 
@@ -204,6 +211,15 @@ jobs:
         shell: bash
         run: npm run eval:ask-vorta:vor062 | tee vor-062-live-eval.log
 
+      - name: Run four authenticated VOR-065 PM risk movement decisions
+        env:
+          VORTA_EVAL_BASE_URL: http://127.0.0.1:8788
+          VORTA_EVAL_DELAY_MS: 250
+          VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+          VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+        shell: bash
+        run: npm run eval:ask-vorta:vor065 | tee vor-065-live-eval.log
+
       - name: Stop exact-source Ask Vorta evaluation server
         if: always()
         shell: bash
@@ -223,6 +239,7 @@ jobs:
             vor-058-live-eval.log
             vor-059-live-eval.log
             vor-062-live-eval.log
+            vor-065-live-eval.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -237,5 +254,6 @@ jobs:
             vor-058-live-eval.log
             vor-059-live-eval.log
             vor-062-live-eval.log
+            vor-065-live-eval.log
           if-no-files-found: error
           retention-days: 7
