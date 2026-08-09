@@ -19,7 +19,7 @@ for (const required of [
   "requestedDateRange(",
   'intentLabel: "site_risk_movement"',
   'requiredTools: ["get_site_risk_movement"]',
-  '"what caused|what drove|what is behind|what\'s behind"',
+  "what caused|what drove|what is behind|what's behind",
   '.from("preventive_maintenance")',
   '.eq("site_id", request.siteId)',
   '.gte("next_due_date", previous.snapshotDate)',
