@@ -43,7 +43,7 @@ check(
 check(
   "browser proof removes only the demo-admin bypass before ordinary-role simulation",
   browser.includes("removeBrowserDemoAdminBypass") &&
-    browser.includes("appMetadataValue.demo_admin = false"),
+    browser.includes("metadata.demo_admin = false"),
 );
 check(
   "sessionStorage is explicitly covered because storageState cannot preserve it",
@@ -61,9 +61,10 @@ check(
   !browser.match(/supabase\s*\.\s*from\([^)]*user_site_access[^)]*\)\s*\.\s*(insert|update|upsert|delete)/s),
 );
 check(
-  "every role proves a forbidden cross-role redirect",
+  "every role proves a forbidden cross-role redirect inside the authenticated SPA",
   browser.includes("forbiddenPath") &&
-    browser.includes("await page.goto(roleCase.forbiddenPath)") &&
+    browser.includes("navigateWithinAuthenticatedPortal") &&
+    browser.includes("await navigateWithinAuthenticatedPortal(page, roleCase.forbiddenPath)") &&
     browser.includes("routePattern(roleCase.homePath)"),
 );
 check(
