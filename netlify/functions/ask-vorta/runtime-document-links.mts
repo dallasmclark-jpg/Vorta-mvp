@@ -14,7 +14,7 @@ import {
   mergeEvidenceLinks,
 } from "./document-evidence-links.mjs";
 import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs";
-import { jsonResponse } from "./request-context.mjs";
+import { jsonResponse, parseRequest } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
   "vor-067-production-chat-return-v3";
@@ -145,18 +145,23 @@ export default async function documentLinkHandler(
   );
   if (!answer) return primaryResponse;
 
-  const authenticated = await authenticateAskVortaRequest(evidenceRequest);
-  if (!authenticated.ok) return primaryResponse;
-  const { request, supabase } = authenticated;
-
-  const actionPlanRepaired = enforceFinalOperationalActionPlan(
-    answer,
-    request.question,
+  const finalRequest = parseRequest(
+    await evidenceRequest
+      .clone()
+      .json()
+      .catch(() => null),
   );
+  const actionPlanRepaired = finalRequest
+    ? enforceFinalOperationalActionPlan(answer, finalRequest.question)
+    : false;
   const responseWithFinalGuard = () =>
     actionPlanRepaired
       ? jsonResponse(answer, primaryResponse.status)
       : primaryResponse;
+
+  const authenticated = await authenticateAskVortaRequest(evidenceRequest);
+  if (!authenticated.ok) return responseWithFinalGuard();
+  const { request, supabase } = authenticated;
 
   const evidenceText = answerDocumentEvidenceText(answer, request.question);
   if (!answerReferencesDocuments(evidenceText)) return responseWithFinalGuard();
