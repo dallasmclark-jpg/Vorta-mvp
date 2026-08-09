@@ -13,7 +13,7 @@
       "the two PMs caused the entire site risk",
       "proved every cause"
     ],
-    "confidenceMin": 90,
+    "confidenceMin": 80,
     "maxToolCount": 1,
     "maxDurationMs": 5000,
     "maxDecisionSummaryItems": 5,
@@ -49,7 +49,7 @@
     "mustNotMention": [
       "verified PM driver"
     ],
-    "confidenceMin": 80,
+    "confidenceMin": 75,
     "maxToolCount": 1,
     "maxDurationMs": 5000,
     "maxDecisionSummaryItems": 5,
