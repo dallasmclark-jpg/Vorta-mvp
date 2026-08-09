@@ -61,9 +61,10 @@ function visibleWorkOrderId(answer: JsonRecord): string | null {
 }
 
 function requiresBacklogActionPlan(question: string): boolean {
-  return /\b(backlog|overdue work(?: order)?s?|unassigned work(?: order)?s?)\b/i.test(
-    question,
-  );
+  const mentionsBacklog = /\bbacklog\b/i.test(question);
+  const mentionsBacklogState = /\b(?:overdue|unassigned)\b/i.test(question);
+  const mentionsWorkOrders = /\bwork(?:\s+orders?)?\b/i.test(question);
+  return mentionsBacklog || (mentionsBacklogState && mentionsWorkOrders);
 }
 
 function requiresHandoverActionPlan(question: string): boolean {
