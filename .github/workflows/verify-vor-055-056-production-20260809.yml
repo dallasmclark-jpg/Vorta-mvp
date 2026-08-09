@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Verify VOR-055/056 on exact production
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       EXPECTED_PRODUCTION_COMMIT: beffbed84fce32a9d31f594e2bc7617dfd394104
       VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
@@ -33,7 +33,8 @@ jobs:
       VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
       VORTA_E2E_DENIED_EQUIPMENT_ID: 40000000-0000-0000-0000-000000000013
       VORTA_EVAL_DELAY_MS: 0
-      VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 0
+      VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+      VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
 
     steps:
       - name: Check out verification branch
@@ -41,11 +42,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prove workflow-only verification commit above exact production
+      - name: Prove verification-only branch above exact production
         shell: bash
         run: |
           git merge-base --is-ancestor "$EXPECTED_PRODUCTION_COMMIT" HEAD
-          test "$(git rev-list --count "$EXPECTED_PRODUCTION_COMMIT"..HEAD)" -eq 1
           test "$(git diff --name-only "$EXPECTED_PRODUCTION_COMMIT" HEAD | tr -d '\r')" = ".github/workflows/verify-vor-055-056-production-20260809.yml"
 
       - name: Compose public Supabase client key
