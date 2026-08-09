@@ -10,6 +10,9 @@ const storylineEvidence = readMigration("20260801180721_enrich_demo_storyline_ev
 const visibleLanguage = readMigration("20260801180802_remove_remaining_visible_demo_language.sql");
 const healthGate = readMigration("20260801180839_add_demo_storyline_health_gate.sql");
 const indexMigration = readMigration("20260801180925_index_demo_storyline_site_reference.sql");
+const historicalCoexistence = readMigration(
+  "20260809141000_scope_vor033_prominent_narrative_health_away_from_historical_backtest.sql",
+);
 
 const requireText = (source, expected, message) => {
   assert.ok(source.includes(expected), message ?? `Expected migration to include: ${expected}`);
@@ -71,10 +74,51 @@ requireText(healthGate, "vorta_get_demo_dataset_credibility_phase1_internal", "T
 requireText(healthGate, "perform private.vorta_apply_demo_storyline_narratives_internal", "Rolling date refresh must restore storyline narratives after risk recalculation.");
 requireText(healthGate, "VOR-033 Phase 2 demo storyline credibility contract failed");
 
+requireText(
+  historicalCoexistence,
+  "rename to vorta_get_demo_storyline_health_pre_backtest_internal",
+  "The pre-backtest storyline contract must be retained rather than discarded.",
+);
+requireText(
+  historicalCoexistence,
+  "wo_number not like 'HIST-%'",
+  "Prominent current demo-narrative duplicates must still fail the VOR-033 gate.",
+);
+requireText(
+  historicalCoexistence,
+  "wo_number like 'HIST-%'",
+  "Historical backtest duplicate groups must remain measurable rather than hidden.",
+);
+requireText(
+  historicalCoexistence,
+  "'historicalBacktestDuplicateNarrativeGroups', historical_groups",
+  "The health report must expose governed historical repetition separately.",
+);
+requireText(
+  historicalCoexistence,
+  "'historicalBacktestNarrativesExcludedFromProminentDemoGate', true",
+  "The report must disclose why HIST-series repetition does not fail the prominent demo gate.",
+);
+requireText(
+  historicalCoexistence,
+  "current_groups = 0",
+  "Operational duplicate narratives must remain a hard failure.",
+);
+requireText(
+  historicalCoexistence,
+  "revoke all on function private.vorta_get_demo_storyline_health_internal(uuid)",
+  "The evolved health function must remain private.",
+);
+assert.equal(
+  /\b(delete|truncate)\s+from\s+public\./i.test(historicalCoexistence),
+  false,
+  "The coexistence repair must not rewrite or delete historical backtest evidence.",
+);
+
 requireText(indexMigration, "vorta_demo_storylines_site_active_idx");
 requireText(indexMigration, "(site_id, active, story_key)");
 
-for (const source of [storylineEvidence, healthGate]) {
+for (const source of [storylineEvidence, healthGate, historicalCoexistence]) {
   assert.equal(
     /create\s+(or\s+replace\s+)?function\s+public\.vorta_(get|refresh|apply)_demo_(dataset|storyline)/i.test(source),
     false,
@@ -82,4 +126,4 @@ for (const source of [storylineEvidence, healthGate]) {
   );
 }
 
-console.log("VOR-033 connected demo storyline contracts passed.");
+console.log("VOR-033 connected demo storyline contracts passed, including VOR-069 historical-backtest coexistence.");
