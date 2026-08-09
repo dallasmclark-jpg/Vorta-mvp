@@ -14,6 +14,10 @@ const answerSource = readFileSync(
   "netlify/functions/ask-vorta/decision-answer.mts",
   "utf8",
 );
+const toolExecutionSource = readFileSync(
+  "netlify/functions/ask-vorta/tool-execution.mts",
+  "utf8",
+);
 const workflowSource = readFileSync(
   ".github/workflows/vor-049-validation.yml",
   "utf8",
@@ -83,6 +87,29 @@ assert.ok(
   ),
   "Site-priority normalisation must not add equipment specialist lookups",
 );
+assert.ok(
+  runtimeSource.includes('return { priority_fast_path: true };'),
+  "Deterministic site-priority execution must request the bounded operational-snapshot fast path",
+);
+for (const required of [
+  'const priorityFastPath = args.priority_fast_path === true',
+  'const coreDomainDefinitions',
+  '["siteRisk", executeTool("get_site_risk"',
+  '["rankedActions", executeTool("get_site_ranked_actions"',
+  'const supplementaryDomainDefinitions',
+  '["workBacklog", executeTool("get_site_work_backlog"',
+  '["sparesRisk", executeTool("get_site_spares_risk"',
+  '["capability", executeTool("get_site_capability_actions"',
+  '["shiftHandover", executeTool("get_shift_handover"',
+  '? coreDomainDefinitions',
+  ': [...coreDomainDefinitions, ...supplementaryDomainDefinitions]',
+  'ranked operational-action model',
+]) {
+  assert.ok(
+    toolExecutionSource.includes(required),
+    `Site-priority snapshot fast path must retain ${required}`,
+  );
+}
 
 for (const required of [
   'intent === "site_priorities"',
