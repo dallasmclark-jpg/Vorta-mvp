@@ -166,6 +166,20 @@ const normaliseCriticality = (value: string): string => {
   return value.trim() || "Unknown";
 };
 
+function netlifyImageUrl(sourceUrl: string): string {
+  if (!import.meta.env.PROD) return sourceUrl;
+
+  const params = new URLSearchParams({
+    url: sourceUrl,
+    w: "320",
+    h: "320",
+    fit: "contain",
+    q: "85",
+  });
+
+  return `/.netlify/images?${params.toString()}`;
+}
+
 function deriveStockState(
   stock: number,
   minimum: number,
@@ -347,7 +361,7 @@ function mapInventoryItem(
     imageMatchBasis === "exact_part" &&
     Boolean(oemPartNumber) &&
     Boolean(candidateImageUrl)
-      ? candidateImageUrl
+      ? netlifyImageUrl(candidateImageUrl)
       : null;
   const componentCriticality = normaliseCriticality(
     textValue(row.criticality, "Unknown"),
