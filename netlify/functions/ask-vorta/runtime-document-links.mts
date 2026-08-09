@@ -17,7 +17,7 @@ import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs";
 import { jsonResponse } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
-  "vor-067-production-chat-return-v2";
+  "vor-067-production-chat-return-v3";
 
 if (ASK_VORTA_BACKTEST_REVISION !== "vor-069-historical-backtest-intelligence-v1") {
   throw new Error("Ask Vorta historical backtest runtime revision mismatch.");
@@ -27,6 +27,93 @@ function record(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonRecord)
     : null;
+}
+
+function records(value: unknown): JsonRecord[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is JsonRecord =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+}
+
+function textValues(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function visibleOperationalText(answer: JsonRecord): string {
+  return JSON.stringify([
+    answer.directAnswer,
+    answer.decisionSummary,
+    answer.findings,
+    answer.recommendedActions,
+  ]);
+}
+
+function visibleWorkOrderId(answer: JsonRecord): string | null {
+  return visibleOperationalText(answer).match(/\bWO-\d{4,}\b/i)?.[0]?.toUpperCase() ?? null;
+}
+
+function requiresBacklogActionPlan(question: string): boolean {
+  const mentionsBacklog = /\bbacklog\b/i.test(question);
+  const mentionsBacklogState = /\b(?:overdue|unassigned)\b/i.test(question);
+  const mentionsWorkOrders = /\bwork(?:\s+orders?)?\b/i.test(question);
+  return mentionsBacklog || (mentionsBacklogState && mentionsWorkOrders);
+}
+
+function requiresHandoverActionPlan(question: string): boolean {
+  return /\bhandover\b/i.test(question);
+}
+
+export function enforceFinalOperationalActionPlan(
+  answer: JsonRecord,
+  question: string,
+): boolean {
+  if (records(answer.actionPlan).length > 0) return false;
+
+  const workOrderId = visibleWorkOrderId(answer);
+  if (!workOrderId) return false;
+
+  const evidenceTools = new Set([
+    ...textValues(answer.toolsUsed),
+    ...textValues(answer.coveredTools),
+  ]);
+  const backlog =
+    evidenceTools.has("get_site_work_backlog") ||
+    requiresBacklogActionPlan(question);
+  const handover =
+    evidenceTools.has("get_shift_handover") ||
+    requiresHandoverActionPlan(question);
+  if (!backlog && !handover) return false;
+
+  const action = backlog
+    ? `Review ${workOrderId} against the authorised SAP-backed work-order evidence, confirm readiness, assignee, due date and sequence, then have the Maintenance Planner make any required record change in SAP.`
+    : `Review ${workOrderId}'s authorised SAP-backed status and blocker, assign the next follow-up outside Vorta, and carry the item into the next shift handover until the blocker is resolved.`;
+
+  const existingRecommendations = textValues(answer.recommendedActions).filter(
+    (item) => item !== action,
+  );
+  answer.recommendedActions = [action, ...existingRecommendations].slice(0, 4);
+  answer.actionPlan = [
+    {
+      priority: "now",
+      action,
+      owner: "Maintenance Manager / Planner",
+      expectedImpact: backlog
+        ? "Moves the highest-priority evidenced work-order risk toward an owned, executable maintenance plan."
+        : "Makes the evidenced handover blocker explicit and gives the next shift an owned follow-up without creating a parallel operational record.",
+      verification: backlog
+        ? `Open the authorised ${workOrderId} evidence and confirm readiness, assignee, due date and sequence are recorded in SAP by an authorised user.`
+        : `Open the authorised ${workOrderId} evidence and confirm the blocker, owner and next action are reflected in the SAP work order or approved shift-handover evidence.`,
+    },
+  ];
+  return true;
 }
 
 async function resolveEquipmentId(
@@ -70,15 +157,24 @@ export default async function documentLinkHandler(
   if (!authenticated.ok) return primaryResponse;
   const { request, supabase } = authenticated;
 
+  const actionPlanRepaired = enforceFinalOperationalActionPlan(
+    answer,
+    request.question,
+  );
+  const responseWithFinalGuard = () =>
+    actionPlanRepaired
+      ? jsonResponse(answer, primaryResponse.status)
+      : primaryResponse;
+
   const evidenceText = answerDocumentEvidenceText(answer, request.question);
-  if (!answerReferencesDocuments(evidenceText)) return primaryResponse;
+  if (!answerReferencesDocuments(evidenceText)) return responseWithFinalGuard();
 
   const equipmentId = await resolveEquipmentId(
     answer,
     supabase,
     request.siteId,
   );
-  if (!equipmentId) return primaryResponse;
+  if (!equipmentId) return responseWithFinalGuard();
 
   const { data, error } = await supabase
     .from("knowledge_documents")
@@ -91,7 +187,7 @@ export default async function documentLinkHandler(
     .ilike("approval_status", "approved")
     .limit(24);
   if (error || !Array.isArray(data) || data.length === 0) {
-    return primaryResponse;
+    return responseWithFinalGuard();
   }
 
   const documentLinks = buildDocumentEvidenceLinks(
@@ -101,7 +197,7 @@ export default async function documentLinkHandler(
     ...link,
     path: withAskVortaDocumentOrigin(link.path),
   }));
-  if (documentLinks.length === 0) return primaryResponse;
+  if (documentLinks.length === 0) return responseWithFinalGuard();
 
   answer.evidenceLinks = mergeEvidenceLinks(
     documentLinks,

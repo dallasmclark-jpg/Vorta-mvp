@@ -13,7 +13,7 @@ if (
   ASK_VORTA_RESPONSE_VALIDATION_REVISION !==
     "vor-056-final-backlog-boundary-v1" ||
   ASK_VORTA_DOCUMENT_LINK_REVISION !==
-    "vor-067-production-chat-return-v2"
+    "vor-067-production-chat-return-v3"
 ) {
   throw new Error("Ask Vorta validated bundle revision mismatch.");
 }

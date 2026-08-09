@@ -13,6 +13,14 @@ const responseValidation = readFileSync(
   "netlify/functions/ask-vorta/response-validation.mts",
   "utf8",
 );
+const finalResponseBoundary = readFileSync(
+  "netlify/functions/ask-vorta/runtime-document-links.mts",
+  "utf8",
+);
+const backlogEdge = readFileSync(
+  "netlify/edge-functions/ask-vorta-work-backlog.ts",
+  "utf8",
+);
 const routePlanning = readFileSync(
   "netlify/functions/ask-vorta/route-planning.mts",
   "utf8",
@@ -107,6 +115,83 @@ assert.ok(
     runtime.split("enforceBacklogActionPlan(").length - 1 >= 3 &&
     runtime.split("toolOutcomes, usedTools").length - 1 >= 3,
   "The backlog guard must be imported and run with executed-tool evidence at deterministic, semantic and verified-fallback response boundaries",
+);
+
+for (const marker of [
+  "export function enforceFinalOperationalActionPlan(",
+  "visibleWorkOrderId(answer)",
+  "requiresBacklogActionPlan(question)",
+  "requiresHandoverActionPlan(question)",
+  "const evidenceTools = new Set([",
+  "...textValues(answer.toolsUsed)",
+  "...textValues(answer.coveredTools)",
+  'evidenceTools.has("get_site_work_backlog")',
+  'evidenceTools.has("get_shift_handover")',
+  "const mentionsBacklog = /\\bbacklog\\b/i.test(question)",
+  "const mentionsBacklogState = /\\b(?:overdue|unassigned)\\b/i.test(question)",
+  "const mentionsWorkOrders = /\\bwork(?:\\s+orders?)?\\b/i.test(question)",
+  "mentionsBacklog || (mentionsBacklogState && mentionsWorkOrders)",
+  "if (!workOrderId) return false",
+  "if (!backlog && !handover) return false",
+  "Maintenance Manager / Planner",
+  "authorised SAP-backed work-order evidence",
+  "make any required record change in SAP",
+  "authorised SAP-backed status and blocker",
+  "outside Vorta",
+  "responseWithFinalGuard",
+]) {
+  assert.ok(
+    finalResponseBoundary.includes(marker),
+    `The final HTTP response boundary is missing ${marker}`,
+  );
+}
+assert.ok(
+  finalResponseBoundary.indexOf("enforceFinalOperationalActionPlan(") <
+    finalResponseBoundary.indexOf("answerDocumentEvidenceText("),
+  "The final operational guard must run before document-link early returns can bypass it",
+);
+for (const earlyReturn of [
+  "if (!answerReferencesDocuments(evidenceText)) return responseWithFinalGuard();",
+  "if (!equipmentId) return responseWithFinalGuard();",
+  "return responseWithFinalGuard();",
+]) {
+  assert.ok(
+    finalResponseBoundary.includes(earlyReturn),
+    `Document-link processing must preserve the final action-plan repair at ${earlyReturn}`,
+  );
+}
+assert.equal(
+  /assigned successfully|updated SAP/i.test(finalResponseBoundary),
+  false,
+  "The final response guard must not claim that Ask Vorta performed an SAP or assignment write",
+);
+
+for (const marker of [
+  'const OPEN_WORK_PATTERN =',
+  'overdue work|unassigned work',
+  'toolsUsed: ["get_site_work_backlog"]',
+  'const backlogAction = top',
+  'authorised SAP-backed work-order evidence',
+  'recommendedActions: backlogAction ? [backlogAction] : []',
+  'actionPlan: backlogAction',
+  'owner: "Maintenance Manager / Planner"',
+  'have the Maintenance Planner make any required record change in SAP',
+  'recorded in SAP by an authorised user',
+]) {
+  assert.ok(
+    backlogEdge.includes(marker),
+    `The factual backlog edge response is missing ${marker}`,
+  );
+}
+assert.ok(
+  backlogEdge.indexOf('const backlogAction = top') <
+    backlogEdge.indexOf('toolsUsed: ["get_site_work_backlog"]'),
+  "The edge backlog action plan must be created in the same governed response that declares the backlog tool evidence",
+);
+assert.equal(
+  /assigned successfully|updated SAP/i.test(backlogEdge),
+  false,
+  "The edge backlog response must not claim that Vorta performed an SAP or assignment write",
 );
 
 for (const marker of [
