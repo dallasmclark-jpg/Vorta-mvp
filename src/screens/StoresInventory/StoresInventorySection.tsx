@@ -652,7 +652,8 @@ function InventoryItemDisclosure({
                       setImageExpanded(true);
                     }}
                     aria-label={`Enlarge image of ${item.partName}`}
-                    className="group/image relative h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/70"
+                    className="relative h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60"
+                    style={{ cursor: "zoom-in" }}
                   >
                     <img
                       src={item.imageUrl ?? undefined}
@@ -662,7 +663,7 @@ function InventoryItemDisclosure({
                       onError={() => setImageFailed(true)}
                       className="h-full w-full object-contain p-3"
                     />
-                    <span className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/65 text-white opacity-90 shadow-lg transition-opacity group-hover/image:opacity-100">
+                    <span className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 bg-[#141820] text-white">
                       <Maximize2 className="h-4 w-4" aria-hidden="true" />
                     </span>
                   </button>
@@ -687,7 +688,7 @@ function InventoryItemDisclosure({
                     className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                   >
                     View OEM product
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </a>
                 )}
               </div>
@@ -750,23 +751,27 @@ function InventoryItemDisclosure({
           role="dialog"
           aria-modal="true"
           aria-label={`Enlarged image of ${item.partName}`}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-6"
+          className="fixed inset-0 flex items-center justify-center p-3"
+          style={{ zIndex: 100, backgroundColor: "rgba(0, 0, 0, 0.9)" }}
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) closeImage();
           }}
         >
-          <div className="relative flex h-[92dvh] w-[96vw] max-w-[1600px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-2xl">
+          <div
+            className="relative flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
+            style={{ height: "92dvh", width: "96vw", maxWidth: "1600px" }}
+          >
             <button
               ref={closeButtonRef}
               type="button"
               onClick={closeImage}
               aria-label="Close enlarged image"
-              className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-black/70 text-white shadow-lg transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-[#141820] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
 
-            <div className="min-h-0 flex-1 p-4 sm:p-6 md:p-8">
+            <div className="min-h-0 flex-1 p-4">
               <img
                 src={lightboxImageUrl}
                 alt={item.imageAltText}
@@ -782,12 +787,12 @@ function InventoryItemDisclosure({
               />
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-white/10 bg-[#141820] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex flex-col gap-2 border-t border-gray-800 bg-[#141820] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-100">
                   {item.partName}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-slate-400">
                   {item.manufacturer}
                   {item.oemPartNumber ? ` · ${item.oemPartNumber}` : ""}
                 </p>
@@ -797,7 +802,7 @@ function InventoryItemDisclosure({
                   href={item.oemUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-3 py-2 text-sm font-semibold text-blue-100 hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-3 py-2 text-sm font-semibold text-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                 >
                   View OEM product
                   <ExternalLink className="h-4 w-4" aria-hidden="true" />
