@@ -24,10 +24,12 @@ export interface StoresInventoryItem {
   partName: string;
   partNumber: string;
   oemPartNumber: string | null;
+  oemUrl: string | null;
   supplier: string;
   manufacturer: string;
   storageLocation: string;
   imageUrl: string | null;
+  imageFullUrl: string | null;
   imageAltText: string;
   imageSourceType: string | null;
   stock: number;
@@ -81,6 +83,7 @@ interface ComponentRow {
   vendor_name: unknown;
   maker_name: unknown;
   image_url: unknown;
+  image_source_url: unknown;
   image_source_type: unknown;
   image_match_basis: unknown;
   image_alt_text: unknown;
@@ -128,10 +131,11 @@ interface RiskEvidence {
 
 const COMPONENT_SELECT = `
   id, equipment_id, component_name, component_code, oem_part_number,
-  vendor_name, maker_name, image_url, image_source_type, image_match_basis,
-  image_alt_text, image_verification_status, quantity_available,
-  quantity_target, minimum_quantity, unit_cost, lead_days, storage_location,
-  availability_status, criticality, source_system, source_updated_at, updated_at
+  vendor_name, maker_name, image_url, image_source_url, image_source_type,
+  image_match_basis, image_alt_text, image_verification_status,
+  quantity_available, quantity_target, minimum_quantity, unit_cost, lead_days,
+  storage_location, availability_status, criticality, source_system,
+  source_updated_at, updated_at
 `;
 
 const ASSET_SELECT = `
@@ -141,6 +145,17 @@ const ASSET_SELECT = `
 const RISK_SELECT = `
   equipment_id, risk_score, risk_level, updated_at
 `;
+
+const OEM_PRODUCT_URLS: Record<string, string> = {
+  "ABB|ACH580-01-02A7-4": "https://www.abb.com/global/en/products/3axd50000038981",
+  "Belimo|LM24A-SR": "https://www.belimo.com/uk/shop/en_GB/p?code=LM24A-SR",
+  "DuPont FilmTec|BW30 PRO-400": "https://www.dupont.com/products/filmtec-bw30-pro-400.html",
+  "Festo|19221": "https://ftp.festo.com/Public/PNEUMATIC/SOFTWARE_SERVICE/Documentation/19221.html",
+  "Optibelt|SPA2057": "https://web.optibelt.com/en-gb/all-products/v-belts",
+  "Philips / Signify|927903404007": "https://www.signify.com/global/prof/conventional-lamps-and-tubes/special-lamps/uv-c-disinfection/air/philips-tuv-pl-l/927903404007_EU/product",
+  "Siemens|1FK7022-5AK71-1LG3": "https://mall.industry.siemens.com/mall/en/de/Catalog/Product/1FK7022-5AK71-1LG3",
+  "SKF|6205-2RSH": "https://www.emarketplace.in.skf.com/industrial/bearings?search=6205-2RSH",
+};
 
 const textValue = (value: unknown, fallback = ""): string =>
   typeof value === "string" && value.trim() ? value.trim() : fallback;
@@ -166,13 +181,52 @@ const normaliseCriticality = (value: string): string => {
   return value.trim() || "Unknown";
 };
 
-function netlifyImageUrl(sourceUrl: string): string {
+function externalHttpUrl(value: unknown): string | null {
+  const candidate = textValue(value);
+  if (!candidate) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? parsed.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveOemUrl({
+  manufacturer,
+  oemPartNumber,
+  imageSourceType,
+  imageSourceUrl,
+}: {
+  manufacturer: string;
+  oemPartNumber: string | null;
+  imageSourceType: string;
+  imageSourceUrl: unknown;
+}): string | null {
+  const sourceUrl = externalHttpUrl(imageSourceUrl);
+
+  if (imageSourceType === "manufacturer" && sourceUrl) {
+    return sourceUrl;
+  }
+
+  if (!oemPartNumber) return null;
+  return OEM_PRODUCT_URLS[`${manufacturer}|${oemPartNumber}`] ?? null;
+}
+
+function netlifyImageUrl(
+  sourceUrl: string,
+  width = 320,
+  height = 320,
+): string {
   if (!import.meta.env.PROD) return sourceUrl;
 
   const params = new URLSearchParams({
     url: sourceUrl,
-    w: "320",
-    h: "320",
+    w: String(width),
+    h: String(height),
     fit: "contain",
     q: "85",
   });
@@ -355,14 +409,27 @@ function mapInventoryItem(
   const oemPartNumber = textValue(row.oem_part_number) || null;
   const imageVerificationStatus = textValue(row.image_verification_status);
   const imageMatchBasis = textValue(row.image_match_basis);
-  const candidateImageUrl = textValue(row.image_url);
-  const imageUrl =
+  const imageSourceType = textValue(row.image_source_type);
+  const candidateImageUrl = externalHttpUrl(row.image_url);
+  const imageEligible =
     imageVerificationStatus === "verified" &&
     imageMatchBasis === "exact_part" &&
     Boolean(oemPartNumber) &&
-    Boolean(candidateImageUrl)
-      ? netlifyImageUrl(candidateImageUrl)
+    Boolean(candidateImageUrl);
+  const imageUrl =
+    imageEligible && candidateImageUrl
+      ? netlifyImageUrl(candidateImageUrl, 320, 320)
       : null;
+  const imageFullUrl =
+    imageEligible && candidateImageUrl
+      ? netlifyImageUrl(candidateImageUrl, 1600, 1200)
+      : null;
+  const oemUrl = resolveOemUrl({
+    manufacturer,
+    oemPartNumber,
+    imageSourceType,
+    imageSourceUrl: row.image_source_url,
+  });
   const componentCriticality = normaliseCriticality(
     textValue(row.criticality, "Unknown"),
   );
@@ -395,17 +462,19 @@ function mapInventoryItem(
     partName,
     partNumber,
     oemPartNumber,
+    oemUrl,
     supplier: textValue(row.vendor_name, "Not recorded"),
     manufacturer,
     storageLocation: textValue(row.storage_location, "Location not recorded"),
     imageUrl,
+    imageFullUrl,
     imageAltText: imageUrl
       ? textValue(
           row.image_alt_text,
           `${manufacturer} ${oemPartNumber ?? partName} spare part`,
         )
       : "No verified image available",
-    imageSourceType: imageUrl ? textValue(row.image_source_type) || null : null,
+    imageSourceType: imageUrl ? imageSourceType || null : null,
     stock,
     minimum,
     target,
