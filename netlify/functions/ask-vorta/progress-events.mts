@@ -1,3 +1,5 @@
+// Netlify runs Ask Vorta on Node 22, but the isolated function typecheck intentionally omits @types/node.
+// @ts-expect-error Node 22 provides AsyncLocalStorage at runtime.
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { ToolResult } from "./contracts.mjs";
 
