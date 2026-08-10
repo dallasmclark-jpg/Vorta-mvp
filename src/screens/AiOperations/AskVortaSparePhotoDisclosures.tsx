@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { InventoryItemDisclosure } from "../StoresInventory/StoresInventorySection";
@@ -76,6 +76,24 @@ export function parseAskVortaSparePhotoMatch(
   };
 }
 
+function getSparePhotoMatches(answer: AskVortaWorkspaceAnswer): ParsedSpareMatch[] {
+  const typedAnswer = answer as SparePhotoWorkspaceAnswer;
+  return (typedAnswer.decisionSummary ?? [])
+    .map(parseAskVortaSparePhotoMatch)
+    .filter((match) => Boolean(match.stockNumber))
+    .sort((first, second) => first.rank - second.rank);
+}
+
+export function isAskVortaSparePhotoAnswer(
+  answer: AskVortaWorkspaceAnswer,
+): boolean {
+  const typedAnswer = answer as SparePhotoWorkspaceAnswer;
+  return (
+    typedAnswer.intentLabel === "Spare photo identification" &&
+    getSparePhotoMatches(answer).length > 0
+  );
+}
+
 export function resolveAskVortaSparePhotoMatch(
   match: ParsedSpareMatch,
   items: StoresInventoryItem[],
@@ -119,18 +137,23 @@ export function resolveAskVortaSparePhotoMatch(
   return { match, item: null, reason: "ambiguous" };
 }
 
+function MatchConfidence({ confidence }: { confidence: number | null }): JSX.Element | null {
+  if (confidence === null) return null;
+  return (
+    <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-200">
+      {confidence}% match
+    </span>
+  );
+}
+
 function MatchFallback({ resolved }: { resolved: ResolvedSpareMatch }): JSX.Element {
   return (
     <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold text-slate-100">
-          {resolved.match.rank}. {resolved.match.stockNumber || resolved.match.label}
+          {resolved.match.stockNumber || resolved.match.label}
         </p>
-        {resolved.match.confidence !== null ? (
-          <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-200">
-            {resolved.match.confidence}% match
-          </span>
-        ) : null}
+        <MatchConfidence confidence={resolved.match.confidence} />
       </div>
       <p className="mt-1 text-sm leading-6 text-slate-300">{resolved.match.value}</p>
       <p className="mt-2 text-xs leading-5 text-amber-100/75">
@@ -142,26 +165,57 @@ function MatchFallback({ resolved }: { resolved: ResolvedSpareMatch }): JSX.Elem
   );
 }
 
+function ResolvedMatchDisclosure({
+  resolved,
+  siteId,
+  role,
+  initiallyOpen = false,
+}: {
+  resolved: ResolvedSpareMatch & { item: StoresInventoryItem };
+  siteId: string;
+  role: ReturnType<typeof useAuth>["siteContext"] extends infer T
+    ? T extends { role?: infer R }
+      ? R
+      : never
+    : never;
+  initiallyOpen?: boolean;
+}): JSX.Element {
+  const disclosureRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!initiallyOpen) return;
+    const disclosure = disclosureRef.current?.querySelector<HTMLDetailsElement>(
+      'details[data-vorta-inventory-disclosure="true"]',
+    );
+    if (disclosure) disclosure.open = true;
+  }, [initiallyOpen, resolved.item.id]);
+
+  return (
+    <div
+      ref={disclosureRef}
+      data-vorta-ask-vorta-spare-match="resolved"
+      className="space-y-2"
+    >
+      <InventoryItemDisclosure
+        item={resolved.item}
+        siteId={siteId}
+        role={role}
+      />
+    </div>
+  );
+}
+
 export function AskVortaSparePhotoDisclosures({
   answer,
 }: {
   answer: AskVortaWorkspaceAnswer;
 }): JSX.Element | null {
-  const typedAnswer = answer as SparePhotoWorkspaceAnswer;
   const { siteContext } = useAuth();
   const [state, setState] = useState<LoadState>("idle");
   const [items, setItems] = useState<StoresInventoryItem[]>([]);
 
-  const matches = useMemo(
-    () =>
-      (typedAnswer.decisionSummary ?? [])
-        .map(parseAskVortaSparePhotoMatch)
-        .filter((match) => Boolean(match.stockNumber))
-        .sort((first, second) => first.rank - second.rank),
-    [typedAnswer.decisionSummary],
-  );
-  const sparePhotoIdentification =
-    typedAnswer.intentLabel === "Spare photo identification" && matches.length > 0;
+  const matches = useMemo(() => getSparePhotoMatches(answer), [answer]);
+  const sparePhotoIdentification = isAskVortaSparePhotoAnswer(answer);
 
   useEffect(() => {
     if (!sparePhotoIdentification) return;
@@ -203,69 +257,96 @@ export function AskVortaSparePhotoDisclosures({
 
   if (!sparePhotoIdentification) return null;
 
+  if (state === "loading" || state === "idle") {
+    return (
+      <div
+        data-vorta-ask-vorta-spare-disclosures="true"
+        className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-slate-400"
+        role="status"
+      >
+        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+        Loading closest stock match…
+      </div>
+    );
+  }
+
+  const primary = resolvedMatches[0];
+  const alternatives = resolvedMatches.slice(1);
+  const siteId = siteContext?.siteId ?? "";
+  const role = siteContext?.role;
+
   return (
     <section
       data-vorta-ask-vorta-spare-disclosures="true"
-      className="rounded-2xl border border-gray-800 bg-gray-900/55 p-4 sm:p-5"
-      aria-label="Full spare information"
+      className="space-y-4"
+      aria-label="Closest stock match"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <h4 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-            Full spare information
+            Closest stock match
           </h4>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            Open a matched item to view the same verified stock record used by Stores Inventory and Equipment Spares.
-          </p>
+          <MatchConfidence confidence={primary?.match.confidence ?? null} />
         </div>
-        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-2.5 py-1 text-xs font-semibold text-emerald-200">
-          Site stock record
-        </span>
+
+        {state === "unavailable" ? (
+          <>
+            {primary ? (
+              <MatchFallback
+                resolved={{ ...primary, item: null, reason: "missing" }}
+              />
+            ) : null}
+            <p className="px-1 text-xs leading-5 text-amber-100/75">
+              Full Stores Inventory detail could not be loaded. Vorta is keeping the bounded image match and is not substituting unverified spare information.
+            </p>
+          </>
+        ) : primary?.item ? (
+          <ResolvedMatchDisclosure
+            resolved={primary as ResolvedSpareMatch & { item: StoresInventoryItem }}
+            siteId={siteId}
+            role={role}
+            initiallyOpen
+          />
+        ) : primary ? (
+          <MatchFallback resolved={primary} />
+        ) : null}
       </div>
 
-      {state === "loading" || state === "idle" ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-          Loading full Stores Inventory information…
-        </div>
-      ) : state === "unavailable" ? (
-        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 text-sm leading-6 text-amber-100/80">
-          Full Stores Inventory detail is unavailable for this response. The image match above remains unchanged; Vorta is not substituting unverified spare information.
-        </div>
-      ) : (
-        <div className="mt-4 space-y-4">
-          {resolvedMatches.map((resolved) =>
-            resolved.item ? (
-              <div
-                key={`${resolved.match.rank}-${resolved.item.id}`}
-                data-vorta-ask-vorta-spare-match="resolved"
-                className="space-y-2"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                  <span className="text-xs font-semibold text-slate-400">
-                    Match {resolved.match.rank}
-                  </span>
-                  {resolved.match.confidence !== null ? (
-                    <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-200">
-                      {resolved.match.confidence}% match
-                    </span>
-                  ) : null}
-                </div>
-                <InventoryItemDisclosure
-                  item={resolved.item}
-                  siteId={siteContext?.siteId ?? ""}
-                  role={siteContext?.role}
-                />
+      {alternatives.length > 0 ? (
+        <div className="space-y-3" data-vorta-ask-vorta-next-spare-matches="true">
+          <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+            Next closest matches
+          </h4>
+          {alternatives.map((resolved) => (
+            <div
+              key={`${resolved.match.rank}-${resolved.match.stockNumber}`}
+              className="space-y-2"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <span className="text-xs font-semibold text-slate-500">
+                  Match {resolved.match.rank}
+                </span>
+                <MatchConfidence confidence={resolved.match.confidence} />
               </div>
-            ) : (
-              <MatchFallback
-                key={`${resolved.match.rank}-${resolved.match.stockNumber}`}
-                resolved={resolved}
-              />
-            ),
-          )}
+              {state === "ready" && resolved.item ? (
+                <ResolvedMatchDisclosure
+                  resolved={resolved as ResolvedSpareMatch & { item: StoresInventoryItem }}
+                  siteId={siteId}
+                  role={role}
+                />
+              ) : (
+                <MatchFallback
+                  resolved={
+                    state === "unavailable"
+                      ? { ...resolved, item: null, reason: "missing" }
+                      : resolved
+                  }
+                />
+              )}
+            </div>
+          ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
