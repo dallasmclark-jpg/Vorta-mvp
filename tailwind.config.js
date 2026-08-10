@@ -120,6 +120,14 @@ module.exports = {
     },
     container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },
   },
-  plugins: [],
+  plugins: [
+    function ({ addComponents }) {
+      addComponents({
+        '[data-vorta-ai-workspace="true"] div:has(> input[data-vorta-ai-workspace-input="true"]):focus-within': {
+          borderColor: "rgb(55 65 81 / 1) !important",
+        },
+      });
+    },
+  ],
   darkMode: ["class"],
 };
