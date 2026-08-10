@@ -5,10 +5,16 @@ const assistant = readFileSync(
   "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx",
   "utf8",
 );
-const workspace = readFileSync(
-  "src/screens/AiOperations/AskVortaWorkspace.tsx",
-  "utf8",
-);
+const workspace = [
+  readFileSync(
+    "src/screens/AiOperations/AskVortaWorkspace.tsx",
+    "utf8",
+  ),
+  readFileSync(
+    "src/screens/AiOperations/AskVortaWorkspaceBase.tsx",
+    "utf8",
+  ),
+].join("\n\n");
 const mobileCss = readFileSync(
   "src/screens/AiOperations/mobilePortalHardening.css",
   "utf8",
