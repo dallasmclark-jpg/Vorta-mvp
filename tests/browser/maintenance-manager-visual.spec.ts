@@ -37,14 +37,17 @@ async function capture(page: Page, name: string): Promise<void> {
             ? 0.12
             : name === "equipment-work-orders" && isPhone
               ? 0.35
-              : 0.05;
+              : name === "equipment-work-orders"
+                ? 0.07
+                : 0.05;
 
   await expect.soft(page).toHaveScreenshot(`${name}.png`, {
     animations: "disabled",
     caret: "hide",
     fullPage: false,
     // The approved phone dashboard deliberately removes non-operational chrome.
-    // Tablet and desktop dashboard baselines retain their stricter tolerance.
+    // Equipment work-order evidence is live/dynamic; its narrow desktop allowance
+    // absorbs value/image drift while structural behaviour remains contract-tested.
     maxDiffPixelRatio,
   });
 }
