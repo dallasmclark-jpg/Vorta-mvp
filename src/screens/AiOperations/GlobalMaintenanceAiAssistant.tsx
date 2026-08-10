@@ -71,6 +71,10 @@ import {
   type AskVortaWorkspaceAnswer,
   type AskVortaWorkspaceMessage,
 } from "./AskVortaWorkspace";
+import {
+  buildPersonalisedAskVortaSuggestions,
+  loadAskVortaInteractionHistory,
+} from "./askVortaPersonalSuggestions";
 
 type ChatRole = "user" | "assistant";
 
@@ -2587,8 +2591,15 @@ export function GlobalMaintenanceAiAssistant({
 }: GlobalMaintenanceAiAssistantProps): JSX.Element | null {
   const roleProfile = getRoleProfile(role);
   const navigate = useNavigate();
-  const { siteContext } = useAuth();
+  const { session, siteContext } = useAuth();
   const agentContextReady = Boolean(siteContext?.siteId);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(
+    roleProfile.quickQuestions,
+  );
+  const suggestionHistoryRef = useRef<{
+    key: string;
+    history: Awaited<ReturnType<typeof loadAskVortaInteractionHistory>>;
+  } | null>(null);
 
   const [open, setOpen] = useState(false);
   const [minimised, setMinimised] = useState(false);
@@ -2660,7 +2671,7 @@ export function GlobalMaintenanceAiAssistant({
         directAnswer: roleProfile.introAnswer,
         decisionSummary: [],
         evidence: [],
-        recommendedActions: [roleProfile.defaultAction],
+        recommendedActions: [],
         sources: [],
         confidence: 70,
         roleLabel: roleProfile.label,
@@ -2915,6 +2926,88 @@ export function GlobalMaintenanceAiAssistant({
       mounted = false;
     };
   }, [open, contextReloadKey]);
+
+  useEffect(() => {
+    if (roleProfile.role !== "maintenance-manager") {
+      setSuggestedQuestions(roleProfile.quickQuestions);
+      return;
+    }
+
+    const userId = session?.user.id;
+    const siteId = siteContext?.siteId;
+    if (!open || !userId || !siteId) {
+      if (!open) {
+        suggestionHistoryRef.current = null;
+      }
+      setSuggestedQuestions(roleProfile.quickQuestions);
+      return;
+    }
+
+    let cancelled = false;
+    const loadSuggestions = async (): Promise<void> => {
+      try {
+        const historyKey = `${userId}:${siteId}:${agentRole(roleProfile.role)}`;
+        let history =
+          suggestionHistoryRef.current?.key === historyKey
+            ? suggestionHistoryRef.current.history
+            : null;
+        if (!history) {
+          history = await loadAskVortaInteractionHistory({
+            userId,
+            siteId,
+            role: agentRole(roleProfile.role),
+          });
+          suggestionHistoryRef.current = {
+            key: historyKey,
+            history,
+          };
+        }
+
+        const topEquipmentRiskScore = equipment.reduce<number | null>(
+          (highest, item) =>
+            highest === null ? item.riskScore : Math.max(highest, item.riskScore),
+          null,
+        );
+        const criticalShiftSkillGaps =
+          shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "critical").length ?? 0;
+        const highShiftSkillGaps =
+          shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "high").length ?? 0;
+        const ranked = buildPersonalisedAskVortaSuggestions({
+          history,
+          liveContext: {
+            siteRiskScore: siteRisk?.riskScore ?? null,
+            topEquipmentRiskScore,
+            criticalShiftSkillGaps,
+            highShiftSkillGaps,
+          },
+          fallbackQuestions: roleProfile.quickQuestions,
+        });
+
+        if (!cancelled) {
+          setSuggestedQuestions(ranked.map((item) => item.question));
+        }
+      } catch (error) {
+        console.warn("Ask Vorta personalised suggestions unavailable; using role defaults.", error);
+        if (!cancelled) {
+          setSuggestedQuestions(roleProfile.quickQuestions);
+        }
+      }
+    };
+
+    void loadSuggestions();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    session?.user.id,
+    siteContext?.siteId,
+    roleProfile,
+    contextReady,
+    siteRisk?.riskScore,
+    equipment,
+    shiftSkillsContext,
+  ]);
 
   const retryContextLoad =
     (): void => {
@@ -3436,7 +3529,7 @@ export function GlobalMaintenanceAiAssistant({
           directAnswer: roleProfile.introAnswer,
           decisionSummary: [],
           evidence: [],
-          recommendedActions: [roleProfile.defaultAction],
+          recommendedActions: [],
           sources: [],
           confidence: 70,
           roleLabel: roleProfile.label,
@@ -3482,7 +3575,7 @@ export function GlobalMaintenanceAiAssistant({
             ? "Ask about risk, equipment, maintenance history, skills, spares or documents."
             : roleProfile.contextLine
         }
-        suggestedPrompts={roleProfile.quickQuestions}
+        suggestedPrompts={suggestedQuestions}
         onInputChange={setInput}
         onSubmit={submitQuestion}
         onRetry={retryFailedQuestion}
@@ -3603,11 +3696,12 @@ export function GlobalMaintenanceAiAssistant({
               hasActiveConversation ? "hidden" : ""
             }`}
           >
-            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-nowrap max-md:overflow-x-auto">
-              {roleProfile.quickQuestions.map((question, questionIndex) => (
+            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-col max-md:gap-2">
+              {suggestedQuestions.map((question, questionIndex) => (
                 <button
                   key={question}
                   type="button"
+                  data-vorta-global-ai-prompt-button="true"
                   disabled={
                     !agentContextReady
                   }
@@ -3621,8 +3715,8 @@ export function GlobalMaintenanceAiAssistant({
                       question,
                     )
                   }
-                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 max-md:shrink-0 max-md:whitespace-nowrap ${
-                    questionIndex >= 3 ? "max-md:hidden" : ""
+                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 max-md:w-full max-md:rounded-xl max-md:px-4 max-md:py-3 max-md:text-left max-md:whitespace-normal ${
+                    questionIndex >= 2 ? "max-md:hidden" : ""
                   }`}
                 >
                   {question}

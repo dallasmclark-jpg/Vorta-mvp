@@ -155,7 +155,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
       page.getByRole("heading", { name: "What can I help with?", exact: true }),
     ).toBeVisible();
     await expect(
-      workspace.getByRole("button", { name: "What are my highest site risks?", exact: true }),
+      workspace.locator('button').filter({ hasText: /risk|equipment|shift|work|spares/i }).first(),
     ).toBeVisible();
     await expect(
       workspace.getByRole("button", { name: "Collapse recent conversations", exact: true }),
@@ -266,16 +266,23 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(
       page.locator('[data-vorta-ai-workspace="true"]'),
     ).toHaveCount(0);
-    for (const prompt of [
-      "What are my highest site risks?",
-      "What shift-cover issues do I have next week?",
-      "Which maintenance action reduces risk the most?",
-    ]) {
-      await expect(panel.getByRole("button", { name: prompt, exact: true })).toBeVisible();
-    }
-    await expect(
-      panel.getByRole("button", { name: "Show equipment that needs attention", exact: true }),
-    ).toBeHidden();
+    const visiblePrompts = panel.locator(
+    '[data-vorta-global-ai-prompt-button="true"]:visible',
+  );
+  await expect(visiblePrompts).toHaveCount(2);
+  const firstPromptBox = await visiblePrompts.nth(0).boundingBox();
+  const secondPromptBox = await visiblePrompts.nth(1).boundingBox();
+  expect(firstPromptBox).not.toBeNull();
+  expect(secondPromptBox).not.toBeNull();
+  expect((secondPromptBox?.y ?? 0)).toBeGreaterThan(
+    (firstPromptBox?.y ?? 0) + (firstPromptBox?.height ?? 0) - 1,
+  );
+  const promptRegion = page.locator('[data-vorta-global-ai-prompts="true"]');
+  const promptOverflow = await promptRegion.evaluate(
+    (element) => element.scrollWidth - element.clientWidth,
+  );
+  expect(promptOverflow).toBeLessThanOrEqual(1);
+  await expect(panel.getByText("Risk-reduction plan", { exact: true })).toHaveCount(0);
 
     const box = await panel.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(359);

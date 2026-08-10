@@ -13,6 +13,10 @@ const mobileCss = readFileSync(
   "src/screens/AiOperations/mobilePortalHardening.css",
   "utf8",
 );
+const personalisedSuggestions = readFileSync(
+  "src/screens/AiOperations/askVortaPersonalSuggestions.ts",
+  "utf8",
+);
 
 assert.match(
   workspace,
@@ -101,8 +105,32 @@ assert.match(
 );
 assert.match(
   assistant,
-  /quickQuestions\.map\(\(question, questionIndex\)[\s\S]*questionIndex >= 3 \? "max-md:hidden"/,
-  "Phone Ask Vorta must show the first three suggested prompts only.",
+  /suggestedQuestions\.map\(\(question, questionIndex\)[\s\S]*questionIndex >= 2 \? "max-md:hidden"/,
+  "Phone Ask Vorta must show exactly the first two ranked suggestions.",
+);
+assert.ok(
+  assistant.includes("max-md:flex-col max-md:gap-2") &&
+    assistant.includes('data-vorta-global-ai-prompt-button="true"'),
+  "Phone suggestions must use vertically stacked, full-width prompt controls.",
+);
+assert.equal(
+  (assistant.match(/recommendedActions: \[\],/g) ?? []).length >= 2,
+  true,
+  "The empty Ask Vorta state must not manufacture a Risk-reduction plan before a question is asked.",
+);
+assert.ok(
+  personalisedSuggestions.includes('.from("ask_vorta_interactions")') &&
+    personalisedSuggestions.includes('.eq("user_id", userId)') &&
+    personalisedSuggestions.includes('.eq("site_id", siteId)') &&
+    personalisedSuggestions.includes('.eq("role", role)') &&
+    personalisedSuggestions.includes('.eq("status", "completed")'),
+  "Personalised suggestions must reuse the existing user/site-scoped Ask Vorta interaction history.",
+);
+assert.ok(
+  personalisedSuggestions.includes("MIN_PERSONALISATION_INTERACTIONS = 5") &&
+    personalisedSuggestions.includes('source: "frequently-asked"') &&
+    personalisedSuggestions.includes('source: "relevant-now"'),
+  "Suggestion ranking must combine enough account history with a separate live-context recommendation.",
 );
 assert.match(
   assistant,
