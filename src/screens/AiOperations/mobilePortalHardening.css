@@ -59,29 +59,29 @@
   }
 
   /* Surface three existing quick-question buttons without duplicating their component styling. */
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) {
+  [data-vorta-global-ai-prompts] {
     order: 3;
     display: block !important;
     padding: 0.35rem 0.75rem !important;
   }
 
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2):has(+ [data-vorta-global-ai-messages="true"] > div:nth-child(2)) {
+  [data-vorta-global-ai-prompts]:has(+ [data-vorta-global-ai-messages="true"] > div:nth-child(2)) {
     display: none !important;
   }
 
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) > div.mb-2 {
+  [data-vorta-global-ai-prompts] > div.mb-2 {
     flex-wrap: nowrap !important;
     margin: 0 !important;
     overflow-x: auto;
   }
 
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) > div.mb-2 > button {
+  [data-vorta-global-ai-prompts] > div.mb-2 > button {
     flex: 0 0 auto;
     white-space: nowrap;
   }
 
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) > div.mb-2 > button:nth-child(n+4),
-  [data-vorta-global-ai-panel="true"] > div:has(> div.mb-2) > div.text-xs {
+  [data-vorta-global-ai-prompts] > div.mb-2 > button:nth-child(n+4),
+  [data-vorta-global-ai-prompts] > div.text-xs {
     display: none !important;
   }
 

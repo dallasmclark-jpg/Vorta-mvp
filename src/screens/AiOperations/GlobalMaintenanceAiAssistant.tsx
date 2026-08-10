@@ -3597,7 +3597,10 @@ export function GlobalMaintenanceAiAssistant({
 
       {!minimised && (
         <>
-          <div className={`border-b border-gray-800 px-4 py-3 ${hasActiveConversation ? "md:hidden" : ""}`}>
+          <div
+            data-vorta-global-ai-prompts="true"
+            className={`border-b border-gray-800 px-4 py-3 ${hasActiveConversation ? "md:hidden" : ""}`}
+          >
             <div className="mb-2 flex flex-wrap gap-1.5">
               {roleProfile.quickQuestions.map((question) => (
                 <button
