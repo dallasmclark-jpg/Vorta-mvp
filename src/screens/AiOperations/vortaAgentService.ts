@@ -1,6 +1,16 @@
 import { supabase } from "../../lib/supabaseClient";
 import type { PreparedAskVortaImage } from "./askVortaImageClient";
 
+export const ASK_VORTA_PROGRESS_EVENT = "vorta-ask-vorta-progress";
+export const ASK_VORTA_PROGRESS_RESET_EVENT = "vorta-ask-vorta-progress-reset";
+
+export interface VortaAgentProgressEvent {
+  id: string;
+  label: string;
+  state: "active" | "complete" | "failed";
+  detail?: string;
+}
+
 export interface VortaAgentHistoryItem {
   role: "user" | "assistant";
   content: string;
@@ -116,6 +126,12 @@ interface AskVortaAgentInput {
   conversationContext?: VortaConversationContext;
   image?: PreparedAskVortaImage;
   pagePath: string;
+}
+
+interface AskVortaStreamResult {
+  ok: boolean;
+  status: number;
+  payload: unknown;
 }
 
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -245,6 +261,30 @@ function isConversationContext(value: unknown): value is VortaConversationContex
   );
 }
 
+function isProgressEvent(value: unknown): value is VortaAgentProgressEvent {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    Boolean(value.id.trim()) &&
+    typeof value.label === "string" &&
+    Boolean(value.label.trim()) &&
+    (value.state === "active" || value.state === "complete" || value.state === "failed") &&
+    (value.detail === undefined || typeof value.detail === "string")
+  );
+}
+
+function dispatchProgressReset(): void {
+  window.dispatchEvent(new Event(ASK_VORTA_PROGRESS_RESET_EVENT));
+}
+
+function dispatchProgress(event: VortaAgentProgressEvent): void {
+  window.dispatchEvent(
+    new CustomEvent<VortaAgentProgressEvent>(ASK_VORTA_PROGRESS_EVENT, {
+      detail: event,
+    }),
+  );
+}
+
 function parseAgentAnswer(value: unknown): VortaAgentAnswer {
   if (!isRecord(value)) {
     throw new Error("Ask Vorta returned an invalid response.");
@@ -302,6 +342,77 @@ function parseAgentAnswer(value: unknown): VortaAgentAnswer {
       ? record.conversationContext
       : undefined,
   };
+}
+
+function errorFromPayload(payload: unknown): AskVortaAgentError {
+  const message =
+    isRecord(payload) && typeof payload.error === "string"
+      ? payload.error
+      : "Ask Vorta could not complete the analysis.";
+  const responseId =
+    isRecord(payload) && typeof payload.responseId === "string"
+      ? payload.responseId
+      : undefined;
+  return new AskVortaAgentError(message, responseId);
+}
+
+function processStreamLine(line: string): AskVortaStreamResult | null {
+  if (!line.trim()) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed) || typeof parsed.type !== "string") return null;
+  if (parsed.type === "progress" && isProgressEvent(parsed.event)) {
+    dispatchProgress(parsed.event);
+    return null;
+  }
+  if (
+    parsed.type === "result" &&
+    typeof parsed.ok === "boolean" &&
+    typeof parsed.status === "number"
+  ) {
+    return {
+      ok: parsed.ok,
+      status: parsed.status,
+      payload: parsed.payload,
+    };
+  }
+  return null;
+}
+
+async function readAskVortaStream(response: Response): Promise<AskVortaStreamResult> {
+  if (!response.body) {
+    throw new Error("Ask Vorta progress stream was unavailable.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult: AskVortaStreamResult | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) {
+      const line = buffer.slice(0, newline);
+      buffer = buffer.slice(newline + 1);
+      finalResult = processStreamLine(line) ?? finalResult;
+      newline = buffer.indexOf("\n");
+    }
+    if (done) break;
+  }
+
+  if (buffer.trim()) {
+    finalResult = processStreamLine(buffer) ?? finalResult;
+  }
+  if (!finalResult) {
+    throw new Error("Ask Vorta ended before returning a final answer.");
+  }
+  return finalResult;
 }
 
 export async function submitAskVortaFeedback(
@@ -378,6 +489,7 @@ export async function askVortaAgent({
     throw new Error("Your Vorta session has expired. Sign in again to use Ask Vorta.");
   }
 
+  dispatchProgressReset();
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -386,6 +498,7 @@ export async function askVortaAgent({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/x-ndjson, application/json;q=0.9",
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
@@ -409,21 +522,16 @@ export async function askVortaAgent({
       signal: controller.signal,
     });
 
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (contentType.includes("application/x-ndjson")) {
+      const streamed = await readAskVortaStream(response);
+      if (!streamed.ok) throw errorFromPayload(streamed.payload);
+      return parseAgentAnswer(streamed.payload);
+    }
+
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message =
-        payload &&
-        typeof payload === "object" &&
-        typeof (payload as Record<string, unknown>).error === "string"
-          ? String((payload as Record<string, unknown>).error)
-          : "Ask Vorta could not complete the analysis.";
-      const responseId =
-        payload &&
-        typeof payload === "object" &&
-        typeof (payload as Record<string, unknown>).responseId === "string"
-          ? String((payload as Record<string, unknown>).responseId)
-          : undefined;
-      throw new AskVortaAgentError(message, responseId);
+      throw errorFromPayload(payload);
     }
 
     return parseAgentAnswer(payload);

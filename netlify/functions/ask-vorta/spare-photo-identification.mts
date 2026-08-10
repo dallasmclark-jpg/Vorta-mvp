@@ -12,6 +12,7 @@ import {
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import { MODEL } from "./contracts.mjs";
 import { extractAskVortaImageEvidence } from "./image-diagnosis.mjs";
+import { emitAskVortaProgress } from "./progress-events.mjs";
 import { jsonResponse } from "./request-context.mjs";
 import {
   beginAskVortaInteraction,
@@ -312,7 +313,24 @@ export async function handleSparePhotoIdentification(
 
   const evidenceStartedAt = Date.now();
   const client = new OpenAI();
+  emitAskVortaProgress({
+    id: "spare-photo-image",
+    label: "Reading the uploaded image",
+    state: "active",
+  });
   const extraction = await extractAskVortaImageEvidence(client, request.image);
+  emitAskVortaProgress({
+    id: "spare-photo-image",
+    label: "Reading the uploaded image",
+    state: "complete",
+    detail: "Image evidence captured",
+  });
+
+  emitAskVortaProgress({
+    id: "spare-photo-stores",
+    label: "Checking Stores Inventory",
+    state: "active",
+  });
   const imageResult = await supabase
     .from("vorta_entity_images")
     .select("component_id,source_url,alt_text,is_primary,source_type")
@@ -323,6 +341,12 @@ export async function handleSparePhotoIdentification(
     .limit(100);
 
   if (imageResult.error) {
+    emitAskVortaProgress({
+      id: "spare-photo-stores",
+      label: "Checking Stores Inventory",
+      state: "failed",
+      detail: "Stock images unavailable",
+    });
     const evidenceMs = Date.now() - evidenceStartedAt;
     await updateAskVortaInteraction(
       supabase,
@@ -369,6 +393,12 @@ export async function handleSparePhotoIdentification(
       .eq("site_id", request.siteId)
       .in("id", componentIds);
     if (componentResult.error) {
+      emitAskVortaProgress({
+        id: "spare-photo-stores",
+        label: "Checking Stores Inventory",
+        state: "failed",
+        detail: "Stock records unavailable",
+      });
       const evidenceMs = Date.now() - evidenceStartedAt;
       await updateAskVortaInteraction(
         supabase,
@@ -413,6 +443,12 @@ export async function handleSparePhotoIdentification(
       image_verification_status: "verified",
     }];
   });
+  emitAskVortaProgress({
+    id: "spare-photo-stores",
+    label: "Checking Stores Inventory",
+    state: "complete",
+    detail: `${curatedComponents.length} verified stock image${curatedComponents.length === 1 ? "" : "s"}`,
+  });
   const evidenceMs = Date.now() - evidenceStartedAt;
 
   const ranked = rankAskVortaSparePhotoCandidates(
@@ -421,6 +457,11 @@ export async function handleSparePhotoIdentification(
     { pagePath: request.pageContext.path },
   );
   const answerStartedAt = Date.now();
+  emitAskVortaProgress({
+    id: "spare-photo-visual",
+    label: "Comparing verified stock images",
+    state: "active",
+  });
   const visualCandidates = await prepareVisualCandidates(ranked.candidates);
   const visualMatches = await compareVerifiedSpareImages(
     client,
@@ -431,8 +472,25 @@ export async function handleSparePhotoIdentification(
     ranked.candidates,
     visualMatches,
   );
-  const answerMs = Date.now() - answerStartedAt;
+  emitAskVortaProgress({
+    id: "spare-photo-visual",
+    label: "Comparing verified stock images",
+    state: "complete",
+    detail: `${visualCandidates.length} image${visualCandidates.length === 1 ? "" : "s"} compared`,
+  });
+
+  emitAskVortaProgress({
+    id: "spare-photo-answer",
+    label: "Preparing the closest stock match",
+    state: "active",
+  });
   const answer = answerForMatches(interactionId, matches, request.question);
+  emitAskVortaProgress({
+    id: "spare-photo-answer",
+    label: "Preparing the closest stock match",
+    state: "complete",
+  });
+  const answerMs = Date.now() - answerStartedAt;
 
   await updateAskVortaInteraction(
     supabase,
