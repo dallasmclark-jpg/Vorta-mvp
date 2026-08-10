@@ -121,18 +121,20 @@ assert.match(runtimeSource, /compareVerifiedSpareImages/);
 assert.match(runtimeSource, /Closest match:/);
 assert.doesNotMatch(runtimeSource, /get_equipment_decision_pack/);
 
-const spareWrapperSource = readFileSync(
-  resolve(root, "netlify/functions/ask-vorta/runtime-spare-photo.mts"),
+const backtestRuntimeSource = readFileSync(
+  resolve(root, "netlify/functions/ask-vorta/runtime-backtest.mts"),
   "utf8",
 );
-assert.match(spareWrapperSource, /vor-076-spare-photo-top-five-v1/);
-assert.match(spareWrapperSource, /runtime-backtest\.mjs/);
+assert.match(backtestRuntimeSource, /shouldHandleSparePhotoPayload/);
+assert.match(backtestRuntimeSource, /handleSparePhotoIdentification/);
+assert.match(backtestRuntimeSource, /runtime-equipment-fallback\.mjs/);
 
 const documentWrapperSource = readFileSync(
   resolve(root, "netlify/functions/ask-vorta/runtime-document-links.mts"),
   "utf8",
 );
-assert.match(documentWrapperSource, /runtime-spare-photo\.mjs/);
+assert.match(documentWrapperSource, /runtime-backtest\.mjs/);
+assert.match(documentWrapperSource, /ASK_VORTA_BACKTEST_REVISION/);
 
 const imageClientSource = readFileSync(
   resolve(root, "src/screens/AiOperations/askVortaImageClient.ts"),
