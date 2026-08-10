@@ -155,24 +155,20 @@ function PrimaryMatchConfidence({
 
   const tone =
     confidence >= 90
-      ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100 ring-emerald-400/20"
+      ? "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-100"
       : confidence >= 70
-        ? "border-blue-400/45 bg-blue-500/15 text-blue-100 ring-blue-400/15"
-        : "border-amber-400/45 bg-amber-500/15 text-amber-100 ring-amber-400/15";
+        ? "border-blue-500/30 bg-blue-500/[0.08] text-blue-100"
+        : "border-amber-400/30 bg-amber-400/[0.08] text-amber-100";
 
   return (
     <span
       data-vorta-ask-vorta-primary-match-confidence="true"
       aria-label={`Primary image match score ${confidence} percent`}
-      className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm ring-1 ${tone}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${tone}`}
     >
-      <Target className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="text-base font-extrabold leading-none tabular-nums">
-        {confidence}%
-      </span>
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-80">
-        match
-      </span>
+      <Target className="h-4 w-4" aria-hidden="true" />
+      <span className="text-lg font-bold leading-none">{confidence}%</span>
+      <span className="text-xs font-bold uppercase">match</span>
     </span>
   );
 }
