@@ -15,6 +15,24 @@ export const ASK_VORTA_CLIENT_IMAGE_LIMITS = Object.freeze({
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"] as const,
 });
 
+const MAX_ACTIVE_IMAGE_PREVIEWS = 12;
+const activeImagePreviews = new Map<string, string>();
+
+function rememberAskVortaImagePreview(name: string, dataUrl: string): void {
+  activeImagePreviews.delete(name);
+  activeImagePreviews.set(name, dataUrl);
+  while (activeImagePreviews.size > MAX_ACTIVE_IMAGE_PREVIEWS) {
+    const oldest = activeImagePreviews.keys().next().value;
+    if (typeof oldest !== "string") break;
+    activeImagePreviews.delete(oldest);
+  }
+}
+
+export function getAskVortaImagePreview(name: string | undefined): string | null {
+  if (!name) return null;
+  return activeImagePreviews.get(name) ?? null;
+}
+
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -85,8 +103,10 @@ export async function prepareAskVortaImage(
   }
 
   const dataUrl = await readAsDataUrl(file);
+  const name = file.name.trim().slice(0, 120) || "image";
+  rememberAskVortaImagePreview(name, dataUrl);
   return {
-    name: file.name.trim().slice(0, 120) || "image",
+    name,
     mimeType: mimeType as PreparedAskVortaImage["mimeType"],
     dataUrl,
     byteSize: file.size,
