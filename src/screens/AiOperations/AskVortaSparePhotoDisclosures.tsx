@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "../../lib/auth";
+import { useAuth, type PilotRole } from "../../lib/auth";
 import { InventoryItemDisclosure } from "../StoresInventory/StoresInventorySection";
 import {
   loadStoresInventorySnapshot,
@@ -173,11 +173,7 @@ function ResolvedMatchDisclosure({
 }: {
   resolved: ResolvedSpareMatch & { item: StoresInventoryItem };
   siteId: string;
-  role: ReturnType<typeof useAuth>["siteContext"] extends infer T
-    ? T extends { role?: infer R }
-      ? R
-      : never
-    : never;
+  role: PilotRole | null | undefined;
   initiallyOpen?: boolean;
 }): JSX.Element {
   const disclosureRef = useRef<HTMLDivElement>(null);
