@@ -6,7 +6,7 @@ const browser = readFileSync("tests/browser/vor-041-ask-vorta-workspace.spec.ts"
 
 const checks = [
   [workspace.includes("visibleConversationMessages"), "active workspace conversation hides its introductory card"],
-  [workspace.includes("Live evidence loaded"), "workspace uses a compact evidence-status label"],
+  [workspace.includes('contextReady\n                    ? "Live evidence"'), "workspace uses a compact evidence-status label"],
   [assistant.includes('presentation?: "compact" | "workspace"'), "AnswerBlock supports workspace presentation"],
   [assistant.includes("wideCompactPresentation"), "compact density is limited only on non-mobile layouts"],
   [assistant.includes("decisionSummaryLimit"), "decision summary density is explicitly bounded"],
