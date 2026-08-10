@@ -674,7 +674,15 @@ export function AskVortaWorkspace({
                           <img
                             src={getAskVortaImagePreview(message.imageName) ?? undefined}
                             alt="Submitted maintenance photo"
-                            className="max-h-56 w-auto max-w-full rounded-xl border border-gray-800 bg-gray-950 object-contain"
+                            className="rounded-lg"
+                            style={{
+                              display: "block",
+                              maxHeight: 224,
+                              maxWidth: "100%",
+                              width: "auto",
+                              height: "auto",
+                              objectFit: "contain",
+                            }}
                           />
                         ) : message.imageName ? (
                           <p className="text-xs font-semibold text-blue-100/80">
