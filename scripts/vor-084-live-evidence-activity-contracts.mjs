@@ -115,13 +115,18 @@ assert.match(
 );
 
 for (const marker of [
-  "@keyframes vorta-evidence-sweep",
+  "@property --vorta-evidence-pulse-angle",
+  "@keyframes vorta-evidence-border-pulse",
+  "conic-gradient(from var(--vorta-evidence-pulse-angle)",
+  "width:min(440px,calc(100vw - 48px))!important",
+  "height:44px!important",
   '[data-vorta-ai-live-evidence-activity="true"] .min-h-7{display:none!important}',
   '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child{display:block!important',
   '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child>svg{display:none!important}',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child .min-w-0 .text-xs.text-slate-500{display:none!important}',
   '[data-vorta-ask-vorta-stock-loading-rail="true"]{display:none!important}',
 ]) {
-  assert.ok(shell.includes(marker), `VOR-085 single-status presentation is missing ${marker}`);
+  assert.ok(shell.includes(marker), `VOR-085 branded single-status presentation is missing ${marker}`);
 }
 assert.match(
   shell,
@@ -130,10 +135,10 @@ assert.match(
 );
 assert.doesNotMatch(
   shell,
-  /\.min-h-7::after\{content:"";display:block;flex:0 0 22px/,
-  "The previous multi-stage connector rail must not return",
+  /vorta-evidence-sweep|\.min-h-7::after\{content:"";display:block;flex:0 0 22px/,
+  "Legacy progress-line or multi-stage connector treatments must not return",
 );
 
 console.log(
-  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, truthful spare-photo stages, JSON compatibility, single-status loading and desktop/tablet-only presentation are protected.",
+  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, truthful spare-photo stages, JSON compatibility, branded single-status pulse loading and desktop/tablet-only presentation are protected.",
 );
