@@ -19,6 +19,7 @@ const mobileCss = readFileSync(
   "src/screens/AiOperations/mobilePortalHardening.css",
   "utf8",
 );
+// Personalised prompt ranking is account/site scoped; this contract protects the mobile two-prompt boundary.
 const personalisedSuggestions = readFileSync(
   "src/screens/AiOperations/askVortaPersonalSuggestions.ts",
   "utf8",
