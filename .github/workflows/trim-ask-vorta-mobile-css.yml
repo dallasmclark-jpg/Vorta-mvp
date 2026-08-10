@@ -1,0 +1,55 @@
+name: Trim Ask Vorta mobile CSS
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/trim-ask-vorta-mobile-css.mjs"
+      - ".github/workflows/trim-ask-vorta-mobile-css.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trim-ask-vorta-mobile-css-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  trim:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR head branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Trim duplicate mobile prompt CSS
+        run: node scripts/trim-ask-vorta-mobile-css.mjs
+
+      - name: Remove temporary trim scaffolding
+        run: |
+          rm scripts/trim-ask-vorta-mobile-css.mjs
+          rm .github/workflows/trim-ask-vorta-mobile-css.yml
+
+      - name: Verify diff formatting
+        run: git diff --check
+
+      - name: Commit trimmed CSS
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/screens/AiOperations/mobilePortalHardening.css \
+            scripts/trim-ask-vorta-mobile-css.mjs \
+            .github/workflows/trim-ask-vorta-mobile-css.yml
+          git commit -m "Trim Ask Vorta mobile prompt CSS"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
