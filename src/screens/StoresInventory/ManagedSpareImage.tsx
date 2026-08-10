@@ -48,9 +48,11 @@ export function ManagedSpareImage({
   fallbackAltText,
   fallbackSourceType,
 }: ManagedSpareImageProps): JSX.Element {
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
   const [managedImage, setManagedImage] = useState<VortaManagedImage | null>(null);
   const [cacheAttempted, setCacheAttempted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -62,14 +64,50 @@ export function ManagedSpareImage({
   const canUpload = canManageVortaMedia(role);
 
   useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "120px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setManagedImage(null);
     setCacheAttempted(false);
     setUploadError(null);
 
+    if (!visible) return () => undefined;
+
     void loadPreferredManagedImage(siteId, "spare", componentId)
-      .then((image) => {
-        if (!cancelled) setManagedImage(image);
+      .then(async (image) => {
+        if (cancelled) return;
+        setManagedImage(image);
+
+        if (!image && canUpload && fallbackImageUrl) {
+          setCacheAttempted(true);
+          try {
+            const cached = await cacheVerifiedSourceImage("spare", componentId);
+            if (!cancelled) setManagedImage(cached);
+          } catch (error) {
+            if (!cancelled) {
+              console.warn("Verified spare image could not be cached in Vorta:", error);
+            }
+          }
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -80,7 +118,7 @@ export function ManagedSpareImage({
     return () => {
       cancelled = true;
     };
-  }, [componentId, siteId]);
+  }, [canUpload, componentId, fallbackImageUrl, siteId, visible]);
 
   const activeImageUrl = managedImage?.signedUrl ?? fallbackImageUrl;
   const activeFullImageUrl = managedImage?.signedUrl ?? fallbackFullImageUrl ?? fallbackImageUrl;
@@ -170,6 +208,7 @@ export function ManagedSpareImage({
   return (
     <>
       <div
+        ref={rootRef}
         data-vorta-spare-image="true"
         data-vorta-managed-media={managedImage ? managedImage.sourceType : "fallback"}
         className="w-full shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
