@@ -15,6 +15,10 @@ const backend = backendPaths
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
 const telemetry = readFileSync("netlify/functions/ask-vorta/telemetry.mts", "utf8");
+const ratePolicy = readFileSync(
+  "netlify/functions/ask-vorta/rate-limit-policy.mts",
+  "utf8",
+);
 const service = readFileSync("src/screens/AiOperations/vortaAgentService.ts", "utf8");
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8");
 const migration = readFileSync(
@@ -44,6 +48,8 @@ const checks = [
   [telemetry.includes("route_key: input.routeKey") && telemetry.includes("routing_mode:") && telemetry.includes("planner_ms: input.plannerMs") && telemetry.includes("evidence_ms: input.evidenceMs") && telemetry.includes("answer_ms: input.answerMs"), "canonical route and phase telemetry are persisted"],
   [telemetry.includes("tool_count: input.toolCount") && telemetry.includes("tool_round_count: input.toolRoundCount"), "tool counts and rounds are persisted"],
   [backend.includes('status: "rate_limited"') && backend.includes('"timed_out"'), "rate-limited and timed-out requests remain traceable"],
+  [ratePolicy.includes("ASK_VORTA_RATE_LIMIT_WINDOW_MINUTES = 5") && ratePolicy.includes("ASK_VORTA_RATE_LIMIT_REQUESTS = 60"), "Ask Vorta allows a high-volume interactive burst without acting as a practical daily cap"],
+  [telemetry.includes('.neq("status", "rate_limited")'), "blocked retries do not count toward subsequent Ask Vorta capacity checks"],
   [migration.includes("feedback_category") && migration.includes("ask_vorta_interactions_route_key_check"), "database enforces bounded route and feedback values"],
   [migration.includes("revoke all on table public.ask_vorta_interactions from authenticated") && migration.includes("grant select, insert, update"), "authenticated interaction grants are reduced to minimum required"],
   [service.includes("export type AskVortaFeedbackCategory") && service.includes("feedback_category"), "frontend service sends a bounded feedback category"],
