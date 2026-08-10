@@ -1,4 +1,5 @@
 import type { AskVortaPhase, JsonRecord } from "./contracts.mjs";
+import { emitAskVortaProgress } from "./progress-events.mjs";
 
 export class AskVortaPhaseTimeoutError extends Error {
   readonly stage: AskVortaPhase;
@@ -10,6 +11,16 @@ export class AskVortaPhaseTimeoutError extends Error {
   }
 }
 
+function phaseProgress(stage: AskVortaPhase): { id: string; label: string } | null {
+  if (stage === "planner") {
+    return { id: "phase-planner", label: "Understanding the question" };
+  }
+  if (stage === "answer") {
+    return { id: "phase-answer", label: "Preparing the answer" };
+  }
+  return null;
+}
+
 export async function withPhaseTimeout<T>(
   stage: AskVortaPhase,
   timeoutMs: number,
@@ -17,6 +28,10 @@ export async function withPhaseTimeout<T>(
 ): Promise<T> {
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | null = null;
+  const progress = phaseProgress(stage);
+  if (progress) {
+    emitAskVortaProgress({ ...progress, state: "active" });
+  }
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
       controller.abort();
@@ -25,8 +40,15 @@ export async function withPhaseTimeout<T>(
   });
 
   try {
-    return await Promise.race([operation(controller.signal), timeoutPromise]);
+    const result = await Promise.race([operation(controller.signal), timeoutPromise]);
+    if (progress) {
+      emitAskVortaProgress({ ...progress, state: "complete" });
+    }
+    return result;
   } catch (error) {
+    if (progress) {
+      emitAskVortaProgress({ ...progress, state: "failed", detail: "Could not complete this stage" });
+    }
     if (
       error instanceof AskVortaPhaseTimeoutError ||
       controller.signal.aborted ||
