@@ -14,10 +14,16 @@ import {
   mergeEvidenceLinks,
 } from "./document-evidence-links.mjs";
 import { withAskVortaDocumentOrigin } from "./document-link-origin.mjs";
+import {
+  withAskVortaProgressSink,
+  type AskVortaProgressEvent,
+} from "./progress-events.mjs";
 import { jsonResponse } from "./request-context.mjs";
 
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
   "vor-067-production-chat-return-v3";
+
+const NDJSON_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 
 if (ASK_VORTA_BACKTEST_REVISION !== "vor-069-historical-backtest-intelligence-v1") {
   throw new Error("Ask Vorta historical backtest runtime revision mismatch.");
@@ -136,7 +142,7 @@ async function resolveEquipmentId(
   return data.id;
 }
 
-export default async function documentLinkHandler(
+async function documentLinkResponse(
   req: Request,
   context: Context,
 ): Promise<Response> {
@@ -204,4 +210,85 @@ export default async function documentLinkHandler(
     answer.evidenceLinks,
   );
   return jsonResponse(answer, primaryResponse.status);
+}
+
+function wantsProgressStream(req: Request): boolean {
+  return (req.headers.get("accept") ?? "")
+    .toLowerCase()
+    .includes("application/x-ndjson");
+}
+
+function encodeLine(value: unknown): Uint8Array {
+  return new TextEncoder().encode(`${JSON.stringify(value)}\n`);
+}
+
+async function responsePayload(response: Response): Promise<unknown> {
+  return response
+    .clone()
+    .json()
+    .catch(async () => ({
+      error:
+        (await response.text().catch(() => "")) ||
+        "Ask Vorta returned an unreadable response.",
+    }));
+}
+
+async function progressStreamResponse(
+  req: Request,
+  context: Context,
+): Promise<Response> {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const pushProgress = (event: AskVortaProgressEvent): void => {
+        controller.enqueue(encodeLine({ type: "progress", event }));
+      };
+
+      void withAskVortaProgressSink(pushProgress, async () => {
+        const response = await documentLinkResponse(req, context);
+        const payload = await responsePayload(response);
+        controller.enqueue(
+          encodeLine({
+            type: "result",
+            ok: response.ok,
+            status: response.status,
+            payload,
+          }),
+        );
+      })
+        .catch((error) => {
+          controller.enqueue(
+            encodeLine({
+              type: "result",
+              ok: false,
+              status: 500,
+              payload: {
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Ask Vorta could not complete the analysis.",
+              },
+            }),
+          );
+        })
+        .finally(() => controller.close());
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": NDJSON_CONTENT_TYPE,
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+export default async function documentLinkHandler(
+  req: Request,
+  context: Context,
+): Promise<Response> {
+  return wantsProgressStream(req)
+    ? progressStreamResponse(req, context)
+    : documentLinkResponse(req, context);
 }
