@@ -121,6 +121,19 @@ assert.match(runtimeSource, /compareVerifiedSpareImages/);
 assert.match(runtimeSource, /Closest match:/);
 assert.doesNotMatch(runtimeSource, /get_equipment_decision_pack/);
 
+const spareWrapperSource = readFileSync(
+  resolve(root, "netlify/functions/ask-vorta/runtime-spare-photo.mts"),
+  "utf8",
+);
+assert.match(spareWrapperSource, /vor-076-spare-photo-top-five-v1/);
+assert.match(spareWrapperSource, /runtime-backtest\.mjs/);
+
+const documentWrapperSource = readFileSync(
+  resolve(root, "netlify/functions/ask-vorta/runtime-document-links.mts"),
+  "utf8",
+);
+assert.match(documentWrapperSource, /runtime-spare-photo\.mjs/);
+
 const imageClientSource = readFileSync(
   resolve(root, "src/screens/AiOperations/askVortaImageClient.ts"),
   "utf8",
@@ -150,6 +163,7 @@ const entrySource = readFileSync(
   resolve(root, "netlify/functions/ask-vorta.mts"),
   "utf8",
 );
-assert.match(entrySource, /vor-076-spare-photo-top-five-v1/);
+assert.match(entrySource, /runtime-document-links\.mjs/);
+assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
 console.log("VOR-076 spare-photo contracts passed.");
