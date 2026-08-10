@@ -175,8 +175,11 @@ const tailwindConfigSource = readFileSync(
   resolve(root, "tailwind.config.js"),
   "utf8",
 );
-assert.match(tailwindConfigSource, /data-vorta-ai-workspace-input/);
-assert.match(tailwindConfigSource, /borderColor: "rgb\(55 65 81 \/ 1\) !important"/);
+assert.match(
+  tailwindConfigSource,
+  /blocklist: \["focus-within:border-blue-500\/50"\]/,
+);
+assert.doesNotMatch(tailwindConfigSource, /borderColor: "rgb\(55 65 81/);
 
 const assistantSource = readFileSync(
   resolve(root, "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx"),
