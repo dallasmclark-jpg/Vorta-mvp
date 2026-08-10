@@ -200,6 +200,16 @@ assert.match(disclosureSource, /Next closest matches/);
 assert.match(disclosureSource, /resolvedMatches\.slice\(1\)/);
 assert.match(disclosureSource, /alternatives\.length > 0/);
 assert.match(disclosureSource, /if \(disclosure\) disclosure\.open = true/);
+assert.match(disclosureSource, /PrimaryMatchConfidence/);
+assert.match(disclosureSource, /data-vorta-ask-vorta-primary-match-confidence="true"/);
+assert.match(disclosureSource, /confidence >= 90/);
+assert.match(disclosureSource, /confidence >= 70/);
+assert.match(disclosureSource, /Primary image match score/);
+assert.match(
+  disclosureSource,
+  /Closest stock match[\s\S]*PrimaryMatchConfidence confidence=\{primary\?\.match\.confidence \?\? null\}/,
+  "The primary score must stay visually attached to the closest-match heading.",
+);
 assert.doesNotMatch(disclosureSource, /Full spare information/);
 assert.match(disclosureSource, /More than one authenticated Stores Inventory record uses this stock number/);
 assert.match(disclosureSource, /not substituting unverified spare information/);
@@ -249,4 +259,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-077/VOR-079/VOR-080/VOR-081/VOR-082 spare-photo contracts passed.");
+console.log("VOR-077/VOR-079/VOR-080/VOR-081/VOR-082/VOR-083 spare-photo contracts passed.");
