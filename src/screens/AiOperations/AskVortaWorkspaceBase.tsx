@@ -6,6 +6,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
+  CheckCircle2,
   ChevronLeft,
   Clock3,
   FileSearch,
@@ -28,7 +29,12 @@ import {
   getAskVortaImagePreview,
   type PreparedAskVortaImage,
 } from "./askVortaImageClient";
-import type { VortaConversationContext } from "./vortaAgentService";
+import {
+  ASK_VORTA_PROGRESS_EVENT,
+  ASK_VORTA_PROGRESS_RESET_EVENT,
+  type VortaAgentProgressEvent,
+  type VortaConversationContext,
+} from "./vortaAgentService";
 
 export type AskVortaWorkspaceTab = "conversation" | "evidence" | "actions";
 
@@ -120,6 +126,7 @@ const STORAGE_KEY = "vorta:ask-vorta:recent-conversations:v1";
 const ACTIVE_STORAGE_KEY = "vorta:ask-vorta:active-conversation:v1";
 const MAX_RECENTS = 12;
 const MAX_STORED_MESSAGES = 18;
+const MAX_VISIBLE_PROGRESS_STEPS = 6;
 
 function conversationId(): string {
   return `ask-vorta-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -249,6 +256,70 @@ function evidenceSourceCount(answer: AskVortaWorkspaceAnswer): number {
   return new Set(answer.sources ?? []).size;
 }
 
+function mergeProgressStep(
+  current: VortaAgentProgressEvent[],
+  next: VortaAgentProgressEvent,
+): VortaAgentProgressEvent[] {
+  const existingIndex = current.findIndex((item) => item.id === next.id);
+  if (existingIndex < 0) return [...current, next];
+  return current.map((item, index) => (index === existingIndex ? next : item));
+}
+
+function AskVortaLiveEvidenceActivity({
+  steps,
+}: {
+  steps: VortaAgentProgressEvent[];
+}): JSX.Element {
+  const visible = steps.slice(-MAX_VISIBLE_PROGRESS_STEPS);
+  return (
+    <div data-vorta-ai-live-evidence-activity="true" className="space-y-2.5" aria-live="polite">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+        <ShieldCheck className="h-4 w-4 text-blue-300" />
+        Checking Vorta evidence
+      </div>
+      {visible.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+          Starting the relevant evidence checks…
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {visible.map((step) => (
+            <div
+              key={step.id}
+              className="flex min-h-7 items-start gap-2 rounded-lg px-1 py-0.5 text-sm"
+            >
+              {step.state === "complete" ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+              ) : step.state === "failed" ? (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              ) : (
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-blue-400" />
+              )}
+              <div className="min-w-0 flex-1">
+                <span
+                  className={
+                    step.state === "active"
+                      ? "font-semibold text-slate-100"
+                      : step.state === "failed"
+                        ? "font-medium text-amber-200"
+                        : "font-medium text-slate-300"
+                  }
+                >
+                  {step.label}
+                </span>
+                {step.detail ? (
+                  <span className="ml-2 text-xs text-slate-500">{step.detail}</span>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmptyWorkspaceState({
   title,
   detail,
@@ -301,6 +372,7 @@ export function AskVortaWorkspace({
   const [currentConversationId, setCurrentConversationId] = useState(() =>
     readActiveConversationId(),
   );
+  const [liveProgress, setLiveProgress] = useState<VortaAgentProgressEvent[]>([]);
 
   const hasUserQuestion = messages.some(
     (message) => message.role === "user" && message.text?.trim(),
@@ -323,6 +395,21 @@ export function AskVortaWorkspace({
       )
     : [];
   const recentGroups = useMemo(() => groupStoredConversations(recents), [recents]);
+
+  useEffect(() => {
+    const handleProgress = (event: Event): void => {
+      const progressEvent = event as CustomEvent<VortaAgentProgressEvent>;
+      if (!progressEvent.detail) return;
+      setLiveProgress((current) => mergeProgressStep(current, progressEvent.detail));
+    };
+    const resetProgress = (): void => setLiveProgress([]);
+    window.addEventListener(ASK_VORTA_PROGRESS_EVENT, handleProgress);
+    window.addEventListener(ASK_VORTA_PROGRESS_RESET_EVENT, resetProgress);
+    return () => {
+      window.removeEventListener(ASK_VORTA_PROGRESS_EVENT, handleProgress);
+      window.removeEventListener(ASK_VORTA_PROGRESS_RESET_EVENT, resetProgress);
+    };
+  }, []);
 
   useEffect(() => {
     writeActiveConversationId(currentConversationId);
@@ -619,10 +706,7 @@ export function AskVortaWorkspace({
                     }
                   >
                     {message.loading ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-300">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                        Choosing and checking the relevant Vorta sources...
-                      </div>
+                      <AskVortaLiveEvidenceActivity steps={liveProgress} />
                     ) : message.error ? (
                       <div className="flex flex-col gap-3" role="alert">
                         <div className="flex items-start gap-2">
