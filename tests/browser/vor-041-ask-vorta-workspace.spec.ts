@@ -230,8 +230,9 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(expand).toBeVisible();
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
+    const recentTitle = question.replace(/[?.!]+$/, "");
     await expect(
-      workspace.locator("aside").getByText(question, { exact: true }),
+      workspace.locator("aside").getByText(recentTitle, { exact: true }),
     ).toHaveCount(1);
     await page.getByRole("tab", { name: "Conversation" }).click();
     await expect(
