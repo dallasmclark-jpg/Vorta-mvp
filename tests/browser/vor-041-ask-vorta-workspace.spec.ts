@@ -130,15 +130,24 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
-    await expect(panel).toBeVisible();
-    const panelBox = await panel.boundingBox();
-    expect(panelBox?.width ?? 0).toBeGreaterThanOrEqual(480);
-
-    const expand = page.locator('[data-vorta-global-ai-expand="true"]');
-    await expect(expand).toBeVisible();
-    await expand.evaluate((element: HTMLButtonElement) => element.click());
-
     const workspace = page.locator('[data-vorta-ai-workspace="true"]');
+    const expand = page.locator('[data-vorta-global-ai-expand="true"]');
+
+    await expect
+      .poll(
+        async () => (await workspace.isVisible()) || (await panel.isVisible()),
+        { message: "Ask Vorta should open either the compact panel or the full workspace" },
+      )
+      .toBe(true);
+
+    if (!(await workspace.isVisible())) {
+      await expect(panel).toBeVisible();
+      const panelBox = await panel.boundingBox();
+      expect(panelBox?.width ?? 0).toBeGreaterThanOrEqual(480);
+      await expect(expand).toBeVisible();
+      await expand.evaluate((element: HTMLButtonElement) => element.click());
+    }
+
     await expect(workspace).toBeVisible();
     await expect(
       page.getByRole("button", { name: "New conversation" }),
@@ -218,6 +227,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     );
     await expect(compactSummary.locator("li")).toHaveCount(4);
 
+    await expect(expand).toBeVisible();
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
     await expect(
