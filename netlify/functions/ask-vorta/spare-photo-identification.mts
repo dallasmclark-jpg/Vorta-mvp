@@ -22,6 +22,13 @@ import { sha256Fingerprint } from "./utilities.mjs";
 
 const ROUTE_KEY = "spare_photo_identification";
 const INTENT_LABEL = "Spare photo identification";
+const MAX_CANDIDATE_IMAGE_BYTES = 1_500_000;
+const CANDIDATE_IMAGE_TIMEOUT_MS = 4_500;
+const ALLOWED_CANDIDATE_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 function visualInput(
   imageDataUrl: string,
@@ -62,6 +69,76 @@ function visualInput(
   ] as unknown as ResponseInput;
 }
 
+function isSafePublicCandidateImageUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      !hostname ||
+      hostname === "localhost" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      hostname.includes(":") ||
+      /^(?:127\.|10\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function candidateImageAsDataUrl(imageUrl: string): Promise<string | null> {
+  if (!isSafePublicCandidateImageUrl(imageUrl)) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CANDIDATE_IMAGE_TIMEOUT_MS);
+  try {
+    const response = await fetch(imageUrl, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: {
+        Accept: "image/jpeg,image/png,image/webp",
+        "User-Agent": "Vorta-spare-image-matcher/1.0",
+      },
+    });
+    if (!response.ok) return null;
+    const contentType = (response.headers.get("content-type") ?? "")
+      .split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+    if (!ALLOWED_CANDIDATE_IMAGE_TYPES.has(contentType)) return null;
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_CANDIDATE_IMAGE_BYTES) {
+      return null;
+    }
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_CANDIDATE_IMAGE_BYTES) {
+      return null;
+    }
+    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function prepareVisualCandidates(
+  candidates: AskVortaSparePhotoCandidate[],
+): Promise<AskVortaSparePhotoCandidate[]> {
+  const prepared = await Promise.all(
+    candidates.map(async (candidate) => {
+      const dataUrl = await candidateImageAsDataUrl(candidate.imageUrl);
+      return dataUrl ? { ...candidate, imageUrl: dataUrl } : null;
+    }),
+  );
+  return prepared.filter(
+    (candidate): candidate is AskVortaSparePhotoCandidate => Boolean(candidate),
+  );
+}
+
 async function compareVerifiedSpareImages(
   client: OpenAI,
   imageDataUrl: string,
@@ -75,9 +152,11 @@ async function compareVerifiedSpareImages(
       instructions: [
         "You are performing bounded visual similarity ranking inside an authorised Vorta spare catalogue.",
         "The first image is the target photo. Every later image is a labelled Vorta stock candidate already selected from the authenticated site catalogue.",
-        "Return a visual similarity score from 0 to 100 for each candidateId supplied. Compare physical form only: component class, housing shape, proportions, flange/shaft arrangement, connectors, controls, terminal layout and other visible geometry.",
+        "Return a visual similarity score from 0 to 100 for each candidateId supplied.",
+        "Compare component class and physical geometry before branding: housing shape, proportions, flange and shaft arrangement, connectors, controls, terminal layout and mounting features.",
+        "An obvious component-class mismatch must score low. For example, a servo motor with an exposed output shaft and flange is not a close visual match to a PLC I/O module merely because both are Siemens products.",
         "Do not invent candidate IDs, part numbers, manufacturers or stock data. Do not browse for alternatives. Do not diagnose equipment or recommend work.",
-        "Visible branding may support physical identity, but exact OCR/part-number evidence is ranked separately by Vorta and must not cause you to skip the visual comparison.",
+        "Visible branding may support identity, but exact OCR/part-number evidence is ranked separately by Vorta and must not override physical mismatch.",
       ].join("\n"),
       input: visualInput(imageDataUrl, candidates),
       max_output_tokens: 900,
@@ -125,9 +204,18 @@ function resultValue(match: AskVortaSparePhotoMatch): string {
   ].filter(Boolean).join(" · ");
 }
 
+function asksStockAvailability(question: string): boolean {
+  return (
+    /\b(?:in|on)\s+stock\b/i.test(question) ||
+    /\b(?:is|are|any)\b.{0,30}\bavailable\b/i.test(question) ||
+    /\b(?:how many|quantity|qty)\b/i.test(question)
+  );
+}
+
 function answerForMatches(
   interactionId: string,
   matches: AskVortaSparePhotoMatch[],
+  question: string,
 ) {
   const top = matches[0];
   const decisionSummary = matches.length > 0
@@ -138,14 +226,28 @@ function answerForMatches(
         value: resultValue(match),
       }))
     : [{
-        label: "No verified stock match",
-        value: "No authorised site spare with a verified image matched the photo closely enough.",
+        label: "No reliable stock match",
+        value: "No authorised site spare image matched the photo closely enough.",
       }];
+
+  let directAnswer = "I could not find a reliable match in the verified site stock images.";
+  if (top) {
+    const identifier = top.stockNumber || top.componentName;
+    const compactLocation = top.location ? ` · ${top.location}` : "";
+    if (asksStockAvailability(question) && top.matchConfidence >= 60 && top.quantity !== null) {
+      directAnswer = top.quantity > 0
+        ? `Yes. Closest stock match: ${identifier} · Qty ${top.quantity}${compactLocation}.`
+        : `No. Closest stock match: ${identifier} · Qty 0${compactLocation}.`;
+    } else if (top.matchConfidence >= 60) {
+      directAnswer = `Closest stock match: ${identifier}.`;
+    } else {
+      directAnswer = `Possible stock match: ${identifier} (${top.matchConfidence}%).`;
+    }
+  }
+
   return {
     responseId: interactionId,
-    directAnswer: top
-      ? `Closest match: ${top.stockNumber || top.componentName} (${top.matchConfidence}%).`
-      : "I could not find a credible match in the verified site stock images.",
+    directAnswer,
     decisionSummary,
     evidence: [],
     findings: [],
@@ -201,18 +303,17 @@ export async function handleSparePhotoIdentification(
   const evidenceStartedAt = Date.now();
   const client = new OpenAI();
   const extraction = await extractAskVortaImageEvidence(client, request.image);
-  const componentResult = await supabase
-    .from("equipment_components")
-    .select(
-      "id,equipment_id,component_name,component_code,oem_part_number,vendor_name,maker_name,image_url,image_alt_text,image_verification_status,quantity_available,storage_location,availability_status",
-    )
+  const imageResult = await supabase
+    .from("vorta_entity_images")
+    .select("component_id,source_url,alt_text,is_primary,source_type")
     .eq("site_id", request.siteId)
-    .eq("image_verification_status", "verified")
-    .not("image_url", "is", null)
-    .limit(1_000);
-  const evidenceMs = Date.now() - evidenceStartedAt;
+    .eq("entity_type", "spare")
+    .not("component_id", "is", null)
+    .not("source_url", "is", null)
+    .limit(100);
 
-  if (componentResult.error) {
+  if (imageResult.error) {
+    const evidenceMs = Date.now() - evidenceStartedAt;
     await updateAskVortaInteraction(
       supabase,
       interactionId,
@@ -234,28 +335,94 @@ export async function handleSparePhotoIdentification(
       },
     );
     return jsonResponse(
-      { error: "Ask Vorta could not check the authorised site stock catalogue." },
+      { error: "Ask Vorta could not check the verified site spare-image catalogue." },
       503,
     );
   }
 
+  const imageRows = imageResult.data ?? [];
+  const componentIds = [
+    ...new Set(
+      imageRows
+        .map((row) => String(row.component_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  let componentRows: Array<Record<string, unknown>> = [];
+  if (componentIds.length > 0) {
+    const componentResult = await supabase
+      .from("equipment_components")
+      .select(
+        "id,equipment_id,component_name,component_code,oem_part_number,vendor_name,maker_name,image_alt_text,quantity_available,storage_location,availability_status",
+      )
+      .eq("site_id", request.siteId)
+      .in("id", componentIds);
+    if (componentResult.error) {
+      const evidenceMs = Date.now() - evidenceStartedAt;
+      await updateAskVortaInteraction(
+        supabase,
+        interactionId,
+        userId,
+        {
+          ...buildAskVortaTelemetryValues({
+            status: "failed",
+            routeKey: ROUTE_KEY,
+            routingMode: "deterministic",
+            plannerMs: 0,
+            evidenceMs,
+            answerMs: 0,
+            toolCount: 1,
+            toolRoundCount: 1,
+            failureStage: "evidence",
+            startedAt,
+          }),
+          intent_label: ROUTE_KEY,
+        },
+      );
+      return jsonResponse(
+        { error: "Ask Vorta could not resolve the verified spare images to site stock records." },
+        503,
+      );
+    }
+    componentRows = componentResult.data ?? [];
+  }
+
+  const imageByComponent = new Map(
+    imageRows.map((row) => [String(row.component_id ?? ""), row]),
+  );
+  const curatedComponents = componentRows.flatMap((component) => {
+    const image = imageByComponent.get(String(component.id ?? ""));
+    const sourceUrl = typeof image?.source_url === "string" ? image.source_url : "";
+    if (!sourceUrl) return [];
+    const altText = typeof image?.alt_text === "string" ? image.alt_text : "";
+    return [{
+      ...component,
+      image_url: sourceUrl,
+      image_alt_text: altText || component.image_alt_text,
+      image_verification_status: "verified",
+    }];
+  });
+  const evidenceMs = Date.now() - evidenceStartedAt;
+
   const ranked = rankAskVortaSparePhotoCandidates(
     extraction,
-    componentResult.data ?? [],
+    curatedComponents,
     { pagePath: request.pageContext.path },
   );
   const answerStartedAt = Date.now();
+  const visualCandidates = await prepareVisualCandidates(ranked.candidates);
   const visualMatches = await compareVerifiedSpareImages(
     client,
     request.image.dataUrl,
-    ranked.candidates,
+    visualCandidates,
   );
   const matches = combineAskVortaSparePhotoMatches(
     ranked.candidates,
     visualMatches,
   );
   const answerMs = Date.now() - answerStartedAt;
-  const answer = answerForMatches(interactionId, matches);
+  const answer = answerForMatches(interactionId, matches, request.question);
 
   await updateAskVortaInteraction(
     supabase,
@@ -276,7 +443,7 @@ export async function handleSparePhotoIdentification(
       }),
       intent_label: ROUTE_KEY,
       tools_used: ["verified_site_spare_image_match"],
-      sources: ["Verified site spare images"],
+      sources: ["Curated Vorta spare images"],
       confidence: answer.confidence,
       missing_data_count: 0,
     },
