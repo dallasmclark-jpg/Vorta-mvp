@@ -27,7 +27,7 @@ jobs:
 
           def replace_once(text, old, new, label):
               if old not in text:
-                  raise SystemExit(f'missing assistant pattern: {label}')
+                  raise SystemExit(f'missing pattern: {label}')
               return text.replace(old, new, 1)
 
           import_block = '''import {
@@ -161,33 +161,26 @@ jobs:
           )
           assistant = replace_once(
               assistant,
-              '              {roleProfile.quickQuestions.map((question, questionIndex) => (',
-              '              {suggestedQuestions.map((question, questionIndex) => (',
+              '{roleProfile.quickQuestions.map((question, questionIndex) => (',
+              '{suggestedQuestions.map((question, questionIndex) => (',
               'compact personalised prompts',
           )
           assistant = replace_once(
               assistant,
-              '            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-nowrap max-md:overflow-x-auto">',
-              '            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-col max-md:gap-2">',
+              'max-md:mb-0 max-md:flex-nowrap max-md:overflow-x-auto',
+              'max-md:mb-0 max-md:flex-col max-md:gap-2',
               'mobile vertical prompt container',
           )
           assistant = replace_once(
               assistant,
-              '''                <button
-                  key={question}
-                  type="button"
-                  disabled={''',
-              '''                <button
-                  key={question}
-                  type="button"
-                  data-vorta-global-ai-prompt-button="true"
-                  disabled={''',
+              'key={question}\n                  type="button"\n                  disabled={',
+              'key={question}\n                  type="button"\n                  data-vorta-global-ai-prompt-button="true"\n                  disabled={',
               'prompt button hook',
           )
           assistant = replace_once(
               assistant,
-              'max-md:shrink-0 max-md:whitespace-nowrap ${',
-              'max-md:w-full max-md:rounded-xl max-md:px-4 max-md:py-3 max-md:text-left max-md:whitespace-normal ${',
+              'max-md:shrink-0 max-md:whitespace-nowrap',
+              'max-md:w-full max-md:rounded-xl max-md:px-4 max-md:py-3 max-md:text-left max-md:whitespace-normal',
               'mobile full-width prompts',
           )
           assistant = replace_once(
@@ -257,17 +250,11 @@ jobs:
 
           spec_path = Path('tests/browser/vor-041-ask-vorta-workspace.spec.ts')
           spec = spec_path.read_text()
-          old_desktop_prompt = '''    await expect(
-              workspace.getByRole("button", { name: "What are my highest site risks?", exact: true }),
-            ).toBeVisible();'''
-          new_desktop_prompt = '''    await expect(
-              workspace.locator('button').filter({ hasText: /risk|equipment|shift|work|spares/i }).first(),
-            ).toBeVisible();'''
-          if old_desktop_prompt not in spec:
-              raise SystemExit('missing desktop prompt expectation')
-          spec = spec.replace(old_desktop_prompt, new_desktop_prompt, 1)
+          desktop_old = '''workspace.getByRole("button", { name: "What are my highest site risks?", exact: true })'''
+          desktop_new = '''workspace.locator('button').filter({ hasText: /risk|equipment|shift|work|spares/i }).first()'''
+          spec = replace_once(spec, desktop_old, desktop_new, 'desktop ranked prompt assertion')
 
-          phone_prompt_block = '''    for (const prompt of [
+          phone_old = '''    for (const prompt of [
               "What are my highest site risks?",
               "What shift-cover issues do I have next week?",
               "Which maintenance action reduces risk the most?",
@@ -277,7 +264,7 @@ jobs:
             await expect(
               panel.getByRole("button", { name: "Show equipment that needs attention", exact: true }),
             ).toBeHidden();'''
-          phone_prompt_replacement = '''    const visiblePrompts = panel.locator(
+          phone_new = '''    const visiblePrompts = panel.locator(
               '[data-vorta-global-ai-prompt-button="true"]:visible',
             );
             await expect(visiblePrompts).toHaveCount(2);
@@ -294,9 +281,7 @@ jobs:
             );
             expect(promptOverflow).toBeLessThanOrEqual(1);
             await expect(panel.getByText("Risk-reduction plan", { exact: true })).toHaveCount(0);'''
-          if phone_prompt_block not in spec:
-              raise SystemExit('missing old phone prompt browser block')
-          spec = spec.replace(phone_prompt_block, phone_prompt_replacement, 1)
+          spec = replace_once(spec, phone_old, phone_new, 'phone vertical prompt assertions')
           spec_path.write_text(spec)
           PY
       - name: Remove one-off apply workflow and commit
