@@ -53,6 +53,20 @@ function createObjectId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function isManagedImage(value: unknown): value is VortaManagedImage {
+  if (!value || typeof value !== "object") return false;
+  const image = value as Partial<VortaManagedImage>;
+  return (
+    typeof image.id === "string" &&
+    (image.entityType === "equipment" || image.entityType === "spare") &&
+    typeof image.entityId === "string" &&
+    typeof image.storagePath === "string" &&
+    typeof image.signedUrl === "string" &&
+    typeof image.sourceType === "string" &&
+    typeof image.createdAt === "string"
+  );
+}
+
 export function isVortaMediaEntityId(value: string | null | undefined): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
@@ -124,6 +138,30 @@ export async function loadPreferredManagedImage(
   if (!data) return null;
 
   return signedManagedImage(data as EntityImageRow);
+}
+
+export async function cacheVerifiedSourceImage(
+  entityType: VortaMediaEntityType,
+  entityId: string,
+): Promise<VortaManagedImage> {
+  if (!isVortaMediaEntityId(entityId)) {
+    throw new Error("This record is not eligible for verified image caching.");
+  }
+
+  const { data, error } = await supabase.functions.invoke("cache-verified-media", {
+    body: { entityType, entityId },
+  });
+
+  if (error) {
+    throw new Error(`Verified image could not be stored in Vorta: ${error.message}`);
+  }
+
+  const image = data?.image;
+  if (!isManagedImage(image)) {
+    throw new Error(data?.error ?? "Verified image cache returned an invalid response.");
+  }
+
+  return image;
 }
 
 export async function uploadManagedImage({
