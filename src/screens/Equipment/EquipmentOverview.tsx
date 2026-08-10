@@ -53,6 +53,7 @@ import type {
 } from "./equipmentService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { VerifiedEquipmentImage } from "./VerifiedEquipmentImage";
 
 interface EquipmentOverviewDemo {
   healthScore: number;
@@ -489,9 +490,15 @@ export const EquipmentOverview = (): JSX.Element => {
         </div>
 
         <div className="flex flex-wrap gap-3 sm:flex-col sm:gap-4 lg:flex-row lg:items-start lg:gap-6">
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#141820] sm:h-28 sm:w-32">
-            <img src={eq.image} alt={eq.name} className="h-full w-full object-cover" onError={(event) => { (event.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          </div>
+          <VerifiedEquipmentImage
+            src={eq.image}
+            equipmentName={eq.name}
+            equipmentType={eq.type}
+            equipmentCode={eq.assetNumber}
+            equipmentId={eq.id}
+            className="hidden h-28 w-32 shrink-0 md:block"
+            imageClassName="object-cover"
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="line-clamp-2 text-lg font-bold leading-6 tracking-tight text-slate-50 sm:text-2xl">{eq.name}</h1>

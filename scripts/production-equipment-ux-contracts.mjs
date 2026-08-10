@@ -132,15 +132,18 @@ for (const expected of [
   "flex flex-wrap gap-3",
   "sm:hidden",
   "Risk briefing",
-  "h-20 w-20",
-  "sm:w-32",
+  'className="hidden h-28 w-32 shrink-0 md:block"',
   "sm:text-4xl",
 ]) {
   assert.ok(
     equipmentOverview.includes(expected),
-    `Mobile equipment summary is missing ${expected}.`,
+    `Equipment summary is missing ${expected}.`,
   );
 }
+assert.ok(
+  !equipmentOverview.includes('className="h-20 w-20 shrink-0'),
+  "Phone equipment detail must not reserve image space below 768px.",
+);
 
 assert.equal(
   evidenceCoverage.match(/\.rpc\(/g)?.length ?? 0,

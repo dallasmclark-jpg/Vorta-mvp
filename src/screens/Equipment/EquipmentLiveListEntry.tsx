@@ -382,6 +382,7 @@ function LiveEquipmentList({ siteId }: { siteId: string }): JSX.Element {
                 equipmentName={item.name}
                 equipmentType={item.type}
                 equipmentCode={item.assetNumber}
+                equipmentId={item.id}
                 className="h-44 w-full rounded-none border-0 border-b border-gray-800"
               />
 
