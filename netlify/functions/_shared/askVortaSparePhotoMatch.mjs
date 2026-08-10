@@ -41,6 +41,12 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function optionalNumberValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(numberValue(value))));
 }
@@ -218,7 +224,7 @@ export function rankAskVortaSparePhotoCandidates(
         manufacturer: text(component.maker_name || component.vendor_name, 160),
         imageUrl: safeImageUrl(component.image_url),
         imageAltText: text(component.image_alt_text, 240),
-        quantity: numberValue(component.quantity_available),
+        quantity: optionalNumberValue(component.quantity_available),
         location: text(component.storage_location, 160),
         availabilityStatus: text(component.availability_status, 100),
         metadataScore: scoring.metadataScore,

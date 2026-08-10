@@ -9,7 +9,7 @@ export interface AskVortaSparePhotoCandidate {
   manufacturer: string;
   imageUrl: string;
   imageAltText: string;
-  quantity: number;
+  quantity: number | null;
   location: string;
   availabilityStatus: string;
   metadataScore: number;

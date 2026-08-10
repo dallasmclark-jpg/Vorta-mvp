@@ -120,7 +120,7 @@ function resultValue(match: AskVortaSparePhotoMatch): string {
   return [
     match.componentName,
     match.oemPartNumber ? `OEM ${match.oemPartNumber}` : "",
-    `Qty ${match.quantity}`,
+    match.quantity !== null ? `Qty ${match.quantity}` : "",
     match.location,
   ].filter(Boolean).join(" · ");
 }
