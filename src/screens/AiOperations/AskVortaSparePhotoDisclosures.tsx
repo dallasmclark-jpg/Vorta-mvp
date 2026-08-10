@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Target } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, Target } from "lucide-react";
 import { useAuth, type PilotRole } from "../../lib/auth";
 import { InventoryItemDisclosure } from "../StoresInventory/StoresInventorySection";
 import {
@@ -228,6 +228,65 @@ function ResolvedMatchDisclosure({
   );
 }
 
+function SpareMatchLoadingRail({ stockNumber }: { stockNumber?: string }): JSX.Element {
+  const steps = [
+    { label: "Image", state: "complete" as const },
+    { label: "Stores", state: "complete" as const },
+    { label: "Match", state: "complete" as const },
+    { label: "Stock record", state: "active" as const },
+  ];
+
+  return (
+    <div className="space-y-2.5 px-1 py-1" role="status" aria-live="polite">
+      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+        <ShieldCheck className="h-3.5 w-3.5 text-blue-300" aria-hidden="true" />
+        Checking Vorta evidence
+      </div>
+      <div
+        data-vorta-ask-vorta-stock-loading-rail="true"
+        className="flex w-full items-center overflow-hidden"
+        aria-label="Image checked, Stores checked, match found, opening stock record"
+      >
+        {steps.map((step, index) => (
+          <div key={step.label} className="contents">
+            <div className="flex shrink-0 items-center gap-1.5">
+              {step.state === "complete" ? (
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-500/35 bg-emerald-500/10">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                </span>
+              ) : (
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-500/40 bg-blue-500/10">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-300" aria-hidden="true" />
+                </span>
+              )}
+              <span
+                className={
+                  step.state === "active"
+                    ? "text-xs font-semibold text-slate-100"
+                    : "text-xs font-medium text-slate-400"
+                }
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 ? (
+              <span
+                className="mx-2 h-px min-w-4 flex-1 bg-slate-700/80"
+                aria-hidden="true"
+              />
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-slate-500">
+        {stockNumber
+          ? `Opening the verified Stores Inventory record for ${stockNumber}…`
+          : "Opening the verified Stores Inventory record…"}
+      </p>
+    </div>
+  );
+}
+
 export function AskVortaSparePhotoDisclosures({
   answer,
 }: {
@@ -284,11 +343,9 @@ export function AskVortaSparePhotoDisclosures({
     return (
       <div
         data-vorta-ask-vorta-spare-disclosures="true"
-        className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-slate-400"
-        role="status"
+        data-vorta-loading="true"
       >
-        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-        Loading closest stock match…
+        <SpareMatchLoadingRail stockNumber={matches[0]?.stockNumber} />
       </div>
     );
   }
