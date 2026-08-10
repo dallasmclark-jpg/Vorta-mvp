@@ -3,6 +3,7 @@ import { ImageOff, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import {
   canManageVortaMedia,
+  isVortaMediaEntityId,
   loadPreferredManagedImage,
   uploadManagedImage,
   VORTA_MEDIA_ACCEPT,
@@ -39,17 +40,18 @@ export function VerifiedEquipmentImage({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const siteId = siteContext?.siteId ?? null;
+  const persistedEquipmentId = isVortaMediaEntityId(equipmentId) ? equipmentId : null;
   const canUpload =
-    Boolean(siteId && equipmentId) && canManageVortaMedia(siteContext?.role);
+    Boolean(siteId && persistedEquipmentId) && canManageVortaMedia(siteContext?.role);
 
   useEffect(() => {
     let cancelled = false;
     setManagedImage(null);
     setUploadError(null);
 
-    if (!siteId || !equipmentId) return () => undefined;
+    if (!siteId || !persistedEquipmentId) return () => undefined;
 
-    void loadPreferredManagedImage(siteId, "equipment", equipmentId)
+    void loadPreferredManagedImage(siteId, "equipment", persistedEquipmentId)
       .then((image) => {
         if (!cancelled) setManagedImage(image);
       })
@@ -62,7 +64,7 @@ export function VerifiedEquipmentImage({
     return () => {
       cancelled = true;
     };
-  }, [equipmentId, siteId]);
+  }, [persistedEquipmentId, siteId]);
 
   const activeSrc = managedImage?.signedUrl ?? src;
 
@@ -78,7 +80,7 @@ export function VerifiedEquipmentImage({
   );
 
   const handleFile = async (file: File): Promise<void> => {
-    if (!siteId || !equipmentId || !canUpload) return;
+    if (!siteId || !persistedEquipmentId || !canUpload) return;
 
     setUploading(true);
     setUploadError(null);
@@ -86,7 +88,7 @@ export function VerifiedEquipmentImage({
       const uploaded = await uploadManagedImage({
         siteId,
         entityType: "equipment",
-        entityId: equipmentId,
+        entityId: persistedEquipmentId,
         file,
         altText: `Site photo for ${equipmentName}`,
       });
