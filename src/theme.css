@@ -168,6 +168,10 @@ html.light :is([class~="hover:text-slate-100"], [class~="hover:text-slate-200"])
   color: #0f172a !important;
 }
 
+[data-vorta-ask-vorta-spare-disclosures="true"][data-vorta-loading="true"] + [data-vorta-ai-workspace-source-summary="true"] {
+  display: none !important;
+}
+
 .vorta-theme-control {
   left: 4.5rem;
   bottom: 1rem;
