@@ -42,7 +42,8 @@ create index if not exists vorta_entity_images_spare_lookup_idx
 alter table public.vorta_entity_images enable row level security;
 
 revoke all on public.vorta_entity_images from anon;
-grant select, insert, update, delete on public.vorta_entity_images to authenticated;
+revoke update, delete on public.vorta_entity_images from authenticated;
+grant select, insert on public.vorta_entity_images to authenticated;
 
 create policy "vorta_entity_images_site_read"
   on public.vorta_entity_images
@@ -55,56 +56,36 @@ create policy "vorta_entity_images_site_insert"
   for insert
   to authenticated
   with check (
-    private.vorta_rls_has_site_access(site_id, false)
+    private.vorta_rls_has_site_access(vorta_entity_images.site_id, false)
     and private.vorta_rls_current_role() in ('maintenance_manager', 'site_admin', 'vorta_admin')
-    and source_type = 'site_photo'
-    and uploaded_by = auth.uid()
+    and vorta_entity_images.source_type = 'site_photo'
+    and vorta_entity_images.uploaded_by = auth.uid()
+    and vorta_entity_images.storage_bucket = 'vorta-media'
+    and split_part(vorta_entity_images.storage_path, '/', 1) = vorta_entity_images.site_id::text
+    and split_part(vorta_entity_images.storage_path, '/', 2) = vorta_entity_images.entity_type
     and (
       (
-        entity_type = 'equipment'
+        vorta_entity_images.entity_type = 'equipment'
+        and split_part(vorta_entity_images.storage_path, '/', 3) = vorta_entity_images.equipment_id::text
         and exists (
           select 1
-          from public.equipment_assets asset
-          where asset.id = equipment_id
-            and asset.site_id = site_id
+          from public.equipment_assets ea
+          where ea.id = vorta_entity_images.equipment_id
+            and ea.site_id = vorta_entity_images.site_id
         )
       )
       or
       (
-        entity_type = 'spare'
+        vorta_entity_images.entity_type = 'spare'
+        and split_part(vorta_entity_images.storage_path, '/', 3) = vorta_entity_images.component_id::text
         and exists (
           select 1
-          from public.equipment_components component
-          where component.id = component_id
-            and component.site_id = site_id
+          from public.equipment_components ec
+          where ec.id = vorta_entity_images.component_id
+            and ec.site_id = vorta_entity_images.site_id
         )
       )
     )
-  );
-
-create policy "vorta_entity_images_site_update"
-  on public.vorta_entity_images
-  for update
-  to authenticated
-  using (
-    private.vorta_rls_has_site_access(site_id, false)
-    and private.vorta_rls_current_role() in ('maintenance_manager', 'site_admin', 'vorta_admin')
-    and (uploaded_by = auth.uid() or private.vorta_rls_current_role() = 'vorta_admin')
-  )
-  with check (
-    private.vorta_rls_has_site_access(site_id, false)
-    and private.vorta_rls_current_role() in ('maintenance_manager', 'site_admin', 'vorta_admin')
-    and (uploaded_by = auth.uid() or private.vorta_rls_current_role() = 'vorta_admin')
-  );
-
-create policy "vorta_entity_images_site_delete"
-  on public.vorta_entity_images
-  for delete
-  to authenticated
-  using (
-    private.vorta_rls_has_site_access(site_id, false)
-    and private.vorta_rls_current_role() in ('maintenance_manager', 'site_admin', 'vorta_admin')
-    and (uploaded_by = auth.uid() or private.vorta_rls_current_role() = 'vorta_admin')
   );
 
 insert into storage.buckets (
@@ -162,17 +143,17 @@ create policy "vorta_media_site_insert"
         and split_part(name, '/', 2) = 'equipment'
         then exists (
           select 1
-          from public.equipment_assets asset
-          where asset.id = split_part(name, '/', 3)::uuid
-            and asset.site_id = split_part(name, '/', 1)::uuid
+          from public.equipment_assets ea
+          where ea.id = split_part(objects.name, '/', 3)::uuid
+            and ea.site_id = split_part(objects.name, '/', 1)::uuid
         )
       when split_part(name, '/', 3) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
         and split_part(name, '/', 2) = 'spare'
         then exists (
           select 1
-          from public.equipment_components component
-          where component.id = split_part(name, '/', 3)::uuid
-            and component.site_id = split_part(name, '/', 1)::uuid
+          from public.equipment_components ec
+          where ec.id = split_part(objects.name, '/', 3)::uuid
+            and ec.site_id = split_part(objects.name, '/', 1)::uuid
         )
       else false
     end
