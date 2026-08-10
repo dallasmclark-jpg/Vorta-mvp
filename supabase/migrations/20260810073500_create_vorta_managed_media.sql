@@ -41,8 +41,7 @@ create index if not exists vorta_entity_images_spare_lookup_idx
 
 alter table public.vorta_entity_images enable row level security;
 
-revoke all on public.vorta_entity_images from anon;
-revoke update, delete on public.vorta_entity_images from authenticated;
+revoke all on public.vorta_entity_images from anon, authenticated;
 grant select, insert on public.vorta_entity_images to authenticated;
 
 create policy "vorta_entity_images_site_read"
