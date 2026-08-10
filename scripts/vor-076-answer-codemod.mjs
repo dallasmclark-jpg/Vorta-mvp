@@ -44,14 +44,16 @@ replaceOnce(
   `            intentLabel: agentAnswer.intentLabel,\n            roleNote:\n              agentAnswer.intentLabel === "Spare photo identification"\n                ? undefined\n                : roleAwareNote(roleProfile),`,
   "spare manager-note suppression",
 );
-replaceOnce(
-  `                      {message.imageName ? (\n                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">\n                          Photo attached: {message.imageName}\n                        </p>\n                      ) : null}`,
-  `                      {message.imageName && getAskVortaImagePreview(message.imageName) ? (\n                        <img\n                          src={getAskVortaImagePreview(message.imageName) ?? undefined}\n                          alt="Submitted maintenance photo"\n                          className="hidden rounded-lg md:block"\n                          style={{\n                            maxHeight: 112,\n                            maxWidth: "100%",\n                            width: "auto",\n                            height: "auto",\n                            objectFit: "contain",\n                          }}\n                        />\n                      ) : message.imageName ? (\n                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">\n                          Photo attached: {message.imageName}\n                        </p>\n                      ) : null}`,
-  "compact submitted image",
-);
-source = source.replace(
-  `                          className="hidden max-h-28 w-auto max-w-full rounded-lg border border-gray-800 bg-gray-950 object-contain md:block"\n                        />`,
-  `                          className="hidden rounded-lg md:block"\n                          style={{\n                            maxHeight: 112,\n                            maxWidth: "100%",\n                            width: "auto",\n                            height: "auto",\n                            objectFit: "contain",\n                          }}\n                        />`,
-);
+
+const compactFilenameOnly = `                      {message.imageName ? (\n                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">\n                          Photo attached: {message.imageName}\n                        </p>\n                      ) : null}`;
+const compactPrevious = `                      {message.imageName && getAskVortaImagePreview(message.imageName) ? (\n                        <img\n                          src={getAskVortaImagePreview(message.imageName) ?? undefined}\n                          alt="Submitted maintenance photo"\n                          className="hidden max-h-28 w-auto max-w-full rounded-lg border border-gray-800 bg-gray-950 object-contain md:block"\n                        />\n                      ) : message.imageName ? (\n                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">\n                          Photo attached: {message.imageName}\n                        </p>\n                      ) : null}`;
+const compactFinal = `                      {message.imageName && getAskVortaImagePreview(message.imageName) ? (\n                        <img\n                          src={getAskVortaImagePreview(message.imageName) ?? undefined}\n                          alt="Submitted maintenance photo"\n                          className="hidden rounded-lg md:block"\n                          style={{\n                            maxHeight: 112,\n                            maxWidth: "100%",\n                            width: "auto",\n                            height: "auto",\n                            objectFit: "contain",\n                          }}\n                        />\n                      ) : message.imageName ? (\n                        <p className="hidden text-xs font-semibold text-blue-100/80 md:block">\n                          Photo attached: {message.imageName}\n                        </p>\n                      ) : null}`;
+if (source.includes(compactFilenameOnly)) {
+  source = source.replace(compactFilenameOnly, compactFinal);
+} else if (source.includes(compactPrevious)) {
+  source = source.replace(compactPrevious, compactFinal);
+} else if (!source.includes(compactFinal)) {
+  throw new Error("Missing VOR-076 anchor: compact submitted image");
+}
 
 writeFileSync(path, source);
