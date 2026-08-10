@@ -242,7 +242,7 @@ export async function handleSparePhotoIdentification(
   const ranked = rankAskVortaSparePhotoCandidates(
     extraction,
     componentResult.data ?? [],
-    { pagePath: request.pagePath },
+    { pagePath: request.pageContext.path },
   );
   const answerStartedAt = Date.now();
   const visualMatches = await compareVerifiedSpareImages(
