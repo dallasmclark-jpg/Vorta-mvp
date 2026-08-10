@@ -34,6 +34,7 @@ interface EntityImageRow {
 }
 
 const ALLOWED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function mediaEntityColumn(entityType: VortaMediaEntityType): "equipment_id" | "component_id" {
   return entityType === "equipment" ? "equipment_id" : "component_id";
@@ -50,6 +51,10 @@ function createObjectId(): string {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function isVortaMediaEntityId(value: string | null | undefined): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
 }
 
 export function canManageVortaMedia(role: PilotRole | null | undefined): boolean {
@@ -99,7 +104,7 @@ export async function loadPreferredManagedImage(
   entityType: VortaMediaEntityType,
   entityId: string,
 ): Promise<VortaManagedImage | null> {
-  if (!siteId || !entityId) return null;
+  if (!siteId || !isVortaMediaEntityId(entityId)) return null;
 
   const column = mediaEntityColumn(entityType);
   const { data, error } = await supabase
@@ -135,6 +140,9 @@ export async function uploadManagedImage({
   altText: string;
 }): Promise<VortaManagedImage> {
   validateVortaImageFile(file);
+  if (!isVortaMediaEntityId(entityId)) {
+    throw new Error("This record is not eligible for managed image upload.");
+  }
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) {
