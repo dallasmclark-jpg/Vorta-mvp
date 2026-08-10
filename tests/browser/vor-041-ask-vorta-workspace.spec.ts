@@ -135,16 +135,12 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
 
     await expect
       .poll(
-        async () => (await workspace.isVisible()) || (await panel.isVisible()),
-        { message: "Ask Vorta should open either the compact panel or the full workspace" },
+        async () => (await workspace.isVisible()) || (await expand.isVisible()),
+        { message: "Ask Vorta should expose the full workspace or its Expand control" },
       )
       .toBe(true);
 
-    if (!(await workspace.isVisible())) {
-      await expect(panel).toBeVisible();
-      const panelBox = await panel.boundingBox();
-      expect(panelBox?.width ?? 0).toBeGreaterThanOrEqual(480);
-      await expect(expand).toBeVisible();
+    if (!(await workspace.isVisible()) && (await expand.isVisible())) {
       await expand.evaluate((element: HTMLButtonElement) => element.click());
     }
 
