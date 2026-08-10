@@ -33,10 +33,12 @@ export function VerifiedEquipmentImage({
   className = "",
   imageClassName = "",
   compact = false,
-  cacheVerifiedSource = false,
+  cacheVerifiedSource = true,
 }: VerifiedEquipmentImageProps): JSX.Element {
   const { siteContext } = useAuth();
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [visible, setVisible] = useState(false);
   const [failed, setFailed] = useState(false);
   const [managedImage, setManagedImage] = useState<VortaManagedImage | null>(null);
   const [cacheAttempted, setCacheAttempted] = useState(false);
@@ -49,12 +51,33 @@ export function VerifiedEquipmentImage({
     Boolean(siteId && persistedEquipmentId) && canManageVortaMedia(siteContext?.role);
 
   useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "160px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setManagedImage(null);
     setCacheAttempted(false);
     setUploadError(null);
 
-    if (!siteId || !persistedEquipmentId) return () => undefined;
+    if (!visible || !siteId || !persistedEquipmentId) return () => undefined;
 
     void loadPreferredManagedImage(siteId, "equipment", persistedEquipmentId)
       .then(async (image) => {
@@ -82,7 +105,7 @@ export function VerifiedEquipmentImage({
     return () => {
       cancelled = true;
     };
-  }, [cacheVerifiedSource, canUpload, persistedEquipmentId, siteId, src]);
+  }, [cacheVerifiedSource, canUpload, persistedEquipmentId, siteId, src, visible]);
 
   const activeSrc = managedImage?.signedUrl ?? src;
 
@@ -140,6 +163,7 @@ export function VerifiedEquipmentImage({
 
   return (
     <div
+      ref={rootRef}
       className={`relative overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117] ${className}`}
       data-vorta-equipment-image-state={
         managedImage ? managedImage.sourceType : hasVerifiedImage ? "verified" : "unavailable"
