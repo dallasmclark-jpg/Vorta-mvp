@@ -11,6 +11,7 @@ const root = resolve(import.meta.dirname, "..");
 
 for (const question of [
   "what is the stock number of this spare?",
+  "is this spare on stock?",
   "identify this spare",
   "find this part in stores",
   "match this component to stock",
@@ -53,7 +54,7 @@ const components = [
     maker_name: "Siemens",
     vendor_name: "RS / Siemens supply",
     image_url: "https://example.test/siemens-servo.jpg",
-    image_alt_text: "Siemens compact servo motor with flange and shaft",
+    image_alt_text: "Siemens compact servo motor with front flange and output shaft",
     image_verification_status: "verified",
     quantity_available: 1,
     storage_location: "Stores A-05",
@@ -62,13 +63,13 @@ const components = [
   {
     id: "siemens-hmi",
     equipment_id: "vf02",
-    component_name: "HMI Touchscreen Panel 12 inch",
-    component_code: "VF02-HMI-012",
-    oem_part_number: "6AV2124-0MC01-0AX0",
+    component_name: "SIMATIC ET 200SP digital input module",
+    component_code: "VF02-PLC-DI",
+    oem_part_number: "6ES7131-6BH01-0BA0",
     maker_name: "Siemens",
     vendor_name: "Siemens Industry UK",
     image_url: "https://example.test/siemens-hmi.jpg",
-    image_alt_text: "Siemens touchscreen HMI panel",
+    image_alt_text: "Siemens SIMATIC PLC digital input module",
     image_verification_status: "verified",
     quantity_available: 1,
     storage_location: "Stores A-03",
@@ -102,6 +103,16 @@ assert.equal(
   "Reliable Siemens OCR must constrain the candidate pool before visual ranking.",
 );
 assert.equal(ranked.candidates.length, 2);
+assert.equal(
+  ranked.candidates[0]?.componentId,
+  "siemens-servo",
+  "Visible motor geometry must rank a Siemens servo above a Siemens PLC module even before visual-image scoring.",
+);
+assert.ok(
+  (ranked.candidates[0]?.metadataScore ?? 0) >
+    (ranked.candidates[1]?.metadataScore ?? 0),
+  "Component-class fallback must prevent equal metadata confidence for obvious physical mismatches.",
+);
 
 const matches = combineAskVortaSparePhotoMatches(ranked.candidates, [
   { componentId: "siemens-servo", visualSimilarity: 98 },
@@ -111,14 +122,24 @@ assert.equal(matches[0]?.componentId, "siemens-servo");
 assert.ok((matches[0]?.matchConfidence ?? 0) > (matches[1]?.matchConfidence ?? 0));
 assert.ok(matches.length <= 5, "Spare-photo results must never exceed five matches.");
 
+const metadataFallback = combineAskVortaSparePhotoMatches(ranked.candidates, []);
+assert.equal(metadataFallback[0]?.componentId, "siemens-servo");
+assert.ok(
+  (metadataFallback[0]?.matchConfidence ?? 0) >
+    (metadataFallback[1]?.matchConfidence ?? 0),
+  "Unavailable visual-image scoring must not collapse dissimilar Siemens candidates to an equal confidence tie.",
+);
+
 const runtimeSource = readFileSync(
   resolve(root, "netlify/functions/ask-vorta/spare-photo-identification.mts"),
   "utf8",
 );
-assert.match(runtimeSource, /\.eq\("site_id", request\.siteId\)/);
-assert.match(runtimeSource, /image_verification_status/);
-assert.match(runtimeSource, /compareVerifiedSpareImages/);
-assert.match(runtimeSource, /Closest match:/);
+assert.match(runtimeSource, /\.from\("vorta_entity_images"\)/);
+assert.match(runtimeSource, /\.eq\("entity_type", "spare"\)/);
+assert.match(runtimeSource, /prepareVisualCandidates/);
+assert.match(runtimeSource, /candidateImageAsDataUrl/);
+assert.match(runtimeSource, /Compare component class and physical geometry before branding/);
+assert.match(runtimeSource, /Yes\. Closest stock match:/);
 assert.doesNotMatch(runtimeSource, /get_equipment_decision_pack/);
 
 const backtestRuntimeSource = readFileSync(
@@ -150,6 +171,13 @@ const workspaceSource = readFileSync(
 assert.match(workspaceSource, /getAskVortaImagePreview/);
 assert.match(workspaceSource, /Submitted maintenance photo/);
 
+const tailwindConfigSource = readFileSync(
+  resolve(root, "tailwind.config.js"),
+  "utf8",
+);
+assert.match(tailwindConfigSource, /data-vorta-ai-workspace-input/);
+assert.match(tailwindConfigSource, /borderColor: "rgb\(55 65 81 \/ 1\) !important"/);
+
 const assistantSource = readFileSync(
   resolve(root, "src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx"),
   "utf8",
@@ -168,4 +196,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-077 spare-photo contracts passed.");
+console.log("VOR-077/VOR-079 spare-photo contracts passed.");
