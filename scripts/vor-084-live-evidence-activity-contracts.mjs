@@ -10,6 +10,7 @@ const toolExecution = read("netlify/functions/ask-vorta/tool-execution.mts");
 const sparePhoto = read("netlify/functions/ask-vorta/spare-photo-identification.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const workspace = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
+const shell = read("index.html");
 
 assert.match(
   progress,
@@ -113,6 +114,26 @@ assert.match(
   "The live activity enhancement must remain inside the desktop/tablet workspace boundary",
 );
 
+for (const marker of [
+  "@keyframes vorta-evidence-sweep",
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7{display:none!important}',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child{display:block!important',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child>svg{display:none!important}',
+  '[data-vorta-ask-vorta-stock-loading-rail="true"]{display:none!important}',
+]) {
+  assert.ok(shell.includes(marker), `VOR-085 single-status presentation is missing ${marker}`);
+}
+assert.match(
+  shell,
+  /@media\(min-width:769px\)/,
+  "VOR-085 presentation changes must remain desktop/tablet-only",
+);
+assert.doesNotMatch(
+  shell,
+  /\.min-h-7::after\{content:"";display:block;flex:0 0 22px/,
+  "The previous multi-stage connector rail must not return",
+);
+
 console.log(
-  "VOR-084 live Ask Vorta evidence activity contracts passed: source-driven progress, truthful spare-photo stages, JSON compatibility and desktop/tablet-only presentation are protected.",
+  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, truthful spare-photo stages, JSON compatibility, single-status loading and desktop/tablet-only presentation are protected.",
 );
