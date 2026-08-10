@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AskVortaPhase, AskVortaRequest, JsonRecord } from "./contracts.mjs";
-import { RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MINUTES } from "./contracts.mjs";
+import {
+  ASK_VORTA_RATE_LIMIT_REQUESTS,
+  ASK_VORTA_RATE_LIMIT_WINDOW_MINUTES,
+} from "./rate-limit-policy.mjs";
 import { jsonResponse } from "./request-context.mjs";
 
 interface BeginAskVortaInteractionInput {
@@ -22,12 +25,13 @@ export async function beginAskVortaInteraction(
   input: BeginAskVortaInteractionInput,
 ): Promise<BeginAskVortaInteractionResult> {
   const rateWindowStart = new Date(
-    input.startedAt - RATE_LIMIT_WINDOW_MINUTES * 60_000,
+    input.startedAt - ASK_VORTA_RATE_LIMIT_WINDOW_MINUTES * 60_000,
   ).toISOString();
   const { count: recentRequestCount, error: rateError } = await input.supabase
     .from("ask_vorta_interactions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", input.userId)
+    .neq("status", "rate_limited")
     .gte("created_at", rateWindowStart);
   if (rateError) {
     console.error("Ask Vorta rate-limit check failed", {
@@ -36,7 +40,7 @@ export async function beginAskVortaInteraction(
     });
     return { ok: false, response: jsonResponse({ error: "Ask Vorta could not verify request capacity." }, 503) };
   }
-  if ((recentRequestCount ?? 0) >= RATE_LIMIT_REQUESTS) {
+  if ((recentRequestCount ?? 0) >= ASK_VORTA_RATE_LIMIT_REQUESTS) {
     await input.supabase.from("ask_vorta_interactions").insert({
       id: crypto.randomUUID(),
       site_id: input.request.siteId,
@@ -57,7 +61,7 @@ export async function beginAskVortaInteraction(
     return {
       ok: false,
       response: jsonResponse(
-        { error: `Ask Vorta allows ${RATE_LIMIT_REQUESTS} analyses every ${RATE_LIMIT_WINDOW_MINUTES} minutes. Wait briefly and try again.` },
+        { error: `Ask Vorta allows ${ASK_VORTA_RATE_LIMIT_REQUESTS} analyses every ${ASK_VORTA_RATE_LIMIT_WINDOW_MINUTES} minutes per user. This protects the service from runaway or automated request loops without imposing a practical daily search cap.` },
         429,
       ),
     };
