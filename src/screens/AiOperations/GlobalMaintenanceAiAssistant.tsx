@@ -3769,7 +3769,14 @@ export function GlobalMaintenanceAiAssistant({
                         <img
                           src={getAskVortaImagePreview(message.imageName) ?? undefined}
                           alt="Submitted maintenance photo"
-                          className="hidden max-h-28 w-auto max-w-full rounded-lg border border-gray-800 bg-gray-950 object-contain md:block"
+                          className="hidden rounded-lg md:block"
+                          style={{
+                            maxHeight: 112,
+                            maxWidth: "100%",
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                          }}
                         />
                       ) : message.imageName ? (
                         <p className="hidden text-xs font-semibold text-blue-100/80 md:block">
