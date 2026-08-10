@@ -168,7 +168,7 @@ export function ManagedSpareImage({
                 setImageExpanded(true);
               }}
               aria-label={`Enlarge image of ${partName}`}
-              className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60"
+              className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
               style={{ cursor: "zoom-in" }}
             >
               <img
@@ -207,7 +207,7 @@ export function ManagedSpareImage({
                 onClick={() => inputRef.current?.click()}
                 aria-label={`Upload site image for ${partName}`}
                 title="Upload site image"
-                className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600/70 bg-slate-950/90 text-slate-100 shadow-sm hover:border-blue-400 hover:text-blue-200 disabled:cursor-wait disabled:opacity-70"
+                className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-100 disabled:opacity-60"
               >
                 {uploading ? (
                   <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
