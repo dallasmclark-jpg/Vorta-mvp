@@ -8,6 +8,20 @@ import {
 } from "../StoresInventory/storesInventoryService";
 
 type RegisterState = "loading" | "ready" | "empty" | "error";
+type InventorySnapshotResult = Awaited<ReturnType<typeof loadStoresInventorySnapshot>>;
+
+const inFlightInventoryLoads = new Map<string, Promise<InventorySnapshotResult>>();
+
+function loadSharedInventorySnapshot(siteId: string): Promise<InventorySnapshotResult> {
+  const existing = inFlightInventoryLoads.get(siteId);
+  if (existing) return existing;
+
+  const request = loadStoresInventorySnapshot(siteId).finally(() => {
+    inFlightInventoryLoads.delete(siteId);
+  });
+  inFlightInventoryLoads.set(siteId, request);
+  return request;
+}
 
 interface EquipmentSparesDisclosureRegisterProps {
   equipmentId: string;
@@ -35,7 +49,7 @@ export function EquipmentSparesDisclosureRegister({
     }
 
     setState("loading");
-    void loadStoresInventorySnapshot(siteId)
+    void loadSharedInventorySnapshot(siteId)
       .then((result) => {
         if (cancelled) return;
         if (result.status !== "ready") {
