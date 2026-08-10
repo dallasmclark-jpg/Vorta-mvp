@@ -141,9 +141,13 @@ export function isAskVortaSparePhotoQuestion(value) {
   if (!question) return false;
   return (
     /\b(stock\s*(number|no\.?|code)|stores?\s*(number|code)|spare\s*(number|code))\b/.test(question) ||
-    /\b(identify|recognise|recognize|match|find)\b.{0,40}\b(spare|part|component|stock)\b/.test(question) ||
-    /\b(spare|part|component)\b.{0,40}\b(identify|recognise|recognize|match|find|stock|stores?)\b/.test(question) ||
-    /\bwhat\s+is\s+(this|the)\s+(spare|part|component)\b/.test(question)
+    /\b(?:is|are)\s+(?:this|that|it|the\s+(?:spare|part|component|item))\s+(?:a\s+)?(?:stock|spare)\s*(?:item|part)?\b/.test(question) ||
+    /\b(?:is|are)\s+(?:this|that|it|the\s+(?:spare|part|component|item))\s+(?:in|on)\s+stock\b/.test(question) ||
+    /\b(?:do|does|can)\s+(?:we|you)\s+(?:stock|carry|have)\b.{0,40}\b(?:this|that|it|spare|part|component|item)\b/.test(question) ||
+    /\b(?:have|got)\s+(?:we|you)\b.{0,40}\b(?:this|that|it|spare|part|component|item)\b.{0,30}\b(?:stock|stores?)\b/.test(question) ||
+    /\b(identify|recognise|recognize|match|find)\b.{0,40}\b(spare|part|component|stock|item)\b/.test(question) ||
+    /\b(spare|part|component|stock\s*item)\b.{0,40}\b(identify|recognise|recognize|match|find|stock|stores?)\b/.test(question) ||
+    /\bwhat\s+is\s+(this|the)\s+(spare|part|component|stock\s*item)\b/.test(question)
   );
 }
 

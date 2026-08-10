@@ -21,6 +21,9 @@ import {
   VortaRouteErrorBoundary,
 } from "./components/VortaErrorBoundary";
 import {
+  installAskVortaWorkspaceFocusGuard,
+} from "./lib/askVortaWorkspaceFocusGuard";
+import {
   installFrontendErrorTelemetry,
 } from "./lib/frontendErrorTelemetry";
 import {
@@ -154,6 +157,7 @@ const MaintenancePlanner = lazy(() =>
 );
 
 installMobileDashboardWorkPlan();
+installAskVortaWorkspaceFocusGuard();
 
 const appElement =
   document.getElementById(
