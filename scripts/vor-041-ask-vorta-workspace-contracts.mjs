@@ -57,12 +57,12 @@ assert.match(
 );
 assert.match(
   workspace,
-  /What can I help with?[\s\S]*data-vorta-ai-workspace-welcome/,
+  /data-vorta-ai-workspace-welcome="true"[\s\S]*What can I help with\?/,
   "The full workspace must use the maintenance-first welcome state before the first question.",
 );
-assert.match(
-  workspace,
-  /Collapse recent conversations[\s\S]*Expand recent conversations/,
+assert.ok(
+  workspace.includes("Collapse recent conversations") &&
+    workspace.includes("Expand recent conversations"),
   "The Recent conversations rail must be collapsible without leaving the workspace.",
 );
 assert.ok(
@@ -133,5 +133,5 @@ for (const rule of [
 }
 
 console.log(
-  "VOR-041 desktop/tablet Ask Vorta workspace and unchanged mobile boundary contracts passed.",
+  "VOR-041 desktop/tablet Ask Vorta workspace and refined mobile boundary contracts passed.",
 );
