@@ -3718,7 +3718,7 @@ export function GlobalMaintenanceAiAssistant({
                       question,
                     )
                   }
-                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 max-md:w-full max-md:rounded-xl max-md:px-4 max-md:py-3 max-md:text-left max-md:whitespace-normal ${
+                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 ${
                     questionIndex >= 2 ? "max-md:hidden" : ""
                   }`}
                 >
