@@ -549,7 +549,7 @@ function DetailValue({
   );
 }
 
-function InventoryItemDisclosure({
+export function InventoryItemDisclosure({
   item,
   siteId,
   role,
@@ -558,7 +558,7 @@ function InventoryItemDisclosure({
   item: StoresInventoryItem;
   siteId: string;
   role: PilotRole | null | undefined;
-  onOpen: (item: StoresInventoryItem) => void;
+  onOpen?: (item: StoresInventoryItem) => void;
 }): JSX.Element {
   return (
     <details
@@ -619,7 +619,13 @@ function InventoryItemDisclosure({
           </dl>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div
+          className={`mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:items-end ${
+            onOpen
+              ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+              : "lg:grid-cols-2"
+          }`}
+        >
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Affected equipment
@@ -639,15 +645,17 @@ function InventoryItemDisclosure({
               {item.recommendedAction}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpen(item)}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-            aria-label={`Open ${item.partName} for ${item.equipmentName}`}
-          >
-            Open spares
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={() => onOpen(item)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+              aria-label={`Open ${item.partName} for ${item.equipmentName}`}
+            >
+              Open spares
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
       </div>
     </details>
