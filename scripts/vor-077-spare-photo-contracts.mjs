@@ -168,12 +168,32 @@ const imageClientSource = readFileSync(
 assert.match(imageClientSource, /getAskVortaImagePreview/);
 assert.doesNotMatch(imageClientSource, /localStorage|sessionStorage/);
 
-const workspaceSource = readFileSync(
-  resolve(root, "src/screens/AiOperations/AskVortaWorkspace.tsx"),
-  "utf8",
-);
+const workspaceSource = [
+  readFileSync(
+    resolve(root, "src/screens/AiOperations/AskVortaWorkspace.tsx"),
+    "utf8",
+  ),
+  readFileSync(
+    resolve(root, "src/screens/AiOperations/AskVortaWorkspaceBase.tsx"),
+    "utf8",
+  ),
+].join("\n\n");
 assert.match(workspaceSource, /getAskVortaImagePreview/);
 assert.match(workspaceSource, /Submitted maintenance photo/);
+assert.match(workspaceSource, /AskVortaSparePhotoDisclosures/);
+
+const disclosureSource = readFileSync(
+  resolve(root, "src/screens/AiOperations/AskVortaSparePhotoDisclosures.tsx"),
+  "utf8",
+);
+assert.match(disclosureSource, /loadStoresInventorySnapshot/);
+assert.match(disclosureSource, /InventoryItemDisclosure/);
+assert.match(disclosureSource, /data-vorta-ask-vorta-spare-disclosures="true"/);
+assert.match(disclosureSource, /Full spare information/);
+assert.match(disclosureSource, /More than one authenticated Stores Inventory record uses this stock number/);
+assert.match(disclosureSource, /Vorta is not substituting unverified spare information/);
+assert.match(disclosureSource, /siteContext\?\.siteId/);
+assert.match(disclosureSource, /role=\{siteContext\?\.role\}/);
 
 const focusGuardSource = readFileSync(
   resolve(root, "src/lib/askVortaWorkspaceFocusGuard.ts"),
@@ -218,4 +238,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-077/VOR-079/VOR-080 spare-photo contracts passed.");
+console.log("VOR-077/VOR-079/VOR-080/VOR-081 spare-photo contracts passed.");
