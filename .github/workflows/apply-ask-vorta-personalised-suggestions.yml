@@ -250,20 +250,22 @@ jobs:
 
           spec_path = Path('tests/browser/vor-041-ask-vorta-workspace.spec.ts')
           spec = spec_path.read_text()
-          desktop_old = '''workspace.getByRole("button", { name: "What are my highest site risks?", exact: true })'''
-          desktop_new = '''workspace.locator('button').filter({ hasText: /risk|equipment|shift|work|spares/i }).first()'''
-          spec = replace_once(spec, desktop_old, desktop_new, 'desktop ranked prompt assertion')
-
-          phone_old = '''    for (const prompt of [
-              "What are my highest site risks?",
-              "What shift-cover issues do I have next week?",
-              "Which maintenance action reduces risk the most?",
-            ]) {
-              await expect(panel.getByRole("button", { name: prompt, exact: true })).toBeVisible();
-            }
-            await expect(
+          spec = replace_once(
+              spec,
+              'workspace.getByRole("button", { name: "What are my highest site risks?", exact: true })',
+              "workspace.locator('button').filter({ hasText: /risk|equipment|shift|work|spares/i }).first()",
+              'desktop ranked prompt assertion',
+          )
+          phone_start = spec.find('    for (const prompt of [')
+          if phone_start < 0:
+              raise SystemExit('missing phone prompt start marker')
+          phone_end_marker = '''    await expect(
               panel.getByRole("button", { name: "Show equipment that needs attention", exact: true }),
             ).toBeHidden();'''
+          phone_end_start = spec.find(phone_end_marker, phone_start)
+          if phone_end_start < 0:
+              raise SystemExit('missing phone prompt end marker')
+          phone_end = phone_end_start + len(phone_end_marker)
           phone_new = '''    const visiblePrompts = panel.locator(
               '[data-vorta-global-ai-prompt-button="true"]:visible',
             );
@@ -281,7 +283,7 @@ jobs:
             );
             expect(promptOverflow).toBeLessThanOrEqual(1);
             await expect(panel.getByText("Risk-reduction plan", { exact: true })).toHaveCount(0);'''
-          spec = replace_once(spec, phone_old, phone_new, 'phone vertical prompt assertions')
+          spec = spec[:phone_start] + phone_new + spec[phone_end:]
           spec_path.write_text(spec)
           PY
       - name: Remove one-off apply workflow and commit
