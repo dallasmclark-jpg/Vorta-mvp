@@ -168,4 +168,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-076 spare-photo contracts passed.");
+console.log("VOR-077 spare-photo contracts passed.");
