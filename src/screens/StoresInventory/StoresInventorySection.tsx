@@ -5,14 +5,12 @@ import {
   ChevronDown,
   Clock3,
   Database,
-  ExternalLink,
   Package,
   PackageCheck,
   PackageMinus,
   RefreshCw,
   Search,
   Warehouse,
-  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -25,6 +23,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
+import { ManagedSpareImage } from "./ManagedSpareImage";
 import {
   loadStoresInventorySnapshot,
   summariseStoresInventory,
@@ -552,266 +551,110 @@ function DetailValue({
 
 function InventoryItemDisclosure({
   item,
+  siteId,
+  role,
   onOpen,
 }: {
   item: StoresInventoryItem;
+  siteId: string;
+  role: ReturnType<typeof useAuth>["siteContext"] extends infer T
+    ? T extends { role: infer R }
+      ? R
+      : never
+    : never;
   onOpen: (item: StoresInventoryItem) => void;
 }): JSX.Element {
-  const [imageFailed, setImageFailed] = useState(false);
-  const [imageExpanded, setImageExpanded] = useState(false);
-  const [fullImageFailed, setFullImageFailed] = useState(false);
-  const imageButtonRef = useRef<HTMLButtonElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  const closeImage = useCallback(() => {
-    setImageExpanded(false);
-    window.requestAnimationFrame(() => imageButtonRef.current?.focus());
-  }, []);
-
-  useEffect(() => {
-    setImageFailed(false);
-    setImageExpanded(false);
-    setFullImageFailed(false);
-  }, [item.imageUrl, item.imageFullUrl]);
-
-  useEffect(() => {
-    if (!imageExpanded) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeImage();
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    window.requestAnimationFrame(() => closeButtonRef.current?.focus());
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeImage, imageExpanded]);
-
-  const showVerifiedImage = Boolean(item.imageUrl) && !imageFailed;
-  const lightboxImageUrl =
-    fullImageFailed || !item.imageFullUrl ? item.imageUrl : item.imageFullUrl;
-  const imageSourceLabel =
-    item.imageSourceType === "manufacturer"
-      ? "Verified manufacturer image"
-      : item.imageSourceType === "authorised_supplier"
-        ? "Verified supplier image"
-        : item.imageSourceType === "site_photo"
-          ? "Verified site image"
-          : "Verified spare image";
-
   return (
-    <>
-      <details
-        data-vorta-inventory-disclosure="true"
-        className="group rounded-xl border border-gray-800 bg-[#141820]"
-      >
-        <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60 [&::-webkit-details-marker]:hidden">
-          <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-100 sm:text-base">
-              {item.partName}
-            </h3>
-            <p className="mt-1 truncate text-xs text-slate-500">{item.partNumber}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stockTone(item)}`}
-            >
-              {item.stockState}
-            </span>
-            <ChevronDown
-              className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </div>
-        </summary>
-
-        <div className="border-t border-gray-800 px-4 pb-4 pt-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start">
-            <div
-              data-vorta-spare-image="true"
-              className="w-full shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
-              style={{ maxWidth: "10rem" }}
-            >
-              <div
-                className="flex items-center justify-center bg-[#0d1117]"
-                style={{ aspectRatio: "1 / 1" }}
-              >
-                {showVerifiedImage ? (
-                  <button
-                    ref={imageButtonRef}
-                    type="button"
-                    onClick={() => {
-                      setFullImageFailed(false);
-                      setImageExpanded(true);
-                    }}
-                    aria-label={`Enlarge image of ${item.partName}`}
-                    className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60"
-                    style={{ cursor: "zoom-in" }}
-                  >
-                    <img
-                      src={item.imageUrl ?? undefined}
-                      alt={item.imageAltText}
-                      loading="lazy"
-                      decoding="async"
-                      onError={() => setImageFailed(true)}
-                      className="h-full w-full object-contain p-3"
-                    />
-                  </button>
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-slate-500">
-                    <Package className="h-8 w-8" aria-hidden="true" />
-                    <span className="text-xs font-medium leading-5">
-                      No verified image available
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-1 border-t border-gray-800 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500">
-                  {showVerifiedImage ? imageSourceLabel : "Image unavailable"}
-                </p>
-                {item.oemUrl && (
-                  <a
-                    href={item.oemUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-                    style={{ width: "fit-content" }}
-                  >
-                    View OEM product
-                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                )}
-              </div>
-            </div>
-
-            <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
-              <DetailValue label="Manufacturer" value={item.manufacturer} />
-              <DetailValue
-                label="OEM part number"
-                value={item.oemPartNumber ?? "Not recorded"}
-              />
-              <DetailValue label="Stock" value={integer.format(item.stock)} />
-              <DetailValue label="Minimum" value={integer.format(item.minimum)} />
-              <DetailValue label="Target" value={integer.format(item.target)} />
-              <DetailValue
-                label="Lead time"
-                value={item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
-              />
-              <DetailValue label="Supplier" value={item.supplier} />
-              <DetailValue label="Location" value={item.storageLocation} />
-            </dl>
-          </div>
-
-          <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Affected equipment
-              </p>
-              <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">
-                {item.equipmentName}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {item.equipmentCode} · {item.area}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Recommended action
-              </p>
-              <p className="mt-1 text-sm font-medium leading-5 text-blue-200">
-                {item.recommendedAction}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpen(item)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-              aria-label={`Open ${item.partName} for ${item.equipmentName}`}
-            >
-              Open spares
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+    <details
+      data-vorta-inventory-disclosure="true"
+      className="group rounded-xl border border-gray-800 bg-[#141820]"
+    >
+      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-100 sm:text-base">
+            {item.partName}
+          </h3>
+          <p className="mt-1 truncate text-xs text-slate-500">{item.partNumber}</p>
         </div>
-      </details>
-
-      {showVerifiedImage && imageExpanded && lightboxImageUrl && (
-        <div
-          data-vorta-spare-image-lightbox="true"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Enlarged image of ${item.partName}`}
-          className="fixed inset-0 flex items-center justify-center p-3"
-          style={{ zIndex: 100, backgroundColor: "rgba(0, 0, 0, 0.9)" }}
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeImage();
-          }}
-        >
-          <div
-            className="relative flex flex-col overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
-            style={{ height: "92dvh", width: "96vw", maxWidth: "1600px" }}
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stockTone(item)}`}
           >
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={closeImage}
-              aria-label="Close enlarged image"
-              className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-[#141820] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-              style={{ zIndex: 10 }}
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-
-            <div className="min-h-0 flex-1 p-4">
-              <img
-                src={lightboxImageUrl}
-                alt={item.imageAltText}
-                decoding="async"
-                onError={() => {
-                  if (!fullImageFailed && item.imageUrl) {
-                    setFullImageFailed(true);
-                  } else {
-                    closeImage();
-                  }
-                }}
-                className="h-full w-full object-contain"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-gray-800 bg-[#141820] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-100">
-                  {item.partName}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {item.manufacturer}
-                  {item.oemPartNumber ? ` · ${item.oemPartNumber}` : ""}
-                </p>
-              </div>
-              {item.oemUrl && (
-                <a
-                  href={item.oemUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-3 py-2 text-sm font-semibold text-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-                  style={{ minHeight: "2.5rem" }}
-                >
-                  View OEM product
-                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                </a>
-              )}
-            </div>
-          </div>
+            {item.stockState}
+          </span>
+          <ChevronDown
+            className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          />
         </div>
-      )}
-    </>
+      </summary>
+
+      <div className="border-t border-gray-800 px-4 pb-4 pt-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start">
+          <ManagedSpareImage
+            siteId={siteId}
+            role={role}
+            componentId={item.id}
+            partName={item.partName}
+            manufacturer={item.manufacturer}
+            oemPartNumber={item.oemPartNumber}
+            oemUrl={item.oemUrl}
+            fallbackImageUrl={item.imageUrl}
+            fallbackFullImageUrl={item.imageFullUrl}
+            fallbackAltText={item.imageAltText}
+            fallbackSourceType={item.imageSourceType}
+          />
+
+          <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-6">
+            <DetailValue label="Manufacturer" value={item.manufacturer} />
+            <DetailValue
+              label="OEM part number"
+              value={item.oemPartNumber ?? "Not recorded"}
+            />
+            <DetailValue label="Stock" value={integer.format(item.stock)} />
+            <DetailValue label="Minimum" value={integer.format(item.minimum)} />
+            <DetailValue label="Target" value={integer.format(item.target)} />
+            <DetailValue
+              label="Lead time"
+              value={item.leadDays === null ? "Not recorded" : `${item.leadDays} days`}
+            />
+            <DetailValue label="Supplier" value={item.supplier} />
+            <DetailValue label="Location" value={item.storageLocation} />
+          </dl>
+        </div>
+
+        <div className="mt-4 grid gap-3 border-t border-gray-800 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Affected equipment
+            </p>
+            <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">
+              {item.equipmentName}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {item.equipmentCode} · {item.area}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Recommended action
+            </p>
+            <p className="mt-1 text-sm font-medium leading-5 text-blue-200">
+              {item.recommendedAction}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpen(item)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-500/35 bg-blue-500/[0.09] px-4 py-2.5 text-sm font-semibold text-blue-100 transition-colors hover:border-blue-400/60 hover:bg-blue-500/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            aria-label={`Open ${item.partName} for ${item.equipmentName}`}
+          >
+            Open spares
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -1208,6 +1051,8 @@ export function StoresInventorySection(): JSX.Element {
               <InventoryItemDisclosure
                 key={item.id}
                 item={item}
+                siteId={siteContext?.siteId ?? ""}
+                role={siteContext?.role}
                 onOpen={openItem}
               />
             ))
