@@ -81,6 +81,61 @@ function safeImageUrl(value) {
   }
 }
 
+const COMPONENT_CLASS_SIGNALS = [
+  {
+    key: "motor",
+    terms: [
+      "SERVO MOTOR",
+      "SERVOMOTOR",
+      "MOTOR",
+      "OUTPUT SHAFT",
+      "SHAFT",
+      "FRONT FLANGE",
+      "FLANGE",
+    ],
+  },
+  {
+    key: "plc_module",
+    terms: [
+      "PLC",
+      "SIMATIC",
+      "ET 200",
+      "INPUT MODULE",
+      "OUTPUT MODULE",
+      "ANALOGUE INPUT",
+      "ANALOG INPUT",
+      "DIGITAL INPUT",
+      "DIGITAL OUTPUT",
+    ],
+  },
+  {
+    key: "sensor",
+    terms: ["SENSOR", "TRANSMITTER", "PRESSURE SENSOR", "PROBE"],
+  },
+  {
+    key: "filter",
+    terms: ["FILTER", "CARTRIDGE", "FILTER CARTRIDGE"],
+  },
+  {
+    key: "seal",
+    terms: ["DIAPHRAGM", "SEAL", "GASKET"],
+  },
+];
+
+function componentClass(value) {
+  const source = text(value, 2_000).toUpperCase();
+  if (!source) return "";
+  let best = { key: "", score: 0 };
+  for (const group of COMPONENT_CLASS_SIGNALS) {
+    const score = group.terms.reduce(
+      (total, term) => total + (source.includes(term) ? 1 : 0),
+      0,
+    );
+    if (score > best.score) best = { key: group.key, score };
+  }
+  return best.score > 0 ? best.key : "";
+}
+
 export function isAskVortaSparePhotoQuestion(value) {
   const question = text(value, 1_000).toLowerCase();
   if (!question) return false;
@@ -159,9 +214,18 @@ function scoreMetadata(component, extraction, pagePath) {
     }
   }
 
-  for (const observation of textValues(extraction?.visualObservations)) {
+  const visualObservations = textValues(extraction?.visualObservations);
+  for (const observation of visualObservations) {
     const overlap = tokenOverlap(identity, observation);
     if (overlap >= 0.2) score += 28 * overlap;
+  }
+
+  // Component class is a deliberately strong fallback signal. A visible servo motor
+  // must not tie with a PLC input module merely because both carry SIEMENS branding.
+  const observedClass = componentClass(visualObservations.join(" "));
+  const candidateClass = componentClass(identity);
+  if (observedClass && candidateClass) {
+    score += observedClass === candidateClass ? 52 : -38;
   }
 
   if (
@@ -269,15 +333,16 @@ export function combineAskVortaSparePhotoMatches(candidateValue, visualValue) {
       .map((item) => [text(item.componentId, 100), clampScore(item.visualSimilarity)])
       .filter(([id]) => Boolean(id)),
   );
-  return candidates
+  const hasVisualEvidence = visualById.size > 0;
+  const ranked = candidates
     .map((candidate) => {
       const metadataScore = clampScore(candidate.metadataScore);
       const visualSimilarity = visualById.has(text(candidate.componentId, 100))
         ? visualById.get(text(candidate.componentId, 100))
         : null;
       const finalScore = visualSimilarity === null
-        ? Math.round(metadataScore * 0.72)
-        : clampScore(metadataScore * 0.42 + visualSimilarity * 0.58);
+        ? Math.round(metadataScore * (hasVisualEvidence ? 0.4 : 0.72))
+        : clampScore(metadataScore * 0.36 + visualSimilarity * 0.64);
       return {
         ...candidate,
         metadataScore,
@@ -291,6 +356,13 @@ export function combineAskVortaSparePhotoMatches(candidateValue, visualValue) {
     .sort((first, second) =>
       second.matchConfidence - first.matchConfidence ||
       first.stockNumber.localeCompare(second.stockNumber),
+    );
+
+  const topScore = ranked[0]?.matchConfidence ?? 0;
+  return ranked
+    .filter(
+      (item, index) =>
+        index === 0 || item.matchConfidence >= Math.max(25, topScore - 35),
     )
     .slice(0, MAX_RESULTS);
 }
