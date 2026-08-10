@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Target } from "lucide-react";
 import { useAuth, type PilotRole } from "../../lib/auth";
 import { InventoryItemDisclosure } from "../StoresInventory/StoresInventorySection";
 import {
@@ -146,6 +146,37 @@ function MatchConfidence({ confidence }: { confidence: number | null }): JSX.Ele
   );
 }
 
+function PrimaryMatchConfidence({
+  confidence,
+}: {
+  confidence: number | null;
+}): JSX.Element | null {
+  if (confidence === null) return null;
+
+  const tone =
+    confidence >= 90
+      ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100 ring-emerald-400/20"
+      : confidence >= 70
+        ? "border-blue-400/45 bg-blue-500/15 text-blue-100 ring-blue-400/15"
+        : "border-amber-400/45 bg-amber-500/15 text-amber-100 ring-amber-400/15";
+
+  return (
+    <span
+      data-vorta-ask-vorta-primary-match-confidence="true"
+      aria-label={`Primary image match score ${confidence} percent`}
+      className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm ring-1 ${tone}`}
+    >
+      <Target className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="text-base font-extrabold leading-none tabular-nums">
+        {confidence}%
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-80">
+        match
+      </span>
+    </span>
+  );
+}
+
 function MatchFallback({ resolved }: { resolved: ResolvedSpareMatch }): JSX.Element {
   return (
     <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3">
@@ -278,11 +309,11 @@ export function AskVortaSparePhotoDisclosures({
       aria-label="Closest stock match"
     >
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-3 px-1">
           <h4 className="text-sm font-bold uppercase tracking-wider text-slate-300">
             Closest stock match
           </h4>
-          <MatchConfidence confidence={primary?.match.confidence ?? null} />
+          <PrimaryMatchConfidence confidence={primary?.match.confidence ?? null} />
         </div>
 
         {state === "unavailable" ? (
