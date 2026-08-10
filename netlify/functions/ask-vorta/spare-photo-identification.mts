@@ -90,6 +90,16 @@ function isSafePublicCandidateImageUrl(value: string): boolean {
   }
 }
 
+function arrayBufferToBase64(value: ArrayBuffer): string {
+  const bytes = new Uint8Array(value);
+  let binary = "";
+  const chunkSize = 32_768;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
 async function candidateImageAsDataUrl(imageUrl: string): Promise<string | null> {
   if (!isSafePublicCandidateImageUrl(imageUrl)) return null;
   const controller = new AbortController();
@@ -117,7 +127,7 @@ async function candidateImageAsDataUrl(imageUrl: string): Promise<string | null>
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_CANDIDATE_IMAGE_BYTES) {
       return null;
     }
-    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+    return `data:${contentType};base64,${arrayBufferToBase64(bytes)}`;
   } catch {
     return null;
   } finally {
