@@ -49,83 +49,102 @@ jobs:
             const agentContextReady = Boolean(siteContext?.siteId);
             const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(
               roleProfile.quickQuestions,
-            );''',
+            );
+            const suggestionHistoryRef = useRef<{
+              key: string;
+              history: Awaited<ReturnType<typeof loadAskVortaInteractionHistory>>;
+            } | null>(null);''',
               'auth and suggestion state',
           )
 
           context_anchor = '''  }, [open, contextReloadKey]);
 
-          const retryContextLoad ='''
+            const retryContextLoad ='''
           context_effect = '''  }, [open, contextReloadKey]);
 
-          useEffect(() => {
-            if (roleProfile.role !== "maintenance-manager") {
-              setSuggestedQuestions(roleProfile.quickQuestions);
-              return;
-            }
-
-            const userId = session?.user.id;
-            const siteId = siteContext?.siteId;
-            if (!open || !userId || !siteId) {
-              setSuggestedQuestions(roleProfile.quickQuestions);
-              return;
-            }
-
-            let cancelled = false;
-            const loadSuggestions = async (): Promise<void> => {
-              try {
-                const history = await loadAskVortaInteractionHistory({
-                  userId,
-                  siteId,
-                  role: agentRole(roleProfile.role),
-                });
-                const topEquipmentRiskScore = equipment.reduce<number | null>(
-                  (highest, item) =>
-                    highest === null ? item.riskScore : Math.max(highest, item.riskScore),
-                  null,
-                );
-                const criticalShiftSkillGaps =
-                  shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "critical").length ?? 0;
-                const highShiftSkillGaps =
-                  shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "high").length ?? 0;
-                const ranked = buildPersonalisedAskVortaSuggestions({
-                  history,
-                  liveContext: {
-                    siteRiskScore: siteRisk?.riskScore ?? null,
-                    topEquipmentRiskScore,
-                    criticalShiftSkillGaps,
-                    highShiftSkillGaps,
-                  },
-                  fallbackQuestions: roleProfile.quickQuestions,
-                });
-
-                if (!cancelled) {
-                  setSuggestedQuestions(ranked.map((item) => item.question));
-                }
-              } catch (error) {
-                console.warn("Ask Vorta personalised suggestions unavailable; using role defaults.", error);
-                if (!cancelled) {
-                  setSuggestedQuestions(roleProfile.quickQuestions);
-                }
+            useEffect(() => {
+              if (roleProfile.role !== "maintenance-manager") {
+                setSuggestedQuestions(roleProfile.quickQuestions);
+                return;
               }
-            };
 
-            void loadSuggestions();
-            return () => {
-              cancelled = true;
-            };
-          }, [
-            open,
-            session?.user.id,
-            siteContext?.siteId,
-            roleProfile,
-            contextReady,
-            siteRisk?.riskScore,
-            equipment,
-            shiftSkillsContext,
-          ]);
+              const userId = session?.user.id;
+              const siteId = siteContext?.siteId;
+              if (!open || !userId || !siteId) {
+                if (!open) {
+                  suggestionHistoryRef.current = null;
+                }
+                setSuggestedQuestions(roleProfile.quickQuestions);
+                return;
+              }
 
-          const retryContextLoad ='''
+              let cancelled = false;
+              const loadSuggestions = async (): Promise<void> => {
+                try {
+                  const historyKey = `${userId}:${siteId}:${agentRole(roleProfile.role)}`;
+                  let history =
+                    suggestionHistoryRef.current?.key === historyKey
+                      ? suggestionHistoryRef.current.history
+                      : null;
+                  if (!history) {
+                    history = await loadAskVortaInteractionHistory({
+                      userId,
+                      siteId,
+                      role: agentRole(roleProfile.role),
+                    });
+                    suggestionHistoryRef.current = {
+                      key: historyKey,
+                      history,
+                    };
+                  }
+
+                  const topEquipmentRiskScore = equipment.reduce<number | null>(
+                    (highest, item) =>
+                      highest === null ? item.riskScore : Math.max(highest, item.riskScore),
+                    null,
+                  );
+                  const criticalShiftSkillGaps =
+                    shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "critical").length ?? 0;
+                  const highShiftSkillGaps =
+                    shiftSkillsContext?.gaps.filter((gap) => gap.riskLevel === "high").length ?? 0;
+                  const ranked = buildPersonalisedAskVortaSuggestions({
+                    history,
+                    liveContext: {
+                      siteRiskScore: siteRisk?.riskScore ?? null,
+                      topEquipmentRiskScore,
+                      criticalShiftSkillGaps,
+                      highShiftSkillGaps,
+                    },
+                    fallbackQuestions: roleProfile.quickQuestions,
+                  });
+
+                  if (!cancelled) {
+                    setSuggestedQuestions(ranked.map((item) => item.question));
+                  }
+                } catch (error) {
+                  console.warn("Ask Vorta personalised suggestions unavailable; using role defaults.", error);
+                  if (!cancelled) {
+                    setSuggestedQuestions(roleProfile.quickQuestions);
+                  }
+                }
+              };
+
+              void loadSuggestions();
+              return () => {
+                cancelled = true;
+              };
+            }, [
+              open,
+              session?.user.id,
+              siteContext?.siteId,
+              roleProfile,
+              contextReady,
+              siteRisk?.riskScore,
+              equipment,
+              shiftSkillsContext,
+            ]);
+
+            const retryContextLoad ='''
           assistant = replace_once(assistant, context_anchor, context_effect, 'personal suggestion effect')
 
           intro_old = '        recommendedActions: [roleProfile.defaultAction],'
@@ -154,8 +173,15 @@ jobs:
           )
           assistant = replace_once(
               assistant,
-              '                  type="button"\n                  disabled={',
-              '                  type="button"\n                  data-vorta-global-ai-prompt-button="true"\n                  disabled={',
+              '''                <button
+                  key={question}
+                  type="button"
+                  disabled={''',
+              '''                <button
+                  key={question}
+                  type="button"
+                  data-vorta-global-ai-prompt-button="true"
+                  disabled={''',
               'prompt button hook',
           )
           assistant = replace_once(
