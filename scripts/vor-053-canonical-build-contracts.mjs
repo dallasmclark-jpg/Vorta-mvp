@@ -11,7 +11,10 @@ const equipmentFallback = read(
 const contracts = read("netlify/functions/ask-vorta/contracts.mts");
 const authentication = read("netlify/functions/ask-vorta/authenticated-context.mts");
 const assistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
-const workspace = read("src/screens/AiOperations/AskVortaWorkspace.tsx");
+const workspace = [
+  read("src/screens/AiOperations/AskVortaWorkspace.tsx"),
+  read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx"),
+].join("\n\n");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const liveEval = read("scripts/ask-vorta-live-evals.mjs");
 const controlledActions = read("src/screens/AiOperations/askVortaControlledActions.ts");
