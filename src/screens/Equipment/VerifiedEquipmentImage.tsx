@@ -142,7 +142,7 @@ export function VerifiedEquipmentImage({
             onClick={() => inputRef.current?.click()}
             aria-label={`Upload site image for ${equipmentName}`}
             title="Upload site image"
-            className="absolute right-2 top-2 hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-600/70 bg-slate-950/90 text-slate-100 shadow-sm hover:border-blue-400 hover:text-blue-200 disabled:cursor-wait disabled:opacity-70 md:inline-flex"
+            className="absolute right-2 top-2 hidden h-10 w-10 items-center justify-center rounded-lg border border-gray-700 bg-[#0d1117] text-slate-100 disabled:opacity-60 md:inline-flex"
           >
             {uploading ? (
               <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -154,13 +154,9 @@ export function VerifiedEquipmentImage({
       ) : null}
 
       <span
-        className={`absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-1 font-semibold backdrop-blur ${
+        className={`absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-md border border-gray-700 bg-[#0d1117] px-1.5 py-1 font-semibold ${
           compact ? "text-[8px]" : "text-[10px]"
-        } ${
-          managedImage || hasVerifiedImage
-            ? "border-emerald-500/30 bg-emerald-950/85 text-emerald-200"
-            : "border-slate-600/50 bg-slate-950/85 text-slate-300"
-        }`}
+        } ${managedImage || hasVerifiedImage ? "text-emerald-200" : "text-slate-300"}`}
       >
         {managedImage || hasVerifiedImage ? (
           <ShieldCheck className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} aria-hidden="true" />
@@ -177,7 +173,7 @@ export function VerifiedEquipmentImage({
       {uploadError ? (
         <span
           role="alert"
-          className="absolute inset-x-2 bottom-9 rounded-md border border-red-500/30 bg-red-950/95 px-2 py-1.5 text-[10px] font-medium leading-4 text-red-200"
+          className="absolute inset-x-2 bottom-9 rounded-md border border-red-500/30 bg-[#0d1117] px-2 py-1.5 text-[10px] font-medium leading-4 text-red-200"
         >
           {uploadError}
         </span>
