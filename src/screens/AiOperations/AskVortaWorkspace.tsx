@@ -5,7 +5,10 @@ import {
   type AskVortaWorkspaceMessage,
   type AskVortaWorkspaceTab,
 } from "./AskVortaWorkspaceBase";
-import { AskVortaSparePhotoDisclosures } from "./AskVortaSparePhotoDisclosures";
+import {
+  AskVortaSparePhotoDisclosures,
+  isAskVortaSparePhotoAnswer,
+} from "./AskVortaSparePhotoDisclosures";
 
 export type {
   AskVortaWorkspaceAnswer,
@@ -26,12 +29,13 @@ export function AskVortaWorkspace(props: AskVortaWorkspaceProps): JSX.Element {
   return (
     <AskVortaWorkspaceBase
       {...props}
-      renderAnswer={(answer: AskVortaWorkspaceAnswer) => (
-        <>
-          {renderAnswer(answer)}
+      renderAnswer={(answer: AskVortaWorkspaceAnswer) =>
+        isAskVortaSparePhotoAnswer(answer) ? (
           <AskVortaSparePhotoDisclosures answer={answer} />
-        </>
-      )}
+        ) : (
+          renderAnswer(answer)
+        )
+      }
     />
   );
 }

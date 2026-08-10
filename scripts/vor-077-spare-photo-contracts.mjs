@@ -181,6 +181,12 @@ const workspaceSource = [
 assert.match(workspaceSource, /getAskVortaImagePreview/);
 assert.match(workspaceSource, /Submitted maintenance photo/);
 assert.match(workspaceSource, /AskVortaSparePhotoDisclosures/);
+assert.match(workspaceSource, /isAskVortaSparePhotoAnswer\(answer\)/);
+assert.match(
+  workspaceSource,
+  /isAskVortaSparePhotoAnswer\(answer\)[\s\S]*AskVortaSparePhotoDisclosures answer=\{answer\}[\s\S]*renderAnswer\(answer\)/,
+  "Spare-photo workspace answers must replace the generic decision block rather than append a duplicate stock result.",
+);
 
 const disclosureSource = readFileSync(
   resolve(root, "src/screens/AiOperations/AskVortaSparePhotoDisclosures.tsx"),
@@ -189,11 +195,16 @@ const disclosureSource = readFileSync(
 assert.match(disclosureSource, /loadStoresInventorySnapshot/);
 assert.match(disclosureSource, /InventoryItemDisclosure/);
 assert.match(disclosureSource, /data-vorta-ask-vorta-spare-disclosures="true"/);
-assert.match(disclosureSource, /Full spare information/);
+assert.match(disclosureSource, /Closest stock match/);
+assert.match(disclosureSource, /Next closest matches/);
+assert.match(disclosureSource, /resolvedMatches\.slice\(1\)/);
+assert.match(disclosureSource, /alternatives\.length > 0/);
+assert.match(disclosureSource, /if \(disclosure\) disclosure\.open = true/);
+assert.doesNotMatch(disclosureSource, /Full spare information/);
 assert.match(disclosureSource, /More than one authenticated Stores Inventory record uses this stock number/);
-assert.match(disclosureSource, /Vorta is not substituting unverified spare information/);
+assert.match(disclosureSource, /not substituting unverified spare information/);
 assert.match(disclosureSource, /siteContext\?\.siteId/);
-assert.match(disclosureSource, /role=\{siteContext\?\.role\}/);
+assert.match(disclosureSource, /role=\{role\}/);
 
 const focusGuardSource = readFileSync(
   resolve(root, "src/lib/askVortaWorkspaceFocusGuard.ts"),
@@ -238,4 +249,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-077/VOR-079/VOR-080/VOR-081 spare-photo contracts passed.");
+console.log("VOR-077/VOR-079/VOR-080/VOR-081/VOR-082 spare-photo contracts passed.");
