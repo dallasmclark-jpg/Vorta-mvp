@@ -231,11 +231,12 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
     await expect(
-      workspace.getByText(question, { exact: true }).last(),
-    ).toBeVisible();
-    await expect(
       workspace.locator("aside").getByText(question, { exact: true }),
     ).toHaveCount(1);
+    await page.getByRole("tab", { name: "Conversation" }).click();
+    await expect(
+      workspace.getByText(question, { exact: true }).last(),
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("ask-vorta-workspace-conversation.png"),
       fullPage: true,
