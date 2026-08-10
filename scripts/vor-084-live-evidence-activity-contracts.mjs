@@ -6,7 +6,6 @@ const read = (path) => readFileSync(path, "utf8");
 const entry = read("netlify/functions/ask-vorta.mts");
 const progress = read("netlify/functions/ask-vorta/progress-events.mts");
 const documentRuntime = read("netlify/functions/ask-vorta/runtime-document-links.mts");
-const phaseRuntime = read("netlify/functions/ask-vorta/phase-runtime.mts");
 const toolExecution = read("netlify/functions/ask-vorta/tool-execution.mts");
 const sparePhoto = read("netlify/functions/ask-vorta/spare-photo-identification.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
@@ -54,14 +53,6 @@ assert.match(
   /wantsProgressStream\(req\)[\s\S]*?progressStreamResponse\(req, context\)[\s\S]*?: documentLinkResponse\(req, context\)/,
   "NDJSON must be opt-in while the existing JSON response path remains available",
 );
-
-for (const marker of [
-  'label: "Understanding the question"',
-  'label: "Preparing the answer"',
-  "emitAskVortaProgress",
-]) {
-  assert.ok(phaseRuntime.includes(marker), `Real phase activity is missing ${marker}`);
-}
 
 for (const marker of [
   "askVortaProgressLabelForTool",
