@@ -96,8 +96,18 @@ assert.match(
 );
 assert.match(
   assistant,
-  /hasActiveConversation \? "md:hidden" : ""/,
-  "Quick prompts and verbose context must collapse only on non-mobile layouts after a conversation starts.",
+  /data-vorta-global-ai-prompts="true"[\s\S]*max-md:order-3[\s\S]*hasActiveConversation \? "hidden" : ""/,
+  "Quick prompts must sit above the phone composer and disappear after the first question.",
+);
+assert.match(
+  assistant,
+  /quickQuestions\.map\(\(question, questionIndex\)[\s\S]*questionIndex >= 3 \? "max-md:hidden"/,
+  "Phone Ask Vorta must show the first three suggested prompts only.",
+);
+assert.match(
+  assistant,
+  /className="text-xs max-md:hidden"[\s\S]*aria-live="polite"/,
+  "Verbose verified-context copy stays out of the phone landing view.",
 );
 assert.match(
   assistant,
@@ -123,8 +133,6 @@ for (const rule of [
   'content: "What can I help with?"',
   "font-size: 0 !important",
   '[data-vorta-global-ai-composer-row="true"]',
-  "button:nth-child(n+4)",
-  "order: 3",
 ]) {
   assert.ok(
     mobileCss.includes(rule),

@@ -3599,10 +3599,12 @@ export function GlobalMaintenanceAiAssistant({
         <>
           <div
             data-vorta-global-ai-prompts="true"
-            className={`border-b border-gray-800 px-4 py-3 ${hasActiveConversation ? "md:hidden" : ""}`}
+            className={`border-b border-gray-800 px-4 py-3 max-md:order-3 max-md:block max-md:px-3 max-md:py-1.5 ${
+              hasActiveConversation ? "hidden" : ""
+            }`}
           >
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {roleProfile.quickQuestions.map((question) => (
+            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-nowrap max-md:overflow-x-auto">
+              {roleProfile.quickQuestions.map((question, questionIndex) => (
                 <button
                   key={question}
                   type="button"
@@ -3619,7 +3621,9 @@ export function GlobalMaintenanceAiAssistant({
                       question,
                     )
                   }
-                  className="rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400"
+                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 max-md:shrink-0 max-md:whitespace-nowrap ${
+                    questionIndex >= 3 ? "max-md:hidden" : ""
+                  }`}
                 >
                   {question}
                 </button>
@@ -3627,7 +3631,7 @@ export function GlobalMaintenanceAiAssistant({
             </div>
 
             <div
-              className="text-xs"
+              className="text-xs max-md:hidden"
               aria-live="polite"
             >
               {loadingContext ? (
