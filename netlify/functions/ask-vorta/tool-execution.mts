@@ -1,6 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AskVortaRequest, EvidenceLink, JsonRecord, ToolResult } from "./contracts.mjs";
 import { ALL_EQUIPMENT_DECISION_DOMAINS, compactDecisionData, compactEquipmentSkillsDomain, compactShiftCoverData, compactToolDomain, equipmentDecisionDomains, equipmentDecisionFacts } from "./equipment-evidence.mjs";
+import {
+  askVortaProgressDetailForTool,
+  askVortaProgressLabelForTool,
+  emitAskVortaProgress,
+} from "./progress-events.mjs";
 import { equipmentId, equipmentReferenceMatches, normaliseEquipmentReference, numberValue, records, requiredText, validDateRange } from "./utilities.mjs";
 
 export async function rpcTool(
@@ -90,7 +95,7 @@ export function assetLabel(asset: JsonRecord | undefined): JsonRecord {
   };
 }
 
-export async function executeTool(
+async function executeToolInternal(
   name: string,
   args: JsonRecord,
   supabase: SupabaseClient,
@@ -157,7 +162,6 @@ export async function executeTool(
       });
       return { ...result, status: rows.length ? "ok" : "empty", data: rows };
     }
-
 
     case "get_equipment_decision_pack": {
       const query = requiredText(args.query, 300);
@@ -842,5 +846,41 @@ export async function executeTool(
 
     default:
       return { source: name, status: "unavailable", message: "This tool is not available." };
+  }
+}
+
+export async function executeTool(
+  name: string,
+  args: JsonRecord,
+  supabase: SupabaseClient,
+  request: AskVortaRequest,
+): Promise<ToolResult> {
+  const label = askVortaProgressLabelForTool(name);
+  const progressId = `tool-${name}`;
+  if (label) {
+    emitAskVortaProgress({ id: progressId, label, state: "active" });
+  }
+
+  try {
+    const result = await executeToolInternal(name, args, supabase, request);
+    if (label) {
+      emitAskVortaProgress({
+        id: progressId,
+        label,
+        state: result.status === "unavailable" ? "failed" : "complete",
+        detail: askVortaProgressDetailForTool(name, result),
+      });
+    }
+    return result;
+  } catch (error) {
+    if (label) {
+      emitAskVortaProgress({
+        id: progressId,
+        label,
+        state: "failed",
+        detail: "Source check failed",
+      });
+    }
+    throw error;
   }
 }
