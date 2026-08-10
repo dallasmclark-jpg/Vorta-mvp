@@ -10,6 +10,7 @@ const toolExecution = read("netlify/functions/ask-vorta/tool-execution.mts");
 const sparePhoto = read("netlify/functions/ask-vorta/spare-photo-identification.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const workspace = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
+const shell = read("index.html");
 
 assert.match(
   progress,
@@ -69,7 +70,7 @@ assert.match(
 );
 
 for (const marker of [
-  'label: "Reading the uploaded image"',
+  'label: "Checking the uploaded image"',
   'label: "Checking Stores Inventory"',
   'label: "Comparing verified stock images"',
   'label: "Preparing the closest stock match"',
@@ -78,8 +79,46 @@ for (const marker of [
 }
 assert.doesNotMatch(
   sparePhoto,
+  /label: "Reading the uploaded image"/,
+  "The slower legacy image-stage wording must not return",
+);
+assert.doesNotMatch(
+  sparePhoto,
   /label: "Checking work-order history"|label: "Checking equipment BOM/,
   "The spare-photo route must not claim evidence sources it does not execute",
+);
+
+const earlyImageStatus = sparePhoto.indexOf('label: "Checking the uploaded image"');
+const authenticationStart = sparePhoto.indexOf("authenticateAskVortaRequest(req)");
+assert.ok(
+  earlyImageStatus >= 0 && authenticationStart > earlyImageStatus,
+  "Known spare-photo requests must emit the first specific image status before authentication and telemetry work can delay the UI",
+);
+for (const marker of [
+  "const extractionPromise = extractAskVortaImageEvidence",
+  "const imageResultPromise = supabase",
+  "await Promise.all([",
+  "extractionPromise",
+  "imageResultPromise",
+]) {
+  assert.ok(
+    sparePhoto.includes(marker),
+    `Spare-photo image and Stores overlap is missing ${marker}`,
+  );
+}
+const extractionStart = sparePhoto.indexOf(
+  "const extractionPromise = extractAskVortaImageEvidence",
+);
+const storesActive = sparePhoto.indexOf(
+  'id: "spare-photo-stores",\n    label: "Checking Stores Inventory",\n    state: "active"',
+  extractionStart,
+);
+const parallelWait = sparePhoto.indexOf("await Promise.all([", extractionStart);
+assert.ok(
+  extractionStart >= 0 &&
+    storesActive > extractionStart &&
+    parallelWait > storesActive,
+  "Stores Inventory must visibly start while image extraction is already in flight, before the shared wait",
 );
 
 for (const marker of [
@@ -113,6 +152,31 @@ assert.match(
   "The live activity enhancement must remain inside the desktop/tablet workspace boundary",
 );
 
+for (const marker of [
+  "@property --vorta-evidence-pulse-angle",
+  "@keyframes vorta-evidence-border-pulse",
+  "conic-gradient(from var(--vorta-evidence-pulse-angle)",
+  "width:min(440px,calc(100vw - 48px))!important",
+  "height:44px!important",
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7{display:none!important}',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child{display:block!important',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child>svg{display:none!important}',
+  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child .min-w-0 .text-xs.text-slate-500{display:none!important}',
+  '[data-vorta-ask-vorta-stock-loading-rail="true"]{display:none!important}',
+]) {
+  assert.ok(shell.includes(marker), `VOR-085 branded single-status presentation is missing ${marker}`);
+}
+assert.match(
+  shell,
+  /@media\(min-width:769px\)/,
+  "VOR-085 presentation changes must remain desktop/tablet-only",
+);
+assert.doesNotMatch(
+  shell,
+  /vorta-evidence-sweep|\.min-h-7::after\{content:"";display:block;flex:0 0 22px/,
+  "Legacy progress-line or multi-stage connector treatments must not return",
+);
+
 console.log(
-  "VOR-084 live Ask Vorta evidence activity contracts passed: source-driven progress, truthful spare-photo stages, JSON compatibility and desktop/tablet-only presentation are protected.",
+  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, immediate truthful spare-photo image status, overlapping Stores lookup, JSON compatibility, branded single-status pulse loading and desktop/tablet-only presentation are protected.",
 );
