@@ -4,6 +4,10 @@ import coreHandler from "./runtime-equipment-fallback.mjs";
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import type { AskVortaRequest, JsonRecord } from "./contracts.mjs";
 import { jsonResponse } from "./request-context.mjs";
+import {
+  handleSparePhotoIdentification,
+  shouldHandleSparePhotoPayload,
+} from "./spare-photo-identification.mjs";
 
 export const ASK_VORTA_BACKTEST_REVISION =
   "vor-069-historical-backtest-intelligence-v1";
@@ -486,6 +490,9 @@ export default async function backtestHandler(
 ): Promise<Response> {
   const routeRequest = req.clone();
   const raw = await routeRequest.json().catch(() => null);
+  if (shouldHandleSparePhotoPayload(raw)) {
+    return handleSparePhotoIdentification(req, context);
+  }
   const question = isRecord(raw) ? text(raw.question) : "";
   if (!question || !BACKTEST_PATTERN.test(question)) {
     return coreHandler(req, context);

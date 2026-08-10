@@ -24,7 +24,10 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import type { PreparedAskVortaImage } from "./askVortaImageClient";
+import {
+  getAskVortaImagePreview,
+  type PreparedAskVortaImage,
+} from "./askVortaImageClient";
 import type { VortaConversationContext } from "./vortaAgentService";
 
 export type AskVortaWorkspaceTab = "conversation" | "evidence" | "actions";
@@ -667,7 +670,21 @@ export function AskVortaWorkspace({
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {message.imageName ? (
+                        {message.imageName && getAskVortaImagePreview(message.imageName) ? (
+                          <img
+                            src={getAskVortaImagePreview(message.imageName) ?? undefined}
+                            alt="Submitted maintenance photo"
+                            className="rounded-lg"
+                            style={{
+                              display: "block",
+                              maxHeight: 224,
+                              maxWidth: "100%",
+                              width: "auto",
+                              height: "auto",
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : message.imageName ? (
                           <p className="text-xs font-semibold text-blue-100/80">
                             Photo attached: {message.imageName}
                           </p>
