@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ImageOff, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import {
+  cacheVerifiedSourceImage,
   canManageVortaMedia,
   isVortaMediaEntityId,
   loadPreferredManagedImage,
@@ -20,6 +21,7 @@ interface VerifiedEquipmentImageProps {
   className?: string;
   imageClassName?: string;
   compact?: boolean;
+  cacheVerifiedSource?: boolean;
 }
 
 export function VerifiedEquipmentImage({
@@ -31,11 +33,13 @@ export function VerifiedEquipmentImage({
   className = "",
   imageClassName = "",
   compact = false,
+  cacheVerifiedSource = false,
 }: VerifiedEquipmentImageProps): JSX.Element {
   const { siteContext } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [failed, setFailed] = useState(false);
   const [managedImage, setManagedImage] = useState<VortaManagedImage | null>(null);
+  const [cacheAttempted, setCacheAttempted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -47,13 +51,27 @@ export function VerifiedEquipmentImage({
   useEffect(() => {
     let cancelled = false;
     setManagedImage(null);
+    setCacheAttempted(false);
     setUploadError(null);
 
     if (!siteId || !persistedEquipmentId) return () => undefined;
 
     void loadPreferredManagedImage(siteId, "equipment", persistedEquipmentId)
-      .then((image) => {
-        if (!cancelled) setManagedImage(image);
+      .then(async (image) => {
+        if (cancelled) return;
+        setManagedImage(image);
+
+        if (!image && cacheVerifiedSource && canUpload && src) {
+          setCacheAttempted(true);
+          try {
+            const cached = await cacheVerifiedSourceImage("equipment", persistedEquipmentId);
+            if (!cancelled) setManagedImage(cached);
+          } catch (error) {
+            if (!cancelled) {
+              console.warn("Verified equipment image could not be cached in Vorta:", error);
+            }
+          }
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -64,7 +82,7 @@ export function VerifiedEquipmentImage({
     return () => {
       cancelled = true;
     };
-  }, [persistedEquipmentId, siteId]);
+  }, [cacheVerifiedSource, canUpload, persistedEquipmentId, siteId, src]);
 
   const activeSrc = managedImage?.signedUrl ?? src;
 
@@ -78,6 +96,21 @@ export function VerifiedEquipmentImage({
     equipmentType,
     equipmentCode,
   );
+
+  const handleImageError = async (): Promise<void> => {
+    if (!managedImage && !cacheAttempted && canUpload && persistedEquipmentId) {
+      setCacheAttempted(true);
+      try {
+        const cached = await cacheVerifiedSourceImage("equipment", persistedEquipmentId);
+        setManagedImage(cached);
+        setFailed(false);
+        return;
+      } catch (error) {
+        console.warn("Verified equipment image cache fallback failed:", error);
+      }
+    }
+    setFailed(true);
+  };
 
   const handleFile = async (file: File): Promise<void> => {
     if (!siteId || !persistedEquipmentId || !canUpload) return;
@@ -102,18 +135,21 @@ export function VerifiedEquipmentImage({
     }
   };
 
+  const managedLabel =
+    managedImage?.sourceType === "site_photo" ? "Vorta site photo" : "Vorta stored image";
+
   return (
     <div
       className={`relative overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117] ${className}`}
       data-vorta-equipment-image-state={
-        managedImage ? "site-photo" : hasVerifiedImage ? "verified" : "unavailable"
+        managedImage ? managedImage.sourceType : hasVerifiedImage ? "verified" : "unavailable"
       }
     >
       <img
         src={hasVerifiedImage ? activeSrc ?? fallback : fallback}
         alt={
           managedImage
-            ? managedImage.altText ?? `Site photo for ${equipmentName}`
+            ? managedImage.altText ?? `${equipmentName} image stored in Vorta`
             : hasVerifiedImage
               ? `Verified product image for ${equipmentName}`
               : `Verified image unavailable for ${equipmentName}`
@@ -121,7 +157,7 @@ export function VerifiedEquipmentImage({
         loading="lazy"
         decoding="async"
         className={`h-full w-full ${hasVerifiedImage ? "object-contain" : "object-cover"} ${imageClassName}`}
-        onError={() => setFailed(true)}
+        onError={() => void handleImageError()}
       />
 
       {canUpload ? (
@@ -163,11 +199,7 @@ export function VerifiedEquipmentImage({
         ) : (
           <ImageOff className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} aria-hidden="true" />
         )}
-        {managedImage
-          ? "Vorta site photo"
-          : hasVerifiedImage
-            ? "Verified image"
-            : "Awaiting verified image"}
+        {managedImage ? managedLabel : hasVerifiedImage ? "Verified image" : "Awaiting verified image"}
       </span>
 
       {uploadError ? (
