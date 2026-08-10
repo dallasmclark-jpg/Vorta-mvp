@@ -12,6 +12,10 @@ const root = resolve(import.meta.dirname, "..");
 for (const question of [
   "what is the stock number of this spare?",
   "is this spare on stock?",
+  "is this a stock item",
+  "is this in stock?",
+  "do we stock this?",
+  "have we got this part in stores?",
   "identify this spare",
   "find this part in stores",
   "match this component to stock",
@@ -171,6 +175,21 @@ const workspaceSource = readFileSync(
 assert.match(workspaceSource, /getAskVortaImagePreview/);
 assert.match(workspaceSource, /Submitted maintenance photo/);
 
+const focusGuardSource = readFileSync(
+  resolve(root, "src/lib/askVortaWorkspaceFocusGuard.ts"),
+  "utf8",
+);
+assert.match(focusGuardSource, /data-vorta-ai-workspace-input/);
+assert.match(focusGuardSource, /outline: none !important/);
+assert.match(focusGuardSource, /box-shadow: none !important/);
+assert.match(focusGuardSource, /border-color: rgb\(55 65 81\) !important/);
+
+const entryClientSource = readFileSync(
+  resolve(root, "src/index.tsx"),
+  "utf8",
+);
+assert.match(entryClientSource, /installAskVortaWorkspaceFocusGuard/);
+
 const tailwindConfigSource = readFileSync(
   resolve(root, "tailwind.config.js"),
   "utf8",
@@ -199,4 +218,4 @@ const entrySource = readFileSync(
 assert.match(entrySource, /runtime-document-links\.mjs/);
 assert.match(entrySource, /runtime-equipment-fallback\.mjs/);
 
-console.log("VOR-077/VOR-079 spare-photo contracts passed.");
+console.log("VOR-077/VOR-079/VOR-080 spare-photo contracts passed.");
