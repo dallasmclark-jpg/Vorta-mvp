@@ -1,4 +1,5 @@
 // Final VOR-041 verification covers four device classes and stable Recent conversations.
+// Visual-refinement coverage protects the welcome, evidence and mobile prompt states.
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
