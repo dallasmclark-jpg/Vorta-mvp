@@ -57,8 +57,22 @@ assert.match(
 );
 assert.match(
   workspace,
-  /justify-between gap-2[\s\S]*px-3 lg:px-5[\s\S]*min-w-0 flex-1[\s\S]*xl:flex[\s\S]*shrink-0 items-center gap-1/,
-  "The portrait workspace header keeps exit controls visible while deferring context text to wider screens.",
+  /What can I help with?[\s\S]*data-vorta-ai-workspace-welcome/,
+  "The full workspace must use the maintenance-first welcome state before the first question.",
+);
+assert.match(
+  workspace,
+  /Collapse recent conversations[\s\S]*Expand recent conversations/,
+  "The Recent conversations rail must be collapsible without leaving the workspace.",
+);
+assert.ok(
+  !workspace.includes("Return to compact panel"),
+  "The duplicate sidebar compact-panel action must be removed.",
+);
+assert.match(
+  workspace,
+  /data-vorta-ai-workspace-source-summary="true"/,
+  "Workspace answers must expose a direct route to their source evidence.",
 );
 assert.match(
   workspace,
@@ -109,6 +123,8 @@ for (const rule of [
   'content: "What can I help with?"',
   "font-size: 0 !important",
   '[data-vorta-global-ai-composer-row="true"]',
+  "button:nth-child(n+4)",
+  "order: 3",
 ]) {
   assert.ok(
     mobileCss.includes(rule),
