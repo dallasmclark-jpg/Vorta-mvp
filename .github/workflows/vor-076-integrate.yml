@@ -21,11 +21,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Apply focused VOR-076 UI integration
+      - name: Apply focused VOR-076 integration
         run: |
           node scripts/vor-076-ui-codemod.mjs
           node scripts/vor-076-answer-codemod.mjs
           node scripts/vor-076-contract-suite-codemod.mjs
+          node scripts/vor-076-runtime-codemod.mjs
       - name: Commit integration result
         run: |
           if git diff --quiet; then
@@ -33,8 +34,8 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/screens/AiOperations/AskVortaWorkspace.tsx src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx scripts/run-contract-suite.mjs
-            git commit -m "VOR-076 integrate concise visual spare matching UI"
+            git add src/screens/AiOperations/AskVortaWorkspace.tsx src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx scripts/run-contract-suite.mjs netlify/functions/ask-vorta/runtime-backtest.mts netlify/functions/ask-vorta/runtime-document-links.mts
+            git commit -m "VOR-076 integrate concise visual spare matching"
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           fi
       - name: Install dependencies
