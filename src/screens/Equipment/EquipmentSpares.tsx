@@ -13,7 +13,6 @@ import {
   Download,
   FileSearch,
   Gauge,
-  Package,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -41,6 +40,7 @@ import {
 } from "./sparesIntelligenceService";
 import { EquipmentRiskIndicator } from "./EquipmentRiskIndicator";
 import { EquipmentTabNavigation } from "./EquipmentTabNavigation";
+import { EquipmentSparesDisclosureRegister } from "./EquipmentSparesDisclosureRegister";
 
 type InventoryPart = EquipmentComponentsResult["inventory"][number];
 type ExposureBand = "Critical" | "High" | "Medium" | "Covered";
@@ -135,20 +135,6 @@ function exposureTone(band: ExposureBand): string {
     return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
   }
   return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
-}
-
-function criticalityTone(criticality: string): string {
-  const value = normaliseCriticality(criticality);
-  if (value === "critical") {
-    return "bg-red-500/10 text-red-300";
-  }
-  if (value === "high") {
-    return "bg-orange-500/10 text-orange-300";
-  }
-  if (value === "medium") {
-    return "bg-yellow-500/10 text-yellow-300";
-  }
-  return "bg-slate-800 text-slate-400";
 }
 
 function riskTone(level: string): string {
@@ -1279,148 +1265,10 @@ export const EquipmentSpares = (): JSX.Element => {
                 />
               </div>
 
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      {[
-                        "Part",
-                        "Criticality",
-                        "Stock / target",
-                        "Supplier",
-                        "Lead",
-                        "Storage",
-                        "Exposure",
-                      ].map((heading) => (
-                        <th
-                          key={heading}
-                          className="px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-600 first:pl-0"
-                        >
-                          {heading}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!hasLoaded ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="py-10 text-center text-xs text-slate-500"
-                        >
-                          Loading linked equipment spares...
-                        </td>
-                      </tr>
-                    ) : filteredParts.length > 0 ? (
-                      filteredParts.map((part) => (
-                        <tr
-                          key={part.partNumber}
-                          className="border-b border-gray-800 last:border-0"
-                        >
-                          <td className="py-3 pr-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-800 bg-[#0d1219]">
-                                <Package className="h-4 w-4 text-slate-500" />
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-200">
-                                  {part.name}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void copyText(
-                                      part.partNumber,
-                                      part.partNumber,
-                                    )
-                                  }
-                                  className="mt-0.5 inline-flex items-center gap-1 font-mono text-[10px] text-slate-600 hover:text-blue-400"
-                                >
-                                  {part.partNumber}
-                                  {copied === part.partNumber ? (
-                                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-2 py-3">
-                            <Badge
-                              className={`rounded px-2 py-1 text-[10px] font-semibold shadow-none ${criticalityTone(
-                                part.criticality,
-                              )}`}
-                            >
-                              {part.criticality}
-                            </Badge>
-                          </td>
-                          <td className="px-2 py-3">
-                            <p
-                              className={`font-semibold ${
-                                isOutOfStock(part)
-                                  ? "text-red-300"
-                                  : part.gap > 0
-                                    ? "text-yellow-300"
-                                    : "text-emerald-300"
-                              }`}
-                            >
-                              {part.stock} / {part.max}
-                            </p>
-                            <div className="mt-1.5 h-1.5 w-24 overflow-hidden rounded-full bg-gray-800">
-                              <div
-                                className={`h-full rounded-full ${
-                                  isOutOfStock(part)
-                                    ? "bg-red-500"
-                                    : part.gap > 0
-                                      ? "bg-yellow-500"
-                                      : "bg-emerald-500"
-                                }`}
-                                style={{ width: `${part.coverage}%` }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-2 py-3 text-slate-400">
-                            {part.supplier || "Not set"}
-                          </td>
-                          <td className="px-2 py-3">
-                            <span
-                              className={
-                                part.leadDays >= 14
-                                  ? "font-semibold text-orange-300"
-                                  : "text-slate-400"
-                              }
-                            >
-                              {part.leadDays}d
-                            </span>
-                          </td>
-                          <td className="px-2 py-3 text-slate-400">
-                            {part.location || "Not set"}
-                          </td>
-                          <td className="px-2 py-3">
-                            <Badge
-                              className={`rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${exposureTone(
-                                part.exposureBand,
-                              )}`}
-                            >
-                              {part.exposureBand} · {part.exposureScore}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="py-10 text-center text-xs text-slate-500"
-                        >
-                          No linked parts match these filters.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <EquipmentSparesDisclosureRegister
+                equipmentId={resolvedId}
+                visiblePartNumbers={filteredParts.map((part) => part.partNumber)}
+              />
             </CardContent>
           </Card>
 
