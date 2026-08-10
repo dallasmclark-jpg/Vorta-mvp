@@ -4,6 +4,7 @@ module.exports = {
     "app/**/*.{ts,tsx}",
     "components/**/*.{ts,tsx}",
   ],
+  blocklist: ["focus-within:border-blue-500/50"],
   corePlugins: { preflight: true },
   theme: {
     extend: {
@@ -120,14 +121,6 @@ module.exports = {
     },
     container: { center: true, padding: "2rem", screens: { "2xl": "1400px" } },
   },
-  plugins: [
-    function ({ addComponents }) {
-      addComponents({
-        '[data-vorta-ai-workspace="true"] div:has(> input[data-vorta-ai-workspace-input="true"]):focus-within': {
-          borderColor: "rgb(55 65 81 / 1) !important",
-        },
-      });
-    },
-  ],
+  plugins: [],
   darkMode: ["class"],
 };
