@@ -1,8 +1,8 @@
 import type { Context } from "@netlify/functions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import coreHandler, {
-  ASK_VORTA_SPARE_PHOTO_REVISION,
-} from "./runtime-spare-photo.mjs";
+  ASK_VORTA_BACKTEST_REVISION,
+} from "./runtime-backtest.mjs";
 import { authenticateAskVortaRequest } from "./authenticated-context.mjs";
 import type { JsonRecord } from "./contracts.mjs";
 import {
@@ -19,8 +19,8 @@ import { jsonResponse } from "./request-context.mjs";
 export const ASK_VORTA_DOCUMENT_LINK_REVISION =
   "vor-067-production-chat-return-v3";
 
-if (ASK_VORTA_SPARE_PHOTO_REVISION !== "vor-076-spare-photo-top-five-v1") {
-  throw new Error("Ask Vorta spare-photo runtime revision mismatch.");
+if (ASK_VORTA_BACKTEST_REVISION !== "vor-069-historical-backtest-intelligence-v1") {
+  throw new Error("Ask Vorta historical backtest runtime revision mismatch.");
 }
 
 function record(value: unknown): JsonRecord | null {
