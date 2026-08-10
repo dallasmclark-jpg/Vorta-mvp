@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 // Final visual contract keeps the refined workspace hierarchy inside the existing Ask Vorta architecture.
-// Reopen coverage verifies Recents first, then returns to Conversation before checking message content.
+// Recent-conversation verification follows the cleaned generated title before returning to Conversation.
 const workspace = readFileSync("src/screens/AiOperations/AskVortaWorkspace.tsx", "utf8");
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8");
 const browser = readFileSync("tests/browser/vor-041-ask-vorta-workspace.spec.ts", "utf8");
