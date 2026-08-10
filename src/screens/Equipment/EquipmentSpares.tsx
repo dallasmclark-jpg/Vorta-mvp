@@ -7,7 +7,6 @@ import {
   BrainCircuit,
   CheckCircle2,
   ChevronRight,
-  ClipboardCopy,
   Copy,
   Database,
   Download,
@@ -122,19 +121,6 @@ function exposureBand(score: number, covered: boolean): ExposureBand {
   if (score >= 75) return "Critical";
   if (score >= 52) return "High";
   return "Medium";
-}
-
-function exposureTone(band: ExposureBand): string {
-  if (band === "Critical") {
-    return "border-red-500/25 bg-red-500/10 text-red-300";
-  }
-  if (band === "High") {
-    return "border-orange-500/25 bg-orange-500/10 text-orange-300";
-  }
-  if (band === "Medium") {
-    return "border-yellow-500/25 bg-yellow-500/10 text-yellow-300";
-  }
-  return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
 }
 
 function riskTone(level: string): string {
@@ -1140,7 +1126,7 @@ export const EquipmentSpares = (): JSX.Element => {
             <SectionHeading
               eyebrow="Risk-ranked replenishment"
               title="Highest-value stock interventions"
-              description="Vorta ranks each part using stock gap, equipment criticality, failure consequence and supplier lead time. The list is read-only and remains aligned to SAP as the system of record."
+              description="Vorta ranks each part using stock gap, equipment criticality, failure consequence and supplier lead time. Expand any ranked spare for the same verified image, OEM and site-photo controls used in Stores Inventory."
               action={
                 <Button
                   type="button"
@@ -1154,78 +1140,12 @@ export const EquipmentSpares = (): JSX.Element => {
               }
             />
 
-            <div className="mt-5 overflow-hidden rounded-xl border border-gray-800">
-              <div className="hidden grid-cols-[56px_minmax(220px,1.5fr)_110px_105px_minmax(130px,0.8fr)_110px_44px] gap-3 border-b border-gray-800 bg-[#0d1219] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 lg:grid">
-                <span>Priority</span>
-                <span>Part and consequence</span>
-                <span>Stock</span>
-                <span>Lead time</span>
-                <span>Supplier</span>
-                <span>Exposure</span>
-                <span />
-              </div>
-
-              {rankedParts.slice(0, 4).map((part, index) => (
-                <button
-                  key={part.partNumber}
-                  type="button"
-                  onClick={() =>
-                    void copyText(part.partNumber, `plan-${part.partNumber}`)
-                  }
-                  className="grid w-full gap-3 border-b border-gray-800 px-4 py-4 text-left transition-colors last:border-0 hover:bg-white/[0.025] lg:grid-cols-[56px_minmax(220px,1.5fr)_110px_105px_minmax(130px,0.8fr)_110px_44px] lg:items-center"
-                >
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-800 text-xs font-bold text-slate-300">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-slate-100">
-                        {part.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-600">
-                        {part.partNumber}
-                      </span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-500">
-                      {part.consequence}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      {part.stock} / {part.max}
-                    </p>
-                    <p className="text-[10px] text-slate-600">
-                      Gap {part.gap}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-200">
-                      {part.leadDays} days
-                    </p>
-                    <p className="text-[10px] text-slate-600">
-                      {part.location || "Location not set"}
-                    </p>
-                  </div>
-                  <span className="truncate text-xs text-slate-400">
-                    {part.supplier || "Not set"}
-                  </span>
-                  <Badge
-                    className={`w-fit rounded border px-2 py-1 text-[10px] font-semibold shadow-none ${exposureTone(
-                      part.exposureBand,
-                    )}`}
-                  >
-                    {part.exposureBand}
-                  </Badge>
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-800 text-slate-500">
-                    {copied === `plan-${part.partNumber}` ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                    ) : (
-                      <ClipboardCopy className="h-3.5 w-3.5" />
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <EquipmentSparesDisclosureRegister
+              equipmentId={resolvedId}
+              visiblePartNumbers={rankedParts
+                .slice(0, 4)
+                .map((part) => part.partNumber)}
+            />
           </CardContent>
         </Card>
 
