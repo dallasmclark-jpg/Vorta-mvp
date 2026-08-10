@@ -4,6 +4,7 @@ module.exports = {
     "app/**/*.{ts,tsx}",
     "components/**/*.{ts,tsx}",
   ],
+  blocklist: ["focus-within:border-blue-500/50"],
   corePlugins: { preflight: true },
   theme: {
     extend: {
