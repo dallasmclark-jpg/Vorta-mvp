@@ -15,6 +15,9 @@ const liveEntry = read("src/screens/Equipment/EquipmentLiveListEntry.tsx");
 const dataTrustBanner = read("src/components/DataTrustBanner.tsx");
 const equipmentTabs = read("src/screens/Equipment/EquipmentTabNavigation.tsx");
 const equipmentOverview = read("src/screens/Equipment/EquipmentOverview.tsx");
+const verifiedEquipmentImage = read(
+  "src/screens/Equipment/VerifiedEquipmentImage.tsx",
+);
 const dashboardOverview = read(
   "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
 );
@@ -143,6 +146,32 @@ for (const expected of [
 assert.ok(
   !equipmentOverview.includes('className="h-20 w-20 shrink-0'),
   "Phone equipment detail must not reserve image space below 768px.",
+);
+
+for (const marker of [
+  'data-vorta-equipment-image="true"',
+  'data-vorta-equipment-image-lightbox="true"',
+  'aria-label={`Enlarge image of ${equipmentName}`}',
+  'aria-label={`Enlarged image of ${equipmentName}`}',
+  'aria-label="Close enlarged image"',
+  'style={{ cursor: "zoom-in" }}',
+  'if (event.key === "Escape") closeImage()',
+  'document.body.style.overflow = "hidden"',
+  'if (event.currentTarget === event.target) closeImage()',
+  'hasVerifiedImage && imageExpanded && activeSrc',
+]) {
+  assert.ok(
+    verifiedEquipmentImage.includes(marker),
+    `Equipment verified-image lightbox is missing ${marker}.`,
+  );
+}
+assert.ok(
+  verifiedEquipmentImage.includes("md:inline-flex"),
+  "Equipment upload controls must remain suppressed below the md boundary.",
+);
+assert.ok(
+  verifiedEquipmentImage.includes("imageButtonRef.current?.focus()"),
+  "Closing the equipment lightbox must restore focus to the image trigger.",
 );
 
 assert.equal(
