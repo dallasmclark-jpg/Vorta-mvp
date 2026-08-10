@@ -63,6 +63,7 @@ import {
 } from "./vortaAgentService";
 import { openAskVortaActionReviewDialog } from "./askVortaActionReviewLauncher";
 import {
+  getAskVortaImagePreview,
   prepareAskVortaImage,
   type PreparedAskVortaImage,
 } from "./askVortaImageClient";
@@ -2004,11 +2005,12 @@ function AnswerBlock({
   const hasStructuredFindings = Boolean(answer.findings?.length);
   const hasStructuredActions = Boolean(answer.actionPlan?.length);
   const workspacePresentation = presentation === "workspace";
+  const sparePhotoIdentification = answer.intentLabel === "Spare photo identification";
   const wideCompactPresentation =
     !workspacePresentation &&
     typeof window !== "undefined" &&
     window.matchMedia("(min-width: 769px)").matches;
-  const decisionSummaryLimit = wideCompactPresentation ? 4 : 7;
+  const decisionSummaryLimit = sparePhotoIdentification ? 5 : wideCompactPresentation ? 4 : 7;
   const decisionSeverity = answer.findings?.some(
     (finding) => finding.severity === "critical",
   )
@@ -2119,7 +2121,7 @@ function AnswerBlock({
             id="ask-vorta-decision-summary"
             className="mb-2 flex items-center justify-between gap-2 text-[15px] font-bold uppercase tracking-wider text-blue-200 sm:text-sm"
           >
-            <span>Decision summary</span>
+            <span>{sparePhotoIdentification ? "Closest stock matches" : "Decision summary"}</span>
             {decisionSeverity && (
               <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs font-bold normal-case tracking-normal text-orange-200">
                 {decisionSeverity}
@@ -2250,6 +2252,7 @@ function AnswerBlock({
         </div>
       )}
 
+      {(hasStructuredActions || answer.recommendedActions.length > 0) && (
       <details className="group rounded-lg border border-emerald-500/15 bg-emerald-500/[0.03]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-[15px] font-bold text-slate-200 sm:text-sm">
           <span>Risk-reduction plan</span>
@@ -2321,6 +2324,7 @@ function AnswerBlock({
         )}
         </div>
       </details>
+      )}
 
       {answer.followUpQuestions && answer.followUpQuestions.length > 0 && (
         <div>
@@ -3054,7 +3058,10 @@ export function GlobalMaintenanceAiAssistant({
             roleLabel: roleProfile.label,
             responseBadge: roleProfile.responseBadge,
             intentLabel: agentAnswer.intentLabel,
-            roleNote: roleAwareNote(roleProfile),
+            roleNote:
+              agentAnswer.intentLabel === "Spare photo identification"
+                ? undefined
+                : roleAwareNote(roleProfile),
           };
 
           setMessages((previous) =>
@@ -3758,7 +3765,13 @@ export function GlobalMaintenanceAiAssistant({
                     />
                   ) : (
                     <div className="space-y-1.5">
-                      {message.imageName ? (
+                      {message.imageName && getAskVortaImagePreview(message.imageName) ? (
+                        <img
+                          src={getAskVortaImagePreview(message.imageName) ?? undefined}
+                          alt="Submitted maintenance photo"
+                          className="hidden max-h-28 w-auto max-w-full rounded-lg border border-gray-800 bg-gray-950 object-contain md:block"
+                        />
+                      ) : message.imageName ? (
                         <p className="hidden text-xs font-semibold text-blue-100/80 md:block">
                           Photo attached: {message.imageName}
                         </p>
