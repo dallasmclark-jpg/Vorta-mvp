@@ -1,4 +1,5 @@
 // Final VOR-041 verification covers four device classes and stable Recent conversations.
+// Visual-refinement coverage protects the welcome, evidence and mobile prompt states.
 import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
@@ -129,15 +130,20 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await openAskVorta(page, testInfo.project.name);
 
     const panel = page.locator('[data-vorta-global-ai-panel="true"]');
-    await expect(panel).toBeVisible();
-    const panelBox = await panel.boundingBox();
-    expect(panelBox?.width ?? 0).toBeGreaterThanOrEqual(480);
-
-    const expand = page.locator('[data-vorta-global-ai-expand="true"]');
-    await expect(expand).toBeVisible();
-    await expand.evaluate((element: HTMLButtonElement) => element.click());
-
     const workspace = page.locator('[data-vorta-ai-workspace="true"]');
+    const expand = page.locator('[data-vorta-global-ai-expand="true"]');
+
+    await expect
+      .poll(
+        async () => (await workspace.isVisible()) || (await expand.isVisible()),
+        { message: "Ask Vorta should expose the full workspace or its Expand control" },
+      )
+      .toBe(true);
+
+    if (!(await workspace.isVisible()) && (await expand.isVisible())) {
+      await expand.evaluate((element: HTMLButtonElement) => element.click());
+    }
+
     await expect(workspace).toBeVisible();
     await expect(
       page.getByRole("button", { name: "New conversation" }),
@@ -145,6 +151,15 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(page.getByRole("tab", { name: "Conversation" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Evidence" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Actions" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "What can I help with?", exact: true }),
+    ).toBeVisible();
+    await expect(
+      workspace.getByRole("button", { name: "What are my highest site risks?", exact: true }),
+    ).toBeVisible();
+    await expect(
+      workspace.getByRole("button", { name: "Collapse recent conversations", exact: true }),
+    ).toBeVisible();
 
     const question = "Can the current shift cover the planned work?";
     const input = page.locator('[data-vorta-ai-workspace-input="true"]');
@@ -153,7 +168,7 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(send).toBeEnabled();
     await send.click();
     await expect(workspace.getByText(mockedAnswer.directAnswer)).toBeVisible();
-    const liveEvidenceStatus = workspace.getByText("Live evidence loaded", {
+    const liveEvidenceStatus = workspace.getByText("Live evidence", {
       exact: true,
     });
     if (isPortraitTabletProject(testInfo.project.name)) {
@@ -170,8 +185,12 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(
       workspace.getByText(question, { exact: true }).last(),
     ).toBeVisible();
-
-    await page.getByRole("tab", { name: "Evidence" }).click();
+    const sourceSummary = workspace.getByRole("button", {
+      name: "1 verified Vorta source",
+      exact: true,
+    });
+    await expect(sourceSummary).toBeVisible();
+    await sourceSummary.click();
     await expect(workspace.getByText("Verified evidence")).toBeVisible();
     await expect(workspace.getByText("Shift Cover decision pack")).toBeVisible();
     await expect(
@@ -204,14 +223,17 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     );
     await expect(compactSummary.locator("li")).toHaveCount(4);
 
+    await expect(expand).toBeVisible();
     await expand.evaluate((element: HTMLButtonElement) => element.click());
     await expect(workspace).toBeVisible();
+    const recentTitle = question.replace(/[?.!]+$/, "");
+    await expect(
+      workspace.locator("aside").getByText(recentTitle, { exact: true }),
+    ).toHaveCount(1);
+    await page.getByRole("tab", { name: "Conversation" }).click();
     await expect(
       workspace.getByText(question, { exact: true }).last(),
     ).toBeVisible();
-    await expect(
-      workspace.locator("aside").getByText(question, { exact: true }),
-    ).toHaveCount(1);
     await page.screenshot({
       path: testInfo.outputPath("ask-vorta-workspace-conversation.png"),
       fullPage: true,
@@ -244,6 +266,16 @@ test.describe("VOR-041 Ask Vorta workspace", () => {
     await expect(
       page.locator('[data-vorta-ai-workspace="true"]'),
     ).toHaveCount(0);
+    for (const prompt of [
+      "What are my highest site risks?",
+      "What shift-cover issues do I have next week?",
+      "Which maintenance action reduces risk the most?",
+    ]) {
+      await expect(panel.getByRole("button", { name: prompt, exact: true })).toBeVisible();
+    }
+    await expect(
+      panel.getByRole("button", { name: "Show equipment that needs attention", exact: true }),
+    ).toBeHidden();
 
     const box = await panel.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(359);

@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 
+// Final visual contract keeps the refined workspace hierarchy inside the existing Ask Vorta architecture.
+// Responsive entry verification now waits for the full workspace or the user-visible Expand control.
 const workspace = readFileSync("src/screens/AiOperations/AskVortaWorkspace.tsx", "utf8");
 const assistant = readFileSync("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx", "utf8");
 const browser = readFileSync("tests/browser/vor-041-ask-vorta-workspace.spec.ts", "utf8");
 
 const checks = [
   [workspace.includes("visibleConversationMessages"), "active workspace conversation hides its introductory card"],
-  [workspace.includes("Live evidence loaded"), "workspace uses a compact evidence-status label"],
+  [workspace.includes('contextReady\n                    ? "Live evidence"'), "workspace uses a compact evidence-status label"],
   [assistant.includes('presentation?: "compact" | "workspace"'), "AnswerBlock supports workspace presentation"],
   [assistant.includes("wideCompactPresentation"), "compact density is limited only on non-mobile layouts"],
   [assistant.includes("decisionSummaryLimit"), "decision summary density is explicitly bounded"],

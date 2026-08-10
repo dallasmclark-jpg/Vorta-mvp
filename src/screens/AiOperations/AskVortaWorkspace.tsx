@@ -17,6 +17,7 @@ import {
   Mic,
   MicOff,
   PanelLeftClose,
+  PanelLeftOpen,
   Send,
   ShieldCheck,
   Sparkles,
@@ -98,6 +99,8 @@ interface AskVortaWorkspaceProps {
   onSelectImage: (file: File) => void;
   onRemoveImage: () => void;
   promptPlaceholder: string;
+  welcomeDetail: string;
+  suggestedPrompts: string[];
   onInputChange: (value: string) => void;
   onSubmit: (question: string) => void;
   onRetry: (messageId: string, question: string) => void;
@@ -140,7 +143,16 @@ function conversationTitle(messages: AskVortaWorkspaceMessage[]): string {
     (message) => message.role === "user" && message.text?.trim(),
   )?.text?.trim();
   if (!question) return "New Ask Vorta conversation";
-  return question.length > 54 ? `${question.slice(0, 51)}…` : question;
+
+  const concise = question
+    .replace(/^(what|which|who|where|when|why|how)\s+(are|is|do|does|did|can|could|should|would|will)?\s*/i, "")
+    .replace(/^show\s+(me\s+)?/i, "")
+    .replace(/^tell\s+me\s+/i, "")
+    .replace(/[?.!]+$/, "")
+    .trim();
+  const title = concise || question.replace(/[?.!]+$/, "").trim();
+  const capitalised = title ? title[0].toUpperCase() + title.slice(1) : "Ask Vorta conversation";
+  return capitalised.length > 54 ? capitalised.slice(0, 51) + "…" : capitalised;
 }
 
 function readStoredConversations(): StoredConversation[] {
@@ -195,6 +207,45 @@ function formatRecentDate(value: string): string {
       }).format(date);
 }
 
+type RecentConversationGroup = {
+  label: "Today" | "Yesterday" | "Previous 7 days" | "Older";
+  conversations: StoredConversation[];
+};
+
+function groupStoredConversations(conversations: StoredConversation[]): RecentConversationGroup[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86_400_000;
+  const sevenDaysStart = todayStart - 6 * 86_400_000;
+  const buckets = new Map<RecentConversationGroup["label"], StoredConversation[]>([
+    ["Today", []],
+    ["Yesterday", []],
+    ["Previous 7 days", []],
+    ["Older", []],
+  ]);
+
+  conversations.forEach((conversation) => {
+    const timestamp = new Date(conversation.updatedAt).getTime();
+    const label: RecentConversationGroup["label"] =
+      Number.isNaN(timestamp) || timestamp < sevenDaysStart
+        ? "Older"
+        : timestamp >= todayStart
+          ? "Today"
+          : timestamp >= yesterdayStart
+            ? "Yesterday"
+            : "Previous 7 days";
+    buckets.get(label)?.push(conversation);
+  });
+
+  return (["Today", "Yesterday", "Previous 7 days", "Older"] as const)
+    .map((label) => ({ label, conversations: buckets.get(label) ?? [] }))
+    .filter((group) => group.conversations.length > 0);
+}
+
+function evidenceSourceCount(answer: AskVortaWorkspaceAnswer): number {
+  return new Set(answer.sources ?? []).size;
+}
+
 function EmptyWorkspaceState({
   title,
   detail,
@@ -226,6 +277,8 @@ export function AskVortaWorkspace({
   onSelectImage,
   onRemoveImage,
   promptPlaceholder,
+  welcomeDetail,
+  suggestedPrompts,
   onInputChange,
   onSubmit,
   onRetry,
@@ -238,6 +291,7 @@ export function AskVortaWorkspace({
   renderAnswer,
 }: AskVortaWorkspaceProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<AskVortaWorkspaceTab>("conversation");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [recents, setRecents] = useState<StoredConversation[]>(() =>
     readStoredConversations(),
   );
@@ -245,12 +299,15 @@ export function AskVortaWorkspace({
     readActiveConversationId(),
   );
 
-  const latestAnswer = useMemo(
-    () => [...messages].reverse().find((message) => message.answer)?.answer ?? null,
-    [messages],
-  );
   const hasUserQuestion = messages.some(
     (message) => message.role === "user" && message.text?.trim(),
+  );
+  const latestAnswer = useMemo(
+    () =>
+      hasUserQuestion
+        ? [...messages].reverse().find((message) => message.answer)?.answer ?? null
+        : null,
+    [hasUserQuestion, messages],
   );
   const visibleConversationMessages = hasUserQuestion
     ? messages.filter(
@@ -261,7 +318,8 @@ export function AskVortaWorkspace({
             Boolean(message.answer)
           ),
       )
-    : messages;
+    : [];
+  const recentGroups = useMemo(() => groupStoredConversations(recents), [recents]);
 
   useEffect(() => {
     writeActiveConversationId(currentConversationId);
@@ -322,75 +380,108 @@ export function AskVortaWorkspace({
       data-vorta-ai-workspace="true"
       className="fixed inset-0 z-[70] hidden min-h-0 bg-gray-950 md:flex"
     >
-      <aside className="flex w-64 shrink-0 flex-col border-r border-gray-800 bg-gray-950">
-        <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15">
-            <Sparkles className="h-4 w-4 text-blue-300" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-bold text-slate-100">Ask Vorta</h2>
-            <p className="truncate text-xs text-slate-500">{roleSubtitle}</p>
-          </div>
+      <aside
+        className={
+          "flex shrink-0 flex-col border-r border-gray-800 bg-gray-950 transition-[width] duration-200 " +
+          (sidebarCollapsed ? "w-16" : "w-64")
+        }
+      >
+        <div
+          className={
+            "flex h-16 items-center border-b border-gray-800 " +
+            (sidebarCollapsed ? "justify-center px-2" : "gap-3 px-4")
+          }
+        >
+          {!sidebarCollapsed ? (
+            <>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15">
+                <Sparkles className="h-4 w-4 text-blue-300" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-sm font-bold text-slate-100">Ask Vorta</h2>
+                <p className="truncate text-xs text-slate-500">{roleSubtitle}</p>
+              </div>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            aria-label={sidebarCollapsed ? "Expand recent conversations" : "Collapse recent conversations"}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
-        <div className="p-3">
+        <div className={sidebarCollapsed ? "p-2" : "p-3"}>
           <Button
             type="button"
             onClick={startConversation}
-            className="h-10 w-full justify-start gap-2 bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-500"
+            aria-label="New conversation"
+            className={
+              "h-10 bg-blue-600 text-sm font-semibold text-white hover:bg-blue-500 " +
+              (sidebarCollapsed
+                ? "w-10 justify-center p-0"
+                : "w-full justify-start gap-2 px-3")
+            }
           >
             <MessageSquarePlus className="h-4 w-4" />
-            New conversation
+            {!sidebarCollapsed ? <span>New conversation</span> : null}
           </Button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
-          <div className="mb-2 flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-            <Clock3 className="h-3.5 w-3.5" />
-            Recents
+        {!sidebarCollapsed ? (
+          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+            <div className="mb-2 flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <Clock3 className="h-3.5 w-3.5" />
+              Recents
+            </div>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+              {recentGroups.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-gray-800 px-3 py-4 text-xs leading-5 text-slate-500">
+                  Recent conversations will appear here after the first question.
+                </p>
+              ) : (
+                recentGroups.map((group) => (
+                  <section key={group.label} aria-label={group.label}>
+                    <h3 className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600">
+                      {group.label}
+                    </h3>
+                    <div className="space-y-1">
+                      {group.conversations.map((conversation) => (
+                        <button
+                          key={conversation.id}
+                          type="button"
+                          onClick={() => restoreConversation(conversation)}
+                          aria-current={
+                            conversation.id === currentConversationId ? "page" : undefined
+                          }
+                          className={
+                            "w-full rounded-lg border px-3 py-2.5 text-left transition-colors " +
+                            (conversation.id === currentConversationId
+                              ? "border-blue-500/35 bg-blue-500/10 text-slate-100"
+                              : "border-transparent text-slate-300 hover:border-gray-700 hover:bg-white/5")
+                          }
+                        >
+                          <span className="block line-clamp-2 text-sm font-semibold leading-5">
+                            {conversation.title}
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-500">
+                            {formatRecentDate(conversation.updatedAt)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))
+              )}
+            </div>
           </div>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-            {recents.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-gray-800 px-3 py-4 text-xs leading-5 text-slate-500">
-                Recent conversations will appear here after the first question.
-              </p>
-            ) : (
-              recents.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  type="button"
-                  onClick={() => restoreConversation(conversation)}
-                  aria-current={
-                    conversation.id === currentConversationId ? "page" : undefined
-                  }
-                  className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                    conversation.id === currentConversationId
-                      ? "border-blue-500/35 bg-blue-500/10 text-slate-100"
-                      : "border-transparent text-slate-300 hover:border-gray-700 hover:bg-white/5"
-                  }`}
-                >
-                  <span className="block line-clamp-2 text-sm font-semibold leading-5">
-                    {conversation.title}
-                  </span>
-                  <span className="mt-1 block text-xs text-slate-500">
-                    {formatRecentDate(conversation.updatedAt)}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="border-t border-gray-800 p-3">
-          <button
-            type="button"
-            onClick={onCollapse}
-            className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-300 transition-colors hover:bg-white/[0.05] hover:text-white"
-          >
-            <PanelLeftClose className="h-4 w-4" />
-            Return to compact panel
-          </button>
-        </div>
+        ) : null}
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -419,16 +510,31 @@ export function AskVortaWorkspace({
                 );
               })}
             </div>
-            <div className="hidden min-w-0 items-center gap-2 text-xs text-slate-500 xl:flex">
+            <div
+              className={
+                "hidden h-8 items-center gap-2 rounded-full border px-2.5 text-xs font-semibold lg:inline-flex " +
+                (contextReady
+                  ? "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-200"
+                  : loadingContext
+                    ? "border-blue-500/20 bg-blue-500/[0.06] text-blue-200"
+                    : "border-amber-500/20 bg-amber-500/[0.06] text-amber-200")
+              }
+              title={contextLine}
+              aria-live="polite"
+            >
               {loadingContext ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : contextReady ? (
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
               ) : (
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                <AlertTriangle className="h-3.5 w-3.5" />
               )}
-              <span className="max-w-sm truncate">
-                {contextReady ? "Live evidence loaded" : contextLine}
+              <span>
+                {loadingContext
+                  ? "Loading evidence"
+                  : contextReady
+                    ? "Live evidence"
+                    : "Evidence unavailable"}
               </span>
             </div>
           </div>
@@ -458,8 +564,41 @@ export function AskVortaWorkspace({
           {activeTab === "conversation" && (
             <div
               data-vorta-ai-workspace-conversation="true"
-              className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-6 py-7 xl:px-10"
+              className={
+                "mx-auto flex w-full max-w-[1050px] flex-col px-6 xl:px-10 " +
+                (hasUserQuestion ? "gap-5 py-7" : "min-h-full justify-center py-10")
+              }
             >
+              {!hasUserQuestion ? (
+                <section
+                  data-vorta-ai-workspace-welcome="true"
+                  className="mx-auto flex w-full max-w-3xl flex-col items-center text-center"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10">
+                    <Sparkles className="h-5 w-5 text-blue-300" />
+                  </div>
+                  <h2 className="mt-5 text-3xl font-semibold tracking-tight text-slate-50">
+                    What can I help with?
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                    {welcomeDetail}
+                  </p>
+                  <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
+                    {suggestedPrompts.slice(0, 4).map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        disabled={!contextReady}
+                        onClick={() => onSubmit(prompt)}
+                        className="group flex min-h-16 items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-900/70 px-4 py-3 text-left text-sm font-semibold leading-5 text-slate-200 transition-colors hover:border-blue-500/35 hover:bg-blue-500/[0.07] disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        <span>{prompt}</span>
+                        <ChevronLeft className="h-4 w-4 shrink-0 rotate-180 text-slate-600 transition-colors group-hover:text-blue-300" />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
               {visibleConversationMessages.map((message) => (
                 <div
                   key={message.id}
@@ -468,11 +607,13 @@ export function AskVortaWorkspace({
                   }`}
                 >
                   <div
-                    className={`rounded-2xl px-4 py-3 ${
+                    className={
                       message.role === "user"
-                        ? "max-w-3xl bg-blue-600 text-white"
-                        : "w-full border border-gray-800 bg-gray-900 text-slate-200"
-                    }`}
+                        ? "max-w-3xl rounded-2xl bg-blue-600 px-4 py-3 text-white"
+                        : message.answer
+                          ? "w-full text-slate-200"
+                          : "w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-slate-200"
+                    }
                   >
                     {message.loading ? (
                       <div className="flex items-center gap-2 text-sm text-slate-300">
@@ -507,7 +648,23 @@ export function AskVortaWorkspace({
                         )}
                       </div>
                     ) : message.answer ? (
-                      renderAnswer(message.answer)
+                      <div className="space-y-4">
+                        {renderAnswer(message.answer)}
+                        <button
+                          type="button"
+                          data-vorta-ai-workspace-source-summary="true"
+                          onClick={() => setActiveTab("evidence")}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-xs font-semibold text-emerald-200 transition-colors hover:border-emerald-400/40 hover:bg-emerald-500/[0.1]"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {evidenceSourceCount(message.answer) > 0
+                            ? evidenceSourceCount(message.answer) === 1
+                              ? "1 verified Vorta source"
+                              : evidenceSourceCount(message.answer) + " verified Vorta sources"
+                            : "Open evidence details"}
+                          <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {message.imageName ? (
@@ -727,8 +884,8 @@ export function AskVortaWorkspace({
         </div>
 
         {activeTab === "conversation" && (
-          <div className="shrink-0 border-t border-gray-800 bg-gray-950 px-6 py-4">
-            <div className="mx-auto max-w-4xl">
+          <div className="shrink-0 border-t border-gray-800 bg-gray-950/95 px-6 py-4 backdrop-blur">
+            <div className="mx-auto max-w-[1050px]">
               {pendingImage ? (
                 <div className="mb-3 flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2.5">
                   <img
@@ -755,7 +912,7 @@ export function AskVortaWorkspace({
               {imageError ? (
                 <p className="mb-2 text-xs text-amber-300" role="alert">{imageError}</p>
               ) : null}
-              <div className="flex gap-2 rounded-xl border border-gray-700 bg-gray-900 p-2 focus-within:border-blue-500/50">
+              <div className="flex gap-2 rounded-2xl border border-gray-700 bg-[#111722] p-2 shadow-lg shadow-black/20 focus-within:border-blue-500/50">
                 <label
                   className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-700 bg-transparent text-slate-400 transition-colors hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-300"
                   aria-label="Attach equipment or fault photo"

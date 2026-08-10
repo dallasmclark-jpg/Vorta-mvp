@@ -386,11 +386,10 @@ const ROLE_PROFILES: Record<VortaAiRole, RoleResponseProfile> = {
     confidenceLabel: "Manager confidence",
     focusAreas: ["site risk", "area risk", "equipment priority", "labour risk", "PM backlog", "skills coverage", "spares"],
     quickQuestions: [
-      "Who is off and who can cover next week?",
-      "Which spares could delay a repair?",
-      "Where are our single-person skill risks?",
-      "What previous work was done on FD-03?",
-      "What actions reduce risk most?",
+      "What are my highest site risks?",
+      "What shift-cover issues do I have next week?",
+      "Which maintenance action reduces risk the most?",
+      "Show equipment that needs attention",
     ],
   },
   planner: {
@@ -2079,7 +2078,7 @@ function AnswerBlock({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={workspacePresentation ? "flex flex-col gap-4" : "flex flex-col gap-2"}>
       {!workspacePresentation && (
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
@@ -2096,15 +2095,20 @@ function AnswerBlock({
         </div>
       )}
 
-      <p
-        className={
-          workspacePresentation
-            ? "border-l-2 border-blue-400/70 pl-4 text-lg font-semibold leading-8 text-slate-100"
-            : "text-base leading-7 text-slate-200 sm:text-sm sm:leading-6"
-        }
-      >
-        {answer.directAnswer}
-      </p>
+      {workspacePresentation ? (
+        <section className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">
+            Direct answer
+          </p>
+          <p className="mt-2 text-lg font-semibold leading-8 text-slate-100">
+            {answer.directAnswer}
+          </p>
+        </section>
+      ) : (
+        <p className="text-base leading-7 text-slate-200 sm:text-sm sm:leading-6">
+          {answer.directAnswer}
+        </p>
+      )}
 
       {answer.decisionSummary && answer.decisionSummary.length > 0 && (
         <section
@@ -2383,7 +2387,7 @@ function AnswerBlock({
         </section>
       )}
 
-      {answer.sources.length > 0 && (
+      {!workspacePresentation && answer.sources.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {answer.sources.slice(0, 6).map((source) => (
             <Badge
@@ -2419,24 +2423,32 @@ function AnswerBlock({
       )}
 
       <div className="flex items-start justify-between gap-3 border-t border-gray-800 pt-2 text-xs text-slate-500">
-        <span>
-          <span className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="h-3 w-3 text-emerald-400" />
-            Source-backed response
+        {workspacePresentation ? (
+          <span>
+            {evidenceUpdatedLabel ? "Evidence updated " + evidenceUpdatedLabel : "Evidence checked for this response"}
           </span>
-          {evidenceUpdatedLabel && (
-            <span className="mt-0.5 block pl-[18px]">
-              Evidence updated {evidenceUpdatedLabel}
+        ) : (
+          <span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-3 w-3 text-emerald-400" />
+              Source-backed response
             </span>
-          )}
-        </span>
+            {evidenceUpdatedLabel && (
+              <span className="mt-0.5 block pl-[18px]">
+                Evidence updated {evidenceUpdatedLabel}
+              </span>
+            )}
+          </span>
+        )}
         <span className="shrink-0 font-semibold text-blue-400">
+          {workspacePresentation ? "Confidence " : ""}{answer.confidence}%{" "}
+          {workspacePresentation ? "· " : ""}
           {answer.confidence >= 90
             ? "High"
             : answer.confidence >= 75
               ? "Medium"
-              : "Low"}{" "}
-          · {answer.confidence}%
+              : "Low"}
+          {!workspacePresentation ? " confidence" : ""}
         </span>
       </div>
       {answer.responseId && (
@@ -3465,6 +3477,12 @@ export function GlobalMaintenanceAiAssistant({
         onSelectImage={(file) => void selectImageFile(file)}
         onRemoveImage={removePendingImage}
         promptPlaceholder={roleProfile.promptPlaceholder}
+        welcomeDetail={
+          roleProfile.role === "maintenance-manager"
+            ? "Ask about risk, equipment, maintenance history, skills, spares or documents."
+            : roleProfile.contextLine
+        }
+        suggestedPrompts={roleProfile.quickQuestions}
         onInputChange={setInput}
         onSubmit={submitQuestion}
         onRetry={retryFailedQuestion}
@@ -3579,9 +3597,14 @@ export function GlobalMaintenanceAiAssistant({
 
       {!minimised && (
         <>
-          <div className={`border-b border-gray-800 px-4 py-3 ${hasActiveConversation ? "md:hidden" : ""}`}>
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {roleProfile.quickQuestions.map((question) => (
+          <div
+            data-vorta-global-ai-prompts="true"
+            className={`border-b border-gray-800 px-4 py-3 max-md:order-3 max-md:block max-md:px-3 max-md:py-1.5 ${
+              hasActiveConversation ? "hidden" : ""
+            }`}
+          >
+            <div className="mb-2 flex flex-wrap gap-1.5 max-md:mb-0 max-md:flex-nowrap max-md:overflow-x-auto">
+              {roleProfile.quickQuestions.map((question, questionIndex) => (
                 <button
                   key={question}
                   type="button"
@@ -3598,7 +3621,9 @@ export function GlobalMaintenanceAiAssistant({
                       question,
                     )
                   }
-                  className="rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400"
+                  className={`rounded-full border border-gray-700 bg-[#0f1218] px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:text-slate-400 max-md:shrink-0 max-md:whitespace-nowrap ${
+                    questionIndex >= 3 ? "max-md:hidden" : ""
+                  }`}
                 >
                   {question}
                 </button>
@@ -3606,7 +3631,7 @@ export function GlobalMaintenanceAiAssistant({
             </div>
 
             <div
-              className="text-xs"
+              className="text-xs max-md:hidden"
               aria-live="polite"
             >
               {loadingContext ? (

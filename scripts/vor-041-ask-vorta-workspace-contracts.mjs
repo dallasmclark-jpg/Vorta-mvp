@@ -57,8 +57,22 @@ assert.match(
 );
 assert.match(
   workspace,
-  /justify-between gap-2[\s\S]*px-3 lg:px-5[\s\S]*min-w-0 flex-1[\s\S]*xl:flex[\s\S]*shrink-0 items-center gap-1/,
-  "The portrait workspace header keeps exit controls visible while deferring context text to wider screens.",
+  /data-vorta-ai-workspace-welcome="true"[\s\S]*What can I help with\?/,
+  "The full workspace must use the maintenance-first welcome state before the first question.",
+);
+assert.ok(
+  workspace.includes("Collapse recent conversations") &&
+    workspace.includes("Expand recent conversations"),
+  "The Recent conversations rail must be collapsible without leaving the workspace.",
+);
+assert.ok(
+  !workspace.includes("Return to compact panel"),
+  "The duplicate sidebar compact-panel action must be removed.",
+);
+assert.match(
+  workspace,
+  /data-vorta-ai-workspace-source-summary="true"/,
+  "Workspace answers must expose a direct route to their source evidence.",
 );
 assert.match(
   workspace,
@@ -82,8 +96,18 @@ assert.match(
 );
 assert.match(
   assistant,
-  /hasActiveConversation \? "md:hidden" : ""/,
-  "Quick prompts and verbose context must collapse only on non-mobile layouts after a conversation starts.",
+  /data-vorta-global-ai-prompts="true"[\s\S]*max-md:order-3[\s\S]*hasActiveConversation \? "hidden" : ""/,
+  "Quick prompts must sit above the phone composer and disappear after the first question.",
+);
+assert.match(
+  assistant,
+  /quickQuestions\.map\(\(question, questionIndex\)[\s\S]*questionIndex >= 3 \? "max-md:hidden"/,
+  "Phone Ask Vorta must show the first three suggested prompts only.",
+);
+assert.match(
+  assistant,
+  /className="text-xs max-md:hidden"[\s\S]*aria-live="polite"/,
+  "Verbose verified-context copy stays out of the phone landing view.",
 );
 assert.match(
   assistant,
@@ -117,5 +141,5 @@ for (const rule of [
 }
 
 console.log(
-  "VOR-041 desktop/tablet Ask Vorta workspace and unchanged mobile boundary contracts passed.",
+  "VOR-041 desktop/tablet Ask Vorta workspace and refined mobile boundary contracts passed.",
 );
