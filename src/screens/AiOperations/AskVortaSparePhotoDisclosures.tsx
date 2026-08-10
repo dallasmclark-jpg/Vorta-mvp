@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, ShieldCheck, Target } from "lucide-react";
 import { useAuth, type PilotRole } from "../../lib/auth";
 import { InventoryItemDisclosure } from "../StoresInventory/StoresInventorySection";
@@ -237,9 +237,9 @@ function SpareMatchLoadingRail({ stockNumber }: { stockNumber?: string }): JSX.E
   ];
 
   return (
-    <div className="space-y-2.5 px-1 py-1" role="status" aria-live="polite">
+    <div className="space-y-2 px-1 py-1" role="status" aria-live="polite">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-        <ShieldCheck className="h-3.5 w-3.5 text-blue-300" aria-hidden="true" />
+        <ShieldCheck className="h-4 w-4 text-blue-300" aria-hidden="true" />
         Checking Vorta evidence
       </div>
       <div
@@ -248,15 +248,15 @@ function SpareMatchLoadingRail({ stockNumber }: { stockNumber?: string }): JSX.E
         aria-label="Image checked, Stores checked, match found, opening stock record"
       >
         {steps.map((step, index) => (
-          <div key={step.label} className="contents">
-            <div className="flex shrink-0 items-center gap-1.5">
+          <Fragment key={step.label}>
+            <div className="flex shrink-0 items-center gap-2">
               {step.state === "complete" ? (
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-500/35 bg-emerald-500/10">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden="true" />
                 </span>
               ) : (
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-500/40 bg-blue-500/10">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-300" aria-hidden="true" />
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-500/30 bg-blue-500/10">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-300" aria-hidden="true" />
                 </span>
               )}
               <span
@@ -270,12 +270,9 @@ function SpareMatchLoadingRail({ stockNumber }: { stockNumber?: string }): JSX.E
               </span>
             </div>
             {index < steps.length - 1 ? (
-              <span
-                className="mx-2 h-px min-w-4 flex-1 bg-slate-700/80"
-                aria-hidden="true"
-              />
+              <span className="mx-2 h-px w-6 shrink-0 bg-slate-700" aria-hidden="true" />
             ) : null}
-          </div>
+          </Fragment>
         ))}
       </div>
       <p className="text-xs text-slate-500">
