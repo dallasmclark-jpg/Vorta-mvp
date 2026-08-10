@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import {
+  cacheVerifiedSourceImage,
   canManageVortaMedia,
   loadPreferredManagedImage,
   uploadManagedImage,
@@ -51,6 +52,7 @@ export function ManagedSpareImage({
   const imageButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [managedImage, setManagedImage] = useState<VortaManagedImage | null>(null);
+  const [cacheAttempted, setCacheAttempted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageExpanded, setImageExpanded] = useState(false);
   const [fullImageFailed, setFullImageFailed] = useState(false);
@@ -62,6 +64,7 @@ export function ManagedSpareImage({
   useEffect(() => {
     let cancelled = false;
     setManagedImage(null);
+    setCacheAttempted(false);
     setUploadError(null);
 
     void loadPreferredManagedImage(siteId, "spare", componentId)
@@ -113,6 +116,21 @@ export function ManagedSpareImage({
     };
   }, [closeImage, imageExpanded]);
 
+  const handleImageError = async (): Promise<void> => {
+    if (!managedImage && !cacheAttempted && canUpload) {
+      setCacheAttempted(true);
+      try {
+        const cached = await cacheVerifiedSourceImage("spare", componentId);
+        setManagedImage(cached);
+        setImageFailed(false);
+        return;
+      } catch (error) {
+        console.warn("Verified spare image cache fallback failed:", error);
+      }
+    }
+    setImageFailed(true);
+  };
+
   const handleUpload = async (file: File): Promise<void> => {
     setUploading(true);
     setUploadError(null);
@@ -138,7 +156,9 @@ export function ManagedSpareImage({
   const lightboxImageUrl =
     fullImageFailed || !activeFullImageUrl ? activeImageUrl : activeFullImageUrl;
   const sourceLabel = managedImage
-    ? "Vorta site photo"
+    ? managedImage.sourceType === "site_photo"
+      ? "Vorta site photo"
+      : "Vorta stored image"
     : fallbackSourceType === "manufacturer"
       ? "Verified manufacturer image"
       : fallbackSourceType === "authorised_supplier"
@@ -151,7 +171,7 @@ export function ManagedSpareImage({
     <>
       <div
         data-vorta-spare-image="true"
-        data-vorta-managed-media={managedImage ? "site-photo" : "fallback"}
+        data-vorta-managed-media={managedImage ? managedImage.sourceType : "fallback"}
         className="w-full shrink-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117]"
         style={{ maxWidth: "10rem" }}
       >
@@ -176,7 +196,7 @@ export function ManagedSpareImage({
                 alt={activeAltText}
                 loading="lazy"
                 decoding="async"
-                onError={() => setImageFailed(true)}
+                onError={() => void handleImageError()}
                 className="h-full w-full object-contain p-3"
               />
             </button>
