@@ -21,7 +21,7 @@ import {
   useState,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../../lib/auth";
+import { useAuth, type PilotRole } from "../../lib/auth";
 import { getEffectiveDataMode } from "../../lib/dataTrust";
 import { ManagedSpareImage } from "./ManagedSpareImage";
 import {
@@ -557,11 +557,7 @@ function InventoryItemDisclosure({
 }: {
   item: StoresInventoryItem;
   siteId: string;
-  role: ReturnType<typeof useAuth>["siteContext"] extends infer T
-    ? T extends { role: infer R }
-      ? R
-      : never
-    : never;
+  role: PilotRole | null | undefined;
   onOpen: (item: StoresInventoryItem) => void;
 }): JSX.Element {
   return (
