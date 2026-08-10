@@ -287,6 +287,12 @@ export async function handleSparePhotoIdentification(
   context: Context,
 ): Promise<Response> {
   const startedAt = Date.now();
+  emitAskVortaProgress({
+    id: "spare-photo-image",
+    label: "Checking the uploaded image",
+    state: "active",
+  });
+
   const authenticated = await authenticateAskVortaRequest(req);
   if (!authenticated.ok) return authenticated.response;
   const { request, supabase, userId } = authenticated;
@@ -315,23 +321,17 @@ export async function handleSparePhotoIdentification(
   const client = new OpenAI();
   emitAskVortaProgress({
     id: "spare-photo-image",
-    label: "Reading the uploaded image",
+    label: "Checking the uploaded image",
     state: "active",
   });
-  const extraction = await extractAskVortaImageEvidence(client, request.image);
-  emitAskVortaProgress({
-    id: "spare-photo-image",
-    label: "Reading the uploaded image",
-    state: "complete",
-    detail: "Image evidence captured",
-  });
+  const extractionPromise = extractAskVortaImageEvidence(client, request.image);
 
   emitAskVortaProgress({
     id: "spare-photo-stores",
     label: "Checking Stores Inventory",
     state: "active",
   });
-  const imageResult = await supabase
+  const imageResultPromise = supabase
     .from("vorta_entity_images")
     .select("component_id,source_url,alt_text,is_primary,source_type")
     .eq("site_id", request.siteId)
@@ -339,6 +339,17 @@ export async function handleSparePhotoIdentification(
     .not("component_id", "is", null)
     .not("source_url", "is", null)
     .limit(100);
+
+  const [extraction, imageResult] = await Promise.all([
+    extractionPromise,
+    imageResultPromise,
+  ]);
+  emitAskVortaProgress({
+    id: "spare-photo-image",
+    label: "Checking the uploaded image",
+    state: "complete",
+    detail: "Image evidence captured",
+  });
 
   if (imageResult.error) {
     emitAskVortaProgress({
