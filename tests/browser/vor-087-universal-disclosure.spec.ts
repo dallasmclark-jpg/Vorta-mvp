@@ -1,8 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
-const isPhone = (projectName: string): boolean => projectName === "phone-360";
 
 const answer = {
   responseId: "vor-087-universal-disclosure",
@@ -60,45 +59,50 @@ async function mockAskVorta(page: Page): Promise<void> {
   });
 }
 
-async function openAskVorta(page: Page, projectName: string): Promise<void> {
-  if (isPhone(projectName)) {
-    const launcher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
-    await expect(launcher).toBeVisible();
-    await launcher.evaluate((element: HTMLButtonElement) => element.click());
-    await expect(page.locator('[data-vorta-global-ai-panel="true"]')).toBeVisible();
-    return;
+async function openAskVorta(page: Page): Promise<Locator> {
+  const panel = page.locator('[data-vorta-global-ai-panel="true"]');
+  const workspace = page.locator('[data-vorta-ai-workspace="true"]');
+  const sharedLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
+
+  if (await sharedLauncher.isVisible()) {
+    await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
+    await expect(panel).toBeVisible();
+    return panel;
   }
 
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent("vorta-global-ai-prompt"));
   });
 
-  const workspace = page.locator('[data-vorta-ai-workspace="true"]');
   const expand = page.locator('[data-vorta-global-ai-expand="true"]');
   await expect
-    .poll(async () => (await workspace.isVisible()) || (await expand.isVisible()))
+    .poll(async () => (await workspace.isVisible()) || (await expand.isVisible()) || (await panel.isVisible()))
     .toBe(true);
-  if (!(await workspace.isVisible())) {
+
+  if (await workspace.isVisible()) return workspace;
+  if (await expand.isVisible()) {
     await expand.evaluate((element: HTMLButtonElement) => element.click());
+    await expect(workspace).toBeVisible();
+    return workspace;
   }
-  await expect(workspace).toBeVisible();
+
+  await expect(panel).toBeVisible();
+  return panel;
 }
 
-async function submitGenericQuestion(page: Page, projectName: string): Promise<void> {
+async function submitGenericQuestion(page: Page, scope: Locator): Promise<void> {
   const question = "Which spares risks need attention?";
-  if (isPhone(projectName)) {
-    const input = page.locator('[data-vorta-global-ai-input="true"]');
-    await input.fill(question);
+  const compactInput = page.locator('[data-vorta-global-ai-input="true"]');
+
+  if (await compactInput.isVisible()) {
+    await compactInput.fill(question);
     await page.locator('[data-vorta-global-ai-send="true"]').click();
     return;
   }
 
   const input = page.locator('[data-vorta-ai-workspace-input="true"]');
   await input.fill(question);
-  await page
-    .locator('[data-vorta-ai-workspace="true"]')
-    .getByRole("button", { name: "Send", exact: true })
-    .click();
+  await scope.getByRole("button", { name: "Send", exact: true }).click();
 }
 
 test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
@@ -111,16 +115,12 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
     await page.goto("/dashboard");
-    await openAskVorta(page, testInfo.project.name);
-    await submitGenericQuestion(page, testInfo.project.name);
+    const scope = await openAskVorta(page);
+    await submitGenericQuestion(page, scope);
 
     await expect(page.locator('[data-vorta-ai-live-evidence-activity="true"]')).toBeVisible();
     await expect(page.getByText(answer.directAnswer, { exact: true })).toBeVisible();
     await expect(page.getByText("Direct answer", { exact: true })).toHaveCount(0);
-
-    const scope = isPhone(testInfo.project.name)
-      ? page.locator('[data-vorta-global-ai-panel="true"]')
-      : page.locator('[data-vorta-ai-workspace="true"]');
 
     await expect(scope.locator('[data-vorta-ai-primary-priority="true"]')).toBeVisible();
     await expect(scope.getByText("Highest priority", { exact: true })).toBeVisible();
