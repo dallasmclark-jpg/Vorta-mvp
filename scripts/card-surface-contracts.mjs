@@ -74,25 +74,23 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
-// VOR-088: navigation/selection surfaces share one compact premium language.
-assert.match(surfaces, /VOR-088: one compact Vorta selector-card language/);
-assert.match(surfaces, /--vorta-selector-surface: #111720/);
-assert.match(surfaces, /--vorta-selector-border-selected: #60a5fa/);
-assert.match(surfaces, /--vorta-selector-radius: 18px/);
+// VOR-088: navigation/selection surfaces use one compact Vorta treatment.
+assert.match(surfaces, /VOR-088: one compact selector-card language/);
 assert.match(surfaces, /\[data-vorta-selector-card="true"\]/);
 assert.match(surfaces, /\[data-vorta-tab-outline="true"\]/);
 assert.match(surfaces, /\[role="tab"\]/);
 assert.match(surfaces, /button\[aria-pressed\]/);
-assert.match(surfaces, /background-color: var\(--vorta-selector-surface\) !important/);
-assert.match(surfaces, /border-radius: var\(--vorta-selector-radius\) !important/);
+assert.match(surfaces, /border-radius: 18px !important/);
+assert.match(surfaces, /background: var\(--vorta-surface-raised\) !important/);
+assert.match(surfaces, /border-color: #2563eb !important/);
+assert.match(surfaces, /border-color: #60a5fa !important/);
 assert.match(surfaces, /:not\(\[data-risk-kpi-card\]\)/);
 assert.match(surfaces, /:not\(\[data-vorta-dashboard-card\]\)/);
 assert.match(surfaces, /:not\(\[class\*="border-t-"\]\)/);
-assert.match(surfaces, /Operational KPI\/risk cards and Skills Matrix team/);
 assert.doesNotMatch(
   surfaces,
-  /\[data-vorta-selector-card="true"\][\s\S]{0,260}background(?:-color)?:\s*#(?:1d4ed8|2563eb|3b82f6)/i,
-  "Selector cards must retain a neutral surface rather than a filled-blue selected state.",
+  /VOR-088[\s\S]{0,1600}background(?:-color)?:\s*#(?:1d4ed8|2563eb|3b82f6)/i,
+  "Selector cards must retain a neutral surface rather than an opaque blue selected state.",
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
