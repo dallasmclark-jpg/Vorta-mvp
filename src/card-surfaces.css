@@ -31,10 +31,6 @@ html.dark {
   background-color: var(--vorta-surface-page) !important;
 }
 
-[data-vorta-page-content="true"] {
-  min-height: 100%;
-}
-
 .vorta-card,
 [data-vorta-card="true"] {
   border-color: var(--vorta-surface-border) !important;
@@ -155,10 +151,11 @@ html.dark [data-vorta-page-content="true"] :is(
   }
 }
 
-/* VOR-088 selector/navigation cards share Vorta depth; Skills Matrix severity cards remain distinct. */
+/* VOR-088 selector/navigation cards use a raised surface and stronger Vorta depth; Skills Matrix severity cards remain distinct. */
 [data-vorta-portal-shell="true"] :where([role="tab"],button[aria-pressed]:not([class*="border-t-"])) {
   border-radius: 16px !important;
-  box-shadow: var(--vorta-surface-shadow) !important;
+  background-color: var(--vorta-surface-raised) !important;
+  box-shadow: var(--vorta-surface-shadow-hover) !important;
 }
 
 [data-vorta-page-content="true"] :where(
