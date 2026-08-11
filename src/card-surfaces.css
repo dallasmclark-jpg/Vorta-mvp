@@ -155,20 +155,11 @@ html.dark [data-vorta-page-content="true"] :is(
   }
 }
 
-/* VOR-088: one compact selector-card language; operational/severity cards stay untouched. */
-[data-vorta-portal-shell="true"] :where([data-vorta-selector-card="true"],[data-vorta-tab-outline="true"],[role="tab"],[data-vorta-engineer-summary-filter],button[aria-pressed]):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]) {
+/* VOR-088: compact selector-card language; Skills Matrix severity cards stay distinct. */
+[data-vorta-portal-shell="true"] :where([data-vorta-selector-card="true"],[role="tab"],[data-vorta-engineer-summary-filter],button[aria-pressed]:not([class*="border-t-"])) {
   border-radius: 18px !important;
-  border-color: var(--vorta-surface-border) !important;
   background: var(--vorta-surface-raised) !important;
   box-shadow: var(--vorta-surface-raised-shadow) !important;
-}
-[data-vorta-portal-shell="true"] :where([data-vorta-selector-card="true"][aria-pressed="true"],button[aria-pressed="true"]):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]) {
-  border-color: #2563eb !important;
-  color: #1d4ed8 !important;
-}
-html.dark [data-vorta-portal-shell="true"] :where([data-vorta-selector-card="true"][aria-pressed="true"],button[aria-pressed="true"]):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]) {
-  border-color: #60a5fa !important;
-  color: #dbeafe !important;
 }
 
 [data-vorta-page-content="true"] :where(
