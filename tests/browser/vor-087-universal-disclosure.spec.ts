@@ -125,6 +125,16 @@ async function submitGenericQuestion(page: Page, scope: Locator): Promise<void> 
   await scope.getByRole("button", { name: "Send", exact: true }).click();
 }
 
+async function expectAllHidden(locator: Locator): Promise<void> {
+  const count = await locator.count();
+  expect(count).toBeGreaterThan(0);
+  await expect
+    .poll(async () => locator.evaluateAll((elements) =>
+      elements.every((element) => element.getClientRects().length === 0),
+    ))
+    .toBe(true);
+}
+
 test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
   test.skip(
     !hasAuthenticatedTestUser,
@@ -172,14 +182,14 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     await actions.locator("xpath=ancestor::summary").click();
     await expect(scope.getByText(answer.recommendedActions[0], { exact: true })).toBeVisible();
 
-    await expect(scope.getByText(answer.roleNote, { exact: true })).toBeHidden();
-    await expect(scope.getByText(answer.missingData[0], { exact: true })).toBeHidden();
-    await expect(scope.getByText(/91%.*confidence|Confidence 91%/i)).toBeHidden();
-    await expect(scope.getByText("Was this decision pack useful?", { exact: true })).toBeHidden();
+    await expectAllHidden(scope.getByText(answer.roleNote, { exact: true }));
+    await expectAllHidden(scope.getByText(answer.missingData[0], { exact: true }));
+    await expectAllHidden(scope.getByText(/91%.*confidence|Confidence 91%/i));
+    await expectAllHidden(scope.getByText("Was this decision pack useful?", { exact: true }));
 
     const workspaceSourceSummary = page.locator('[data-vorta-ai-workspace-source-summary="true"]');
     if ((await workspaceSourceSummary.count()) > 0) {
-      await expect(workspaceSourceSummary).toBeHidden();
+      await expectAllHidden(workspaceSourceSummary);
     }
 
     if (isPhone(testInfo.project.name)) {
