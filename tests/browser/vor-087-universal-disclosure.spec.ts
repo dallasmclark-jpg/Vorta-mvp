@@ -37,9 +37,12 @@ const answer = {
   actionPlan: [],
   followUpQuestions: [],
   sources: ["equipment_components", "Equipment risk list"],
-  missingData: [],
+  missingData: [
+    "Conversational reasoning is temporarily unavailable; this is the verified Vorta fallback response.",
+  ],
   confidence: 91,
   intentLabel: "spares_risk_assessment",
+  roleNote: "Manager note: this supports prioritisation and action ownership using available Vorta evidence.",
   toolsUsed: ["get_spares_priority"],
   evidenceLinks: [
     {
@@ -128,7 +131,7 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     "VOR-087 requires the protected Maintenance Manager test account.",
   );
 
-  test("uses the image-standard live status and one decision-first hierarchy on every responsive project", async ({ page }, testInfo) => {
+  test("uses the image-standard live status and concise decision-first answer on every responsive project", async ({ page }, testInfo) => {
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
     await page.goto("/dashboard");
@@ -160,16 +163,34 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     await expect(scope.getByText("Next priority:", { exact: true })).toBeVisible();
 
     const evidence = scope.locator('[data-vorta-ai-supporting-evidence="true"]');
-    await expect(evidence).toBeVisible();
+    await expect(evidence).toBeHidden();
     await expect(scope.getByText(answer.evidence[0], { exact: true })).toBeHidden();
-    await evidence.locator("summary").click();
-    await expect(scope.getByText(answer.evidence[0], { exact: true })).toBeVisible();
 
     const actions = scope.getByText("Recommended actions", { exact: true });
     await expect(actions).toBeVisible();
     await expect(scope.getByText(answer.recommendedActions[0], { exact: true })).toBeHidden();
     await actions.locator("xpath=ancestor::summary").click();
     await expect(scope.getByText(answer.recommendedActions[0], { exact: true })).toBeVisible();
+
+    await expect(scope.getByText(answer.roleNote, { exact: true })).toBeHidden();
+    await expect(scope.getByText(answer.missingData[0], { exact: true })).toBeHidden();
+    await expect(scope.getByText(/91%.*confidence|Confidence 91%/i)).toBeHidden();
+    await expect(scope.getByText("Was this decision pack useful?", { exact: true })).toBeHidden();
+
+    const workspaceSourceSummary = page.locator('[data-vorta-ai-workspace-source-summary="true"]');
+    if ((await workspaceSourceSummary.count()) > 0) {
+      await expect(workspaceSourceSummary).toBeHidden();
+    }
+
+    if (isPhone(testInfo.project.name)) {
+      const sourceDisclosure = scope.locator('[data-vorta-ai-source-disclosure="true"]');
+      await expect(sourceDisclosure).toBeVisible();
+      const label = sourceDisclosure.locator("summary > span").first();
+      const generatedLabel = await label.evaluate((element) =>
+        getComputedStyle(element, "::after").content,
+      );
+      expect(generatedLabel).toContain("Evidence & sources");
+    }
 
     await expect(scope.getByRole("button", { name: "Open Stores Inventory", exact: true })).toBeVisible();
 
