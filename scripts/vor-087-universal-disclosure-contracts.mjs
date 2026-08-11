@@ -62,7 +62,8 @@ assert.ok(pulseStyle >= 0 && desktopMedia > pulseStyle, "The Vorta single-status
 assert.ok(shell.includes('/src/screens/AiOperations/askVortaConciseAnswer.css'), "The image-standard concise answer stylesheet must be loaded by the app shell");
 for (const marker of [
   ':is([data-vorta-global-ai-panel="true"],[data-vorta-ai-workspace="true"])',
-  '[data-vorta-ai-supporting-evidence="true"]{display:none!important}',
+  '[data-vorta-ai-supporting-evidence="true"]:has(~ [data-vorta-ai-source-disclosure="true"])',
+  'details.group.rounded-lg.border.border-gray-800.bg-gray-900\\/40:has(~ [data-vorta-ai-source-disclosure="true"])',
   '[data-vorta-ai-feedback="true"]',
   '[data-vorta-ai-workspace-source-summary="true"]',
   'div.rounded-md.border.border-blue-500\\/20.bg-blue-500\\/10.px-2.py-1\\.5',
@@ -89,4 +90,4 @@ assert.match(assistant, /presentation="workspace"/, "Tablet/desktop workspace an
 assert.ok(assistant.includes('data-vorta-ai-evidence-links="true"') && assistant.includes("navigate(link.path)"), "Open in Vorta evidence links must remain available");
 assert.ok(assistant.includes("submitAskVortaFeedback") && assistant.includes("prepareDraft"), "Feedback and controlled action review must remain available in the model even when default feedback chrome is hidden");
 
-console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, concise decision-first generic answers, specialist spare-photo results and controlled evidence/action behaviour are protected.");
+console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, concise decision-first generic answers including structured finding variants, specialist spare-photo results and controlled evidence/action behaviour are protected.");
