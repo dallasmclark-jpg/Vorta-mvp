@@ -2,49 +2,19 @@
    than overriding every ARIA tab in the application or future embedded tools.
    Shared legacy card normalisation uses !important, so the semantic selected
    state must deliberately outrank that neutral surface rule.
-
-   VOR-088: the same semantic controls now share a premium Vorta selector-card
-   language. Operational KPI/risk cards and Skills Matrix severity cards remain
-   outside this styling contract. */
-:root {
-  --vorta-selector-bg: linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%);
-  --vorta-selector-hover: linear-gradient(180deg, #ffffff 0%, #eef3f8 100%);
-  --vorta-selector-border: rgba(100, 116, 139, 0.28);
-  --vorta-selector-text: #475569;
-  --vorta-selector-shadow: 0 3px 10px rgba(15, 23, 42, 0.09), inset 0 1px 0 #ffffff;
-  --vorta-selector-ring: rgba(37, 99, 235, 0.34);
-}
-
-html.dark {
-  --vorta-selector-bg: linear-gradient(180deg, #19212d 0%, #121821 100%);
-  --vorta-selector-hover: linear-gradient(180deg, #202b39 0%, #161f2a 100%);
-  --vorta-selector-border: rgba(148, 163, 184, 0.2);
-  --vorta-selector-text: #aeb9c9;
-  --vorta-selector-shadow: 0 4px 13px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.055);
-  --vorta-selector-ring: rgba(96, 165, 250, 0.52);
-}
-
-/* Premium neutral surfaces for genuine scope/navigation choices. */
-[data-vorta-portal-shell="true"]
-  [role="tablist"]:not([aria-label="KPI period"])
+   VOR-088 adds one premium selector geometry without changing operational cards. */
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"])
   :where([data-vorta-tab-outline="true"], [role="tab"]),
 [data-vorta-mobile-settings="true"] button[aria-pressed] {
-  position: relative;
-  border: 1px solid var(--vorta-selector-border) !important;
   border-radius: 16px !important;
-  background: var(--vorta-selector-bg) !important;
-  color: var(--vorta-selector-text) !important;
-  box-shadow: var(--vorta-selector-shadow) !important;
+  box-shadow: var(--vorta-surface-shadow) !important;
 }
 
-[data-vorta-portal-shell="true"]
-  [role="tablist"]:not([aria-label="KPI period"])
-  [role="tab"] {
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"] {
   min-height: 44px;
   padding: 0.625rem 1rem !important;
 }
 
-/* Preserve VOR-018/VOR-019 selected-state truth: neutral surface + blue edge. */
 [data-vorta-portal-shell="true"]
   :where([data-vorta-tab-outline="true"], [role="tab"])[aria-selected="true"],
 [data-vorta-portal-shell="true"]
@@ -53,6 +23,9 @@ html.dark {
   background: #fff !important;
   color: #1d4ed8 !important;
   box-shadow: none !important;
+  outline: 1px solid rgba(37, 99, 235, 0.36);
+  outline-offset: 2px;
+  border-radius: 16px !important;
 }
 
 html.dark
@@ -64,58 +37,18 @@ html.dark
   border-color: #60a5fa !important;
   background: #0d1117 !important;
   color: #dbeafe !important;
+  outline-color: rgba(96, 165, 250, 0.55);
 }
 
-/* A restrained second blue edge makes selection immediately legible without
-   turning operational navigation into an opaque blue button. */
-[data-vorta-portal-shell="true"]
-  [role="tablist"]:not([aria-label="KPI period"])
-  [role="tab"][aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border: 1px solid var(--vorta-selector-ring);
-  border-radius: 19px;
-  pointer-events: none;
-}
-
-/* Appearance choices are true selection cards, not operational metrics. */
 [data-vorta-mobile-settings="true"] button[aria-pressed="true"] {
-  border-color: #60a5fa !important;
-  background: linear-gradient(180deg, #172a43 0%, #0f1826 100%) !important;
-  color: #f8fbff !important;
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 9px 20px rgba(0, 0, 0, 0.26) !important;
-}
-
-html:not(.dark) [data-vorta-mobile-settings="true"] button[aria-pressed="true"] {
-  border-color: #2563eb !important;
-  background: linear-gradient(180deg, #f8fbff 0%, #eaf4ff 100%) !important;
-  color: #0f172a !important;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.24), 0 8px 18px rgba(15, 23, 42, 0.1) !important;
+  outline: 1px solid rgba(96, 165, 250, 0.55);
+  outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-vorta-portal-shell="true"]
-    [role="tablist"]:not([aria-label="KPI period"])
-    [role="tab"]:not([aria-selected="true"]):hover,
-  [data-vorta-mobile-settings="true"] button[aria-pressed="false"]:hover {
+  [data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"])
+    [role="tab"]:not([aria-selected="true"]):hover {
     border-color: var(--vorta-surface-border-hover) !important;
-    background: var(--vorta-selector-hover) !important;
-    color: #e2e8f0 !important;
     transform: translateY(-1px);
-  }
-
-  html:not(.dark) [data-vorta-portal-shell="true"]
-    [role="tablist"]:not([aria-label="KPI period"])
-    [role="tab"]:not([aria-selected="true"]):hover,
-  html:not(.dark) [data-vorta-mobile-settings="true"] button[aria-pressed="false"]:hover {
-    color: #0f172a !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-vorta-portal-shell="true"] [role="tab"],
-  [data-vorta-mobile-settings="true"] button[aria-pressed] {
-    transform: none !important;
   }
 }
