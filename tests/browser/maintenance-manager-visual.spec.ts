@@ -108,7 +108,7 @@ test("Maintenance Manager priority pages retain their approved responsive layout
   const isPhoneWorkOrderView = (page.viewportSize()?.width ?? 1024) < 640;
   await expect(
     page.getByRole("heading", {
-      name: isPhoneWorkOrderView ? "Execution backlog" : "Complete equipment work history",
+      name: isPhoneWorkOrderView ? "Execution backlog" : "Work Execution Briefing",
       exact: true,
     }),
   ).toBeVisible();
