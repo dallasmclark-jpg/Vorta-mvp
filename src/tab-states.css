@@ -10,7 +10,7 @@
   border: 1px solid #2563eb !important;
   background: #fff !important;
   box-shadow: none !important;
-  outline: 1px solid rgba(37, 99, 235, 0.36);
+  outline: 1px solid #60a5fa;
 }
 
 html.dark
@@ -21,5 +21,4 @@ html.dark
   [data-vorta-engineer-summary-filter][aria-selected="true"] {
   border-color: #60a5fa !important;
   background: #0d1117 !important;
-  outline-color: rgba(96, 165, 250, 0.55);
 }
