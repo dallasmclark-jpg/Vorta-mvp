@@ -155,10 +155,10 @@ html.dark [data-vorta-page-content="true"] :is(
   }
 }
 
-/* VOR-088 selector geometry; Skills Matrix severity cards remain distinct. */
+/* VOR-088 selector/navigation cards share Vorta depth; Skills Matrix severity cards remain distinct. */
 [data-vorta-portal-shell="true"] :where([role="tab"],button[aria-pressed]:not([class*="border-t-"])) {
-  border-radius: 18px !important;
-  box-shadow: none !important;
+  border-radius: 16px !important;
+  box-shadow: var(--vorta-surface-shadow) !important;
 }
 
 [data-vorta-page-content="true"] :where(
