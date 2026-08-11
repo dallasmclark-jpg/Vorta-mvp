@@ -128,14 +128,25 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     "VOR-087 requires the protected Maintenance Manager test account.",
   );
 
-  test("uses one decision-first hierarchy on every responsive project", async ({ page }, testInfo) => {
+  test("uses the image-standard live status and one decision-first hierarchy on every responsive project", async ({ page }, testInfo) => {
     await mockAskVorta(page);
     await signInMaintenanceManager(page);
     await page.goto("/dashboard");
     const scope = await openAskVorta(page, testInfo.project.name);
     await submitGenericQuestion(page, scope);
 
-    await expect(page.locator('[data-vorta-ai-live-evidence-activity="true"]')).toBeVisible();
+    const liveStatus = page.locator(
+      '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
+    );
+    await expect(liveStatus).toBeVisible();
+    await expect(liveStatus.locator('[data-vorta-ai-single-status-label="true"]')).toBeVisible();
+    await expect(page.getByText(/\d+\/\d+ checked/i)).toHaveCount(0);
+    await expect(liveStatus.locator("[aria-label='Live Vorta evidence checks']")).toHaveCount(0);
+
+    const liveStatusBox = await liveStatus.boundingBox();
+    expect(liveStatusBox?.height).toBeGreaterThanOrEqual(42);
+    expect(liveStatusBox?.height).toBeLessThanOrEqual(46);
+
     await expect(page.getByText(answer.directAnswer, { exact: true })).toBeVisible();
     await expect(page.getByText("Direct answer", { exact: true })).toHaveCount(0);
 
