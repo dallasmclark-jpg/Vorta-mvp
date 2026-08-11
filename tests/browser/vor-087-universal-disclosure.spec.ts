@@ -100,8 +100,8 @@ async function openAskVorta(page: Page, projectName: string): Promise<Locator> {
     .poll(async () => (await workspace.isVisible()) || (await expand.isVisible()))
     .toBe(true);
 
-  if (!(await workspace.isVisible())) {
-    await expand.evaluate((element: HTMLButtonElement) => element.click());
+  if (!(await workspace.isVisible()) && (await expand.isVisible())) {
+    await expand.click();
   }
   await expect(workspace).toBeVisible();
   return workspace;
