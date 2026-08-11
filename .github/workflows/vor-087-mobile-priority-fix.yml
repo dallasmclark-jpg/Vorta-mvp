@@ -1,0 +1,56 @@
+name: VOR-087 apply mobile priority visibility fix
+
+on:
+  push:
+    branches:
+      - agent/vor-087-universal-ask-vorta-disclosure
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[vor-087-mobile-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: agent/vor-087-universal-ask-vorta-disclosure
+          fetch-depth: 0
+
+      - name: Replace brittle mobile positional hiding for progressive decision
+        shell: bash
+        run: |
+          marker='VOR-087 universal progressive decision visibility'
+          file='src/screens/AiOperations/mobilePortalHardening.css'
+          if grep -Fq "$marker" "$file"; then
+            exit 0
+          fi
+          cat >> "$file" <<'CSS'
+
+          @media (max-width: 639px) {
+            /* VOR-087 universal progressive decision visibility: explicit semantic hook overrides the legacy positional answer trimming above. */
+            [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div[data-vorta-ai-progressive-decision="true"] {
+              display: block !important;
+              margin-top: 0.5rem !important;
+            }
+          }
+          CSS
+
+      - name: Verify source contract and TypeScript
+        run: |
+          node scripts/vor-087-universal-disclosure-contracts.mjs
+          npm ci --silent
+          npm run typecheck -- --pretty false
+          git diff --check
+
+      - name: Commit verified mobile fix
+        shell: bash
+        run: |
+          git config user.name "dallasmclark-jpg"
+          git config user.email "dallasmclark@gmail.com"
+          git add src/screens/AiOperations/mobilePortalHardening.css
+          git diff --cached --quiet && exit 0
+          git commit -m "VOR-087 show progressive priority on mobile [vor-087-mobile-fixed]"
+          git push origin HEAD:agent/vor-087-universal-ask-vorta-disclosure
