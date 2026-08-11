@@ -81,8 +81,8 @@ async function openAskVorta(page: Page, projectName: string): Promise<Locator> {
     });
     await expect(portraitLauncher).toBeVisible();
     await portraitLauncher.click();
-    await expect(panel).toBeVisible();
-    return panel;
+    await expect(workspace).toBeVisible();
+    return workspace;
   }
 
   const readinessControl = page.getByRole("button", {
