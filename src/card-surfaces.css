@@ -155,10 +155,9 @@ html.dark [data-vorta-page-content="true"] :is(
   }
 }
 
-/* VOR-088 selector cards; Skills Matrix severity cards remain distinct. */
-[data-vorta-portal-shell="true"] :where([role="tab"],[data-vorta-engineer-summary-filter],button[aria-pressed]:not([class*="border-t-"])) {
+/* VOR-088 selector geometry; Skills Matrix severity cards remain distinct. */
+[data-vorta-portal-shell="true"] :where([role="tab"],button[aria-pressed]:not([class*="border-t-"])) {
   border-radius: 18px !important;
-  background: var(--vorta-surface-raised) !important;
   box-shadow: none !important;
 }
 
