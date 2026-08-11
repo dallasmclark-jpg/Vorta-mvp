@@ -1,24 +1,73 @@
-/* VOR-022: selected-state styling is constrained to the Vorta portal rather
-   than overriding every ARIA tab in the application or future embedded tools.
-   Shared legacy card normalisation uses !important, so the semantic selected
-   state must deliberately outrank that neutral surface rule. */
-[data-vorta-portal-shell="true"]
-  :where([data-vorta-tab-outline="true"], [role="tab"])[aria-selected="true"],
-[data-vorta-portal-shell="true"]
-  [data-vorta-engineer-summary-filter][aria-selected="true"] {
-  border: 1px solid #2563eb !important;
-  background: #fff !important;
-  color: #1d4ed8 !important;
-  box-shadow: none !important;
+/* VOR-088: one premium selection/navigation language across the Vorta portal.
+   Operational KPI/risk cards remain outside this semantic selector system. */
+:root {
+  --vorta-selector-bg: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  --vorta-selector-bg-hover: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  --vorta-selector-bg-selected: linear-gradient(180deg, #f8fbff 0%, #edf6ff 100%);
+  --vorta-selector-border: rgba(100, 116, 139, 0.28);
+  --vorta-selector-border-selected: #2563eb;
+  --vorta-selector-text: #475569;
+  --vorta-selector-text-selected: #0f172a;
+  --vorta-selector-shadow: 0 2px 7px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --vorta-selector-shadow-selected: 0 0 0 1px rgba(37, 99, 235, 0.28), 0 8px 20px rgba(15, 23, 42, 0.12), inset 0 1px 0 #ffffff;
 }
 
-html.dark
-  [data-vorta-portal-shell="true"]
-  :where([data-vorta-tab-outline="true"], [role="tab"])[aria-selected="true"],
-html.dark
-  [data-vorta-portal-shell="true"]
-  [data-vorta-engineer-summary-filter][aria-selected="true"] {
-  border-color: #60a5fa !important;
-  background: #0d1117 !important;
-  color: #dbeafe !important;
+html.dark {
+  --vorta-selector-bg: linear-gradient(180deg, #171e29 0%, #121821 100%);
+  --vorta-selector-bg-hover: linear-gradient(180deg, #1b2532 0%, #151d28 100%);
+  --vorta-selector-bg-selected: linear-gradient(180deg, #172a43 0%, #101a29 100%);
+  --vorta-selector-border: rgba(148, 163, 184, 0.18);
+  --vorta-selector-border-selected: #60a5fa;
+  --vorta-selector-text: #a8b4c6;
+  --vorta-selector-text-selected: #f8fbff;
+  --vorta-selector-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --vorta-selector-shadow-selected: 0 0 0 1px rgba(96, 165, 250, 0.42), 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"],
+[data-vorta-mobile-settings="true"] button[aria-pressed] {
+  border: 1px solid var(--vorta-selector-border) !important;
+  border-radius: 16px !important;
+  background: var(--vorta-selector-bg) !important;
+  color: var(--vorta-selector-text) !important;
+  box-shadow: var(--vorta-selector-shadow) !important;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease !important;
+}
+
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"] {
+  min-height: 44px;
+  padding: 0.625rem 1rem !important;
+}
+
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"][aria-selected="true"],
+[data-vorta-mobile-settings="true"] button[aria-pressed="true"],
+[data-vorta-portal-shell="true"] [data-vorta-engineer-summary-filter][aria-selected="true"] {
+  border-color: var(--vorta-selector-border-selected) !important;
+  background: var(--vorta-selector-bg-selected) !important;
+  color: var(--vorta-selector-text-selected) !important;
+  box-shadow: var(--vorta-selector-shadow-selected) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"]:not([aria-selected="true"]):hover,
+  [data-vorta-mobile-settings="true"] button[aria-pressed="false"]:hover {
+    border-color: var(--vorta-surface-border-hover) !important;
+    background: var(--vorta-selector-bg-hover) !important;
+    color: var(--vorta-selector-text-selected) !important;
+    transform: translateY(-1px);
+  }
+}
+
+[data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"]:focus-visible,
+[data-vorta-mobile-settings="true"] button[aria-pressed]:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-vorta-portal-shell="true"] [role="tablist"]:not([aria-label="KPI period"]) [role="tab"],
+  [data-vorta-mobile-settings="true"] button[aria-pressed] {
+    transition: none !important;
+    transform: none !important;
+  }
 }
