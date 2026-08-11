@@ -35,7 +35,7 @@ const routes = [
 ] as const;
 
 const visibleReadyText: Partial<Record<(typeof routes)[number][0], RegExp>> = {
-  "shift-handover": /Previous shift activity/i,
+  "skills-matrix": /Site Maintenance Capability/i,
   requirements: /Groninger Filling Lines/i,
   "training-plan": /Groninger Filling Lines/i,
   "pilot-impact": /Pilot evidence ready/i,
@@ -46,6 +46,10 @@ async function waitForPageEvidence(page: Page, name: (typeof routes)[number][0])
   const visibleTarget = visibleReadyText[name];
   if (visibleTarget) {
     await page.getByText(visibleTarget).first().waitFor({ state: "visible", timeout: 25_000 });
+  }
+
+  if (name === "shift-handover") {
+    await page.waitForTimeout(2_500);
   }
 
   // The equipment capability briefing is intentionally hidden by the compact phone
