@@ -10,6 +10,7 @@ const toolExecution = read("netlify/functions/ask-vorta/tool-execution.mts");
 const sparePhoto = read("netlify/functions/ask-vorta/spare-photo-identification.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const workspace = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
+const liveActivity = read("src/screens/AiOperations/AskVortaLiveEvidenceActivity.tsx");
 const shell = read("index.html");
 
 assert.match(
@@ -133,14 +134,18 @@ for (const marker of [
 
 for (const marker of [
   'data-vorta-ai-live-evidence-activity="true"',
-  "Checking Vorta evidence",
-  "MAX_VISIBLE_PROGRESS_STEPS = 6",
+  "MAX_VISIBLE_PROGRESS_STEPS = 4",
   "ASK_VORTA_PROGRESS_EVENT",
   "ASK_VORTA_PROGRESS_RESET_EVENT",
   "<CheckCircle2",
+  "Starting the relevant evidence checks",
 ]) {
-  assert.ok(workspace.includes(marker), `Workspace live activity is missing ${marker}`);
+  assert.ok(liveActivity.includes(marker), `Shared live activity is missing ${marker}`);
 }
+assert.ok(
+  workspace.includes("SharedAskVortaLiveEvidenceActivity"),
+  "Desktop/tablet workspace must render the shared live evidence activity",
+);
 assert.doesNotMatch(
   workspace,
   /Choosing and checking the relevant Vorta sources/,

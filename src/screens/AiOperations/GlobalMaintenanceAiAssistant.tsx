@@ -72,6 +72,7 @@ import {
   type AskVortaWorkspaceAnswer,
   type AskVortaWorkspaceMessage,
 } from "./AskVortaWorkspace";
+import { AskVortaLiveEvidenceActivity } from "./AskVortaLiveEvidenceActivity";
 import {
   buildPersonalisedAskVortaSuggestions,
   loadAskVortaInteractionHistory,
@@ -2085,28 +2086,12 @@ function AnswerBlock({
 
   return (
     <div className={workspacePresentation ? "flex flex-col gap-4" : "flex flex-col gap-2"}>
-      {!workspacePresentation && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge className="h-auto rounded bg-blue-500/15 px-1.5 py-0 text-xs font-bold text-blue-300 shadow-none">
-            {answer.responseBadge}
-          </Badge>
-          <Badge className="h-auto rounded bg-gray-800 px-1.5 py-0 text-xs font-medium text-slate-400 shadow-none">
-            {answer.roleLabel}
-          </Badge>
-          {!wideCompactPresentation && (
-            <Badge className="h-auto rounded bg-gray-800/80 px-1.5 py-0 text-xs font-medium text-slate-500 shadow-none">
-              {answer.intentLabel}
-            </Badge>
-          )}
-        </div>
-      )}
-
       {workspacePresentation ? (
-        <section className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-300">
-            Direct answer
-          </p>
-          <p className="mt-2 text-lg font-semibold leading-8 text-slate-100">
+        <section
+          data-vorta-ai-primary-answer="true"
+          className="rounded-xl border border-gray-800 bg-gray-900/45 px-4 py-4"
+        >
+          <p className="text-lg font-semibold leading-8 text-slate-100">
             {answer.directAnswer}
           </p>
         </section>
@@ -2117,42 +2102,99 @@ function AnswerBlock({
       )}
 
       {answer.decisionSummary && answer.decisionSummary.length > 0 && (
-        <section
-          aria-labelledby="ask-vorta-decision-summary"
-          className="rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-3"
-        >
-          <h4
-            id="ask-vorta-decision-summary"
-            className="mb-2 flex items-center justify-between gap-2 text-[15px] font-bold uppercase tracking-wider text-blue-200 sm:text-sm"
+        sparePhotoIdentification ? (
+          <section
+            aria-labelledby="ask-vorta-decision-summary"
+            className="rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-3"
           >
-            <span>{sparePhotoIdentification ? "Closest stock matches" : "Decision summary"}</span>
-            {decisionSeverity && (
-              <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs font-bold normal-case tracking-normal text-orange-200">
-                {decisionSeverity}
-              </span>
-            )}
-          </h4>
-          <ul className="flex flex-col gap-2.5">
-            {answer.decisionSummary.slice(0, decisionSummaryLimit).map((item, index) => (
-              <li
-                key={`${item.label}-${index}`}
-                className="flex items-start gap-2 text-[15px] leading-6 text-slate-200 sm:text-sm"
-              >
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                <span>
-                  <span className="font-bold text-slate-100">{item.label}:</span>{" "}
-                  {item.value}
+            <h4
+              id="ask-vorta-decision-summary"
+              className="mb-2 flex items-center justify-between gap-2 text-[15px] font-bold uppercase tracking-wider text-blue-200 sm:text-sm"
+            >
+              <span>Closest stock matches</span>
+              {decisionSeverity && (
+                <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs font-bold normal-case tracking-normal text-orange-200">
+                  {decisionSeverity}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+              )}
+            </h4>
+            <ul className="flex flex-col gap-2.5">
+              {answer.decisionSummary.slice(0, decisionSummaryLimit).map((item, index) => (
+                <li
+                  key={`${item.label}-${index}`}
+                  className="flex items-start gap-2 text-[15px] leading-6 text-slate-200 sm:text-sm"
+                >
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                  <span>
+                    <span className="font-bold text-slate-100">{item.label}:</span>{" "}
+                    {item.value}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <div data-vorta-ai-progressive-decision="true" className="space-y-2">
+            <section
+              data-vorta-ai-primary-priority="true"
+              className="rounded-xl border border-blue-500/20 bg-blue-500/[0.045] px-3 py-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Priority
+                  </p>
+                  <p className="mt-1 text-sm font-bold leading-6 text-slate-100">
+                    {answer.decisionSummary[0].label}
+                  </p>
+                  <p className="mt-0.5 text-sm leading-6 text-slate-300">
+                    {answer.decisionSummary[0].value}
+                  </p>
+                </div>
+                {decisionSeverity && (
+                  <span className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs font-bold text-orange-200">
+                    {decisionSeverity}
+                  </span>
+                )}
+              </div>
+            </section>
+
+            {answer.decisionSummary.length > 1 && (
+              <details
+                data-vorta-ai-next-priorities="true"
+                className="group rounded-lg border border-gray-800 bg-gray-900/35"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-bold text-slate-200">
+                  <span>Next priorities</span>
+                  <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                    {Math.min(answer.decisionSummary.length - 1, Math.max(0, decisionSummaryLimit - 1))} more
+                    <ChevronDown className="h-4 w-4 text-blue-300 transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                <ul className="space-y-2 border-t border-gray-800 px-3 py-3">
+                  {answer.decisionSummary.slice(1, decisionSummaryLimit).map((item, index) => (
+                    <li
+                      key={`${item.label}-${index}`}
+                      className="flex items-start gap-2 text-sm leading-6 text-slate-300"
+                    >
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                      <span>
+                        <span className="font-bold text-slate-100">{item.label}:</span>{" "}
+                        {item.value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )
       )}
 
       {hasStructuredFindings && (
         <details className="group rounded-lg border border-gray-800 bg-gray-900/40">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-[15px] font-bold text-slate-200 sm:text-sm">
-            <span>Detailed cover evidence</span>
+            <span>Supporting evidence</span>
             <span className="flex items-center gap-2 text-sm font-medium text-slate-400">
               {answer.findings?.length} items
               <ChevronDown className="h-4 w-4 text-blue-300 transition-transform group-open:rotate-180" />
@@ -2243,23 +2285,32 @@ function AnswerBlock({
       )}
 
       {!hasStructuredFindings && answer.evidence.length > 0 && (
-        <div>
-          <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Evidence</h4>
-          <ul className="flex flex-col gap-1">
-            {answer.evidence.slice(0, 6).map((item) => (
+        <details
+          data-vorta-ai-supporting-evidence="true"
+          className="group rounded-lg border border-gray-800 bg-gray-900/35"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-bold text-slate-200">
+            <span>Supporting evidence</span>
+            <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              {answer.evidence.length} items
+              <ChevronDown className="h-4 w-4 text-blue-300 transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <ul className="space-y-2 border-t border-gray-800 px-3 py-3">
+            {answer.evidence.slice(0, 8).map((item) => (
               <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-400">
                 <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" />
                 {item}
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
 
       {(hasStructuredActions || answer.recommendedActions.length > 0) && (
       <details className="group rounded-lg border border-emerald-500/15 bg-emerald-500/[0.03]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-[15px] font-bold text-slate-200 sm:text-sm">
-          <span>Risk-reduction plan</span>
+          <span>Recommended actions</span>
           <span className="flex items-center gap-2 text-sm font-medium text-slate-400">
             {hasStructuredActions
               ? `${answer.actionPlan?.length ?? 0} actions`
@@ -2371,7 +2422,21 @@ function AnswerBlock({
       )}
 
       {answer.knowledgeChunks && answer.knowledgeChunks.length > 0 && (
-        <GlobalSourceCards chunks={answer.knowledgeChunks} />
+        <details
+          data-vorta-ai-source-disclosure="true"
+          className="group rounded-lg border border-gray-800 bg-gray-900/35"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-bold text-slate-200">
+            <span>Sources</span>
+            <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              {answer.knowledgeChunks.length} verified
+              <ChevronDown className="h-4 w-4 text-blue-300 transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="border-t border-gray-800 p-2">
+            <GlobalSourceCards chunks={answer.knowledgeChunks} />
+          </div>
+        </details>
       )}
 
       {answer.evidenceLinks && answer.evidenceLinks.length > 0 && (
@@ -2395,18 +2460,32 @@ function AnswerBlock({
         </section>
       )}
 
-      {!workspacePresentation && answer.sources.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {answer.sources.slice(0, 6).map((source) => (
-            <Badge
-              key={source}
-              className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-xs font-medium text-slate-300 shadow-none"
-            >
-              {source}
-            </Badge>
-          ))}
-        </div>
-      )}
+      {!workspacePresentation &&
+        answer.sources.length > 0 &&
+        (!answer.knowledgeChunks || answer.knowledgeChunks.length === 0) && (
+          <details
+            data-vorta-ai-source-disclosure="true"
+            className="group rounded-lg border border-gray-800 bg-gray-900/35"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs font-bold text-slate-300">
+              <span>Sources</span>
+              <span className="flex items-center gap-2 font-medium text-slate-500">
+                {answer.sources.length} verified
+                <ChevronDown className="h-3.5 w-3.5 text-blue-300 transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+            <div className="flex flex-wrap gap-1 border-t border-gray-800 px-3 py-2.5">
+              {answer.sources.slice(0, 8).map((source) => (
+                <Badge
+                  key={source}
+                  className="h-auto rounded border border-gray-700 bg-gray-800/70 px-1.5 py-0 text-xs font-medium text-slate-300 shadow-none"
+                >
+                  {source}
+                </Badge>
+              ))}
+            </div>
+          </details>
+        )}
 
       {answer.roleNote && (
         <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1.5">
@@ -3799,10 +3878,7 @@ export function GlobalMaintenanceAiAssistant({
                   className={`max-w-[92%] rounded-lg px-3 py-2 ${message.role === "user" ? "bg-blue-600 text-white" : "border border-gray-800 bg-gray-900/70 text-slate-200"}`}
                 >
                   {message.loading ? (
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-                      Choosing and checking the relevant Vorta sources...
-                    </div>
+                    <AskVortaLiveEvidenceActivity />
                   ) : message.error ? (
                     <div
                       className="flex flex-col gap-3"
