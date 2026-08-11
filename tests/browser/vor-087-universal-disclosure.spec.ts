@@ -28,7 +28,14 @@ const answer = {
     "Checked equipment components for eight assets.",
     "RABS-01 stock is 0 against a minimum of 1.",
   ],
-  findings: [],
+  findings: [
+    {
+      category: "spares",
+      severity: "critical",
+      title: "RABS-01 critical stock-out",
+      detail: "The critical SIMATIC input module is at zero stock against a minimum holding of one.",
+    },
+  ],
   coverOptions: [],
   recommendedActions: [
     "Expedite the RABS-01 critical module and verify open work dependencies.",
@@ -135,6 +142,16 @@ async function expectAllHidden(locator: Locator): Promise<void> {
     .toBe(true);
 }
 
+async function expectEvidenceAndSourcesLabel(disclosure: Locator): Promise<void> {
+  const label = disclosure.locator("summary > span").first();
+  const style = await label.evaluate((element) => ({
+    fontSize: getComputedStyle(element).fontSize,
+    generated: getComputedStyle(element, "::after").content,
+  }));
+  expect(style.fontSize).toBe("0px");
+  expect(style.generated).toContain("Evidence & sources");
+}
+
 test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
   test.skip(
     !hasAuthenticatedTestUser,
@@ -172,9 +189,21 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     await nextPriorities.locator("summary").click();
     await expect(scope.getByText("Next priority:", { exact: true })).toBeVisible();
 
-    const evidence = scope.locator('[data-vorta-ai-supporting-evidence="true"]');
-    await expect(evidence).toBeHidden();
-    await expect(scope.getByText(answer.evidence[0], { exact: true })).toBeHidden();
+    const structuredEvidence = scope.locator(
+      "details.group.rounded-lg.border.border-gray-800.bg-gray-900\\/40",
+    );
+    await expect(structuredEvidence).toHaveCount(1);
+    await expect(scope.getByText(answer.findings[0].detail, { exact: true })).toBeHidden();
+
+    const sourceDisclosure = scope.locator('[data-vorta-ai-source-disclosure="true"]');
+    if ((await sourceDisclosure.count()) > 0) {
+      await expect(structuredEvidence).toBeHidden();
+      await expect(sourceDisclosure).toBeVisible();
+      await expectEvidenceAndSourcesLabel(sourceDisclosure);
+    } else {
+      await expect(structuredEvidence).toBeVisible();
+      await expectEvidenceAndSourcesLabel(structuredEvidence);
+    }
 
     const actions = scope.getByText("Recommended actions", { exact: true });
     await expect(actions).toBeVisible();
@@ -190,16 +219,6 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
     const workspaceSourceSummary = page.locator('[data-vorta-ai-workspace-source-summary="true"]');
     if ((await workspaceSourceSummary.count()) > 0) {
       await expectAllHidden(workspaceSourceSummary);
-    }
-
-    if (isPhone(testInfo.project.name)) {
-      const sourceDisclosure = scope.locator('[data-vorta-ai-source-disclosure="true"]');
-      await expect(sourceDisclosure).toBeVisible();
-      const label = sourceDisclosure.locator("summary > span").first();
-      const generatedLabel = await label.evaluate((element) =>
-        getComputedStyle(element, "::after").content,
-      );
-      expect(generatedLabel).toContain("Evidence & sources");
     }
 
     await expect(scope.getByRole("button", { name: "Open Stores Inventory", exact: true })).toBeVisible();
