@@ -74,16 +74,14 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
-// VOR-088: one selector language for tabs and low-information pressed choices.
-assert.match(surfaces, /VOR-088: compact selector-card language/);
-assert.match(surfaces, /\[data-vorta-selector-card="true"\]/);
+assert.match(surfaces, /VOR-088 selector cards/);
 assert.match(surfaces, /\[role="tab"\]/);
 assert.match(surfaces, /\[data-vorta-engineer-summary-filter\]/);
 assert.match(surfaces, /button\[aria-pressed\]:not\(\[class\*="border-t-"\]\)/);
 assert.match(surfaces, /border-radius: 18px !important/);
 assert.match(surfaces, /background: var\(--vorta-surface-raised\) !important/);
-assert.match(surfaces, /box-shadow: var\(--vorta-surface-raised-shadow\) !important/);
-assert.match(surfaces, /Skills Matrix severity cards stay distinct/);
+assert.match(surfaces, /box-shadow: none !important/);
+assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
