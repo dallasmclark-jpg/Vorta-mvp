@@ -7,6 +7,7 @@ const workspace = read("src/screens/AiOperations/AskVortaWorkspace.tsx");
 const workspaceBase = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
 const sparePhoto = read("src/screens/AiOperations/AskVortaSparePhotoDisclosures.tsx");
 const liveActivity = read("src/screens/AiOperations/AskVortaLiveEvidenceActivity.tsx");
+const mobileCss = read("src/screens/AiOperations/mobilePortalHardening.css");
 
 for (const marker of [
   'data-vorta-ai-primary-answer="true"',
@@ -48,6 +49,13 @@ for (const marker of [
   assert.ok(liveActivity.includes(marker), `Live evidence activity is missing ${marker}`);
 }
 
+assert.ok(
+  mobileCss.includes('div[data-vorta-ai-progressive-decision="true"]') &&
+    mobileCss.includes("VOR-087 universal progressive decision visibility") &&
+    mobileCss.includes("display: block !important"),
+  "Phone Ask Vorta must explicitly keep the semantic progressive decision block visible instead of relying on legacy positional trimming",
+);
+
 assert.match(
   workspace,
   /isAskVortaSparePhotoAnswer\(answer\)[\s\S]*?<AskVortaSparePhotoDisclosures answer=\{answer\}/,
@@ -81,4 +89,4 @@ assert.ok(
   "Feedback and controlled action review must remain available",
 );
 
-console.log("VOR-087 universal Ask Vorta disclosure contracts passed: primary answer, progressive priorities, collapsed evidence/actions/sources, source-driven loading, specialist spare-photo preservation and all-device shared rendering are protected.");
+console.log("VOR-087 universal Ask Vorta disclosure contracts passed: primary answer, progressive priorities including explicit phone visibility, collapsed evidence/actions/sources, source-driven loading, specialist spare-photo preservation and all-device shared rendering are protected.");
