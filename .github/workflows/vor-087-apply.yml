@@ -44,7 +44,13 @@ jobs:
         run: |
           git config user.name "dallasmclark-jpg"
           git config user.email "dallasmclark@gmail.com"
-          git add src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx src/screens/AiOperations/AskVortaWorkspaceBase.tsx
+          git add \
+            src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx \
+            src/screens/AiOperations/AskVortaWorkspaceBase.tsx \
+            scripts/vor-084-live-evidence-activity-contracts.mjs \
+            scripts/ask-vorta-agent-contracts.mjs \
+            scripts/vor-087-universal-disclosure-contracts.mjs \
+            scripts/run-contract-suite.mjs
           git diff --cached --quiet && exit 0
           git commit -m "VOR-087 apply universal Ask Vorta disclosure [vor-087-applied]"
           git push origin HEAD:agent/vor-087-universal-ask-vorta-disclosure
