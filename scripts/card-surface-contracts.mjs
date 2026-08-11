@@ -7,6 +7,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 
 const index = read("index.html");
 const surfaces = read("src/card-surfaces.css");
+const tabStates = read("src/tab-states.css");
 const transition = read("src/components/PageTransition.tsx");
 const card = read("src/components/ui/card.tsx");
 const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
@@ -20,6 +21,7 @@ const maintenanceExperience = read(
 );
 
 assert.match(index, /<link href="\/src\/card-surfaces\.css" rel="stylesheet" \/>/);
+assert.match(index, /<link href="\/src\/tab-states\.css" rel="stylesheet" \/>/);
 assert.match(transition, /data-vorta-page-content="true"/);
 assert.match(transition, /className="min-h-full min-w-0 w-full max-w-full overflow-x-hidden"/);
 assert.match(card, /data-vorta-card="true"/);
@@ -64,11 +66,16 @@ assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
 assert.match(surfaces, /VOR-088 selector geometry/);
-assert.match(surfaces, /\[role="tab"\]/);
-assert.match(surfaces, /button\[aria-pressed\]:not\(\[class\*="border-t-"\]\)/);
-assert.match(surfaces, /border-radius: 18px !important/);
-assert.match(surfaces, /box-shadow: none !important/);
 assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
+assert.match(tabStates, /VOR-088: one premium selection\/navigation language/);
+assert.match(tabStates, /--vorta-selector-bg-selected/);
+assert.match(tabStates, /--vorta-selector-border-selected: #60a5fa/);
+assert.match(tabStates, /\[role="tablist"\]:not\(\[aria-label="KPI period"\]\)/);
+assert.match(tabStates, /\[data-vorta-mobile-settings="true"\] button\[aria-pressed\]/);
+assert.match(tabStates, /border-radius: 16px !important/);
+assert.match(tabStates, /box-shadow: var\(--vorta-selector-shadow-selected\) !important/);
+assert.match(tabStates, /transform: translateY\(-1px\)/);
+assert.match(tabStates, /outline: 2px solid #60a5fa/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
@@ -76,4 +83,4 @@ assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/
 assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
-console.log("Shared Vorta page, selector geometry, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, premium selector system, semantic group-frame, contrast and launcher hierarchy passed.");
