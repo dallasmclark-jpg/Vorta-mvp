@@ -74,6 +74,27 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
+// VOR-088: navigation/selection surfaces share one compact premium language.
+assert.match(surfaces, /VOR-088: one compact Vorta selector-card language/);
+assert.match(surfaces, /--vorta-selector-surface: #111720/);
+assert.match(surfaces, /--vorta-selector-border-selected: #60a5fa/);
+assert.match(surfaces, /--vorta-selector-radius: 18px/);
+assert.match(surfaces, /\[data-vorta-selector-card="true"\]/);
+assert.match(surfaces, /\[data-vorta-tab-outline="true"\]/);
+assert.match(surfaces, /\[role="tab"\]/);
+assert.match(surfaces, /button\[aria-pressed\]/);
+assert.match(surfaces, /background-color: var\(--vorta-selector-surface\) !important/);
+assert.match(surfaces, /border-radius: var\(--vorta-selector-radius\) !important/);
+assert.match(surfaces, /:not\(\[data-risk-kpi-card\]\)/);
+assert.match(surfaces, /:not\(\[data-vorta-dashboard-card\]\)/);
+assert.match(surfaces, /:not\(\[class\*="border-t-"\]\)/);
+assert.match(surfaces, /Operational KPI\/risk cards and Skills Matrix team/);
+assert.doesNotMatch(
+  surfaces,
+  /\[data-vorta-selector-card="true"\][\s\S]{0,260}background(?:-color)?:\s*#(?:1d4ed8|2563eb|3b82f6)/i,
+  "Selector cards must retain a neutral surface rather than a filled-blue selected state.",
+);
+
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/);
@@ -81,4 +102,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, selector-card, semantic group-frame, contrast and launcher hierarchy passed.");
