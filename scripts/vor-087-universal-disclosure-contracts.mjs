@@ -7,6 +7,7 @@ const workspace = read("src/screens/AiOperations/AskVortaWorkspace.tsx");
 const workspaceBase = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
 const sparePhoto = read("src/screens/AiOperations/AskVortaSparePhotoDisclosures.tsx");
 const liveActivity = read("src/screens/AiOperations/AskVortaLiveEvidenceActivity.tsx");
+const conciseCss = read("src/screens/AiOperations/askVortaConciseAnswer.css");
 const shell = read("index.html");
 const mobileCss = read("src/screens/AiOperations/mobilePortalHardening.css");
 
@@ -77,6 +78,29 @@ assert.ok(
   "The Vorta single-status pulse must apply before desktop-only styling so it is shared by phone, tablet and desktop",
 );
 
+assert.ok(
+  shell.includes('/src/screens/AiOperations/askVortaConciseAnswer.css'),
+  "The image-standard concise answer stylesheet must be loaded by the app shell",
+);
+for (const marker of [
+  '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-supporting-evidence="true"]',
+  'content: "Evidence & sources"',
+  '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-feedback="true"]',
+  '[data-vorta-ai-workspace-source-summary="true"]',
+  'div.rounded-md.border.border-blue-500\\/20.bg-blue-500\\/10.px-2.py-1\\.5',
+  'div.rounded-md.border.border-yellow-500\\/20.bg-yellow-500\\/10.px-2.py-1\\.5',
+]) {
+  assert.ok(
+    conciseCss.includes(marker),
+    `Concise image-standard default answer is missing ${marker}`,
+  );
+}
+assert.doesNotMatch(
+  conciseCss,
+  /nth-of-type\(/,
+  "Concise Ask Vorta answers must use semantic hooks rather than positional hiding",
+);
+
 assert.doesNotMatch(
   mobileCss,
   /div\.flex\.flex-col\.gap-2 > div:nth-of-type\(1\)[\s\S]*?div:nth-of-type\(n\+4\)/,
@@ -113,7 +137,7 @@ assert.ok(
 );
 assert.ok(
   assistant.includes("submitAskVortaFeedback") && assistant.includes("prepareDraft"),
-  "Feedback and controlled action review must remain available",
+  "Feedback and controlled action review must remain available in the model even when default feedback chrome is hidden",
 );
 
-console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, progressive generic answers, specialist spare-photo results and controlled evidence/action behaviour are protected.");
+console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, concise decision-first generic answers, specialist spare-photo results and controlled evidence/action behaviour are protected.");
