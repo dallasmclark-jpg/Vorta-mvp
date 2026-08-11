@@ -25,24 +25,10 @@ for (const marker of [
   assert.ok(assistant.includes(marker), `Universal answer hierarchy is missing ${marker}`);
 }
 
-assert.doesNotMatch(
-  assistant,
-  />\s*Direct answer\s*</,
-  "The old labelled Direct answer report card must not return",
-);
-assert.doesNotMatch(
-  assistant,
-  /Choosing and checking the relevant Vorta sources/,
-  "The opaque compact loading sentence must not return",
-);
-assert.ok(
-  assistant.includes("<AskVortaLiveEvidenceActivity />"),
-  "Compact Ask Vorta must use the shared source-driven live activity",
-);
-assert.ok(
-  workspaceBase.includes("SharedAskVortaLiveEvidenceActivity"),
-  "Full workspace must use the shared live activity",
-);
+assert.doesNotMatch(assistant, />\s*Direct answer\s*</, "The old labelled Direct answer report card must not return");
+assert.doesNotMatch(assistant, /Choosing and checking the relevant Vorta sources/, "The opaque compact loading sentence must not return");
+assert.ok(assistant.includes("<AskVortaLiveEvidenceActivity />"), "Compact Ask Vorta must use the shared source-driven live activity");
+assert.ok(workspaceBase.includes("SharedAskVortaLiveEvidenceActivity"), "Full workspace must use the shared live activity");
 for (const marker of [
   'data-vorta-ai-live-evidence-activity="true"',
   'data-vorta-ai-single-status="true"',
@@ -69,41 +55,23 @@ for (const marker of [
 ]) {
   assert.ok(shell.includes(marker), `Universal Vorta pulse loading is missing ${marker}`);
 }
-const pulseStyle = shell.indexOf(
-  '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
-);
+const pulseStyle = shell.indexOf('[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]');
 const desktopMedia = shell.indexOf("@media(min-width:769px){");
-assert.ok(
-  pulseStyle >= 0 && desktopMedia > pulseStyle,
-  "The Vorta single-status pulse must apply before desktop-only styling so it is shared by phone, tablet and desktop",
-);
+assert.ok(pulseStyle >= 0 && desktopMedia > pulseStyle, "The Vorta single-status pulse must apply before desktop-only styling so it is shared by phone, tablet and desktop");
 
-assert.ok(
-  shell.includes('/src/screens/AiOperations/askVortaConciseAnswer.css'),
-  "The image-standard concise answer stylesheet must be loaded by the app shell",
-);
+assert.ok(shell.includes('/src/screens/AiOperations/askVortaConciseAnswer.css'), "The image-standard concise answer stylesheet must be loaded by the app shell");
 for (const marker of [
-  '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-supporting-evidence="true"]',
-  '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-feedback="true"]',
+  ':is([data-vorta-global-ai-panel="true"],[data-vorta-ai-workspace="true"])',
+  '[data-vorta-ai-supporting-evidence="true"]{display:none!important}',
+  '[data-vorta-ai-feedback="true"]',
   '[data-vorta-ai-workspace-source-summary="true"]',
   'div.rounded-md.border.border-blue-500\\/20.bg-blue-500\\/10.px-2.py-1\\.5',
   'div.rounded-md.border.border-yellow-500\\/20.bg-yellow-500\\/10.px-2.py-1\\.5',
 ]) {
-  assert.ok(
-    conciseCss.includes(marker),
-    `Concise image-standard default answer is missing ${marker}`,
-  );
+  assert.ok(conciseCss.includes(marker), `Concise image-standard default answer is missing ${marker}`);
 }
-assert.match(
-  conciseCss,
-  /content\s*:\s*["']Evidence & sources["']/,
-  "Concise source disclosure must be labelled Evidence & sources",
-);
-assert.doesNotMatch(
-  conciseCss,
-  /nth-of-type\(/,
-  "Concise Ask Vorta answers must use semantic hooks rather than positional hiding",
-);
+assert.match(conciseCss, /content\s*:\s*["']Evidence & sources["']/, "Concise source disclosure must be labelled Evidence & sources");
+assert.doesNotMatch(conciseCss, /nth-of-type\(/, "Concise Ask Vorta answers must use semantic hooks rather than positional hiding");
 
 assert.doesNotMatch(
   mobileCss,
@@ -111,37 +79,14 @@ assert.doesNotMatch(
   "Phone Ask Vorta must not use the retired positional answer trimming that can hide semantic progressive sections",
 );
 
-assert.match(
-  workspace,
-  /isAskVortaSparePhotoAnswer\(answer\)[\s\S]*?<AskVortaSparePhotoDisclosures answer=\{answer\}/,
-  "The specialist spare-photo result renderer must remain intact",
-);
-for (const marker of [
-  "Closest stock match",
-  "Next closest matches",
-  "initiallyOpen",
-  "Stores Inventory",
-]) {
+assert.match(workspace, /isAskVortaSparePhotoAnswer\(answer\)[\s\S]*?<AskVortaSparePhotoDisclosures answer=\{answer\}/, "The specialist spare-photo result renderer must remain intact");
+for (const marker of ["Closest stock match", "Next closest matches", "initiallyOpen", "Stores Inventory"]) {
   assert.ok(sparePhoto.includes(marker), `Spare-photo disclosure is missing ${marker}`);
 }
 
-assert.match(
-  assistant,
-  /<AnswerBlock[\s\S]*?onFollowUp=\{[\s\S]*?submitQuestion[\s\S]*?\}/,
-  "Compact phone/tablet/desktop answers must continue through the shared AnswerBlock",
-);
-assert.match(
-  assistant,
-  /presentation="workspace"/,
-  "Tablet/desktop workspace answers must opt into the shared workspace presentation",
-);
-assert.ok(
-  assistant.includes('data-vorta-ai-evidence-links="true"') && assistant.includes("navigate(link.path)"),
-  "Open in Vorta evidence links must remain available",
-);
-assert.ok(
-  assistant.includes("submitAskVortaFeedback") && assistant.includes("prepareDraft"),
-  "Feedback and controlled action review must remain available in the model even when default feedback chrome is hidden",
-);
+assert.match(assistant, /<AnswerBlock[\s\S]*?onFollowUp=\{[\s\S]*?submitQuestion[\s\S]*?\}/, "Compact phone/tablet/desktop answers must continue through the shared AnswerBlock");
+assert.match(assistant, /presentation="workspace"/, "Tablet/desktop workspace answers must opt into the shared workspace presentation");
+assert.ok(assistant.includes('data-vorta-ai-evidence-links="true"') && assistant.includes("navigate(link.path)"), "Open in Vorta evidence links must remain available");
+assert.ok(assistant.includes("submitAskVortaFeedback") && assistant.includes("prepareDraft"), "Feedback and controlled action review must remain available in the model even when default feedback chrome is hidden");
 
 console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, concise decision-first generic answers, specialist spare-photo results and controlled evidence/action behaviour are protected.");
