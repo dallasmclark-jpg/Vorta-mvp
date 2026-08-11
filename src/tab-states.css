@@ -11,7 +11,6 @@
   background: #fff !important;
   box-shadow: none !important;
   outline: 1px solid rgba(37, 99, 235, 0.36);
-  outline-offset: 2px;
 }
 
 html.dark
