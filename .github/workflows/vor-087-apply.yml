@@ -28,6 +28,9 @@ jobs:
       - name: Apply bounded renderer change
         run: node scripts/vor-087-apply.mjs
 
+      - name: Align permanent contracts
+        run: node scripts/vor-087-update-contracts.mjs
+
       - name: Install dependencies
         run: npm ci
 
