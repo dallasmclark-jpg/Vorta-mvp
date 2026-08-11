@@ -49,11 +49,10 @@ for (const marker of [
   assert.ok(liveActivity.includes(marker), `Live evidence activity is missing ${marker}`);
 }
 
-assert.ok(
-  mobileCss.includes('div[data-vorta-ai-progressive-decision="true"]') &&
-    mobileCss.includes("VOR-087 universal progressive decision visibility") &&
-    mobileCss.includes("display: block !important"),
-  "Phone Ask Vorta must explicitly keep the semantic progressive decision block visible instead of relying on legacy positional trimming",
+assert.doesNotMatch(
+  mobileCss,
+  /div\.flex\.flex-col\.gap-2 > div:nth-of-type\(1\)[\s\S]*?div:nth-of-type\(n\+4\)/,
+  "Phone Ask Vorta must not use the retired positional answer trimming that can hide semantic progressive sections",
 );
 
 assert.match(
