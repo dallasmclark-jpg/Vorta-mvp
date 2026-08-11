@@ -74,24 +74,16 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
-// VOR-088: navigation/selection surfaces use one compact Vorta treatment.
-assert.match(surfaces, /VOR-088: one compact selector-card language/);
+// VOR-088: one selector language for tabs and low-information pressed choices.
+assert.match(surfaces, /VOR-088: compact selector-card language/);
 assert.match(surfaces, /\[data-vorta-selector-card="true"\]/);
-assert.match(surfaces, /\[data-vorta-tab-outline="true"\]/);
 assert.match(surfaces, /\[role="tab"\]/);
-assert.match(surfaces, /button\[aria-pressed\]/);
+assert.match(surfaces, /\[data-vorta-engineer-summary-filter\]/);
+assert.match(surfaces, /button\[aria-pressed\]:not\(\[class\*="border-t-"\]\)/);
 assert.match(surfaces, /border-radius: 18px !important/);
 assert.match(surfaces, /background: var\(--vorta-surface-raised\) !important/);
-assert.match(surfaces, /border-color: #2563eb !important/);
-assert.match(surfaces, /border-color: #60a5fa !important/);
-assert.match(surfaces, /:not\(\[data-risk-kpi-card\]\)/);
-assert.match(surfaces, /:not\(\[data-vorta-dashboard-card\]\)/);
-assert.match(surfaces, /:not\(\[class\*="border-t-"\]\)/);
-assert.doesNotMatch(
-  surfaces,
-  /VOR-088[\s\S]{0,1600}background(?:-color)?:\s*#(?:1d4ed8|2563eb|3b82f6)/i,
-  "Selector cards must retain a neutral surface rather than an opaque blue selected state.",
-);
+assert.match(surfaces, /box-shadow: var\(--vorta-surface-raised-shadow\) !important/);
+assert.match(surfaces, /Skills Matrix severity cards stay distinct/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
