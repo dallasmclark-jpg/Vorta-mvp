@@ -34,7 +34,7 @@ jobs:
           if override not in css:
               raise SystemExit("Expected VOR-087 mobile override not found")
           css = css.replace(override, "\n", 1)
-          css_path.write_text(css)
+          css_path.write_text(css.rstrip() + "\n")
 
           contract_path = Path("scripts/vor-087-universal-disclosure-contracts.mjs")
           contract = contract_path.read_text()
