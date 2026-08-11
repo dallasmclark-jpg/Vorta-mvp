@@ -327,3 +327,11 @@
     backdrop-filter: blur(12px);
   }
 }
+
+@media (max-width: 639px) {
+  /* VOR-087 universal progressive decision visibility: explicit semantic hook overrides the legacy positional answer trimming above. */
+  [data-vorta-global-ai-panel="true"] .justify-start > div > div.flex.flex-col.gap-2 > div[data-vorta-ai-progressive-decision="true"] {
+    display: block !important;
+    margin-top: 0.5rem !important;
+  }
+}
