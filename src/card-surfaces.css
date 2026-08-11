@@ -10,6 +10,16 @@
   --vorta-surface-shadow: 0 12px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-raised-shadow: inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-shadow-hover: 0 16px 38px rgba(15, 23, 42, 0.12), inset 0 1px 0 var(--vorta-surface-highlight);
+  --vorta-selector-surface: #f8fafc;
+  --vorta-selector-surface-hover: #f1f5f9;
+  --vorta-selector-border: rgba(100, 116, 139, 0.24);
+  --vorta-selector-border-hover: rgba(59, 130, 246, 0.46);
+  --vorta-selector-border-selected: #2563eb;
+  --vorta-selector-text-selected: #1d4ed8;
+  --vorta-selector-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --vorta-selector-shadow-hover: 0 8px 20px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  --vorta-selector-shadow-selected: 0 0 0 1px rgba(37, 99, 235, 0.12);
+  --vorta-selector-radius: 18px;
 }
 
 html.dark {
@@ -24,6 +34,15 @@ html.dark {
   --vorta-surface-shadow: 0 14px 34px rgba(0, 0, 0, 0.24), inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-raised-shadow: inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --vorta-selector-surface: #111720;
+  --vorta-selector-surface-hover: #171e29;
+  --vorta-selector-border: rgba(148, 163, 184, 0.16);
+  --vorta-selector-border-hover: rgba(96, 165, 250, 0.5);
+  --vorta-selector-border-selected: #60a5fa;
+  --vorta-selector-text-selected: #dbeafe;
+  --vorta-selector-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --vorta-selector-shadow-hover: 0 9px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  --vorta-selector-shadow-selected: 0 0 0 1px rgba(96, 165, 250, 0.12);
 }
 
 [data-vorta-portal-shell="true"],
@@ -152,6 +171,55 @@ html.dark [data-vorta-page-content="true"] :is(
   [data-vorta-page-content="true"] [data-vorta-group-frame="true"]:hover {
     box-shadow: none !important;
     transform: none;
+  }
+}
+
+/*
+ * VOR-088: one compact Vorta selector-card language for navigation and choice
+ * surfaces. Existing semantic tabs and pressed-choice controls inherit it
+ * automatically, while data-vorta-selector-card is the explicit opt-in hook for
+ * future selector components. Operational KPI/risk cards and Skills Matrix team
+ * cards are deliberately excluded so their information and severity meaning are
+ * unchanged.
+ */
+[data-vorta-portal-shell="true"] :where(
+  [data-vorta-selector-card="true"],
+  [data-vorta-tab-outline="true"],
+  [role="tab"],
+  [data-vorta-engineer-summary-filter],
+  button[aria-pressed]
+):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]) {
+  border: 1px solid var(--vorta-selector-border) !important;
+  border-radius: var(--vorta-selector-radius) !important;
+  background-color: var(--vorta-selector-surface) !important;
+  box-shadow: var(--vorta-selector-shadow) !important;
+  transition-property: background-color, border-color, box-shadow, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease-out;
+}
+
+[data-vorta-portal-shell="true"] :where(
+  [data-vorta-selector-card="true"][aria-pressed="true"],
+  button[aria-pressed="true"]
+):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]) {
+  border-color: var(--vorta-selector-border-selected) !important;
+  background-color: var(--vorta-selector-surface) !important;
+  color: var(--vorta-selector-text-selected) !important;
+  box-shadow: var(--vorta-selector-shadow-selected) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-vorta-portal-shell="true"] :where(
+    [data-vorta-selector-card="true"],
+    [data-vorta-tab-outline="true"],
+    [role="tab"],
+    [data-vorta-engineer-summary-filter],
+    button[aria-pressed]
+  ):not([data-risk-kpi-card]):not([data-vorta-dashboard-card]):not([class*="border-t-"]):not([aria-selected="true"]):not([aria-pressed="true"]):hover {
+    border-color: var(--vorta-selector-border-hover) !important;
+    background-color: var(--vorta-selector-surface-hover) !important;
+    box-shadow: var(--vorta-selector-shadow-hover) !important;
+    transform: translateY(-1px);
   }
 }
 
@@ -299,6 +367,16 @@ html[data-vorta-select-open="true"] :is(
     [data-risk-kpi-card]
   ):hover {
     transform: none;
+  }
+
+  [data-vorta-portal-shell="true"] :where(
+    [data-vorta-selector-card="true"],
+    [data-vorta-tab-outline="true"],
+    [role="tab"],
+    [data-vorta-engineer-summary-filter],
+    button[aria-pressed]
+  ) {
+    transition: none;
   }
 }
 
