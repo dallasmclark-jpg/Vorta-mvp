@@ -61,12 +61,12 @@ assert.ok(pulseStyle >= 0 && desktopMedia > pulseStyle, "The Vorta single-status
 
 assert.ok(shell.includes('/src/screens/AiOperations/askVortaConciseAnswer.css'), "The image-standard concise answer stylesheet must be loaded by the app shell");
 for (const marker of [
-  ':where([data-vorta-global-ai-panel=true],[data-vorta-ai-workspace=true])',
-  '[data-vorta-ai-supporting-evidence=true],details.bg-gray-900\\/40):has(~[data-vorta-ai-source-disclosure=true])',
-  '[data-vorta-ai-feedback=true]',
-  '[data-vorta-ai-workspace-source-summary=true]',
-  '.rounded-md.border-blue-500\\/20.bg-blue-500\\/10.px-2.py-1\\.5',
-  '.rounded-md.border-yellow-500\\/20.bg-yellow-500\\/10.px-2.py-1\\.5',
+  ':is([data-vorta-global-ai-panel],[data-vorta-ai-workspace])',
+  ':is([data-vorta-ai-supporting-evidence],details.bg-gray-900\\/40):has(~[data-vorta-ai-source-disclosure])',
+  '[data-vorta-ai-feedback]',
+  '[data-vorta-ai-workspace-source-summary]',
+  'div.border-blue-500\\/20.bg-blue-500\\/10',
+  'div.border-yellow-500\\/20.bg-yellow-500\\/10',
 ]) {
   assert.ok(conciseCss.includes(marker), `Concise image-standard default answer is missing ${marker}`);
 }
