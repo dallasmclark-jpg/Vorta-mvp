@@ -105,6 +105,9 @@ html:not(.dark) [data-vorta-mobile-settings="true"] button[aria-pressed="true"] 
     transform: translateY(-1px);
   }
 
+  html:not(.dark) [data-vorta-portal-shell="true"]
+    [role="tablist"]:not([aria-label="KPI period"])
+    [role="tab"]:not([aria-selected="true"]):hover,
   html:not(.dark) [data-vorta-mobile-settings="true"] button[aria-pressed="false"]:hover {
     color: #0f172a !important;
   }
