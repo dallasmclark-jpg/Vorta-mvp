@@ -65,13 +65,14 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
-assert.match(surfaces, /VOR-088 selector\/navigation cards share Vorta depth/);
+assert.match(surfaces, /VOR-088 selector\/navigation cards use a raised surface and stronger Vorta depth/);
 assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
 assert.match(surfaces, /border-radius: 16px !important/);
-assert.match(surfaces, /box-shadow: var\(--vorta-surface-shadow\) !important/);
+assert.match(surfaces, /background-color: var\(--vorta-surface-raised\) !important/);
+assert.match(surfaces, /box-shadow: var\(--vorta-surface-shadow-hover\) !important/);
 assert.match(tabStates, /VOR-088 adds a second restrained blue edge/);
 assert.match(tabStates, /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/);
-assert.match(tabStates, /outline: 1px solid #60a5fa/);
+assert.match(tabStates, /outline: 2px solid #60a5fa/);
 assert.doesNotMatch(tabStates, /:focus-visible/, "Existing component-owned keyboard focus must remain authoritative.");
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
