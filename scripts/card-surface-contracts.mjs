@@ -71,8 +71,7 @@ assert.match(surfaces, /border-radius: 16px !important/);
 assert.match(surfaces, /box-shadow: var\(--vorta-surface-shadow\) !important/);
 assert.match(tabStates, /VOR-088 adds a second restrained blue edge/);
 assert.match(tabStates, /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/);
-assert.match(tabStates, /outline: 1px solid rgba\(37, 99, 235, 0\.36\)/);
-assert.match(tabStates, /outline-color: rgba\(96, 165, 250, 0\.55\)/);
+assert.match(tabStates, /outline: 1px solid #60a5fa/);
 assert.doesNotMatch(tabStates, /:focus-visible/, "Existing component-owned keyboard focus must remain authoritative.");
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
