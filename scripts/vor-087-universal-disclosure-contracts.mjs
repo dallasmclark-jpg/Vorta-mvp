@@ -84,7 +84,6 @@ assert.ok(
 );
 for (const marker of [
   '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-supporting-evidence="true"]',
-  'content: "Evidence & sources"',
   '[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-feedback="true"]',
   '[data-vorta-ai-workspace-source-summary="true"]',
   'div.rounded-md.border.border-blue-500\\/20.bg-blue-500\\/10.px-2.py-1\\.5',
@@ -95,6 +94,11 @@ for (const marker of [
     `Concise image-standard default answer is missing ${marker}`,
   );
 }
+assert.match(
+  conciseCss,
+  /content\s*:\s*["']Evidence & sources["']/,
+  "Concise source disclosure must be labelled Evidence & sources",
+);
 assert.doesNotMatch(
   conciseCss,
   /nth-of-type\(/,
