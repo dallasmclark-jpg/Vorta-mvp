@@ -151,7 +151,7 @@ html.dark [data-vorta-page-content="true"] :is(
 }
 
 /* VOR-088 selector/navigation cards use a raised surface and stronger Vorta depth; Skills Matrix severity cards remain distinct. */
-[data-vorta-portal-shell="true"] :where([role="tab"],button[aria-pressed]:not([class*="border-t-"])) {
+[data-vorta-portal-shell="true"] :where([role="tab"],button[aria-pressed="false"]:not([class*="border-t-"])) {
   border-radius: 16px !important;
   background: var(--vorta-surface-raised) !important;
   box-shadow: var(--vorta-surface-shadow-hover) !important;
