@@ -49,6 +49,32 @@ for (const marker of [
   assert.ok(liveActivity.includes(marker), `Live evidence activity is missing ${marker}`);
 }
 
+for (const marker of [
+  'SPARE_PHOTO_PROGRESS_PREFIX = "spare-photo-"',
+  "function SparePhotoLiveEvidenceActivity",
+  ".filter(isSparePhotoProgress)",
+  'data-vorta-spare-photo-loading="true"',
+  'className="space-y-2.5"',
+  'className="flex items-center gap-2 text-sm font-semibold text-slate-200"',
+  'className="space-y-1.5"',
+  'className="flex min-h-7 items-start gap-2 rounded-lg px-1 py-0.5 text-sm"',
+  "const sparePhotoLoading = steps.some(isSparePhotoProgress)",
+  "return <SparePhotoLiveEvidenceActivity steps={steps} />",
+]) {
+  assert.ok(
+    liveActivity.includes(marker),
+    `VOR-085 spare-photo loading presentation boundary is missing ${marker}`,
+  );
+}
+const spareLoaderStart = liveActivity.indexOf("function SparePhotoLiveEvidenceActivity");
+const sharedLoaderStart = liveActivity.indexOf("export function AskVortaLiveEvidenceActivity");
+const spareLoaderSource = liveActivity.slice(spareLoaderStart, sharedLoaderStart);
+assert.doesNotMatch(
+  spareLoaderSource,
+  /completedCount|\/\{visible\.length\} checked|justify-between/,
+  "Spare-photo loading must not inherit the VOR-087 generic checked counter or generic status layout",
+);
+
 assert.doesNotMatch(
   mobileCss,
   /div\.flex\.flex-col\.gap-2 > div:nth-of-type\(1\)[\s\S]*?div:nth-of-type\(n\+4\)/,
@@ -88,4 +114,4 @@ assert.ok(
   "Feedback and controlled action review must remain available",
 );
 
-console.log("VOR-087 universal Ask Vorta disclosure contracts passed: primary answer, progressive priorities including explicit phone visibility, collapsed evidence/actions/sources, source-driven loading, specialist spare-photo preservation and all-device shared rendering are protected.");
+console.log("VOR-087 universal Ask Vorta disclosure contracts passed: primary answer, progressive priorities including explicit phone visibility, collapsed evidence/actions/sources, generic source-driven loading, restored VOR-085 specialist spare-photo loading, specialist spare-photo results and all-device shared rendering are protected.");
