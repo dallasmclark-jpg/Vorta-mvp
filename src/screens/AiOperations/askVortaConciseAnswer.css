@@ -1,58 +1,9 @@
-/* VOR-087: keep every generic Ask Vorta answer as concise as the approved image result.
-   The evidence remains in the answer model; the default surface shows the decision first. */
-
-/* The primary answer already summarises the decision. Do not duplicate a separate evidence list. */
-[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-supporting-evidence="true"] {
-  display: none !important;
-}
-
-/* Present technical provenance as one restrained disclosure instead of multiple evidence/source blocks. */
-[data-vorta-ai-source-disclosure="true"] > summary > span:first-child {
-  font-size: 0 !important;
-}
-
-[data-vorta-ai-source-disclosure="true"] > summary > span:first-child::after {
-  content: "Evidence & sources";
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-
-/* Do not expose competing 'verified' counts in the collapsed header. The source cards remain inside. */
-[data-vorta-ai-source-disclosure="true"] > summary > span:last-child {
-  font-size: 0 !important;
-  gap: 0 !important;
-}
-
-/* Role commentary and fallback/system diagnostics are not part of the default decision surface. */
+[data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-supporting-evidence="true"]{display:none!important}
+[data-vorta-ai-source-disclosure="true"]>summary>span:first-child{font-size:0!important}
+[data-vorta-ai-source-disclosure="true"]>summary>span:first-child::after{content:"Evidence & sources";font-size:.875rem;line-height:1.25rem}
+[data-vorta-ai-source-disclosure="true"]>summary>span:last-child{font-size:0!important;gap:0!important}
 [data-vorta-ai-primary-answer="true"] ~ div.rounded-md.border.border-blue-500\/20.bg-blue-500\/10.px-2.py-1\.5,
-[data-vorta-ai-primary-answer="true"] ~ div.rounded-md.border.border-yellow-500\/20.bg-yellow-500\/10.px-2.py-1\.5 {
-  display: none !important;
-}
-
-/* Confidence/source bookkeeping belongs behind evidence, not under every answer. */
+[data-vorta-ai-primary-answer="true"] ~ div.rounded-md.border.border-yellow-500\/20.bg-yellow-500\/10.px-2.py-1\.5,
 [data-vorta-ai-primary-answer="true"] ~ div.flex.items-start.justify-between.gap-3.border-t.border-gray-800.pt-2.text-xs.text-slate-500,
 [data-vorta-ai-primary-answer="true"] ~ [data-vorta-ai-feedback="true"],
-[data-vorta-ai-workspace-source-summary="true"] {
-  display: none !important;
-}
-
-/* Keep the visible answer compact, readable and consistent with image-identification results. */
-[data-vorta-ai-primary-answer="true"] {
-  padding: 0.875rem 1rem !important;
-}
-
-[data-vorta-ai-primary-answer="true"] > p {
-  font-size: 1rem !important;
-  line-height: 1.6rem !important;
-}
-
-@media (max-width: 768px) {
-  [data-vorta-ai-primary-answer="true"] {
-    padding: 0.75rem 0.875rem !important;
-  }
-
-  [data-vorta-ai-primary-answer="true"] > p {
-    font-size: 0.9375rem !important;
-    line-height: 1.5rem !important;
-  }
-}
+[data-vorta-ai-workspace-source-summary="true"]{display:none!important}
