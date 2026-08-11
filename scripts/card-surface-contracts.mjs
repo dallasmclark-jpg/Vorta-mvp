@@ -67,15 +67,17 @@ assert.match(surfaces, /focus-visible/);
 
 assert.match(surfaces, /VOR-088 selector geometry/);
 assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
-assert.match(tabStates, /VOR-088: one premium selection\/navigation language/);
-assert.match(tabStates, /--vorta-selector-bg-selected/);
-assert.match(tabStates, /--vorta-selector-border-selected: #60a5fa/);
+assert.match(tabStates, /VOR-088: the same semantic controls now share a premium Vorta selector-card/);
+assert.match(tabStates, /--vorta-selector-bg:/);
+assert.match(tabStates, /--vorta-selector-ring: rgba\(96, 165, 250, 0\.52\)/);
 assert.match(tabStates, /\[role="tablist"\]:not\(\[aria-label="KPI period"\]\)/);
 assert.match(tabStates, /\[data-vorta-mobile-settings="true"\] button\[aria-pressed\]/);
 assert.match(tabStates, /border-radius: 16px !important/);
-assert.match(tabStates, /box-shadow: var\(--vorta-selector-shadow-selected\) !important/);
+assert.match(tabStates, /\[role="tab"\]\[aria-selected="true"\]::after/);
+assert.match(tabStates, /inset: -3px/);
+assert.match(tabStates, /background: linear-gradient\(180deg, #172a43 0%, #0f1826 100%\) !important/);
 assert.match(tabStates, /transform: translateY\(-1px\)/);
-assert.match(tabStates, /outline: 2px solid #60a5fa/);
+assert.doesNotMatch(tabStates, /:focus-visible/, "Existing component-owned keyboard focus must remain authoritative.");
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
