@@ -7,6 +7,7 @@ const workspace = read("src/screens/AiOperations/AskVortaWorkspace.tsx");
 const workspaceBase = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
 const sparePhoto = read("src/screens/AiOperations/AskVortaSparePhotoDisclosures.tsx");
 const liveActivity = read("src/screens/AiOperations/AskVortaLiveEvidenceActivity.tsx");
+const shell = read("index.html");
 const mobileCss = read("src/screens/AiOperations/mobilePortalHardening.css");
 
 for (const marker of [
@@ -35,44 +36,45 @@ assert.doesNotMatch(
 );
 assert.ok(
   assistant.includes("<AskVortaLiveEvidenceActivity />"),
-  "Compact Ask Vorta must use the same source-driven live evidence activity",
+  "Compact Ask Vorta must use the shared source-driven live activity",
 );
 assert.ok(
   workspaceBase.includes("SharedAskVortaLiveEvidenceActivity"),
-  "Full workspace must use the shared live evidence activity",
+  "Full workspace must use the shared live activity",
 );
 for (const marker of [
   'data-vorta-ai-live-evidence-activity="true"',
+  'data-vorta-ai-single-status="true"',
+  'data-vorta-ai-single-status-icon="true"',
+  'data-vorta-ai-single-status-label="true"',
+  "currentProgressStep",
   "ASK_VORTA_PROGRESS_EVENT",
   "ASK_VORTA_PROGRESS_RESET_EVENT",
 ]) {
-  assert.ok(liveActivity.includes(marker), `Live evidence activity is missing ${marker}`);
+  assert.ok(liveActivity.includes(marker), `Universal live activity is missing ${marker}`);
 }
-
-for (const marker of [
-  'SPARE_PHOTO_PROGRESS_PREFIX = "spare-photo-"',
-  "function SparePhotoLiveEvidenceActivity",
-  ".filter(isSparePhotoProgress)",
-  'data-vorta-spare-photo-loading="true"',
-  'className="space-y-2.5"',
-  'className="flex items-center gap-2 text-sm font-semibold text-slate-200"',
-  'className="space-y-1.5"',
-  'className="flex min-h-7 items-start gap-2 rounded-lg px-1 py-0.5 text-sm"',
-  "const sparePhotoLoading = steps.some(isSparePhotoProgress)",
-  "return <SparePhotoLiveEvidenceActivity steps={steps} />",
-]) {
-  assert.ok(
-    liveActivity.includes(marker),
-    `VOR-085 spare-photo loading presentation boundary is missing ${marker}`,
-  );
-}
-const spareLoaderStart = liveActivity.indexOf("function SparePhotoLiveEvidenceActivity");
-const sharedLoaderStart = liveActivity.indexOf("export function AskVortaLiveEvidenceActivity");
-const spareLoaderSource = liveActivity.slice(spareLoaderStart, sharedLoaderStart);
 assert.doesNotMatch(
-  spareLoaderSource,
-  /completedCount|\/\{visible\.length\} checked|justify-between/,
-  "Spare-photo loading must not inherit the VOR-087 generic checked counter or generic status layout",
+  liveActivity,
+  /completedCount|checked\s*<|MAX_VISIBLE_PROGRESS_STEPS|SPARE_PHOTO_PROGRESS_PREFIX|SparePhotoLiveEvidenceActivity|rounded-full border px-2 py-1/,
+  "All Ask Vorta questions must use one image-standard live status with no counters, progress pills or route-specific loading renderer",
+);
+for (const marker of [
+  '@property --vorta-evidence-pulse-angle',
+  '@keyframes vorta-evidence-border-pulse',
+  'conic-gradient(from var(--vorta-evidence-pulse-angle)',
+  '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
+  'max-width:440px!important',
+  'height:44px!important',
+]) {
+  assert.ok(shell.includes(marker), `Universal Vorta pulse loading is missing ${marker}`);
+}
+const pulseStyle = shell.indexOf(
+  '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
+);
+const desktopMedia = shell.indexOf("@media(min-width:769px){");
+assert.ok(
+  pulseStyle >= 0 && desktopMedia > pulseStyle,
+  "The Vorta single-status pulse must apply before desktop-only styling so it is shared by phone, tablet and desktop",
 );
 
 assert.doesNotMatch(
@@ -84,7 +86,7 @@ assert.doesNotMatch(
 assert.match(
   workspace,
   /isAskVortaSparePhotoAnswer\(answer\)[\s\S]*?<AskVortaSparePhotoDisclosures answer=\{answer\}/,
-  "The specialist spare-photo disclosure renderer must remain intact",
+  "The specialist spare-photo result renderer must remain intact",
 );
 for (const marker of [
   "Closest stock match",
@@ -114,4 +116,4 @@ assert.ok(
   "Feedback and controlled action review must remain available",
 );
 
-console.log("VOR-087 universal Ask Vorta disclosure contracts passed: primary answer, progressive priorities including explicit phone visibility, collapsed evidence/actions/sources, generic source-driven loading, restored VOR-085 specialist spare-photo loading, specialist spare-photo results and all-device shared rendering are protected.");
+console.log("VOR-087 universal Ask Vorta disclosure contracts passed: one image-standard live status across all questions/devices, progressive generic answers, specialist spare-photo results and controlled evidence/action behaviour are protected.");
