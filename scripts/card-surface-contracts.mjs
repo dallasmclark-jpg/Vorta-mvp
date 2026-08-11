@@ -68,7 +68,7 @@ assert.match(surfaces, /focus-visible/);
 assert.match(surfaces, /VOR-088 selector\/navigation cards use a raised surface and stronger Vorta depth/);
 assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
 assert.match(surfaces, /border-radius: 16px !important/);
-assert.match(surfaces, /background-color: var\(--vorta-surface-raised\) !important/);
+assert.match(surfaces, /background: var\(--vorta-surface-raised\) !important/);
 assert.match(surfaces, /box-shadow: var\(--vorta-surface-shadow-hover\) !important/);
 assert.match(tabStates, /VOR-088 adds a second restrained blue edge/);
 assert.match(tabStates, /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/);
