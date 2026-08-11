@@ -127,9 +127,9 @@ test.describe("VOR-087 universal Ask Vorta progressive disclosure", () => {
 
     const nextPriorities = scope.locator('[data-vorta-ai-next-priorities="true"]');
     await expect(nextPriorities).toBeVisible();
-    await expect(scope.getByText("Next priority", { exact: true })).toBeHidden();
+    await expect(scope.getByText("Next priority:", { exact: true })).toBeHidden();
     await nextPriorities.locator("summary").click();
-    await expect(scope.getByText("Next priority", { exact: true })).toBeVisible();
+    await expect(scope.getByText("Next priority:", { exact: true })).toBeVisible();
 
     const evidence = scope.locator('[data-vorta-ai-supporting-evidence="true"]');
     await expect(evidence).toBeVisible();
