@@ -34,6 +34,26 @@ const routes = [
   ["equipment-ai-insights", `/equipment/${EQUIPMENT_ID}/ai-insights`],
 ] as const;
 
+const readyText: Partial<Record<(typeof routes)[number][0], RegExp>> = {
+  "shift-handover": /Previous shift activity/i,
+  requirements: /Groninger Filling Lines/i,
+  "training-plan": /Groninger Filling Lines/i,
+  "pilot-impact": /Pilot evidence ready/i,
+  "pilot-adoption": /Sustained adoption/i,
+  "equipment-skills": /Capability Resilience Briefing/i,
+  "equipment-ai-insights": /AI Equipment Decision Briefing/i,
+  "equipment-pms": /Calibration Compliance Briefing/i,
+  "equipment-history": /Reliability History Briefing/i,
+  "equipment-spares": /Spares Resilience Briefing/i,
+  "equipment-documents": /Equipment Knowledge Briefing/i,
+};
+
+async function waitForPageEvidence(page: Page, name: (typeof routes)[number][0]): Promise<void> {
+  const target = readyText[name];
+  if (!target) return;
+  await page.getByText(target).first().waitFor({ state: "visible", timeout: 25_000 });
+}
+
 async function settle(page: Page): Promise<void> {
   await page.addStyleTag({
     content: `
@@ -46,8 +66,8 @@ async function settle(page: Page): Promise<void> {
     `,
   }).catch(() => undefined);
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
-  await page.waitForLoadState("networkidle", { timeout: 4_000 }).catch(() => undefined);
-  await page.waitForTimeout(1_200);
+  await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => undefined);
+  await page.waitForTimeout(800);
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => undefined);
 }
@@ -80,6 +100,7 @@ test("capture Maintenance Manager visual quality audit", async ({ page }, testIn
   const manifest: Array<Record<string, unknown>> = [];
   for (const [name, route] of routes) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
+    await waitForPageEvidence(page, name);
     manifest.push(await capture(page, testInfo, name, route));
   }
 
