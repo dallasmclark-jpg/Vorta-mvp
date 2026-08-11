@@ -2,8 +2,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const hasAuthenticatedTestUser = Boolean(process.env.VORTA_E2E_PASSWORD);
-const usesCompactLauncher = (projectName: string): boolean =>
-  projectName === "phone-360" || projectName === "samsung-tablet-portrait";
+const isPhone = (projectName: string): boolean => projectName === "phone-360";
+const isPortraitTablet = (projectName: string): boolean =>
+  projectName === "samsung-tablet-portrait";
 
 const answer = {
   responseId: "vor-087-universal-disclosure",
@@ -65,10 +66,21 @@ async function openAskVorta(page: Page, projectName: string): Promise<Locator> {
   const panel = page.locator('[data-vorta-global-ai-panel="true"]');
   const workspace = page.locator('[data-vorta-ai-workspace="true"]');
 
-  if (usesCompactLauncher(projectName)) {
+  if (isPhone(projectName)) {
     const sharedLauncher = page.locator('[data-vorta-shared-mobile-ai-launcher="true"]');
     await expect(sharedLauncher).toBeVisible();
     await sharedLauncher.evaluate((element: HTMLButtonElement) => element.click());
+    await expect(panel).toBeVisible();
+    return panel;
+  }
+
+  if (isPortraitTablet(projectName)) {
+    const portraitLauncher = page.getByRole("button", {
+      name: "Ask Vorta AI",
+      exact: true,
+    });
+    await expect(portraitLauncher).toBeVisible();
+    await portraitLauncher.click();
     await expect(panel).toBeVisible();
     return panel;
   }
