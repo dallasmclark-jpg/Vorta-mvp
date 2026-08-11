@@ -7,6 +7,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 
 const index = read("index.html");
 const surfaces = read("src/card-surfaces.css");
+const tabStates = read("src/tab-states.css");
 const transition = read("src/components/PageTransition.tsx");
 const card = read("src/components/ui/card.tsx");
 const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
@@ -20,14 +21,13 @@ const maintenanceExperience = read(
 );
 
 assert.match(index, /<link href="\/src\/card-surfaces\.css" rel="stylesheet" \/>/);
+assert.match(index, /<link href="\/src\/tab-states\.css" rel="stylesheet" \/>/);
 assert.match(transition, /data-vorta-page-content="true"/);
 assert.match(transition, /className="min-h-full min-w-0 w-full max-w-full overflow-x-hidden"/);
-
 assert.match(card, /data-vorta-card="true"/);
 assert.match(card, /vorta-card rounded-2xl border bg-card text-card-foreground/);
 assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
-
 assert.match(surfaces, /--vorta-surface-page: #090c12/);
 assert.match(surfaces, /--vorta-surface-card: #141922/);
 assert.match(surfaces, /--vorta-surface-raised: #181f2a/);
@@ -42,14 +42,9 @@ assert.match(surfaces, /Group-only frames are declared by component intent/);
 assert.match(surfaces, /\[data-vorta-group-frame="true"\]/);
 assert.match(surfaces, /background-color: transparent !important/);
 assert.match(surfaces, /box-shadow: none !important/);
-assert.doesNotMatch(
-  surfaces,
-  /:has\(/,
-  "Card hierarchy must not depend on DOM shape, utility classes or accessible copy.",
-);
+assert.doesNotMatch(surfaces, /:has\(/, "Card hierarchy must not depend on DOM shape, utility classes or accessible copy.");
 assert.doesNotMatch(surfaces, /aria-label="Handover scope level"/);
 assert.doesNotMatch(surfaces, /grid-cols-3/);
-
 assert.match(dashboard, /data-vorta-group-frame="true"/);
 assert.match(equipmentSpares, /data-vorta-group-frame="true"/);
 assert.match(equipmentSpares, /Spares Resilience Briefing/);
@@ -58,11 +53,7 @@ assert.match(mobileEquipment, /data-vorta-group-frame="true"/);
 assert.match(mobileEquipment, /min-h-14 rounded-lg border border-gray-800 bg-\[#0d1117\]/);
 assert.match(shiftHandover, /data-vorta-shift-handover="true"/);
 assert.match(shiftHandover, /data-vorta-group-frame="true"/);
-assert.match(
-  shiftHandover,
-  /min-h-11 shrink-0(?: whitespace-nowrap)? rounded-lg border/,
-);
-
+assert.match(shiftHandover, /min-h-11 shrink-0(?: whitespace-nowrap)? rounded-lg border/);
 assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
 assert.match(surfaces, /rounded-lg/);
 assert.match(surfaces, /border-color: var\(--vorta-surface-raised-border\)/);
@@ -74,11 +65,20 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
+assert.match(surfaces, /VOR-088 selector\/navigation cards use a raised surface and stronger Vorta depth/);
+assert.match(surfaces, /Skills Matrix severity cards remain distinct/);
+assert.match(surfaces, /border-radius: 16px !important/);
+assert.match(surfaces, /background: var\(--vorta-surface-raised\) !important/);
+assert.match(surfaces, /box-shadow: var\(--vorta-surface-shadow-hover\) !important/);
+assert.match(tabStates, /VOR-088 adds a second restrained blue edge/);
+assert.match(tabStates, /:where\(\[data-vorta-tab-outline="true"\], \[role="tab"\]\)\[aria-selected="true"\]/);
+assert.match(tabStates, /outline: 2px solid #60a5fa/);
+assert.doesNotMatch(tabStates, /:focus-visible/, "Existing component-owned keyboard focus must remain authoritative.");
+
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/);
 assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
-
-console.log("Shared Vorta page, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, premium selector system, semantic group-frame, contrast and launcher hierarchy passed.");
