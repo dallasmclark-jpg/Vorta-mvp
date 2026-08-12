@@ -152,35 +152,25 @@ export function MaintenancePortalHardening(): JSX.Element {
 
         [data-vorta-mobile-requirements="true"]
           > div.grid:has(input[placeholder="Search requirements"]) {
-          grid-template-columns: minmax(0, 1fr) 3rem !important;
+          grid-template-columns: minmax(0, 1fr) 4.75rem !important;
         }
 
         [data-vorta-mobile-requirements="true"]
           > div.grid:has(input[placeholder="Search requirements"])
           > button {
-          width: 3rem;
+          width: 4.75rem;
           justify-content: center;
-          gap: 0 !important;
-          overflow: hidden;
-          padding-inline: 0 !important;
-          color: transparent !important;
-          font-size: 0 !important;
-        }
-
-        [data-vorta-mobile-requirements="true"]
-          > div.grid:has(input[placeholder="Search requirements"])
-          > button > svg {
-          color: rgb(203 213 225) !important;
-          stroke: rgb(203 213 225) !important;
+          gap: 0.375rem !important;
+          padding-inline: 0.375rem !important;
+          font-size: 0.875rem !important;
         }
 
         [data-vorta-mobile-requirements="true"]
           > div.grid:has(input[placeholder="Search requirements"])
           > button > span {
           position: absolute;
-          top: 0.2rem;
-          right: 0.2rem;
-          color: white !important;
+          top: 0.15rem;
+          right: 0.15rem;
         }
       }
 
