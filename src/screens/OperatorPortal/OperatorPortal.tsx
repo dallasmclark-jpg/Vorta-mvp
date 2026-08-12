@@ -12,15 +12,7 @@ import {
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "../../components/PortalShell";
 import type { NavItem } from "../../components/PortalShell";
-import { OperatorDashboardSection } from "./OperatorDashboardSection";
-import { OperatorMyShiftSection } from "./OperatorMyShiftSection";
-import { OperatorMySkillsSection } from "./OperatorMySkillsSection";
-import { OperatorTrainingSection } from "./OperatorTrainingSection";
-import { OperatorComplianceSection } from "./OperatorComplianceSection";
-import { OperatorTasksSection } from "./OperatorTasksSection";
-import { OperatorAiGuidanceSection } from "./OperatorAiGuidanceSection";
-import { OperatorKnowledgeBaseSection } from "./OperatorKnowledgeBaseSection";
-import { OperatorProfileSettingsSection } from "./OperatorProfileSettingsSection";
+import { PrototypePortalUnavailable } from "../../components/PrototypePortalUnavailable";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavItem[] = [
@@ -38,19 +30,28 @@ const secondaryNav: NavItem[] = [
   { label: "Profile Settings", icon: Cog, to: "/operator/settings" },
 ];
 
+function Unavailable({ capability }: { capability: string }): JSX.Element {
+  return (
+    <PrototypePortalUnavailable
+      portalName="Operator"
+      capability={capability}
+    />
+  );
+}
+
 export const OperatorPortal = (): JSX.Element => (
   <PortalShell homeRoute="/operator/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="emerald">
     <Routes>
-      <Route path="dashboard"  element={<OperatorDashboardSection />} />
-      <Route path="shift"      element={<OperatorMyShiftSection />} />
-      <Route path="skills"     element={<OperatorMySkillsSection />} />
-      <Route path="training"   element={<OperatorTrainingSection />} />
-      <Route path="compliance" element={<OperatorComplianceSection />} />
-      <Route path="tasks"      element={<OperatorTasksSection />} />
-      <Route path="ai-guidance" element={<OperatorAiGuidanceSection />} />
-      <Route path="knowledge"  element={<OperatorKnowledgeBaseSection />} />
-      <Route path="settings"   element={<OperatorProfileSettingsSection />} />
-      <Route path="*"          element={<Navigate to="dashboard" replace />} />
+      <Route path="dashboard"    element={<Unavailable capability="Operator Dashboard" />} />
+      <Route path="shift"        element={<Unavailable capability="My Shift" />} />
+      <Route path="skills"       element={<Unavailable capability="My Skills" />} />
+      <Route path="training"     element={<Unavailable capability="Training" />} />
+      <Route path="compliance"   element={<Unavailable capability="Compliance" />} />
+      <Route path="tasks"        element={<Unavailable capability="Tasks" />} />
+      <Route path="ai-guidance"  element={<Unavailable capability="AI Guidance" />} />
+      <Route path="knowledge"    element={<Unavailable capability="Knowledge Base" />} />
+      <Route path="settings"     element={<Unavailable capability="Profile Settings" />} />
+      <Route path="*"            element={<Navigate to="dashboard" replace />} />
     </Routes>
     <GlobalMaintenanceAiAssistant role="operator" />
   </PortalShell>

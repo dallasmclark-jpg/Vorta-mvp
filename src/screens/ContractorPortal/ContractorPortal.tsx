@@ -15,18 +15,7 @@ import {
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup, NavItem } from "../../components/PortalShell";
-import { ContractorDashboardSection } from "./ContractorDashboardSection";
-import { CompanyProfileSection } from "./CompanyProfileSection";
-import { ContractorEngineersSection } from "./ContractorEngineersSection";
-import { ContractorAvailabilitySection } from "./ContractorAvailabilitySection";
-import { ContractorOpportunitiesSection } from "./ContractorOpportunitiesSection";
-import { ContractorAssignmentsSection } from "./ContractorAssignmentsSection";
-import { ContractorJobReportsSection } from "./ContractorJobReportsSection";
-import { ContractorTimesheetsSection } from "./ContractorTimesheetsSection";
-import { ContractorInvoicesSection } from "./ContractorInvoicesSection";
-import { ContractorComplianceSection } from "./ContractorComplianceSection";
-import { ContractorAiRecommendationsSection } from "./ContractorAiRecommendationsSection";
-import { ContractorSettingsSection } from "./ContractorSettingsSection";
+import { PrototypePortalUnavailable } from "../../components/PrototypePortalUnavailable";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
@@ -67,21 +56,30 @@ const secondaryNav: NavItem[] = [
   { label: "Settings", icon: Cog, to: "/contractor/settings" },
 ];
 
+function Unavailable({ capability }: { capability: string }): JSX.Element {
+  return (
+    <PrototypePortalUnavailable
+      portalName="Contractor"
+      capability={capability}
+    />
+  );
+}
+
 export const ContractorPortal = (): JSX.Element => (
   <PortalShell homeRoute="/contractor/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
-      <Route path="dashboard"          element={<ContractorDashboardSection />} />
-      <Route path="company-profile"    element={<CompanyProfileSection />} />
-      <Route path="engineers"          element={<ContractorEngineersSection />} />
-      <Route path="availability"       element={<ContractorAvailabilitySection />} />
-      <Route path="opportunities"      element={<ContractorOpportunitiesSection />} />
-      <Route path="assignments"        element={<ContractorAssignmentsSection />} />
-      <Route path="job-reports"        element={<ContractorJobReportsSection />} />
-      <Route path="timesheets"         element={<ContractorTimesheetsSection />} />
-      <Route path="invoices"           element={<ContractorInvoicesSection />} />
-      <Route path="compliance"         element={<ContractorComplianceSection />} />
-      <Route path="ai-recommendations" element={<ContractorAiRecommendationsSection />} />
-      <Route path="settings"           element={<ContractorSettingsSection />} />
+      <Route path="dashboard"          element={<Unavailable capability="Contractor Dashboard" />} />
+      <Route path="company-profile"    element={<Unavailable capability="Company Profile" />} />
+      <Route path="engineers"          element={<Unavailable capability="Engineers" />} />
+      <Route path="availability"       element={<Unavailable capability="Availability" />} />
+      <Route path="opportunities"      element={<Unavailable capability="Opportunities" />} />
+      <Route path="assignments"        element={<Unavailable capability="Assignments" />} />
+      <Route path="job-reports"        element={<Unavailable capability="Job Reports" />} />
+      <Route path="timesheets"         element={<Unavailable capability="Timesheets" />} />
+      <Route path="invoices"           element={<Unavailable capability="Invoices" />} />
+      <Route path="compliance"         element={<Unavailable capability="Compliance" />} />
+      <Route path="ai-recommendations" element={<Unavailable capability="AI Recommendations" />} />
+      <Route path="settings"           element={<Unavailable capability="Settings" />} />
       <Route path="*"                  element={<Navigate to="dashboard" replace />} />
     </Routes>
     <GlobalMaintenanceAiAssistant role="contractor" />
