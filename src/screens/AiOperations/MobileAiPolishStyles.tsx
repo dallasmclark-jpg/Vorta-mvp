@@ -154,6 +154,15 @@ const MOBILE_AI_POLISH_STYLES = `
   [data-vorta-fault-panel="true"] form > button[type="submit"] {
     order: 4;
   }
+
+  /* Keep the approved empty state, but remove the excessive vertical dead zone. */
+  [data-vorta-global-ai-messages="true"]
+    > div:only-child.justify-start
+    > div
+    > div.flex.flex-col.gap-2
+    > p {
+    min-height: calc(100dvh - 17rem) !important;
+  }
 }
 `;
 
