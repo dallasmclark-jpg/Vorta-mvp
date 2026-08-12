@@ -341,3 +341,23 @@ button[aria-pressed][class~="rounded-xl"][class*="border-t-"] > * {
 [data-vorta-card-rail="labour-risk"] > :nth-child(n + 5) {
   display: none !important;
 }
+
+/* VOR-089: colour is reserved for operational meaning, not structural containers. */
+[data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"] {
+  background-color: var(--vorta-surface-raised) !important;
+  color: #cbd5e1 !important;
+}
+
+[data-vorta-dashboard-root="true"]
+  [class~="border-orange-500/20"][class~="bg-orange-500/5"] {
+  border-color: var(--vorta-surface-divider) !important;
+  background-color: var(--vorta-surface-raised) !important;
+  box-shadow: var(--vorta-surface-raised-shadow) !important;
+}
+
+[data-vorta-stores-inventory="true"]
+  [data-vorta-inventory-risk-card="true"] {
+  border-color: var(--vorta-surface-border) !important;
+  background-color: var(--vorta-surface-card) !important;
+  box-shadow: var(--vorta-surface-shadow) !important;
+}
