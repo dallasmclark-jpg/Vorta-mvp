@@ -66,6 +66,7 @@ assert.match(
 assert.match(surfaces, /Site-wide hierarchy rule: a neutral surface inside another neutral card/);
 assert.match(surfaces, /structure, not another card/);
 assert.match(surfaces, /data-vorta-keep-surface="true"/);
+assert.match(surfaces, /:not\(\[data-vorta-group-frame="true"\]\)/);
 assert.match(surfaces, /:not\(button\):not\(a\)/);
 assert.match(surfaces, /border-color: transparent !important/);
 assert.match(surfaces, /background-color: transparent !important/);
