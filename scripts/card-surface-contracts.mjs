@@ -63,9 +63,17 @@ assert.match(
   /min-h-11 shrink-0(?: whitespace-nowrap)? rounded-lg border/,
 );
 
-assert.match(surfaces, /Nested metrics should read as grouped panels, not a second card hierarchy/);
-assert.match(surfaces, /rounded-lg/);
-assert.match(surfaces, /border-color: var\(--vorta-surface-raised-border\)/);
+assert.match(surfaces, /Site-wide hierarchy rule: a neutral surface inside another neutral card/);
+assert.match(surfaces, /structure, not another card/);
+assert.match(surfaces, /data-vorta-keep-surface="true"/);
+assert.match(surfaces, /:not\(button\):not\(a\)/);
+assert.match(surfaces, /border-color: transparent !important/);
+assert.match(surfaces, /background-color: transparent !important/);
+assert.doesNotMatch(
+  surfaces,
+  /background-color: var\(--vorta-surface-raised\) !important/,
+  "Nested neutral surfaces must never be promoted into a second grey card layer.",
+);
 assert.match(surfaces, /Secondary evidence remains readable/);
 assert.match(surfaces, /color: #94a3b8 !important/);
 assert.match(surfaces, /Quiet structure should not compete/);
@@ -81,4 +89,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, flattened neutral hierarchy, semantic group-frame, contrast and launcher hierarchy passed.");
