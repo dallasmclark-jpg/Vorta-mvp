@@ -73,7 +73,8 @@ html.dark {
  * interface cannot drift back to grey-card-inside-grey-box styling. Controls
  * remain visibly interactive, semantic/status colours remain outside this
  * neutral selector, and genuinely independent nested surfaces can opt out with
- * data-vorta-keep-surface="true".
+ * data-vorta-keep-surface="true". Transparent group frames are excluded as
+ * parents so their children remain the single primary surface for that group.
  */
 html [data-vorta-page-content="true"] :where(
   .vorta-card,
@@ -85,7 +86,7 @@ html [data-vorta-page-content="true"] :where(
     [class*="bg-gray-9"],
     :not([class*="bg-"])
   )
-) :where(
+):not([data-vorta-group-frame="true"]) :where(
   .vorta-card,
   [data-vorta-card="true"],
   :is([class*="rounded-lg"], [class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
