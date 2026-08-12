@@ -51,19 +51,11 @@ export function MaintenancePortalHardening(): JSX.Element {
       }
 
       @media (min-width: 768px) {
-        [data-vorta-historical-briefing="true"] {
+        [data-vorta-historical-briefing="true"],
+        [data-vorta-maintenance-portal="true"] p.max-w-4xl {
           max-width: 76ch !important;
           font-size: 0.9375rem !important;
           line-height: 1.5rem !important;
-        }
-
-        [data-vorta-maintenance-portal="true"]
-          section:has([data-vorta-equipment-tab="history"][aria-selected="true"])
-          p[class*="leading-6"],
-        [data-vorta-maintenance-portal="true"]
-          section:has([data-vorta-equipment-tab="ai-insights"][aria-selected="true"])
-          p[class*="leading-6"] {
-          max-width: 76ch;
         }
       }
 
@@ -150,14 +142,7 @@ export function MaintenancePortalHardening(): JSX.Element {
           display: none;
         }
 
-        [data-vorta-mobile-requirements="true"]
-          > div.grid:has(input[placeholder="Search requirements"]) {
-          grid-template-columns: minmax(0, 1fr) 4.75rem !important;
-        }
-
-        [data-vorta-mobile-requirements="true"]
-          > div.grid:has(input[placeholder="Search requirements"])
-          > button {
+        [data-vorta-mobile-requirements="true"] label + button {
           width: 4.75rem;
           justify-content: center;
           gap: 0.375rem !important;
@@ -165,9 +150,7 @@ export function MaintenancePortalHardening(): JSX.Element {
           font-size: 0.875rem !important;
         }
 
-        [data-vorta-mobile-requirements="true"]
-          > div.grid:has(input[placeholder="Search requirements"])
-          > button > span {
+        [data-vorta-mobile-requirements="true"] label + button > span {
           position: absolute;
           top: 0.15rem;
           right: 0.15rem;
