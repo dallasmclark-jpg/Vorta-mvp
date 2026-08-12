@@ -163,7 +163,14 @@ export function MaintenancePortalHardening(): JSX.Element {
           gap: 0 !important;
           overflow: hidden;
           padding-inline: 0 !important;
+          color: transparent !important;
           font-size: 0 !important;
+        }
+
+        [data-vorta-mobile-requirements="true"]
+          > div.grid:has(input[placeholder="Search requirements"])
+          > button > svg {
+          color: rgb(203 213 225) !important;
         }
 
         [data-vorta-mobile-requirements="true"]
@@ -172,6 +179,7 @@ export function MaintenancePortalHardening(): JSX.Element {
           position: absolute;
           top: 0.2rem;
           right: 0.2rem;
+          color: white !important;
         }
       }
 
