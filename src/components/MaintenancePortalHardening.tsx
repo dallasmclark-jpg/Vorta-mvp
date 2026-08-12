@@ -50,6 +50,23 @@ export function MaintenancePortalHardening(): JSX.Element {
         max-height: calc(100dvh - 1rem);
       }
 
+      @media (min-width: 768px) {
+        [data-vorta-historical-briefing="true"] {
+          max-width: 76ch !important;
+          font-size: 0.9375rem !important;
+          line-height: 1.5rem !important;
+        }
+
+        [data-vorta-maintenance-portal="true"]
+          section:has([data-vorta-equipment-tab="history"][aria-selected="true"])
+          p[class*="leading-6"],
+        [data-vorta-maintenance-portal="true"]
+          section:has([data-vorta-equipment-tab="ai-insights"][aria-selected="true"])
+          p[class*="leading-6"] {
+          max-width: 76ch;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         [data-vorta-maintenance-portal="true"] *,
         [data-vorta-maintenance-portal="true"] *::before,
@@ -119,6 +136,42 @@ export function MaintenancePortalHardening(): JSX.Element {
           width: calc(100vw - 0.75rem) !important;
           max-width: calc(100vw - 0.75rem) !important;
           margin-inline: auto;
+        }
+
+        .vorta-theme-control .vorta-theme-trigger {
+          width: 2.5rem;
+          min-width: 2.5rem;
+          justify-content: center;
+          gap: 0 !important;
+          padding-inline: 0 !important;
+        }
+
+        .vorta-theme-control .vorta-theme-trigger > span {
+          display: none;
+        }
+
+        [data-vorta-mobile-requirements="true"]
+          > div.grid:has(input[placeholder="Search requirements"]) {
+          grid-template-columns: minmax(0, 1fr) 3rem !important;
+        }
+
+        [data-vorta-mobile-requirements="true"]
+          > div.grid:has(input[placeholder="Search requirements"])
+          > button {
+          width: 3rem;
+          justify-content: center;
+          gap: 0 !important;
+          overflow: hidden;
+          padding-inline: 0 !important;
+          font-size: 0 !important;
+        }
+
+        [data-vorta-mobile-requirements="true"]
+          > div.grid:has(input[placeholder="Search requirements"])
+          > button > span {
+          position: absolute;
+          top: 0.2rem;
+          right: 0.2rem;
         }
       }
 
