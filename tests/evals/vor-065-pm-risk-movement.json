@@ -1,0 +1,77 @@
+[
+  {
+    "id": "vor065-exact-two-pm-reconciliation",
+    "question": "Why did site risk get worse from 5 August 2026 to 6 August 2026?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMention": [
+      "PM-VF02-REJECT-30D",
+      "PM-WFI-SEAL-Q",
+      "recorded PM driver",
+      "does not prove every cause"
+    ],
+    "mustNotMention": [
+      "the two PMs caused the entire site risk",
+      "proved every cause"
+    ],
+    "confidenceMin": 80,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor065-pm-count-mismatch-fail-closed",
+    "question": "What drove the site risk movement from 6 August 2026 to 7 August 2026?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMention": [
+      "counts do not reconcile",
+      "will not claim a verified PM cause"
+    ],
+    "mustNotMention": [
+      "verified PM driver",
+      "caused the overall site-risk score"
+    ],
+    "confidenceMin": 80,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor065-no-positive-pm-delta",
+    "question": "What caused site risk to change from 23 July 2026 to 24 July 2026?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMention": [
+      "no positive overdue-PM count movement"
+    ],
+    "mustNotMention": [
+      "verified PM driver"
+    ],
+    "confidenceMin": 75,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  },
+  {
+    "id": "vor065-previous-shift-boundary",
+    "question": "What is behind the site risk change since the previous shift?",
+    "expectedTools": ["get_site_risk_movement"],
+    "mustMention": [
+      "No verified shift-level site-risk snapshot"
+    ],
+    "mustNotMention": [
+      "the previous shift caused",
+      "shift-level risk increased"
+    ],
+    "confidenceMin": 70,
+    "maxToolCount": 1,
+    "maxDurationMs": 5000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false
+  }
+]
