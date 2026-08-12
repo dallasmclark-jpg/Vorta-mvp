@@ -67,26 +67,38 @@ html.dark {
   box-shadow: none !important;
 }
 
-/* Nested metrics should read as grouped panels, not a second card hierarchy. */
+/*
+ * Site-wide hierarchy rule: a neutral surface inside another neutral card is
+ * structure, not another card. Flatten it into the parent by default so the
+ * interface cannot drift back to grey-card-inside-grey-box styling. Controls
+ * remain visibly interactive, semantic/status colours remain outside this
+ * neutral selector, and genuinely independent nested surfaces can opt out with
+ * data-vorta-keep-surface="true".
+ */
 html [data-vorta-page-content="true"] :where(
   .vorta-card,
   [data-vorta-card="true"],
   :is([class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
-    [class*="bg-[#0"],
-    [class*="bg-[#1"]
-  )
-) :where(
-  :is([class*="rounded-lg"], [class*="rounded-xl"])[class*="border"]:is(
     [class*="bg-[#0"],
     [class*="bg-[#1"],
     [class*="bg-slate-9"],
     [class*="bg-gray-9"],
     :not([class*="bg-"])
   )
-) {
-  border-color: var(--vorta-surface-raised-border) !important;
-  background-color: var(--vorta-surface-raised) !important;
-  box-shadow: var(--vorta-surface-raised-shadow) !important;
+) :where(
+  .vorta-card,
+  [data-vorta-card="true"],
+  :is([class*="rounded-lg"], [class*="rounded-xl"], [class*="rounded-2xl"])[class*="border"]:is(
+    [class*="bg-[#0"],
+    [class*="bg-[#1"],
+    [class*="bg-slate-9"],
+    [class*="bg-gray-9"],
+    :not([class*="bg-"])
+  )
+):not(button):not(a):not([role="button"]):not([role="tab"]):not([role="option"]):not([role="combobox"]):not([data-vorta-keep-surface="true"]) {
+  border-color: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 @media (min-width: 768px) {
