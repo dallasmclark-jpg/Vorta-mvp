@@ -91,22 +91,35 @@ export function EquipmentTabNavigation({
     const activeButton = activeIndex >= 0 ? tabRefs.current[activeIndex] : null;
     if (!activeButton) return;
 
-    const buttonStart = activeButton.offsetLeft;
-    const buttonEnd = buttonStart + activeButton.offsetWidth;
-    const visibleStart = navigation.scrollLeft;
-    const visibleEnd = visibleStart + navigation.clientWidth;
+    if (isPhone) {
+      const centeredLeft = Math.max(
+        0,
+        activeButton.offsetLeft +
+          activeButton.offsetWidth / 2 -
+          navigation.clientWidth / 2,
+      );
+      const maxScrollLeft = Math.max(0, navigation.scrollWidth - navigation.clientWidth);
+      const resolvedLeft = Math.min(centeredLeft, maxScrollLeft);
+      navigation.scrollTo({ left: resolvedLeft, behavior: "auto" });
+      scrollPositionByEquipment.set(equipmentId, resolvedLeft);
+    } else {
+      const buttonStart = activeButton.offsetLeft;
+      const buttonEnd = buttonStart + activeButton.offsetWidth;
+      const visibleStart = navigation.scrollLeft;
+      const visibleEnd = visibleStart + navigation.clientWidth;
 
-    if (buttonStart < visibleStart) {
-      navigation.scrollLeft = buttonStart;
-    } else if (buttonEnd > visibleEnd) {
-      navigation.scrollLeft = buttonEnd - navigation.clientWidth;
+      if (buttonStart < visibleStart) {
+        navigation.scrollLeft = buttonStart;
+      } else if (buttonEnd > visibleEnd) {
+        navigation.scrollLeft = buttonEnd - navigation.clientWidth;
+      }
     }
 
     if (pendingKeyboardFocusByEquipment.get(equipmentId) === activeTab) {
       pendingKeyboardFocusByEquipment.delete(equipmentId);
       activeButton.focus({ preventScroll: true });
     }
-  }, [activeIndex, activeTab, equipmentId, visible]);
+  }, [activeIndex, activeTab, equipmentId, isPhone, visible]);
 
   useLayoutEffect(() => {
     if (!visible || typeof window === "undefined") return;
@@ -222,7 +235,11 @@ export function EquipmentTabNavigation({
         ref={navigationRef}
         onScroll={rememberHorizontalPosition}
         className="flex gap-1 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: "none" }}
+        style={{
+          scrollbarWidth: "none",
+          overscrollBehaviorX: "contain",
+          scrollPaddingInline: "0.75rem",
+        }}
         aria-label="Equipment sections"
         role="tablist"
         aria-orientation="horizontal"
