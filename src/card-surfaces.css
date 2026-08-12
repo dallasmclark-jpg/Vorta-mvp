@@ -1,4 +1,5 @@
 :root {
+  --vorta-card-radius: 18px;
   --vorta-surface-page: #eef2f6;
   --vorta-surface-card: #ffffff;
   --vorta-surface-raised: #f6f8fb;
@@ -33,6 +34,26 @@ html.dark {
 
 [data-vorta-page-content="true"] {
   min-height: 100%;
+}
+
+/*
+ * One card geometry across the product. Keep compact controls on their existing
+ * radii; only shared cards and known card-shaped legacy surfaces inherit the
+ * Netflix-inspired 18px treatment.
+ */
+.vorta-card,
+[data-vorta-card="true"],
+[data-vorta-page-content="true"] :where(
+  :is(div, section, article, aside, li)[class*="rounded-xl"][class*="border"],
+  :is(div, section, article, aside, li)[class*="rounded-2xl"][class*="border"],
+  a[aria-label^="View equipment in "],
+  a[class*="rounded-xl"][class*="border"],
+  [data-vorta-dashboard-card],
+  [data-risk-kpi-card],
+  [data-vorta-inventory-risk-card="true"],
+  button[aria-pressed][class*="border-t-"]
+) {
+  border-radius: var(--vorta-card-radius) !important;
 }
 
 .vorta-card,
