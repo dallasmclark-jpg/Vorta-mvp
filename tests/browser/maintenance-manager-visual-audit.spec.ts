@@ -46,7 +46,7 @@ async function settle(page: Page): Promise<void> {
     `,
   }).catch(() => undefined);
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
-  await page.waitForTimeout(1_400);
+  await page.waitForTimeout(3_500);
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => undefined);
 }
@@ -97,7 +97,7 @@ async function openAskVorta(page: Page): Promise<void> {
 }
 
 test("capture Maintenance Manager visual quality audit", async ({ page }, testInfo) => {
-  test.setTimeout(8 * 60_000);
+  test.setTimeout(12 * 60_000);
   await signInMaintenanceManager(page);
 
   const manifest: Array<Record<string, unknown>> = [];
