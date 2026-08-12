@@ -171,6 +171,7 @@ export function MaintenancePortalHardening(): JSX.Element {
           > div.grid:has(input[placeholder="Search requirements"])
           > button > svg {
           color: rgb(203 213 225) !important;
+          stroke: rgb(203 213 225) !important;
         }
 
         [data-vorta-mobile-requirements="true"]
