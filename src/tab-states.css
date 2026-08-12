@@ -24,6 +24,4 @@ html.dark
 }
 
 /* VOR-089: quiet structural fills while operational borders/labels keep RAG meaning. */
-[data-vorta-risk-intelligence-label]{background:var(--vorta-surface-raised)!important;color:inherit!important}
-.border-orange-500\/20.bg-orange-500\/5{background:var(--vorta-surface-raised)!important}
-[data-vorta-inventory-risk-card]{background:var(--vorta-surface-card)!important}
+[data-vorta-risk-intelligence-label],[data-vorta-dashboard-root] .bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
