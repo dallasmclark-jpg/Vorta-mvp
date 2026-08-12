@@ -46,8 +46,7 @@ async function settle(page: Page): Promise<void> {
     `,
   }).catch(() => undefined);
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
-  await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
-  await page.waitForTimeout(1_200);
+  await page.waitForTimeout(1_400);
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => undefined);
 }
