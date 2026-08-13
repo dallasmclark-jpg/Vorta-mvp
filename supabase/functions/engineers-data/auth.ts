@@ -16,14 +16,13 @@ const ORIGINS = new Set([
     .filter(Boolean),
 ]);
 
-const SITE_WIDE_ROLES = new Set([
+const ALLOWED_ROLES = new Set([
   "vorta_admin",
   "site_admin",
   "maintenance_manager",
   "reliability_engineer",
 ]);
 
-const ENGINEER_ROLE = "engineer";
 const SAFE_PUBLIC_ERROR_STATUSES = new Set([400, 401, 403, 404, 405, 409, 422, 429]);
 
 function normaliseRole(value: unknown): string {
@@ -129,38 +128,12 @@ export async function context(req: Request) {
 
   const access = accessRows?.[0];
   const role = normaliseRole(access?.app_role ?? profile.role);
-  if (!access?.site_id || !access.organisation_id) {
-    throw { status: 403, message: "Portal access could not be verified" };
-  }
-
-  if (!SITE_WIDE_ROLES.has(role) && role !== ENGINEER_ROLE) {
-    throw { status: 403, message: "Engineer evidence access is not permitted for this role" };
-  }
-
-  let engineerId: string | null = null;
-  if (role === ENGINEER_ROLE) {
-    const { data: engineer, error: engineerError } = await db
-      .from("engineers")
-      .select("id")
-      .eq("profile_id", user.id)
-      .eq("organisation_id", access.organisation_id)
-      .eq("site_id", access.site_id)
-      .maybeSingle();
-
-    if (engineerError || !engineer?.id) {
-      throw {
-        status: 403,
-        message: "Engineer profile is not linked to this authenticated account",
-      };
-    }
-    engineerId = engineer.id as string;
+  if (!access?.site_id || !access.organisation_id || !ALLOWED_ROLES.has(role)) {
+    throw { status: 403, message: "Maintenance Manager access required" };
   }
 
   return {
     db,
-    userId: user.id,
-    role,
-    engineerId,
     siteId: access.site_id as string,
     organisationId: access.organisation_id as string,
   };
