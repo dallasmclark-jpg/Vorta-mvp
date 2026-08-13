@@ -96,6 +96,8 @@ html.dark {
  * neutral selector, and genuinely independent nested surfaces can opt out with
  * data-vorta-keep-surface="true". Transparent group frames are excluded as
  * parents so their children remain the single primary surface for that group.
+ * Ask Vorta's composer subtree is also excluded because its bordered input
+ * surface is functional interaction chrome, not nested presentation structure.
  */
 html [data-vorta-page-content="true"] :where(
   .vorta-card,
@@ -117,7 +119,7 @@ html [data-vorta-page-content="true"] :where(
     [class*="bg-gray-9"],
     :not([class*="bg-"])
   )
-):not(button):not(a):not([role="button"]):not([role="tab"]):not([role="option"]):not([role="combobox"]):not([data-vorta-keep-surface="true"]) {
+):not(button):not(a):not([role="button"]):not([role="tab"]):not([role="option"]):not([role="combobox"]):not([data-vorta-keep-surface="true"]):not([data-vorta-global-ai-composer="true"] *) {
   border-color: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
