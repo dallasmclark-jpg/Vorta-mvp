@@ -50,6 +50,15 @@ export function MaintenancePortalHardening(): JSX.Element {
         max-height: calc(100dvh - 1rem);
       }
 
+      @media (min-width: 768px) {
+        [data-vorta-historical-briefing="true"],
+        [data-vorta-maintenance-portal="true"] p.max-w-4xl {
+          max-width: 76ch !important;
+          font-size: 0.9375rem !important;
+          line-height: 1.5rem !important;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         [data-vorta-maintenance-portal="true"] *,
         [data-vorta-maintenance-portal="true"] *::before,
@@ -119,6 +128,32 @@ export function MaintenancePortalHardening(): JSX.Element {
           width: calc(100vw - 0.75rem) !important;
           max-width: calc(100vw - 0.75rem) !important;
           margin-inline: auto;
+        }
+
+        .vorta-theme-control .vorta-theme-trigger {
+          width: 2.5rem;
+          min-width: 2.5rem;
+          justify-content: center;
+          gap: 0 !important;
+          padding-inline: 0 !important;
+        }
+
+        .vorta-theme-control .vorta-theme-trigger > span {
+          display: none;
+        }
+
+        [data-vorta-mobile-requirements="true"] label + button {
+          width: 4.75rem;
+          justify-content: center;
+          gap: 0.375rem !important;
+          padding-inline: 0.375rem !important;
+          font-size: 0.875rem !important;
+        }
+
+        [data-vorta-mobile-requirements="true"] label + button > span {
+          position: absolute;
+          top: 0.15rem;
+          right: 0.15rem;
         }
       }
 
