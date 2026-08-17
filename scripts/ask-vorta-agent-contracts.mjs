@@ -161,8 +161,10 @@ check(
     assistant.includes("findings.push({") &&
     assistant.includes("coverOptions.push({") &&
     assistant.includes("actionPlan.push({") &&
-    assistant.includes("Decision summary") &&
-    assistant.includes("Detailed cover evidence") &&
+    assistant.includes("data-vorta-ai-progressive-decision") &&
+    assistant.includes("Supporting evidence") &&
+    assistant.includes("Recommended actions") &&
+    assistant.includes("data-vorta-ai-source-disclosure") &&
     assistant.includes("More questions") &&
     assistant.includes("Evidence updated") &&
     assistant.includes('"Alternative — "') &&

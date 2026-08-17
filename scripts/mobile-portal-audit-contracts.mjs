@@ -165,7 +165,7 @@ check(
   mobileHardening.includes("height: 100dvh !important") &&
     mobileHardening.includes('content: "What can I help with?"') &&
     mobileHardening.includes("font-size: 0 !important") &&
-    mobileHardening.includes("div:nth-of-type(n+4)") &&
+    !mobileHardening.includes("div:nth-of-type(n+4)") &&
     mobileHardening.includes('data-vorta-fault-panel="true"'),
   "Mobile Vorta AI must use a full-screen chat presentation with a restrained answer and icon-only composer.",
 );
