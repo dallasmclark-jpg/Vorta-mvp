@@ -12,9 +12,14 @@ const preparationPath = resolve(
   repositoryRoot,
   "supabase/migrations/20260801173542_prepare_wrexham_credible_demo_dataset.sql",
 );
+const dailyRefreshPath = resolve(
+  repositoryRoot,
+  "supabase/migrations/20260809145500_vor_033_schedule_guarded_daily_demo_refresh.sql",
+);
 
 const controls = readFileSync(controlsPath, "utf8");
 const preparation = readFileSync(preparationPath, "utf8");
+const dailyRefresh = readFileSync(dailyRefreshPath, "utf8");
 
 const requireText = (source, expected, message) => {
   assert.ok(source.includes(expected), message ?? `Expected migration to include: ${expected}`);
@@ -69,10 +74,25 @@ requireText(preparation, "\\s+rev\\s+demo$");
 requireText(preparation, "private.vorta_refresh_demo_dataset_dates_internal(v_site_id,current_date)");
 requireText(preparation, "VOR-033 demo dataset credibility contract failed");
 
+for (const required of [
+  "refresh-vorta-demo-dataset-daily",
+  "'17 1 * * *'",
+  "private.vorta_refresh_demo_dataset_dates_internal(",
+  "(now() at time zone 'Europe/London')::date",
+  "cron.unschedule(jobid)",
+]) {
+  requireText(dailyRefresh, required, `Daily VOR-033 rolling maintenance must retain ${required}`);
+}
+assert.equal(
+  /\b(public\.vorta_refresh_demo_dataset_dates_internal|anon|authenticated)\b/.test(dailyRefresh),
+  false,
+  "The scheduled demo refresh must call only the private governed refresh and must not grant end-user execution.",
+);
+
 assert.equal(
   /create\s+(or\s+replace\s+)?function\s+public\.vorta_(get|refresh|capture)_demo_dataset/i.test(controls),
   false,
   "The maintenance functions must remain private and unavailable through the public Data API.",
 );
 
-console.log("VOR-033 demo dataset credibility contracts passed.");
+console.log("VOR-033 demo dataset credibility contracts passed, including guarded daily rolling maintenance.");
