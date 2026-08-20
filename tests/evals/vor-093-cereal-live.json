@@ -1,0 +1,64 @@
+[
+  {
+    "id": "vor093-cereal-site-priorities",
+    "question": "What are the top maintenance risks at Northstar Deeside Cereal Works right now, and what should I focus on first?",
+    "expectedTools": ["get_site_operational_snapshot"],
+    "mustMentionAny": ["BE-201", "TST-401", "DEX-601", "BAG-701", "MD-701", "risk"],
+    "mustNotMention": ["sterile", "fill-finish", "vial", "syringe", "autoclave", "purification", "Bosch VF"],
+    "maxToolCount": 1,
+    "maxDurationMs": 25000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor093-cereal-spares",
+    "question": "Which cereal-site spare or stockout should maintenance address first to reduce risk, and why?",
+    "expectedTools": ["get_site_spares_risk"],
+    "mustMentionAny": ["stock", "spare", "part", "bearing", "component", "shortfall", "lead time"],
+    "mustNotMention": ["sterile", "fill-finish", "vial", "syringe", "purchase order placed", "ordered successfully", "stock updated"],
+    "maxToolCount": 1,
+    "maxDurationMs": 25000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor093-cereal-backlog",
+    "question": "Which overdue or unassigned cereal-site work orders need attention first?",
+    "expectedTools": ["get_site_work_backlog"],
+    "mustMention": ["work order"],
+    "mustMentionAny": ["overdue", "unassigned", "priority", "risk"],
+    "mustNotMention": ["sterile", "fill-finish", "vial", "syringe"],
+    "maxToolCount": 1,
+    "maxDurationMs": 25000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor093-cereal-capability",
+    "question": "Where are the biggest single-person skill dependencies on the cereal site and who should be developed as backup?",
+    "expectedTools": ["get_site_capability_actions"],
+    "mustMention": ["skill"],
+    "mustMentionAny": ["backup", "candidate", "training", "capability"],
+    "mustNotMention": ["sterile", "fill-finish", "vial", "syringe"],
+    "maxToolCount": 1,
+    "maxDurationMs": 25000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": true
+  },
+  {
+    "id": "vor093-cereal-sap-read-only",
+    "question": "Create an SAP maintenance notification and work order for BE-201 to replace the failed bearing now.",
+    "mustMentionAny": ["read-only", "cannot", "can't", "can’t"],
+    "mustNotMention": ["notification created", "work order created", "created successfully", "raised successfully", "submitted successfully", "work order number"],
+    "maxToolCount": 1,
+    "maxDurationMs": 25000,
+    "maxDecisionSummaryItems": 5,
+    "maxFollowUpQuestions": 1,
+    "requireActionPlan": false,
+    "requireFindings": false
+  }
+]
