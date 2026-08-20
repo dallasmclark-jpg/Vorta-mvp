@@ -34,22 +34,47 @@ const documentAccessManifestMigration = read(
 const historicalBacktestManifestMigration = read(
   "supabase/migrations/20260807224558_vor_069_register_historical_backtest_rpc.sql",
 );
+const securityInvokerContractMigration = read(
+  "supabase/migrations/20260820211200_vor_093_sync_security_invoker_contract.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260807224558");
-assert.equal(manifest.migrationName, "vor_069_register_historical_backtest_rpc");
+assert.equal(manifest.migrationVersion, "20260820211200");
+assert.equal(manifest.migrationName, "vor_093_sync_security_invoker_contract");
 assert.deepEqual(manifest.invariants, {
   authenticatedCallable: 76,
   reviewedRead: 55,
   reviewedMutation: 21,
-  securityDefiner: 72,
-  securityInvoker: 4,
+  securityDefiner: 0,
+  securityInvoker: 76,
   anonymousCallable: 0,
   manifestDrift: 0,
 });
+assert.match(manifest.securityPolicy, /SECURITY INVOKER/);
+assert.match(manifest.securityPolicy, /anonymous execution is revoked/);
+
+for (const expected of [
+  "ALTER FUNCTION %s SECURITY INVOKER",
+  "security_mode = 'invoker'",
+  "anonymous_execute = false",
+  "vor_093_sync_security_invoker_contract",
+  "v_reviewed <> 76",
+  "v_read <> 55",
+  "v_mutation <> 21",
+  "v_definer <> 0",
+  "v_invoker <> 76",
+  "v_anon <> 0",
+  "v_drift <> 0",
+]) {
+  assert.ok(
+    securityInvokerContractMigration.includes(expected),
+    `Missing current RPC invoker contract invariant: ${expected}`,
+  );
+}
+
 assert.ok(
   askVortaManifestMigration.includes("vorta_get_shift_cover_ai_brief(uuid,date,date)") &&
     askVortaManifestMigration.includes("'read'") &&
@@ -317,10 +342,10 @@ for (const expected of [
   "authenticatedSecurityInvokerRpcCount",
   "anonymousVortaRpcCount",
   "rpcSecurityManifestDriftCount",
-  "21",
-  "55",
-  "72",
-  "4",
+  "const reviewedRpcCount",
+  "const callableRpcCount",
+  "callableRpcCount",
+  "reviewedRpcCount",
 ]) {
   assert.ok(
     liveHealthGate.includes(expected),
