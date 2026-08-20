@@ -9,7 +9,10 @@ const corsHeaders = {
 
 const BUCKET = "vorta-media";
 const MAX_BYTES = 5 * 1024 * 1024;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// PostgreSQL's uuid type accepts UUID-shaped values whose version/variant bits are
+// not RFC-generated. Vorta uses deterministic UUID values for some seeded assets;
+// syntax is checked here, while record existence/site authorization remains RLS-gated.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_ROLES = new Set(["maintenance_manager", "site_admin", "vorta_admin"]);
 const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
