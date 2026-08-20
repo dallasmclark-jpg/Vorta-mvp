@@ -1,0 +1,100 @@
+name: VOR-093 cereal media production verification
+
+on:
+  push:
+    branches:
+      - agent/vor-093-cereal-media-render-gate
+    paths:
+      - tests/browser/vor-093-cereal-media-production.spec.ts
+      - .github/workflows/vor-093-cereal-media-production.yml
+      - tests/browser/maintenance-manager-auth.setup.ts
+      - tests/browser/maintenance-manager-test-helpers.ts
+      - playwright.config.ts
+  pull_request:
+    paths:
+      - tests/browser/vor-093-cereal-media-production.spec.ts
+      - .github/workflows/vor-093-cereal-media-production.yml
+      - src/lib/entityMedia.ts
+      - src/screens/Equipment/VerifiedEquipmentImage.tsx
+      - src/screens/StoresInventory/ManagedSpareImage.tsx
+      - supabase/functions/cache-verified-media/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-093-cereal-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cereal-media:
+    name: Verify cereal media on production
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VORTA_E2E_BASE_URL: https://vorta-app.netlify.app
+      VORTA_E2E_EMAIL: cereal@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000004
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+
+    steps:
+      - name: Check out verification code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Verify cereal browser-test credentials
+        shell: bash
+        run: |
+          test "$VORTA_E2E_EMAIL" = "cereal@vorta.network" || {
+            echo "The VOR-093 media gate must use cereal@vorta.network." >&2
+            exit 1
+          }
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured." >&2
+            exit 1
+          }
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Clear inherited browser auth state
+        run: rm -f playwright/.auth/maintenance-manager.json
+
+      - name: Cache and decode every distinct cereal media source
+        run: >-
+          npx playwright test --config=playwright.config.ts
+          tests/browser/vor-093-cereal-media-production.spec.ts
+          --project=laptop-1366
+          --grep "caches and browser-decodes every distinct cereal media source"
+
+      - name: Verify responsive production media components
+        run: >-
+          npx playwright test --config=playwright.config.ts
+          tests/browser/vor-093-cereal-media-production.spec.ts
+          --project=phone-360
+          --project=samsung-tablet-portrait
+          --project=laptop-1366
+          --grep "production UI exposes working managed equipment and spare images"
+
+      - name: Preserve Playwright evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-093-cereal-media-${{ github.sha }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
