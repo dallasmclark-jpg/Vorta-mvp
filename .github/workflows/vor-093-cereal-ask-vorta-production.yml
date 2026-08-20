@@ -1,0 +1,80 @@
+name: VOR-093 cereal Ask Vorta production verification
+
+on:
+  push:
+    branches:
+      - agent/vor-093-cereal-media-render-gate
+    paths:
+      - tests/evals/vor-093-cereal-live.json
+      - .github/workflows/vor-093-cereal-ask-vorta-production.yml
+      - scripts/ask-vorta-live-evals.mjs
+      - netlify/functions/ask-vorta.mts
+      - netlify/functions/ask-vorta/**
+  pull_request:
+    paths:
+      - tests/evals/vor-093-cereal-live.json
+      - .github/workflows/vor-093-cereal-ask-vorta-production.yml
+      - scripts/ask-vorta-live-evals.mjs
+      - netlify/functions/ask-vorta.mts
+      - netlify/functions/ask-vorta/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vor-093-cereal-ask-vorta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cereal-ask-vorta:
+    name: Verify cereal Ask Vorta on production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VORTA_EVAL_BASE_URL: https://vorta-app.netlify.app
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VORTA_E2E_EMAIL: cereal@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_EVAL_SITE_ID: 11000000-0000-0000-0000-000000000004
+      VORTA_EVAL_SCENARIOS: tests/evals/vor-093-cereal-live.json
+      VORTA_EVAL_DELAY_MS: 250
+      VORTA_EVAL_RATE_LIMIT_RETRY_MS: 310000
+      VORTA_EVAL_RATE_LIMIT_MAX_RETRIES: 1
+
+    steps:
+      - name: Check out exact verification source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Verify cereal protected credentials
+        shell: bash
+        run: |
+          test "$VORTA_E2E_EMAIL" = "cereal@vorta.network" || exit 1
+          test "$VORTA_EVAL_SITE_ID" = "11000000-0000-0000-0000-000000000004" || exit 1
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured." >&2
+            exit 1
+          }
+
+      - name: Run cereal-authenticated Ask Vorta production decisions
+        shell: bash
+        run: node scripts/ask-vorta-live-evals.mjs tests/evals/vor-093-cereal-live.json | tee vor-093-cereal-ask-vorta.log
+
+      - name: Preserve Ask Vorta evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-093-cereal-ask-vorta-${{ github.sha }}
+          path: vor-093-cereal-ask-vorta.log
+          if-no-files-found: error
+          retention-days: 14
