@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
-  getStoredSupabaseAccessToken,
   maintenanceManagerEmail,
+  signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
 const CEREAL_SITE_ID =
@@ -46,6 +46,37 @@ function authenticatedHeaders(accessToken: string): Record<string, string> {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
+}
+
+async function authenticateCerealApi(page: Page): Promise<string> {
+  const password = process.env.VORTA_E2E_PASSWORD ?? "";
+  expect(password, "VORTA_E2E_PASSWORD must be configured").not.toBe("");
+
+  const response = await page.request.post(
+    `${supabaseUrl}/auth/v1/token?grant_type=password`,
+    {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      data: {
+        email: CEREAL_EMAIL,
+        password,
+      },
+      timeout: 30_000,
+    },
+  );
+  const raw = await response.text();
+  expect(response.ok(), `Cereal Supabase Auth failed: ${raw}`).toBe(true);
+
+  const payload = JSON.parse(raw) as { access_token?: unknown };
+  expect(
+    typeof payload.access_token,
+    "Cereal Supabase Auth returned no access token",
+  ).toBe("string");
+  return String(payload.access_token);
 }
 
 async function loadVisibleMediaRecords(
@@ -203,12 +234,6 @@ async function expectRenderedImage(container: Locator, label: string): Promise<v
     .toBe(true);
 }
 
-async function openAuthenticatedProduction(page: Page): Promise<string> {
-  await page.goto("/dashboard");
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
-  return getStoredSupabaseAccessToken(page);
-}
-
 test.beforeEach(async () => {
   expect(supabaseUrl, "VITE_SUPABASE_URL must be configured").not.toBe("");
   expect(supabaseAnonKey, "VITE_SUPABASE_ANON_KEY must be configured").not.toBe("");
@@ -227,7 +252,8 @@ test("VOR-093 caches and browser-decodes every distinct cereal media source", as
     "The full media sweep runs once; responsive UI checks run separately.",
   );
 
-  const accessToken = await openAuthenticatedProduction(page);
+  await signInMaintenanceManager(page);
+  const accessToken = await authenticateCerealApi(page);
   const equipment = await loadVisibleMediaRecords(page, accessToken, "equipment");
   const spares = await loadVisibleMediaRecords(page, accessToken, "spare");
 
@@ -262,7 +288,8 @@ test("VOR-093 cereal production UI exposes working managed equipment and spare i
 }) => {
   test.setTimeout(120_000);
 
-  const accessToken = await openAuthenticatedProduction(page);
+  await signInMaintenanceManager(page);
+  const accessToken = await authenticateCerealApi(page);
   const equipment = await loadVisibleMediaRecords(page, accessToken, "equipment");
   expect(equipment).toHaveLength(35);
 
