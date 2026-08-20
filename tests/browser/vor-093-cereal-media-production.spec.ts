@@ -270,16 +270,27 @@ test("VOR-093 caches and browser-decodes every distinct cereal media source", as
   expect(spareSources.length).toBeGreaterThan(0);
 
   let passed = 0;
+  const failures: string[] = [];
   for (const target of targets) {
-    await cacheAndDecodeSource(page, accessToken, target);
-    passed += 1;
+    try {
+      await cacheAndDecodeSource(page, accessToken, target);
+      passed += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${target.entityType}:${target.record.label} -> ${message}`);
+      console.error(`[VOR-093 media failure] ${failures[failures.length - 1]}`);
+    }
   }
 
   console.log(
     `[VOR-093 media] equipment=${equipment.length} spares=${spares.length} ` +
       `uniqueEquipment=${equipmentSources.length} uniqueSpares=${spareSources.length} ` +
-      `browserDecoded=${passed}`,
+      `browserDecoded=${passed} failures=${failures.length}`,
   );
+  expect(
+    failures,
+    `Cereal media failures:\n${failures.join("\n")}`,
+  ).toEqual([]);
   expect(passed).toBe(targets.length);
 });
 
