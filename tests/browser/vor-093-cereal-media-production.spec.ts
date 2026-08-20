@@ -203,6 +203,12 @@ async function expectRenderedImage(container: Locator, label: string): Promise<v
     .toBe(true);
 }
 
+async function openAuthenticatedProduction(page: Page): Promise<string> {
+  await page.goto("/dashboard");
+  await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 30_000 });
+  return getStoredSupabaseAccessToken(page);
+}
+
 test.beforeEach(async () => {
   expect(supabaseUrl, "VITE_SUPABASE_URL must be configured").not.toBe("");
   expect(supabaseAnonKey, "VITE_SUPABASE_ANON_KEY must be configured").not.toBe("");
@@ -221,7 +227,7 @@ test("VOR-093 caches and browser-decodes every distinct cereal media source", as
     "The full media sweep runs once; responsive UI checks run separately.",
   );
 
-  const accessToken = await getStoredSupabaseAccessToken(page);
+  const accessToken = await openAuthenticatedProduction(page);
   const equipment = await loadVisibleMediaRecords(page, accessToken, "equipment");
   const spares = await loadVisibleMediaRecords(page, accessToken, "spare");
 
@@ -256,7 +262,7 @@ test("VOR-093 cereal production UI exposes working managed equipment and spare i
 }) => {
   test.setTimeout(120_000);
 
-  const accessToken = await getStoredSupabaseAccessToken(page);
+  const accessToken = await openAuthenticatedProduction(page);
   const equipment = await loadVisibleMediaRecords(page, accessToken, "equipment");
   expect(equipment).toHaveLength(35);
 
