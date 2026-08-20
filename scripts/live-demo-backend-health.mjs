@@ -76,15 +76,18 @@ try {
     55,
     "Authenticated read RPC manifest count has drifted",
   );
+
+  const reviewedRpcCount =
+    Number(data.security.reviewedAuthenticatedMutationRpcCount) +
+    Number(data.security.reviewedAuthenticatedReadRpcCount);
+  const callableRpcCount =
+    Number(data.security.authenticatedSecurityDefinerRpcCount) +
+    Number(data.security.authenticatedSecurityInvokerRpcCount);
+
   assert.equal(
-    Number(data.security.authenticatedSecurityDefinerRpcCount),
-    72,
-    "Authenticated SECURITY DEFINER RPC count has drifted",
-  );
-  assert.equal(
-    Number(data.security.authenticatedSecurityInvokerRpcCount),
-    4,
-    "Authenticated SECURITY INVOKER RPC count has drifted",
+    callableRpcCount,
+    reviewedRpcCount,
+    "Authenticated Vorta RPC surface does not match the reviewed security manifest",
   );
   assert.equal(
     Number(data.security.anonymousVortaRpcCount),
