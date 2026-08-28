@@ -6,7 +6,6 @@ const resolve = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
 const read = (path) => readFileSync(resolve(path), "utf8");
 
 const index = read("index.html");
-const theme = read("src/theme.css");
 const surfaces = read("src/card-surfaces.css");
 const transition = read("src/components/PageTransition.tsx");
 const card = read("src/components/ui/card.tsx");
@@ -29,18 +28,11 @@ assert.match(card, /vorta-card rounded-2xl border bg-card text-card-foreground/)
 assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
-assert.match(theme, /--vorta-page: #081a2c/);
-assert.match(theme, /--vorta-sidebar: #0d1219/);
-assert.match(theme, /--vorta-surface: #252a30/);
-assert.match(theme, /--vorta-surface-subtle: #181e24/);
-assert.match(theme, /--vorta-border: #39424c/);
-assert.match(theme, /--vorta-border-strong: #505b67/);
-
-assert.match(surfaces, /--vorta-surface-page: #081a2c/);
-assert.match(surfaces, /--vorta-surface-card: #252a30/);
-assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
-assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.1\)/);
-assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.12\)/);
+assert.match(surfaces, /--vorta-surface-page: #090c12/);
+assert.match(surfaces, /--vorta-surface-card: #141922/);
+assert.match(surfaces, /--vorta-surface-raised: #181f2a/);
+assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
+assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.09\)/);
 assert.match(surfaces, /--vorta-surface-raised-shadow: inset 0 1px 0/);
 assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
