@@ -30,17 +30,17 @@ assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
 assert.match(theme, /--vorta-page: #081a2c/);
-assert.match(theme, /--vorta-sidebar: #0a1624/);
-assert.match(theme, /--vorta-surface: #1b2633/);
-assert.match(theme, /--vorta-surface-subtle: #132131/);
-assert.match(theme, /--vorta-border: #2c3a49/);
-assert.match(theme, /--vorta-border-strong: #405064/);
+assert.match(theme, /--vorta-sidebar: #0d1219/);
+assert.match(theme, /--vorta-surface: #252a30/);
+assert.match(theme, /--vorta-surface-subtle: #181e24/);
+assert.match(theme, /--vorta-border: #39424c/);
+assert.match(theme, /--vorta-border-strong: #505b67/);
 
 assert.match(surfaces, /--vorta-surface-page: #081a2c/);
-assert.match(surfaces, /--vorta-surface-card: #1b2633/);
-assert.match(surfaces, /--vorta-surface-raised: #22303e/);
-assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.08\)/);
-assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.11\)/);
+assert.match(surfaces, /--vorta-surface-card: #252a30/);
+assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
+assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.1\)/);
+assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.12\)/);
 assert.match(surfaces, /--vorta-surface-raised-shadow: inset 0 1px 0/);
 assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
 assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
