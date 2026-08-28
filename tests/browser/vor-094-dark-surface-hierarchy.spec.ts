@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { expectNoPageOverflow } from "./maintenance-manager-test-helpers";
+import {
+  expectNoPageOverflow,
+  signInMaintenanceManager,
+} from "./maintenance-manager-test-helpers";
 
 test("VOR-094 renders a navy page with neutral graphite card hierarchy", async ({ page }, testInfo) => {
-  await page.goto("/dashboard");
-  await page.waitForURL(/\/dashboard(?:\?.*)?$/);
+  await signInMaintenanceManager(page);
+  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 
   const root = page.locator("html");
   await expect(root).toHaveClass(/dark/);
