@@ -39,6 +39,11 @@ html.dark body {
   color-scheme: dark;
 }
 
+html.dark [data-vorta-sidebar="true"] {
+  border-color: var(--vorta-border) !important;
+  background-color: var(--vorta-sidebar) !important;
+}
+
 html.light ::selection {
   background: rgba(59, 130, 246, 0.2);
   color: #0f172a;
