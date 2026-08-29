@@ -26,13 +26,14 @@ html.dark
 /* VOR-089: quiet structural fills while operational borders/labels keep RAG meaning. */
 [data-vorta-risk-intelligence-label],.bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
 
-/* VOR-095: keep the approved fills, but make the dark canvas and card hierarchy read with more depth. */
+/* VOR-095: match the approved deep-navy reference without changing card fills or hierarchy. */
 html.dark {
+  --vorta-surface-page: #000c1c;
   --vorta-surface-page-image: linear-gradient(
     180deg,
-    rgba(13, 42, 58, 0.55) 0%,
-    rgba(10, 30, 45, 0.42) 38%,
-    rgba(11, 14, 20, 0) 100%
+    rgba(0, 20, 44, 0.42) 0%,
+    rgba(0, 14, 32, 0.26) 42%,
+    rgba(0, 12, 28, 0) 100%
   );
   --vorta-surface-border: rgba(148, 163, 184, 0.19);
   --vorta-surface-raised-border: rgba(148, 163, 184, 0.10);
