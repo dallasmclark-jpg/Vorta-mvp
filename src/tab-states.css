@@ -25,3 +25,33 @@ html.dark
 
 /* VOR-089: quiet structural fills while operational borders/labels keep RAG meaning. */
 [data-vorta-risk-intelligence-label],.bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
+
+/* VOR-095: keep the approved fills, but make the dark canvas and card hierarchy read with more depth. */
+html.dark {
+  --vorta-surface-page-image: linear-gradient(
+    180deg,
+    rgba(13, 42, 58, 0.55) 0%,
+    rgba(10, 30, 45, 0.42) 38%,
+    rgba(11, 14, 20, 0) 100%
+  );
+  --vorta-surface-border: rgba(148, 163, 184, 0.19);
+  --vorta-surface-raised-border: rgba(148, 163, 184, 0.10);
+  --vorta-surface-shadow: 0 16px 38px rgba(0, 0, 0, 0.36), inset 0 1px 0 var(--vorta-surface-highlight);
+  --vorta-surface-raised-shadow: 0 8px 20px rgba(0, 0, 0, 0.20), inset 0 1px 0 var(--vorta-surface-highlight);
+}
+
+/* The dashboard scope selection should sit on the raised surface, not a black tile. */
+html.dark
+  [data-vorta-portal-shell="true"]
+  [data-vorta-dashboard-root="true"]
+  [aria-label="Risk intelligence scope"]
+  [role="tab"][aria-selected="true"] {
+  background: var(--vorta-surface-raised) !important;
+}
+
+/* Risk badges stay fill-free while retaining a visible semantic-colour outline. */
+html.dark
+  [data-vorta-dashboard-root="true"]
+  span.inline-flex[class*="-500/20"] {
+  border: 1px solid currentColor !important;
+}
