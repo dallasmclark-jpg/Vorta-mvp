@@ -62,6 +62,7 @@ assert.doesNotMatch(surfaces, /aria-label="Handover scope level"/);
 assert.doesNotMatch(surfaces, /grid-cols-3/);
 
 assert.match(dashboard, /data-vorta-group-frame="true"/);
+assert.match(dashboard, /data-vorta-embedded-ai="true"/);
 assert.match(equipmentSpares, /data-vorta-group-frame="true"/);
 assert.match(equipmentSpares, /Spares Resilience Briefing/);
 assert.match(mobileEquipment, /data-vorta-mobile-equipment="true"/);
@@ -103,6 +104,10 @@ assert.match(
   tabs,
   /span\.inline-flex\[class\*="-500\/20"\][\s\S]*border: 1px solid currentColor !important/,
 );
+assert.match(
+  tabs,
+  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*background-color: transparent !important/,
+);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
@@ -111,4 +116,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, darker approved navy canvas, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, darker approved navy canvas, transparent dashboard Ask Vorta input, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
