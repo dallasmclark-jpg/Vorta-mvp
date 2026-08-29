@@ -106,7 +106,7 @@ assert.match(
 );
 assert.match(
   tabs,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg\[#0f1218\]"\][\s\S]*background-color: transparent !important/,
+  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*background-color: transparent !important/,
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
