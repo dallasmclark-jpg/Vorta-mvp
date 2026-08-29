@@ -46,7 +46,10 @@ function LinkedInIcon() {
 
 function TopNav() {
   return (
-    <header className="flex h-16 w-full items-center border-b border-gray-800 bg-[#090b10] px-6 md:px-10">
+    <header
+      style={{ backgroundColor: "#07131f" }}
+      className="flex h-16 w-full items-center border-b border-gray-800 px-6 md:px-10"
+    >
       <a
         href="/"
         aria-label="Vorta home"
@@ -406,7 +409,10 @@ export const LoginPage = (): JSX.Element => {
     submitting || sendingReset || submittingLinkedIn || verifyingAccess;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0e14]">
+    <div
+      style={{ backgroundColor: "#07131f" }}
+      className="flex min-h-screen flex-col"
+    >
       <TopNav />
 
       <main className="flex flex-1 items-center justify-center px-4 py-16">
