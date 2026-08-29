@@ -164,7 +164,7 @@ html.dark [data-vorta-page-content="true"] :is(
 
   [data-vorta-page-content="true"] [data-vorta-group-frame="true"]:hover {
     box-shadow: none !important;
-    transform: none !important;
+    transform: none;
   }
 }
 
