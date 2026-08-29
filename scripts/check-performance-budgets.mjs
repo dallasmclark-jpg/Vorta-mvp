@@ -7,11 +7,11 @@ const budgets = {
   // existing reviewed allowance includes the shared nested-surface correction.
   // VOR-014 adds a measured 2.3 KiB without changing the largest-JavaScript or
   // total-distribution ceilings. VOR-068 adds the verified rota headcount/status
-  // surface. VOR-095 adds only the measured shared navy background CSS; retain
-  // a tight CSS ceiling without relaxing JavaScript or total-dist limits.
+  // surface. VOR-095 dark-surface polish measures 163.7 KiB of production CSS;
+  // retain a tight CSS ceiling without relaxing JavaScript or total-dist limits.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 167_200,
+  totalCssBytes: 168_100,
   totalDistBytes: 3_600_000,
 };
 

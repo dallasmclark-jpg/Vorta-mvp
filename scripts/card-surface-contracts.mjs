@@ -86,7 +86,22 @@ assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
 assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:transparent!important\}/);
-assert.doesNotMatch(tabs, /VOR-095/);
+assert.match(tabs, /VOR-095/);
+assert.match(tabs, /rgba\(13, 42, 58, 0\.55\) 0%/);
+assert.match(tabs, /rgba\(10, 30, 45, 0\.42\) 38%/);
+assert.match(tabs, /rgba\(11, 14, 20, 0\) 100%/);
+assert.match(tabs, /--vorta-surface-border: rgba\(148, 163, 184, 0\.19\)/);
+assert.match(tabs, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.10\)/);
+assert.match(tabs, /--vorta-surface-shadow: 0 16px 38px rgba\(0, 0, 0, 0\.36\)/);
+assert.match(tabs, /--vorta-surface-raised-shadow: 0 8px 20px rgba\(0, 0, 0, 0\.20\)/);
+assert.match(
+  tabs,
+  /\[aria-label="Risk intelligence scope"\][\s\S]*\[role="tab"\]\[aria-selected="true"\][\s\S]*background: var\(--vorta-surface-raised\) !important/,
+);
+assert.match(
+  tabs,
+  /span\.inline-flex\[class\*="-500\/20"\][\s\S]*border: 1px solid currentColor !important/,
+);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
@@ -95,4 +110,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, restrained navy depth, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, refined navy depth, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
