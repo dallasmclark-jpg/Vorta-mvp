@@ -13,6 +13,7 @@ const card = read("src/components/ui/card.tsx");
 const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
 const mobileEquipment = read("src/screens/Equipment/MobileEquipmentSection.tsx");
 const shiftHandover = read("src/screens/ShiftHandover/ShiftHandoverSection.tsx");
+const login = read("src/screens/Login/LoginPage.tsx");
 const dashboard = read(
   "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
 );
@@ -29,16 +30,19 @@ assert.match(card, /vorta-card rounded-2xl border bg-card text-card-foreground/)
 assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
-assert.match(surfaces, /--vorta-surface-page: #081a2c/);
+assert.match(surfaces, /--vorta-surface-page: #07131f/);
 assert.match(surfaces, /--vorta-surface-card: #252a30/);
 assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
 assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
 assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.09\)/);
 assert.match(surfaces, /--vorta-surface-raised-shadow: inset 0 1px 0/);
 assert.doesNotMatch(surfaces, /--vorta-surface-raised-shadow: 0 [1-9]/);
-assert.match(surfaces, /\[data-vorta-portal-shell="true"\]/);
-assert.match(surfaces, /\[data-vorta-page-content="true"\]/);
+assert.match(surfaces, /\[data-vorta-portal-shell\]/);
+assert.match(surfaces, /\[data-vorta-page-content\]/);
+assert.match(surfaces, /\[data-vorta-sidebar\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
+assert.match(login, /style=\{\{ backgroundColor: "#07131f" \}\}/);
+assert.doesNotMatch(login, /bg-\[#090b10\]/);
 assert.match(surfaces, /Group-only frames are declared by component intent/);
 assert.match(surfaces, /\[data-vorta-group-frame="true"\]/);
 assert.match(surfaces, /background-color: transparent !important/);
@@ -85,4 +89,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, approved dark surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, unified dark background, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
