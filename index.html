@@ -46,6 +46,7 @@
 <style>
   :root{--vls-bg:#f8fafc;--vls-panel:#fff;--vls-border:#cbd5e1;--vls-mark:#0f172a}
   html.dark{--vls-bg:#0b0e14;--vls-panel:#0d1117;--vls-border:#1a2e4a;--vls-mark:#f8fafc}
+  html.dark [data-vorta-page-content="true"] span.inline-flex[class*="-500/20"]{background-color:transparent!important}
   #vls{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--vls-bg);z-index:9999}
   #vls-halo{position:absolute;width:155px;height:155px;border-radius:38px;background:radial-gradient(ellipse at center,rgba(59,130,246,.08) 0%,transparent 70%);pointer-events:none;animation:vls-halo 2.4s ease-in-out infinite}
   @keyframes vls-pulse{0%{stroke-dashoffset:341}100%{stroke-dashoffset:-341}}
