@@ -439,7 +439,8 @@ function Sidebar({ homeRoute, nav, secondaryNav, accent, forceLabels = false, on
     <aside
       data-vorta-sidebar="true"
       data-vorta-sidebar-variant={forceLabels ? "mobile" : "desktop"}
-      className={`relative flex h-full max-h-[100dvh] w-full flex-col border-gray-800 bg-[#081a2c] px-2 py-5 2xl:px-4 overflow-hidden ${
+      style={{ backgroundColor: "#081a2c" }}
+      className={`relative flex h-full max-h-[100dvh] w-full flex-col border-gray-800 px-2 py-5 2xl:px-4 overflow-hidden ${
         forceLabels ? "border-l border-r-0" : "border-r"
       }`}
     >
