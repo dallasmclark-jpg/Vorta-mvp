@@ -47,7 +47,7 @@ function LinkedInIcon() {
 function TopNav() {
   return (
     <header
-      style={{ backgroundColor: "#07131f" }}
+      style={{ backgroundColor: "#0b0e14" }}
       className="flex h-16 w-full items-center border-b border-gray-800 px-6 md:px-10"
     >
       <a
@@ -410,7 +410,7 @@ export const LoginPage = (): JSX.Element => {
 
   return (
     <div
-      style={{ backgroundColor: "#07131f" }}
+      style={{ backgroundColor: "#0b0e14" }}
       className="flex min-h-screen flex-col"
     >
       <TopNav />
