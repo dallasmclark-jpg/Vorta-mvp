@@ -14,12 +14,12 @@
 }
 
 html.dark {
-  --vorta-surface-page: #0b0e14;
+  --vorta-surface-page: #000c1c;
   --vorta-surface-page-image: linear-gradient(
     180deg,
-    rgba(16, 52, 71, 0.72) 0%,
-    rgba(12, 36, 51, 0.62) 38%,
-    rgba(11, 14, 20, 0) 100%
+    rgba(0, 20, 44, 0.42) 0%,
+    rgba(0, 14, 32, 0.26) 42%,
+    rgba(0, 12, 28, 0) 100%
   );
   --vorta-surface-card: #252a30;
   --vorta-surface-raised: #2d333a;
