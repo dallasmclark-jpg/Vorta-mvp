@@ -30,7 +30,7 @@ assert.match(card, /vorta-card rounded-2xl border bg-card text-card-foreground/)
 assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
-assert.match(surfaces, /--vorta-surface-page: #07131f/);
+assert.match(surfaces, /--vorta-surface-page: #0b0e14/);
 assert.match(surfaces, /--vorta-surface-card: #252a30/);
 assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
 assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
@@ -41,8 +41,8 @@ assert.match(surfaces, /\[data-vorta-portal-shell\]/);
 assert.match(surfaces, /\[data-vorta-page-content\]/);
 assert.match(surfaces, /\[data-vorta-sidebar\]/);
 assert.match(surfaces, /\[data-vorta-card="true"\]/);
-assert.match(login, /style=\{\{ backgroundColor: "#07131f" \}\}/);
-assert.doesNotMatch(login, /bg-\[#090b10\]/);
+assert.match(login, /style=\{\{ backgroundColor: "#0b0e14" \}\}/);
+assert.doesNotMatch(login, /#07131f/);
 assert.match(surfaces, /Group-only frames are declared by component intent/);
 assert.match(surfaces, /\[data-vorta-group-frame="true"\]/);
 assert.match(surfaces, /background-color: transparent !important/);
@@ -89,4 +89,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, unified dark background, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, restored login background, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
