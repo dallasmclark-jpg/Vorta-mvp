@@ -25,6 +25,3 @@ html.dark
 
 /* VOR-089: quiet structural fills while operational borders/labels keep RAG meaning. */
 [data-vorta-risk-intelligence-label],.bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
-
-/* VOR-095: remove only the filled background from existing semantic risk badges. */
-html.dark [data-vorta-page-content="true"] span.inline-flex[class*="-500/20"]{background-color:transparent!important}
