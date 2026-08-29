@@ -56,3 +56,10 @@ html.dark
   span.inline-flex[class*="-500/20"] {
   border: 1px solid currentColor !important;
 }
+
+/* Dashboard Ask Vorta keeps its input outline but lets the navy canvas show through. */
+html.dark
+  [data-vorta-embedded-ai="true"]
+  [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
+  background-color: transparent !important;
+}
