@@ -87,10 +87,10 @@ assert.match(surfaces, /focus-visible/);
 
 assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:transparent!important\}/);
 assert.match(tabs, /VOR-095/);
-assert.match(tabs, /--vorta-surface-page: #000c1c/);
-assert.match(tabs, /rgba\(0, 20, 44, 0\.42\) 0%/);
-assert.match(tabs, /rgba\(0, 14, 32, 0\.26\) 42%/);
-assert.match(tabs, /rgba\(0, 12, 28, 0\) 100%/);
+assert.match(tabs, /--vorta-surface-page: #000814/);
+assert.match(tabs, /rgba\(0, 14, 32, 0\.28\) 0%/);
+assert.match(tabs, /rgba\(0, 10, 24, 0\.16\) 42%/);
+assert.match(tabs, /rgba\(0, 8, 20, 0\) 100%/);
 assert.match(tabs, /--vorta-surface-border: rgba\(148, 163, 184, 0\.19\)/);
 assert.match(tabs, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.10\)/);
 assert.match(tabs, /--vorta-surface-shadow: 0 16px 38px rgba\(0, 0, 0, 0\.36\)/);
@@ -111,4 +111,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, approved deep-navy reference, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, darker approved navy canvas, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
