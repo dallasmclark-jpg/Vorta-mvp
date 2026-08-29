@@ -66,7 +66,7 @@ mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject
 for (const [name, value] of [
   ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "167_200"],
+  ["totalCssBytes", "168_100"],
   ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
@@ -74,7 +74,7 @@ for (const [name, value] of [
 mustMatch(performance, /nested-surface correction/, "The existing reviewed CSS allowance must remain tied to the card correction");
 mustMatch(performance, /VOR-014 adds a measured 2\.3 KiB/, "The Stores Inventory CSS allowance must remain explicitly measured and reviewed");
 mustMatch(performance, /VOR-068 adds the verified rota headcount\/status/, "The VOR-068 CSS allowance must remain explicitly measured and reviewed");
-mustMatch(performance, /VOR-095 adds only the measured shared navy background CSS/, "The VOR-095 CSS allowance must remain limited to the reviewed shared background treatment");
+mustMatch(performance, /VOR-095 dark-surface polish measures 163\.7 KiB/, "The VOR-095 CSS allowance must remain tied to the measured production styling cost");
 mustMatch(performance, /without relaxing JavaScript or total-dist limits/, "The VOR-095 allowance must not relax JavaScript or total-dist limits");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
