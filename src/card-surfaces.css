@@ -13,9 +13,9 @@
 }
 
 html.dark {
-  --vorta-surface-page: #090c12;
-  --vorta-surface-card: #141922;
-  --vorta-surface-raised: #181f2a;
+  --vorta-surface-page: #081a2c;
+  --vorta-surface-card: #252a30;
+  --vorta-surface-raised: #2d333a;
   --vorta-surface-border: rgba(148, 163, 184, 0.14);
   --vorta-surface-raised-border: rgba(148, 163, 184, 0.05);
   --vorta-surface-divider: rgba(148, 163, 184, 0.09);

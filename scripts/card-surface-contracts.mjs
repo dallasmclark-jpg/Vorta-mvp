@@ -7,6 +7,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 
 const index = read("index.html");
 const surfaces = read("src/card-surfaces.css");
+const tabs = read("src/tab-states.css");
 const transition = read("src/components/PageTransition.tsx");
 const card = read("src/components/ui/card.tsx");
 const equipmentSpares = read("src/screens/Equipment/EquipmentSpares.tsx");
@@ -28,9 +29,9 @@ assert.match(card, /vorta-card rounded-2xl border bg-card text-card-foreground/)
 assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
-assert.match(surfaces, /--vorta-surface-page: #090c12/);
-assert.match(surfaces, /--vorta-surface-card: #141922/);
-assert.match(surfaces, /--vorta-surface-raised: #181f2a/);
+assert.match(surfaces, /--vorta-surface-page: #081a2c/);
+assert.match(surfaces, /--vorta-surface-card: #252a30/);
+assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
 assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
 assert.match(surfaces, /--vorta-surface-divider: rgba\(148, 163, 184, 0\.09\)/);
 assert.match(surfaces, /--vorta-surface-raised-shadow: inset 0 1px 0/);
@@ -74,6 +75,14 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
+assert.match(tabs, /VOR-095: risk-level badges keep semantic text colours without same-hue fills/);
+assert.match(tabs, /bg-red-500\/20/);
+assert.match(tabs, /bg-orange-500\/20/);
+assert.match(tabs, /bg-yellow-500\/20/);
+assert.match(tabs, /bg-emerald-500\/20/);
+assert.match(tabs, /bg-cyan-500\/20/);
+assert.match(tabs, /background-color: transparent !important/);
+
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/);
@@ -81,4 +90,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, approved dark surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
