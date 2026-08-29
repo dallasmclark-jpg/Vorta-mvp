@@ -75,9 +75,8 @@ assert.match(surfaces, /@media \(hover: hover\) and \(pointer: fine\)/);
 assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
-assert.match(tabs, /VOR-095: remove only the filled background from existing semantic risk badges/);
-assert.match(tabs, /span\.inline-flex\[class\*="-500\/20"\]/);
-assert.match(tabs, /background-color:transparent!important/);
+assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:transparent!important\}/);
+assert.doesNotMatch(tabs, /VOR-095/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
