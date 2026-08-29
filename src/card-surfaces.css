@@ -1,5 +1,6 @@
 :root {
   --vorta-surface-page: #eef2f6;
+  --vorta-surface-page-image: none;
   --vorta-surface-card: #ffffff;
   --vorta-surface-raised: #f6f8fb;
   --vorta-surface-border: rgba(100, 116, 139, 0.24);
@@ -14,6 +15,12 @@
 
 html.dark {
   --vorta-surface-page: #0b0e14;
+  --vorta-surface-page-image: linear-gradient(
+    180deg,
+    rgba(16, 52, 71, 0.72) 0%,
+    rgba(12, 36, 51, 0.62) 38%,
+    rgba(11, 14, 20, 0) 100%
+  );
   --vorta-surface-card: #252a30;
   --vorta-surface-raised: #2d333a;
   --vorta-surface-border: rgba(148, 163, 184, 0.14);
@@ -28,8 +35,13 @@ html.dark {
 
 [data-vorta-portal-shell],
 [data-vorta-page-content],
-[data-vorta-sidebar] {
+[data-vorta-sidebar],
+html.dark #app > .flex.min-h-screen.flex-col,
+html.dark #app > .flex.min-h-screen.flex-col > header {
   background-color: var(--vorta-surface-page) !important;
+  background-image: var(--vorta-surface-page-image) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100dvh !important;
 }
 
 [data-vorta-page-content="true"] {

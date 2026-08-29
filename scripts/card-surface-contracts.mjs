@@ -31,6 +31,12 @@ assert.match(card, /p-4 sm:p-5 lg:p-6/);
 assert.doesNotMatch(card, /text-card-foreground shadow/);
 
 assert.match(surfaces, /--vorta-surface-page: #0b0e14/);
+assert.match(surfaces, /--vorta-surface-page-image: linear-gradient/);
+assert.match(surfaces, /rgba\(16, 52, 71, 0\.72\) 0%/);
+assert.match(surfaces, /rgba\(12, 36, 51, 0\.62\) 38%/);
+assert.match(surfaces, /rgba\(11, 14, 20, 0\) 100%/);
+assert.match(surfaces, /background-size: 100% 100dvh !important/);
+assert.match(surfaces, /html\.dark #app > \.flex\.min-h-screen\.flex-col/);
 assert.match(surfaces, /--vorta-surface-card: #252a30/);
 assert.match(surfaces, /--vorta-surface-raised: #2d333a/);
 assert.match(surfaces, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.05\)/);
@@ -89,4 +95,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, restored login background, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, restrained navy depth, approved card surfaces, transparent risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
