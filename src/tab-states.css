@@ -50,7 +50,6 @@ html.dark
 }
 .dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"][aria-selected="true"] {
   border: 1px solid #60a5fa !important;
-  background: transparent !important;
   color: #f8fafc !important;
 }
 
@@ -83,7 +82,7 @@ html.dark
 
 /* VOR-095 production-capture polish. Existing neutral surface rules supply the fills. */
 [data-vorta-risk-intelligence-label]{color:#60a5fa!important}
-.dark div:has(>[data-vorta-work-plan-summary]){border-color:rgba(148,163,184,.14)!important}
+.dark div:has(>[data-vorta-work-plan-summary]){border-color:#94a3b824!important}
 [data-vorta-dashboard-root] h2{letter-spacing:-.012em!important}
 @media (min-width:1280px) and (max-width:1600px){
   [aria-label="Risk intelligence scope"]{gap:.375rem!important}
