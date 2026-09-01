@@ -81,3 +81,44 @@ html.dark [data-vorta-embedded-ai="true"] [class~="bg-[#0f1218]"][class~="border
   background-color: transparent !important;
   border-radius: 9999px !important;
 }
+
+/* VOR-095 production-capture polish: semantic blue intelligence label, quieter plan frame,
+   denser reference-width scope rail and more deliberate dashboard type hierarchy. */
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"] {
+  border: 1px solid rgba(96, 165, 250, 0.24) !important;
+  background: rgba(96, 165, 250, 0.08) !important;
+  color: #60a5fa !important;
+}
+
+html.dark [data-vorta-dashboard-root="true"] div:has(> [data-vorta-work-plan-summary="true"]) {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background-color: #2d333a !important;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.05) !important;
+}
+
+html.dark [data-vorta-dashboard-root="true"] > section > header h1 {
+  font-weight: 650 !important;
+  letter-spacing: -0.018em !important;
+}
+
+html.dark [data-vorta-dashboard-root="true"] h2 {
+  font-weight: 600 !important;
+  letter-spacing: -0.012em !important;
+}
+
+html.dark [data-vorta-dashboard-root="true"] h3,
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-card="true"] [class~="text-xl"] {
+  font-weight: 600 !important;
+  letter-spacing: -0.008em !important;
+}
+
+@media (min-width: 1280px) and (max-width: 1600px) {
+  html.dark [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] {
+    gap: 0.375rem !important;
+  }
+
+  html.dark [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] [role="tab"] {
+    padding-inline: 0.625rem !important;
+    letter-spacing: -0.005em !important;
+  }
+}
