@@ -94,6 +94,8 @@ html.dark
  * Approved dashboard sidebar state: exact canvas navy, blue active Dashboard
  * label/icon and no selected fill. Other portal routes keep their existing
  * selection treatment so this visual pass cannot redesign unrelated screens.
+ * The active Dashboard link already receives the text-blue-400 utility from
+ * PortalShell, so use that state token without redefining page-navigation ARIA.
  */
 html.dark
   body:has([data-vorta-dashboard-root="true"])
@@ -104,7 +106,7 @@ html.dark
 html.dark
   body:has([data-vorta-dashboard-root="true"])
   [data-vorta-sidebar="true"]
-  [data-vorta-nav-item="true"][aria-label="Dashboard"][aria-current="page"] {
+  [data-vorta-nav-item="true"][aria-label="Dashboard"].text-blue-400 {
   background: transparent !important;
   color: var(--vorta-color-intelligence) !important;
 }
