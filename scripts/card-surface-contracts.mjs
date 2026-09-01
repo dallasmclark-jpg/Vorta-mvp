@@ -106,11 +106,11 @@ assert.match(
 );
 assert.match(
   tabs,
-  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*background: transparent !important;[\s\S]*color: #f8fafc !important/,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*color: #f8fafc !important/,
 );
 assert.match(
   tabs,
-  /\[data-vorta-nav-item="true"\]\[aria-label="Dashboard"\]\.text-blue-400[\s\S]*background: transparent !important;[\s\S]*color: #60a5fa !important/,
+  /\[data-vorta-nav-item\]\[aria-label="Dashboard"\]\.text-blue-400[\s\S]*background: transparent !important;[\s\S]*color: #60a5fa !important/,
 );
 assert.match(
   tabs,
@@ -122,7 +122,25 @@ assert.match(
 );
 assert.match(
   tabs,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
+  /\[data-vorta-embedded-ai\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
+);
+
+/* VOR-095 authenticated production-capture refinements. */
+assert.match(
+  tabs,
+  /\[data-vorta-risk-intelligence-label\]\{color:#60a5fa!important\}/,
+);
+assert.match(
+  tabs,
+  /div:has\(>\[data-vorta-work-plan-summary\]\)\{border-color:#94a3b824!important\}/,
+);
+assert.match(
+  tabs,
+  /\[data-vorta-dashboard-root\] h2\{letter-spacing:-\.012em!important\}/,
+);
+assert.match(
+  tabs,
+  /@media \(min-width:1280px\) and \(max-width:1600px\)[\s\S]*\[aria-label="Risk intelligence scope"\]\{gap:\.375rem!important\}[\s\S]*\[role="tab"\]\{padding-inline:\.375rem!important\}/,
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
@@ -132,4 +150,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, compact production-capture polish, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
