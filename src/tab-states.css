@@ -26,168 +26,58 @@ html.dark
 /* VOR-089: quiet structural fills while operational borders/labels keep RAG meaning. */
 [data-vorta-risk-intelligence-label],.bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
 
-/*
- * VOR-095 / VOR-097: canonical Vorta dark palette.
- * Base colours are named once here; opacity/tint treatments below are derived
- * from those bases rather than introducing local near-match colour codes.
- */
+/* VOR-095 / VOR-097: canonical dark dashboard bases. */
 html.dark {
-  --vorta-color-canvas: #000814;
-  --vorta-color-sidebar: #000814;
-  --vorta-color-surface: #252a30;
-  --vorta-color-surface-raised: #2d333a;
-  --vorta-color-border-base: #94a3b8;
-  --vorta-color-text-primary: #f8fafc;
-  --vorta-color-text-secondary: #cbd5e1;
-  --vorta-color-text-muted: #94a3b8;
-  --vorta-color-intelligence: #60a5fa;
-  --vorta-color-action: #2563eb;
-  --vorta-color-risk-critical: #ef4444;
-  --vorta-color-risk-high: #f97316;
-  --vorta-color-risk-medium: #facc15;
-  --vorta-color-verified: #10b981;
-  --vorta-border-quiet: color-mix(in srgb, var(--vorta-color-border-base) 10%, transparent);
-  --vorta-border-strong: color-mix(in srgb, var(--vorta-color-border-base) 19%, transparent);
-
-  /* Keep legacy shared-surface consumers on the approved Vorta bases. */
-  --vorta-surface-page: var(--vorta-color-canvas);
-  --vorta-surface-card: var(--vorta-color-surface);
-  --vorta-surface-raised: var(--vorta-color-surface-raised);
+  --vorta-surface-page: #000814;
+  --vorta-surface-card: #252a30;
+  --vorta-surface-raised: #2d333a;
   --vorta-surface-page-image: linear-gradient(
     180deg,
     rgba(0, 14, 32, 0.28) 0%,
     rgba(0, 10, 24, 0.16) 42%,
     rgba(0, 8, 20, 0) 100%
   );
-  --vorta-surface-border: var(--vorta-border-strong);
-  --vorta-surface-raised-border: var(--vorta-border-quiet);
+  --vorta-surface-border: rgba(148, 163, 184, 0.19);
+  --vorta-surface-raised-border: rgba(148, 163, 184, 0.10);
   --vorta-surface-shadow: 0 16px 38px rgba(0, 0, 0, 0.36), inset 0 1px 0 var(--vorta-surface-highlight);
   --vorta-surface-raised-shadow: 0 8px 20px rgba(0, 0, 0, 0.20), inset 0 1px 0 var(--vorta-surface-highlight);
 }
 
-/*
- * Approved VOR-095 dashboard scope pills: transparent, fully rounded and calm.
- * Only the selected Site Risk/scope tab receives the Vorta intelligence outline.
- */
-html.dark
-  [data-vorta-portal-shell="true"]
-  [data-vorta-dashboard-root="true"]
-  [aria-label="Risk intelligence scope"]
-  [role="tab"] {
+/* Approved scope pills: transparent, fully rounded; selection is Vorta intelligence blue. */
+html.dark [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] [role="tab"] {
   border-radius: 9999px !important;
   background: transparent !important;
   box-shadow: none !important;
 }
-
-html.dark
-  [data-vorta-portal-shell="true"]
-  [data-vorta-dashboard-root="true"]
-  [aria-label="Risk intelligence scope"]
-  [role="tab"][aria-selected="true"] {
-  border: 1px solid var(--vorta-color-intelligence) !important;
+html.dark [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] [role="tab"][aria-selected="true"] {
+  border: 1px solid #60a5fa !important;
   background: transparent !important;
-  color: var(--vorta-color-text-primary) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vorta-color-intelligence) 8%, transparent) !important;
+  color: #f8fafc !important;
 }
 
-/*
- * Approved dashboard sidebar state: exact canvas navy, blue active Dashboard
- * label/icon and no selected fill. Other portal routes keep their existing
- * selection treatment so this visual pass cannot redesign unrelated screens.
- * The active Dashboard link already receives the text-blue-400 utility from
- * PortalShell, so use that state token without redefining page-navigation ARIA.
- */
-html.dark
-  body:has([data-vorta-dashboard-root="true"])
-  [data-vorta-sidebar="true"] {
-  background-color: var(--vorta-color-sidebar) !important;
-}
-
-html.dark
-  body:has([data-vorta-dashboard-root="true"])
-  [data-vorta-sidebar="true"]
-  [data-vorta-nav-item="true"][aria-label="Dashboard"].text-blue-400 {
+/* Active Dashboard is blue text/icon with no filled navigation background. */
+html.dark [data-vorta-sidebar="true"] [data-vorta-nav-item="true"][aria-label="Dashboard"].text-blue-400 {
   background: transparent !important;
-  color: var(--vorta-color-intelligence) !important;
+  color: #60a5fa !important;
 }
 
-/* Risk badges stay fill-free while retaining a visible semantic-colour outline. */
-html.dark
-  [data-vorta-dashboard-root="true"]
-  span.inline-flex[class*="-500/20"] {
+/* Risk badges retain semantic-colour outlines without decorative fill. */
+html.dark [data-vorta-dashboard-root="true"] span.inline-flex[class*="-500/20"] {
   border: 1px solid currentColor !important;
 }
 
-/*
- * VOR-095 signature card depth: exact canonical slate surfaces with a quiet
- * lower border and a stronger upper edge that fades through roughly the top
- * two-fifths. This is deliberately neutral so RAG colours keep operational
- * meaning rather than becoming decorative card chrome.
- */
-html.dark
-  [data-vorta-dashboard-root="true"]
-  [data-vorta-card="true"]:not([data-vorta-group-frame="true"]),
-html.dark
-  [data-vorta-dashboard-root="true"]
-  [data-vorta-group-frame="true"]
-  :is(div[class*="rounded-lg"][class*="border"][class*="bg-[#0d1117]"]) {
-  position: relative;
-  isolation: isolate;
-  border-color: var(--vorta-border-quiet) !important;
-  background-color: var(--vorta-color-surface) !important;
+/* Approved card depth: canonical slate, quiet lower edge and stronger upper two-fifths. */
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-card="true"]:not([data-vorta-group-frame="true"]),
+html.dark [data-vorta-dashboard-root="true"] [class~="rounded-lg"][class~="border"][class~="bg-[#0d1117]"] {
+  border-color: rgba(148, 163, 184, 0.10) !important;
+  border-top-color: rgba(148, 163, 184, 0.30) !important;
+  background-color: #252a30 !important;
+  background-image: linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(148, 163, 184, 0.03) 22%, transparent 42%) !important;
 }
 
-html.dark
-  [data-vorta-dashboard-root="true"]
-  [data-vorta-card="true"]:not([data-vorta-group-frame="true"])::before,
-html.dark
-  [data-vorta-dashboard-root="true"]
-  [data-vorta-group-frame="true"]
-  :is(div[class*="rounded-lg"][class*="border"][class*="bg-[#0d1117]"])::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  padding: 1px 1px 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--vorta-color-border-base) 30%, transparent) 0%,
-    color-mix(in srgb, var(--vorta-color-border-base) 24%, transparent) 18%,
-    color-mix(in srgb, var(--vorta-color-border-base) 16%, transparent) 38%,
-    color-mix(in srgb, var(--vorta-color-border-base) 7%, transparent) 54%,
-    transparent 68%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* Keep Site Risk Briefing technical icons thin and tied to Vorta intelligence. */
-html.dark
-  [data-vorta-dashboard-root="true"]
-  [data-vorta-group-frame="true"]
-  :is(div[class*="rounded-lg"][class*="border"][class*="bg-[#0d1117]"])
-  svg {
-  color: var(--vorta-color-intelligence) !important;
-  stroke-width: 1.5 !important;
-}
-
-/* Dashboard Ask Vorta keeps a transparent interior and a quiet canonical-blue outline. */
-html.dark
-  [data-vorta-embedded-ai="true"]
-  [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
-  border-color: color-mix(in srgb, var(--vorta-color-intelligence) 38%, transparent) !important;
+/* Dashboard Ask Vorta: transparent interior and quiet fully rounded intelligence outline. */
+html.dark [data-vorta-embedded-ai="true"] [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
+  border-color: rgba(96, 165, 250, 0.38) !important;
   background-color: transparent !important;
   border-radius: 9999px !important;
-}
-
-html.dark
-  [data-vorta-embedded-ai="true"]
-  [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"]:focus-within {
-  border-color: color-mix(in srgb, var(--vorta-color-intelligence) 62%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vorta-color-intelligence) 10%, transparent) !important;
 }
