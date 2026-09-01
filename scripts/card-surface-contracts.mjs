@@ -87,8 +87,12 @@ assert.match(surfaces, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(surfaces, /focus-visible/);
 
 assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:transparent!important\}/);
-assert.match(tabs, /VOR-095/);
+
+/* VOR-095/VOR-097 canonical dark dashboard palette and approved visual treatment. */
+assert.match(tabs, /VOR-095 \/ VOR-097/);
 assert.match(tabs, /--vorta-surface-page: #000814/);
+assert.match(tabs, /--vorta-surface-card: #252a30/);
+assert.match(tabs, /--vorta-surface-raised: #2d333a/);
 assert.match(tabs, /rgba\(0, 14, 32, 0\.28\) 0%/);
 assert.match(tabs, /rgba\(0, 10, 24, 0\.16\) 42%/);
 assert.match(tabs, /rgba\(0, 8, 20, 0\) 100%/);
@@ -98,7 +102,15 @@ assert.match(tabs, /--vorta-surface-shadow: 0 16px 38px rgba\(0, 0, 0, 0\.36\)/)
 assert.match(tabs, /--vorta-surface-raised-shadow: 0 8px 20px rgba\(0, 0, 0, 0\.20\)/);
 assert.match(
   tabs,
-  /\[aria-label="Risk intelligence scope"\][\s\S]*\[role="tab"\]\[aria-selected="true"\][\s\S]*background: var\(--vorta-surface-raised\) !important/,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\] \{[\s\S]*border-radius: 9999px !important;[\s\S]*background: transparent !important/,
+);
+assert.match(
+  tabs,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*background: transparent !important;[\s\S]*color: #f8fafc !important/,
+);
+assert.match(
+  tabs,
+  /\[data-vorta-nav-item="true"\]\[aria-label="Dashboard"\]\.text-blue-400[\s\S]*background: transparent !important;[\s\S]*color: #60a5fa !important/,
 );
 assert.match(
   tabs,
@@ -106,7 +118,11 @@ assert.match(
 );
 assert.match(
   tabs,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*background-color: transparent !important/,
+  /Approved card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #252a30 !important;[\s\S]*transparent 42%/,
+);
+assert.match(
+  tabs,
+  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
@@ -116,4 +132,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, darker approved navy canvas, transparent dashboard Ask Vorta input, stronger card separation, raised risk-scope selection, transparent outlined risk badges, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
