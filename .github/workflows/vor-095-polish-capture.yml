@@ -1,0 +1,64 @@
+name: VOR-095 polish capture
+
+on:
+  push:
+    branches:
+      - agent/vor-095-polish-capture
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VORTA_E2E_BASE_URL: https://deploy-preview-363--vorta-app.netlify.app
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_ORGANISATION_ID: 10000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
+      VORTA_E2E_DENIED_EQUIPMENT_ID: 40000000-0000-0000-0000-000000000013
+
+    steps:
+      - name: Check out capture branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture approved layouts
+        run: npx playwright test tests/browser/vor-095-polish-capture.spec.ts --project=desktop-1920 --config=playwright.config.ts
+
+      - name: Run dashboard resilience regression
+        run: npx playwright test tests/browser/maintenance-manager-dashboard-resilience.spec.ts --project=phone-360 --project=desktop-1920 --config=playwright.config.ts
+
+      - name: Upload VOR-095 evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-095-polish-preview-evidence
+          path: |
+            evidence
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
