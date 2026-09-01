@@ -86,5 +86,5 @@ html.dark
 [data-vorta-dashboard-root] h2{letter-spacing:-.012em!important}
 @media (min-width:1280px) and (max-width:1600px){
   [aria-label="Risk intelligence scope"]{gap:.375rem!important}
-  [aria-label="Risk intelligence scope"] [role="tab"]{padding-inline:.625rem!important}
+  [aria-label="Risk intelligence scope"] [role="tab"]{padding-inline:.375rem!important}
 }
