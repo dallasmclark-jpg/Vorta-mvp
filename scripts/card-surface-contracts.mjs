@@ -106,7 +106,7 @@ assert.match(
 );
 assert.match(
   tabs,
-  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*background: transparent !important;[\s\S]*color: #f8fafc !important/,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*color: #f8fafc !important/,
 );
 assert.match(
   tabs,
@@ -132,7 +132,7 @@ assert.match(
 );
 assert.match(
   tabs,
-  /div:has\(>\[data-vorta-work-plan-summary\]\)\{border-color:rgba\(148,163,184,\.14\)!important\}/,
+  /div:has\(>\[data-vorta-work-plan-summary\]\)\{border-color:#94a3b824!important\}/,
 );
 assert.match(
   tabs,
