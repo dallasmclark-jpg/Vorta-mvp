@@ -140,7 +140,7 @@ assert.match(
 );
 assert.match(
   tabs,
-  /@media \(min-width:1280px\) and \(max-width:1600px\)[\s\S]*\[aria-label="Risk intelligence scope"\]\{gap:\.375rem!important\}[\s\S]*\[role="tab"\]\{padding-inline:\.625rem!important\}/,
+  /@media \(min-width:1280px\) and \(max-width:1600px\)[\s\S]*\[aria-label="Risk intelligence scope"\]\{gap:\.375rem!important\}[\s\S]*\[role="tab"\]\{padding-inline:\.375rem!important\}/,
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
