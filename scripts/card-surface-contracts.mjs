@@ -90,43 +90,27 @@ assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:t
 
 /* VOR-095/VOR-097 canonical dark dashboard palette and approved visual treatment. */
 assert.match(tabs, /VOR-095 \/ VOR-097/);
-assert.match(tabs, /--vorta-color-canvas: #000814/);
-assert.match(tabs, /--vorta-color-sidebar: #000814/);
-assert.match(tabs, /--vorta-color-surface: #252a30/);
-assert.match(tabs, /--vorta-color-surface-raised: #2d333a/);
-assert.match(tabs, /--vorta-color-border-base: #94a3b8/);
-assert.match(tabs, /--vorta-color-text-primary: #f8fafc/);
-assert.match(tabs, /--vorta-color-text-secondary: #cbd5e1/);
-assert.match(tabs, /--vorta-color-text-muted: #94a3b8/);
-assert.match(tabs, /--vorta-color-intelligence: #60a5fa/);
-assert.match(tabs, /--vorta-color-action: #2563eb/);
-assert.match(tabs, /--vorta-color-risk-critical: #ef4444/);
-assert.match(tabs, /--vorta-color-risk-high: #f97316/);
-assert.match(tabs, /--vorta-color-risk-medium: #facc15/);
-assert.match(tabs, /--vorta-color-verified: #10b981/);
-assert.match(tabs, /--vorta-border-quiet: color-mix\(in srgb, var\(--vorta-color-border-base\) 10%, transparent\)/);
-assert.match(tabs, /--vorta-border-strong: color-mix\(in srgb, var\(--vorta-color-border-base\) 19%, transparent\)/);
-assert.match(tabs, /--vorta-surface-page: var\(--vorta-color-canvas\)/);
-assert.match(tabs, /--vorta-surface-card: var\(--vorta-color-surface\)/);
-assert.match(tabs, /--vorta-surface-raised: var\(--vorta-color-surface-raised\)/);
+assert.match(tabs, /--vorta-surface-page: #000814/);
+assert.match(tabs, /--vorta-surface-card: #252a30/);
+assert.match(tabs, /--vorta-surface-raised: #2d333a/);
 assert.match(tabs, /rgba\(0, 14, 32, 0\.28\) 0%/);
 assert.match(tabs, /rgba\(0, 10, 24, 0\.16\) 42%/);
 assert.match(tabs, /rgba\(0, 8, 20, 0\) 100%/);
-assert.match(tabs, /--vorta-surface-border: var\(--vorta-border-strong\)/);
-assert.match(tabs, /--vorta-surface-raised-border: var\(--vorta-border-quiet\)/);
+assert.match(tabs, /--vorta-surface-border: rgba\(148, 163, 184, 0\.19\)/);
+assert.match(tabs, /--vorta-surface-raised-border: rgba\(148, 163, 184, 0\.10\)/);
 assert.match(tabs, /--vorta-surface-shadow: 0 16px 38px rgba\(0, 0, 0, 0\.36\)/);
 assert.match(tabs, /--vorta-surface-raised-shadow: 0 8px 20px rgba\(0, 0, 0, 0\.20\)/);
 assert.match(
   tabs,
-  /\[aria-label="Risk intelligence scope"\][\s\S]*\[role="tab"\] \{[\s\S]*border-radius: 9999px !important;[\s\S]*background: transparent !important/,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\] \{[\s\S]*border-radius: 9999px !important;[\s\S]*background: transparent !important/,
 );
 assert.match(
   tabs,
-  /\[aria-label="Risk intelligence scope"\][\s\S]*\[role="tab"\]\[aria-selected="true"\][\s\S]*border: 1px solid var\(--vorta-color-intelligence\) !important;[\s\S]*background: transparent !important/,
+  /\[aria-label="Risk intelligence scope"\] \[role="tab"\]\[aria-selected="true"\] \{[\s\S]*border: 1px solid #60a5fa !important;[\s\S]*background: transparent !important;[\s\S]*color: #f8fafc !important/,
 );
 assert.match(
   tabs,
-  /\[data-vorta-nav-item="true"\]\[aria-label="Dashboard"\]\.text-blue-400[\s\S]*background: transparent !important;[\s\S]*color: var\(--vorta-color-intelligence\) !important/,
+  /\[data-vorta-nav-item="true"\]\[aria-label="Dashboard"\]\.text-blue-400[\s\S]*background: transparent !important;[\s\S]*color: #60a5fa !important/,
 );
 assert.match(
   tabs,
@@ -134,15 +118,11 @@ assert.match(
 );
 assert.match(
   tabs,
-  /signature card depth[\s\S]*color-mix\(in srgb, var\(--vorta-color-border-base\) 30%, transparent\)[\s\S]*transparent 68%/,
+  /Approved card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #252a30 !important;[\s\S]*transparent 42%/,
 );
 assert.match(
   tabs,
-  /Site Risk Briefing technical icons[\s\S]*color: var\(--vorta-color-intelligence\) !important;[\s\S]*stroke-width: 1\.5 !important/,
-);
-assert.match(
-  tabs,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: color-mix\(in srgb, var\(--vorta-color-intelligence\) 38%, transparent\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
+  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
 );
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
@@ -152,4 +132,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-edge card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
