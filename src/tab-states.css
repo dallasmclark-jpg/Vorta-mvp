@@ -27,7 +27,7 @@ html.dark
 [data-vorta-risk-intelligence-label],.bg-orange-500\/5,[data-vorta-inventory-risk-card]{background:var(--vorta-surface-raised)!important}
 
 /* VOR-095 / VOR-097: canonical dark dashboard bases. */
-html.dark {
+.dark {
   --vorta-surface-page: #000814;
   --vorta-surface-card: #252a30;
   --vorta-surface-raised: #2d333a;
@@ -44,31 +44,30 @@ html.dark {
 }
 
 /* Approved scope pills: transparent, fully rounded; selection is Vorta intelligence blue. */
-html.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"] {
+.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"] {
   border-radius: 9999px !important;
   background: transparent !important;
-  box-shadow: none !important;
 }
-html.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"][aria-selected="true"] {
+.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"][aria-selected="true"] {
   border: 1px solid #60a5fa !important;
   background: transparent !important;
   color: #f8fafc !important;
 }
 
 /* Active Dashboard is blue text/icon with no filled navigation background. */
-html.dark [data-vorta-sidebar] [data-vorta-nav-item][aria-label="Dashboard"].text-blue-400 {
+.dark [data-vorta-sidebar] [data-vorta-nav-item][aria-label="Dashboard"].text-blue-400 {
   background: transparent !important;
   color: #60a5fa !important;
 }
 
 /* Risk badges retain semantic-colour outlines without decorative fill. */
-html.dark [data-vorta-dashboard-root] span.inline-flex[class*="-500/20"] {
+.dark [data-vorta-dashboard-root] span.inline-flex[class*="-500/20"] {
   border: 1px solid currentColor !important;
 }
 
 /* Approved card depth: canonical slate, quiet lower edge and stronger upper two-fifths. */
-html.dark [data-vorta-dashboard-root] [data-vorta-card]:not([data-vorta-group-frame]),
-html.dark [data-vorta-dashboard-root] [class~="rounded-lg"][class~="border"][class~="bg-[#0d1117]"] {
+.dark [data-vorta-dashboard-root] [data-vorta-card]:not([data-vorta-group-frame]),
+.dark [data-vorta-dashboard-root] [class~="rounded-lg"][class~="border"][class~="bg-[#0d1117]"] {
   border-color: rgba(148, 163, 184, 0.10) !important;
   border-top-color: rgba(148, 163, 184, 0.30) !important;
   background-color: #252a30 !important;
@@ -76,17 +75,17 @@ html.dark [data-vorta-dashboard-root] [class~="rounded-lg"][class~="border"][cla
 }
 
 /* Dashboard Ask Vorta: transparent interior and quiet fully rounded intelligence outline. */
-html.dark [data-vorta-embedded-ai] [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
+.dark [data-vorta-embedded-ai] [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
   border-color: rgba(96, 165, 250, 0.38) !important;
   background-color: transparent !important;
   border-radius: 9999px !important;
 }
 
 /* VOR-095 production-capture polish. Existing neutral surface rules supply the fills. */
-html.dark [data-vorta-dashboard-root] [data-vorta-risk-intelligence-label]{color:#60a5fa!important}
-html.dark [data-vorta-dashboard-root] div:has(>[data-vorta-work-plan-summary]){border-color:rgba(148,163,184,.14)!important}
-html.dark [data-vorta-dashboard-root] h2{letter-spacing:-.012em!important}
+[data-vorta-risk-intelligence-label]{color:#60a5fa!important}
+.dark div:has(>[data-vorta-work-plan-summary]){border-color:rgba(148,163,184,.14)!important}
+[data-vorta-dashboard-root] h2{letter-spacing:-.012em!important}
 @media (min-width:1280px) and (max-width:1600px){
-  html.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"]{gap:.375rem!important}
-  html.dark [data-vorta-dashboard-root] [aria-label="Risk intelligence scope"] [role="tab"]{padding-inline:.625rem!important}
+  [aria-label="Risk intelligence scope"]{gap:.375rem!important}
+  [aria-label="Risk intelligence scope"] [role="tab"]{padding-inline:.625rem!important}
 }
