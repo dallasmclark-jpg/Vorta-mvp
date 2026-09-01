@@ -125,6 +125,28 @@ assert.match(
   /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
 );
 
+/* VOR-095 authenticated production-capture refinements. */
+assert.match(
+  tabs,
+  /\[data-vorta-risk-intelligence-label="true"\][\s\S]*border: 1px solid rgba\(96, 165, 250, 0\.24\) !important;[\s\S]*background: rgba\(96, 165, 250, 0\.08\) !important;[\s\S]*color: #60a5fa !important/,
+);
+assert.match(
+  tabs,
+  /div:has\(> \[data-vorta-work-plan-summary="true"\]\)[\s\S]*border-color: rgba\(148, 163, 184, 0\.14\) !important;[\s\S]*background-color: #2d333a !important/,
+);
+assert.match(
+  tabs,
+  /@media \(min-width: 1280px\) and \(max-width: 1600px\)[\s\S]*\[aria-label="Risk intelligence scope"\][\s\S]*gap: 0\.375rem !important;[\s\S]*padding-inline: 0\.625rem !important/,
+);
+assert.match(
+  tabs,
+  /> section > header h1[\s\S]*font-weight: 650 !important;[\s\S]*letter-spacing: -0\.018em !important/,
+);
+assert.match(
+  tabs,
+  /\[data-vorta-dashboard-root="true"\] h2[\s\S]*font-weight: 600 !important;[\s\S]*letter-spacing: -0\.012em !important/,
+);
+
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/);
@@ -132,4 +154,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, production-capture polish, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
