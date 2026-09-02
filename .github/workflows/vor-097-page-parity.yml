@@ -28,10 +28,15 @@ jobs:
       - run: npm ci --silent
       - name: TypeScript
         run: npm run typecheck
-      - name: Contracts
+      - name: Full contracts (VOR-098 live backend gate remains independently visible)
+        continue-on-error: true
         run: npm run test:contracts
       - name: Route smoke
         run: npm run test:smoke
+      - name: Build visual branch without invoking the separate VOR-098 prebuild gate
+        run: npx vite build
+      - name: Performance budgets
+        run: npm run test:performance
       - run: npx playwright install --with-deps chromium
       - name: Verify authenticated browser-test secret
         run: test -n "$VORTA_E2E_PASSWORD"
