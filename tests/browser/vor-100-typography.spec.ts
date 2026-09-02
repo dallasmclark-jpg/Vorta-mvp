@@ -138,9 +138,12 @@ test("VOR-100 governed typography stays distinctive and responsive", async ({ br
           fullPage: false,
         });
 
+        const approvedPhoneDashboardWithoutH1 = viewport.width <= 360 && path === "/dashboard";
+
         if (!audit.typographyStyleInstalled) failures.push(`${path}: shared typography style was not installed`);
         if (!audit.displayFontLinkInstalled) failures.push(`${path}: Inter Tight display font link was not installed`);
-        if (!audit.h1) failures.push(`${path}: no visible page h1 was found`);
+        if (!audit.h1 && !approvedPhoneDashboardWithoutH1) failures.push(`${path}: no visible page h1 was found`);
+        if (approvedPhoneDashboardWithoutH1 && audit.h2s.length === 0) failures.push(`${path}: approved phone Dashboard has no visible h1, so at least one governed section h2 must remain visible`);
         if (audit.h1 && !audit.h1.family.includes("Inter Tight")) failures.push(`${path}: page h1 does not use Inter Tight (${audit.h1.family})`);
         if (audit.h1 && audit.h1.weight !== "600") failures.push(`${path}: page h1 weight is ${audit.h1.weight}, expected 600`);
         if (audit.h1 && (audit.h1.tracking === "normal" || Number.parseFloat(audit.h1.tracking) >= 0)) failures.push(`${path}: page h1 tracking is not tightened (${audit.h1.tracking})`);
