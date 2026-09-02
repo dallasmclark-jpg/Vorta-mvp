@@ -72,7 +72,7 @@ test("Mobile Engineers summary tabs prioritise matching engineers without hiding
   );
   expect(selectedVisualState.borderTopWidth).toBe("1px");
   expect(selectedVisualState.backgroundColor).toBe(
-    selectedVisualState.dark ? "rgb(13, 17, 23)" : "rgb(255, 255, 255)",
+    selectedVisualState.dark ? "rgba(0, 0, 0, 0)" : "rgb(255, 255, 255)",
   );
   expect(selectedVisualState.boxShadow).toBe("none");
 
