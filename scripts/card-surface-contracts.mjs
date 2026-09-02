@@ -118,7 +118,12 @@ assert.match(
 );
 assert.match(
   tabs,
-  /Approved card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #252a30 !important;[\s\S]*transparent 42%/,
+  /Approved card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #252a30 !important;[\s\S]*background-image: none !important/,
+);
+assert.doesNotMatch(
+  tabs,
+  /background-image: linear-gradient\(180deg, rgba\(148, 163, 184/,
+  "Canonical #252a30 dashboard cards must not be washed out by a surface gradient.",
 );
 assert.match(
   tabs,
