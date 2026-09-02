@@ -4,7 +4,7 @@ import {
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
-test("VOR-095 uses the approved navy canvas, canonical card fill and transparent risk badges", async ({ page }, testInfo) => {
+test("VOR-095 uses the approved navy canvas, blue cards and transparent Ask Vorta wrapper", async ({ page }, testInfo) => {
   await signInMaintenanceManager(page);
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 
@@ -23,8 +23,11 @@ test("VOR-095 uses the approved navy canvas, canonical card fill and transparent
         })
       : [];
 
-    const cardBackground = "rgb(37, 42, 48)";
-    const raisedBackground = "rgb(45, 51, 58)";
+    const cardBackground = "rgb(16, 42, 67)";
+    const raisedBackground = "rgb(23, 58, 94)";
+    const askVortaWrapper = document.querySelector<HTMLElement>(
+      '[data-vorta-embedded-ai="true"] > [data-vorta-card="true"]',
+    );
 
     return {
       pageToken: rootStyle.getPropertyValue("--vorta-surface-page").trim(),
@@ -36,19 +39,31 @@ test("VOR-095 uses the approved navy canvas, canonical card fill and transparent
       cardImages: visible
         .filter((element) => element.matches('[data-vorta-card="true"]:not([data-vorta-group-frame="true"])'))
         .map((element) => getComputedStyle(element).backgroundImage),
+      askVortaWrapper: askVortaWrapper
+        ? {
+            background: getComputedStyle(askVortaWrapper).backgroundColor,
+            borderTopWidth: getComputedStyle(askVortaWrapper).borderTopWidth,
+            boxShadow: getComputedStyle(askVortaWrapper).boxShadow,
+          }
+        : null,
     };
   });
 
   expect(hierarchy.pageToken).toBe("#081a2c");
-  expect(hierarchy.cardToken).toBe("#252a30");
-  expect(hierarchy.raisedToken).toBe("#2d333a");
+  expect(hierarchy.cardToken).toBe("#102a43");
+  expect(hierarchy.raisedToken).toBe("#173a5e");
   expect(hierarchy.pageBackground).toBe("rgb(8, 26, 44)");
   expect(hierarchy.cardCount, "Dashboard must render the approved lighter card surface").toBeGreaterThan(0);
   expect(hierarchy.raisedCount, "Dashboard must retain nested surface hierarchy").toBeGreaterThan(0);
   expect(hierarchy.cardImages.length, "Dashboard must render at least one canonical card").toBeGreaterThan(0);
-  expect(hierarchy.cardImages, "Canonical #252a30 cards must not have a grey wash or fill gradient").not.toContainEqual(
+  expect(hierarchy.cardImages, "Vorta blue cards must not have a grey wash or fill gradient").not.toContainEqual(
     expect.stringContaining("linear-gradient"),
   );
+  expect(hierarchy.askVortaWrapper).toEqual({
+    background: "rgba(0, 0, 0, 0)",
+    borderTopWidth: "0px",
+    boxShadow: "none",
+  });
 
   const riskBadges = page.locator(
     '[data-vorta-page-content="true"] span[class~="bg-red-500/20"][class~="text-red-400"], ' +
