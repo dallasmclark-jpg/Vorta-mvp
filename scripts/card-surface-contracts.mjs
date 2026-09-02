@@ -91,8 +91,8 @@ assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:t
 /* VOR-095/VOR-097 canonical dark dashboard palette and approved visual treatment. */
 assert.match(tabs, /VOR-095 \/ VOR-097/);
 assert.match(tabs, /--vorta-surface-page: #000814/);
-assert.match(tabs, /--vorta-surface-card: #252a30/);
-assert.match(tabs, /--vorta-surface-raised: #2d333a/);
+assert.match(tabs, /--vorta-surface-card: #102a43/);
+assert.match(tabs, /--vorta-surface-raised: #173a5e/);
 assert.match(tabs, /rgba\(0, 14, 32, 0\.28\) 0%/);
 assert.match(tabs, /rgba\(0, 10, 24, 0\.16\) 42%/);
 assert.match(tabs, /rgba\(0, 8, 20, 0\) 100%/);
@@ -118,12 +118,16 @@ assert.match(
 );
 assert.match(
   tabs,
-  /Approved card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #252a30 !important;[\s\S]*background-image: none !important/,
+  /Approved Vorta card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #102a43 !important;[\s\S]*background-image: none !important/,
 );
 assert.doesNotMatch(
   tabs,
   /background-image: linear-gradient\(180deg, rgba\(148, 163, 184/,
-  "Canonical #252a30 dashboard cards must not be washed out by a surface gradient.",
+  "Vorta navy-blue dashboard cards must not be washed out by a surface gradient.",
+);
+assert.match(
+  tabs,
+  /\[data-vorta-embedded-ai="true"\] > \[data-vorta-card="true"\][\s\S]*border: 0 !important;[\s\S]*background: transparent !important;[\s\S]*box-shadow: none !important/,
 );
 assert.match(
   tabs,

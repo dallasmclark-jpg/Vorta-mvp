@@ -29,8 +29,8 @@ html.dark
 /* VOR-095 / VOR-097: canonical dark dashboard bases. */
 html.dark {
   --vorta-surface-page: #000814;
-  --vorta-surface-card: #252a30;
-  --vorta-surface-raised: #2d333a;
+  --vorta-surface-card: #102a43;
+  --vorta-surface-raised: #173a5e;
   --vorta-surface-page-image: linear-gradient(
     180deg,
     rgba(0, 14, 32, 0.28) 0%,
@@ -66,18 +66,25 @@ html.dark [data-vorta-dashboard-root="true"] span.inline-flex[class*="-500/20"] 
   border: 1px solid currentColor !important;
 }
 
-/* Approved card depth: canonical slate fill with the stronger treatment limited
-   to the upper edge. Do not overlay the card fill: even a low-opacity gradient
-   makes #252a30 read as a washed grey block. */
+/* Approved Vorta card depth: dark navy-blue fill with the stronger treatment
+   limited to the upper edge. Operational RAG colours remain content accents. */
 html.dark [data-vorta-dashboard-root="true"] [data-vorta-card="true"]:not([data-vorta-group-frame="true"]),
 html.dark [data-vorta-dashboard-root="true"] [class~="rounded-lg"][class~="border"][class~="bg-[#0d1117]"] {
   border-color: rgba(148, 163, 184, 0.10) !important;
   border-top-color: rgba(148, 163, 184, 0.30) !important;
-  background-color: #252a30 !important;
+  background-color: #102a43 !important;
   background-image: none !important;
 }
 
-/* Dashboard Ask Vorta: transparent interior and quiet fully rounded intelligence outline. */
+/* Dashboard Ask Vorta: the shared Card wrapper must not become a second panel. */
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] > [data-vorta-card="true"] {
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Keep only the quiet, fully rounded intelligence outline around the command input. */
 html.dark [data-vorta-embedded-ai="true"] [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
   border-color: rgba(96, 165, 250, 0.38) !important;
   background-color: transparent !important;
