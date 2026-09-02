@@ -1,0 +1,41 @@
+name: VOR-097 Netlify deploy relay
+
+on:
+  push:
+    branches:
+      - agent/vor-097-deploy-source-export
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: startsWith(github.event.head_commit.message, 'VOR097_DEPLOY_PROXY=')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Mask one-time Netlify capability
+        shell: bash
+        env:
+          DEPLOY_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          PROXY_PATH="${DEPLOY_MESSAGE#VOR097_DEPLOY_PROXY=}"
+          echo "::add-mask::$PROXY_PATH"
+          printf '%s' "$PROXY_PATH" > "$RUNNER_TEMP/netlify-proxy-path"
+
+      - name: Check out exact current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Deploy exact main source to Vorta production
+        shell: bash
+        run: |
+          PROXY_PATH="$(cat "$RUNNER_TEMP/netlify-proxy-path")"
+          npx -y @netlify/mcp@1.15.1 --site-id 4672c4a4-53eb-475d-ae88-a9de4ecdeae8 --proxy-path "$PROXY_PATH"
