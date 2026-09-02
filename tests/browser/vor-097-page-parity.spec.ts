@@ -3,25 +3,47 @@ import { join } from "node:path";
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
-const OUTPUT_DIR = "evidence/vor-097-page-parity";
+const OUTPUT_ROOT = "evidence/vor-097-page-parity";
 
-const routes = [
-  ["01-dashboard", "/dashboard"],
-  ["02-historical-validation", "/historical-validation"],
-  ["03-shift-handover", "/shift-handover"],
-  ["04-equipment", "/equipment"],
-  ["05-stores-inventory", "/stores-inventory"],
-  ["06-skills-matrix", "/skills-matrix"],
-  ["07-engineers", "/engineers"],
-  ["08-requirements", "/requirements"],
-  ["09-career", "/career"],
-  ["10-training", "/training"],
-  ["11-training-providers", "/training-providers"],
-  ["12-pilot-impact", "/pilot-impact"],
-  ["13-pilot-adoption", "/pilot-adoption"],
-  ["14-support", "/support"],
-  ["15-settings", "/settings"],
-] as const;
+type Viewport = { width: number; height: number };
+type ProjectOptions = {
+  viewport: Viewport;
+  hasTouch?: boolean;
+  userAgent?: string;
+};
+
+function routesForEquipment(equipmentId: string): ReadonlyArray<readonly [string, string]> {
+  const equipmentBase = `/equipment/${encodeURIComponent(equipmentId)}`;
+  return [
+    ["01-dashboard", "/dashboard"],
+    ["02-historical-validation", "/historical-validation"],
+    ["03-shift-handover", "/shift-handover"],
+    ["04-equipment", "/equipment"],
+    ["05-equipment-overview", `${equipmentBase}/overview`],
+    ["06-equipment-notifications", `${equipmentBase}/notifications`],
+    ["07-equipment-work-orders", `${equipmentBase}/work-orders`],
+    ["08-equipment-pms", `${equipmentBase}/pms`],
+    ["09-equipment-history", `${equipmentBase}/history`],
+    ["10-equipment-skills", `${equipmentBase}/skills`],
+    ["11-equipment-spares", `${equipmentBase}/spares`],
+    ["12-equipment-documents", `${equipmentBase}/documents`],
+    ["13-equipment-ai-insights", `${equipmentBase}/ai-insights`],
+    ["14-stores-inventory", "/stores-inventory"],
+    ["15-skills-matrix", "/skills-matrix"],
+    ["16-engineers", "/engineers"],
+    ["17-requirements", "/requirements"],
+    ["18-career", "/career"],
+    ["19-training", "/training"],
+    ["20-training-providers", "/training-providers"],
+    ["21-pilot-impact", "/pilot-impact"],
+    ["22-pilot-adoption", "/pilot-adoption"],
+    ["23-pilot-setup", "/settings/pilot-setup"],
+    ["24-data-import", "/settings/data-import"],
+    ["25-support", "/support"],
+    ["26-settings", "/settings"],
+    ["27-shift-cover", "/maintenance/labour-risk/shift-cover"],
+  ] as const;
+}
 
 async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
@@ -37,10 +59,16 @@ async function settle(page: Page): Promise<void> {
   ` });
 }
 
-async function openFresh(browser: Browser, path: string): Promise<{ page: Page; close: () => Promise<void> }> {
+async function openFresh(
+  browser: Browser,
+  path: string,
+  project: ProjectOptions,
+): Promise<{ page: Page; close: () => Promise<void> }> {
   const context = await browser.newContext({
-    viewport: { width: 1536, height: 864 },
+    viewport: project.viewport,
     deviceScaleFactor: 1,
+    hasTouch: project.hasTouch,
+    userAgent: project.userAgent,
   });
   const page = await context.newPage();
   await signInMaintenanceManager(page);
@@ -52,15 +80,55 @@ async function openFresh(browser: Browser, path: string): Promise<{ page: Page; 
   return { page, close: () => context.close() };
 }
 
-test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async ({ browser }) => {
-  test.setTimeout(20 * 60_000);
-  mkdirSync(OUTPUT_DIR, { recursive: true });
+async function resolveVerifiedEquipmentId(
+  browser: Browser,
+  project: ProjectOptions,
+): Promise<string> {
+  const session = await openFresh(browser, "/equipment", project);
+  try {
+    const desktopAction = session.page.getByRole("button", { name: /Open verified equipment/i }).first();
+    const phoneAction = session.page.getByRole("button", { name: /Open overview for/i }).first();
+
+    if (await desktopAction.isVisible({ timeout: 20_000 }).catch(() => false)) {
+      await desktopAction.click();
+    } else {
+      await expect(phoneAction).toBeVisible({ timeout: 20_000 });
+      await phoneAction.click();
+    }
+
+    await expect(session.page).toHaveURL(/\/equipment\/[^/]+\/overview(?:\?.*)?$/, { timeout: 30_000 });
+    const parts = new URL(session.page.url()).pathname.split("/").filter(Boolean);
+    expect(parts[0]).toBe("equipment");
+    expect(parts[1]).toBeTruthy();
+    return decodeURIComponent(parts[1]);
+  } finally {
+    await session.close();
+  }
+}
+
+test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async ({ browser }, testInfo) => {
+  test.setTimeout(30 * 60_000);
+
+  const configuredViewport = testInfo.project.use.viewport;
+  const viewport: Viewport = configuredViewport ?? { width: 1536, height: 864 };
+  const project: ProjectOptions = {
+    viewport,
+    hasTouch: Boolean(testInfo.project.use.hasTouch),
+    userAgent: testInfo.project.use.userAgent,
+  };
+  const outputDir = join(OUTPUT_ROOT, testInfo.project.name);
+  mkdirSync(outputDir, { recursive: true });
+
+  const equipmentId = await resolveVerifiedEquipmentId(browser, project);
+  const routes = routesForEquipment(equipmentId);
+  expect(routes).toHaveLength(27);
+
   const evidence: unknown[] = [];
   const failures: string[] = [];
 
   for (const [name, path] of routes) {
     await test.step(`${name} ${path}`, async () => {
-      const session = await openFresh(browser, path);
+      const session = await openFresh(browser, path, project);
       try {
         const audit = await session.page.evaluate(() => {
           const legacyColours = new Set([
@@ -108,9 +176,15 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
             : [];
           const incorrectMuted = muted.filter((element) => getComputedStyle(element).color !== "rgb(148, 163, 184)");
           const cards = pageRoot ? Array.from(pageRoot.querySelectorAll<HTMLElement>('[data-vorta-card="true"]')).filter(visible) : [];
+          const rootRect = pageRoot?.getBoundingClientRect();
 
           return {
             title: document.title,
+            pathname: window.location.pathname,
+            rootWidth: rootRect ? Math.round(rootRect.width) : 0,
+            scrollWidth: pageRoot?.scrollWidth ?? 0,
+            viewportWidth: window.innerWidth,
+            horizontalOverflow: Boolean(pageRoot && pageRoot.scrollWidth > window.innerWidth + 2),
             largeLegacySurfaceCount: largeLegacySurfaces.length,
             largeBlueSlabCount: largeBlueSlabs.length,
             mutedTextCount: muted.length,
@@ -122,9 +196,9 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
           };
         });
 
-        evidence.push({ name, path, ...audit });
+        evidence.push({ name, path, equipmentId, viewport, ...audit });
         await session.page.screenshot({
-          path: join(OUTPUT_DIR, `${name}-1536x864.png`),
+          path: join(outputDir, `${name}-${viewport.width}x${viewport.height}.png`),
           fullPage: false,
         });
 
@@ -137,12 +211,21 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
         if (audit.incorrectMutedTextCount > 0) {
           failures.push(`${path}: ${audit.incorrectMutedTextCount} muted metadata element(s) outside the Dashboard token`);
         }
+        if (audit.horizontalOverflow) {
+          failures.push(`${path}: page root overflows the ${viewport.width}px viewport (${audit.scrollWidth}px scroll width)`);
+        }
       } finally {
         await session.close();
       }
     });
   }
 
-  writeFileSync(join(OUTPUT_DIR, "visual-token-audit.json"), JSON.stringify(evidence, null, 2));
-  expect(failures, failures.length ? `VOR-097 page parity failures:\n${failures.join("\n")}` : undefined).toEqual([]);
+  writeFileSync(
+    join(outputDir, "visual-token-audit.json"),
+    JSON.stringify({ project: testInfo.project.name, viewport, equipmentId, evidence, failures }, null, 2),
+  );
+  expect(
+    failures,
+    failures.length ? `VOR-097 ${testInfo.project.name} page parity failures:\n${failures.join("\n")}` : undefined,
+  ).toEqual([]);
 });
