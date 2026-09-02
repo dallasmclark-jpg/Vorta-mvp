@@ -63,7 +63,7 @@ async function captureFreshSession(browser: Browser, name: string, path: string)
     await page.goto(path, { waitUntil: "domcontentloaded" });
     await settle(page);
     await expect(page.locator('[data-vorta-page-content="true"]')).toBeVisible({ timeout: 30_000 });
-    await expect(page).not.toHaveURL(/^.*(?:\/login)?\/?$/);
+    expect(new URL(page.url()).pathname).toBe(path);
     await page.screenshot({ path: join(OUTPUT_DIR, `${name}-1536x864.png`), fullPage: false });
   } finally {
     await context.close();
