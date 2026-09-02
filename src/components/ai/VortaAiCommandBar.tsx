@@ -911,8 +911,9 @@ export function VortaAiCommandBar({
           <div className="flex flex-col gap-2 md:flex-row">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-700 bg-[#0f1218] px-2 py-1 sm:py-1.5 focus-within:border-blue-500/50">
 
-              {/* Plus button + attachment dropdown */}
-              <div className="relative shrink-0">
+              {/* Full experience keeps context tools; the embedded dashboard
+                  follows the focused mock-up command layout. */}
+              {!embedded && <div className="relative shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAttachmentMenuOpen((v) => !v)}
@@ -963,11 +964,15 @@ export function VortaAiCommandBar({
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Text input */}
               <div className="relative min-w-0 flex-1">
-                <Bot className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                {embedded ? (
+                  <Sparkles className="absolute left-1 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-400" />
+                ) : (
+                  <Bot className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                )}
                 <input
                   type="text"
                   value={aiInput}
@@ -984,7 +989,7 @@ export function VortaAiCommandBar({
                     }
                   }}
                   placeholder={resolvedPlaceholder}
-                  className="w-full border-0 bg-transparent py-1.5 pl-7 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
+                  className={`w-full border-0 bg-transparent py-1.5 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none ${embedded ? "pl-10" : "pl-7"}`}
                 />
               </div>
 
@@ -1006,6 +1011,14 @@ export function VortaAiCommandBar({
             </div>
 
             <Button
+              data-vorta-embedded-ask={embedded ? "true" : undefined}
+              style={embedded ? {
+                minHeight: "3.25rem",
+                borderRadius: "9999px",
+                backgroundColor: "#1746b3",
+                paddingInline: "1.5rem",
+                boxShadow: "0 8px 22px rgba(0, 32, 96, 0.28)",
+              } : undefined}
               type="button"
               onClick={() => openGlobalAi(aiInput, true)}
               disabled={!aiInput.trim()}
