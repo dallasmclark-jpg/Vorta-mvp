@@ -56,6 +56,7 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
   test.setTimeout(20 * 60_000);
   mkdirSync(OUTPUT_DIR, { recursive: true });
   const evidence: unknown[] = [];
+  const failures: string[] = [];
 
   for (const [name, path] of routes) {
     await test.step(`${name} ${path}`, async () => {
@@ -74,6 +75,18 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
             const rect = element.getBoundingClientRect();
             const style = getComputedStyle(element);
             return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+          };
+          const describe = (element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return {
+              tagName: element.tagName,
+              className: element.className,
+              background: style.backgroundColor,
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+              text: element.innerText.trim().replace(/\s+/g, " ").slice(0, 180),
+            };
           };
           const structural = pageRoot ? Array.from(pageRoot.querySelectorAll<HTMLElement>("div,section,article,aside")) : [];
           const largeLegacySurfaces = structural.filter((element) => {
@@ -103,25 +116,27 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
             mutedTextCount: muted.length,
             incorrectMutedTextCount: incorrectMuted.length,
             cardBackgrounds: [...new Set(cards.map((element) => getComputedStyle(element).backgroundColor))],
-            largeLegacySamples: largeLegacySurfaces.slice(0, 5).map((element) => ({
-              className: element.className,
-              background: getComputedStyle(element).backgroundColor,
-            })),
-            largeBlueSamples: largeBlueSlabs.slice(0, 5).map((element) => ({
-              className: element.className,
-              background: getComputedStyle(element).backgroundColor,
-            })),
+            largeLegacySamples: largeLegacySurfaces.slice(0, 5).map(describe),
+            largeBlueSamples: largeBlueSlabs.slice(0, 5).map(describe),
+            incorrectMutedSamples: incorrectMuted.slice(0, 5).map(describe),
           };
         });
 
         evidence.push({ name, path, ...audit });
-        expect(audit.largeLegacySurfaceCount, `${path} must not expose large legacy charcoal surfaces`).toBe(0);
-        expect(audit.largeBlueSlabCount, `${path} must not expose large decorative blue slabs`).toBe(0);
-        expect(audit.incorrectMutedTextCount, `${path} muted metadata must use the Dashboard muted token`).toBe(0);
         await session.page.screenshot({
           path: join(OUTPUT_DIR, `${name}-1536x864.png`),
           fullPage: false,
         });
+
+        if (audit.largeLegacySurfaceCount > 0) {
+          failures.push(`${path}: ${audit.largeLegacySurfaceCount} large legacy charcoal surface(s)`);
+        }
+        if (audit.largeBlueSlabCount > 0) {
+          failures.push(`${path}: ${audit.largeBlueSlabCount} large decorative blue slab(s)`);
+        }
+        if (audit.incorrectMutedTextCount > 0) {
+          failures.push(`${path}: ${audit.incorrectMutedTextCount} muted metadata element(s) outside the Dashboard token`);
+        }
       } finally {
         await session.close();
       }
@@ -129,4 +144,5 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
   }
 
   writeFileSync(join(OUTPUT_DIR, "visual-token-audit.json"), JSON.stringify(evidence, null, 2));
+  expect(failures, failures.length ? `VOR-097 page parity failures:\n${failures.join("\n")}` : undefined).toEqual([]);
 });
