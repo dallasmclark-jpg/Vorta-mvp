@@ -6,35 +6,22 @@ import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 const EQUIPMENT_ID = "40000000-0000-0000-0000-000000000007";
 const OUTPUT_DIR = "evidence/vor-097-production-pages";
 
+// Pilot Setup and Data Import are deliberately excluded here because the
+// standard Maintenance Manager production test account is not demo-admin and
+// those routes are permission-gated. Their inaccessibility is recorded as audit evidence.
 const pages = [
-  ["01-dashboard", "/dashboard"],
-  ["02-historical-validation", "/historical-validation"],
-  ["03-shift-handover", "/shift-handover"],
-  ["04-equipment-list", "/equipment"],
-  ["05-stores-inventory", "/stores-inventory"],
-  ["06-skills-matrix", "/skills-matrix"],
-  ["07-engineers", "/engineers"],
-  ["08-requirements", "/requirements"],
-  ["09-career", "/career"],
-  ["10-training", "/training"],
-  ["11-training-providers", "/training-providers"],
-  ["12-pilot-impact", "/pilot-impact"],
-  ["13-pilot-adoption", "/pilot-adoption"],
-  ["14-support", "/support"],
-  ["15-pilot-setup", "/settings/pilot-setup"],
-  ["16-data-import", "/settings/data-import"],
-  ["17-settings", "/settings"],
-  ["18-design-system", "/design-system"],
-  ["19-equipment-overview", `/equipment/${EQUIPMENT_ID}/overview`],
-  ["20-equipment-notifications", `/equipment/${EQUIPMENT_ID}/notifications`],
-  ["21-equipment-work-orders", `/equipment/${EQUIPMENT_ID}/work-orders`],
-  ["22-equipment-pms", `/equipment/${EQUIPMENT_ID}/pms`],
-  ["23-equipment-history", `/equipment/${EQUIPMENT_ID}/history`],
-  ["24-equipment-skills", `/equipment/${EQUIPMENT_ID}/skills`],
-  ["25-equipment-spares", `/equipment/${EQUIPMENT_ID}/spares`],
-  ["26-equipment-documents", `/equipment/${EQUIPMENT_ID}/documents`],
-  ["27-equipment-ai-insights", `/equipment/${EQUIPMENT_ID}/ai-insights`],
-  ["28-shift-cover", "/maintenance/labour-risk/shift-cover"],
+  ["15-settings", "/settings"],
+  ["16-design-system", "/design-system"],
+  ["17-equipment-overview", `/equipment/${EQUIPMENT_ID}/overview`],
+  ["18-equipment-notifications", `/equipment/${EQUIPMENT_ID}/notifications`],
+  ["19-equipment-work-orders", `/equipment/${EQUIPMENT_ID}/work-orders`],
+  ["20-equipment-pms", `/equipment/${EQUIPMENT_ID}/pms`],
+  ["21-equipment-history", `/equipment/${EQUIPMENT_ID}/history`],
+  ["22-equipment-skills", `/equipment/${EQUIPMENT_ID}/skills`],
+  ["23-equipment-spares", `/equipment/${EQUIPMENT_ID}/spares`],
+  ["24-equipment-documents", `/equipment/${EQUIPMENT_ID}/documents`],
+  ["25-equipment-ai-insights", `/equipment/${EQUIPMENT_ID}/ai-insights`],
+  ["26-shift-cover", "/maintenance/labour-risk/shift-cover"],
 ] as const;
 
 async function settle(page: Page): Promise<void> {
@@ -70,8 +57,8 @@ async function captureFreshSession(browser: Browser, name: string, path: string)
   }
 }
 
-test("VOR-097 captures every Maintenance Manager audit page with a fresh authenticated session", async ({ browser }) => {
-  test.setTimeout(28 * 60_000);
+test("VOR-097 captures remaining accessible Maintenance Manager audit pages with fresh authenticated sessions", async ({ browser }) => {
+  test.setTimeout(15 * 60_000);
   mkdirSync(OUTPUT_DIR, { recursive: true });
   for (const [name, path] of pages) {
     await test.step(`${name} ${path}`, async () => {
