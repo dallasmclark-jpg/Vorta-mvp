@@ -91,8 +91,8 @@ assert.match(index, /span\.inline-flex\[class\*="-500\/20"\]\{background-color:t
 /* VOR-095/VOR-097 canonical dark dashboard palette and approved visual treatment. */
 assert.match(tabs, /VOR-095 \/ VOR-097/);
 assert.match(tabs, /--vorta-surface-page: #000814/);
-assert.match(tabs, /--vorta-surface-card: #102a43/);
-assert.match(tabs, /--vorta-surface-raised: #173a5e/);
+assert.match(tabs, /--vorta-surface-card: #030c1d/);
+assert.match(tabs, /--vorta-surface-raised: #07172b/);
 assert.match(tabs, /rgba\(0, 14, 32, 0\.28\) 0%/);
 assert.match(tabs, /rgba\(0, 10, 24, 0\.16\) 42%/);
 assert.match(tabs, /rgba\(0, 8, 20, 0\) 100%/);
@@ -118,21 +118,18 @@ assert.match(
 );
 assert.match(
   tabs,
-  /Approved Vorta card depth[\s\S]*border-color: rgba\(148, 163, 184, 0\.10\) !important;[\s\S]*border-top-color: rgba\(148, 163, 184, 0\.30\) !important;[\s\S]*background-color: #102a43 !important;[\s\S]*background-image: none !important/,
+  /Approved mock-up card depth[\s\S]*border-color: rgba\(96, 165, 250, 0\.13\) !important;[\s\S]*background-color: #030c1d !important;[\s\S]*linear-gradient\(180deg, rgba\(8, 28, 52, 0\.38\)/,
 );
-assert.doesNotMatch(
-  tabs,
-  /background-image: linear-gradient\(180deg, rgba\(148, 163, 184/,
-  "Vorta navy-blue dashboard cards must not be washed out by a surface gradient.",
-);
+assert.doesNotMatch(tabs, /background-image: linear-gradient\(180deg, rgba\(148, 163, 184/);
 assert.match(
   tabs,
   /\[data-vorta-embedded-ai="true"\] > \[data-vorta-card="true"\][\s\S]*border: 0 !important;[\s\S]*background: transparent !important;[\s\S]*box-shadow: none !important/,
 );
 assert.match(
   tabs,
-  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.38\) !important;[\s\S]*background-color: transparent !important;[\s\S]*border-radius: 9999px !important/,
+  /\[data-vorta-embedded-ai="true"\][\s\S]*\[class~="bg-\[#0f1218\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.24\) !important;[\s\S]*background-color: rgba\(3, 12, 29, 0\.72\) !important;[\s\S]*border-radius: 9999px !important/,
 );
+assert.match(read("src/components/ai/VortaAiCommandBar.tsx"), /data-vorta-embedded-ask=\{embedded \? "true" : undefined\}[\s\S]*borderRadius: "9999px"[\s\S]*backgroundColor: "#1746b3"/);
 
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
