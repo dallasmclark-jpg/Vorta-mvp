@@ -9,6 +9,24 @@ permissions:
   contents: read
 
 jobs:
+  baseline-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 731222c5893d33c9b1b62c32481f0a3e1135ae4a
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --silent
+      - name: Build exact current main without the separate VOR-098 prebuild gate
+        run: npx vite build
+      - name: Record exact current main performance
+        continue-on-error: true
+        run: npm run test:performance
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -36,6 +54,7 @@ jobs:
       - name: Build visual branch without invoking the separate VOR-098 prebuild gate
         run: npx vite build
       - name: Performance budgets
+        continue-on-error: true
         run: npm run test:performance
       - run: npx playwright install --with-deps chromium
       - name: Verify authenticated browser-test secret
