@@ -29,8 +29,8 @@ html.dark
 /* VOR-095 / VOR-097: canonical dark dashboard bases. */
 html.dark {
   --vorta-surface-page: #000814;
-  --vorta-surface-card: #102a43;
-  --vorta-surface-raised: #173a5e;
+  --vorta-surface-card: #030c1d;
+  --vorta-surface-raised: #07172b;
   --vorta-surface-page-image: linear-gradient(
     180deg,
     rgba(0, 14, 32, 0.28) 0%,
@@ -66,14 +66,13 @@ html.dark [data-vorta-dashboard-root="true"] span.inline-flex[class*="-500/20"] 
   border: 1px solid currentColor !important;
 }
 
-/* Approved Vorta card depth: dark navy-blue fill with the stronger treatment
-   limited to the upper edge. Operational RAG colours remain content accents. */
+/* Approved mock-up card depth: near-black navy, only subtly lifted from the
+   canvas. Fine cool-blue edges and tonal depth replace the previous blue slabs. */
 html.dark [data-vorta-dashboard-root="true"] [data-vorta-card="true"]:not([data-vorta-group-frame="true"]),
 html.dark [data-vorta-dashboard-root="true"] [class~="rounded-lg"][class~="border"][class~="bg-[#0d1117]"] {
-  border-color: rgba(148, 163, 184, 0.10) !important;
-  border-top-color: rgba(148, 163, 184, 0.30) !important;
-  background-color: #102a43 !important;
-  background-image: none !important;
+  border-color: rgba(96, 165, 250, 0.13) !important;
+  background-color: #030c1d !important;
+  background-image: linear-gradient(180deg, rgba(8, 28, 52, 0.38) 0%, rgba(3, 12, 29, 0) 58%) !important;
 }
 
 /* Dashboard Ask Vorta: the shared Card wrapper must not become a second panel. */
@@ -86,7 +85,7 @@ html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] > [
 
 /* Keep only the quiet, fully rounded intelligence outline around the command input. */
 html.dark [data-vorta-embedded-ai="true"] [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
-  border-color: rgba(96, 165, 250, 0.38) !important;
-  background-color: transparent !important;
+  border-color: rgba(96, 165, 250, 0.24) !important;
+  background-color: rgba(3, 12, 29, 0.72) !important;
   border-radius: 9999px !important;
 }
