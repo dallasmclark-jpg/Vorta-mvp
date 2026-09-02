@@ -1,0 +1,41 @@
+name: VOR-097 Netlify production build repro
+
+on:
+  push:
+    branches:
+      - agent/vor-097-deploy-source-export
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CONTEXT: production
+      VORTA_ALLOW_VOR_098_RELEASE_EXCEPTION: "true"
+      VITE_VORTA_DATA_MODE: demo
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+    steps:
+      - name: Check out exact current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Reproduce exact Netlify production build command
+        shell: bash
+        run: |
+          node scripts/validate-data-mode.mjs
+          env -u VORTA_E2E_EMAIL -u VORTA_E2E_PASSWORD -u VORTA_E2E_SITE_ID npm run build
