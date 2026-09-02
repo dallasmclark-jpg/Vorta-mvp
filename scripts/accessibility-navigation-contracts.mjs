@@ -9,6 +9,8 @@ const equipmentTabs = read(
   "src/screens/Equipment/EquipmentTabNavigation.tsx",
 );
 const portalShell = read("src/components/PortalShell.tsx");
+const engineerPortal = read("src/screens/EngineerPortal/EngineerPortal.tsx");
+const operatorPortal = read("src/screens/OperatorPortal/OperatorPortal.tsx");
 const shiftCover = read("src/screens/LabourRisk/LiveShiftCoverPage.tsx");
 const qualityWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
 const contractRunner = read("scripts/run-contract-suite.mjs");
@@ -67,6 +69,22 @@ for (const expected of [
   );
 }
 
+for (const [label, source] of [
+  ["Engineer", engineerPortal],
+  ["Operator", operatorPortal],
+]) {
+  assert.match(
+    source,
+    /accentColor="blue"/,
+    `${label} portal must use the canonical Vorta intelligence-blue navigation accent.`,
+  );
+  assert.doesNotMatch(
+    source,
+    /accentColor="emerald"/,
+    `${label} portal must not use role-specific green navigation branding.`,
+  );
+}
+
 for (const expected of [
   "aria-pressed={selected}",
   'aria-label="Previous week"',
@@ -94,4 +112,4 @@ assert.ok(
   "The production contract manifest must enforce accessibility navigation contracts",
 );
 
-console.log("Accessibility and navigation contracts passed.");
+console.log("Accessibility and canonical VOR-097 navigation contracts passed.");
