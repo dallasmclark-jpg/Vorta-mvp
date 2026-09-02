@@ -39,7 +39,7 @@ const secondaryNav: NavItem[] = [
 ];
 
 export const OperatorPortal = (): JSX.Element => (
-  <PortalShell homeRoute="/operator/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="emerald">
+  <PortalShell homeRoute="/operator/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
       <Route path="dashboard"  element={<OperatorDashboardSection />} />
       <Route path="shift"      element={<OperatorMyShiftSection />} />
