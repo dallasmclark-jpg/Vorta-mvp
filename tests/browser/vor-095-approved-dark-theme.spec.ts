@@ -4,7 +4,7 @@ import {
   signInMaintenanceManager,
 } from "./maintenance-manager-test-helpers";
 
-test("VOR-095 uses the approved navy canvas, lighter cards and transparent risk badges", async ({ page }, testInfo) => {
+test("VOR-095 uses the approved navy canvas, canonical card fill and transparent risk badges", async ({ page }, testInfo) => {
   await signInMaintenanceManager(page);
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 
@@ -33,6 +33,9 @@ test("VOR-095 uses the approved navy canvas, lighter cards and transparent risk 
       pageBackground: pageContent ? getComputedStyle(pageContent).backgroundColor : "",
       cardCount: visible.filter((element) => getComputedStyle(element).backgroundColor === cardBackground).length,
       raisedCount: visible.filter((element) => getComputedStyle(element).backgroundColor === raisedBackground).length,
+      cardImages: visible
+        .filter((element) => element.matches('[data-vorta-card="true"]:not([data-vorta-group-frame="true"])'))
+        .map((element) => getComputedStyle(element).backgroundImage),
     };
   });
 
@@ -42,6 +45,10 @@ test("VOR-095 uses the approved navy canvas, lighter cards and transparent risk 
   expect(hierarchy.pageBackground).toBe("rgb(8, 26, 44)");
   expect(hierarchy.cardCount, "Dashboard must render the approved lighter card surface").toBeGreaterThan(0);
   expect(hierarchy.raisedCount, "Dashboard must retain nested surface hierarchy").toBeGreaterThan(0);
+  expect(hierarchy.cardImages.length, "Dashboard must render at least one canonical card").toBeGreaterThan(0);
+  expect(hierarchy.cardImages, "Canonical #252a30 cards must not have a grey wash or fill gradient").not.toContainEqual(
+    expect.stringContaining("linear-gradient"),
+  );
 
   const riskBadges = page.locator(
     '[data-vorta-page-content="true"] span[class~="bg-red-500/20"][class~="text-red-400"], ' +
