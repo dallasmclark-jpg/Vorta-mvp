@@ -28,8 +28,23 @@ test("VOR-095 uses the mock-up navy cards and focused Ask Vorta layout", async (
     const askVortaWrapper = document.querySelector<HTMLElement>(
       '[data-vorta-embedded-ai="true"] > [data-vorta-card="true"]',
     );
+    const riskIntelligenceLabel = document.querySelector<HTMLElement>(
+      '[data-vorta-risk-intelligence-label="true"]',
+    );
+    const workPlanSummary = document.querySelector<HTMLElement>(
+      '[data-vorta-work-plan-summary="true"]',
+    );
+    const workPlanCard = workPlanSummary?.parentElement ?? null;
+    const scopeTabList = document.querySelector<HTMLElement>(
+      '[aria-label="Risk intelligence scope"]',
+    );
+    const scopeFrame = scopeTabList?.closest<HTMLElement>(
+      '[data-vorta-mobile-risk-scope="true"]',
+    ) ?? null;
+    const firstScopeTab = scopeTabList?.querySelector<HTMLElement>('[role="tab"]') ?? null;
 
     return {
+      viewportWidth: window.innerWidth,
       pageToken: rootStyle.getPropertyValue("--vorta-surface-page").trim(),
       cardToken: rootStyle.getPropertyValue("--vorta-surface-card").trim(),
       raisedToken: rootStyle.getPropertyValue("--vorta-surface-raised").trim(),
@@ -44,6 +59,25 @@ test("VOR-095 uses the mock-up navy cards and focused Ask Vorta layout", async (
             background: getComputedStyle(askVortaWrapper).backgroundColor,
             borderTopWidth: getComputedStyle(askVortaWrapper).borderTopWidth,
             boxShadow: getComputedStyle(askVortaWrapper).boxShadow,
+          }
+        : null,
+      riskIntelligenceLabel: riskIntelligenceLabel
+        ? {
+            color: getComputedStyle(riskIntelligenceLabel).color,
+            background: getComputedStyle(riskIntelligenceLabel).backgroundColor,
+          }
+        : null,
+      workPlanBorderColor: workPlanCard
+        ? getComputedStyle(workPlanCard).borderTopColor
+        : null,
+      scopeRail: scopeTabList && firstScopeTab && scopeFrame
+        ? {
+            gap: getComputedStyle(scopeTabList).columnGap,
+            paddingRight: getComputedStyle(scopeTabList).paddingRight,
+            tabPaddingLeft: getComputedStyle(firstScopeTab).paddingLeft,
+            tabPaddingRight: getComputedStyle(firstScopeTab).paddingRight,
+            continuationFade: getComputedStyle(scopeFrame, "::after").backgroundImage,
+            fadePointerEvents: getComputedStyle(scopeFrame, "::after").pointerEvents,
           }
         : null,
     };
@@ -63,6 +97,24 @@ test("VOR-095 uses the mock-up navy cards and focused Ask Vorta layout", async (
     boxShadow: "none",
   });
   await expect(page.locator('[data-vorta-embedded-ai="true"] [data-vorta-embedded-ask="true"]')).toBeVisible();
+
+  expect(hierarchy.riskIntelligenceLabel).not.toBeNull();
+  expect(hierarchy.riskIntelligenceLabel?.color).toBe("rgb(96, 165, 250)");
+  expect(hierarchy.riskIntelligenceLabel?.background).toBe("rgb(7, 23, 43)");
+
+  if (hierarchy.viewportWidth >= 768) {
+    expect(hierarchy.workPlanBorderColor).toBe("rgba(148, 163, 184, 0.16)");
+  }
+
+  if (hierarchy.viewportWidth >= 1280) {
+    expect(hierarchy.scopeRail).not.toBeNull();
+    expect(hierarchy.scopeRail?.gap).toBe("6px");
+    expect(hierarchy.scopeRail?.paddingRight).toBe("12px");
+    expect(hierarchy.scopeRail?.tabPaddingLeft).toBe("10px");
+    expect(hierarchy.scopeRail?.tabPaddingRight).toBe("10px");
+    expect(hierarchy.scopeRail?.continuationFade).toContain("linear-gradient");
+    expect(hierarchy.scopeRail?.fadePointerEvents).toBe("none");
+  }
 
   const riskBadges = page.locator(
     '[data-vorta-page-content="true"] span[class~="bg-red-500/20"][class~="text-red-400"], ' +
