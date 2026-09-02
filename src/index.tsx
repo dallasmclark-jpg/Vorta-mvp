@@ -7,6 +7,7 @@ import {
   Routes,
 } from "react-router-dom";
 import "../tailwind.css";
+import "./portal-visual-parity";
 import {
   AuthGate,
   AuthProvider,
