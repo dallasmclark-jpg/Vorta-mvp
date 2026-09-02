@@ -119,7 +119,7 @@ test("VOR-035 Samsung desktop-site touch view keeps the original rota", async ({
   const aiInput = embeddedAi.getByRole("textbox");
   await aiInput.focus();
   const inputFrame = embeddedAi.locator(".flex.min-w-0.flex-1.items-center");
-  await expect(inputFrame).toHaveCSS("border-color", "rgb(55, 65, 81)");
+  await expect(inputFrame).toHaveCSS("border-color", "rgba(96, 165, 250, 0.24)");
   await expect(inputFrame).toHaveCSS("box-shadow", "none");
   await expect(embeddedAi.getByRole("button", { name: "Ask", exact: true })).toBeVisible();
 
