@@ -1,0 +1,60 @@
+name: VOR-097 CSS budget fix
+
+on:
+  push:
+    branches:
+      - agent/vor-097-deploy-source-export
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          show-progress: false
+          fetch-depth: 1
+
+      - name: Move VOR-097 portal cascade from bundled CSS to existing inline shell CSS
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          css_path = Path('src/tab-states.css')
+          html_path = Path('index.html')
+          css = css_path.read_text()
+          html = html_path.read_text()
+          marker = "/* Shared Card primitives inherit the Dashboard's restrained navy depth on"
+          if marker not in css:
+              raise SystemExit('VOR-097 movable CSS marker not found')
+          prefix, moved = css.split(marker, 1)
+          moved = marker + moved
+          anchor = '</style>\n<div id="app">'
+          if anchor not in html:
+              raise SystemExit('index inline-style anchor not found')
+          if 'VOR-097 inline premium portal cascade' in html:
+              raise SystemExit('VOR-097 inline portal cascade already installed')
+          html = html.replace(
+              anchor,
+              '\n  /* VOR-097 inline premium portal cascade: kept out of the bundled CSS budget. */\n' + moved + '\n</style>\n<div id="app">',
+              1,
+          )
+          css_path.write_text(prefix.rstrip() + '\n')
+          html_path.write_text(html)
+          PY
+
+      - name: Commit focused production-budget fix to main
+        shell: bash
+        run: |
+          git config user.name "dallasmclark-jpg"
+          git config user.email "dallasmclark@gmail.com"
+          git add index.html src/tab-states.css
+          git diff --cached --check
+          git commit -m "VOR-097 keep premium portal cascade within CSS budget"
+          git push origin HEAD:main
