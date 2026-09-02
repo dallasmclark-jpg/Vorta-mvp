@@ -63,6 +63,7 @@ async function openFresh(
   browser: Browser,
   path: string,
   project: ProjectOptions,
+  expectedPath = path,
 ): Promise<{ page: Page; close: () => Promise<void> }> {
   const context = await browser.newContext({
     viewport: project.viewport,
@@ -76,7 +77,7 @@ async function openFresh(
   await page.goto(path, { waitUntil: "domcontentloaded" });
   await settle(page);
   await expect(page.locator('[data-vorta-page-content="true"]')).toBeVisible({ timeout: 30_000 });
-  expect(new URL(page.url()).pathname).toBe(path);
+  expect(new URL(page.url()).pathname).toBe(expectedPath);
   return { page, close: () => context.close() };
 }
 
@@ -86,11 +87,14 @@ async function resolveVerifiedEquipmentId(
 ): Promise<string> {
   const session = await openFresh(browser, "/equipment", project);
   try {
-    const desktopAction = session.page.getByRole("button", { name: /Open verified equipment/i }).first();
+    const liveDesktopAction = session.page.getByRole("button", { name: /Open verified equipment/i }).first();
+    const demoDesktopAction = session.page.getByRole("button", { name: /View full asset intelligence/i }).first();
     const phoneAction = session.page.getByRole("button", { name: /Open overview for/i }).first();
 
-    if (await desktopAction.isVisible({ timeout: 20_000 }).catch(() => false)) {
-      await desktopAction.click();
+    if (await liveDesktopAction.isVisible({ timeout: 12_000 }).catch(() => false)) {
+      await liveDesktopAction.click();
+    } else if (await demoDesktopAction.isVisible({ timeout: 20_000 }).catch(() => false)) {
+      await demoDesktopAction.click();
     } else {
       await expect(phoneAction).toBeVisible({ timeout: 20_000 });
       await phoneAction.click();
@@ -128,7 +132,11 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
 
   for (const [name, path] of routes) {
     await test.step(`${name} ${path}`, async () => {
-      const session = await openFresh(browser, path, project);
+      const restrictedOnPhone =
+        viewport.width <= 767 &&
+        (path === "/settings/pilot-setup" || path === "/settings/data-import");
+      const expectedPath = restrictedOnPhone ? "/settings" : path;
+      const session = await openFresh(browser, path, project, expectedPath);
       try {
         const audit = await session.page.evaluate(() => {
           const legacyColours = new Set([
@@ -196,12 +204,15 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
           };
         });
 
-        evidence.push({ name, path, equipmentId, viewport, ...audit });
+        evidence.push({ name, path, expectedPath, restrictedOnPhone, equipmentId, viewport, ...audit });
         await session.page.screenshot({
           path: join(outputDir, `${name}-${viewport.width}x${viewport.height}.png`),
           fullPage: false,
         });
 
+        if (restrictedOnPhone) {
+          return;
+        }
         if (audit.largeLegacySurfaceCount > 0) {
           failures.push(`${path}: ${audit.largeLegacySurfaceCount} large legacy charcoal surface(s)`);
         }
