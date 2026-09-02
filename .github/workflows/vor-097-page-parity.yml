@@ -56,7 +56,8 @@ jobs:
       - name: Performance budgets
         continue-on-error: true
         run: npm run test:performance
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium for visual audit
+        run: npx playwright install chromium
       - name: Verify authenticated browser-test secret
         run: test -n "$VORTA_E2E_PASSWORD"
       - name: Capture and verify 27 views across desktop tablet and phone
