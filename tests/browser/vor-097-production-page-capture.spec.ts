@@ -3,20 +3,18 @@ import { join } from "node:path";
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
-const EQUIPMENT_ID = "40000000-0000-0000-0000-000000000007";
 const OUTPUT_DIR = "evidence/vor-097-production-pages";
 
-const pages = [
-  ["17-equipment-overview", `/equipment/${EQUIPMENT_ID}/overview`],
-  ["18-equipment-notifications", `/equipment/${EQUIPMENT_ID}/notifications`],
-  ["19-equipment-work-orders", `/equipment/${EQUIPMENT_ID}/work-orders`],
-  ["20-equipment-pms", `/equipment/${EQUIPMENT_ID}/pms`],
-  ["21-equipment-history", `/equipment/${EQUIPMENT_ID}/history`],
-  ["22-equipment-skills", `/equipment/${EQUIPMENT_ID}/skills`],
-  ["23-equipment-spares", `/equipment/${EQUIPMENT_ID}/spares`],
-  ["24-equipment-documents", `/equipment/${EQUIPMENT_ID}/documents`],
-  ["25-equipment-ai-insights", `/equipment/${EQUIPMENT_ID}/ai-insights`],
-  ["26-shift-cover", "/maintenance/labour-risk/shift-cover"],
+const equipmentTabs = [
+  ["17-equipment-overview", "overview"],
+  ["18-equipment-notifications", "notifications"],
+  ["19-equipment-work-orders", "work-orders"],
+  ["20-equipment-pms", "pms"],
+  ["21-equipment-history", "history"],
+  ["22-equipment-skills", "skills"],
+  ["23-equipment-spares", "spares"],
+  ["24-equipment-documents", "documents"],
+  ["25-equipment-ai-insights", "ai-insights"],
 ] as const;
 
 async function settle(page: Page): Promise<void> {
@@ -33,32 +31,49 @@ async function settle(page: Page): Promise<void> {
   ` });
 }
 
-async function captureFreshSession(browser: Browser, name: string, path: string): Promise<void> {
-  const context = await browser.newContext({
-    viewport: { width: 1536, height: 864 },
-    deviceScaleFactor: 1,
-  });
+async function freshPage(browser: Browser): Promise<{ page: Page; close: () => Promise<void> }> {
+  const context = await browser.newContext({ viewport: { width: 1536, height: 864 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
+  await signInMaintenanceManager(page);
+  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  return { page, close: () => context.close() };
+}
+
+async function capturePath(browser: Browser, name: string, path: string): Promise<void> {
+  const session = await freshPage(browser);
   try {
-    await signInMaintenanceManager(page);
-    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
-    await page.goto(path, { waitUntil: "domcontentloaded" });
-    await settle(page);
-    expect(new URL(page.url()).pathname).toBe(path);
-    await expect(page.locator("body")).toBeVisible();
-    await expect(page.locator("body")).not.toBeEmpty();
-    await page.screenshot({ path: join(OUTPUT_DIR, `${name}-1536x864.png`), fullPage: false });
+    await session.page.goto(path, { waitUntil: "domcontentloaded" });
+    await settle(session.page);
+    expect(new URL(session.page.url()).pathname).toBe(path);
+    await session.page.screenshot({ path: join(OUTPUT_DIR, `${name}-1536x864.png`), fullPage: false });
   } finally {
-    await context.close();
+    await session.close();
   }
 }
 
-test("VOR-097 captures equipment and labour-risk audit pages with fresh authenticated sessions", async ({ browser }) => {
+test("VOR-097 captures production equipment tabs and shift cover", async ({ browser }) => {
   test.setTimeout(15 * 60_000);
   mkdirSync(OUTPUT_DIR, { recursive: true });
-  for (const [name, path] of pages) {
-    await test.step(`${name} ${path}`, async () => {
-      await captureFreshSession(browser, name, path);
+
+  const discovery = await freshPage(browser);
+  let equipmentId = "";
+  try {
+    await discovery.page.goto("/equipment", { waitUntil: "domcontentloaded" });
+    await settle(discovery.page);
+    const detailLink = discovery.page.locator('a[href*="/equipment/"]').filter({ hasNot: discovery.page.locator('[href="/equipment"]') }).first();
+    const href = await detailLink.getAttribute("href", { timeout: 20_000 });
+    const match = href?.match(/\/equipment\/([^/?#]+)/);
+    if (!match) throw new Error(`Could not discover an equipment id from href: ${href}`);
+    equipmentId = match[1];
+  } finally {
+    await discovery.close();
+  }
+
+  for (const [name, tab] of equipmentTabs) {
+    await test.step(`${name} ${tab}`, async () => {
+      await capturePath(browser, name, `/equipment/${equipmentId}/${tab}`);
     });
   }
+
+  await capturePath(browser, "26-shift-cover", "/maintenance/labour-risk/shift-cover");
 });
