@@ -1,0 +1,50 @@
+name: VOR-097 page parity
+
+on:
+  push:
+    branches:
+      - agent/vor-097-page-parity
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --silent
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Contracts
+        run: npm run test:contracts
+      - name: Route smoke
+        run: npm run test:smoke
+      - run: npx playwright install --with-deps chromium
+      - name: Verify authenticated browser-test secret
+        run: test -n "$VORTA_E2E_PASSWORD"
+      - name: Capture and verify Dashboard parity
+        run: npx playwright test tests/browser/vor-097-page-parity.spec.ts --project=laptop-1366
+      - name: Upload parity evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vor-097-page-parity-1536x864
+          path: |
+            evidence/vor-097-page-parity
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 14
