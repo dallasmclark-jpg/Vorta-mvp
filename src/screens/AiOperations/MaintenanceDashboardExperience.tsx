@@ -8,6 +8,17 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           min-height: 2.5rem;
         }
 
+        [data-vorta-dashboard-root="true"] [data-vorta-risk-intelligence-label="true"] {
+          color: #60a5fa !important;
+        }
+
+        @media (min-width: 768px) {
+          [data-vorta-dashboard-root="true"] :has(> [data-vorta-work-plan-summary="true"]) {
+            border-color: rgba(148, 163, 184, 0.16) !important;
+            box-shadow: inset 0 1px 0 rgba(96, 165, 250, 0.018) !important;
+          }
+        }
+
         @media (min-width: 1280px) {
           [data-vorta-dashboard-root="true"] [aria-label="Risk reduction KPI cards"] {
             display: grid !important;
@@ -25,6 +36,31 @@ export function MaintenanceDashboardExperience(): JSX.Element {
           [data-vorta-dashboard-root="true"] button[aria-label^="Scroll to previous risk KPI"],
           [data-vorta-dashboard-root="true"] button[aria-label^="Scroll to next risk KPI"] {
             display: none !important;
+          }
+
+          [data-vorta-dashboard-root="true"] [data-vorta-mobile-risk-scope="true"] {
+            position: relative;
+          }
+
+          [data-vorta-dashboard-root="true"] [data-vorta-mobile-risk-scope="true"]::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2;
+            width: 2rem;
+            pointer-events: none;
+            background: linear-gradient(90deg, rgba(0, 8, 20, 0), rgba(0, 8, 20, 0.92));
+          }
+
+          [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] {
+            column-gap: 0.375rem !important;
+            padding-right: 0.75rem;
+          }
+
+          [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scope"] [role="tab"] {
+            padding-inline: 0.625rem !important;
           }
         }
 
