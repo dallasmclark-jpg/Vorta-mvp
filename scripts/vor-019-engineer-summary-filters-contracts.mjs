@@ -48,7 +48,11 @@ assert.match(
 assert.match(tabStates, /border: 1px solid #2563eb !important;/);
 assert.match(tabStates, /border-color: #60a5fa !important;/);
 assert.match(tabStates, /background: #fff !important;/);
-assert.match(tabStates, /background: #0d1117 !important;/);
+assert.match(
+  tabStates,
+  /Selected controls now use the same quiet intelligence-blue outline[\s\S]*background: transparent !important;/,
+  "Dark selected engineer filters must use the approved transparent Dashboard-style state.",
+);
 assert.match(tabStates, /box-shadow: none !important;/);
 assert.doesNotMatch(
   tabStates,
@@ -64,12 +68,12 @@ assert.match(browserCoverage, /toHaveAttribute\("aria-selected", "true"\)/);
 assert.match(browserCoverage, /getComputedStyle/);
 assert.match(browserCoverage, /rgb\(96, 165, 250\)/);
 assert.match(browserCoverage, /rgb\(37, 99, 235\)/);
-assert.match(browserCoverage, /rgb\(13, 17, 23\)/);
+assert.match(browserCoverage, /rgba\(0, 0, 0, 0\)/);
 assert.match(browserCoverage, /boxShadow/);
 assert.match(browserCoverage, /toHaveCount\(initialRegisterCount\)/);
 assert.match(browserCoverage, /\[360, 390, 430\]/);
 assert.match(browserCoverage, /page\.reload\(\)/);
 
 console.log(
-  "VOR-019 mobile engineer summary filters, rendered shared selected-card styling, priority panel and register preservation contracts passed.",
+  "VOR-019/VOR-097 mobile engineer summary filters, transparent selected-card styling, priority panel and register preservation contracts passed.",
 );
