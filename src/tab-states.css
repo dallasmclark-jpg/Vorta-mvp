@@ -240,9 +240,11 @@ html.dark [data-vorta-dashboard-root="true"] [aria-label="Risk intelligence scop
 }
 
 /* The Dashboard command bar is deliberately a quiet intelligence control, not
-   a generic raised metadata panel. Reassert it after the product-wide legacy
-   surface normalisation so VOR-097 cannot dilute the VOR-095 source of truth. */
-html.dark [data-vorta-dashboard-root="true"]
+   a generic raised metadata panel. The #app anchor is deliberate: it gives the
+   approved source-of-truth control enough specificity to outrank the legacy
+   surface migration without changing component geometry. */
+html.dark #app
+  [data-vorta-dashboard-root="true"]
   [data-vorta-embedded-ai="true"]
   [class~="bg-[#0f1218]"][class~="border-gray-700"][class~="items-center"] {
   border-color: rgba(96, 165, 250, 0.24) !important;
