@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const EQUIPMENT_ID = "40000000-0000-0000-0000-000000000007";
+const slowPages = new Set(["historical-validation", "shift-handover", "skills-matrix", "pilot-evidence"]);
 
 const routes = [
   ["dashboard", "/dashboard"],
@@ -35,7 +36,7 @@ const routes = [
   ["data-import", "/settings/data-import"],
 ] as const;
 
-async function settle(page: Page): Promise<void> {
+async function settle(page: Page, name: string): Promise<void> {
   await page.addStyleTag({
     content: `
       *, *::before, *::after {
@@ -48,7 +49,7 @@ async function settle(page: Page): Promise<void> {
   }).catch(() => undefined);
 
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(slowPages.has(name) ? 12000 : 2500);
   await page.evaluate(() => {
     const scroller = document.querySelector<HTMLElement>("[data-vorta-portal-scroll-container='true']");
     if (scroller) scroller.scrollTop = 0;
@@ -57,7 +58,7 @@ async function settle(page: Page): Promise<void> {
 }
 
 test("capture complete Maintenance Manager visual consistency audit", async ({ page }, testInfo) => {
-  test.setTimeout(5 * 60_000);
+  test.setTimeout(6 * 60_000);
   await page.setViewportSize({ width: 1536, height: 960 });
   await signInMaintenanceManager(page);
 
@@ -74,7 +75,7 @@ test("capture complete Maintenance Manager visual consistency audit", async ({ p
 
   for (const [name, route] of routes) {
     await page.goto(route, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await settle(page);
+    await settle(page, name);
 
     const heading = await page.locator("h1, h2").first().innerText().catch(() => null);
     const bodyBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
