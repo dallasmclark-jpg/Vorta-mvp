@@ -8,6 +8,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     data-vorta-card="true"
+    data-vorta-surface-level="primary"
     className={cn(
       "vorta-card rounded-2xl border bg-card text-card-foreground",
       className,
