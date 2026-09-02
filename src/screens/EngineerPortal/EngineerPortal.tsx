@@ -52,7 +52,7 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export const EngineerPortal = (): JSX.Element => (
-  <PortalShell homeRoute="/engineer/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="emerald">
+  <PortalShell homeRoute="/engineer/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
       <Route path="dashboard"          element={<EngineerDashboardSection />} />
       <Route path="skills"             element={<MySkillsSection />} />
