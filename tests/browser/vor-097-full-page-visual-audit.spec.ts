@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { signInMaintenanceManager } from "./maintenance-manager-test-helpers";
 
 const EQUIPMENT_ID = "40000000-0000-0000-0000-000000000007";
 
@@ -46,9 +47,8 @@ async function settle(page: Page): Promise<void> {
     `,
   }).catch(() => undefined);
 
-  await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => undefined);
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2500);
   await page.evaluate(() => {
     const scroller = document.querySelector<HTMLElement>("[data-vorta-portal-scroll-container='true']");
     if (scroller) scroller.scrollTop = 0;
@@ -57,8 +57,9 @@ async function settle(page: Page): Promise<void> {
 }
 
 test("capture complete Maintenance Manager visual consistency audit", async ({ page }, testInfo) => {
-  test.setTimeout(8 * 60_000);
+  test.setTimeout(5 * 60_000);
   await page.setViewportSize({ width: 1536, height: 960 });
+  await signInMaintenanceManager(page);
 
   const outputDir = `visual-audit/${testInfo.project.name}`;
   mkdirSync(outputDir, { recursive: true });
@@ -101,4 +102,5 @@ test("capture complete Maintenance Manager visual consistency audit", async ({ p
 
   writeFileSync(`${outputDir}/manifest.json`, JSON.stringify(manifest, null, 2));
   expect(manifest).toHaveLength(routes.length);
+  expect(manifest.filter((entry) => entry.heading === "Log in to your account")).toHaveLength(0);
 });
