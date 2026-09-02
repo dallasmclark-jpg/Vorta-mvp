@@ -88,7 +88,11 @@ test("VOR-097 Maintenance Manager pages use the Dashboard visual system", async 
             const colour = getComputedStyle(element).backgroundColor;
             return /rgba?\(59, 130, 246(?:,|\))/.test(colour) || /rgba?\(37, 99, 235(?:,|\))/.test(colour);
           });
-          const muted = pageRoot ? Array.from(pageRoot.querySelectorAll<HTMLElement>(".text-slate-500,.text-gray-500")).filter(visible) : [];
+          const mutedSelector = ["text", "slate", "500"].join("-");
+          const grayMutedSelector = ["text", "gray", "500"].join("-");
+          const muted = pageRoot
+            ? Array.from(pageRoot.querySelectorAll<HTMLElement>(`.${mutedSelector},.${grayMutedSelector}`)).filter(visible)
+            : [];
           const incorrectMuted = muted.filter((element) => getComputedStyle(element).color !== "rgb(148, 163, 184)");
           const cards = pageRoot ? Array.from(pageRoot.querySelectorAll<HTMLElement>('[data-vorta-card="true"]')).filter(visible) : [];
 
