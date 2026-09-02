@@ -27,8 +27,12 @@ assert.match(
 );
 assert.match(tabStates, /border: 1px solid #2563eb !important;/, "Light selected tabs must visibly outrank shared card normalisation.");
 assert.match(tabStates, /background: #fff !important;/, "Light selected tabs must retain a neutral surface.");
-assert.match(tabStates, /border-color: #60a5fa !important;/, "Dark selected tabs must visibly use the blue outline.");
-assert.match(tabStates, /background: #0d1117 !important;/, "Dark selected tabs must retain a neutral surface.");
+assert.match(tabStates, /border-color: #60a5fa !important;/, "Dark selected tabs must visibly use the Vorta intelligence-blue outline.");
+assert.match(
+  tabStates,
+  /Selected controls now use the same quiet intelligence-blue outline[\s\S]*background: transparent !important;[\s\S]*color: #f8fafc !important;/,
+  "Dark selected tabs must use the approved Dashboard-style transparent selected state.",
+);
 assert.match(tabStates, /box-shadow: none !important;/, "Component and shared card shadows must be normalised.");
 assert.match(
   tabStates,
@@ -37,11 +41,15 @@ assert.match(
 );
 assert.doesNotMatch(tabStates, /:focus-visible/, "Shared selected-state CSS must not override component keyboard focus.");
 assert.doesNotMatch(tabStates, /background:\s*#(?:1d4ed8|2563eb|3b82f6)/i, "Selected tabs must not restore an opaque blue fill.");
-assert.doesNotMatch(tabStates, /\[aria-current="?page"?\]/, "Ordinary current-page navigation must not be styled as a tab.");
+assert.match(
+  tabStates,
+  /\[data-vorta-sidebar="true"\] \[data-vorta-nav-item="true"\]\[aria-current="page"\][\s\S]*background: transparent !important;[\s\S]*color: #60a5fa !important/,
+  "Current-page navigation must use Dashboard-style blue text/icon with no filled background.",
+);
 
 assert.match(storesInventory, /role="tab"[\s\S]*aria-selected=\{selected\}/, "Stores Inventory tabs must expose semantic selection state.");
 assert.match(equipmentTabs, /role="tab"[\s\S]*aria-selected=\{active\}/, "Equipment tabs must expose semantic selection state.");
 assert.match(equipmentTabs, /data-vorta-tab-outline="true"/, "Equipment tabs must declare shared visual intent explicitly.");
 assert.match(equipmentTabs, /focus-visible:outline/, "Equipment tabs must retain component-owned keyboard focus.");
 
-console.log("VOR-018 and VOR-022 portal-scoped selected-tab contracts passed.");
+console.log("VOR-018, VOR-022 and VOR-097 portal selected-state/navigation contracts passed.");
