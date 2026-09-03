@@ -28,6 +28,58 @@ jobs:
       - name: Create screenshot-only engineer entry point
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/auth.tsx')
+          s = p.read_text()
+          old = '''const AuthContext = createContext<AuthContextValue>({
+            session: null,
+            role: null,
+            siteContext: null,
+            isDemoAdmin: false,
+            loading: true,
+            roleResolutionFailed: false,
+            authInitialisationError:
+              null,
+            retryAuthInitialisation:
+              () => undefined,
+          });'''
+          new = '''const AuthContext = createContext<AuthContextValue>({
+            session: {
+              access_token: "screenshot-session",
+              token_type: "bearer",
+              expires_in: 3600,
+              expires_at: 4102444800,
+              refresh_token: "screenshot-session",
+              user: {
+                id: "demo-engineer",
+                aud: "authenticated",
+                role: "authenticated",
+                email: "eng.pharma@vorta.network",
+                app_metadata: { role: "engineer", portal_role: "engineer" },
+                user_metadata: { full_name: "James Mitchell", role: "engineer", portal_role: "engineer" },
+                identities: [],
+                created_at: "2026-01-01T00:00:00.000Z",
+              },
+            } as Session,
+            role: "engineer",
+            siteContext: {
+              siteId: "demo-pharma",
+              organisationId: "demo-org",
+              role: "engineer",
+              isDefault: true,
+            },
+            isDemoAdmin: false,
+            loading: false,
+            roleResolutionFailed: false,
+            authInitialisationError: null,
+            retryAuthInitialisation: () => undefined,
+          });'''
+          if old not in s:
+              raise SystemExit('Auth context block not found')
+          p.write_text(s.replace(old, new))
+          PY
+
           cat > src/index.tsx <<'EOF'
           import { createRoot } from "react-dom/client";
           import { BrowserRouter, Route, Routes } from "react-router-dom";
@@ -83,14 +135,13 @@ jobs:
             hasTouch: true,
           });
           const page = await context.newPage();
-          await page.route("http://127.0.0.1:9/**", async route => route.abort("failed"));
           page.on("console", msg => console.log(`[browser:${msg.type()}] ${msg.text()}`));
           page.on("pageerror", err => console.log(`[pageerror] ${err.message}`));
 
           for (const [name, route] of routes) {
             console.log(`Capturing ${name} ${route}`);
             await page.goto(`http://127.0.0.1:4173${route}`, { waitUntil: "domcontentloaded", timeout: 30000 });
-            await page.waitForTimeout(5000);
+            await page.waitForTimeout(7000);
             await page.screenshot({ path: `engineer-screenshots/${name}.png`, fullPage: true });
           }
 
@@ -100,8 +151,9 @@ jobs:
       - name: Start Vorta and capture all engineer pages
         shell: bash
         env:
-          VITE_SUPABASE_URL: http://127.0.0.1:9
-          VITE_SUPABASE_ANON_KEY: screenshot-only-placeholder
+          VITE_VORTA_DATA_MODE: demo
+          VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
         run: |
           npx vite --host 127.0.0.1 --port 4173 > /tmp/vite.log 2>&1 &
           VITE_PID=$!
