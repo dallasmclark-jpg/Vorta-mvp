@@ -10,6 +10,9 @@ const equipmentTabs = read(
 );
 const portalShell = read("src/components/PortalShell.tsx");
 const engineerPortal = read("src/screens/EngineerPortal/EngineerPortal.tsx");
+const engineerPortalShell = read(
+  "src/screens/EngineerPortal/EngineerPortalShell.tsx",
+);
 const operatorPortal = read("src/screens/OperatorPortal/OperatorPortal.tsx");
 const shiftCover = read("src/screens/LabourRisk/LiveShiftCoverPage.tsx");
 const qualityWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
@@ -69,21 +72,47 @@ for (const expected of [
   );
 }
 
-for (const [label, source] of [
-  ["Engineer", engineerPortal],
-  ["Operator", operatorPortal],
+assert.match(
+  operatorPortal,
+  /accentColor="blue"/,
+  "Operator portal must use the canonical Vorta intelligence-blue navigation accent.",
+);
+assert.doesNotMatch(
+  operatorPortal,
+  /accentColor="emerald"/,
+  "Operator portal must not use role-specific green navigation branding.",
+);
+
+assert.match(
+  engineerPortal,
+  /<EngineerPortalShell>/,
+  "Engineer portal must use the dedicated responsive Engineer shell.",
+);
+assert.doesNotMatch(
+  engineerPortal,
+  /accentColor="emerald"/,
+  "Engineer portal must not use role-specific green navigation branding.",
+);
+for (const expected of [
+  'aria-label="Engineer primary navigation"',
+  'aria-label="Engineer secondary navigation"',
+  'aria-label="Open engineer menu"',
+  'aria-label="Close menu"',
+  'data-vorta-engineer-bottom-nav="true"',
+  'bg-blue-500/[0.10] text-blue-300',
+  'active ? "text-blue-400"',
+  'focus-visible:ring-blue-400',
 ]) {
-  assert.match(
-    source,
-    /accentColor="blue"/,
-    `${label} portal must use the canonical Vorta intelligence-blue navigation accent.`,
-  );
-  assert.doesNotMatch(
-    source,
-    /accentColor="emerald"/,
-    `${label} portal must not use role-specific green navigation branding.`,
+  assert.ok(
+    engineerPortalShell.includes(expected),
+    `Missing Engineer accessibility or intelligence-blue navigation contract: ${expected}`,
   );
 }
+assert.doesNotMatch(
+  engineerPortalShell,
+  /(?:text|bg|border)-emerald-[0-9]+/,
+  "Engineer navigation shell must not introduce role-specific green branding.",
+);
 
 for (const expected of [
   "aria-pressed={selected}",
@@ -112,4 +141,4 @@ assert.ok(
   "The production contract manifest must enforce accessibility navigation contracts",
 );
 
-console.log("Accessibility and canonical VOR-097 navigation contracts passed.");
+console.log("Accessibility and canonical VOR-097 / Engineer navigation contracts passed.");
