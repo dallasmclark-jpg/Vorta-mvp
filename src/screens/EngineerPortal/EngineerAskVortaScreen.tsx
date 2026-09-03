@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 
+const ENGINEER_CONTEXT_PROMPTS = [
+  "Summarise the shift handover",
+  "What faults are still open from the last shift?",
+  "What should I prioritise this shift?",
+  "What has changed since my last shift?",
+] as const;
+
 function openEngineerAskVorta(): void {
   window.dispatchEvent(
     new CustomEvent("vorta-global-ai-prompt", {
@@ -8,12 +15,63 @@ function openEngineerAskVorta(): void {
   );
 }
 
+function submitEngineerAskVorta(question: string): void {
+  window.dispatchEvent(
+    new CustomEvent("vorta-global-ai-prompt", {
+      detail: { question, submit: true, role: "engineer" },
+    }),
+  );
+}
+
+function syncEngineerPromptButtons(): void {
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      '[data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"]) [data-vorta-global-ai-prompt-button="true"]',
+    ),
+  );
+
+  buttons.slice(0, ENGINEER_CONTEXT_PROMPTS.length).forEach((button, index) => {
+    const prompt = ENGINEER_CONTEXT_PROMPTS[index];
+    if (!prompt) return;
+
+    button.dataset.engineerPromptOverride = prompt;
+    if (button.textContent?.trim() !== prompt) {
+      button.textContent = prompt;
+    }
+  });
+}
+
 export function EngineerAskVortaScreen(): JSX.Element {
   useEffect(() => {
-    const timer = window.setTimeout(openEngineerAskVorta, 0);
+    const timer = window.setTimeout(() => {
+      openEngineerAskVorta();
+      syncEngineerPromptButtons();
+    }, 0);
+
+    const observer = new MutationObserver(syncEngineerPromptButtons);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    const handlePromptClick = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      const button = target?.closest<HTMLButtonElement>(
+        '[data-vorta-global-ai-prompt-button="true"]',
+      );
+      const question = button?.dataset.engineerPromptOverride;
+
+      if (!button || !question) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      submitEngineerAskVorta(question);
+    };
+
+    document.addEventListener("click", handlePromptClick, true);
 
     return () => {
       window.clearTimeout(timer);
+      observer.disconnect();
+      document.removeEventListener("click", handlePromptClick, true);
       const closeButton = document.querySelector<HTMLButtonElement>(
         '[data-vorta-global-ai-panel="true"] button[aria-label="Close global assistant"]',
       );
