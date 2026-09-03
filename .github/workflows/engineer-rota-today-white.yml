@@ -1,0 +1,44 @@
+name: Engineer rota today highlight
+
+on:
+  push:
+    branches:
+      - agent/engineer-rota-today-white
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/engineer-rota-today-white
+          fetch-depth: 0
+      - name: Apply today highlight
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/screens/EngineerPortal/EngineerRotaScreen.tsx')
+          text = path.read_text()
+          old_ring = '? "ring-1 ring-inset ring-blue-400/80"'
+          new_ring = '? "ring-2 ring-inset ring-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_0_14px_rgba(255,255,255,0.12)]"'
+          old_date = 'isToday ? "text-blue-300" : "text-slate-400"'
+          new_date = 'isToday ? "text-white" : "text-slate-400"'
+          if text.count(old_ring) != 1:
+              raise SystemExit(f'Expected 1 today ring match, found {text.count(old_ring)}')
+          if text.count(old_date) != 1:
+              raise SystemExit(f'Expected 1 today date match, found {text.count(old_date)}')
+          text = text.replace(old_ring, new_ring, 1).replace(old_date, new_date, 1)
+          path.write_text(text)
+          PY
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/engineer-rota-today-white.yml
+      - name: Commit patch
+        run: |
+          git config user.name "Vorta release agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/screens/EngineerPortal/EngineerRotaScreen.tsx .github/workflows/engineer-rota-today-white.yml
+          git commit -m "Highlight today with Vorta white border"
+          git push origin HEAD:agent/engineer-rota-today-white
