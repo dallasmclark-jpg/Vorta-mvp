@@ -1,4 +1,4 @@
-name: Check Vorta Supabase admin credential
+name: Find Vorta user provisioning path
 
 on:
   push:
@@ -11,27 +11,21 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    if: github.event.head_commit.message == 'Check Vorta Supabase admin credential'
+  inspect:
+    if: github.event.head_commit.message == 'Find Vorta user provisioning path'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      VORTA_SUPABASE_ACCESS_TOKEN: ${{ secrets.VORTA_SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      VORTA_SUPABASE_DB_PASSWORD: ${{ secrets.VORTA_SUPABASE_DB_PASSWORD }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      VORTA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.VORTA_SUPABASE_SERVICE_ROLE_KEY }}
-      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
     steps:
-      - name: Report configured credential types without exposing values
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+      - name: Find provisioning and access-management code
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_ACCESS_TOKEN VORTA_SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD VORTA_SUPABASE_DB_PASSWORD SUPABASE_SERVICE_ROLE_KEY VORTA_SUPABASE_SERVICE_ROLE_KEY VORTA_E2E_PASSWORD; do
-            if [ -n "${!name:-}" ]; then
-              echo "$name=CONFIGURED"
-            else
-              echo "$name=NOT_CONFIGURED"
-            fi
-          done
+          echo '--- user_site_access references ---'
+          git grep -ni -E 'user_site_access|app_role' -- ':!package-lock.json' | head -n 250 || true
+          echo '--- auth provisioning references ---'
+          git grep -ni -E 'auth\.users|auth\.admin|createUser|create_user|inviteUser|invite_user|provision.*user|user.*provision|admin.*user|user.*admin' -- ':!package-lock.json' | head -n 300 || true
+          echo '--- security/RPC references ---'
+          git grep -ni -E 'security definer|rpc\(|from\("profiles"\)|from\("user_site_access"\)' supabase scripts src netlify tests 2>/dev/null | head -n 350 || true
