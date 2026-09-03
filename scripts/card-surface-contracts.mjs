@@ -138,6 +138,10 @@ assert.match(
 );
 assert.match(
   tabs,
+  /\[data-vorta-group-frame="true"\] \{[\s\S]*border-color: transparent !important;[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
+);
+assert.match(
+  tabs,
   /\[data-vorta-group-frame="true"\] \[class~="border-red-500\/30"\]\[class~="bg-\[#0d1117\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.13\) !important;[\s\S]*background-color: #030c1d !important/,
 );
 assert.match(
@@ -156,4 +160,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, matched briefing surfaces, single calibration metric, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, transparent briefing group, matched briefing surfaces, single calibration metric, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");

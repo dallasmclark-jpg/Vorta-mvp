@@ -133,10 +133,12 @@ html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] inp
 }
 
 /* VOR-095 outer-frame refinement 03/09/2026: the Site Risk Briefing is a
-   grouping region, not another card. Keep the existing 1px geometry but make
-   the outer frame visually absent so only its internal cards define hierarchy. */
+   grouping region, not another card. Remove both the frame and the filled
+   group-panel surface so only its internal cards define hierarchy. */
 html.dark [data-vorta-dashboard-root="true"] [data-vorta-group-frame="true"] {
   border-color: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
   box-shadow: none !important;
 }
 
