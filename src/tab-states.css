@@ -123,10 +123,11 @@ html.dark [data-vorta-portal-shell="true"]
 }
 
 /* VOR-095 refinement 03/09/2026: keep the embedded Ask Vorta command field
-   visually continuous. The input and its text wrapper must not paint a
-   rectangular fill inside the rounded command shell. */
-html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] div:has(> input),
-html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input {
+   visually continuous. The #app anchor is deliberate because the later inline
+   VOR-097 generic input rule is also !important and otherwise repaints the
+   input as a rectangular raised navy block. */
+html.dark #app [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] div:has(> input),
+html.dark #app [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input {
   background-color: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
@@ -143,12 +144,14 @@ html.dark #app [data-vorta-dashboard-root="true"] [data-vorta-group-frame="true"
   box-shadow: none !important;
 }
 
-/* Highest Area is information within the briefing, not a differently surfaced
-   card. Keep its semantic red text while matching the sibling metric surface. */
-html.dark [data-vorta-dashboard-root="true"] [data-vorta-group-frame="true"] [class~="border-red-500/30"][class~="bg-[#0d1117]"] {
-  border-color: rgba(96, 165, 250, 0.13) !important;
-  background-color: #030c1d !important;
-  background-image: linear-gradient(180deg, rgba(8, 28, 52, 0.38) 0%, rgba(3, 12, 29, 0) 58%) !important;
+/* Highest Area keeps semantic red copy but must use the exact same final raised
+   surface as its four briefing siblings. The #app anchor prevents the earlier
+   red-border exception from leaving this card on a different primary surface. */
+html.dark #app [data-vorta-dashboard-root="true"] [data-vorta-group-frame="true"] [class~="border-red-500/30"][class~="bg-[#0d1117]"] {
+  border-color: var(--vorta-surface-raised-border) !important;
+  background-color: var(--vorta-surface-raised) !important;
+  background-image: none !important;
+  box-shadow: var(--vorta-surface-raised-shadow) !important;
 }
 
 /* Plant Area Risk already exposes the real calibration count in its metric

@@ -134,15 +134,15 @@ assert.match(read("src/components/ai/VortaAiCommandBar.tsx"), /data-vorta-embedd
 /* VOR-095 03/09/2026 focused refinements. */
 assert.match(
   tabs,
-  /VOR-095 refinement 03\/09\/2026[\s\S]*div:has\(> input\)[\s\S]*input \{[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
+  /html\.dark #app \[data-vorta-dashboard-root="true"\] \[data-vorta-embedded-ai="true"\] div:has\(> input\),[\s\S]*html\.dark #app \[data-vorta-dashboard-root="true"\] \[data-vorta-embedded-ai="true"\] input \{[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
 );
 assert.match(
   tabs,
-  /\[data-vorta-group-frame="true"\] \{[\s\S]*border-color: transparent !important;[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
+  /html\.dark #app \[data-vorta-dashboard-root="true"\] \[data-vorta-group-frame="true"\] \{[\s\S]*border-color: transparent !important;[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
 );
 assert.match(
   tabs,
-  /\[data-vorta-group-frame="true"\] \[class~="border-red-500\/30"\]\[class~="bg-\[#0d1117\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.13\) !important;[\s\S]*background-color: #030c1d !important/,
+  /html\.dark #app \[data-vorta-dashboard-root="true"\] \[data-vorta-group-frame="true"\] \[class~="border-red-500\/30"\]\[class~="bg-\[#0d1117\]"\][\s\S]*border-color: var\(--vorta-surface-raised-border\) !important;[\s\S]*background-color: var\(--vorta-surface-raised\) !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: var\(--vorta-surface-raised-shadow\) !important/,
 );
 assert.match(
   tabs,
