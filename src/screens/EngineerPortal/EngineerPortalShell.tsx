@@ -236,6 +236,86 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
       <style>{`
         [data-vorta-engineer-home="true"] > header:first-child { display: none; }
         [data-vorta-engineer-my-work="true"] > header:first-child + div { display: none; }
+
+        /* Engineer search fields use the same pill geometry throughout mobile. */
+        [data-vorta-engineer-shell="true"] input[type="text"][placeholder^="Search "] {
+          border-radius: 9999px !important;
+        }
+
+        /* ChatGPT-style Ask Vorta composer: one pill with +, mic and send inside. */
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"]) {
+          position: relative;
+          flex-direction: row !important;
+          align-items: center !important;
+          gap: 0.25rem !important;
+          min-height: 3.5rem;
+          border: 1px solid rgba(71, 85, 105, 0.9);
+          border-radius: 9999px !important;
+          background: #0b111c;
+          padding: 0.375rem 0.375rem 0.375rem 2.875rem;
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+        }
+
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"])::before {
+          content: "+";
+          position: absolute;
+          left: 0.65rem;
+          top: 50%;
+          width: 2rem;
+          height: 2rem;
+          transform: translateY(-50%);
+          display: grid;
+          place-items: center;
+          color: #e2e8f0;
+          font-size: 1.7rem;
+          font-weight: 300;
+          line-height: 1;
+          pointer-events: none;
+        }
+
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"]) > div:first-child {
+          min-width: 0;
+          flex: 1 1 auto;
+          gap: 0.25rem !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          padding: 0 !important;
+        }
+
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"]) > div:first-child > div.relative > svg {
+          display: none !important;
+        }
+
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"]) input[type="text"] {
+          height: 2.5rem;
+          padding-left: 0.25rem !important;
+          padding-right: 0.25rem !important;
+        }
+
+        [data-vorta-engineer-shell="true"] div:has(> button[data-vorta-embedded-ask="true"]) > div:first-child > button {
+          width: 2.25rem !important;
+          height: 2.25rem !important;
+          border-radius: 9999px !important;
+        }
+
+        [data-vorta-engineer-shell="true"] button[data-vorta-embedded-ask="true"] {
+          width: 2.5rem !important;
+          height: 2.5rem !important;
+          min-height: 2.5rem !important;
+          flex: 0 0 2.5rem;
+          gap: 0 !important;
+          border-radius: 9999px !important;
+          background: #2563eb !important;
+          padding: 0 !important;
+          font-size: 0 !important;
+          box-shadow: 0 7px 18px rgba(37, 99, 235, 0.28) !important;
+        }
+
+        [data-vorta-engineer-shell="true"] button[data-vorta-embedded-ask="true"] svg {
+          width: 1.05rem;
+          height: 1.05rem;
+        }
       `}</style>
       <aside
         data-vorta-sidebar="true"
