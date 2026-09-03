@@ -65,9 +65,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
             background: transparent !important;
           }
 
-          /* The shared workspace adds `hidden` once a conversation starts.
-             Its mobile `max-md:block` utility otherwise wins the cascade, so
-             force the prompt tray off once the first question has been sent. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-prompts="true"].hidden {
             display: none !important;
