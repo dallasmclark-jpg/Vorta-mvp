@@ -1,0 +1,306 @@
+name: Provision engineer demo users
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/provision-engineer-demo-users.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    if: github.event.head_commit.message == 'Provision engineer demo users'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      SUPABASE_KEY_PREFIX: sb_publishable_
+      SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      DEMO_EMAIL: demo@vorta.network
+      DEMO_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VORTA_SERVICE_ROLE_KEY: ${{ secrets.VORTA_SUPABASE_SERVICE_ROLE_KEY }}
+      PHARMA_ORG_ID: 10000000-0000-0000-0000-000000000001
+      PHARMA_SITE_ID: 11000000-0000-0000-0000-000000000001
+      CEREAL_SITE_ID: 11000000-0000-0000-0000-000000000002
+
+    steps:
+      - name: Provision and verify Engineer accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEMO_PASSWORD" || { echo "Required VORTA_E2E_PASSWORD secret is missing" >&2; exit 1; }
+          node <<'NODE'
+          const base = process.env.SUPABASE_URL;
+          const anon = `${process.env.SUPABASE_KEY_PREFIX}${process.env.SUPABASE_KEY_SUFFIX}`;
+          const service = process.env.SERVICE_ROLE_KEY || process.env.VORTA_SERVICE_ROLE_KEY || '';
+          const password = process.env.DEMO_PASSWORD;
+          const pharma = {
+            email: 'eng.pharma@vorta.network',
+            siteId: process.env.PHARMA_SITE_ID,
+            orgId: process.env.PHARMA_ORG_ID,
+            label: 'Pharma',
+          };
+          const cerealSiteId = process.env.CEREAL_SITE_ID;
+
+          async function http(path, {method='GET', apikey=anon, token=apikey, body, prefer}={}) {
+            const headers = { apikey, Authorization: `Bearer ${token}` };
+            if (body !== undefined) headers['content-type'] = 'application/json';
+            if (prefer) headers.Prefer = prefer;
+            const res = await fetch(`${base}${path}`, {
+              method,
+              headers,
+              body: body === undefined ? undefined : JSON.stringify(body),
+            });
+            const text = await res.text();
+            let data = null;
+            if (text) {
+              try { data = JSON.parse(text); } catch { data = text; }
+            }
+            return { ok: res.ok, status: res.status, data, text };
+          }
+
+          function fail(message, result) {
+            const detail = result?.data?.message || result?.data?.msg || result?.data?.error_description || result?.data?.error || result?.status || '';
+            throw new Error(`${message}${detail ? `: ${detail}` : ''}`);
+          }
+
+          async function signIn(email) {
+            const r = await http('/auth/v1/token?grant_type=password', {
+              method: 'POST',
+              body: { email, password },
+            });
+            return r;
+          }
+
+          const demoLogin = await signIn(process.env.DEMO_EMAIL);
+          if (!demoLogin.ok || !demoLogin.data?.access_token || !demoLogin.data?.user?.id) {
+            fail('Could not authenticate existing demo account', demoLogin);
+          }
+          const demoToken = demoLogin.data.access_token;
+          const demoUserId = demoLogin.data.user.id;
+          console.log('Authenticated existing demo account without exposing its password.');
+
+          const writeKey = service || anon;
+          const writeToken = service || demoToken;
+          console.log(service ? 'Using configured server-side Supabase service credential.' : 'No service credential secret found; using the authenticated demo-admin session for permitted provisioning writes.');
+
+          async function rows(table, query, token=writeToken, apikey=writeKey) {
+            const r = await http(`/rest/v1/${table}?${query}`, { token, apikey });
+            return r;
+          }
+
+          async function resolveCerealOrg() {
+            const access = await rows('user_site_access', `site_id=eq.${encodeURIComponent(cerealSiteId)}&select=site_id,organisation_id`, writeToken, writeKey);
+            if (access.ok && Array.isArray(access.data) && access.data[0]?.organisation_id) {
+              return { orgId: access.data[0].organisation_id, source: 'site access' };
+            }
+
+            for (const table of ['sites', 'site']) {
+              const direct = await rows(table, `id=eq.${encodeURIComponent(cerealSiteId)}&select=*`, writeToken, writeKey);
+              if (direct.ok && Array.isArray(direct.data) && direct.data[0]) {
+                const row = direct.data[0];
+                const orgId = row.organisation_id || row.organization_id || row.org_id;
+                if (orgId) return { orgId, source: table };
+              }
+
+              const all = await rows(table, 'select=*', writeToken, writeKey);
+              if (all.ok && Array.isArray(all.data)) {
+                const match = all.data.find((row) => JSON.stringify(row).toLowerCase().includes('cereal'));
+                if (match) {
+                  const orgId = match.organisation_id || match.organization_id || match.org_id;
+                  const siteId = match.id || match.site_id;
+                  if (orgId && siteId === cerealSiteId) return { orgId, source: `${table} cereal match` };
+                }
+              }
+            }
+
+            for (const table of ['organisations', 'organizations']) {
+              const all = await rows(table, 'select=*', writeToken, writeKey);
+              if (all.ok && Array.isArray(all.data)) {
+                const match = all.data.find((row) => JSON.stringify(row).toLowerCase().includes('cereal'));
+                if (match?.id) return { orgId: match.id, source: `${table} cereal match` };
+              }
+            }
+
+            throw new Error(`Could not safely resolve the organisation for cereal site ${cerealSiteId}; provisioning stopped rather than guessing.`);
+          }
+
+          const cerealContext = await resolveCerealOrg();
+          const cereal = {
+            email: 'eng.cereal@vorta.network',
+            siteId: cerealSiteId,
+            orgId: cerealContext.orgId,
+            label: 'Cereal',
+          };
+          console.log(`Resolved Cereal context: site ${cereal.siteId}, organisation ${cereal.orgId} (${cerealContext.source}).`);
+
+          const demoProfile = await rows('profiles', `id=eq.${encodeURIComponent(demoUserId)}&select=*`, writeToken, writeKey);
+          const profileTemplate = demoProfile.ok && Array.isArray(demoProfile.data) ? demoProfile.data[0] : null;
+
+          async function findAdminUser(email) {
+            if (!service) return null;
+            let page = 1;
+            while (page <= 10) {
+              const r = await http(`/auth/v1/admin/users?page=${page}&per_page=100`, { apikey: service, token: service });
+              if (!r.ok) fail('Could not list Supabase Auth users', r);
+              const list = Array.isArray(r.data?.users) ? r.data.users : Array.isArray(r.data) ? r.data : [];
+              const found = list.find((u) => String(u.email).toLowerCase() === email.toLowerCase());
+              if (found) return found;
+              if (list.length < 100) break;
+              page += 1;
+            }
+            return null;
+          }
+
+          async function ensureAuthUser(target) {
+            const existingLogin = await signIn(target.email);
+            if (existingLogin.ok && existingLogin.data?.user?.id) {
+              return { userId: existingLogin.data.user.id, state: 'existing' };
+            }
+
+            if (service) {
+              const found = await findAdminUser(target.email);
+              if (found?.id) {
+                const update = await http(`/auth/v1/admin/users/${found.id}`, {
+                  method: 'PUT', apikey: service, token: service,
+                  body: {
+                    password,
+                    email_confirm: true,
+                    user_metadata: { ...(found.user_metadata || {}), role: 'engineer', portal_role: 'engineer' },
+                    app_metadata: { ...(found.app_metadata || {}), role: 'engineer', portal_role: 'engineer' },
+                  },
+                });
+                if (!update.ok) fail(`Could not update Auth user ${target.email}`, update);
+                return { userId: found.id, state: 'updated' };
+              }
+
+              const create = await http('/auth/v1/admin/users', {
+                method: 'POST', apikey: service, token: service,
+                body: {
+                  email: target.email,
+                  password,
+                  email_confirm: true,
+                  user_metadata: { role: 'engineer', portal_role: 'engineer' },
+                  app_metadata: { role: 'engineer', portal_role: 'engineer' },
+                },
+              });
+              if (!create.ok || !create.data?.id) fail(`Could not create Auth user ${target.email}`, create);
+              return { userId: create.data.id, state: 'created' };
+            }
+
+            const signup = await http('/auth/v1/signup', {
+              method: 'POST',
+              body: {
+                email: target.email,
+                password,
+                data: { role: 'engineer', portal_role: 'engineer' },
+              },
+            });
+            if (!signup.ok || !signup.data?.user?.id) fail(`Could not sign up Auth user ${target.email}`, signup);
+            return { userId: signup.data.user.id, state: 'created' };
+          }
+
+          async function upsertProfile(userId, target) {
+            const existing = await rows('profiles', `id=eq.${encodeURIComponent(userId)}&select=id`, writeToken, writeKey);
+            if (!existing.ok) fail(`Could not read profile for ${target.email}`, existing);
+
+            if (Array.isArray(existing.data) && existing.data.length) {
+              const patch = await http(`/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+                method: 'PATCH', apikey: writeKey, token: writeToken,
+                body: { role: 'engineer', organisation_id: target.orgId },
+                prefer: 'return=minimal',
+              });
+              if (!patch.ok) fail(`Could not update profile for ${target.email}`, patch);
+              return;
+            }
+
+            let body = { id: userId, role: 'engineer', organisation_id: target.orgId };
+            if (profileTemplate) {
+              const allowedClone = {};
+              for (const [key, value] of Object.entries(profileTemplate)) {
+                if (['id','role','organisation_id','created_at','updated_at','email','full_name','display_name','name'].includes(key)) continue;
+                allowedClone[key] = value;
+              }
+              body = { ...allowedClone, ...body };
+            }
+            const insert = await http('/rest/v1/profiles', {
+              method: 'POST', apikey: writeKey, token: writeToken,
+              body, prefer: 'return=minimal',
+            });
+            if (!insert.ok) fail(`Could not create profile for ${target.email}`, insert);
+          }
+
+          async function upsertAccess(userId, target) {
+            const allAccess = await rows('user_site_access', `user_id=eq.${encodeURIComponent(userId)}&select=site_id`, writeToken, writeKey);
+            if (!allAccess.ok) fail(`Could not read site access for ${target.email}`, allAccess);
+
+            if (Array.isArray(allAccess.data) && allAccess.data.length) {
+              const clearDefault = await http(`/rest/v1/user_site_access?user_id=eq.${encodeURIComponent(userId)}`, {
+                method: 'PATCH', apikey: writeKey, token: writeToken,
+                body: { is_default: false }, prefer: 'return=minimal',
+              });
+              if (!clearDefault.ok) fail(`Could not clear old default access for ${target.email}`, clearDefault);
+            }
+
+            const exact = await rows('user_site_access', `user_id=eq.${encodeURIComponent(userId)}&site_id=eq.${encodeURIComponent(target.siteId)}&select=site_id`, writeToken, writeKey);
+            if (!exact.ok) fail(`Could not read target site access for ${target.email}`, exact);
+
+            if (Array.isArray(exact.data) && exact.data.length) {
+              const patch = await http(`/rest/v1/user_site_access?user_id=eq.${encodeURIComponent(userId)}&site_id=eq.${encodeURIComponent(target.siteId)}`, {
+                method: 'PATCH', apikey: writeKey, token: writeToken,
+                body: {
+                  organisation_id: target.orgId,
+                  app_role: 'engineer',
+                  is_default: true,
+                  active: true,
+                },
+                prefer: 'return=minimal',
+              });
+              if (!patch.ok) fail(`Could not update site access for ${target.email}`, patch);
+            } else {
+              const insert = await http('/rest/v1/user_site_access', {
+                method: 'POST', apikey: writeKey, token: writeToken,
+                body: {
+                  user_id: userId,
+                  site_id: target.siteId,
+                  organisation_id: target.orgId,
+                  app_role: 'engineer',
+                  is_default: true,
+                  active: true,
+                },
+                prefer: 'return=minimal',
+              });
+              if (!insert.ok) fail(`Could not create site access for ${target.email}`, insert);
+            }
+          }
+
+          async function verify(target, expectedUserId) {
+            const login = await signIn(target.email);
+            if (!login.ok || !login.data?.access_token || login.data?.user?.id !== expectedUserId) {
+              fail(`Verification login failed for ${target.email}`, login);
+            }
+            const token = login.data.access_token;
+            const p = await rows('profiles', `id=eq.${encodeURIComponent(expectedUserId)}&select=role,organisation_id`, token, anon);
+            const a = await rows('user_site_access', `user_id=eq.${encodeURIComponent(expectedUserId)}&active=eq.true&select=site_id,organisation_id,app_role,is_default`, token, anon);
+            if (!p.ok || !Array.isArray(p.data) || p.data[0]?.role !== 'engineer' || p.data[0]?.organisation_id !== target.orgId) {
+              fail(`Profile verification failed for ${target.email}`, p);
+            }
+            const match = Array.isArray(a.data) && a.data.find((row) => row.site_id === target.siteId && row.organisation_id === target.orgId && row.app_role === 'engineer' && row.is_default === true);
+            if (!a.ok || !match) fail(`Site-access verification failed for ${target.email}`, a);
+            console.log(`VERIFIED ${target.email} | Engineer | ${target.label} | site ${target.siteId} | organisation ${target.orgId}`);
+          }
+
+          for (const target of [pharma, cereal]) {
+            const auth = await ensureAuthUser(target);
+            await upsertProfile(auth.userId, target);
+            await upsertAccess(auth.userId, target);
+            await verify(target, auth.userId);
+            console.log(`${auth.state.toUpperCase()} ${target.email}`);
+          }
+
+          console.log('Provisioning complete. The shared demo password was never printed.');
+          NODE
