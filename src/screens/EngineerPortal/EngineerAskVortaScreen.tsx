@@ -25,10 +25,20 @@ export function EngineerAskVortaScreen(): JSX.Element {
     <>
       <style>{`
         @media (max-width: 767px) {
+          /* The Engineer portal owns the mobile header. Keep the normal Vorta
+             logo, notification and menu row visible above the Ask Vorta page. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-panel="true"] {
+            top: 4rem !important;
             bottom: calc(4.5rem + env(safe-area-inset-bottom)) !important;
-            height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom)) !important;
+            height: auto !important;
+          }
+
+          /* The shared assistant's compact Vorta AI header is useful when it is
+             an overlay, but redundant when Ask Vorta is the Engineer page. */
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-header="true"] {
+            display: none !important;
           }
 
           /* Ask Vorta is the page in the Engineer portal, so there is no second
@@ -39,7 +49,7 @@ export function EngineerAskVortaScreen(): JSX.Element {
           }
 
           /* Remove the verbose introduction decision card. The role-specific
-             header and composer already explain the experience. */
+             composer and starter actions already explain the experience. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-messages="true"] > div:first-child {
             display: none !important;
