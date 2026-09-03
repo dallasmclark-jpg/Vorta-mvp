@@ -76,7 +76,7 @@ mustMatch(performance, /VOR-014 adds a measured 2\.3 KiB/, "The Stores Inventory
 mustMatch(performance, /VOR-068 adds the verified rota headcount\/status/, "The VOR-068 CSS allowance must remain explicitly measured and reviewed");
 mustMatch(performance, /VOR-103 rebaselines the approved VOR-095\/VOR-097 dashboard CSS at/, "The VOR-103 CSS allowance must remain tied to the approved dashboard baseline");
 mustMatch(performance, /166\.7 KiB with roughly 1\.3 KiB regression headroom/, "The VOR-103 CSS allowance must remain narrowly rebaselined to measured branch output");
-mustMatch(performance, /leaving JavaScript, largest-chunk and total-dist limits unchanged/, "The VOR-103 allowance must not relax JavaScript, largest-chunk or total-dist limits");
+mustMatch(performance, /leaving JavaScript,\s*\/\/\s*largest-chunk and total-dist limits unchanged/, "The VOR-103 allowance must not relax JavaScript, largest-chunk or total-dist limits");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
 const packageJson = JSON.parse(packageText);
