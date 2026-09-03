@@ -66,7 +66,7 @@ mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject
 for (const [name, value] of [
   ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "177_500"],
+  ["totalCssBytes", "181_000"],
   ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
@@ -79,8 +79,10 @@ mustMatch(performance, /166\.7 KiB with roughly 1\.3 KiB regression headroom/, "
 mustMatch(performance, /ENG-021 adds the approved/, "The Engineer portal CSS allowance must remain explicitly tied to ENG-021");
 mustMatch(performance, /responsive Engineer portal at 170\.9 KiB/, "ENG-021 must retain the measured Engineer responsive CSS baseline");
 mustMatch(performance, /Engineer QR scanner and in-Stores/, "The scanner and Stores equipment picker CSS allowance must be explicitly identified");
-mustMatch(performance, /measured ~1\.5 KiB of responsive UI CSS/, "The latest Engineer UI CSS increase must remain measured rather than unbounded");
-mustMatch(performance, /roughly 0\.9 KiB regression headroom/, "The rebaselined CSS budget must retain narrow regression headroom");
+mustMatch(performance, /measured ~1\.5 KiB of responsive UI CSS/, "The scanner and Stores CSS increase must remain measured rather than unbounded");
+mustMatch(performance, /personal[\s\/]*monthly Engineer rota adds a measured ~1\.8 KiB/, "The monthly Engineer rota CSS allowance must remain explicitly measured");
+mustMatch(performance, /taking reviewed CSS to 175\.1[\s\/]*KiB/, "The monthly Engineer rota must retain its measured reviewed CSS baseline");
+mustMatch(performance, /roughly 1\.7 KiB regression headroom/, "The rebaselined CSS budget must retain narrow regression headroom");
 mustMatch(performance, /leaving JavaScript,[\s\/]*largest-chunk and total-dist limits unchanged/, "The Engineer UI rebaseline must not relax JavaScript, largest-chunk or total-dist limits");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
