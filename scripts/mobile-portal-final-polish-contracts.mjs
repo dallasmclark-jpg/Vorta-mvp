@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(path), "utf8");
 const environment = read(".env.example");
 const operations = read("src/screens/AiOperations/AiOperations.tsx");
 const maintenanceExperience = read("src/screens/AiOperations/MaintenanceAiWorkOrderExperience.tsx");
+const primaryAskVortaVisibility = read("src/screens/AiOperations/usePrimaryAskVortaVisibility.ts");
 const globalAssistant = read("src/screens/AiOperations/GlobalMaintenanceAiAssistant.tsx");
 const mobilePageHeader = read("src/screens/AiOperations/MobilePageHeaderExperience.tsx");
 const portalShell = read("src/components/PortalShell.tsx");
@@ -50,6 +51,26 @@ assert.match(phoneGuard, /<Navigate to=\{fallbackRoute\} replace \/>/);
 assert.match(maintenanceExperience, /const isPhone = useMediaQuery\("\(max-width: 767px\)"\)/);
 assert.match(maintenanceExperience, /data-vorta-shared-mobile-ai-launcher="true"/);
 assert.match(maintenanceExperience, /<MobilePageHeaderExperience \/>/);
+
+/* VOR-104: one contextual Ask Vorta launcher rule across every portal page. */
+assert.match(maintenanceExperience, /usePrimaryAskVortaVisibility\(\)/);
+assert.match(
+  maintenanceExperience,
+  /showDesktopAssistantLauncher\s*=\s*!isPhone && !isPrimaryAskVortaVisible/,
+);
+assert.equal(
+  (maintenanceExperience.match(/isPhone && !isPrimaryAskVortaVisible/g) ?? []).length,
+  2,
+  "Phone launcher and its safe-area spacer must share the same visibility rule.",
+);
+assert.match(primaryAskVortaVisibility, /VISIBILITY_RATIO = 0\.5/);
+assert.match(primaryAskVortaVisibility, /IntersectionObserver/);
+assert.match(primaryAskVortaVisibility, /MutationObserver/);
+assert.match(primaryAskVortaVisibility, /ASSISTANT_SURFACE_SELECTOR/);
+assert.match(
+  primaryAskVortaVisibility,
+  /visibleArea \/ totalArea >= VISIBILITY_RATIO/,
+);
 
 assert.match(mobilePageHeader, /usePortalMobileHeaderTitle\(title\)/);
 assert.match(mobilePageHeader, /title: "Capability"/);
@@ -127,4 +148,4 @@ assert.match(mobileAiControls, /data-vorta-global-ai-composer="true"/);
 assert.doesNotMatch(mobileAiControls, /Close global assistant.*:has/s);
 assert.doesNotMatch(mobileHardening, /global-ai-composer-row[^\n]*button:last-child/);
 
-console.log("Semantic mobile portal navigation, shared page titles, AI layout, capability summary and route restrictions passed.");
+console.log("Semantic mobile portal navigation, shared page titles, contextual Ask Vorta launcher, AI layout, capability summary and route restrictions passed.");
