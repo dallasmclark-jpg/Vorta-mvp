@@ -26,6 +26,7 @@ import { GlobalMaintenanceAiAssistantWithFaultsV2 } from "./GlobalMaintenanceAiA
 import { MobileAiPolishStyles } from "./MobileAiPolishStyles";
 import { MobilePageHeaderExperience } from "./MobilePageHeaderExperience";
 import { MobileTypographyStyles } from "./MobileTypographyStyles";
+import { usePrimaryAskVortaVisibility } from "./usePrimaryAskVortaVisibility";
 
 const EQUIPMENT_ROUTE = /^\/equipment\/([^/]+)(?:\/|$)/;
 const ASK_VORTA_RETURN_ACTIVE_CONVERSATION_KEY =
@@ -210,12 +211,14 @@ export function MaintenanceAiWorkOrderExperience({
   const location = useLocation();
   const navigate = useNavigate();
   const isPhone = useMediaQuery("(max-width: 767px)");
+  const isPrimaryAskVortaVisible = usePrimaryAskVortaVisibility();
   const [dataRecoveryRevision, setDataRecoveryRevision] = useState(0);
   const [askVortaNavigationContext, setAskVortaNavigationContext] =
     useState<AskVortaNavigationContext | null>(() =>
       readAskVortaNavigationContext(),
     );
-  const showDesktopAssistantLauncher = !isPhone;
+  const showDesktopAssistantLauncher =
+    !isPhone && !isPrimaryAskVortaVisible;
   const activeRoutePath = `${location.pathname}${location.search}${location.hash}`;
   const showBackToAskVorta =
     askVortaNavigationContext?.destinationPath === activeRoutePath;
@@ -452,14 +455,14 @@ export function MaintenanceAiWorkOrderExperience({
           Back to chat
         </button>
       ) : null}
-      {isPhone ? (
+      {isPhone && !isPrimaryAskVortaVisible ? (
         <div
           aria-hidden="true"
           className="h-28 shrink-0"
           data-vorta-mobile-ai-safe-area="true"
         />
       ) : null}
-      {isPhone ? (
+      {isPhone && !isPrimaryAskVortaVisible ? (
         <button
           type="button"
           data-vorta-shared-mobile-ai-launcher="true"
