@@ -66,7 +66,7 @@ mustMatch(playwright, /forbidOnly: Boolean\(process\.env\.CI\)/, "CI must reject
 for (const [name, value] of [
   ["totalJavaScriptBytes", "3_350_000"],
   ["largestJavaScriptBytes", "625_000"],
-  ["totalCssBytes", "176_000"],
+  ["totalCssBytes", "177_500"],
   ["totalDistBytes", "3_600_000"],
 ]) {
   mustMatch(performance, new RegExp(`${name}: ${value}`), `${name} must retain the reviewed production budget`);
@@ -78,8 +78,10 @@ mustMatch(performance, /VOR-103 rebaselines the approved VOR-095\/VOR-097 dashbo
 mustMatch(performance, /166\.7 KiB with roughly 1\.3 KiB regression headroom/, "The VOR-103 CSS allowance must remain narrowly rebaselined to measured branch output");
 mustMatch(performance, /ENG-021 adds the approved/, "The Engineer portal CSS allowance must remain explicitly tied to ENG-021");
 mustMatch(performance, /responsive Engineer portal at 170\.9 KiB/, "ENG-021 must retain the measured Engineer responsive CSS baseline");
-mustMatch(performance, /under ~1\.0 KiB CSS headroom/, "ENG-021 must keep CSS regression headroom narrow");
-mustMatch(performance, /leaving JavaScript, largest-chunk and total-dist limits unchanged/, "ENG-021 must not relax JavaScript, largest-chunk or total-dist limits");
+mustMatch(performance, /Engineer QR scanner and in-Stores/, "The scanner and Stores equipment picker CSS allowance must be explicitly identified");
+mustMatch(performance, /measured ~1\.5 KiB of responsive UI CSS/, "The latest Engineer UI CSS increase must remain measured rather than unbounded");
+mustMatch(performance, /roughly 0\.9 KiB regression headroom/, "The rebaselined CSS budget must retain narrow regression headroom");
+mustMatch(performance, /leaving JavaScript, largest-chunk and total-dist limits unchanged/, "The Engineer UI rebaseline must not relax JavaScript, largest-chunk or total-dist limits");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
 const packageJson = JSON.parse(packageText);
