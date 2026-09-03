@@ -231,6 +231,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
       data-vorta-engineer-shell="true"
       className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#000814] text-white"
     >
+      <style>{`[data-vorta-engineer-home="true"] > header:first-child { display: none; }`}</style>
       <aside
         data-vorta-sidebar="true"
         className="hidden h-[100dvh] max-h-[100dvh] w-14 shrink-0 flex-col border-r border-slate-800/70 bg-[#000814] px-2 py-5 md:flex 2xl:w-56 2xl:px-4"
@@ -269,7 +270,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
           data-vorta-engineer-mobile-header="true"
-          className="grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-3 border-b border-slate-800/70 bg-[#000814]/95 px-3 backdrop-blur-xl md:hidden"
+          className="grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_2.75rem_2.75rem] items-center gap-1 border-b border-slate-800/70 bg-[#000814]/95 px-3 backdrop-blur-xl md:hidden"
         >
           <NavLink
             to="/engineer/vorta"
@@ -278,7 +279,14 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
           >
             <VortaLogo className="w-[124px]" />
           </NavLink>
-          <span className="truncate text-right text-xs font-medium text-slate-500">{mobileTitle}</span>
+          <span className="truncate pr-1 text-right text-xs font-medium text-slate-500">{mobileTitle}</span>
+          <NavLink
+            to="/engineer/notifications"
+            aria-label="Notifications"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white ${FOCUS}`}
+          >
+            <Bell className="h-5 w-5" />
+          </NavLink>
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
