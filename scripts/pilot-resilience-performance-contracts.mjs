@@ -81,7 +81,7 @@ mustMatch(performance, /responsive Engineer portal at 170\.9 KiB/, "ENG-021 must
 mustMatch(performance, /Engineer QR scanner and in-Stores/, "The scanner and Stores equipment picker CSS allowance must be explicitly identified");
 mustMatch(performance, /measured ~1\.5 KiB of responsive UI CSS/, "The latest Engineer UI CSS increase must remain measured rather than unbounded");
 mustMatch(performance, /roughly 0\.9 KiB regression headroom/, "The rebaselined CSS budget must retain narrow regression headroom");
-mustMatch(performance, /leaving JavaScript, largest-chunk and total-dist limits unchanged/, "The Engineer UI rebaseline must not relax JavaScript, largest-chunk or total-dist limits");
+mustMatch(performance, /leaving JavaScript,\s*largest-chunk and total-dist limits unchanged/, "The Engineer UI rebaseline must not relax JavaScript, largest-chunk or total-dist limits");
 mustMatch(performance, /process\.exit\(1\)/, "Performance budget failures must fail the build");
 
 const packageJson = JSON.parse(packageText);
