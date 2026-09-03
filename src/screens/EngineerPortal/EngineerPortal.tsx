@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 import { usePrimaryAskVortaVisibility } from "../AiOperations/usePrimaryAskVortaVisibility";
+import { EngineerAskVortaScreen } from "./EngineerAskVortaScreen";
 import {
   EngineerEquipmentDetailScreen,
   EngineerEquipmentScreen,
@@ -24,7 +25,8 @@ export const EngineerPortal = (): JSX.Element => {
     <EngineerPortalShell>
       <EngineerDatabaseImages />
       <Routes>
-        <Route path="vorta" element={<EngineerHomeScreen />} />
+        <Route path="vorta" element={<EngineerAskVortaScreen />} />
+        <Route path="home" element={<EngineerHomeScreen />} />
         <Route path="work" element={<EngineerMyWorkScreen />} />
         <Route path="work/:workOrderId" element={<EngineerWorkOrderDetailScreen />} />
         <Route path="equipment" element={<EngineerEquipmentScreen />} />
@@ -80,11 +82,11 @@ export const EngineerPortal = (): JSX.Element => {
         />
         <Route path="settings" element={<ProfileSettingsSection />} />
 
-        <Route path="dashboard" element={<Navigate to="/engineer/vorta" replace />} />
+        <Route path="dashboard" element={<Navigate to="/engineer/home" replace />} />
         <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="certifications" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="bookings" element={<Navigate to="/engineer/skills" replace />} />
-        <Route path="opportunities" element={<Navigate to="/engineer/vorta" replace />} />
+        <Route path="opportunities" element={<Navigate to="/engineer/home" replace />} />
         <Route path="ai-recommendations" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="career-path" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="*" element={<Navigate to="/engineer/vorta" replace />} />
