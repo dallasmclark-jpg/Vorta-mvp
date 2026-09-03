@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 
+const ENGINEER_CONTEXT_FALLBACKS: Record<string, string> = {
+  "What should I check first?": "Summarise the shift handover",
+  "What does the SOP say?": "What faults are still open from the last shift?",
+  "What spares may be needed?": "What should I prioritise this shift?",
+  "Has this fault happened before?": "What has changed since my last shift?",
+};
+
 function openEngineerAskVorta(): void {
   window.dispatchEvent(
     new CustomEvent("vorta-global-ai-prompt", {
@@ -8,12 +15,69 @@ function openEngineerAskVorta(): void {
   );
 }
 
+function submitEngineerAskVorta(question: string): void {
+  window.dispatchEvent(
+    new CustomEvent("vorta-global-ai-prompt", {
+      detail: { question, submit: true, role: "engineer" },
+    }),
+  );
+}
+
+function syncEngineerFallbackPrompts(): void {
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      '[data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"]) [data-vorta-global-ai-prompt-button="true"]',
+    ),
+  );
+
+  buttons.forEach((button) => {
+    const currentText = button.textContent?.trim() ?? "";
+    const existingOverride = button.dataset.engineerPromptOverride;
+
+    if (existingOverride && currentText === existingOverride) return;
+
+    const contextualFallback = ENGINEER_CONTEXT_FALLBACKS[currentText];
+    if (!contextualFallback) {
+      delete button.dataset.engineerPromptOverride;
+      return;
+    }
+
+    button.dataset.engineerPromptOverride = contextualFallback;
+    button.textContent = contextualFallback;
+  });
+}
+
 export function EngineerAskVortaScreen(): JSX.Element {
   useEffect(() => {
-    const timer = window.setTimeout(openEngineerAskVorta, 0);
+    const timer = window.setTimeout(() => {
+      openEngineerAskVorta();
+      syncEngineerFallbackPrompts();
+    }, 0);
+
+    const observer = new MutationObserver(syncEngineerFallbackPrompts);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    const handlePromptClick = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      const button = target?.closest<HTMLButtonElement>(
+        '[data-vorta-global-ai-prompt-button="true"]',
+      );
+      const question = button?.dataset.engineerPromptOverride;
+
+      if (!button || !question) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      submitEngineerAskVorta(question);
+    };
+
+    document.addEventListener("click", handlePromptClick, true);
 
     return () => {
       window.clearTimeout(timer);
+      observer.disconnect();
+      document.removeEventListener("click", handlePromptClick, true);
       const closeButton = document.querySelector<HTMLButtonElement>(
         '[data-vorta-global-ai-panel="true"] button[aria-label="Close global assistant"]',
       );
