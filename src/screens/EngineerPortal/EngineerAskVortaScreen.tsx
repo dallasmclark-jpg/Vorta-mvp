@@ -83,8 +83,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
     <>
       <style>{`
         @media (max-width: 767px) {
-          /* The Engineer portal owns the mobile header. Keep the normal Vorta
-             logo, notification and menu row visible above the Ask Vorta page. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-panel="true"] {
             top: 4rem !important;
@@ -93,7 +91,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
             background: #000814 !important;
           }
 
-          /* Keep the whole Engineer Ask Vorta surface on the Vorta dark navy. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-messages="true"],
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
@@ -101,29 +98,18 @@ export function EngineerAskVortaScreen(): JSX.Element {
             background: #000814 !important;
           }
 
-          /* The shared assistant's compact Vorta AI header is useful when it is
-             an overlay, but redundant when Ask Vorta is the Engineer page. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
-            [data-vorta-global-ai-header="true"] {
-            display: none !important;
-          }
-
-          /* Ask Vorta is the page in the Engineer portal, so there is no second
-             close/launch step. Leaving via the bottom navigation closes it. */
+            [data-vorta-global-ai-header="true"],
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-panel="true"] button[aria-label="Close global assistant"] {
             display: none !important;
           }
 
-          /* Remove the verbose introduction decision card. The role-specific
-             composer and starter actions already explain the experience. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-messages="true"] > div:first-child {
             display: none !important;
           }
 
-          /* When the conversation is empty, put the starter actions in the open
-             centre of the workspace. They disappear once a conversation starts. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-prompts="true"] {
             position: absolute !important;
@@ -135,6 +121,14 @@ export function EngineerAskVortaScreen(): JSX.Element {
             border-bottom: 0 !important;
             padding: 0 !important;
             background: transparent !important;
+          }
+
+          /* The shared workspace adds `hidden` once a conversation starts.
+             Its mobile `max-md:block` utility otherwise wins the cascade, so
+             force the prompt tray off once the first question has been sent. */
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompts="true"].hidden {
+            display: none !important;
           }
 
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
@@ -152,8 +146,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
             font-size: 0.875rem !important;
           }
 
-          /* The shared mobile assistant hides prompts after the first two.
-             Engineer mobile intentionally shows four useful starter prompts. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-prompt-button="true"]:nth-child(3),
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
@@ -161,7 +153,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
             display: block !important;
           }
 
-          /* Make the Engineer Ask Vorta composer one ChatGPT-style pill. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-composer="true"] {
             padding-left: 1.5rem !important;
@@ -182,7 +173,6 @@ export function EngineerAskVortaScreen(): JSX.Element {
             box-shadow: 0 8px 24px rgb(0 0 0 / 0.2) !important;
           }
 
-          /* Reuse the existing photo-attachment control as the + action. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-composer-row="true"] button[aria-label="Attach equipment or fault photo"] {
             order: 0 !important;
