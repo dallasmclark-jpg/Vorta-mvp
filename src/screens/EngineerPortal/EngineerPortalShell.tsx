@@ -233,7 +233,10 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
       data-vorta-engineer-shell="true"
       className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-[#000814] text-white"
     >
-      <style>{`[data-vorta-engineer-home="true"] > header:first-child { display: none; }`}</style>
+      <style>{`
+        [data-vorta-engineer-home="true"] > header:first-child { display: none; }
+        [data-vorta-engineer-my-work="true"] > header:first-child + div { display: none; }
+      `}</style>
       <aside
         data-vorta-sidebar="true"
         className="hidden h-[100dvh] max-h-[100dvh] w-14 shrink-0 flex-col border-r border-slate-800/70 bg-[#000814] px-2 py-5 md:flex 2xl:w-56 2xl:px-4"
