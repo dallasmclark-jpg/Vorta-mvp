@@ -50,7 +50,7 @@ jobs:
       - name: Create capture script
         shell: bash
         run: |
-          cat > /tmp/capture-engineer.mjs <<'EOF'
+          cat > capture-engineer.mjs <<'EOF'
           import { chromium } from "@playwright/test";
           import fs from "node:fs/promises";
 
@@ -106,7 +106,7 @@ jobs:
             if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
             sleep 1
           done
-          node /tmp/capture-engineer.mjs
+          node ./capture-engineer.mjs
           cat /tmp/vite.log
 
       - name: Upload screenshots
