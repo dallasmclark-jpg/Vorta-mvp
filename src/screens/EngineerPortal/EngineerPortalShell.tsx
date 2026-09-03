@@ -19,6 +19,8 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { VortaIcon, VortaLogo } from "../../components/VortaLogo";
 import { supabase } from "../../lib/supabaseClient";
 
+const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#000814]";
+
 export interface EngineerNavItem {
   label: string;
   to: string;
@@ -57,7 +59,7 @@ function EngineerDesktopNavItem({ item }: { item: EngineerNavItem }): JSX.Elemen
       to={item.to}
       aria-label={item.label}
       data-vorta-nav-item="true"
-      className={`group flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors 2xl:justify-start 2xl:px-3 ${
+      className={`group flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors 2xl:justify-start 2xl:px-3 ${FOCUS} ${
         active
           ? "bg-blue-500/[0.10] text-blue-300"
           : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"
@@ -86,7 +88,7 @@ function EngineerMobileBottomNav(): JSX.Element {
             key={item.to}
             to={item.to}
             aria-label={item.label}
-            className={`relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors ${
+            className={`relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors ${FOCUS} ${
               active ? "text-blue-400" : "text-slate-500"
             }`}
           >
@@ -148,7 +150,7 @@ function EngineerMobileDrawer({ onClose }: { onClose: () => void }): JSX.Element
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white ${FOCUS}`}
           >
             <X className="h-5 w-5" />
           </button>
@@ -166,7 +168,7 @@ function EngineerMobileDrawer({ onClose }: { onClose: () => void }): JSX.Element
                 to={item.to}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  `flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${FOCUS} ${
                     isActive
                       ? "bg-blue-500/[0.10] text-blue-300"
                       : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"
@@ -184,7 +186,7 @@ function EngineerMobileDrawer({ onClose }: { onClose: () => void }): JSX.Element
           <button
             type="button"
             onClick={() => void handleLogout()}
-            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+            className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 ${FOCUS}`}
           >
             <LogOut className="h-5 w-5" />
             Log out
@@ -236,7 +238,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
         <NavLink
           to="/engineer/vorta"
           aria-label="Vorta engineer home"
-          className="mb-5 flex h-10 items-center justify-center overflow-hidden px-1 2xl:justify-start 2xl:px-2"
+          className={`mb-5 flex h-10 items-center justify-center overflow-hidden rounded-lg px-1 2xl:justify-start 2xl:px-2 ${FOCUS}`}
         >
           <span className="hidden 2xl:block"><VortaLogo /></span>
           <span className="block 2xl:hidden"><VortaIcon /></span>
@@ -256,7 +258,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
             type="button"
             aria-label="Log out"
             onClick={() => void handleLogout()}
-            className="flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-400 2xl:justify-start 2xl:px-3"
+            className={`flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-400 2xl:justify-start 2xl:px-3 ${FOCUS}`}
           >
             <LogOut className="h-5 w-5 shrink-0" />
             <span className="hidden 2xl:block">Log out</span>
@@ -272,7 +274,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
           <NavLink
             to="/engineer/vorta"
             aria-label="Vorta engineer home"
-            className="inline-flex min-h-11 items-center"
+            className={`inline-flex min-h-11 items-center rounded-lg ${FOCUS}`}
           >
             <VortaLogo className="w-[124px]" />
           </NavLink>
@@ -281,7 +283,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
             type="button"
             onClick={() => setMenuOpen(true)}
             aria-label="Open engineer menu"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white ${FOCUS}`}
           >
             <Menu className="h-5 w-5" />
           </button>
