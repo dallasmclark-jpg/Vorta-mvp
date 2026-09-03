@@ -134,9 +134,16 @@ function shiftShortLabel(item: OperationalRotaCalendarItem): string {
 
 function shiftTone(item: OperationalRotaCalendarItem): string {
   if (item.shiftType === "day") {
-    return "border-blue-400/25 bg-blue-500/[0.14] text-blue-200";
+    return "border-blue-400/50 bg-blue-500/[0.28] text-blue-100 shadow-[inset_0_0_14px_rgba(59,130,246,0.12)]";
   }
-  return "border-indigo-400/25 bg-indigo-500/[0.14] text-indigo-200";
+  return "border-indigo-400/50 bg-indigo-500/[0.28] text-indigo-100 shadow-[inset_0_0_14px_rgba(99,102,241,0.12)]";
+}
+
+function shiftCellTone(item: OperationalRotaCalendarItem): string {
+  if (item.shiftType === "day") {
+    return "border-blue-400/30 bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.05),0_0_16px_rgba(37,99,235,0.07)] hover:border-blue-400/45";
+  }
+  return "border-indigo-400/30 bg-indigo-500/[0.08] shadow-[inset_0_0_0_1px_rgba(129,140,248,0.05),0_0_16px_rgba(79,70,229,0.07)] hover:border-indigo-400/45";
 }
 
 function coverageTone(status: OperationalRotaCoverageStatus): string {
@@ -751,7 +758,9 @@ export function EngineerRotaScreen(): JSX.Element {
                         className={[
                           "relative flex min-h-[68px] min-w-0 flex-col items-center rounded-xl border px-0.5 py-1.5 text-center transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:min-h-[78px] sm:px-1 sm:py-2",
                           inMonth
-                            ? "border-slate-800/80 bg-[#07172b]/75 hover:border-slate-700"
+                            ? shift
+                              ? shiftCellTone(shift)
+                              : "border-slate-800/55 bg-[#07172b]/45 hover:border-slate-700/75"
                             : "border-slate-900/80 bg-slate-950/20 opacity-40",
                           isToday
                             ? "ring-1 ring-inset ring-blue-400/80"
@@ -771,7 +780,7 @@ export function EngineerRotaScreen(): JSX.Element {
                             "mt-auto inline-flex w-full min-w-0 items-center justify-center rounded-md border px-0.5 py-1 text-[9px] font-semibold leading-none sm:px-1 sm:text-[10px]",
                             shift
                               ? shiftTone(shift)
-                              : "border-transparent bg-slate-800/25 text-slate-600",
+                              : "border-transparent bg-slate-900/30 text-slate-600",
                           ].join(" ")}
                         >
                           {shift ? shiftShortLabel(shift) : "Off"}
@@ -790,11 +799,11 @@ export function EngineerRotaScreen(): JSX.Element {
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-800/65 pt-3 text-[10px] text-slate-500">
                   <span className="inline-flex items-center gap-1.5">
-                    <i className="h-2 w-2 rounded-sm border border-blue-400/35 bg-blue-500/20" />
+                    <i className="h-2 w-2 rounded-sm border border-blue-400/50 bg-blue-500/35" />
                     Day
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <i className="h-2 w-2 rounded-sm border border-indigo-400/35 bg-indigo-500/20" />
+                    <i className="h-2 w-2 rounded-sm border border-indigo-400/50 bg-indigo-500/35" />
                     Night
                   </span>
                   <span className="inline-flex items-center gap-1.5">
