@@ -121,3 +121,28 @@ html.dark [data-vorta-portal-shell="true"]
   color: #f8fafc !important;
   box-shadow: none !important;
 }
+
+/* VOR-095 refinement 03/09/2026: keep the embedded Ask Vorta command field
+   visually continuous. The input and its text wrapper must not paint a
+   rectangular fill inside the rounded command shell. */
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] div:has(> input),
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-embedded-ai="true"] input {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Highest Area is information within the briefing, not a differently surfaced
+   card. Keep its semantic red text while matching the sibling metric surface. */
+html.dark [data-vorta-dashboard-root="true"] [data-vorta-group-frame="true"] [class~="border-red-500/30"][class~="bg-[#0d1117]"] {
+  border-color: rgba(96, 165, 250, 0.13) !important;
+  background-color: #030c1d !important;
+  background-image: linear-gradient(180deg, rgba(8, 28, 52, 0.38) 0%, rgba(3, 12, 29, 0) 58%) !important;
+}
+
+/* Plant Area Risk already exposes the real calibration count in its metric
+   list. Remove the redundant leading-driver line from the visual and
+   accessibility tree without touching the underlying risk calculation. */
+[data-vorta-dashboard-root="true"] [aria-label^="View equipment in "] p[class*="min-h-9"] {
+  display: none !important;
+}

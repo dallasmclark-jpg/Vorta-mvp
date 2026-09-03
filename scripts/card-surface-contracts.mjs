@@ -131,6 +131,24 @@ assert.match(
 );
 assert.match(read("src/components/ai/VortaAiCommandBar.tsx"), /data-vorta-embedded-ask=\{embedded \? "true" : undefined\}[\s\S]*borderRadius: "9999px"[\s\S]*backgroundColor: "#1746b3"/);
 
+/* VOR-095 03/09/2026 focused refinements. */
+assert.match(
+  tabs,
+  /VOR-095 refinement 03\/09\/2026[\s\S]*div:has\(> input\)[\s\S]*input \{[\s\S]*background-color: transparent !important;[\s\S]*background-image: none !important;[\s\S]*box-shadow: none !important/,
+);
+assert.match(
+  tabs,
+  /\[data-vorta-group-frame="true"\] \[class~="border-red-500\/30"\]\[class~="bg-\[#0d1117\]"\][\s\S]*border-color: rgba\(96, 165, 250, 0\.13\) !important;[\s\S]*background-color: #030c1d !important/,
+);
+assert.match(
+  tabs,
+  /\[aria-label\^="View equipment in "\] p\[class\*="min-h-9"\][\s\S]*display: none !important/,
+);
+assert.match(
+  dashboard,
+  /<dt className="text-sm text-slate-400">Calibration backlog<\/dt>[\s\S]*\{area\.calibrationOverdueCount\}/,
+);
+
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-safe-area="true"/);
 assert.match(maintenanceExperience, /className="h-28 shrink-0"/);
 assert.match(maintenanceExperience, /data-vorta-mobile-ai-launcher-label="true"/);
@@ -138,4 +156,4 @@ assert.match(maintenanceExperience, /h-12 w-12/);
 assert.match(maintenanceExperience, /min-\[420px\]:w-auto/);
 assert.match(maintenanceExperience, /hidden min-\[420px\]:inline/);
 
-console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");
+console.log("Shared Vorta page, canonical VOR-095/VOR-097 dashboard palette, transparent Ask Vorta input, matched briefing surfaces, single calibration metric, approved upper-card depth, selected scope/navigation, semantic group-frame, contrast and launcher hierarchy passed.");

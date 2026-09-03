@@ -98,6 +98,49 @@ test("VOR-095 uses the mock-up navy cards and focused Ask Vorta layout", async (
   });
   await expect(page.locator('[data-vorta-embedded-ai="true"] [data-vorta-embedded-ask="true"]')).toBeVisible();
 
+  const embeddedInput = page.locator('[data-vorta-embedded-ai="true"] input').first();
+  await expect(embeddedInput).toBeVisible();
+  await expect(embeddedInput).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(embeddedInput).toHaveCSS("background-image", "none");
+  const embeddedInputWrapper = embeddedInput.locator("..");
+  await expect(embeddedInputWrapper).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(embeddedInputWrapper).toHaveCSS("background-image", "none");
+
+  const briefingFrame = page.locator('[data-vorta-group-frame="true"]').first();
+  const siteRiskMetric = briefingFrame.locator("p").filter({ hasText: /^Site Risk$/ }).first().locator("..");
+  const highestAreaMetric = briefingFrame.locator("p").filter({ hasText: /^Highest Area$/ }).first().locator("..");
+  await expect(siteRiskMetric).toBeVisible();
+  await expect(highestAreaMetric).toBeVisible();
+
+  const metricSurfaces = await Promise.all([
+    siteRiskMetric.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        backgroundImage: style.backgroundImage,
+        borderTopColor: style.borderTopColor,
+      };
+    }),
+    highestAreaMetric.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        backgroundImage: style.backgroundImage,
+        borderTopColor: style.borderTopColor,
+      };
+    }),
+  ]);
+  expect(metricSurfaces[1]).toEqual(metricSurfaces[0]);
+
+  const firstPlantAreaCard = page.locator('[aria-label^="View equipment in "]').first();
+  await expect(firstPlantAreaCard).toBeVisible();
+  await expect(firstPlantAreaCard.locator('p[class*="min-h-9"]')).toBeHidden();
+  const calibrationMetric = firstPlantAreaCard.locator("dl dt").filter({ hasText: /^Calibration backlog$/ });
+  await expect(calibrationMetric).toHaveCount(1);
+  if (hierarchy.viewportWidth >= 768) {
+    await expect(calibrationMetric).toBeVisible();
+  }
+
   expect(hierarchy.riskIntelligenceLabel).not.toBeNull();
   expect(hierarchy.riskIntelligenceLabel?.color).toBe("rgb(96, 165, 250)");
   expect(hierarchy.riskIntelligenceLabel?.background).toBe("rgb(7, 23, 43)");
