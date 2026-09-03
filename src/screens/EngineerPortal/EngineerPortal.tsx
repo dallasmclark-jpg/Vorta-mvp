@@ -82,7 +82,7 @@ export const EngineerPortal = (): JSX.Element => {
         />
         <Route path="settings" element={<ProfileSettingsSection />} />
 
-        <Route path="dashboard" element={<Navigate to="/engineer/home" replace />} />
+        <Route path="dashboard" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="certifications" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="bookings" element={<Navigate to="/engineer/skills" replace />} />
