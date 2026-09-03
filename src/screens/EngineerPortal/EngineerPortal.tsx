@@ -8,7 +8,6 @@ import {
   EngineerHomeScreen,
   EngineerMyWorkScreen,
   EngineerSpareDetailScreen,
-  EngineerStoresScreen,
   EngineerUtilityIcons,
   EngineerUtilityScreen,
   EngineerWorkOrderDetailScreen,
@@ -17,6 +16,7 @@ import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { EngineerPortalShell } from "./EngineerPortalShell";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
+import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 export const EngineerPortal = (): JSX.Element => {
@@ -33,7 +33,7 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="work/:workOrderId" element={<EngineerWorkOrderDetailScreen />} />
         <Route path="equipment" element={<EngineerEquipmentScreen />} />
         <Route path="equipment/:equipmentId" element={<EngineerEquipmentDetailScreen />} />
-        <Route path="stores" element={<EngineerStoresScreen />} />
+        <Route path="stores" element={<EngineerStoresEquipmentFilter />} />
         <Route path="stores/:partNumber" element={<EngineerSpareDetailScreen />} />
         <Route path="skills" element={<EngineerSkillsScreen />} />
         <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
