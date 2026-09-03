@@ -15,6 +15,7 @@ import {
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { EngineerPortalShell } from "./EngineerPortalShell";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
+import { EngineerSearchPillStyles } from "./EngineerSearchPillStyles";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
@@ -24,6 +25,7 @@ export const EngineerPortal = (): JSX.Element => {
 
   return (
     <EngineerPortalShell>
+      <EngineerSearchPillStyles />
       <EngineerDatabaseImages />
       <EngineerQrScannerBridge />
       <Routes>
