@@ -15,6 +15,7 @@ import {
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { EngineerPortalShell } from "./EngineerPortalShell";
+import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
@@ -24,6 +25,7 @@ export const EngineerPortal = (): JSX.Element => {
   return (
     <EngineerPortalShell>
       <EngineerDatabaseImages />
+      <EngineerQrScannerBridge />
       <Routes>
         <Route path="vorta" element={<EngineerAskVortaScreen />} />
         <Route path="home" element={<EngineerHomeScreen />} />
