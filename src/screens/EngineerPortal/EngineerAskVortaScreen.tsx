@@ -32,6 +32,15 @@ export function EngineerAskVortaScreen(): JSX.Element {
             top: 4rem !important;
             bottom: calc(4.5rem + env(safe-area-inset-bottom)) !important;
             height: auto !important;
+            background: #000814 !important;
+          }
+
+          /* Keep the whole Engineer Ask Vorta surface on the Vorta dark navy. */
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-messages="true"],
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-composer="true"] {
+            background: #000814 !important;
           }
 
           /* The shared assistant's compact Vorta AI header is useful when it is
@@ -55,9 +64,8 @@ export function EngineerAskVortaScreen(): JSX.Element {
             display: none !important;
           }
 
-          /* When the conversation is empty, put the two useful starter actions
-             in the open centre of the workspace instead of stacking them below
-             the composer. They disappear automatically once a conversation starts. */
+          /* When the conversation is empty, put the starter actions in the open
+             centre of the workspace. They disappear once a conversation starts. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-prompts="true"] {
             position: absolute !important;
@@ -84,6 +92,15 @@ export function EngineerAskVortaScreen(): JSX.Element {
             border-color: rgb(51 65 85 / 0.9) !important;
             background: rgb(15 23 42 / 0.42) !important;
             font-size: 0.875rem !important;
+          }
+
+          /* The shared mobile assistant hides prompts after the first two.
+             Engineer mobile intentionally shows four useful starter prompts. */
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompt-button="true"]:nth-child(3),
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompt-button="true"]:nth-child(4) {
+            display: block !important;
           }
 
           /* Make the Engineer Ask Vorta composer one ChatGPT-style pill. */
