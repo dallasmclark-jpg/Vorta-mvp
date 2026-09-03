@@ -30,7 +30,7 @@ for (const marker of [
   "markAskVortaConversationForReturn();",
   "shouldRestoreAskVortaConversation()",
   "openMaintenanceAiAssistant({ submit: false })",
-  "const showDesktopAssistantLauncher = !isPhone;",
+  "const showDesktopAssistantLauncher =",
   'data-vorta-shared-mobile-ai-launcher="true"',
 ]) {
   assert.ok(source.includes(marker), `Missing VOR-067 navigation marker: ${marker}`);
