@@ -78,14 +78,14 @@ export const EngineerPortal = (): JSX.Element => {
         />
         <Route path="settings" element={<ProfileSettingsSection />} />
 
-        <Route path="dashboard" element={<Navigate to="../vorta" replace />} />
-        <Route path="training" element={<Navigate to="../skills" replace />} />
-        <Route path="certifications" element={<Navigate to="../skills" replace />} />
-        <Route path="bookings" element={<Navigate to="../skills" replace />} />
-        <Route path="opportunities" element={<Navigate to="../vorta" replace />} />
-        <Route path="ai-recommendations" element={<Navigate to="../vorta" replace />} />
-        <Route path="career-path" element={<Navigate to="../skills" replace />} />
-        <Route path="*" element={<Navigate to="vorta" replace />} />
+        <Route path="dashboard" element={<Navigate to="/engineer/vorta" replace />} />
+        <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
+        <Route path="certifications" element={<Navigate to="/engineer/skills" replace />} />
+        <Route path="bookings" element={<Navigate to="/engineer/skills" replace />} />
+        <Route path="opportunities" element={<Navigate to="/engineer/vorta" replace />} />
+        <Route path="ai-recommendations" element={<Navigate to="/engineer/vorta" replace />} />
+        <Route path="career-path" element={<Navigate to="/engineer/skills" replace />} />
+        <Route path="*" element={<Navigate to="/engineer/vorta" replace />} />
       </Routes>
 
       <GlobalMaintenanceAiAssistant
