@@ -763,7 +763,7 @@ export function EngineerRotaScreen(): JSX.Element {
                               : "border-slate-800/55 bg-[#07172b]/45 hover:border-slate-700/75"
                             : "border-slate-900/80 bg-slate-950/20 opacity-40",
                           isToday
-                            ? "ring-2 ring-inset ring-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_0_14px_rgba(255,255,255,0.12)]"
+                            ? "!border-white border-2 ring-0 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_0_16px_rgba(255,255,255,0.14)]"
                             : "",
                         ].join(" ")}
                       >
