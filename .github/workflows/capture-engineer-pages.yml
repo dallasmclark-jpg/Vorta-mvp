@@ -30,7 +30,7 @@ jobs:
         run: |
           cat > src/index.tsx <<'EOF'
           import { createRoot } from "react-dom/client";
-          import { BrowserRouter } from "react-router-dom";
+          import { BrowserRouter, Route, Routes } from "react-router-dom";
           import "../tailwind.css";
           import { ToastProvider } from "./components/Toast";
           import { EngineerPortal } from "./screens/EngineerPortal";
@@ -41,7 +41,9 @@ jobs:
           createRoot(root).render(
             <BrowserRouter>
               <ToastProvider>
-                <EngineerPortal />
+                <Routes>
+                  <Route path="/engineer/*" element={<EngineerPortal />} />
+                </Routes>
               </ToastProvider>
             </BrowserRouter>,
           );
@@ -71,6 +73,7 @@ jobs:
             ["14-settings", "/engineer/settings"],
           ];
 
+          await fs.rm("engineer-screenshots", { recursive: true, force: true });
           await fs.mkdir("engineer-screenshots", { recursive: true });
           const browser = await chromium.launch({ headless: true });
           const context = await browser.newContext({
@@ -86,7 +89,7 @@ jobs:
           for (const [name, route] of routes) {
             console.log(`Capturing ${name} ${route}`);
             await page.goto(`http://127.0.0.1:4173${route}`, { waitUntil: "domcontentloaded", timeout: 30000 });
-            await page.waitForTimeout(2200);
+            await page.waitForTimeout(2600);
             await page.screenshot({ path: `engineer-screenshots/${name}.png`, fullPage: true });
           }
 
