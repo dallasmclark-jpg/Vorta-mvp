@@ -8,17 +8,21 @@ import {
   EngineerHomeScreen,
   EngineerMyWorkScreen,
   EngineerSpareDetailScreen,
-  EngineerUtilityIcons,
-  EngineerUtilityScreen,
   EngineerWorkOrderDetailScreen,
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { EngineerPortalShell } from "./EngineerPortalShell";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
 import { EngineerSearchPillStyles } from "./EngineerSearchPillStyles";
+import {
+  EngineerDocumentsScreen,
+  EngineerHandoverScreen,
+  EngineerNotificationsScreen,
+  EngineerProfileSettingsScreen,
+  EngineerSiteAlertsScreen,
+} from "./EngineerSecondaryScreens";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
-import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 export const EngineerPortal = (): JSX.Element => {
   const isPrimaryAskVortaVisible = usePrimaryAskVortaVisibility();
@@ -40,51 +44,11 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="skills" element={<EngineerSkillsScreen />} />
         <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
 
-        <Route
-          path="handover"
-          element={
-            <EngineerUtilityScreen
-              title="Shift Handover"
-              subtitle="Open breakdowns, watch items and Vorta-native handover notes for the next shift."
-              icon={EngineerUtilityIcons.handover}
-              snagId="ENG-012"
-            />
-          }
-        />
-        <Route
-          path="documents"
-          element={
-            <EngineerUtilityScreen
-              title="Documents"
-              subtitle="Manuals, SOPs, drawings and maintenance instructions, with equipment context taking priority."
-              icon={EngineerUtilityIcons.documents}
-              snagId="ENG-011"
-            />
-          }
-        />
-        <Route
-          path="notifications"
-          element={
-            <EngineerUtilityScreen
-              title="Notifications"
-              subtitle="Assigned work, skill assessments, certificate expiry and relevant equipment intelligence."
-              icon={EngineerUtilityIcons.notifications}
-              snagId="ENG-017"
-            />
-          }
-        />
-        <Route
-          path="alerts"
-          element={
-            <EngineerUtilityScreen
-              title="Site Alerts"
-              subtitle="Engineer-relevant equipment, skills, PM and spares risk without the full management dashboard."
-              icon={EngineerUtilityIcons.alerts}
-              snagId="ENG-013"
-            />
-          }
-        />
-        <Route path="settings" element={<ProfileSettingsSection />} />
+        <Route path="handover" element={<EngineerHandoverScreen />} />
+        <Route path="documents" element={<EngineerDocumentsScreen />} />
+        <Route path="notifications" element={<EngineerNotificationsScreen />} />
+        <Route path="alerts" element={<EngineerSiteAlertsScreen />} />
+        <Route path="settings" element={<EngineerProfileSettingsScreen />} />
 
         <Route path="dashboard" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
