@@ -237,7 +237,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
         className="hidden h-[100dvh] max-h-[100dvh] w-14 shrink-0 flex-col border-r border-slate-800/70 bg-[#000814] px-2 py-5 md:flex 2xl:w-56 2xl:px-4"
       >
         <NavLink
-          to="/engineer/vorta"
+          to="/engineer/home"
           aria-label="Vorta engineer home"
           className={`mb-5 flex h-10 items-center justify-center overflow-hidden rounded-lg px-1 2xl:justify-start 2xl:px-2 ${FOCUS}`}
         >
@@ -273,7 +273,7 @@ export function EngineerPortalShell({ children }: { children: ReactNode }): JSX.
           className="grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_2.75rem_2.75rem] items-center gap-1 border-b border-slate-800/70 bg-[#000814]/95 px-3 backdrop-blur-xl md:hidden"
         >
           <NavLink
-            to="/engineer/vorta"
+            to="/engineer/home"
             aria-label="Vorta engineer home"
             className={`inline-flex min-h-11 items-center rounded-lg ${FOCUS}`}
           >
