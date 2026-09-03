@@ -11,6 +11,15 @@ export interface EngineerRosterIdentity {
   certifications: Array<Record<string, unknown>>;
 }
 
+interface EngineerIdentityRow {
+  id: string;
+  full_name: string;
+  site_id: string | null;
+  department_id: string | null;
+  discipline: string | null;
+  shift_pattern: string | null;
+}
+
 function normalizeHumanName(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value
@@ -18,6 +27,24 @@ function normalizeHumanName(value: unknown): string | null {
     .replace(/\s+/g, " ")
     .toLocaleLowerCase("en-GB");
   return normalized || null;
+}
+
+function normalizeIdentifier(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+function toRosterIdentity(engineer: EngineerIdentityRow): EngineerRosterIdentity {
+  return {
+    id: String(engineer.id),
+    fullName: String(engineer.full_name),
+    siteId: engineer.site_id ? String(engineer.site_id) : null,
+    departmentId: engineer.department_id ? String(engineer.department_id) : null,
+    discipline: engineer.discipline ? String(engineer.discipline) : null,
+    shiftPattern: engineer.shift_pattern ? String(engineer.shift_pattern) : null,
+    certifications: [],
+  };
 }
 
 export function authenticatedEngineerDisplayName(session: Session | null): string | null {
@@ -38,37 +65,64 @@ export function authenticatedEngineerDisplayName(session: Session | null): strin
   return null;
 }
 
+export function authenticatedEngineerId(session: Session | null): string | null {
+  if (!session?.user) return null;
+
+  // Engineer ownership is deliberately taken only from app_metadata because
+  // user_metadata is user-editable. RLS then limits the engineers row to an
+  // authorised site before it can be returned.
+  return normalizeIdentifier(session.user.app_metadata?.engineer_id);
+}
+
+async function loadEngineerById(engineerId: string): Promise<EngineerRosterIdentity | null> {
+  const { data, error } = await supabase
+    .from("engineers")
+    .select("id, full_name, site_id, department_id, discipline, shift_pattern")
+    .eq("id", engineerId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return toRosterIdentity(data as EngineerIdentityRow);
+}
+
+async function loadEngineerByExactName(
+  displayName: string,
+): Promise<EngineerRosterIdentity | null> {
+  const expected = normalizeHumanName(displayName);
+  if (!expected) return null;
+
+  // The engineers table is site-scoped by RLS. Filtering after the authorised
+  // read avoids fuzzy ownership and handles harmless case/spacing differences.
+  const { data, error } = await supabase
+    .from("engineers")
+    .select("id, full_name, site_id, department_id, discipline, shift_pattern")
+    .limit(100);
+
+  if (error) throw error;
+
+  const matches = ((data ?? []) as EngineerIdentityRow[]).filter(
+    (engineer) => normalizeHumanName(engineer.full_name) === expected,
+  );
+
+  if (matches.length !== 1) return null;
+  return toRosterIdentity(matches[0]);
+}
+
 export async function resolveAuthenticatedEngineerIdentity(
   session: Session | null,
 ): Promise<EngineerRosterIdentity | null> {
-  const displayName = authenticatedEngineerDisplayName(session);
-  const normalizedDisplayName = normalizeHumanName(displayName);
-  if (!normalizedDisplayName) return null;
+  if (!session?.user) return null;
 
   try {
-    const { data, error } = await supabase.functions.invoke("engineers-data");
-    if (error) throw error;
+    const engineerId = authenticatedEngineerId(session);
+    if (engineerId) {
+      return await loadEngineerById(engineerId);
+    }
 
-    const engineers = Array.isArray(data?.engineers) ? data.engineers : [];
-    const matches = engineers.filter(
-      (engineer: any) => normalizeHumanName(engineer?.full_name) === normalizedDisplayName,
-    );
-
-    // Personal Engineer screens must fail closed on missing or ambiguous identity.
-    if (matches.length !== 1) return null;
-
-    const engineer = matches[0];
-    return {
-      id: String(engineer.id),
-      fullName: String(engineer.full_name),
-      siteId: engineer.site_id ? String(engineer.site_id) : null,
-      departmentId: engineer.department_id ? String(engineer.department_id) : null,
-      discipline: engineer.discipline ? String(engineer.discipline) : null,
-      shiftPattern: engineer.shift_pattern ? String(engineer.shift_pattern) : null,
-      certifications: Array.isArray(engineer.certifications)
-        ? engineer.certifications
-        : [],
-    };
+    const displayName = authenticatedEngineerDisplayName(session);
+    if (!displayName) return null;
+    return await loadEngineerByExactName(displayName);
   } catch (error) {
     console.warn("Authenticated engineer identity could not be resolved:", error);
     return null;
