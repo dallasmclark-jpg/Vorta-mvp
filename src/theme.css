@@ -193,6 +193,11 @@ html.light .vorta-theme-trigger:focus-visible {
   --tw-ring-offset-color: #f8fafc !important;
 }
 
+[data-vorta-engineer-shell="true"]:has([data-vorta-engineer-home="true"])
+  [data-vorta-engineer-mobile-header="true"] > span {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .vorta-theme-control {
     inset: 0.75rem 4.25rem auto auto;
