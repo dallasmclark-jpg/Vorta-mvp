@@ -1,0 +1,118 @@
+name: Capture engineer portal screenshots
+
+on:
+  push:
+    branches:
+      - agent/engineer-screenshots
+    paths:
+      - ".github/workflows/capture-engineer-pages.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Create screenshot-only engineer entry point
+        shell: bash
+        run: |
+          cat > src/index.tsx <<'EOF'
+          import { createRoot } from "react-dom/client";
+          import { BrowserRouter } from "react-router-dom";
+          import "../tailwind.css";
+          import { ToastProvider } from "./components/Toast";
+          import { EngineerPortal } from "./screens/EngineerPortal";
+
+          const root = document.getElementById("app");
+          if (!root) throw new Error("Missing app root");
+
+          createRoot(root).render(
+            <BrowserRouter>
+              <ToastProvider>
+                <EngineerPortal />
+              </ToastProvider>
+            </BrowserRouter>,
+          );
+          EOF
+
+      - name: Create capture script
+        shell: bash
+        run: |
+          cat > /tmp/capture-engineer.mjs <<'EOF'
+          import { chromium } from "@playwright/test";
+          import fs from "node:fs/promises";
+
+          const routes = [
+            ["01-vorta-home", "/engineer/vorta"],
+            ["02-my-work", "/engineer/work"],
+            ["03-work-order-detail", "/engineer/work/4201846"],
+            ["04-equipment", "/engineer/equipment"],
+            ["05-equipment-detail", "/engineer/equipment/vf-02"],
+            ["06-stores", "/engineer/stores"],
+            ["07-spare-detail", "/engineer/stores/10004921"],
+            ["08-skills", "/engineer/skills"],
+            ["09-skill-detail", "/engineer/skills/Electrical%20Fault%20Finding?equipment=vf-02"],
+            ["10-shift-handover", "/engineer/handover"],
+            ["11-documents", "/engineer/documents"],
+            ["12-notifications", "/engineer/notifications"],
+            ["13-site-alerts", "/engineer/alerts"],
+            ["14-settings", "/engineer/settings"],
+          ];
+
+          await fs.mkdir("engineer-screenshots", { recursive: true });
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({
+            viewport: { width: 412, height: 915 },
+            deviceScaleFactor: 1,
+            isMobile: true,
+            hasTouch: true,
+          });
+          const page = await context.newPage();
+          page.on("console", msg => console.log(`[browser:${msg.type()}] ${msg.text()}`));
+          page.on("pageerror", err => console.log(`[pageerror] ${err.message}`));
+
+          for (const [name, route] of routes) {
+            console.log(`Capturing ${name} ${route}`);
+            await page.goto(`http://127.0.0.1:4173${route}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+            await page.waitForTimeout(2200);
+            await page.screenshot({ path: `engineer-screenshots/${name}.png`, fullPage: true });
+          }
+
+          await browser.close();
+          EOF
+
+      - name: Start Vorta and capture all engineer pages
+        shell: bash
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:9
+          VITE_SUPABASE_ANON_KEY: screenshot-only-placeholder
+        run: |
+          npx vite --host 127.0.0.1 --port 4173 > /tmp/vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node /tmp/capture-engineer.mjs
+          cat /tmp/vite.log
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: engineer-pharma-pages
+          path: engineer-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 7
