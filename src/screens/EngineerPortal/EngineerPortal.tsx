@@ -1,3 +1,4 @@
+import { CalendarDays } from "lucide-react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 import { usePrimaryAskVortaVisibility } from "../AiOperations/usePrimaryAskVortaVisibility";
@@ -11,8 +12,9 @@ import {
   EngineerWorkOrderDetailScreen,
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
-import { EngineerPortalShell } from "./EngineerPortalShell";
+import { ENGINEER_SECONDARY_NAV, EngineerPortalShell } from "./EngineerPortalShell";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
+import { EngineerRotaScreen } from "./EngineerRotaScreen";
 import { EngineerSearchPillStyles } from "./EngineerSearchPillStyles";
 import {
   EngineerDocumentsScreen,
@@ -23,6 +25,14 @@ import {
 } from "./EngineerSecondaryScreens";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
+
+if (!ENGINEER_SECONDARY_NAV.some((item) => item.to === "/engineer/rota")) {
+  ENGINEER_SECONDARY_NAV.splice(1, 0, {
+    label: "Rota",
+    to: "/engineer/rota",
+    icon: CalendarDays,
+  });
+}
 
 export const EngineerPortal = (): JSX.Element => {
   const isPrimaryAskVortaVisible = usePrimaryAskVortaVisibility();
@@ -45,6 +55,7 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
 
         <Route path="handover" element={<EngineerHandoverScreen />} />
+        <Route path="rota" element={<EngineerRotaScreen />} />
         <Route path="documents" element={<EngineerDocumentsScreen />} />
         <Route path="notifications" element={<EngineerNotificationsScreen />} />
         <Route path="alerts" element={<EngineerSiteAlertsScreen />} />
