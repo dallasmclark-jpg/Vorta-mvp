@@ -1,0 +1,28 @@
+name: Export Vorta source artifact
+
+on:
+  push:
+    branches:
+      - agent/deploy-engineer-rota-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Package source
+        run: tar --exclude=.git -czf /tmp/vorta-source.tgz .
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vorta-source
+          path: /tmp/vorta-source.tgz
+          if-no-files-found: error
+          retention-days: 1
