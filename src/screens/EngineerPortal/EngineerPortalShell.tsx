@@ -198,6 +198,8 @@ function EngineerMobileDrawer({ onClose }: { onClose: () => void }): JSX.Element
 }
 
 function resolveMobileTitle(pathname: string): string {
+  if (pathIsActive(pathname, "/engineer/vorta")) return "";
+
   const all = [...ENGINEER_PRIMARY_NAV, ...ENGINEER_SECONDARY_NAV];
   const matched = all
     .filter((item) => pathIsActive(pathname, item.to, item.end))
