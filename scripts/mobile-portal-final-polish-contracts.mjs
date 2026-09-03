@@ -59,7 +59,7 @@ assert.match(
   /showDesktopAssistantLauncher\s*=\s*!isPhone && !isPrimaryAskVortaVisible/,
 );
 assert.equal(
-  (maintenanceExperience.match(/isPhone && !isPrimaryAskVortaVisible/g) ?? []).length,
+  (maintenanceExperience.match(/\{isPhone && !isPrimaryAskVortaVisible \? \(/g) ?? []).length,
   2,
   "Phone launcher and its safe-area spacer must share the same visibility rule.",
 );
