@@ -1,0 +1,75 @@
+name: Engineer rota shift contrast
+
+on:
+  push:
+    branches:
+      - agent/engineer-rota-shift-contrast
+    paths:
+      - ".github/workflows/engineer-rota-shift-contrast.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: agent/engineer-rota-shift-contrast
+          fetch-depth: 0
+
+      - name: Strengthen working-shift contrast
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/screens/EngineerPortal/EngineerRotaScreen.tsx")
+          source = path.read_text()
+
+          replacements = [
+              (
+                  'return "border-blue-400/25 bg-blue-500/[0.14] text-blue-200";',
+                  'return "border-blue-400/50 bg-blue-500/[0.28] text-blue-100 shadow-[inset_0_0_14px_rgba(59,130,246,0.12)]";',
+              ),
+              (
+                  'return "border-indigo-400/25 bg-indigo-500/[0.14] text-indigo-200";',
+                  'return "border-indigo-400/50 bg-indigo-500/[0.28] text-indigo-100 shadow-[inset_0_0_14px_rgba(99,102,241,0.12)]";',
+              ),
+              (
+                  'function coverageTone(status: OperationalRotaCoverageStatus): string {',
+                  '''function shiftCellTone(item: OperationalRotaCalendarItem): string {\n  if (item.shiftType === "day") {\n    return "border-blue-400/30 bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.05),0_0_16px_rgba(37,99,235,0.07)] hover:border-blue-400/45";\n  }\n  return "border-indigo-400/30 bg-indigo-500/[0.08] shadow-[inset_0_0_0_1px_rgba(129,140,248,0.05),0_0_16px_rgba(79,70,229,0.07)] hover:border-indigo-400/45";\n}\n\nfunction coverageTone(status: OperationalRotaCoverageStatus): string {''',
+              ),
+              (
+                  '''                          inMonth\n                            ? "border-slate-800/80 bg-[#07172b]/75 hover:border-slate-700"\n                            : "border-slate-900/80 bg-slate-950/20 opacity-40",''',
+                  '''                          inMonth\n                            ? shift\n                              ? shiftCellTone(shift)\n                              : "border-slate-800/55 bg-[#07172b]/45 hover:border-slate-700/75"\n                            : "border-slate-900/80 bg-slate-950/20 opacity-40",''',
+              ),
+              (
+                  ': "border-transparent bg-slate-800/25 text-slate-600",',
+                  ': "border-transparent bg-slate-900/30 text-slate-600",',
+              ),
+              (
+                  '<i className="h-2 w-2 rounded-sm border border-blue-400/35 bg-blue-500/20" />',
+                  '<i className="h-2 w-2 rounded-sm border border-blue-400/50 bg-blue-500/35" />',
+              ),
+              (
+                  '<i className="h-2 w-2 rounded-sm border border-indigo-400/35 bg-indigo-500/20" />',
+                  '<i className="h-2 w-2 rounded-sm border border-indigo-400/50 bg-indigo-500/35" />',
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in source:
+                  raise SystemExit(f"Expected source fragment not found: {old[:80]}")
+              source = source.replace(old, new, 1)
+
+          path.write_text(source)
+          PY
+
+          git rm .github/workflows/engineer-rota-shift-contrast.yml
+          git config user.name "Vorta release agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/screens/EngineerPortal/EngineerRotaScreen.tsx
+          git commit -m "Increase Engineer rota shift contrast"
+          git push origin HEAD:agent/engineer-rota-shift-contrast
