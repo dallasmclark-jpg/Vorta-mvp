@@ -12,6 +12,7 @@ import {
   EngineerUtilityScreen,
   EngineerWorkOrderDetailScreen,
 } from "./EngineerCoreScreens";
+import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { EngineerPortalShell } from "./EngineerPortalShell";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
@@ -21,6 +22,7 @@ export const EngineerPortal = (): JSX.Element => {
 
   return (
     <EngineerPortalShell>
+      <EngineerDatabaseImages />
       <Routes>
         <Route path="vorta" element={<EngineerHomeScreen />} />
         <Route path="work" element={<EngineerMyWorkScreen />} />
