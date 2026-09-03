@@ -39,10 +39,41 @@ export function EngineerAskVortaScreen(): JSX.Element {
           }
 
           /* Remove the verbose introduction decision card. The role-specific
-             header, composer and quick prompts already explain the experience. */
+             header and composer already explain the experience. */
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-messages="true"] > div:first-child {
             display: none !important;
+          }
+
+          /* When the conversation is empty, put the two useful starter actions
+             in the open centre of the workspace instead of stacking them below
+             the composer. They disappear automatically once a conversation starts. */
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompts="true"] {
+            position: absolute !important;
+            top: 50% !important;
+            left: 1.5rem !important;
+            right: 1.5rem !important;
+            z-index: 2 !important;
+            transform: translateY(-50%) !important;
+            border-bottom: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompts="true"] > div:first-child {
+            margin: 0 !important;
+            gap: 0.75rem !important;
+          }
+
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-prompt-button="true"] {
+            min-height: 3rem !important;
+            width: 100% !important;
+            border-color: rgb(51 65 85 / 0.9) !important;
+            background: rgb(15 23 42 / 0.42) !important;
+            font-size: 0.875rem !important;
           }
         }
       `}</style>
