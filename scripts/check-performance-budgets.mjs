@@ -10,12 +10,13 @@ const budgets = {
   // surface. VOR-103 rebaselines the approved VOR-095/VOR-097 dashboard CSS at
   // 166.7 KiB with roughly 1.3 KiB regression headroom. ENG-021 adds the approved
   // responsive Engineer portal at 170.9 KiB. The Engineer QR scanner and in-Stores
-  // equipment picker add a measured ~1.5 KiB of responsive UI CSS; the allowance
-  // below keeps roughly 0.9 KiB regression headroom while leaving JavaScript,
-  // largest-chunk and total-dist limits unchanged.
+  // equipment picker add a measured ~1.5 KiB of responsive UI CSS. The personal
+  // monthly Engineer rota adds a measured ~1.8 KiB, taking reviewed CSS to 175.1
+  // KiB. The allowance below keeps roughly 1.7 KiB regression headroom while
+  // leaving JavaScript, largest-chunk and total-dist limits unchanged.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
-  totalCssBytes: 177_500,
+  totalCssBytes: 181_000,
   totalDistBytes: 3_600_000,
 };
 
