@@ -1,4 +1,4 @@
-name: Resolve cereal demo context
+name: Create engineer demo accounts
 
 on:
   push:
@@ -11,89 +11,119 @@ permissions:
   contents: read
 
 jobs:
-  inspect:
-    if: github.event.head_commit.message == 'Resolve cereal demo context'
+  create:
+    if: github.event.head_commit.message == 'Create engineer demo accounts'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
       SUPABASE_KEY_PREFIX: sb_publishable_
       SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
-      DEMO_EMAIL: demo@vorta.network
       DEMO_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
-      CEREAL_SITE_ID: 11000000-0000-0000-0000-000000000002
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          show-progress: false
-
-      - name: Inspect repository tenant references
+      - name: Create and verify Engineer logins
         shell: bash
         run: |
           set -euo pipefail
-          echo "--- repository references: cereal ---"
-          git grep -ni -E 'cereal|11000000-0000-0000-0000-000000000002|10000000-0000-0000-0000-000000000002' -- ':!package-lock.json' || true
-
-      - name: Inspect authenticated tenant metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$DEMO_PASSWORD" || { echo "Missing demo password secret" >&2; exit 1; }
+          test -n "$DEMO_PASSWORD" || { echo "Required VORTA_E2E_PASSWORD secret is missing" >&2; exit 1; }
           node <<'NODE'
           const base = process.env.SUPABASE_URL;
           const anon = `${process.env.SUPABASE_KEY_PREFIX}${process.env.SUPABASE_KEY_SUFFIX}`;
           const password = process.env.DEMO_PASSWORD;
-          const cerealSite = process.env.CEREAL_SITE_ID;
-          async function call(path, token=anon) {
-            const r = await fetch(`${base}${path}`, { headers: { apikey: anon, Authorization: `Bearer ${token}` } });
-            const text = await r.text();
-            let data = text;
-            try { data = text ? JSON.parse(text) : null; } catch {}
-            return { ok:r.ok, status:r.status, data };
-          }
-          const login = await fetch(`${base}/auth/v1/token?grant_type=password`, {
-            method:'POST',
-            headers:{apikey:anon,'content-type':'application/json'},
-            body:JSON.stringify({email:process.env.DEMO_EMAIL,password}),
-          });
-          const auth = await login.json();
-          if (!login.ok || !auth.access_token) throw new Error('Demo authentication failed');
-          const token = auth.access_token;
-          console.log('Demo authentication verified.');
+          const targets = ['eng.pharma@vorta.network', 'eng.cereal@vorta.network'];
 
-          const root = await call('/rest/v1/', token);
-          if (root.ok && root.data && typeof root.data === 'object') {
-            const defs = Object.keys(root.data.definitions || {}).filter((x) => /site|organi|access|profile/i.test(x));
-            const paths = Object.keys(root.data.paths || {}).filter((x) => /site|organi|access|profile/i.test(x));
-            console.log('Relevant REST definitions:', defs.join(', ') || '(none)');
-            console.log('Relevant REST paths:', paths.join(', ') || '(none)');
-          } else {
-            console.log(`REST schema status ${root.status}`);
-          }
-
-          const probes = [
-            ['user_site_access', `site_id=eq.${cerealSite}&select=site_id,organisation_id,app_role,active`],
-            ['sites', `id=eq.${cerealSite}&select=*`],
-            ['organisations', 'select=*'],
-            ['organizations', 'select=*'],
-            ['equipment', `site_id=eq.${cerealSite}&select=site_id,organisation_id&limit=1`],
-          ];
-          for (const [table,q] of probes) {
-            const r = await call(`/rest/v1/${table}?${q}`, token);
-            if (!r.ok) {
-              const msg = r.data?.message || r.data?.hint || '';
-              console.log(`${table}: status ${r.status}${msg ? ` | ${msg}` : ''}`);
-              continue;
-            }
-            const rows = Array.isArray(r.data) ? r.data : [];
-            const safe = rows.slice(0,10).map((row) => {
-              const out = {};
-              for (const key of ['id','site_id','organisation_id','organization_id','name','site_name','display_name','app_role','active']) {
-                if (row[key] !== undefined) out[key] = row[key];
-              }
-              return out;
+          async function request(path, {method='GET', token, body, prefer}={}) {
+            const headers = { apikey: anon };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            if (body !== undefined) headers['content-type'] = 'application/json';
+            if (prefer) headers.Prefer = prefer;
+            const res = await fetch(`${base}${path}`, {
+              method,
+              headers,
+              body: body === undefined ? undefined : JSON.stringify(body),
             });
-            console.log(`${table}: ${rows.length} visible row(s)`, JSON.stringify(safe));
+            const text = await res.text();
+            let data = null;
+            if (text) { try { data = JSON.parse(text); } catch { data = text; } }
+            return { ok: res.ok, status: res.status, data };
           }
+
+          function detail(r) {
+            return r?.data?.message || r?.data?.msg || r?.data?.error_description || r?.data?.error || `HTTP ${r?.status}`;
+          }
+
+          async function signIn(email) {
+            return request('/auth/v1/token?grant_type=password', {
+              method: 'POST',
+              body: { email, password },
+            });
+          }
+
+          async function ensureEngineer(email) {
+            let login = await signIn(email);
+            let state = 'existing';
+
+            if (!login.ok || !login.data?.access_token) {
+              const signup = await request('/auth/v1/signup', {
+                method: 'POST',
+                body: {
+                  email,
+                  password,
+                  data: { role: 'engineer', portal_role: 'engineer' },
+                },
+              });
+              if (!signup.ok || !signup.data?.user?.id) {
+                throw new Error(`Could not create ${email}: ${detail(signup)}`);
+              }
+              state = 'created';
+              login = await signIn(email);
+              if (!login.ok || !login.data?.access_token) {
+                throw new Error(`Created ${email}, but verification login failed: ${detail(login)}`);
+              }
+            }
+
+            const token = login.data.access_token;
+            const userId = login.data.user?.id;
+            if (!userId) throw new Error(`No Auth user id returned for ${email}`);
+
+            const updateMeta = await request('/auth/v1/user', {
+              method: 'PUT',
+              token,
+              body: { data: { role: 'engineer', portal_role: 'engineer' } },
+            });
+            if (!updateMeta.ok) throw new Error(`Could not set Engineer metadata for ${email}: ${detail(updateMeta)}`);
+
+            const profile = await request(`/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=role,organisation_id`, { token });
+            if (!profile.ok) throw new Error(`Could not verify profile lookup for ${email}: ${detail(profile)}`);
+            if (Array.isArray(profile.data) && profile.data[0]?.role && profile.data[0].role !== 'engineer') {
+              const patch = await request(`/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+                method: 'PATCH',
+                token,
+                body: { role: 'engineer' },
+                prefer: 'return=minimal',
+              });
+              if (!patch.ok) throw new Error(`Profile role for ${email} overrides Engineer metadata and could not be corrected: ${detail(patch)}`);
+            }
+
+            const access = await request(`/rest/v1/user_site_access?user_id=eq.${encodeURIComponent(userId)}&active=eq.true&select=site_id,organisation_id,app_role,is_default`, { token });
+            if (!access.ok) throw new Error(`Could not verify site-access lookup for ${email}: ${detail(access)}`);
+            const conflicting = Array.isArray(access.data) && access.data.find((row) => row.app_role && row.app_role !== 'engineer');
+            if (conflicting) throw new Error(`${email} has an existing non-Engineer site-access role; stopped rather than overriding it.`);
+
+            const verifyLogin = await signIn(email);
+            if (!verifyLogin.ok || !verifyLogin.data?.access_token) {
+              throw new Error(`Final login verification failed for ${email}: ${detail(verifyLogin)}`);
+            }
+            const metadata = verifyLogin.data.user?.user_metadata || {};
+            if (metadata.portal_role !== 'engineer' && metadata.role !== 'engineer') {
+              throw new Error(`Final Engineer-role verification failed for ${email}`);
+            }
+
+            console.log(`VERIFIED ${email} | Engineer portal role | ${state}`);
+            console.log(`${email} | profile rows: ${Array.isArray(profile.data) ? profile.data.length : 0} | active site-access rows: ${Array.isArray(access.data) ? access.data.length : 0}`);
+          }
+
+          for (const email of targets) await ensureEngineer(email);
+          console.log('Both Engineer logins verified. Shared demo password was not printed.');
           NODE
