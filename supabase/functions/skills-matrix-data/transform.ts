@@ -8,10 +8,7 @@ import {
 } from "./transform-helpers.ts";
 import { buildCapabilityPreview } from "./transform-asset-experience.ts";
 import { createScopeAnalyser } from "./transform-analysis.ts";
-import {
-  buildDepartmentScopes,
-  buildTeamScopes,
-} from "./transform-scopes.ts";
+import { buildDepartmentScopes, buildTeamScopes } from "./transform-scopes.ts";
 
 export function build(input: any) {
   const {
@@ -28,51 +25,34 @@ export function build(input: any) {
     capabilities,
     preventiveMaintenance,
     pmExperience,
+    equipmentScores = [],
     gaps,
     skills,
   } = input;
 
   const today = new Date().toISOString().slice(0, 10);
   const engineerMap = new Map(engineers.map((row: any) => [row.id, row]));
-  const departmentMap = new Map(
-    departments.map((row: any) => [row.id, row.name]),
-  );
+  const departmentMap = new Map(departments.map((row: any) => [row.id, row.name]));
   const skillMap = new Map(skills.map((row: any) => [row.id, row]));
   const equipmentMap = new Map(equipment.map((row: any) => [row.id, row]));
   const riskMap = new Map(risks.map((row: any) => [row.engineer_id, row]));
-  const gapMap = new Map(
-    gaps.map((row: any) => [
-      `${row.department_id ?? "site"}:${row.skill_id}`,
-      row,
-    ]),
-  );
+  const gapMap = new Map(gaps.map((row: any) => [`${row.department_id ?? "site"}:${row.skill_id}`, row]));
 
   const assignmentsByEngineer = new Map<string, Map<string, any>>();
   for (const row of assignments) {
     const engineerId = String(row.engineer_id);
-    if (!assignmentsByEngineer.has(engineerId)) {
-      assignmentsByEngineer.set(engineerId, new Map());
-    }
+    if (!assignmentsByEngineer.has(engineerId)) assignmentsByEngineer.set(engineerId, new Map());
     assignmentsByEngineer.get(engineerId)!.set(row.skill_id, row);
   }
 
   const capabilitiesByEquipment = new Map<string, Map<string, any>>();
   for (const row of capabilities) {
     const equipmentId = String(row.equipment_id);
-    if (!capabilitiesByEquipment.has(equipmentId)) {
-      capabilitiesByEquipment.set(equipmentId, new Map());
-    }
-    capabilitiesByEquipment
-      .get(equipmentId)!
-      .set(String(row.engineer_id), row);
+    if (!capabilitiesByEquipment.has(equipmentId)) capabilitiesByEquipment.set(equipmentId, new Map());
+    capabilitiesByEquipment.get(equipmentId)!.set(String(row.engineer_id), row);
   }
 
-  const teamScopes = buildTeamScopes(
-    engineers,
-    shiftTeams,
-    shiftMembers,
-    today,
-  );
+  const teamScopes = buildTeamScopes(engineers, shiftTeams, shiftMembers, today);
   const departmentScopes = buildDepartmentScopes(engineers, departments);
   const overallScope = {
     id: "overall",
@@ -109,34 +89,23 @@ export function build(input: any) {
     engineerTeamNames,
   });
 
-  const enrichWithPreview = (row: any, scope: any) => {
-    const preview = buildCapabilityPreview(input, scope);
-    Object.assign(row.summary, preview.summary);
-    row.detail.capabilityPreview = preview.detail;
+  const enrichWithEquipmentEvidence = (row: any, scope: any) => {
+    const equipmentEvidence = buildCapabilityPreview(input, scope);
+    Object.assign(row.summary, equipmentEvidence.summary);
+    row.detail.capabilityPreview = equipmentEvidence.detail;
+    row.detail.equipmentEvidence = equipmentEvidence.detail;
     return row;
   };
 
-  const analysedOverall = enrichWithPreview(analyseScope(overallScope), overallScope);
-  const analysedTeams = teamScopes.map((scope: any) =>
-    enrichWithPreview(analyseScope(scope), scope)
-  );
+  const analysedOverall = enrichWithEquipmentEvidence(analyseScope(overallScope), overallScope);
+  const analysedTeams = teamScopes.map((scope: any) => enrichWithEquipmentEvidence(analyseScope(scope), scope));
   const analysedDepartments = departmentScopes
-    .map((scope: any) => enrichWithPreview(analyseScope(scope), scope))
-    .sort(
-      (left: any, right: any) =>
-        left.summary.score - right.summary.score ||
-        left.summary.name.localeCompare(right.summary.name),
-    );
+    .map((scope: any) => enrichWithEquipmentEvidence(analyseScope(scope), scope))
+    .sort((left: any, right: any) => left.summary.score - right.summary.score || left.summary.name.localeCompare(right.summary.name));
 
-  const shiftTeamScores = analysedTeams
-    .filter((row: any) => SHIFT_CODES.has(row.summary.code))
-    .map((row: any) => row.summary.score);
-  const specialistTeamScores = analysedTeams
-    .filter((row: any) => SPECIALIST_CODES.has(row.summary.code))
-    .map((row: any) => row.summary.score);
-  const criticalTeamCount = analysedTeams.filter(
-    (row: any) => row.summary.status === "Critical" || row.summary.score < 55,
-  ).length;
+  const shiftTeamScores = analysedTeams.filter((row: any) => SHIFT_CODES.has(row.summary.code)).map((row: any) => row.summary.score);
+  const specialistTeamScores = analysedTeams.filter((row: any) => SPECIALIST_CODES.has(row.summary.code)).map((row: any) => row.summary.score);
+  const criticalTeamCount = analysedTeams.filter((row: any) => row.summary.status === "Critical" || row.summary.score < 55).length;
   const criticalTeamShare = criticalTeamCount / Math.max(1, analysedTeams.length);
 
   let overallScore = round(
@@ -148,14 +117,9 @@ export function build(input: any) {
       analysedOverall.summary.validationHealth * 0.05 -
       criticalTeamShare * 12,
   );
-  if (analysedTeams.some((row: any) => row.summary.score < 30)) {
-    overallScore = Math.min(overallScore, 59);
-  }
+  if (analysedTeams.some((row: any) => row.summary.score < 30)) overallScore = Math.min(overallScore, 59);
   analysedOverall.summary.score = overallScore;
-  analysedOverall.summary.status = statusFromScore(
-    overallScore,
-    analysedOverall.detail.priorityRisks,
-  );
+  analysedOverall.summary.status = statusFromScore(overallScore, analysedOverall.detail.priorityRisks);
 
   const areaSkillSets = new Map<string, Set<string>>();
   for (const requirement of requirements) {
@@ -180,27 +144,21 @@ export function build(input: any) {
       ...gaps.map((row: any) => row.snapshot_date),
       ...assignments.map((row: any) => row.last_validated_at),
       ...risks.map((row: any) => row.reviewed_at),
-      ...capabilities.map((row: any) => row.valid_from),
+      ...capabilities.map((row: any) => row.verified_at ?? row.valid_from),
       ...preventiveMaintenance.map((row: any) => row.updated_at),
       ...pmExperience.map((row: any) => row.source_updated_at ?? row.calculated_at),
+      ...equipmentScores.map((row: any) => row.updated_at ?? row.calculated_at),
     ],
     generatedAt,
   );
 
-  const details: Record<string, any> = {
-    [analysedOverall.summary.id]: analysedOverall.detail,
-  };
-  for (const row of [...analysedTeams, ...analysedDepartments]) {
-    details[row.summary.id] = row.detail;
-  }
+  const details: Record<string, any> = { [analysedOverall.summary.id]: analysedOverall.detail };
+  for (const row of [...analysedTeams, ...analysedDepartments]) details[row.summary.id] = row.detail;
 
   return {
     generatedAt,
     sourceUpdatedAt,
-    site: {
-      id: site.id,
-      name: site.name,
-    },
+    site: { id: site.id, name: site.name },
     overall: analysedOverall.summary,
     teams: analysedTeams.map((row) => row.summary),
     departments: analysedDepartments.map((row) => row.summary),
