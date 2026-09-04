@@ -1,0 +1,405 @@
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str, marker: str) -> None:
+    file_path = Path(path)
+    text = file_path.read_text()
+
+    if marker in text:
+        return
+
+    if old not in text:
+        raise RuntimeError(f"Expected source block not found in {path}")
+
+    file_path.write_text(text.replace(old, new, 1))
+
+
+replace_once(
+    "src/components/PortalShell.tsx",
+    '''        <div className="flex shrink-0 items-center gap-3 border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <VortaIcon />
+        </div>''',
+    '''        <div
+          data-vorta-mobile-header="true"
+          className="flex shrink-0 items-center justify-between border-b border-gray-800 bg-[#090b10] px-4 py-3 md:hidden"
+        >
+          <NavLink
+            to={homeRoute}
+            aria-label="Vorta home"
+            className="inline-flex min-h-10 items-center"
+          >
+            <VortaIcon className="h-6 w-[42px]" />
+          </NavLink>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>''',
+    'data-vorta-mobile-header="true"',
+)
+
+replace_once(
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    '''} from "react";
+import { useNavigate } from "react-router-dom";''',
+    '''} from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";''',
+    'import { createPortal } from "react-dom";',
+)
+
+replace_once(
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    '''  const [
+    selectedRiskScopeKey,
+    setSelectedRiskScopeKey,
+  ] = useState("site");
+
+  const [
+    riskScopePlanCache,''',
+    '''  const [
+    selectedRiskScopeKey,
+    setSelectedRiskScopeKey,
+  ] = useState("site");
+
+  const [
+    isRiskScopePickerOpen,
+    setIsRiskScopePickerOpen,
+  ] = useState(false);
+
+  const riskScopePickerRef =
+    useModalFocusTrap<HTMLDivElement>(
+      isRiskScopePickerOpen,
+      () => setIsRiskScopePickerOpen(false),
+    );
+
+  const [
+    riskScopePlanCache,''',
+    "isRiskScopePickerOpen",
+)
+
+replace_once(
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    '''  const activeScopeLabel =
+    activeRiskScope?.scopeLabel ??
+    "Site Risk";
+
+  const activeScopeChildCards =''',
+    '''  const activeScopeLabel =
+    activeRiskScope?.scopeLabel ??
+    "Site Risk";
+
+  const activeRiskScopeDotClassName =
+    !activeRiskScope
+      ? "bg-slate-500"
+      : activeRiskScope.riskScore >= 85
+        ? "bg-red-400"
+        : activeRiskScope.riskScore >= 65
+          ? "bg-orange-400"
+          : activeRiskScope.riskScore >= 40
+            ? "bg-yellow-400"
+            : activeRiskScope.riskScore >= 20
+              ? "bg-emerald-400"
+              : "bg-cyan-400";
+
+  const activeScopeChildCards =''',
+    "activeRiskScopeDotClassName",
+)
+
+replace_once(
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    '''  const handleRiskScopeChange = (
+    scopeKey: string,
+  ) => {
+    if (''',
+    '''  const handleRiskScopeChange = (
+    scopeKey: string,
+  ) => {
+    setIsRiskScopePickerOpen(false);
+
+    if (''',
+    "setIsRiskScopePickerOpen(false);",
+)
+
+replace_once(
+    "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+    '''            <div className="sm:hidden">
+              <label
+                htmlFor="risk-scope-select"
+                className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
+                Risk scope
+              </label>
+              <select
+                id="risk-scope-select"
+                aria-label="Risk scope"
+                value={selectedRiskScopeKey}
+                onChange={(event) => handleRiskScopeChange(event.target.value)}
+                className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-3 text-sm font-semibold text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                {riskScopes.map((scope) => (
+                  <option key={scope.scopeKey} value={scope.scopeKey}>
+                    {scope.scopeLabel} · {formatSiteRisk(scope.riskScore)}
+                  </option>
+                ))}
+              </select>
+            </div>''',
+    '''            <div className="sm:hidden">
+              <p className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Risk scope
+              </p>
+              <button
+                type="button"
+                aria-label="Risk scope"
+                aria-haspopup="dialog"
+                aria-expanded={isRiskScopePickerOpen}
+                data-vorta-risk-scope-trigger="true"
+                onClick={() => setIsRiskScopePickerOpen(true)}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-slate-600 bg-[#242a34] px-4 text-sm font-semibold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-slate-500 hover:bg-[#2a313d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`h-2 w-2 shrink-0 rounded-full ${activeRiskScopeDotClassName}`}
+                />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {activeScopeLabel}
+                </span>
+                <span className="shrink-0 tabular-nums text-slate-300">
+                  {activeRiskScope
+                    ? formatSiteRisk(activeRiskScope.riskScore)
+                    : "—"}
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+                    isRiskScopePickerOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
+
+            {isRiskScopePickerOpen && typeof document !== "undefined"
+              ? createPortal(
+                  <div
+                    className="fixed inset-0 z-[90] flex items-end justify-center sm:hidden"
+                    data-vorta-risk-scope-picker-layer="true"
+                  >
+                    <button
+                      type="button"
+                      aria-label="Close risk scope picker"
+                      className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                      onClick={() => setIsRiskScopePickerOpen(false)}
+                    />
+                    <div
+                      ref={riskScopePickerRef}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="risk-scope-picker-title"
+                      tabIndex={-1}
+                      data-vorta-risk-scope-picker="true"
+                      className="relative z-10 flex max-h-[78dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-700 bg-[#0d1117] shadow-[0_-18px_50px_rgba(0,0,0,0.6)]"
+                    >
+                      <header className="flex items-start justify-between gap-4 border-b border-gray-800 px-5 py-4">
+                        <div>
+                          <h3
+                            id="risk-scope-picker-title"
+                            className="text-base font-semibold text-slate-50"
+                          >
+                            Choose risk scope
+                          </h3>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Site and plant-area risk intelligence
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsRiskScopePickerOpen(false)}
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+                          aria-label="Close risk scope picker"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </header>
+
+                      <div
+                        role="radiogroup"
+                        aria-label="Risk scope options"
+                        className="overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+                      >
+                        {riskScopes.map((scope) => {
+                          const isSelected =
+                            scope.scopeKey === selectedRiskScopeKey;
+
+                          const dotClassName =
+                            scope.riskScore >= 85
+                              ? "bg-red-400"
+                              : scope.riskScore >= 65
+                                ? "bg-orange-400"
+                                : scope.riskScore >= 40
+                                  ? "bg-yellow-400"
+                                  : scope.riskScore >= 20
+                                    ? "bg-emerald-400"
+                                    : "bg-cyan-400";
+
+                          return (
+                            <button
+                              key={scope.scopeKey}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              onClick={() =>
+                                handleRiskScopeChange(scope.scopeKey)
+                              }
+                              className={`flex min-h-14 w-full items-center gap-3 border-b border-gray-800 px-2 py-3 text-left transition-colors last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60 ${
+                                isSelected
+                                  ? "bg-blue-500/10 text-white"
+                                  : "text-slate-200 hover:bg-white/[0.035]"
+                              }`}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                  isSelected
+                                    ? "border-blue-400"
+                                    : "border-slate-600"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                                )}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                className={`h-2 w-2 shrink-0 rounded-full ${dotClassName}`}
+                              />
+                              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                                {scope.scopeLabel}
+                              </span>
+                              <span
+                                className={`shrink-0 tabular-nums text-sm font-semibold ${
+                                  isSelected
+                                    ? "text-blue-200"
+                                    : "text-slate-300"
+                                }`}
+                              >
+                                {formatSiteRisk(scope.riskScore)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>,
+                  document.body,
+                )
+              : null}''',
+    'data-vorta-risk-scope-picker="true"',
+)
+
+replace_once(
+    "tests/browser/maintenance-manager-core.spec.ts",
+    '''  if (viewportWidth <= 420) {
+    const riskScopeSelect = page.getByLabel("Risk scope", { exact: true });
+    await expect(riskScopeSelect).toBeVisible();
+    const areaOption = riskScopeSelect.locator('option:not([value="site"])').first();
+    const areaValue = await areaOption.getAttribute("value");
+    expect(areaValue).not.toBeNull();
+    await riskScopeSelect.selectOption(areaValue ?? "");
+    await expect(riskScopeSelect).toHaveValue(areaValue ?? "");
+  } else {''',
+    '''  if (viewportWidth <= 420) {
+    const riskScopeTrigger = page.getByRole("button", {
+      name: "Risk scope",
+      exact: true,
+    });
+    await expect(riskScopeTrigger).toBeVisible();
+    await expectOperationalTouchTarget(riskScopeTrigger);
+    await riskScopeTrigger.click();
+
+    const riskScopePicker = page.getByRole("dialog", {
+      name: "Choose risk scope",
+    });
+    await expect(riskScopePicker).toBeVisible();
+
+    const areaOption = riskScopePicker
+      .getByRole("radio")
+      .filter({ hasNotText: /^\\s*Site Risk/i })
+      .first();
+    await expect(areaOption).toBeVisible();
+    const areaLabel = (await areaOption.locator("span").nth(2).textContent())?.trim();
+    expect(areaLabel).toBeTruthy();
+    await areaOption.click();
+    await expect(riskScopePicker).toBeHidden();
+    await expect(riskScopeTrigger).toContainText(areaLabel ?? "");
+  } else {''',
+    "riskScopeTrigger",
+)
+
+replace_once(
+    "scripts/mobile-dashboard-contracts.mjs",
+    '''const labourRisk = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx",
+);
+''',
+    '''const labourRisk = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/LabourRiskSection.tsx",
+);
+const dashboard = read(
+  "src/screens/AiOperations/sections/DashboardOverviewSection/DashboardOverviewSection.tsx",
+);
+const portalShell = read("src/components/PortalShell.tsx");
+''',
+    "const portalShell = read",
+)
+
+replace_once(
+    "scripts/mobile-dashboard-contracts.mjs",
+    '''check(
+  !dashboardWrapper.includes("MutationObserver") &&
+    !dashboardWrapper.includes("innerHTML") &&
+    !dashboardWrapper.includes("appendChild"),
+  "Mobile dashboard improvements must not reintroduce rendered-DOM patching.",
+);
+
+console.log("Mobile dashboard scanability contracts passed.");''',
+    '''check(
+  !dashboardWrapper.includes("MutationObserver") &&
+    !dashboardWrapper.includes("innerHTML") &&
+    !dashboardWrapper.includes("appendChild"),
+  "Mobile dashboard improvements must not reintroduce rendered-DOM patching.",
+);
+
+check(
+  portalShell.includes('data-vorta-mobile-header="true"') &&
+    portalShell.includes("justify-between") &&
+    portalShell.indexOf('<VortaIcon className="h-6 w-[42px]" />') <
+      portalShell.indexOf('aria-label="Open menu"'),
+  "Mobile header must place Vorta branding on the left and the menu control on the right.",
+);
+
+check(
+  dashboard.includes('data-vorta-risk-scope-trigger="true"') &&
+    dashboard.includes('data-vorta-risk-scope-picker="true"') &&
+    dashboard.includes('role="radiogroup"') &&
+    dashboard.includes("createPortal") &&
+    !dashboard.includes('id="risk-scope-select"'),
+  "Mobile risk scope must use the Vorta picker rather than the browser-native select control.",
+);
+
+console.log("Mobile dashboard scanability contracts passed.");''',
+    "Mobile header must place Vorta branding",
+)
+
+print("Applied mobile Vorta header and risk-scope picker source transformation.")
