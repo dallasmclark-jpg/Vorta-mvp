@@ -450,6 +450,7 @@ function DaySheet({
 export function EngineerRotaScreen(): JSX.Element {
   const { session, siteContext } = useAuth();
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [requestedMonth, setRequestedMonth] = useState(() => startOfMonth(new Date()));
   const [snapshot, setSnapshot] = useState<OperationalRotaSnapshot | null>(null);
   const [engineer, setEngineer] = useState<EngineerRosterIdentity | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -458,9 +459,11 @@ export function EngineerRotaScreen(): JSX.Element {
   const [reloadToken, setReloadToken] = useState(0);
 
   const visibleMonthKey = `${visibleMonth.getFullYear()}-${visibleMonth.getMonth()}`;
+  const requestedMonthKey = `${requestedMonth.getFullYear()}-${requestedMonth.getMonth()}`;
 
   useEffect(() => {
     let cancelled = false;
+    const hasExistingContent = Boolean(snapshot && engineer);
 
     const load = async (): Promise<void> => {
       setLoading(true);
@@ -489,8 +492,8 @@ export function EngineerRotaScreen(): JSX.Element {
           );
         }
 
-        const gridStart = startOfCalendarGrid(visibleMonth);
-        const gridEnd = addDays(endOfCalendarGrid(visibleMonth), 14);
+        const gridStart = startOfCalendarGrid(requestedMonth);
+        const gridEnd = addDays(endOfCalendarGrid(requestedMonth), 14);
         const data = await getOperationalRotaSnapshot(
           authorisedSiteId,
           dateOnly(gridStart),
@@ -500,10 +503,13 @@ export function EngineerRotaScreen(): JSX.Element {
         if (cancelled) return;
         setEngineer(resolvedEngineer);
         setSnapshot(data);
+        setVisibleMonth(requestedMonth);
       } catch (loadError) {
         if (cancelled) return;
-        setEngineer(null);
-        setSnapshot(null);
+        if (!hasExistingContent) {
+          setEngineer(null);
+          setSnapshot(null);
+        }
         setError(
           loadError instanceof Error
             ? loadError.message
@@ -519,7 +525,7 @@ export function EngineerRotaScreen(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [session, siteContext?.siteId, visibleMonthKey, reloadToken]);
+  }, [session, siteContext?.siteId, requestedMonthKey, reloadToken]);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -595,16 +601,20 @@ export function EngineerRotaScreen(): JSX.Element {
     : null;
 
   const goToMonth = (offset: number): void => {
-    setVisibleMonth(
-      (current) => new Date(current.getFullYear(), current.getMonth() + offset, 1),
+    if (loading) return;
+    setRequestedMonth(
+      new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1),
     );
     setSelectedDate(null);
   };
 
   const goToToday = (): void => {
-    setVisibleMonth(startOfMonth(new Date()));
+    if (loading) return;
+    setRequestedMonth(startOfMonth(new Date()));
     setSelectedDate(null);
   };
+
+  const hasLoadedContent = Boolean(engineer && snapshot);
 
   return (
     <div
@@ -630,9 +640,9 @@ export function EngineerRotaScreen(): JSX.Element {
           </div>
         </header>
 
-        {loading ? (
+        {loading && !hasLoadedContent ? (
           <LoadingCalendar />
-        ) : error ? (
+        ) : error && !hasLoadedContent ? (
           <section className={`${CARD} p-5`} role="alert">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/[0.08] text-amber-400">
@@ -656,7 +666,7 @@ export function EngineerRotaScreen(): JSX.Element {
           </section>
         ) : engineer && snapshot ? (
           <>
-            <section className={`${CARD} overflow-hidden`}>
+            <section className={`${CARD} overflow-hidden`} aria-busy={loading}>
               <div className="flex items-center justify-between gap-3 border-b border-slate-800/75 px-4 py-3.5 sm:px-5">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -698,20 +708,30 @@ export function EngineerRotaScreen(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => goToMonth(-1)}
+                  disabled={loading}
                   aria-label="Previous month"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700/75 bg-[#07172b] text-slate-300 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700/75 bg-[#07172b] text-slate-300 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-default disabled:opacity-45"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
 
                 <div className="min-w-0 text-center">
-                  <h2 className="truncate text-base font-semibold tracking-[-0.02em] text-slate-100">
-                    {monthTitle(visibleMonth)}
-                  </h2>
+                  <div className="flex items-center justify-center gap-2">
+                    <h2 className="truncate text-base font-semibold tracking-[-0.02em] text-slate-100">
+                      {monthTitle(visibleMonth)}
+                    </h2>
+                    {loading ? (
+                      <RefreshCw
+                        className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-400"
+                        aria-label={`Loading ${monthTitle(requestedMonth)}`}
+                      />
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     onClick={goToToday}
-                    className="mt-0.5 text-[11px] font-medium text-blue-400 transition-colors hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    disabled={loading}
+                    className="mt-0.5 text-[11px] font-medium text-blue-400 transition-colors hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-default disabled:opacity-50"
                   >
                     Today
                   </button>
@@ -720,12 +740,28 @@ export function EngineerRotaScreen(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => goToMonth(1)}
+                  disabled={loading}
                   aria-label="Next month"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700/75 bg-[#07172b] text-slate-300 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700/75 bg-[#07172b] text-slate-300 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-default disabled:opacity-45"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
+
+              {error ? (
+                <div className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[10px] text-amber-100/80 sm:mx-4">
+                  <span className="min-w-0 truncate">
+                    {monthTitle(requestedMonth)} could not be loaded.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReloadToken((value) => value + 1)}
+                    className="shrink-0 font-semibold text-amber-200 hover:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : null}
 
               <div className="px-2 pb-3 sm:px-4 sm:pb-4">
                 <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
