@@ -1,0 +1,235 @@
+name: Vorta Master Release Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vorta-master-release-audit-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Master release audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VORTA_SUPABASE_KEY_PREFIX: sb_publishable_
+      VORTA_SUPABASE_KEY_SUFFIX: JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+      VITE_VORTA_DATA_MODE: demo
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_ORGANISATION_ID: 10000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
+      VORTA_E2E_DENIED_EQUIPMENT_ID: 40000000-0000-0000-0000-000000000013
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          show-progress: false
+
+      - name: Compose public Supabase client key
+        shell: bash
+        run: echo "VITE_SUPABASE_ANON_KEY=${VORTA_SUPABASE_KEY_PREFIX}${VORTA_SUPABASE_KEY_SUFFIX}" >> "$GITHUB_ENV"
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Create audit evidence directory
+        run: mkdir -p artifacts/release-audit
+
+      - name: Functionality - TypeScript
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck -- --pretty false 2>&1 | tee artifacts/release-audit/typecheck.log
+
+      - name: Functionality - governed contract suite
+        id: contracts
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:contracts 2>&1 | tee artifacts/release-audit/contracts.log
+
+      - name: Functionality - route smoke suite
+        id: smoke
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:smoke 2>&1 | tee artifacts/release-audit/smoke.log
+
+      - name: Performance - production bundle
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build:metadata
+          npx vite build 2>&1 | tee artifacts/release-audit/build.log
+
+      - name: Performance - enforce bundle budgets
+        id: performance
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:performance 2>&1 | tee artifacts/release-audit/performance.log
+
+      - name: Install Chromium for browser release gates
+        id: chromium
+        continue-on-error: true
+        run: npx playwright install --with-deps chromium
+
+      - name: Permissions and responsive - public onboarding boundary
+        id: public_onboarding
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test \
+            tests/browser/site-onboarding-public.spec.ts \
+            --project=phone-360 \
+            --project=samsung-tablet-landscape \
+            --project=desktop-1920 \
+            --config=playwright.config.ts 2>&1 | tee artifacts/release-audit/public-onboarding.log
+
+      - name: Permissions and functionality - authenticated Maintenance Manager regression
+        id: authenticated_regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          test -n "$VORTA_E2E_PASSWORD" || { echo "VORTA_E2E_PASSWORD is not configured" | tee artifacts/release-audit/authenticated-regression.log; exit 2; }
+          npx playwright test \
+            tests/browser/maintenance-manager-core.spec.ts \
+            tests/browser/maintenance-manager-work-orders.spec.ts \
+            tests/browser/maintenance-manager-accessibility.spec.ts \
+            --project=phone-360 \
+            --project=desktop-1920 \
+            --config=playwright.config.ts 2>&1 | tee artifacts/release-audit/authenticated-regression.log
+
+      - name: Cross-site isolation and live evidence boundary
+        id: live_boundary
+        continue-on-error: true
+        env:
+          VITE_VORTA_DATA_MODE: live
+        shell: bash
+        run: |
+          set -o pipefail
+          test -n "$VORTA_E2E_PASSWORD" || { echo "VORTA_E2E_PASSWORD is not configured" | tee artifacts/release-audit/live-boundary.log; exit 2; }
+          npx playwright test \
+            tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
+            --project=desktop-1920 \
+            --config=playwright.config.ts 2>&1 | tee artifacts/release-audit/live-boundary.log
+
+      - name: Responsive browser matrix
+        id: responsive
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          test -n "$VORTA_E2E_PASSWORD" || { echo "VORTA_E2E_PASSWORD is not configured" | tee artifacts/release-audit/responsive.log; exit 2; }
+          npx playwright test \
+            tests/browser/maintenance-manager-visual.spec.ts \
+            tests/browser/maintenance-manager-mobile-routes.spec.ts \
+            --project=phone-360 \
+            --project=samsung-tablet-portrait \
+            --project=samsung-tablet-landscape \
+            --project=laptop-1366 \
+            --project=desktop-1920 \
+            --config=playwright.config.ts 2>&1 | tee artifacts/release-audit/responsive.log
+
+      - name: Write machine-readable master audit result
+        if: always()
+        shell: bash
+        env:
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          CONTRACTS: ${{ steps.contracts.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          PERFORMANCE: ${{ steps.performance.outcome }}
+          CHROMIUM: ${{ steps.chromium.outcome }}
+          PUBLIC_ONBOARDING: ${{ steps.public_onboarding.outcome }}
+          AUTHENTICATED_REGRESSION: ${{ steps.authenticated_regression.outcome }}
+          LIVE_BOUNDARY: ${{ steps.live_boundary.outcome }}
+          RESPONSIVE: ${{ steps.responsive.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdirSync, writeFileSync } from 'node:fs';
+          mkdirSync('artifacts/release-audit', { recursive: true });
+          const checks = {
+            functionality_typecheck: process.env.TYPECHECK,
+            functionality_contracts: process.env.CONTRACTS,
+            functionality_route_smoke: process.env.SMOKE,
+            performance_build: process.env.BUILD,
+            performance_budget: process.env.PERFORMANCE,
+            browser_runtime: process.env.CHROMIUM,
+            permissions_public_onboarding: process.env.PUBLIC_ONBOARDING,
+            functionality_authenticated_regression: process.env.AUTHENTICATED_REGRESSION,
+            cross_site_live_boundary: process.env.LIVE_BOUNDARY,
+            responsive_browser_matrix: process.env.RESPONSIVE,
+          };
+          const failed = Object.entries(checks).filter(([, status]) => status !== 'success');
+          const report = {
+            generatedAt: new Date().toISOString(),
+            commit: process.env.GITHUB_SHA,
+            repository: process.env.GITHUB_REPOSITORY,
+            checks,
+            verdict: failed.length === 0 ? 'PASS' : 'FAIL',
+            failed: failed.map(([name, status]) => ({ name, status })),
+          };
+          writeFileSync('artifacts/release-audit/master-release-audit.json', JSON.stringify(report, null, 2));
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+      - name: Publish audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vorta-master-release-audit-${{ github.sha }}
+          path: |
+            artifacts/release-audit
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce master release verdict
+        if: always()
+        shell: bash
+        env:
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          CONTRACTS: ${{ steps.contracts.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          PERFORMANCE: ${{ steps.performance.outcome }}
+          CHROMIUM: ${{ steps.chromium.outcome }}
+          PUBLIC_ONBOARDING: ${{ steps.public_onboarding.outcome }}
+          AUTHENTICATED_REGRESSION: ${{ steps.authenticated_regression.outcome }}
+          LIVE_BOUNDARY: ${{ steps.live_boundary.outcome }}
+          RESPONSIVE: ${{ steps.responsive.outcome }}
+        run: |
+          for result in \
+            "$TYPECHECK" "$CONTRACTS" "$SMOKE" "$BUILD" "$PERFORMANCE" \
+            "$CHROMIUM" "$PUBLIC_ONBOARDING" "$AUTHENTICATED_REGRESSION" \
+            "$LIVE_BOUNDARY" "$RESPONSIVE"; do
+            test "$result" = "success" || exit 1
+          done
