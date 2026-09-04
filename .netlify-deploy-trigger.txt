@@ -1,2 +1,2 @@
-Force production deploy after Engineer rota today-border fix.
-Triggered: 2026-09-04T08:17:00+01:00
+Force production deploy after Engineer mobile bottom navigation and Vorta dropdown standard update.
+Triggered: 2026-09-04T15:36:00+01:00
