@@ -1,26 +1,28 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-// Current-state security contract for the governed Engineer calendar RPC surface.
 const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const engineerCalendarMigration = read(
   "supabase/migrations/20260904103500_register_engineer_calendar_rpc_security.sql",
 );
+const onboardingSecurityMigration = read(
+  "supabase/migrations/20260904215000_harden_site_onboarding_rpc_security.sql",
+);
 const manifest = JSON.parse(read("supabase/rpc-security-manifest.json"));
 const liveHealthGate = read("scripts/live-demo-backend-health.mjs");
 const contractRunner = read("scripts/run-contract-suite.mjs");
 
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.migrationVersion, "20260904103500");
-assert.equal(manifest.migrationName, "register_engineer_calendar_rpc_security");
+assert.equal(manifest.migrationVersion, "20260904215000");
+assert.equal(manifest.migrationName, "harden_site_onboarding_rpc_security");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 82,
+  authenticatedCallable: 84,
   reviewedRead: 58,
-  reviewedMutation: 24,
+  reviewedMutation: 26,
   securityDefiner: 6,
-  securityInvoker: 76,
+  securityInvoker: 78,
   anonymousCallable: 0,
   manifestDrift: 0,
 });
@@ -76,20 +78,75 @@ for (const { identity, rpcClass } of expectedEngineerCalendarRpcs) {
   );
 }
 
+const expectedSiteOnboardingRpcs = [
+  {
+    identity: "vorta_bootstrap_site_owner(text,text,text,text,text,text)",
+    rpcClass: "mutation",
+  },
+  {
+    identity: "vorta_accept_site_invitation(uuid,text)",
+    rpcClass: "mutation",
+  },
+];
+
+assert.deepEqual(
+  manifest.siteOnboardingRpcs.map(({ identity, class: rpcClass }) => ({
+    identity,
+    rpcClass,
+  })),
+  expectedSiteOnboardingRpcs,
+);
+
+for (const { identity } of expectedSiteOnboardingRpcs) {
+  const [functionName] = identity.split("(");
+  assert.ok(
+    onboardingSecurityMigration.includes(`'${identity}'`) &&
+      onboardingSecurityMigration.includes("'mutation'") &&
+      onboardingSecurityMigration.includes("'invoker'") &&
+      onboardingSecurityMigration.includes("false"),
+    `Site onboarding RPC is missing from the reviewed security manifest: ${identity}`,
+  );
+  assert.ok(
+    onboardingSecurityMigration.includes(`revoke execute on function public.${functionName}`) &&
+      onboardingSecurityMigration.includes(`grant execute on function public.${functionName}`),
+    `Site onboarding RPC grants are incomplete: ${identity}`,
+  );
+}
+
 assert.match(
-  engineerCalendarMigration,
-  /\^vorta_\(launch\|update\|record\|refresh\|recalculate\|log\|track\|upsert\|save\|delete\|acknowledge\|carry\|create\|confirm\|cancel\)/,
-  "Mutation classifier must include delete RPCs",
+  onboardingSecurityMigration,
+  /create or replace function private\.vorta_bootstrap_site_owner[\s\S]*security definer/,
+  "Site bootstrap privilege-bearing implementation must live in the private schema",
 );
 assert.match(
-  engineerCalendarMigration,
+  onboardingSecurityMigration,
+  /create or replace function public\.vorta_bootstrap_site_owner[\s\S]*language sql[\s\S]*from private\.vorta_bootstrap_site_owner/,
+  "Site bootstrap public entrypoint must be an invoker wrapper",
+);
+assert.match(
+  onboardingSecurityMigration,
+  /create or replace function private\.vorta_accept_site_invitation[\s\S]*security definer/,
+  "Invitation privilege-bearing implementation must live in the private schema",
+);
+assert.match(
+  onboardingSecurityMigration,
+  /create or replace function public\.vorta_accept_site_invitation[\s\S]*language sql[\s\S]*from private\.vorta_accept_site_invitation/,
+  "Invitation public entrypoint must be an invoker wrapper",
+);
+assert.match(
+  onboardingSecurityMigration,
+  /\^vorta_\(launch\|update\|record\|refresh\|recalculate\|log\|track\|upsert\|save\|delete\|acknowledge\|carry\|create\|confirm\|cancel\|bootstrap\|accept\)/,
+  "Mutation classifier must classify bootstrap and invitation acceptance as mutations",
+);
+assert.match(
+  onboardingSecurityMigration,
   /from public, anon/,
-  "Engineer calendar RPCs must revoke anonymous execution",
+  "Site onboarding RPCs must revoke anonymous execution",
 );
 assert.match(
-  engineerCalendarMigration,
+  onboardingSecurityMigration,
   /to authenticated, service_role/,
-  "Engineer calendar RPCs must retain authenticated and service-role execution",
+  "Site onboarding RPCs must retain authenticated and service-role execution",
 );
 
 for (const expected of [
@@ -107,10 +164,10 @@ for (const expected of [
   );
 }
 
-assert.match(liveHealthGate, /reviewedAuthenticatedMutationRpcCount\),\s*24/);
+assert.match(liveHealthGate, /reviewedAuthenticatedMutationRpcCount\),\s*26/);
 assert.match(liveHealthGate, /reviewedAuthenticatedReadRpcCount\),\s*58/);
 assert.match(liveHealthGate, /authenticatedSecurityDefinerRpcCount\),\s*6/);
-assert.match(liveHealthGate, /authenticatedSecurityInvokerRpcCount\),\s*76/);
+assert.match(liveHealthGate, /authenticatedSecurityInvokerRpcCount\),\s*78/);
 assert.match(liveHealthGate, /anonymousVortaRpcCount\),\s*0/);
 assert.match(liveHealthGate, /rpcSecurityManifestDriftCount\),\s*0/);
 
