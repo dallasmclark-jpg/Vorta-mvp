@@ -1,1 +1,29 @@
-x
+name: Manual deploy source pack
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Package deploy source
+        uses: actions/upload-artifact@v4
+        with:
+          name: vorta-manual-deploy-source-${{ github.sha }}
+          path: |
+            .
+            !node_modules/**
+            !dist/**
+            !playwright-report/**
+            !test-results/**
+          include-hidden-files: true
+          retention-days: 1
