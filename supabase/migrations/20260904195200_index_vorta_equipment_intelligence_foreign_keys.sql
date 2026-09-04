@@ -1,0 +1,10 @@
+create index if not exists engineer_equipment_experience_engineer_idx on public.engineer_equipment_experience_snapshots(engineer_id);
+create index if not exists engineer_equipment_score_engineer_fk_idx on public.engineer_equipment_score_snapshots(engineer_id);
+create index if not exists engineer_equipment_score_equipment_fk_idx on public.engineer_equipment_score_snapshots(equipment_id);
+create index if not exists equipment_competency_assessments_site_idx on public.equipment_competency_assessments(site_id);
+create index if not exists equipment_competency_assessments_engineer_idx on public.equipment_competency_assessments(engineer_id);
+create index if not exists equipment_competency_assessments_assessor_profile_idx on public.equipment_competency_assessments(assessor_profile_id) where assessor_profile_id is not null;
+create index if not exists equipment_competency_assessments_assessor_engineer_idx on public.equipment_competency_assessments(assessor_engineer_id) where assessor_engineer_id is not null;
+create index if not exists equipment_competency_assessments_supersedes_idx on public.equipment_competency_assessments(supersedes_assessment_id) where supersedes_assessment_id is not null;
+create index if not exists equipment_engineer_capabilities_verified_by_profile_idx on public.equipment_engineer_capabilities(verified_by_profile_id) where verified_by_profile_id is not null;
+create index if not exists equipment_engineer_capabilities_verified_by_engineer_idx on public.equipment_engineer_capabilities(verified_by_engineer_id) where verified_by_engineer_id is not null;

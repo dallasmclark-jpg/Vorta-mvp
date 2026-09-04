@@ -28,6 +28,49 @@ type AnalyseContext = {
   engineerTeamNames: Map<string, string[]>;
 };
 
+function assignmentRating(assignment: any, today: string): number {
+  if (!assignment) return 0;
+  const state = validationState(assignment, today);
+  if (state === "validated" && numeric(assignment.validated_rating) > 0) {
+    return numeric(assignment.validated_rating);
+  }
+  if (!["expired", "rejected"].includes(state) && numeric(assignment.manager_rating) > 0) {
+    return numeric(assignment.manager_rating);
+  }
+  return numeric(assignment.self_rating);
+}
+
+function equipmentRating(assignment: any, capability: any, today: string): { rating: number; verified: boolean; validationState: string } {
+  const assignmentState = validationState(assignment, today);
+  const capabilityValidated = Boolean(
+    capability &&
+      capability.capability_status === "ACTIVE" &&
+      lower(capability.validation_status) === "validated" &&
+      isValidDate(capability.valid_until, today),
+  );
+
+  const validatedSkill = assignmentState === "validated" ? numeric(assignment?.validated_rating) : 0;
+  const validatedCapability = capabilityValidated ? numeric(capability?.competency_level) : 0;
+  if (validatedSkill > 0 || validatedCapability > 0) {
+    return {
+      rating: Math.max(validatedSkill, validatedCapability),
+      verified: true,
+      validationState: "validated",
+    };
+  }
+
+  const manager = assignmentState !== "expired" && assignmentState !== "rejected"
+    ? numeric(assignment?.manager_rating)
+    : 0;
+  if (manager > 0) return { rating: manager, verified: false, validationState: assignmentState };
+
+  return {
+    rating: numeric(assignment?.self_rating),
+    verified: false,
+    validationState: assignmentState,
+  };
+}
+
 export function createScopeAnalyser(context: AnalyseContext) {
   const {
     today,
@@ -46,9 +89,7 @@ export function createScopeAnalyser(context: AnalyseContext) {
   } = context;
 
   return function analyseScope(scope: any) {
-    const memberIds = [...new Set(scope.memberIds)].filter((id) =>
-      engineerMap.has(id)
-    );
+    const memberIds = [...new Set(scope.memberIds)].filter((id) => engineerMap.has(id));
     const memberSet = new Set(memberIds);
     const priorityRisks: any[] = [];
     let weightedCoverage = 0;
@@ -63,10 +104,7 @@ export function createScopeAnalyser(context: AnalyseContext) {
       if (!asset || !skill) continue;
 
       const requiredLevel = Math.max(1, numeric(requirement.required_level, 1));
-      const minimumRequired = Math.max(
-        1,
-        numeric(requirement.minimum_qualified_engineers, 1),
-      );
+      const minimumRequired = Math.max(1, numeric(requirement.minimum_qualified_engineers, 1));
       const level = criticality(requirement, asset);
       const weight = CRITICALITY_WEIGHT[level] ?? 1;
       const qualified: any[] = [];
@@ -74,86 +112,47 @@ export function createScopeAnalyser(context: AnalyseContext) {
 
       for (const engineerId of memberIds) {
         const key = String(engineerId);
-        const assignment = assignmentsByEngineer
-          .get(key)
-          ?.get(requirement.skill_id);
-        const capability = capabilitiesByEquipment
-          .get(requirement.equipment_id)
-          ?.get(key);
-        const rating = Math.max(
-          numeric(assignment?.validated_rating),
-          numeric(assignment?.manager_rating),
-          numeric(assignment?.self_rating),
-          numeric(capability?.competency_level),
-        );
+        const assignment = assignmentsByEngineer.get(key)?.get(requirement.skill_id);
+        const capability = capabilitiesByEquipment.get(requirement.equipment_id)?.get(key);
+        const authority = equipmentRating(assignment, capability, today);
         const years = numeric(assignment?.years_experience);
-        const assignmentValidation = validationState(assignment, today);
-        const capabilityValid =
-          capability &&
-          isValidDate(capability.valid_until, today) &&
-          !["expired", "rejected", "invalid"].includes(
-            lower(capability.validation_status),
-          );
-        const verified = assignmentValidation === "validated" || Boolean(capabilityValid);
         const engineer = engineerMap.get(engineerId);
         const candidate = {
           engineerId,
           engineerName: engineer?.full_name ?? "Unknown engineer",
           discipline: engineer?.discipline ?? "",
-          rating,
+          rating: authority.rating,
           years,
-          verified,
-          validationState: capabilityValid ? "validated" : assignmentValidation,
+          verified: authority.verified,
+          validationState: authority.validationState,
           trainingRequired: Boolean(assignment?.training_required),
-          practiceAuthority:
-            capability?.practice_authority ?? assignment?.practice_authority ?? null,
+          practiceAuthority: capability?.practice_authority ?? assignment?.practice_authority ?? null,
         };
-        if (rating > 0) potential.push(candidate);
-        if (rating >= requiredLevel) qualified.push(candidate);
+        if (authority.rating > 0) potential.push(candidate);
+        if (authority.rating >= requiredLevel) qualified.push(candidate);
       }
 
-      qualified.sort(
-        (left, right) =>
-          Number(right.verified) - Number(left.verified) ||
-          right.rating - left.rating ||
-          right.years - left.years,
-      );
-      potential.sort(
-        (left, right) => right.rating - left.rating || right.years - left.years,
-      );
+      qualified.sort((left, right) => Number(right.verified) - Number(left.verified) || right.rating - left.rating || right.years - left.years);
+      potential.sort((left, right) => right.rating - left.rating || right.years - left.years);
 
       const qualifiedCount = qualified.length;
       const gap = Math.max(0, minimumRequired - qualifiedCount);
       const coverageRatio = Math.min(1, qualifiedCount / minimumRequired);
-      const topExperience = qualified
-        .slice(0, minimumRequired)
-        .map((row) => Math.min(1, row.years / 8));
+      const topExperience = qualified.slice(0, minimumRequired).map((row) => Math.min(1, row.years / 8));
       while (topExperience.length < minimumRequired) topExperience.push(0);
-      const experienceRatio = topExperience.length
-        ? topExperience.reduce((sum, value) => sum + value, 0) /
-          topExperience.length
-        : 0;
+      const experienceRatio = topExperience.length ? topExperience.reduce((sum, value) => sum + value, 0) / topExperience.length : 0;
 
       const singlePoint = qualifiedCount === 1 && minimumRequired >= 2;
       let smeRatio = qualifiedCount >= 2 ? 1 : qualifiedCount === 1 ? 0.4 : 0;
       if (qualifiedCount === 1) {
         const holderRisk: any = riskMap.get(qualified[0].engineerId);
-        if (
-          lower(holderRisk?.retirement_risk) === "high" ||
-          lower(holderRisk?.leaving_risk) === "high"
-        ) {
-          smeRatio = 0.15;
-        }
+        if (lower(holderRisk?.retirement_risk) === "high" || lower(holderRisk?.leaving_risk) === "high") smeRatio = 0.15;
       }
 
       const validationRequired = Boolean(requirement.validation_required);
       const validatedQualified = qualified.filter((row) => row.verified).length;
-      const validationRatio = validationRequired
-        ? Math.min(1, validatedQualified / minimumRequired)
-        : 1;
-      const validationGap = validationRequired
-        ? Math.max(0, minimumRequired - validatedQualified)
-        : 0;
+      const validationRatio = validationRequired ? Math.min(1, validatedQualified / minimumRequired) : 1;
+      const validationGap = validationRequired ? Math.max(0, minimumRequired - validatedQualified) : 0;
 
       weightedCoverage += coverageRatio * weight;
       weightedExperience += experienceRatio * weight;
@@ -162,15 +161,8 @@ export function createScopeAnalyser(context: AnalyseContext) {
       totalWeight += weight;
 
       const isCritical = level === "critical" || level === "high";
-      const existingGap =
-        gapMap.get(`${asset.department_id ?? "site"}:${requirement.skill_id}`) ??
-        gapMap.get(`site:${requirement.skill_id}`);
-      if (
-        gap > 0 ||
-        singlePoint ||
-        validationGap > 0 ||
-        existingGap?.single_point_of_failure
-      ) {
+      const existingGap = gapMap.get(`${asset.department_id ?? "site"}:${requirement.skill_id}`) ?? gapMap.get(`site:${requirement.skill_id}`);
+      if (gap > 0 || singlePoint || validationGap > 0 || existingGap?.single_point_of_failure) {
         const row: any = {
           id: `${scope.id}:${requirement.equipment_id}:${requirement.skill_id}`,
           equipmentId: requirement.equipment_id,
@@ -187,8 +179,7 @@ export function createScopeAnalyser(context: AnalyseContext) {
           validatedQualified,
           validationGap,
           gap,
-          singlePoint:
-            singlePoint || Boolean(existingGap?.single_point_of_failure),
+          singlePoint: singlePoint || Boolean(existingGap?.single_point_of_failure),
           criticality: level,
           isCritical,
           qualifiedEngineers: qualified.map((candidate) => ({
@@ -209,12 +200,7 @@ export function createScopeAnalyser(context: AnalyseContext) {
         };
         row.recommendedAction = recommendedAction(row);
         row.projectedScoreGain = scoreGain(row);
-        row.riskRank =
-          (CRITICALITY_WEIGHT[level] ?? 1) * 100 +
-          gap * 35 +
-          (qualifiedCount === 0 ? 100 : 0) +
-          (row.singlePoint ? 50 : 0) +
-          validationGap * 15;
+        row.riskRank = (CRITICALITY_WEIGHT[level] ?? 1) * 100 + gap * 35 + (qualifiedCount === 0 ? 100 : 0) + (row.singlePoint ? 50 : 0) + validationGap * 15;
         priorityRisks.push(row);
       }
     }
@@ -225,27 +211,12 @@ export function createScopeAnalyser(context: AnalyseContext) {
     const experienceDepth = round((weightedExperience / divisor) * 100);
     const smeResilience = round((weightedSme / divisor) * 100);
     const validationHealth = round((weightedValidation / divisor) * 100);
-    const score = round(
-      skillsCoverage * 0.45 +
-        experienceDepth * 0.2 +
-        smeResilience * 0.2 +
-        validationHealth * 0.15,
-    );
-    const criticalGaps = priorityRisks.filter(
-      (row) => row.isCritical && row.gap > 0,
-    ).length;
+    const score = round(skillsCoverage * 0.45 + experienceDepth * 0.2 + smeResilience * 0.2 + validationHealth * 0.15);
+    const criticalGaps = priorityRisks.filter((row) => row.isCritical && row.gap > 0).length;
     const spofCount = priorityRisks.filter((row) => row.singlePoint).length;
-    const affectedEquipment = new Set(
-      priorityRisks
-        .filter((row) => row.gap > 0 || row.singlePoint)
-        .map((row) => row.equipmentId),
-    ).size;
-    const memberAssignments = assignments.filter((row) =>
-      memberSet.has(row.engineer_id)
-    );
-    const trainingNeeds = memberAssignments.filter(
-      (row) => row.training_required,
-    ).length;
+    const affectedEquipment = new Set(priorityRisks.filter((row) => row.gap > 0 || row.singlePoint).map((row) => row.equipmentId)).size;
+    const memberAssignments = assignments.filter((row) => memberSet.has(row.engineer_id));
+    const trainingNeeds = memberAssignments.filter((row) => row.training_required).length;
     const status = statusFromScore(score, priorityRisks);
 
     const matrixSkillIds: string[] = [];
@@ -254,103 +225,68 @@ export function createScopeAnalyser(context: AnalyseContext) {
       if (matrixSkillIds.length >= 12) break;
     }
     if (matrixSkillIds.length < 12) {
-      for (const skill of skills
-        .filter((row) => row.is_critical)
-        .sort(
-          (left, right) =>
-            numeric(left.display_order, 999) - numeric(right.display_order, 999),
-        )) {
+      for (const skill of skills.filter((row) => row.is_critical).sort((left, right) => numeric(left.display_order, 999) - numeric(right.display_order, 999))) {
         if (!matrixSkillIds.includes(skill.id)) matrixSkillIds.push(skill.id);
         if (matrixSkillIds.length >= 12) break;
       }
     }
 
-    const matrixSkills = matrixSkillIds
-      .map((skillId) => {
-        const skill: any = skillMap.get(skillId);
-        if (!skill) return null;
-        const equipmentForSkill = requirements
-          .filter((row) => row.skill_id === skillId)
-          .map((row) => equipmentMap.get(row.equipment_id))
-          .filter(Boolean);
-        return {
-          id: skill.id,
-          name: skill.name,
-          category: skill.category,
-          isCritical: Boolean(skill.is_critical),
-          equipmentCount: new Set(equipmentForSkill.map((row) => row.id)).size,
-        };
-      })
-      .filter(Boolean);
+    const matrixSkills = matrixSkillIds.map((skillId) => {
+      const skill: any = skillMap.get(skillId);
+      if (!skill) return null;
+      const equipmentForSkill = requirements.filter((row) => row.skill_id === skillId).map((row) => equipmentMap.get(row.equipment_id)).filter(Boolean);
+      return {
+        id: skill.id,
+        name: skill.name,
+        category: skill.category,
+        isCritical: Boolean(skill.is_critical),
+        equipmentCount: new Set(equipmentForSkill.map((row) => row.id)).size,
+      };
+    }).filter(Boolean);
 
-    const memberRows = memberIds
-      .map((engineerId) => {
-        const engineer: any = engineerMap.get(engineerId);
-        const engineerAssignments =
-          assignmentsByEngineer.get(String(engineerId)) ?? new Map();
-        const relevantAssignments = [...engineerAssignments.values()].filter(
-          (row: any) => matrixSkillIds.includes(row.skill_id),
-        );
-        const allAssignments = [...engineerAssignments.values()];
-        const avgYears = allAssignments.length
-          ? allAssignments.reduce(
-              (sum: number, row: any) => sum + numeric(row.years_experience),
-              0,
-            ) / allAssignments.length
-          : 0;
-        const risk: any = riskMap.get(engineerId);
-        const ratings: Record<string, any> = {};
-        for (const skillId of matrixSkillIds) {
-          const assignment = engineerAssignments.get(skillId);
-          const rating = assignment
-            ? Math.max(
-                numeric(assignment.validated_rating),
-                numeric(assignment.manager_rating),
-                numeric(assignment.self_rating),
-              )
-            : 0;
-          ratings[skillId] = {
-            rating: rating || null,
-            yearsExperience: numeric(assignment?.years_experience),
-            validationState: validationState(assignment, today),
-            trainingRequired: Boolean(assignment?.training_required),
-            practiceAuthority: assignment?.practice_authority ?? null,
-            lastUsedDate: assignment?.last_used_date ?? null,
-          };
-        }
-        const criticalSkillCount = relevantAssignments.filter((row: any) => {
-          const skill: any = skillMap.get(row.skill_id);
-          const rating = Math.max(
-            numeric(row.validated_rating),
-            numeric(row.manager_rating),
-            numeric(row.self_rating),
-          );
-          return skill?.is_critical && rating >= numeric(row.target_rating, 3);
-        }).length;
-        return {
-          id: engineer.id,
-          name: engineer.full_name,
-          avatarUrl: engineer.avatar_url ?? null,
-          discipline: engineer.discipline,
-          departmentName: departmentMap.get(engineer.department_id) ?? null,
-          shiftNames: engineerTeamNames.get(String(engineer.id)) ?? [],
-          availabilityStatus: engineer.availability_status,
-          averageYearsExperience: Number(avgYears.toFixed(1)),
-          criticalKnowledgeHolder: Boolean(risk?.critical_knowledge_holder),
-          retirementRisk: risk?.retirement_risk ?? null,
-          leavingRisk: risk?.leaving_risk ?? null,
-          trainingNeeds: allAssignments.filter((row: any) => row.training_required).length,
-          criticalSkillCount,
-          ratings,
+    const memberRows = memberIds.map((engineerId) => {
+      const engineer: any = engineerMap.get(engineerId);
+      const engineerAssignments = assignmentsByEngineer.get(String(engineerId)) ?? new Map();
+      const relevantAssignments = [...engineerAssignments.values()].filter((row: any) => matrixSkillIds.includes(row.skill_id));
+      const allAssignments = [...engineerAssignments.values()];
+      const avgYears = allAssignments.length
+        ? allAssignments.reduce((sum: number, row: any) => sum + numeric(row.years_experience), 0) / allAssignments.length
+        : 0;
+      const risk: any = riskMap.get(engineerId);
+      const ratings: Record<string, any> = {};
+      for (const skillId of matrixSkillIds) {
+        const assignment = engineerAssignments.get(skillId);
+        const rating = assignmentRating(assignment, today);
+        ratings[skillId] = {
+          rating: rating || null,
+          yearsExperience: numeric(assignment?.years_experience),
+          validationState: validationState(assignment, today),
+          trainingRequired: Boolean(assignment?.training_required),
+          practiceAuthority: assignment?.practice_authority ?? null,
+          lastUsedDate: assignment?.last_used_date ?? null,
         };
-      })
-      .sort(
-        (left, right) =>
-          Number(right.criticalKnowledgeHolder) -
-            Number(left.criticalKnowledgeHolder) ||
-          right.criticalSkillCount - left.criticalSkillCount ||
-          left.name.localeCompare(right.name),
-      );
+      }
+      const criticalSkillCount = relevantAssignments.filter((row: any) => {
+        const skill: any = skillMap.get(row.skill_id);
+        return skill?.is_critical && assignmentRating(row, today) >= numeric(row.target_rating, 3);
+      }).length;
+      return {
+        id: engineer.id,
+        name: engineer.full_name,
+        avatarUrl: engineer.avatar_url ?? null,
+        discipline: engineer.discipline,
+        departmentName: departmentMap.get(engineer.department_id) ?? null,
+        shiftNames: engineerTeamNames.get(String(engineer.id)) ?? [],
+        availabilityStatus: engineer.availability_status,
+        averageYearsExperience: Number(avgYears.toFixed(1)),
+        criticalKnowledgeHolder: Boolean(risk?.critical_knowledge_holder),
+        retirementRisk: risk?.retirement_risk ?? null,
+        leavingRisk: risk?.leaving_risk ?? null,
+        trainingNeeds: allAssignments.filter((row: any) => row.training_required).length,
+        criticalSkillCount,
+        ratings,
+      };
+    }).sort((left, right) => Number(right.criticalKnowledgeHolder) - Number(left.criticalKnowledgeHolder) || right.criticalSkillCount - left.criticalSkillCount || left.name.localeCompare(right.name));
 
     return {
       summary: {
@@ -370,12 +306,7 @@ export function createScopeAnalyser(context: AnalyseContext) {
         affectedEquipment,
         status,
       },
-      detail: {
-        scopeId: scope.id,
-        priorityRisks: priorityRisks.slice(0, 20),
-        matrixSkills,
-        engineers: memberRows,
-      },
+      detail: { scopeId: scope.id, priorityRisks: priorityRisks.slice(0, 20), matrixSkills, engineers: memberRows },
     };
   };
 }
