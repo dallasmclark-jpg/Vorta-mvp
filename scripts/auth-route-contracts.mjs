@@ -195,6 +195,7 @@ for (
 }
 
 const requiredRoutes = [
+  "/admin/site",
   "/engineer/*",
   "/contractor/*",
   "/production/*",
@@ -213,6 +214,18 @@ for (
     ),
   );
 }
+
+check(
+  "Site administration requires site admin role",
+  contains(
+    compactRoutes,
+    `
+      path="/admin/site"
+      element={
+        <RequireRole role="site_admin">
+    `,
+  ),
+);
 
 check(
   "Engineer portal requires engineer role",
@@ -293,7 +306,7 @@ check(
   countOccurrences(
     compactRoutes,
     "<VortaRouteErrorBoundary>",
-  ) === 6,
+  ) === requiredRoutes.length,
 );
 
 check(
