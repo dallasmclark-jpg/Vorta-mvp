@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
-import handler, {
+import handler from "./ask-vorta/runtime-personal-calendar.mjs";
+import {
   ASK_VORTA_DOCUMENT_LINK_REVISION,
 } from "./ask-vorta/runtime-document-links.mjs";
 import {
