@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 import { usePrimaryAskVortaVisibility } from "../AiOperations/usePrimaryAskVortaVisibility";
 import { EngineerAskVortaScreen } from "./EngineerAskVortaScreen";
+import { EngineerCalendarAiBridge } from "./EngineerCalendarAiBridge";
 import {
   EngineerEquipmentDetailScreen,
   EngineerEquipmentScreen,
@@ -13,7 +14,9 @@ import {
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import { ENGINEER_SECONDARY_NAV, EngineerPortalShell } from "./EngineerPortalShell";
+import { EngineerProfileActivityTimeline } from "./EngineerProfileActivityTimeline";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
+import { EngineerRotaCalendarEnhancer } from "./EngineerRotaCalendarEnhancer";
 import { EngineerRotaScreen } from "./EngineerRotaScreen";
 import { EngineerSearchPillStyles } from "./EngineerSearchPillStyles";
 import {
@@ -42,6 +45,8 @@ export const EngineerPortal = (): JSX.Element => {
       <EngineerSearchPillStyles />
       <EngineerDatabaseImages />
       <EngineerQrScannerBridge />
+      <EngineerRotaCalendarEnhancer />
+      <EngineerCalendarAiBridge />
       <Routes>
         <Route path="vorta" element={<EngineerAskVortaScreen />} />
         <Route path="home" element={<EngineerHomeScreen />} />
@@ -59,7 +64,15 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="documents" element={<EngineerDocumentsScreen />} />
         <Route path="notifications" element={<EngineerNotificationsScreen />} />
         <Route path="alerts" element={<EngineerSiteAlertsScreen />} />
-        <Route path="settings" element={<EngineerProfileSettingsScreen />} />
+        <Route
+          path="settings"
+          element={
+            <>
+              <EngineerProfileSettingsScreen />
+              <EngineerProfileActivityTimeline />
+            </>
+          }
+        />
 
         <Route path="dashboard" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
