@@ -5,11 +5,6 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { askMyEngineerCalendar } from "./engineerCalendarService";
 
-const CALENDAR_PROMPTS = [
-  "What training have I got planned this year?",
-  "How many overtime shifts have I done this year?",
-];
-
 function isCalendarQuestion(value: string): boolean {
   const question = value.trim().toLowerCase();
   return ["training", "overtime", "development", "calendar", "shift cover"].some((term) =>
@@ -29,7 +24,6 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
   const { siteContext } = useAuth();
   const siteId = siteContext?.siteId ?? null;
   const [target, setTarget] = useState<HTMLElement | null>(null);
-  const [promptTarget, setPromptTarget] = useState<HTMLElement | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,23 +56,19 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
   useEffect(() => {
     if (pathname !== "/engineer/vorta") {
       setTarget(null);
-      setPromptTarget(null);
       setQuestion("");
       setAnswer("");
       setError(null);
       return undefined;
     }
 
-    const syncTargets = (): void => {
+    const syncTarget = (): void => {
       setTarget(
         document.querySelector<HTMLElement>('[data-vorta-global-ai-messages="true"]'),
       );
-      setPromptTarget(
-        document.querySelector<HTMLElement>('[data-vorta-global-ai-prompts="true"]'),
-      );
     };
-    syncTargets();
-    const observer = new MutationObserver(syncTargets);
+    syncTarget();
+    const observer = new MutationObserver(syncTarget);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [pathname]);
@@ -148,128 +138,91 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
 
   const iconStyle = { width: 16, height: 16, flex: "0 0 auto" } as const;
 
-  return (
-    <>
-      {promptTarget
-        ? createPortal(
+  return target && (question || loading)
+    ? createPortal(
+        <div
+          data-vorta-engineer-calendar-answer="true"
+          style={{ display: "grid", gap: 12, padding: "0 16px 20px" }}
+        >
+          {question ? (
             <div
-              data-vorta-engineer-calendar-prompts="true"
-              style={{ marginTop: 12, display: "grid", gap: 8 }}
+              style={{
+                marginLeft: "auto",
+                maxWidth: "88%",
+                borderRadius: 16,
+                border: "1px solid #3b82f6",
+                background: "#172554",
+                padding: 12,
+                color: "#f1f5f9",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
             >
-              {CALENDAR_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => void runCalendarQuestion(prompt)}
-                  style={{
-                    minHeight: 44,
-                    borderRadius: 12,
-                    border: "1px solid #334155",
-                    background: "#0f172a",
-                    padding: "8px 12px",
-                    color: "#cbd5e1",
-                    textAlign: "left",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    lineHeight: 1.5,
-                    cursor: "pointer",
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>,
-            promptTarget,
-          )
-        : null}
+              {question}
+            </div>
+          ) : null}
 
-      {target && (question || loading)
-        ? createPortal(
+          <div
+            style={{
+              maxWidth: "94%",
+              borderRadius: 16,
+              border: "1px solid #1e293b",
+              background: "#0f172a",
+              padding: 12,
+            }}
+          >
             <div
-              data-vorta-engineer-calendar-answer="true"
-              style={{ display: "grid", gap: 12, padding: "0 16px 20px" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: "#60a5fa",
+                fontSize: 12,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
             >
-              {question ? (
-                <div
-                  style={{
-                    marginLeft: "auto",
-                    maxWidth: "88%",
-                    borderRadius: 16,
-                    border: "1px solid #3b82f6",
-                    background: "#172554",
-                    padding: 12,
-                    color: "#f1f5f9",
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {question}
-                </div>
-              ) : null}
-
-              <div
+              {loading ? <Loader2 style={iconStyle} /> : <Sparkles style={iconStyle} />}
+              Ask Vorta · My profile
+            </div>
+            {loading ? (
+              <p style={{ marginTop: 8, color: "#94a3b8", fontSize: 14 }}>
+                Reading your calendar activity…
+              </p>
+            ) : error ? (
+              <p style={{ marginTop: 8, color: "#fca5a5", fontSize: 14, lineHeight: 1.5 }}>
+                {error}
+              </p>
+            ) : (
+              <p
                 style={{
-                  maxWidth: "94%",
-                  borderRadius: 16,
-                  border: "1px solid #1e293b",
-                  background: "#0f172a",
-                  padding: 12,
+                  marginTop: 8,
+                  whiteSpace: "pre-line",
+                  color: "#e2e8f0",
+                  fontSize: 14,
+                  lineHeight: 1.5,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    color: "#60a5fa",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {loading ? <Loader2 style={iconStyle} /> : <Sparkles style={iconStyle} />}
-                  Ask Vorta · My profile
-                </div>
-                {loading ? (
-                  <p style={{ marginTop: 8, color: "#94a3b8", fontSize: 14 }}>
-                    Reading your calendar activity…
-                  </p>
-                ) : error ? (
-                  <p style={{ marginTop: 8, color: "#fca5a5", fontSize: 14, lineHeight: 1.5 }}>
-                    {error}
-                  </p>
-                ) : (
-                  <p
-                    style={{
-                      marginTop: 8,
-                      whiteSpace: "pre-line",
-                      color: "#e2e8f0",
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {answer}
-                  </p>
-                )}
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    color: "#475569",
-                    fontSize: 12,
-                  }}
-                >
-                  <CalendarDays style={iconStyle} />
-                  Personal engineer data only
-                </div>
-              </div>
-            </div>,
-            target,
-          )
-        : null}
-    </>
-  );
+                {answer}
+              </p>
+            )}
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: "#475569",
+                fontSize: 12,
+              }}
+            >
+              <CalendarDays style={iconStyle} />
+              Personal engineer data only
+            </div>
+          </div>
+        </div>,
+        target,
+      )
+    : null;
 }
