@@ -34,7 +34,10 @@ interface EntityImageRow {
 }
 
 const ALLOWED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// PostgreSQL's uuid type accepts UUID-shaped values whose version/variant bits are
+// not RFC-generated. Vorta uses deterministic UUID values for some seeded assets,
+// so validate syntax here and leave record existence/site authorization to RLS.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function mediaEntityColumn(entityType: VortaMediaEntityType): "equipment_id" | "component_id" {
   return entityType === "equipment" ? "equipment_id" : "component_id";

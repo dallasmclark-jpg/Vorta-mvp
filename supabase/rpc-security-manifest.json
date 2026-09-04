@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260807224558",
-  "migrationName": "vor_069_register_historical_backtest_rpc",
+  "migrationVersion": "20260820211200",
+  "migrationName": "vor_093_sync_security_invoker_contract",
+  "securityPolicy": "All authenticated public Vorta client wrappers execute as SECURITY INVOKER; privileged implementation details remain behind private or separately guarded functions, site/RLS controls remain authoritative, and anonymous execution is revoked.",
   "invariants": {
     "authenticatedCallable": 76,
     "reviewedRead": 55,
     "reviewedMutation": 21,
-    "securityDefiner": 72,
-    "securityInvoker": 4,
+    "securityDefiner": 0,
+    "securityInvoker": 76,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },

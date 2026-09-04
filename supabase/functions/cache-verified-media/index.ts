@@ -9,9 +9,11 @@ const corsHeaders = {
 
 const BUCKET = "vorta-media";
 const MAX_BYTES = 5 * 1024 * 1024;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// PostgreSQL's uuid type accepts UUID-shaped values whose version/variant bits are
+// not RFC-generated. Vorta uses deterministic UUID values for some seeded assets;
+// syntax is checked here, while record existence/site authorization remains RLS-gated.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_ROLES = new Set(["maintenance_manager", "site_admin", "vorta_admin"]);
-const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type EntityType = "equipment" | "spare";
 
@@ -103,6 +105,47 @@ async function fetchVerifiedImage(sourceUrl: URL, sourcePage: string | null): Pr
   }
 
   throw new Error("Verified image source could not be resolved.");
+}
+
+function detectImageContentType(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+
+  return null;
 }
 
 function extensionFor(contentType: string): string {
@@ -236,14 +279,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: `Verified media source returned ${imageResponse.status}` }, 502);
     }
 
-    const contentType = (imageResponse.headers.get("content-type") ?? "")
-      .split(";", 1)[0]
-      .trim()
-      .toLowerCase();
-    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-      return json({ error: "Verified media source did not return a supported image type" }, 415);
-    }
-
     const contentLength = Number(imageResponse.headers.get("content-length") ?? "0");
     if (Number.isFinite(contentLength) && contentLength > MAX_BYTES) {
       return json({ error: "Verified media source exceeds the 5 MB Vorta limit" }, 413);
@@ -252,6 +287,13 @@ Deno.serve(async (req: Request) => {
     const bytes = new Uint8Array(await imageResponse.arrayBuffer());
     if (bytes.length <= 0 || bytes.length > MAX_BYTES) {
       return json({ error: "Verified media source exceeds the Vorta image limits" }, 413);
+    }
+
+    // Some manufacturer CDNs return valid image bytes with generic or incorrect
+    // Content-Type headers. Verify the payload itself rather than trusting metadata.
+    const contentType = detectImageContentType(bytes);
+    if (!contentType) {
+      return json({ error: "Verified media source did not contain a supported image payload" }, 415);
     }
 
     const hash = await sourceHash(sourceUrl.toString());
