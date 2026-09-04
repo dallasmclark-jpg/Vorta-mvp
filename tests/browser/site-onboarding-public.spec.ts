@@ -17,7 +17,7 @@ test.describe("self-service site onboarding public boundary", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Sign up", exact: true }).click();
+    await page.locator("#vorta-signup-tab").click();
     await expect(page).toHaveURL(/\/signup$/);
     await expect(
       page.getByRole("heading", { name: "Set up your Vorta account" }),
