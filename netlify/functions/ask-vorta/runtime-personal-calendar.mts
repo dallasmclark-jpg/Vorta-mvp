@@ -96,7 +96,7 @@ function buildAnswer(
     directAnswer =
       worked.length === 0
         ? `You have no overtime shifts recorded as worked in ${year}.`
-        : `You have ${worked.length} overtime shift${worked.length === 1 ? "" : "s"} recorded as worked in ${year}${workedHours > 0 ? `, totalling ${workedHours:g} hours`.replace(":g", "") : ""}.`;
+        : `You have ${worked.length} overtime shift${worked.length === 1 ? "" : "s"} recorded as worked in ${year}${workedHours > 0 ? `, totalling ${workedHours} hours` : ""}.`;
     if (upcoming.length > 0) {
       directAnswer += ` You also have ${upcoming.length} future overtime shift${upcoming.length === 1 ? "" : "s"} planned.`;
     }
