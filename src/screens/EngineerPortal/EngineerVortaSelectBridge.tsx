@@ -17,6 +17,28 @@ interface VortaSelectBinding {
   label: string;
 }
 
+function inferredSelectLabel(select: HTMLSelectElement): string | null {
+  const labels = Array.from(select.options)
+    .map((option) => (option.label || option.textContent || option.value).trim().toLowerCase())
+    .filter(Boolean);
+  const values = new Set(
+    Array.from(select.options)
+      .map((option) => option.value.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  if (["all", "high", "medium", "low"].every((value) => labels.includes(value))) {
+    return "Priority";
+  }
+  if (["planned", "completed", "cancelled"].every((value) => values.has(value))) {
+    return "Status";
+  }
+  if (["note", "training", "overtime"].every((value) => values.has(value))) {
+    return "Type";
+  }
+  return null;
+}
+
 function resolveSelectLabel(select: HTMLSelectElement): string {
   const ariaLabel = select.getAttribute("aria-label")?.trim();
   if (ariaLabel) return ariaLabel;
@@ -48,7 +70,7 @@ function resolveSelectLabel(select: HTMLSelectElement): string {
       .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
-  return "Select option";
+  return inferredSelectLabel(select) ?? "Select option";
 }
 
 function selectOptions(select: HTMLSelectElement): VortaSelectOption<string>[] {
@@ -79,7 +101,10 @@ function layoutClassesFor(select: HTMLSelectElement): string {
 }
 
 function isEngineerSelect(select: HTMLSelectElement): boolean {
-  return Boolean(select.closest('[data-vorta-engineer-shell="true"]'));
+  return Boolean(
+    select.closest('[data-vorta-engineer-shell="true"]')
+    && !select.closest('[data-vorta-select="true"]'),
+  );
 }
 
 export function EngineerVortaSelectBridge(): JSX.Element {
@@ -104,6 +129,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
 
       const originalDisplay = hiddenElement.style.display;
       hiddenElement.style.display = "none";
+      select.dataset.vortaSelectStandardised = "true";
 
       const binding: VortaSelectBinding = {
         select,
@@ -131,6 +157,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
         if (binding.hiddenElement.isConnected) {
           binding.hiddenElement.style.display = binding.originalDisplay;
         }
+        delete select.dataset.vortaSelectStandardised;
         binding.host.remove();
         bindingsRef.current.delete(select);
       }
@@ -152,6 +179,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
         binding.select.removeEventListener("input", scheduleRefresh);
         binding.select.removeEventListener("change", scheduleRefresh);
         binding.hiddenElement.style.display = binding.originalDisplay;
+        delete binding.select.dataset.vortaSelectStandardised;
         binding.host.remove();
       }
       bindingsRef.current.clear();
