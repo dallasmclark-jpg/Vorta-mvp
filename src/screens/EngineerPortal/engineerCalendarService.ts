@@ -57,6 +57,21 @@ export interface AskMyCalendarResult {
   scope: "self";
 }
 
+type EngineerCalendarSaveBridge = {
+  entryId?: string | null;
+  equipmentName?: string | null;
+};
+
+let pendingSaveBridge: EngineerCalendarSaveBridge | null = null;
+
+export function primeEngineerCalendarSaveBridge(value: EngineerCalendarSaveBridge): void {
+  pendingSaveBridge = { ...(pendingSaveBridge ?? {}), ...value };
+}
+
+export function clearEngineerCalendarSaveBridge(): void {
+  pendingSaveBridge = null;
+}
+
 function toEntry(value: unknown, source: EngineerCalendarEntry["source"]): EngineerCalendarEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Engineer calendar evidence is invalid.");
@@ -127,6 +142,8 @@ export async function saveMyEngineerCalendarEntry(
   siteId: string,
   input: SaveEngineerCalendarEntryInput,
 ): Promise<EngineerCalendarEntry> {
+  const bridge = pendingSaveBridge;
+  pendingSaveBridge = null;
   const { data, error } = await supabase.rpc("vorta_save_my_engineer_calendar_entry_v2", {
     p_site_id: siteId,
     p_entry_date: input.entryDate,
@@ -137,8 +154,8 @@ export async function saveMyEngineerCalendarEntry(
     p_shift_type: input.shiftType ?? null,
     p_status: input.status ?? "planned",
     p_course_id: input.courseId ?? null,
-    p_entry_id: input.id ?? null,
-    p_equipment_name: input.equipmentName ?? null,
+    p_entry_id: input.id ?? bridge?.entryId ?? null,
+    p_equipment_name: input.equipmentName ?? bridge?.equipmentName ?? null,
   });
   if (error) throw error;
   return toEntry(data, "vorta");
