@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260807224558",
-  "migrationName": "vor_069_register_historical_backtest_rpc",
+  "migrationVersion": "20260904103500",
+  "migrationName": "register_engineer_calendar_rpc_security",
   "invariants": {
-    "authenticatedCallable": 76,
-    "reviewedRead": 55,
-    "reviewedMutation": 21,
-    "securityDefiner": 72,
-    "securityInvoker": 4,
+    "authenticatedCallable": 82,
+    "reviewedRead": 58,
+    "reviewedMutation": 24,
+    "securityDefiner": 6,
+    "securityInvoker": 76,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },
@@ -67,6 +67,38 @@
       "identity": "vorta_carry_forward_shift_handover_action(uuid,integer,timestamp with time zone,timestamp with time zone,timestamp with time zone)",
       "class": "mutation",
       "scope": "Maintenance Manager-class role, authorised site scope, optimistic version and duplicate-window guards"
+    }
+  ],
+  "engineerCalendarRpcs": [
+    {
+      "identity": "vorta_ask_my_calendar(uuid,text)",
+      "class": "read",
+      "scope": "authenticated signed-in engineer and authorised site; personal calendar evidence only"
+    },
+    {
+      "identity": "vorta_delete_my_engineer_calendar_entry(uuid,uuid)",
+      "class": "mutation",
+      "scope": "authenticated signed-in engineer and authorised site; own calendar entry only"
+    },
+    {
+      "identity": "vorta_get_engineer_rota_window(uuid,date,date)",
+      "class": "read",
+      "scope": "authenticated authorised site; bounded engineer rota window"
+    },
+    {
+      "identity": "vorta_get_my_engineer_calendar(uuid,date,date)",
+      "class": "read",
+      "scope": "authenticated signed-in engineer and authorised site; personal calendar and formal training evidence only"
+    },
+    {
+      "identity": "vorta_save_my_engineer_calendar_entry(uuid,date,text,text,text,numeric,text,text,uuid,uuid)",
+      "class": "mutation",
+      "scope": "authenticated signed-in engineer and authorised site; own personal calendar entry only"
+    },
+    {
+      "identity": "vorta_save_my_engineer_calendar_entry_v2(uuid,date,text,text,text,numeric,text,text,uuid,uuid,text)",
+      "class": "mutation",
+      "scope": "authenticated signed-in engineer and authorised site; own personal calendar entry with optional equipment context"
     }
   ],
   "healthEvidenceRpcs": [
