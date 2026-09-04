@@ -46,6 +46,8 @@ const contracts = [
   ["VOR-058 site-priority performance", "scripts/vor-058-site-priority-performance-contracts.mjs"],
   ["VOR-059 deterministic operational answers", "scripts/vor-059-deterministic-operational-answers-contracts.mjs"],
   ["VOR-062 site risk movement", "scripts/vor-062-site-risk-movement-contracts.mjs"],
+  ["VOR-063 verified multi-site context", "scripts/vor-063-multi-site-context-contracts.mjs"],
+  ["VOR-065 verified PM risk movement", "scripts/vor-065-pm-risk-movement-contracts.mjs"],
   ["VOR-064 locked browser runtime", "scripts/vor-064-locked-browser-runtime-contracts.mjs"],
   ["VOR-066 active conversation viewport", "scripts/vor-066-active-conversation-viewport-contracts.mjs"],
   ["VOR-067 Ask Vorta navigation", "scripts/vor-067-ask-vorta-navigation-contracts.mjs"],
