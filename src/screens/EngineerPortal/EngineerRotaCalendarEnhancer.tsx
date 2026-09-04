@@ -106,7 +106,7 @@ function ensureEquipmentField(dialog: HTMLElement): HTMLInputElement | null {
 
   const label = document.createElement("label");
   label.dataset.vortaEquipmentField = "true";
-  label.className = "block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500";
+  label.className = "block text-xs font-semibold uppercase text-slate-500";
   label.append("Equipment ");
 
   const optional = document.createElement("span");
@@ -120,7 +120,7 @@ function ensureEquipmentField(dialog: HTMLElement): HTMLInputElement | null {
   input.placeholder = "e.g. Bosch VF-02";
   input.dataset.vortaEquipmentInput = "true";
   input.className =
-    "mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-sm font-medium normal-case tracking-normal text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
+    "mt-2 h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-medium text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
   label.appendChild(input);
 
   formArea.insertBefore(label, hoursLabel);
@@ -137,7 +137,7 @@ function addEditingNote(dialog: HTMLElement, title: string): void {
   if (!titleInput) return;
   const note = document.createElement("p");
   note.dataset.vortaEditingEntry = "true";
-  note.className = "text-[10px] font-semibold uppercase tracking-[0.1em] text-blue-400";
+  note.className = "text-xs font-semibold uppercase text-blue-400";
   note.textContent = `Editing · ${title}`;
   titleInput.parentElement?.insertBefore(note, titleInput);
 }
@@ -209,7 +209,7 @@ export function EngineerRotaCalendarEnhancer(): null {
         editButton.dataset.vortaEditEntry = entry.id;
         editButton.textContent = "Edit";
         editButton.className =
-          "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-800/70 px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
+          "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 px-2 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
         editButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
