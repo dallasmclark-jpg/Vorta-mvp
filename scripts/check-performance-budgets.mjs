@@ -13,8 +13,8 @@ const budgets = {
   // equipment picker add a measured ~1.5 KiB of responsive UI CSS. The personal
   // monthly Engineer rota adds a measured ~1.8 KiB, taking reviewed CSS to 175.1
   // KiB. The explicit current-day white border adds less than 0.1 KiB. The
-  // allowance below keeps roughly 1.7 KiB regression headroom while leaving
-  // JavaScript, largest-chunk and total-dist limits unchanged.
+  // allowance below keeps roughly 1.7 KiB regression headroom while
+  // leaving JavaScript, largest-chunk and total-dist limits unchanged.
   totalJavaScriptBytes: 3_350_000,
   largestJavaScriptBytes: 625_000,
   totalCssBytes: 181_100,
