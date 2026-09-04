@@ -12,15 +12,7 @@ import {
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "../../components/PortalShell";
 import type { NavGroup, NavItem } from "../../components/PortalShell";
-import { ProductionManagerDashboard } from "./ProductionManagerDashboard";
-import { ProductionSkillsMatrixSection } from "./ProductionSkillsMatrixSection";
-import { ProductionShiftCoverageSection } from "./ProductionShiftCoverageSection";
-import { ProductionTrainingSection } from "./ProductionTrainingSection";
-import { ProductionOperatorsSection } from "./ProductionOperatorsSection";
-import { ProductionComplianceSection } from "./ProductionComplianceSection";
-import { ProductionRiskSection } from "./ProductionRiskSection";
-import { ProductionAiImprovementsSection } from "./ProductionAiImprovementsSection";
-import { ProductionSettingsSection } from "./ProductionSettingsSection";
+import { PrototypePortalUnavailable } from "../../components/PrototypePortalUnavailable";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 
 const nav: NavGroup[] = [
@@ -58,18 +50,27 @@ const secondaryNav: NavItem[] = [
   { label: "Settings", icon: Cog, to: "/production/settings" },
 ];
 
+function Unavailable({ capability }: { capability: string }): JSX.Element {
+  return (
+    <PrototypePortalUnavailable
+      portalName="Production Manager"
+      capability={capability}
+    />
+  );
+}
+
 export const ProductionManagerPortal = (): JSX.Element => (
   <PortalShell homeRoute="/production/dashboard" nav={nav} secondaryNav={secondaryNav} accentColor="blue">
     <Routes>
-      <Route path="dashboard"          element={<ProductionManagerDashboard />} />
-      <Route path="shift-coverage"     element={<ProductionShiftCoverageSection />} />
-      <Route path="operators"          element={<ProductionOperatorsSection />} />
-      <Route path="skills-matrix"      element={<ProductionSkillsMatrixSection />} />
-      <Route path="training"           element={<ProductionTrainingSection />} />
-      <Route path="compliance"         element={<ProductionComplianceSection />} />
-      <Route path="risk"               element={<ProductionRiskSection />} />
-      <Route path="ai-recommendations" element={<ProductionAiImprovementsSection />} />
-      <Route path="settings"           element={<ProductionSettingsSection />} />
+      <Route path="dashboard"          element={<Unavailable capability="Production Manager Dashboard" />} />
+      <Route path="shift-coverage"     element={<Unavailable capability="Shift Coverage" />} />
+      <Route path="operators"          element={<Unavailable capability="Operators" />} />
+      <Route path="skills-matrix"      element={<Unavailable capability="Skills Matrix" />} />
+      <Route path="training"           element={<Unavailable capability="Training & Competency" />} />
+      <Route path="compliance"         element={<Unavailable capability="Compliance" />} />
+      <Route path="risk"               element={<Unavailable capability="Production Risk" />} />
+      <Route path="ai-recommendations" element={<Unavailable capability="AI Improvements" />} />
+      <Route path="settings"           element={<Unavailable capability="Settings" />} />
       <Route path="*"                  element={<Navigate to="dashboard" replace />} />
     </Routes>
     <GlobalMaintenanceAiAssistant role="production-manager" />
