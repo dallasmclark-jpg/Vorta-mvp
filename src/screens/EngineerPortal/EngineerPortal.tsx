@@ -32,7 +32,7 @@ import {
   EngineerProfileSettingsScreen,
   EngineerSiteAlertsScreen,
 } from "./EngineerSecondaryScreens";
-import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
+import { EngineerSkillDetailScreenV2, EngineerSkillsScreenV2 } from "./EngineerSkillsV2";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
 
@@ -102,8 +102,8 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="equipment/:equipmentId" element={<EngineerEquipmentDetailScreen />} />
         <Route path="stores" element={<EngineerStoresEquipmentFilter />} />
         <Route path="stores/:partNumber" element={<EngineerSpareDetailScreen />} />
-        <Route path="skills" element={<EngineerSkillsScreen />} />
-        <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
+        <Route path="skills" element={<EngineerSkillsScreenV2 />} />
+        <Route path="skills/:skillName" element={<EngineerSkillDetailScreenV2 />} />
 
         <Route path="handover" element={<EngineerHandoverScreen />} />
         <Route path="rota" element={<EngineerRotaScreen />} />
