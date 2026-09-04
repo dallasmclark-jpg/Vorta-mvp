@@ -34,6 +34,7 @@ import {
 } from "./EngineerSecondaryScreens";
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
+import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
 
 const engineerNavByPath = new Map(
   [...ENGINEER_PRIMARY_NAV, ...ENGINEER_SECONDARY_NAV].map((item) => [item.to, item]),
@@ -91,6 +92,7 @@ export const EngineerPortal = (): JSX.Element => {
       <EngineerQrScannerBridge />
       <EngineerRotaCalendarEnhancer />
       <EngineerCalendarAiBridge />
+      <EngineerVortaSelectBridge />
       <Routes>
         <Route path="vorta" element={<EngineerAskVortaScreen />} />
         <Route path="home" element={<EngineerHomeScreen />} />
