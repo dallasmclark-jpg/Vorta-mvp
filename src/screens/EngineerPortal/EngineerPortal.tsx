@@ -17,6 +17,7 @@ import { ENGINEER_SECONDARY_NAV, EngineerPortalShell } from "./EngineerPortalShe
 import { EngineerProfileActivityTimeline } from "./EngineerProfileActivityTimeline";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
 import { EngineerRotaCalendarEnhancer } from "./EngineerRotaCalendarEnhancer";
+import { EngineerRotaCompactStyles } from "./EngineerRotaCompactStyles";
 import { EngineerRotaScreen } from "./EngineerRotaScreen";
 import { EngineerSearchPillStyles } from "./EngineerSearchPillStyles";
 import {
@@ -43,6 +44,7 @@ export const EngineerPortal = (): JSX.Element => {
   return (
     <EngineerPortalShell>
       <EngineerSearchPillStyles />
+      <EngineerRotaCompactStyles />
       <EngineerDatabaseImages />
       <EngineerQrScannerBridge />
       <EngineerRotaCalendarEnhancer />
