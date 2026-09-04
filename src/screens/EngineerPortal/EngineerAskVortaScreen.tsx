@@ -7,6 +7,9 @@ const ENGINEER_CONTEXT_FALLBACKS: Record<string, string> = {
   "Has this fault happened before?": "What has changed since my last shift?",
 };
 
+const ENGINEER_COMPOSER_ROW_SELECTOR =
+  '[data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"]) [data-vorta-global-ai-composer-row="true"]';
+
 function openEngineerAskVorta(): void {
   window.dispatchEvent(
     new CustomEvent("vorta-global-ai-prompt", {
@@ -47,15 +50,117 @@ function syncEngineerFallbackPrompts(): void {
   });
 }
 
+function setControlledEngineerInputValue(
+  input: HTMLInputElement,
+  value: string,
+): void {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set;
+
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function resizeEngineerComposer(textarea: HTMLTextAreaElement): void {
+  textarea.style.height = "auto";
+  const minimumHeight = 40;
+  const maximumHeight = 144;
+  const nextHeight = Math.min(
+    Math.max(textarea.scrollHeight, minimumHeight),
+    maximumHeight,
+  );
+
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY =
+    textarea.scrollHeight > maximumHeight ? "auto" : "hidden";
+}
+
+function syncEngineerComposerTextarea(): void {
+  const row = document.querySelector<HTMLElement>(
+    ENGINEER_COMPOSER_ROW_SELECTOR,
+  );
+  const sourceInput = row?.querySelector<HTMLInputElement>(
+    '[data-vorta-global-ai-input="true"]',
+  );
+
+  if (!row || !sourceInput) return;
+
+  let textarea = row.querySelector<HTMLTextAreaElement>(
+    '[data-vorta-engineer-composer-input="true"]',
+  );
+
+  if (!textarea) {
+    textarea = document.createElement("textarea");
+    textarea.dataset.vortaEngineerComposerInput = "true";
+    textarea.rows = 1;
+    textarea.setAttribute("aria-label", "Ask Vorta");
+    textarea.autocomplete = "off";
+    textarea.spellcheck = true;
+
+    textarea.addEventListener("input", () => {
+      setControlledEngineerInputValue(sourceInput, textarea?.value ?? "");
+      if (textarea) resizeEngineerComposer(textarea);
+    });
+
+    textarea.addEventListener("keydown", (event) => {
+      if (
+        event.key !== "Enter" ||
+        event.shiftKey ||
+        event.isComposing
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setControlledEngineerInputValue(sourceInput, textarea?.value ?? "");
+      row
+        .querySelector<HTMLButtonElement>(
+          '[data-vorta-global-ai-send="true"]',
+        )
+        ?.click();
+    });
+
+    row.insertBefore(textarea, sourceInput);
+  }
+
+  sourceInput.style.display = "none";
+  sourceInput.tabIndex = -1;
+  sourceInput.setAttribute("aria-hidden", "true");
+
+  textarea.placeholder = sourceInput.placeholder;
+
+  if (textarea.value !== sourceInput.value) {
+    textarea.value = sourceInput.value;
+  }
+
+  resizeEngineerComposer(textarea);
+}
+
 export function EngineerAskVortaScreen(): JSX.Element {
   useEffect(() => {
+    const syncEngineerUi = (): void => {
+      syncEngineerFallbackPrompts();
+      syncEngineerComposerTextarea();
+    };
+
     const timer = window.setTimeout(() => {
       openEngineerAskVorta();
-      syncEngineerFallbackPrompts();
+      syncEngineerUi();
     }, 0);
 
-    const observer = new MutationObserver(syncEngineerFallbackPrompts);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    const observer = new MutationObserver(syncEngineerUi);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    const composerTimer = window.setInterval(
+      syncEngineerComposerTextarea,
+      120,
+    );
 
     const handlePromptClick = (event: MouseEvent): void => {
       const target = event.target as Element | null;
@@ -76,6 +181,7 @@ export function EngineerAskVortaScreen(): JSX.Element {
 
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(composerTimer);
       observer.disconnect();
       document.removeEventListener("click", handlePromptClick, true);
       const closeButton = document.querySelector<HTMLButtonElement>(
@@ -166,14 +272,26 @@ export function EngineerAskVortaScreen(): JSX.Element {
             [data-vorta-global-ai-composer-row="true"] {
             display: flex !important;
             flex-direction: row !important;
-            align-items: center !important;
+            align-items: flex-end !important;
             gap: 0.25rem !important;
             min-height: 3.75rem !important;
-            border: 1px solid rgb(51 65 85 / 0.95) !important;
-            border-radius: 9999px !important;
+            border: 1px solid rgb(51 65 85 / 0.86) !important;
+            border-radius: 1.8rem !important;
             background: rgb(10 16 27 / 0.96) !important;
             padding: 0.375rem !important;
             box-shadow: 0 8px 24px rgb(0 0 0 / 0.2) !important;
+            transition:
+              border-color 160ms ease,
+              box-shadow 160ms ease,
+              border-radius 160ms ease !important;
+          }
+
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-global-ai-composer-row="true"]:focus-within {
+            border-color: rgb(96 165 250 / 0.58) !important;
+            box-shadow:
+              0 10px 28px rgb(0 0 0 / 0.24),
+              0 0 0 1px rgb(37 99 235 / 0.12) !important;
           }
 
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
@@ -211,17 +329,34 @@ export function EngineerAskVortaScreen(): JSX.Element {
 
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
             [data-vorta-global-ai-input="true"] {
+            display: none !important;
+          }
+
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-engineer-composer-input="true"] {
             order: 1 !important;
+            box-sizing: border-box !important;
             min-width: 0 !important;
-            height: 2.5rem !important;
+            min-height: 2.5rem !important;
+            max-height: 9rem !important;
             flex: 1 1 auto !important;
+            resize: none !important;
             border: 0 !important;
             border-radius: 0 !important;
             background: transparent !important;
-            padding-left: 0.35rem !important;
-            padding-right: 0.35rem !important;
+            padding: 0.55rem 0.35rem 0.45rem !important;
+            color: #e2e8f0 !important;
+            font: inherit !important;
+            font-size: 0.875rem !important;
+            line-height: 1.35rem !important;
             box-shadow: none !important;
             outline: none !important;
+            scrollbar-width: thin;
+          }
+
+          [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+            [data-vorta-engineer-composer-input="true"]::placeholder {
+            color: rgb(100 116 139 / 0.88) !important;
           }
 
           [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
