@@ -12,6 +12,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
+import {
+  chooseAuthorisedSiteGrant,
+  findAuthorisedSiteGrant,
+  type SiteAccessGrant,
+} from "./siteAccessContext";
+export type { SiteAccessGrant } from "./siteAccessContext";
 import { VortaLoadingScreen } from "../components/VortaLoadingScreen";
 
 export type PilotRole =
@@ -37,6 +43,8 @@ interface AuthContextValue {
   session: Session | null;
   role: PilotRole | null;
   siteContext: ActiveSiteContext | null;
+  siteAccesses: readonly SiteAccessGrant<PilotRole>[];
+  selectSite: (siteId: string) => boolean;
   isDemoAdmin: boolean;
   loading: boolean;
   roleResolutionFailed: boolean;
@@ -51,6 +59,8 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   role: null,
   siteContext: null,
+  siteAccesses: [],
+  selectSite: () => false,
   isDemoAdmin: false,
   loading: true,
   roleResolutionFailed: false,
@@ -62,6 +72,13 @@ const AuthContext = createContext<AuthContextValue>({
 
 const AUTH_INITIALISATION_TIMEOUT_MS =
   15_000;
+
+const SELECTED_SITE_STORAGE_PREFIX =
+  "vorta:selected-site";
+
+function selectedSiteStorageKey(userId: string): string {
+  return `${SELECTED_SITE_STORAGE_PREFIX}:${userId}`;
+}
 
 function withAuthTimeout<T>(
   request: Promise<T>,
@@ -364,6 +381,8 @@ export function AuthProvider({
     useState<PilotRole | null>(null);
   const [siteContext, setSiteContext] =
     useState<ActiveSiteContext | null>(null);
+  const [siteAccesses, setSiteAccesses] =
+    useState<readonly SiteAccessGrant<PilotRole>[]>([]);
   const [loading, setLoading] = useState(true);
   const [
     roleResolutionFailed,
@@ -417,6 +436,7 @@ export function AuthProvider({
       setSession(null);
       setRole(null);
       setSiteContext(null);
+      setSiteAccesses([]);
       setRoleResolutionFailed(false);
       setAuthInitialisationError(
         null,
@@ -468,6 +488,7 @@ export function AuthProvider({
       if (userChanged) {
         setRole(metadataRole);
         setSiteContext(null);
+        setSiteAccesses([]);
       }
 
       setRoleResolutionFailed(false);
@@ -523,9 +544,7 @@ export function AuthProvider({
                   ascending:
                     true,
                 },
-              )
-              .limit(1)
-              .maybeSingle(),
+              ),
           ]),
           "Vorta could not verify your profile and site access within 15 seconds.",
         );
@@ -563,20 +582,56 @@ export function AuthProvider({
           );
         }
 
-        const accessData = accessResult.data as unknown as {
+        const accessRows = (accessResult.data ?? []) as unknown as Array<{
           site_id: string;
           organisation_id: string;
           app_role: unknown;
           is_default: boolean;
-        } | null;
+        }>;
         const profileData = profileResult.data as unknown as {
           role: unknown;
           organisation_id: string | null;
         } | null;
 
-        const accessRole = normalisePilotRole(
-          accessData?.app_role,
+        const grants = accessRows.reduce<SiteAccessGrant<PilotRole>[]>(
+          (authorised, row) => {
+            const grantRole = normalisePilotRole(row.app_role);
+            const hasCompleteIdentity =
+              typeof row.site_id === "string" &&
+              row.site_id.length > 0 &&
+              typeof row.organisation_id === "string" &&
+              row.organisation_id.length > 0;
+
+            if (
+              !grantRole ||
+              !hasCompleteIdentity ||
+              authorised.some((grant) => grant.siteId === row.site_id)
+            ) {
+              return authorised;
+            }
+
+            authorised.push({
+              siteId: row.site_id,
+              organisationId: row.organisation_id,
+              role: grantRole,
+              isDefault: row.is_default === true,
+            });
+
+            return authorised;
+          },
+          [],
         );
+
+        const storedSiteId = window.localStorage.getItem(
+          selectedSiteStorageKey(nextUserId),
+        );
+
+        const selectedGrant = chooseAuthorisedSiteGrant(
+          grants,
+          storedSiteId,
+        );
+
+        const accessRole = selectedGrant?.role ?? null;
 
         const profileRole = normalisePilotRole(
           profileData?.role,
@@ -589,18 +644,19 @@ export function AuthProvider({
 
         setRole(effectiveRole);
 
-        if (
-          accessData &&
-          effectiveRole
-        ) {
-          setSiteContext({
-            siteId: accessData.site_id,
-            organisationId:
-              accessData.organisation_id,
+        setSiteAccesses(grants);
+
+        if (selectedGrant && effectiveRole) {
+          const nextSiteContext: ActiveSiteContext = {
+            ...selectedGrant,
             role: effectiveRole,
-            isDefault:
-              accessData.is_default,
-          });
+          };
+
+          setSiteContext(nextSiteContext);
+          window.localStorage.setItem(
+            selectedSiteStorageKey(nextUserId),
+            nextSiteContext.siteId,
+          );
         } else {
           setSiteContext(null);
         }
@@ -637,6 +693,7 @@ export function AuthProvider({
 
         setRole(null);
         setSiteContext(null);
+        setSiteAccesses([]);
 
         setRoleResolutionFailed(
           true,
@@ -705,6 +762,7 @@ export function AuthProvider({
           setSession(null);
           setRole(null);
           setSiteContext(null);
+          setSiteAccesses([]);
 
           setRoleResolutionFailed(
             true,
@@ -740,6 +798,30 @@ export function AuthProvider({
     };
   }, [initialisationAttempt]);
 
+  const selectSite = (siteId: string): boolean => {
+    if (!session) {
+      return false;
+    }
+
+    const matchingGrant = findAuthorisedSiteGrant(
+      siteAccesses,
+      siteId,
+    );
+
+    if (!matchingGrant) {
+      return false;
+    }
+
+    setSiteContext(matchingGrant);
+    setRole(matchingGrant.role);
+    window.localStorage.setItem(
+      selectedSiteStorageKey(session.user.id),
+      matchingGrant.siteId,
+    );
+
+    return true;
+  };
+
   const isDemoAdmin =
     resolveDemoAdmin(session) ||
     role === "vorta_admin";
@@ -750,6 +832,8 @@ export function AuthProvider({
         session,
         role,
         siteContext,
+        siteAccesses,
+        selectSite,
         isDemoAdmin,
         loading,
         roleResolutionFailed,
