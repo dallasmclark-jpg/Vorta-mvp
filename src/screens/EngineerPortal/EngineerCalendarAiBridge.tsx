@@ -146,20 +146,34 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
 
   if (pathname !== "/engineer/vorta") return null;
 
+  const iconStyle = { width: 16, height: 16, flex: "0 0 auto" } as const;
+
   return (
     <>
       {promptTarget
         ? createPortal(
             <div
               data-vorta-engineer-calendar-prompts="true"
-              className="mt-3 grid gap-2 sm:grid-cols-2"
+              style={{ marginTop: 12, display: "grid", gap: 8 }}
             >
               {CALENDAR_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => void runCalendarQuestion(prompt)}
-                  className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-left text-xs font-medium leading-5 text-slate-300 hover:border-blue-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  style={{
+                    minHeight: 44,
+                    borderRadius: 12,
+                    border: "1px solid #334155",
+                    background: "#0f172a",
+                    padding: "8px 12px",
+                    color: "#cbd5e1",
+                    textAlign: "left",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                    cursor: "pointer",
+                  }}
                 >
                   {prompt}
                 </button>
@@ -171,33 +185,84 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
 
       {target && (question || loading)
         ? createPortal(
-            <div data-vorta-engineer-calendar-answer="true" className="space-y-3 px-4 pb-5">
+            <div
+              data-vorta-engineer-calendar-answer="true"
+              style={{ display: "grid", gap: 12, padding: "0 16px 20px" }}
+            >
               {question ? (
                 <div
-                  className="ml-auto rounded-2xl border border-blue-500 bg-blue-950 p-3 text-sm leading-6 text-slate-100"
-                  style={{ maxWidth: "88%" }}
+                  style={{
+                    marginLeft: "auto",
+                    maxWidth: "88%",
+                    borderRadius: 16,
+                    border: "1px solid #3b82f6",
+                    background: "#172554",
+                    padding: 12,
+                    color: "#f1f5f9",
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                  }}
                 >
                   {question}
                 </div>
               ) : null}
 
               <div
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-3"
-                style={{ maxWidth: "94%" }}
+                style={{
+                  maxWidth: "94%",
+                  borderRadius: 16,
+                  border: "1px solid #1e293b",
+                  background: "#0f172a",
+                  padding: 12,
+                }}
               >
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color: "#60a5fa",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {loading ? <Loader2 style={iconStyle} /> : <Sparkles style={iconStyle} />}
                   Ask Vorta · My profile
                 </div>
                 {loading ? (
-                  <p className="mt-2 text-sm text-slate-400">Reading your calendar activity…</p>
+                  <p style={{ marginTop: 8, color: "#94a3b8", fontSize: 14 }}>
+                    Reading your calendar activity…
+                  </p>
                 ) : error ? (
-                  <p className="mt-2 text-sm leading-6 text-red-300">{error}</p>
+                  <p style={{ marginTop: 8, color: "#fca5a5", fontSize: 14, lineHeight: 1.5 }}>
+                    {error}
+                  </p>
                 ) : (
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-200">{answer}</p>
+                  <p
+                    style={{
+                      marginTop: 8,
+                      whiteSpace: "pre-line",
+                      color: "#e2e8f0",
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {answer}
+                  </p>
                 )}
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
-                  <CalendarDays className="h-4 w-4" />
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color: "#475569",
+                    fontSize: 12,
+                  }}
+                >
+                  <CalendarDays style={iconStyle} />
                   Personal engineer data only
                 </div>
               </div>
