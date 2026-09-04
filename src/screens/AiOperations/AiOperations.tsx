@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Network,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   UploadCloud,
@@ -167,6 +168,9 @@ export const AiOperations = (): JSX.Element => {
       icon: Headphones,
       to: "/support",
     },
+    ...(mayAdministerPilot
+      ? [{ label: "People & Access", icon: ShieldCheck, to: "/admin/site" }]
+      : []),
     ...(mayAdministerPilot
       ? [{ label: "Pilot Setup", icon: ClipboardCheck, to: "/settings/pilot-setup" }]
       : []),
