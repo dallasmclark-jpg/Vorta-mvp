@@ -96,56 +96,152 @@ export function EngineerProfileActivityTimeline(): JSX.Element | null {
 
   if (!siteId) return null;
 
+  const iconStyle = { width: 16, height: 16, flex: "0 0 auto" } as const;
+
   return (
     <section
-      className="mx-auto w-full px-3 pb-10"
-      style={{ maxWidth: 1040, marginTop: -24 }}
+      style={{
+        width: "100%",
+        maxWidth: 1040,
+        margin: "-24px auto 0",
+        padding: "0 12px 40px",
+        boxSizing: "border-box",
+      }}
     >
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 p-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-blue-500 bg-blue-950 text-blue-300">
-              <CalendarDays className="h-4 w-4" />
+      <div
+        style={{
+          overflow: "hidden",
+          borderRadius: 16,
+          border: "1px solid #1e293b",
+          background: "#020617",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            borderBottom: "1px solid #1e293b",
+            padding: 16,
+          }}
+        >
+          <div style={{ display: "flex", minWidth: 0, alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                width: 36,
+                height: 36,
+                flex: "0 0 36px",
+                placeItems: "center",
+                borderRadius: 8,
+                border: "1px solid #3b82f6",
+                background: "#172554",
+                color: "#93c5fd",
+              }}
+            >
+              <CalendarDays style={iconStyle} />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-slate-100">My calendar activity</h2>
-              <p className="mt-1 text-xs text-slate-500">
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, color: "#f1f5f9", fontSize: 14, fontWeight: 600 }}>
+                My calendar activity
+              </h2>
+              <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12, lineHeight: 1.5 }}>
                 Notes, training, overtime, cover and development saved to your engineer profile.
               </p>
             </div>
           </div>
           <Link
             to="/engineer/rota"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300"
+            style={{
+              display: "inline-flex",
+              flex: "0 0 auto",
+              alignItems: "center",
+              gap: 4,
+              color: "#60a5fa",
+              fontSize: 12,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
           >
             Calendar
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight style={iconStyle} />
           </Link>
         </div>
 
         {loading ? (
-          <div className="space-y-2 p-4" aria-live="polite">
+          <div style={{ display: "grid", gap: 8, padding: 16 }} aria-live="polite">
             {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="h-16 animate-pulse rounded-xl border border-slate-800 bg-slate-900" />
+              <div
+                key={index}
+                style={{
+                  height: 64,
+                  borderRadius: 12,
+                  border: "1px solid #1e293b",
+                  background: "#0f172a",
+                  opacity: 0.72,
+                }}
+              />
             ))}
           </div>
         ) : activity.length > 0 ? (
-          <div className="divide-y divide-slate-800">
-            {activity.map((entry) => (
-              <div key={`${entry.source ?? "vorta"}-${entry.id}`} className="flex items-start gap-3 p-4">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-800 bg-slate-900 text-slate-400">
-                  {entry.equipmentName ? <Wrench className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+          <div>
+            {activity.map((entry, index) => (
+              <div
+                key={`${entry.source ?? "vorta"}-${entry.id}`}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: 16,
+                  borderTop: index === 0 ? undefined : "1px solid #1e293b",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    width: 32,
+                    height: 32,
+                    flex: "0 0 32px",
+                    placeItems: "center",
+                    borderRadius: 8,
+                    border: "1px solid #1e293b",
+                    background: "#0f172a",
+                    color: "#94a3b8",
+                  }}
+                >
+                  {entry.equipmentName ? <Wrench style={iconStyle} /> : <Clock3 style={iconStyle} />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold uppercase text-blue-400">
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        color: "#60a5fa",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                      }}
+                    >
                       {activityTypeLabel(entry.entryType)}
                     </span>
-                    <span className="text-xs text-slate-600">{displayDate(entry.entryDate)}</span>
-                    <span className="text-xs capitalize text-slate-600">{entry.status}</span>
+                    <span style={{ color: "#475569", fontSize: 12 }}>{displayDate(entry.entryDate)}</span>
+                    <span style={{ color: "#475569", fontSize: 12, textTransform: "capitalize" }}>
+                      {entry.status}
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-slate-200">{entry.title}</p>
-                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
+                  <p style={{ margin: "4px 0 0", color: "#e2e8f0", fontSize: 12, fontWeight: 600 }}>
+                    {entry.title}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      marginTop: 4,
+                      color: "#64748b",
+                      fontSize: 12,
+                    }}
+                  >
                     {entry.equipmentName ? <span>{entry.equipmentName}</span> : null}
                     {entry.hours !== null ? <span>{entry.hours} hours</span> : null}
                     {entry.source === "training_booking" ? <span>Training booking</span> : <span>Profile activity</span>}
@@ -155,8 +251,8 @@ export function EngineerProfileActivityTimeline(): JSX.Element | null {
             ))}
           </div>
         ) : (
-          <div className="p-4">
-            <p className="text-xs leading-5 text-slate-500">
+          <div style={{ padding: 16 }}>
+            <p style={{ margin: 0, color: "#64748b", fontSize: 12, lineHeight: 1.6 }}>
               No personal calendar activity has been saved for this year yet.
             </p>
           </div>
