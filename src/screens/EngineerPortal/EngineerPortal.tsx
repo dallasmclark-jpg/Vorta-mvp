@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { GlobalMaintenanceAiAssistant } from "../AiOperations/GlobalMaintenanceAiAssistant";
 import { usePrimaryAskVortaVisibility } from "../AiOperations/usePrimaryAskVortaVisibility";
 import { EngineerAskVortaScreen } from "./EngineerAskVortaScreen";
+import { EngineerBottomNavStyles } from "./EngineerBottomNavStyles";
 import { EngineerCalendarAiBridge } from "./EngineerCalendarAiBridge";
 import {
   EngineerEquipmentDetailScreen,
@@ -13,7 +14,11 @@ import {
   EngineerWorkOrderDetailScreen,
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
-import { ENGINEER_SECONDARY_NAV, EngineerPortalShell } from "./EngineerPortalShell";
+import {
+  ENGINEER_PRIMARY_NAV,
+  ENGINEER_SECONDARY_NAV,
+  EngineerPortalShell,
+} from "./EngineerPortalShell";
 import { EngineerProfileActivityTimeline } from "./EngineerProfileActivityTimeline";
 import { EngineerQrScannerBridge } from "./EngineerQrScannerBridge";
 import { EngineerRotaCalendarEnhancer } from "./EngineerRotaCalendarEnhancer";
@@ -30,13 +35,49 @@ import {
 import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 
-if (!ENGINEER_SECONDARY_NAV.some((item) => item.to === "/engineer/rota")) {
-  ENGINEER_SECONDARY_NAV.splice(1, 0, {
-    label: "Rota",
-    to: "/engineer/rota",
-    icon: CalendarDays,
-  });
-}
+const engineerNavByPath = new Map(
+  [...ENGINEER_PRIMARY_NAV, ...ENGINEER_SECONDARY_NAV].map((item) => [item.to, item]),
+);
+
+const rotaNavItem = engineerNavByPath.get("/engineer/rota") ?? {
+  label: "Rota",
+  to: "/engineer/rota",
+  icon: CalendarDays,
+};
+engineerNavByPath.set("/engineer/rota", rotaNavItem);
+
+const primaryNavOrder = [
+  "/engineer/work",
+  "/engineer/equipment",
+  "/engineer/vorta",
+  "/engineer/stores",
+  "/engineer/documents",
+];
+const secondaryNavOrder = [
+  "/engineer/handover",
+  "/engineer/rota",
+  "/engineer/skills",
+  "/engineer/notifications",
+  "/engineer/alerts",
+  "/engineer/settings",
+];
+
+ENGINEER_PRIMARY_NAV.splice(
+  0,
+  ENGINEER_PRIMARY_NAV.length,
+  ...primaryNavOrder.flatMap((path) => {
+    const item = engineerNavByPath.get(path);
+    return item ? [item] : [];
+  }),
+);
+ENGINEER_SECONDARY_NAV.splice(
+  0,
+  ENGINEER_SECONDARY_NAV.length,
+  ...secondaryNavOrder.flatMap((path) => {
+    const item = engineerNavByPath.get(path);
+    return item ? [item] : [];
+  }),
+);
 
 export const EngineerPortal = (): JSX.Element => {
   const isPrimaryAskVortaVisible = usePrimaryAskVortaVisibility();
@@ -44,6 +85,7 @@ export const EngineerPortal = (): JSX.Element => {
   return (
     <EngineerPortalShell>
       <EngineerSearchPillStyles />
+      <EngineerBottomNavStyles />
       <EngineerRotaCompactStyles />
       <EngineerDatabaseImages />
       <EngineerQrScannerBridge />
