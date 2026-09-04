@@ -1,6 +1,153 @@
-const ENGINEER_BOTTOM_NAV_STYLES = atob(
-  "QG1lZGlhIChtYXgtd2lkdGg6IDc2N3B4KSB7CiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdIHsKICAgIGxlZnQ6IDAuNzVyZW0gIWltcG9ydGFudDsKICAgIHJpZ2h0OiAwLjc1cmVtICFpbXBvcnRhbnQ7CiAgICBib3R0b206IG1heCgwLjM1cmVtLCBlbnYoc2FmZS1hcmVhLWluc2V0LWJvdHRvbSkpICFpbXBvcnRhbnQ7CiAgICB3aWR0aDogYXV0byAhaW1wb3J0YW50OwogICAgbWluLWhlaWdodDogNC42NXJlbSAhaW1wb3J0YW50OwogICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoNSwgbWlubWF4KDAsIDFmcikpICFpbXBvcnRhbnQ7CiAgICBhbGlnbi1pdGVtczogY2VudGVyOwogICAgb3ZlcmZsb3c6IHZpc2libGUgIWltcG9ydGFudDsKICAgIGlzb2xhdGlvbjogaXNvbGF0ZTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHJnYmEoNTEsIDY1LCA4NSwgMC43NCkgIWltcG9ydGFudDsKICAgIGJvcmRlci1yYWRpdXM6IDEuNzVyZW0gIWltcG9ydGFudDsKICAgIGJhY2tncm91bmQ6IHJnYmEoMywgMTIsIDI5LCAwLjk3KSAhaW1wb3J0YW50OwogICAgcGFkZGluZzogMC40cmVtIDAuNDVyZW0gMC41cmVtICFpbXBvcnRhbnQ7CiAgICBib3gtc2hhZG93OgogICAgICAwIDE4cHggNDRweCByZ2JhKDAsIDAsIDAsIDAuNDIpLAogICAgICBpbnNldCAwIDFweCAwIHJnYmEoMjU1LCAyNTUsIDI1NSwgMC4wMzUpICFpbXBvcnRhbnQ7CiAgICBiYWNrZHJvcC1maWx0ZXI6IGJsdXIoMThweCk7CiAgfQoKICBbZGF0YS12b3J0YS1lbmdpbmVlci1ib3R0b20tbmF2PSJ0cnVlIl06OmJlZm9yZSB7CiAgICBjb250ZW50OiAiIjsKICAgIHBvc2l0aW9uOiBhYnNvbHV0ZTsKICAgIGxlZnQ6IDUwJTsKICAgIHRvcDogLTEuMjhyZW07CiAgICB6LWluZGV4OiAwOwogICAgd2lkdGg6IDQuN3JlbTsKICAgIGhlaWdodDogNC43cmVtOwogICAgdHJhbnNmb3JtOiB0cmFuc2xhdGVYKC01MCUpOwogICAgYm9yZGVyLXJhZGl1czogOTk5OXB4OwogICAgYmFja2dyb3VuZDogIzAwMDgxNDsKICAgIHBvaW50ZXItZXZlbnRzOiBub25lOwogIH0KCiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdID4gYSB7CiAgICBwb3NpdGlvbjogcmVsYXRpdmU7CiAgICB6LWluZGV4OiAxOwogICAgZGlzcGxheTogZmxleCAhaW1wb3J0YW50OwogICAgbWluLXdpZHRoOiAwOwogICAgbWluLWhlaWdodDogMy43NXJlbSAhaW1wb3J0YW50OwogICAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICAgIGFsaWduLWl0ZW1zOiBjZW50ZXI7CiAgICBqdXN0aWZ5LWNvbnRlbnQ6IGNlbnRlcjsKICAgIGdhcDogMC4yOHJlbSAhaW1wb3J0YW50OwogICAgYm9yZGVyLXJhZGl1czogMXJlbTsKICAgIHBhZGRpbmc6IDAuM3JlbSAwLjE1cmVtICFpbXBvcnRhbnQ7CiAgICBjb2xvcjogIzcxODM5YyAhaW1wb3J0YW50OwogICAgdHJhbnNpdGlvbjoKICAgICAgY29sb3IgMTYwbXMgZWFzZSwKICAgICAgYmFja2dyb3VuZC1jb2xvciAxNjBtcyBlYXNlLAogICAgICB0cmFuc2Zvcm0gMTYwbXMgZWFzZTsKICB9CgogIFtkYXRhLXZvcnRhLWVuZ2luZWVyLWJvdHRvbS1uYXY9InRydWUiXSA+IGEgPiBzcGFuW2FyaWEtaGlkZGVuPSJ0cnVlIl0gewogICAgZGlzcGxheTogbm9uZSAhaW1wb3J0YW50OwogIH0KCiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdID4gYSA+IHN2ZyB7CiAgICB3aWR0aDogMS4yOHJlbTsKICAgIGhlaWdodDogMS4yOHJlbTsKICAgIHN0cm9rZS13aWR0aDogMS44OwogICAgY29sb3I6IGN1cnJlbnRDb2xvcjsKICB9CgogIFtkYXRhLXZvcnRhLWVuZ2luZWVyLWJvdHRvbS1uYXY9InRydWUiXSA+IGEgPiBzcGFuOmxhc3QtY2hpbGQgewogICAgY29sb3I6IGN1cnJlbnRDb2xvcjsKICAgIGZvbnQtc2l6ZTogMC42MjVyZW07CiAgICBmb250LXdlaWdodDogNTUwOwogIH0KCiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdID4gYVthcmlhLWN1cnJlbnQ9InBhZ2UiXSB7IGNvbG9yOiAjNjBhNWZhICFpbXBvcnRhbnQ7IH0KCiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdID4gYVtocmVmPSIvZW5naW5lZXIvdm9ydGEiXSB7CiAgICBhbGlnbi1zZWxmOiBzdHJldGNoOwogICAganVzdGlmeS1jb250ZW50OiBmbGV4LWVuZDsKICAgIHBhZGRpbmctYm90dG9tOiAwLjIycmVtICFpbXBvcnRhbnQ7CiAgICBjb2xvcjogIzkzYzVmZCAhaW1wb3J0YW50OwogIH0KCiAgW2RhdGEtdm9ydGEtZW5naW5lZXItYm90dG9tLW5hdj0idHJ1ZSJdID4gYVtocmVmPSIvZW5naW5lZXIvdm9ydGEiXSA+IHN2ZyB7CiAgICBwb3NpdGlvbjogYWJzb2x1dGU7CiAgICBsZWZ0OiA1MCU7CiAgICB0b3A6IC0xLjIycmVtOwogICAgdHJhbnNmb3JtOiB0cmFuc2xhdGVYKC01MCUpOwogICAgcGFkZGluZzogMC45OHJlbTsKICAgIGJvcmRlcjogMXB4IHNvbGlkIHJnYmEoMTQ3LCAxOTcsIDI1MywgMC4yOCk7CiAgICBib3JkZXItcmFkaXVzOiA5OTk5cHg7CiAgICBiYWNrZ3JvdW5kOiAjMjU2M2ViOwogICAgY29sb3I6ICNmZmZmZmYgIWltcG9ydGFudDsKICAgIGJveC1zaGFkb3c6IDAgMTFweCAyNnB4IHJnYmEoMzcsIDk5LCAyMzUsIDAuMzQpLCAwIDAgMCAwLjQycmVtICMwMDA4MTQ7CiAgfQoKICBbZGF0YS12b3J0YS1wb3J0YWwtc2Nyb2xsLWNvbnRhaW5lcj0idHJ1ZSJdIHsgcGFkZGluZy1ib3R0b206IGNhbGMoNi4zNXJlbSArIGVudihzYWZlLWFyZWEtaW5zZXQtYm90dG9tKSkgIWltcG9ydGFudDsgfQoKICBbZGF0YS12b3J0YS1lbmdpbmVlci1zaGVsbD0idHJ1ZSJdOmhhcyhbZGF0YS12b3J0YS1lbmdpbmVlci1hc2stdm9ydGEtcGFnZT0idHJ1ZSJdKSBbZGF0YS12b3J0YS1nbG9iYWwtYWktcGFuZWw9InRydWUiXSB7IGJvdHRvbTogY2FsYyg2LjM1cmVtICsgZW52KHNhZmUtYXJlYS1pbnNldC1ib3R0b20pKSAhaW1wb3J0YW50OyB9Cn0="
-);
+const ENGINEER_BOTTOM_NAV_STYLES = `
+@media (max-width: 767px) {
+  [data-vorta-engineer-bottom-nav="true"] {
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    bottom: max(0.35rem, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    min-height: 4.65rem !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: center;
+    overflow: visible !important;
+    isolation: isolate;
+    border: 1px solid rgba(51, 65, 85, 0.74) !important;
+    border-radius: 1.75rem !important;
+    background: rgba(3, 12, 29, 0.97) !important;
+    padding: 0.4rem 0.45rem 0.5rem !important;
+    box-shadow:
+      0 18px 44px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+    backdrop-filter: blur(18px);
+  }
+
+  [data-vorta-engineer-bottom-nav="true"]::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -1.28rem;
+    z-index: 0;
+    width: 4.7rem;
+    height: 4.7rem;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: #000814;
+    pointer-events: none;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a {
+    position: relative;
+    z-index: 1;
+    display: flex !important;
+    min-width: 0;
+    min-height: 3.75rem !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem !important;
+    border-radius: 1rem;
+    padding: 0.3rem 0.15rem !important;
+    color: #71839c !important;
+    transition:
+      color 160ms ease,
+      background-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a > span[aria-hidden="true"] {
+    display: none !important;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a > svg {
+    width: 1.28rem;
+    height: 1.28rem;
+    stroke-width: 1.8;
+    color: currentColor;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a > span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: currentColor;
+    font-size: 0.625rem;
+    font-weight: 550;
+    line-height: 0.8rem;
+    letter-spacing: -0.01em;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[aria-current="page"] {
+    color: #60a5fa !important;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a:active {
+    transform: translateY(1px);
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[href="/engineer/vorta"] {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: stretch;
+    justify-content: flex-end;
+    padding-bottom: 0.22rem !important;
+    color: #93c5fd !important;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[href="/engineer/vorta"] > svg {
+    position: absolute;
+    left: 50%;
+    top: -1.22rem;
+    box-sizing: content-box !important;
+    width: 1.42rem !important;
+    height: 1.42rem !important;
+    transform: translateX(-50%);
+    padding: 0.98rem;
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 9999px;
+    background: #2563eb;
+    color: #ffffff !important;
+    stroke-width: 1.9;
+    box-shadow:
+      0 11px 26px rgba(37, 99, 235, 0.34),
+      0 0 0 0.42rem #000814;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[href="/engineer/vorta"] > span:last-child {
+    margin-top: 2.1rem !important;
+    color: #93c5fd !important;
+    font-weight: 650;
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[href="/engineer/vorta"][aria-current="page"] > svg {
+    border-color: rgba(191, 219, 254, 0.55);
+    background: #3b82f6;
+    box-shadow:
+      0 12px 30px rgba(37, 99, 235, 0.46),
+      0 0 0 0.42rem #000814,
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  [data-vorta-engineer-bottom-nav="true"] > a[href="/engineer/vorta"]:active > svg {
+    transform: translateX(-50%) scale(0.97);
+  }
+
+  [data-vorta-portal-scroll-container="true"] {
+    padding-bottom: calc(6.35rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+    [data-vorta-global-ai-panel="true"][data-vorta-global-ai-panel="true"] {
+    bottom: calc(6.85rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  [data-vorta-engineer-shell="true"]:has([data-vorta-engineer-ask-vorta-page="true"])
+    [data-vorta-engineer-composer-input="true"]:placeholder-shown {
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    overflow-y: hidden !important;
+  }
+}
+`;
 
 export function EngineerBottomNavStyles(): JSX.Element {
   return <style>{ENGINEER_BOTTOM_NAV_STYLES}</style>;
