@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+const VORTA_SELECT_STYLES = atob(
+  "QG1lZGlhIChtYXgtd2lkdGg6IDc2N3B4KSB7CiAgW2RhdGEtdm9ydGEtZW5naW5lZXItc2hlbGw9InRydWUiXSBzZWxlY3QgewogICAgLXdlYmtpdC1hcHBlYXJhbmNlOiBub25lICFpbXBvcnRhbnQ7CiAgICBhcHBlYXJhbmNlOiBub25lICFpbXBvcnRhbnQ7CiAgICBiYWNrZ3JvdW5kLWltYWdlOiB1cmwoImRhdGE6aW1hZ2Uvc3ZnK3htbCwlM0NzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB3aWR0aD0nMjAnIGhlaWdodD0nMjAnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPSclMjM5NGEzYjgnIHN0cm9rZS13aWR0aD0nMS43JyBzdHJva2UtbGluZWNhcD0ncm91bmQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnJTNFJTNDcGF0aCBkPSdtNiA5IDYgNiA2LTYnLyUzRSUzQy9zdmclM0UiKSAhaW1wb3J0YW50OwogICAgYmFja2dyb3VuZC1yZXBlYXQ6IG5vLXJlcGVhdCAhaW1wb3J0YW50OwogICAgYmFja2dyb3VuZC1wb3NpdGlvbjogcmlnaHQgMC44cmVtIGNlbnRlciAhaW1wb3J0YW50OwogICAgYmFja2dyb3VuZC1zaXplOiAxcmVtIDFyZW0gIWltcG9ydGFudDsKICAgIHBhZGRpbmctcmlnaHQ6IDIuNXJlbSAhaW1wb3J0YW50OwogICAgY29sb3Itc2NoZW1lOiBkYXJrOwogIH0KfQoKLnZvcnRhLXNlbGVjdC1vdmVybGF5IHsKICBwb3NpdGlvbjogZml4ZWQ7CiAgaW5zZXQ6IDA7CiAgei1pbmRleDogMjYwOwogIGRpc3BsYXk6IGZsZXg7CiAgYWxpZ24taXRlbXM6IGZsZXgtZW5kOwogIGp1c3RpZnktY29udGVudDogY2VudGVyOwogIHBhZGRpbmc6IDRyZW0gMC43NXJlbSBtYXgoMC43NXJlbSwgZW52KHNhZmUtYXJlYS1pbnNldC1ib3R0b20pKTsKICBiYWNrZ3JvdW5kOiByZ2JhKDAsIDAsIDAsIDAuNzIpOwogIGJhY2tkcm9wLWZpbHRlcjogYmx1cigzcHgpOwp9Cgoudm9ydGEtc2VsZWN0LXNoZWV0IHsKICBkaXNwbGF5OiBmbGV4OwogIHdpZHRoOiAxMDAlOwogIG1heC13aWR0aDogMjhyZW07CiAgbWF4LWhlaWdodDogNzJkdmg7CiAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICBvdmVyZmxvdzogaGlkZGVuOwogIGJvcmRlcjogMXB4IHNvbGlkIHJnYmEoNTEsIDY1LCA4NSwgMC44KTsKICBib3JkZXItcmFkaXVzOiAxLjQ1cmVtOwogIGJhY2tncm91bmQ6ICMwNzExMWY7CiAgYm94LXNoYWRvdzogMCAyMnB4IDcwcHggcmdiYSgwLCAwLCAwLCAwLjQ4KTsKfQoKLnZvcnRhLXNlbGVjdC1oZWFkZXIgewogIGRpc3BsYXk6IGZsZXg7CiAgYWxpZ24taXRlbXM6IGNlbnRlcjsKICBqdXN0aWZ5LWNvbnRlbnQ6IHNwYWNlLWJldHdlZW47CiAgZ2FwOiAxcmVtOwogIHBhZGRpbmc6IDAuODc1cmVtIDFyZW07CiAgYm9yZGVyLWJvdHRvbTogMXB4IHNvbGlkIHJnYmEoMzAsIDQxLCA1OSwgMC44NSk7Cn0KCi52b3J0YS1zZWxlY3QtaGVhZGluZyB7IG1pbi13aWR0aDogMDsgfQoudm9ydGEtc2VsZWN0LWtpY2tlciB7CiAgbWFyZ2luOiAwOwogIGNvbG9yOiAjNjBhNWZhOwogIGZvbnQtc2l6ZTogOXB4OwogIGZvbnQtd2VpZ2h0OiA2MDA7CiAgbGV0dGVyLXNwYWNpbmc6IDAuMThlbTsKICB0ZXh0LXRyYW5zZm9ybTogdXBwZXJjYXNlOwp9Ci52b3J0YS1zZWxlY3QtdGl0bGUgewogIG1hcmdpbjogMC4yNXJlbSAwIDA7CiAgb3ZlcmZsb3c6IGhpZGRlbjsKICBjb2xvcjogI2YxZjVmOTsKICBmb250LXNpemU6IDAuODc1cmVtOwogIGZvbnQtd2VpZ2h0OiA2MDA7CiAgdGV4dC1vdmVyZmxvdzogZWxsaXBzaXM7CiAgd2hpdGUtc3BhY2U6IG5vd3JhcDsKfQoKLnZvcnRhLXNlbGVjdC1jbG9zZSB7CiAgZGlzcGxheTogaW5saW5lLWZsZXg7CiAgd2lkdGg6IDIuNXJlbTsKICBoZWlnaHQ6IDIuNXJlbTsKICBmbGV4OiAwIDAgMi41cmVtOwogIGFsaWduLWl0ZW1zOiBjZW50ZXI7CiAganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgYm9yZGVyOiAxcHggc29saWQgcmdiYSg1MSwgNjUsIDg1LCAwLjgpOwogIGJvcmRlci1yYWRpdXM6IDAuNzVyZW07CiAgYmFja2dyb3VuZDogIzAzMGMxZDsKICBjb2xvcjogIzk0YTNiODsKfQoudm9ydGEtc2VsZWN0LWNsb3NlOmZvY3VzLXZpc2libGUsCi52b3J0YS1zZWxlY3Qtb3B0aW9uOmZvY3VzLXZpc2libGUgewogIG91dGxpbmU6IDJweCBzb2xpZCAjNjBhNWZhOwogIG91dGxpbmUtb2Zmc2V0OiAycHg7Cn0KLnZvcnRhLXNlbGVjdC1jbG9zZSBzdmcgeyB3aWR0aDogMXJlbTsgaGVpZ2h0OiAxcmVtOyB9Cgoudm9ydGEtc2VsZWN0LW9wdGlvbnMgewogIG92ZXJmbG93LXk6IGF1dG87CiAgcGFkZGluZzogMC42MjVyZW07CiAgb3ZlcnNjcm9sbC1iZWhhdmlvcjogY29udGFpbjsKfQoudm9ydGEtc2VsZWN0LWdyb3VwIHsKICBtYXJnaW46IDA7CiAgcGFkZGluZzogMC43NXJlbSAwLjc1cmVtIDAuMjVyZW07CiAgY29sb3I6ICM0NzU1Njk7CiAgZm9udC1zaXplOiA5cHg7CiAgZm9udC13ZWlnaHQ6IDYwMDsKICBsZXR0ZXItc3BhY2luZzogMC4xNGVtOwogIHRleHQtdHJhbnNmb3JtOiB1cHBlcmNhc2U7Cn0KLnZvcnRhLXNlbGVjdC1vcHRpb24gewogIGRpc3BsYXk6IGZsZXg7CiAgd2lkdGg6IDEwMCU7CiAgbWluLWhlaWdodDogMy4zNXJlbTsKICBhbGlnbi1pdGVtczogY2VudGVyOwogIGp1c3RpZnktY29udGVudDogc3BhY2UtYmV0d2VlbjsKICBnYXA6IDAuNzVyZW07CiAgbWFyZ2luLWJvdHRvbTogMC4yNXJlbTsKICBwYWRkaW5nOiAwLjYyNXJlbSAwLjg3NXJlbTsKICBib3JkZXI6IDFweCBzb2xpZCB0cmFuc3BhcmVudDsKICBib3JkZXItcmFkaXVzOiAwLjc1cmVtOwogIGJhY2tncm91bmQ6IHRyYW5zcGFyZW50OwogIGNvbG9yOiAjZTJlOGYwOwogIGZvbnQ6IGluaGVyaXQ7CiAgZm9udC1zaXplOiAwLjg3NXJlbTsKICBmb250LXdlaWdodDogNTAwOwogIHRleHQtYWxpZ246IGxlZnQ7Cn0KLnZvcnRhLXNlbGVjdC1vcHRpb25bZGF0YS1zZWxlY3RlZD0idHJ1ZSJdIHsKICBib3JkZXItY29sb3I6IHJnYmEoOTYsIDE2NSwgMjUwLCAwLjQ1KTsKICBiYWNrZ3JvdW5kOiByZ2JhKDU5LCAxMzAsIDI0NiwgMC4xMCk7CiAgY29sb3I6ICNkYmVhZmU7Cn0KLnZvcnRhLXNlbGVjdC1vcHRpb246ZGlzYWJsZWQgeyBvcGFjaXR5OiAwLjQ7IH0KLnZvcnRhLXNlbGVjdC1vcHRpb24tbGFiZWwgewogIG1pbi13aWR0aDogMDsKICBmbGV4OiAxIDEgYXV0bzsKICBsaW5lLWhlaWdodDogMS4yNXJlbTsKfQoudm9ydGEtc2VsZWN0LXJhZGlvIHsKICBkaXNwbGF5OiBncmlkOwogIHdpZHRoOiAxLjI1cmVtOwogIGhlaWdodDogMS4yNXJlbTsKICBmbGV4OiAwIDAgMS4yNXJlbTsKICBwbGFjZS1pdGVtczogY2VudGVyOwogIGJvcmRlcjogMXB4IHNvbGlkICM2NDc0OGI7CiAgYm9yZGVyLXJhZGl1czogOTk5OXB4Owp9Ci52b3J0YS1zZWxlY3Qtb3B0aW9uW2RhdGEtc2VsZWN0ZWQ9InRydWUiXSAudm9ydGEtc2VsZWN0LXJhZGlvIHsKICBib3JkZXItY29sb3I6ICM5M2M1ZmQ7CiAgYmFja2dyb3VuZDogcmdiYSg1OSwgMTMwLCAyNDYsIDAuMTApOwp9Ci52b3J0YS1zZWxlY3QtcmFkaW8tZG90IHsKICB3aWR0aDogMC42MjVyZW07CiAgaGVpZ2h0OiAwLjYyNXJlbTsKICBib3JkZXItcmFkaXVzOiA5OTk5cHg7CiAgYmFja2dyb3VuZDogIzkzYzVmZDsKfQ==",
+);
+
 interface SelectOptionSnapshot {
   value: string;
   label: string;
@@ -143,155 +147,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
 
   return (
     <>
-      <style>{`
-        @media (max-width: 767px) {
-          [data-vorta-engineer-shell="true"] select {
-            -webkit-appearance: none !important;
-            appearance: none !important;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
-            background-repeat: no-repeat !important;
-            background-position: right 0.8rem center !important;
-            background-size: 1rem 1rem !important;
-            padding-right: 2.5rem !important;
-            color-scheme: dark;
-          }
-        }
-
-        .vorta-select-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 260;
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          padding: 4rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
-          background: rgba(0, 0, 0, 0.72);
-          backdrop-filter: blur(3px);
-        }
-
-        .vorta-select-sheet {
-          display: flex;
-          width: 100%;
-          max-width: 28rem;
-          max-height: 72dvh;
-          flex-direction: column;
-          overflow: hidden;
-          border: 1px solid rgba(51, 65, 85, 0.8);
-          border-radius: 1.45rem;
-          background: #07111f;
-          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
-        }
-
-        .vorta-select-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          padding: 0.875rem 1rem;
-          border-bottom: 1px solid rgba(30, 41, 59, 0.85);
-        }
-
-        .vorta-select-heading { min-width: 0; }
-        .vorta-select-kicker {
-          margin: 0;
-          color: #60a5fa;
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-        }
-        .vorta-select-title {
-          margin: 0.25rem 0 0;
-          overflow: hidden;
-          color: #f1f5f9;
-          font-size: 0.875rem;
-          font-weight: 600;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .vorta-select-close {
-          display: inline-flex;
-          width: 2.5rem;
-          height: 2.5rem;
-          flex: 0 0 2.5rem;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(51, 65, 85, 0.8);
-          border-radius: 0.75rem;
-          background: #030c1d;
-          color: #94a3b8;
-        }
-        .vorta-select-close:focus-visible,
-        .vorta-select-option:focus-visible {
-          outline: 2px solid #60a5fa;
-          outline-offset: 2px;
-        }
-        .vorta-select-close svg { width: 1rem; height: 1rem; }
-
-        .vorta-select-options {
-          overflow-y: auto;
-          padding: 0.625rem;
-          overscroll-behavior: contain;
-        }
-        .vorta-select-group {
-          margin: 0;
-          padding: 0.75rem 0.75rem 0.25rem;
-          color: #475569;
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-        }
-        .vorta-select-option {
-          display: flex;
-          width: 100%;
-          min-height: 3.35rem;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-          margin-bottom: 0.25rem;
-          padding: 0.625rem 0.875rem;
-          border: 1px solid transparent;
-          border-radius: 0.75rem;
-          background: transparent;
-          color: #e2e8f0;
-          font: inherit;
-          font-size: 0.875rem;
-          font-weight: 500;
-          text-align: left;
-        }
-        .vorta-select-option[data-selected="true"] {
-          border-color: rgba(96, 165, 250, 0.45);
-          background: rgba(59, 130, 246, 0.10);
-          color: #dbeafe;
-        }
-        .vorta-select-option:disabled { opacity: 0.4; }
-        .vorta-select-option-label {
-          min-width: 0;
-          flex: 1 1 auto;
-          line-height: 1.25rem;
-        }
-        .vorta-select-radio {
-          display: grid;
-          width: 1.25rem;
-          height: 1.25rem;
-          flex: 0 0 1.25rem;
-          place-items: center;
-          border: 1px solid #64748b;
-          border-radius: 9999px;
-        }
-        .vorta-select-option[data-selected="true"] .vorta-select-radio {
-          border-color: #93c5fd;
-          background: rgba(59, 130, 246, 0.10);
-        }
-        .vorta-select-radio-dot {
-          width: 0.625rem;
-          height: 0.625rem;
-          border-radius: 9999px;
-          background: #93c5fd;
-        }
-      `}</style>
+      <style>{VORTA_SELECT_STYLES}</style>
 
       {active && typeof document !== "undefined"
         ? createPortal(
