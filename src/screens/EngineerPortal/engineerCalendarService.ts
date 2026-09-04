@@ -6,6 +6,8 @@ export type EngineerCalendarEntryType =
   | "overtime"
   | "annual_leave"
   | "appointment"
+  | "shift_cover"
+  | "development"
   | "other";
 
 export type EngineerCalendarEntryStatus = "planned" | "completed" | "cancelled";
@@ -20,6 +22,7 @@ export interface EngineerCalendarEntry {
   shiftType: "day" | "night" | null;
   status: EngineerCalendarEntryStatus;
   courseId: string | null;
+  equipmentName: string | null;
   createdAt?: string;
   updatedAt?: string;
   source?: "vorta" | "training_booking";
@@ -44,6 +47,14 @@ export interface SaveEngineerCalendarEntryInput {
   shiftType?: "day" | "night" | null;
   status?: EngineerCalendarEntryStatus;
   courseId?: string | null;
+  equipmentName?: string | null;
+}
+
+export interface AskMyCalendarResult {
+  answer: string;
+  year: number;
+  engineerId: string;
+  scope: "self";
 }
 
 function toEntry(value: unknown, source: EngineerCalendarEntry["source"]): EngineerCalendarEntry {
@@ -70,6 +81,12 @@ function toEntry(value: unknown, source: EngineerCalendarEntry["source"]): Engin
         ? row.courseId
         : typeof row.course_id === "string"
           ? row.course_id
+          : null,
+    equipmentName:
+      typeof row.equipmentName === "string"
+        ? row.equipmentName
+        : typeof row.equipment_name === "string"
+          ? row.equipment_name
           : null,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : undefined,
@@ -110,7 +127,7 @@ export async function saveMyEngineerCalendarEntry(
   siteId: string,
   input: SaveEngineerCalendarEntryInput,
 ): Promise<EngineerCalendarEntry> {
-  const { data, error } = await supabase.rpc("vorta_save_my_engineer_calendar_entry", {
+  const { data, error } = await supabase.rpc("vorta_save_my_engineer_calendar_entry_v2", {
     p_site_id: siteId,
     p_entry_date: input.entryDate,
     p_entry_type: input.entryType,
@@ -121,9 +138,28 @@ export async function saveMyEngineerCalendarEntry(
     p_status: input.status ?? "planned",
     p_course_id: input.courseId ?? null,
     p_entry_id: input.id ?? null,
+    p_equipment_name: input.equipmentName ?? null,
   });
   if (error) throw error;
   return toEntry(data, "vorta");
+}
+
+export async function askMyEngineerCalendar(siteId: string, question: string): Promise<AskMyCalendarResult> {
+  const { data, error } = await supabase.rpc("vorta_ask_my_calendar", {
+    p_site_id: siteId,
+    p_question: question,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Vorta could not read your calendar activity.");
+  }
+  const row = data as Record<string, unknown>;
+  return {
+    answer: String(row.answer ?? "No calendar answer was returned."),
+    year: Number(row.year ?? new Date().getFullYear()),
+    engineerId: String(row.engineerId ?? ""),
+    scope: "self",
+  };
 }
 
 export async function deleteMyEngineerCalendarEntry(
