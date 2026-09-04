@@ -243,21 +243,8 @@ function calendarEntryTypeLabel(value: EngineerCalendarEntryType): string {
   }
 }
 
-function calendarEntryTone(value: EngineerCalendarEntryType): string {
-  switch (value) {
-    case "training":
-      return "border-violet-400/30 bg-violet-500/[0.10] text-violet-200";
-    case "overtime":
-      return "border-cyan-400/30 bg-cyan-500/[0.10] text-cyan-200";
-    case "annual_leave":
-      return "border-amber-400/30 bg-amber-500/[0.10] text-amber-200";
-    case "appointment":
-      return "border-pink-400/30 bg-pink-500/[0.10] text-pink-200";
-    case "other":
-      return "border-slate-600/60 bg-slate-800/45 text-slate-300";
-    default:
-      return "border-blue-400/30 bg-blue-500/[0.10] text-blue-200";
-  }
+function calendarEntryTone(_value: EngineerCalendarEntryType): string {
+  return "border-slate-700/75 bg-slate-950/35 text-slate-300";
 }
 
 interface PersonalCalendarSectionProps {
@@ -358,7 +345,7 @@ function PersonalCalendarSection({
             setAdding((value) => !value);
             setEntryError(null);
           }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-blue-500/25 bg-blue-500/[0.08] px-3 text-xs font-semibold text-blue-200 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-xs font-semibold text-slate-200 transition-colors hover:border-blue-400/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
           <Plus className="h-3.5 w-3.5" />
           Add
@@ -402,7 +389,7 @@ function PersonalCalendarSection({
                     type="button"
                     onClick={() => void removeEntry(entry.id)}
                     aria-label={`Delete ${entry.title}`}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800/70 text-slate-500 transition-colors hover:border-red-400/35 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800/70 text-slate-500 transition-colors hover:border-slate-700/75 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -427,7 +414,7 @@ function PersonalCalendarSection({
                 onChange={(event) =>
                   setEntryType(event.target.value as EngineerCalendarEntryType)
                 }
-                className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-xs font-medium normal-case tracking-normal text-slate-200 outline-none focus:border-blue-400/60"
+                className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-xs font-medium text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               >
                 <option value="note">Note</option>
                 <option value="training">Training</option>
@@ -444,7 +431,7 @@ function PersonalCalendarSection({
                 onChange={(event) =>
                   setStatus(event.target.value as EngineerCalendarEntryStatus)
                 }
-                className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-xs font-medium normal-case tracking-normal text-slate-200 outline-none focus:border-blue-400/60"
+                className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-xs font-medium text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               >
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
@@ -464,7 +451,7 @@ function PersonalCalendarSection({
                   ? "e.g. Extra night shift"
                   : "Short title"
             }
-            className="h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400/60"
+            className="h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           />
 
           <textarea
@@ -472,11 +459,11 @@ function PersonalCalendarSection({
             onChange={(event) => setNotes(event.target.value)}
             rows={3}
             placeholder="Optional notes"
-            className="w-full resize-none rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 py-2.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400/60"
+            className="w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 py-2.5 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           />
 
           <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
-            Hours <span className="normal-case tracking-normal text-slate-600">optional</span>
+            Hours <span className="text-slate-600">optional</span>
             <input
               type="number"
               min="0"
@@ -485,7 +472,7 @@ function PersonalCalendarSection({
               value={hours}
               onChange={(event) => setHours(event.target.value)}
               placeholder="e.g. 12"
-              className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-sm font-medium normal-case tracking-normal text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400/60"
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-700/80 bg-[#030c1d] px-3 text-sm font-medium text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             />
           </label>
 
@@ -1227,7 +1214,7 @@ export function EngineerRotaScreen(): JSX.Element {
                         </span>
                         {personalEntries.length > 0 ? (
                           <span
-                            className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-cyan-300"
+                            className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-blue-500/35"
                             aria-label={`${personalEntries.length} personal profile ${personalEntries.length === 1 ? "entry" : "entries"}`}
                           />
                         ) : null}
@@ -1253,7 +1240,7 @@ export function EngineerRotaScreen(): JSX.Element {
                     <i className="h-2 w-2 rounded-sm bg-slate-800/60" /> Off
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <i className="h-2 w-2 rounded-full bg-cyan-300" /> My entry
+                    <i className="h-2 w-2 rounded-full bg-blue-500/35" /> My entry
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <i className="h-2 w-2 rounded-full bg-amber-400" /> Availability clash
