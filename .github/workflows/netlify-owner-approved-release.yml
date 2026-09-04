@@ -1,0 +1,78 @@
+name: Owner-approved Netlify production release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/netlify-owner-approved-release.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: owner-approved-netlify-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+      VORTA_PRODUCTION_URL: https://vorta-app.netlify.app
+
+    steps:
+      - name: Check out exact release commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Require secure Netlify build hook
+        shell: bash
+        run: |
+          if [[ -z "$NETLIFY_BUILD_HOOK_URL" ]]; then
+            echo "NETLIFY_BUILD_HOOK_URL is not configured."
+            exit 1
+          fi
+
+      - name: Trigger production build
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "content-type: application/json" \
+            --data "{\"trigger_title\":\"Owner-approved Engineer mobile fixes $GITHUB_SHA\"}" \
+            "$NETLIFY_BUILD_HOOK_URL"
+
+      - name: Wait for exact production commit
+        shell: bash
+        run: |
+          for attempt in $(seq 1 80); do
+            deployed_commit="$(curl --fail --silent --show-error \
+              --header "Cache-Control: no-cache" \
+              "${VORTA_PRODUCTION_URL}/vorta-build.json?release=${GITHUB_RUN_ID}-${attempt}" \
+              | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { try { console.log(JSON.parse(input).commit || ""); } catch { console.log(""); } });' \
+              || true)"
+            if [[ "$deployed_commit" == "$GITHUB_SHA" ]]; then
+              echo "Production is serving $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Production did not reach $GITHUB_SHA" >&2
+          exit 1
+
+      - name: Remove one-shot release workflow
+        if: success()
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/netlify-owner-approved-release.yml
+          git config user.name "Vorta Immediate Release"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "chore: remove one-shot Netlify release workflow [skip netlify]"
+          git push origin HEAD:main
