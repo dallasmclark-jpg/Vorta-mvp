@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+// Current-state security contract for the governed Engineer calendar RPC surface.
 const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
