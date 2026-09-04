@@ -152,14 +152,14 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
         ? createPortal(
             <div
               data-vorta-engineer-calendar-prompts="true"
-              className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+              className="mt-3 grid gap-2 sm:grid-cols-2"
             >
               {CALENDAR_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => void runCalendarQuestion(prompt)}
-                  className="min-h-11 rounded-xl border border-blue-500/25 bg-blue-500/[0.07] px-3 text-left text-xs font-medium leading-5 text-slate-300 transition-colors hover:border-blue-400/45 hover:bg-blue-500/[0.12] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-left text-xs font-medium leading-5 text-slate-300 hover:border-blue-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
                   {prompt}
                 </button>
@@ -171,16 +171,22 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
 
       {target && (question || loading)
         ? createPortal(
-            <div data-vorta-engineer-calendar-answer="true" className="space-y-3 px-4 pb-5 sm:px-5">
+            <div data-vorta-engineer-calendar-answer="true" className="space-y-3 px-4 pb-5">
               {question ? (
-                <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md border border-blue-500/25 bg-blue-600/15 px-3.5 py-3 text-sm leading-6 text-slate-100">
+                <div
+                  className="ml-auto rounded-2xl border border-blue-500 bg-blue-950 p-3 text-sm leading-6 text-slate-100"
+                  style={{ maxWidth: "88%" }}
+                >
                   {question}
                 </div>
               ) : null}
 
-              <div className="max-w-[94%] rounded-2xl rounded-bl-md border border-slate-800/80 bg-[#07172b] px-3.5 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.16)]">
-                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-400">
-                  {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              <div
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-3"
+                style={{ maxWidth: "94%" }}
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Ask Vorta · My profile
                 </div>
                 {loading ? (
@@ -190,8 +196,8 @@ export function EngineerCalendarAiBridge(): JSX.Element | null {
                 ) : (
                   <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-200">{answer}</p>
                 )}
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-600">
-                  <CalendarDays className="h-3.5 w-3.5" />
+                <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+                  <CalendarDays className="h-4 w-4" />
                   Personal engineer data only
                 </div>
               </div>
