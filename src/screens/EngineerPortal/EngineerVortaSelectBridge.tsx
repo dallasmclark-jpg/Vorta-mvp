@@ -39,7 +39,9 @@ function resolveSelectLabel(select: HTMLSelectElement): string {
   const label = select.closest("label");
   if (label) {
     const clone = label.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("select, input, textarea, button, option, optgroup").forEach((node) => node.remove());
+    clone
+      .querySelectorAll("select, input, textarea, button, option, optgroup")
+      .forEach((node) => node.remove());
     const text = clone.textContent?.replace(/\s+/g, " ").trim();
     if (text) return text;
   }
@@ -92,7 +94,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
 
       event.preventDefault();
       event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      event.stopImmediatePropagation?.();
       setActive(snapshotSelect(select));
     };
 
@@ -102,7 +104,7 @@ export function EngineerVortaSelectBridge(): JSX.Element {
       if (!isMobileEngineerSelect(select)) return;
       event.preventDefault();
       event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      event.stopImmediatePropagation?.();
     };
 
     document.addEventListener("pointerdown", openFromEvent, true);
@@ -154,12 +156,147 @@ export function EngineerVortaSelectBridge(): JSX.Element {
             color-scheme: dark;
           }
         }
+
+        .vorta-select-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 260;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 4rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+          background: rgba(0, 0, 0, 0.72);
+          backdrop-filter: blur(3px);
+        }
+
+        .vorta-select-sheet {
+          display: flex;
+          width: 100%;
+          max-width: 28rem;
+          max-height: 72dvh;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid rgba(51, 65, 85, 0.8);
+          border-radius: 1.45rem;
+          background: #07111f;
+          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
+        }
+
+        .vorta-select-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 0.875rem 1rem;
+          border-bottom: 1px solid rgba(30, 41, 59, 0.85);
+        }
+
+        .vorta-select-heading { min-width: 0; }
+        .vorta-select-kicker {
+          margin: 0;
+          color: #60a5fa;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+        .vorta-select-title {
+          margin: 0.25rem 0 0;
+          overflow: hidden;
+          color: #f1f5f9;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .vorta-select-close {
+          display: inline-flex;
+          width: 2.5rem;
+          height: 2.5rem;
+          flex: 0 0 2.5rem;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(51, 65, 85, 0.8);
+          border-radius: 0.75rem;
+          background: #030c1d;
+          color: #94a3b8;
+        }
+        .vorta-select-close:focus-visible,
+        .vorta-select-option:focus-visible {
+          outline: 2px solid #60a5fa;
+          outline-offset: 2px;
+        }
+        .vorta-select-close svg { width: 1rem; height: 1rem; }
+
+        .vorta-select-options {
+          overflow-y: auto;
+          padding: 0.625rem;
+          overscroll-behavior: contain;
+        }
+        .vorta-select-group {
+          margin: 0;
+          padding: 0.75rem 0.75rem 0.25rem;
+          color: #475569;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+        .vorta-select-option {
+          display: flex;
+          width: 100%;
+          min-height: 3.35rem;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin-bottom: 0.25rem;
+          padding: 0.625rem 0.875rem;
+          border: 1px solid transparent;
+          border-radius: 0.75rem;
+          background: transparent;
+          color: #e2e8f0;
+          font: inherit;
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-align: left;
+        }
+        .vorta-select-option[data-selected="true"] {
+          border-color: rgba(96, 165, 250, 0.45);
+          background: rgba(59, 130, 246, 0.10);
+          color: #dbeafe;
+        }
+        .vorta-select-option:disabled { opacity: 0.4; }
+        .vorta-select-option-label {
+          min-width: 0;
+          flex: 1 1 auto;
+          line-height: 1.25rem;
+        }
+        .vorta-select-radio {
+          display: grid;
+          width: 1.25rem;
+          height: 1.25rem;
+          flex: 0 0 1.25rem;
+          place-items: center;
+          border: 1px solid #64748b;
+          border-radius: 9999px;
+        }
+        .vorta-select-option[data-selected="true"] .vorta-select-radio {
+          border-color: #93c5fd;
+          background: rgba(59, 130, 246, 0.10);
+        }
+        .vorta-select-radio-dot {
+          width: 0.625rem;
+          height: 0.625rem;
+          border-radius: 9999px;
+          background: #93c5fd;
+        }
       `}</style>
 
       {active && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[260] flex items-end justify-center bg-black/72 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-16 backdrop-blur-[3px]"
+              className="vorta-select-overlay"
               role="presentation"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) setActive(null);
@@ -168,28 +305,24 @@ export function EngineerVortaSelectBridge(): JSX.Element {
               <section
                 role="listbox"
                 aria-label={active.label}
-                className="flex max-h-[72dvh] w-full max-w-md flex-col overflow-hidden rounded-[1.45rem] border border-slate-700/80 bg-[#07111f] shadow-[0_22px_70px_rgba(0,0,0,0.48)]"
+                className="vorta-select-sheet"
               >
-                <div className="flex items-center justify-between gap-4 border-b border-slate-800/85 px-4 py-3.5">
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-400">
-                      Vorta
-                    </p>
-                    <h2 className="mt-1 truncate text-sm font-semibold text-slate-100">
-                      {active.label}
-                    </h2>
+                <div className="vorta-select-header">
+                  <div className="vorta-select-heading">
+                    <p className="vorta-select-kicker">Vorta</p>
+                    <h2 className="vorta-select-title">{active.label}</h2>
                   </div>
                   <button
                     type="button"
                     onClick={() => setActive(null)}
                     aria-label="Close options"
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700/80 bg-[#030c1d] text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    className="vorta-select-close"
                   >
-                    <X className="h-4 w-4" />
+                    <X aria-hidden="true" />
                   </button>
                 </div>
 
-                <div className="overflow-y-auto p-2.5">
+                <div className="vorta-select-options">
                   {active.options.map((option, index) => {
                     const selected = option.value === active.value;
                     const previousGroup = index > 0 ? active.options[index - 1]?.group ?? null : null;
@@ -197,34 +330,20 @@ export function EngineerVortaSelectBridge(): JSX.Element {
                     return (
                       <div key={`${option.value}-${index}`}>
                         {showGroup ? (
-                          <p className="px-3 pb-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                            {option.group}
-                          </p>
+                          <p className="vorta-select-group">{option.group}</p>
                         ) : null}
                         <button
                           type="button"
                           role="option"
                           aria-selected={selected}
+                          data-selected={selected ? "true" : "false"}
                           disabled={option.disabled}
                           onClick={() => choose(option)}
-                          className={[
-                            "mb-1 flex min-h-[3.35rem] w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40",
-                            selected
-                              ? "border-blue-400/45 bg-blue-500/[0.10] text-blue-100"
-                              : "border-transparent bg-transparent text-slate-200 hover:border-slate-700/80 hover:bg-white/[0.03]",
-                          ].join(" ")}
+                          className="vorta-select-option"
                         >
-                          <span className="min-w-0 flex-1 leading-5">{option.label}</span>
-                          <span
-                            aria-hidden="true"
-                            className={[
-                              "grid h-5 w-5 shrink-0 place-items-center rounded-full border",
-                              selected
-                                ? "border-blue-300 bg-blue-500/10"
-                                : "border-slate-500 bg-transparent",
-                            ].join(" ")}
-                          >
-                            {selected ? <i className="h-2.5 w-2.5 rounded-full bg-blue-300" /> : null}
+                          <span className="vorta-select-option-label">{option.label}</span>
+                          <span aria-hidden="true" className="vorta-select-radio">
+                            {selected ? <i className="vorta-select-radio-dot" /> : null}
                           </span>
                         </button>
                       </div>
