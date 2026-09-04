@@ -1,16 +1,28 @@
 {
   "schemaVersion": 1,
-  "migrationVersion": "20260904103500",
-  "migrationName": "register_engineer_calendar_rpc_security",
+  "migrationVersion": "20260904215000",
+  "migrationName": "harden_site_onboarding_rpc_security",
   "invariants": {
-    "authenticatedCallable": 82,
+    "authenticatedCallable": 84,
     "reviewedRead": 58,
-    "reviewedMutation": 24,
+    "reviewedMutation": 26,
     "securityDefiner": 6,
-    "securityInvoker": 76,
+    "securityInvoker": 78,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },
+  "siteOnboardingRpcs": [
+    {
+      "identity": "vorta_bootstrap_site_owner(text,text,text,text,text,text)",
+      "class": "mutation",
+      "scope": "authenticated verified user with no existing organisation or active site assignment; creates exactly one organisation, one site, Site Owner access and an audit event"
+    },
+    {
+      "identity": "vorta_accept_site_invitation(uuid,text)",
+      "class": "mutation",
+      "scope": "authenticated verified user; pending non-expired invitation must match the exact email and organisation before membership creation and audit"
+    }
+  ],
   "askVortaEvidenceRpcs": [
     {
       "identity": "vorta_get_shift_cover_ai_brief(uuid,date,date)",
@@ -141,6 +153,7 @@
   "legacyManifestSources": [
     "supabase/migrations/20260719235900_harden_privileged_rpcs.sql",
     "supabase/migrations/20260720090000_review_authenticated_read_rpcs.sql",
-    "supabase/migrations/20260720193117_complete_rpc_security_manifest.sql"
+    "supabase/migrations/20260720193117_complete_rpc_security_manifest.sql",
+    "supabase/migrations/20260904103500_register_engineer_calendar_rpc_security.sql"
   ]
 }
