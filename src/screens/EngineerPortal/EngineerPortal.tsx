@@ -6,6 +6,7 @@ import { EngineerAskVortaScreen } from "./EngineerAskVortaScreen";
 import { EngineerBottomNavStyles } from "./EngineerBottomNavStyles";
 import { EngineerCalendarAiBridge } from "./EngineerCalendarAiBridge";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
+import { EngineerEquipmentCompetencyScreen } from "./EngineerEquipmentCompetencyScreen";
 import {
   EngineerEquipmentDetailScreen,
   EngineerEquipmentScreen,
@@ -107,6 +108,10 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="stores" element={<EngineerStoresScreen />} />
         <Route path="stores/:partNumber" element={<EngineerSpareDetailScreen />} />
         <Route path="skills" element={<EngineerSkillsScreen />} />
+        <Route
+          path="skills/equipment/:equipmentId"
+          element={<EngineerEquipmentCompetencyScreen />}
+        />
         <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
 
         <Route path="handover" element={<EngineerHandoverScreen />} />
