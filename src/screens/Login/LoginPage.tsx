@@ -361,9 +361,8 @@ export const LoginPage = (): JSX.Element => {
 
   const handleSignUpRequest = () => {
     setError(null);
-    setNotice(
-      "Vorta pilot access is currently invitation-only. Contact your Vorta administrator or pilot lead to request access.",
-    );
+    setNotice(null);
+    navigate("/signup");
   };
 
   const handleLinkedIn = async (): Promise<void> => {

@@ -168,6 +168,9 @@ export const AiOperations = (): JSX.Element => {
       to: "/support",
     },
     ...(mayAdministerPilot
+      ? [{ label: "People & Access", icon: Users, to: "/admin/site" }]
+      : []),
+    ...(mayAdministerPilot
       ? [{ label: "Pilot Setup", icon: ClipboardCheck, to: "/settings/pilot-setup" }]
       : []),
     ...(mayImportSapData

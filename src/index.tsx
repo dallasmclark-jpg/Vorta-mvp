@@ -41,6 +41,12 @@ import {
 import {
   ResetPasswordPage,
 } from "./screens/Login/ResetPasswordPage";
+import {
+  SiteAdministrationPage,
+} from "./screens/SiteOnboarding/SiteAdministrationPage";
+import {
+  SiteSignupPage,
+} from "./screens/SiteOnboarding/SiteSignupPage";
 
 function VortaConfigurationFailure({
   message,
@@ -213,6 +219,11 @@ if (
                 />
 
                 <Route
+                  path="/signup"
+                  element={<SiteSignupPage />}
+                />
+
+                <Route
                   path="/auth/callback"
                   element={
                     <AuthCallbackPage />
@@ -223,6 +234,17 @@ if (
                   path="/reset-password"
                   element={
                     <ResetPasswordPage />
+                  }
+                />
+
+                <Route
+                  path="/admin/site"
+                  element={
+                    <RequireRole role="site_admin">
+                      <VortaRouteErrorBoundary>
+                        <SiteAdministrationPage />
+                      </VortaRouteErrorBoundary>
+                    </RequireRole>
                   }
                 />
 

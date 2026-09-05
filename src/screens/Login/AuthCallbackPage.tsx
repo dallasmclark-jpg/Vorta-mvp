@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  resolveSessionRole,
+  normalisePilotRole,
   roleHomePath,
 } from "../../lib/auth";
 import { VortaLoadingScreen } from "../../components/VortaLoadingScreen";
@@ -15,53 +15,138 @@ export function AuthCallbackPage(): JSX.Element {
     let active = true;
 
     async function completeOAuth(): Promise<void> {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
 
-      if (code) {
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
+        if (code) {
+          const { error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(code);
 
-        if (exchangeError) {
-          if (active) setError(exchangeError.message);
+          if (exchangeError) throw exchangeError;
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (!active) return;
+        if (sessionError || !session) {
+          throw sessionError ?? new Error("Vorta could not complete authentication.");
+        }
+
+        const metadata = session.user.user_metadata ?? {};
+        const invitationId =
+          typeof metadata.vorta_invitation_id === "string"
+            ? metadata.vorta_invitation_id
+            : null;
+
+        if (invitationId) {
+          const { data: accepted, error: invitationError } = await supabase.rpc(
+            "vorta_accept_site_invitation",
+            {
+              p_invitation_id: invitationId,
+              p_full_name:
+                typeof metadata.full_name === "string"
+                  ? metadata.full_name
+                  : null,
+            },
+          );
+
+          if (invitationError) throw invitationError;
+
+          const acceptedRole = normalisePilotRole(accepted?.[0]?.app_role);
+          window.location.replace(
+            acceptedRole ? roleHomePath(acceptedRole) : "/",
+          );
           return;
         }
-      }
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+        if (metadata.vorta_signup_intent === "site_owner") {
+          const required = [
+            metadata.full_name,
+            metadata.vorta_organisation_name,
+            metadata.vorta_industry,
+            metadata.vorta_country,
+            metadata.vorta_site_name,
+          ];
 
-      if (!active) return;
+          if (required.some((value) => typeof value !== "string" || !value.trim())) {
+            throw new Error("The Vorta site setup details are incomplete. Return to sign up and try again.");
+          }
 
-      if (sessionError || !session) {
-        setError(
-          sessionError?.message ??
-            "Vorta could not complete authentication.",
-        );
-        return;
-      }
-
-      const role = resolveSessionRole(session);
-
-      if (!role) {
-        await supabase.auth.signOut();
-
-        if (active) {
-          navigate("/", {
-            replace: true,
-            state: {
-              authError:
-                "Your account does not have a supported Vorta pilot role.",
+          const { data: created, error: bootstrapError } = await supabase.rpc(
+            "vorta_bootstrap_site_owner",
+            {
+              p_full_name: metadata.full_name,
+              p_organisation_name: metadata.vorta_organisation_name,
+              p_industry: metadata.vorta_industry,
+              p_country: metadata.vorta_country,
+              p_site_name: metadata.vorta_site_name,
+              p_site_location:
+                typeof metadata.vorta_site_location === "string"
+                  ? metadata.vorta_site_location
+                  : null,
             },
-          });
+          );
+
+          if (bootstrapError) throw bootstrapError;
+
+          const createdRole = normalisePilotRole(created?.[0]?.app_role);
+          window.location.replace(
+            createdRole ? roleHomePath(createdRole) : "/dashboard",
+          );
+          return;
         }
 
-        return;
-      }
+        const [profileResult, accessResult] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .maybeSingle(),
+          supabase
+            .from("user_site_access")
+            .select("app_role,is_default")
+            .eq("user_id", session.user.id)
+            .eq("active", true)
+            .order("is_default", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
 
-      navigate(roleHomePath(role), { replace: true });
+        if (profileResult.error || accessResult.error) {
+          throw new Error("Vorta could not verify your portal access.");
+        }
+
+        const role =
+          normalisePilotRole(accessResult.data?.app_role) ??
+          normalisePilotRole(profileResult.data?.role);
+
+        if (!role) {
+          await supabase.auth.signOut();
+          if (active) {
+            navigate("/", {
+              replace: true,
+              state: {
+                authError:
+                  "Your account does not have an active Vorta site role.",
+              },
+            });
+          }
+          return;
+        }
+
+        window.location.replace(roleHomePath(role));
+      } catch (callbackError) {
+        if (!active) return;
+        setError(
+          callbackError instanceof Error
+            ? callbackError.message
+            : "Vorta could not complete authentication.",
+        );
+      }
     }
 
     void completeOAuth();
