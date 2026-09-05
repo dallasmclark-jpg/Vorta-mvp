@@ -76,6 +76,7 @@ const contracts = [
   ["Post-audit P0", "scripts/post-audit-p0-contracts.mjs"],
   ["Audit remediation", "scripts/audit-remediation-contracts.mjs"],
   ["Accessibility navigation", "scripts/accessibility-navigation-contracts.mjs"],
+  ["Site onboarding authority", "scripts/site-onboarding-authority-contracts.mjs"],
   ["RPC security manifest", "scripts/rpc-security-manifest-contracts.mjs"],
   ["Demo backend health", "scripts/demo-backend-health-contracts.mjs"],
   ["Live backend health gate", "scripts/live-backend-health-gate-contracts.mjs"],
