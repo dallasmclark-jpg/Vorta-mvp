@@ -1,0 +1,201 @@
+name: Vorta pilot-live release
+
+on:
+  workflow_run:
+    workflows:
+      - Vorta Quality Gate
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vorta-pilot-live-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    name: Promote and verify exact green pilot-live commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      PILOT_LIVE_URL: https://pilot-live--vorta-app.netlify.app
+      VORTA_E2E_EMAIL: demo@vorta.network
+      VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
+      VORTA_E2E_SITE_ID: 11000000-0000-0000-0000-000000000001
+      VORTA_E2E_DENIED_SITE_ID: 11000000-0000-0000-0000-000000000002
+      VITE_SUPABASE_URL: https://ndhqxetvkaeyiwvnvjjy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
+
+    steps:
+      - name: Check out exact tested commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked application dependencies
+        run: npm ci --silent
+
+      - name: Refuse stale release candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main pilot-live --quiet
+          current_main="$(git rev-parse origin/main)"
+          if [ "$current_main" != "$EXPECTED_COMMIT" ]; then
+            echo "main moved from $EXPECTED_COMMIT to $current_main after the quality gate; refusing stale promotion." >&2
+            exit 1
+          fi
+
+      - name: Verify authenticated browser-test secret
+        shell: bash
+        run: |
+          test -n "$VORTA_E2E_PASSWORD" || {
+            echo "VORTA_E2E_PASSWORD is not configured for release verification." >&2
+            exit 1
+          }
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated release browser regression before promotion
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:browser -- \
+            tests/browser/maintenance-manager-core.spec.ts \
+            tests/browser/maintenance-manager-work-orders.spec.ts \
+            tests/browser/maintenance-manager-dashboard-resilience.spec.ts \
+            tests/browser/maintenance-manager-accessibility.spec.ts \
+            tests/browser/maintenance-manager-mobile-routes.spec.ts \
+            --project=phone-360 \
+            --project=desktop-1920
+
+      - name: Run live-data boundary regression before promotion
+        shell: bash
+        env:
+          VITE_VORTA_DATA_MODE: live
+        run: |
+          set -o pipefail
+          npx playwright test \
+            tests/browser/maintenance-manager-live.spec.ts \
+            tests/browser/maintenance-manager-live-engineers.spec.ts \
+            tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
+            tests/browser/maintenance-manager-live-training-evidence.spec.ts \
+            tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
+            --project=desktop-1920 \
+            --config=playwright.config.ts
+
+      - name: Capture rollback commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pilot-live --quiet
+          previous_pilot_sha="$(git rev-parse origin/pilot-live)"
+          echo "PREVIOUS_PILOT_SHA=$previous_pilot_sha" >> "$GITHUB_ENV"
+          echo "Rollback target: $previous_pilot_sha"
+
+      - name: Promote exact green commit to pilot-live
+        id: promote
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "$EXPECTED_COMMIT:refs/heads/pilot-live"
+          git fetch origin pilot-live --quiet
+          promoted_sha="$(git rev-parse origin/pilot-live)"
+          test "$promoted_sha" = "$EXPECTED_COMMIT" || {
+            echo "pilot-live reports $promoted_sha instead of $EXPECTED_COMMIT." >&2
+            exit 1
+          }
+
+      - name: Wait for Netlify pilot-live to serve exact commit
+        id: verify_pilot
+        continue-on-error: true
+        env:
+          VORTA_PRODUCTION_URL: ${{ env.PILOT_LIVE_URL }}
+        run: node scripts/verify-production-commit.mjs
+
+      - name: Run authenticated deployed pilot-live regression
+        id: deployed_regression
+        if: steps.verify_pilot.outcome == 'success'
+        continue-on-error: true
+        env:
+          VORTA_E2E_BASE_URL: ${{ env.PILOT_LIVE_URL }}
+          VITE_VORTA_DATA_MODE: live
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test \
+            tests/browser/maintenance-manager-live.spec.ts \
+            tests/browser/maintenance-manager-live-engineers.spec.ts \
+            tests/browser/maintenance-manager-live-workforce-evidence.spec.ts \
+            tests/browser/maintenance-manager-live-training-evidence.spec.ts \
+            tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
+            --project=desktop-1920 \
+            --config=playwright.config.ts
+
+      - name: Preserve failed deployed release evidence
+        if: >-
+          steps.verify_pilot.outcome == 'failure' ||
+          steps.deployed_regression.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pilot-live-release-failure-${{ github.event.workflow_run.head_sha }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Roll back failed pilot-live release
+        if: >-
+          steps.verify_pilot.outcome == 'failure' ||
+          steps.deployed_regression.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Release verification failed; restoring pilot-live to $PREVIOUS_PILOT_SHA."
+          git push --force origin "$PREVIOUS_PILOT_SHA:refs/heads/pilot-live"
+
+      - name: Verify rollback deployment after failed release
+        if: >-
+          steps.verify_pilot.outcome == 'failure' ||
+          steps.deployed_regression.outcome == 'failure'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_COMMIT="$PREVIOUS_PILOT_SHA" \
+          VORTA_PRODUCTION_URL="$PILOT_LIVE_URL" \
+          node scripts/verify-production-commit.mjs
+
+      - name: Enforce deployed pilot-live release result
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.promote.outcome }}" = "success" || {
+            echo "pilot-live promotion did not complete." >&2
+            exit 1
+          }
+          test "${{ steps.verify_pilot.outcome }}" = "success" || {
+            echo "Netlify did not serve the exact promoted commit; pilot-live was rolled back." >&2
+            exit 1
+          }
+          test "${{ steps.deployed_regression.outcome }}" = "success" || {
+            echo "Deployed pilot-live regression failed; pilot-live was rolled back." >&2
+            exit 1
+          }
+          echo "pilot-live is verified at exact green commit $EXPECTED_COMMIT."
