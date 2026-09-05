@@ -175,10 +175,12 @@ jobs:
           steps.verify_pilot.outcome == 'failure' ||
           steps.deployed_regression.outcome == 'failure'
         continue-on-error: true
-        env:
-          EXPECTED_COMMIT: ${{ env.PREVIOUS_PILOT_SHA }}
-          VORTA_PRODUCTION_URL: ${{ env.PILOT_LIVE_URL }}
-        run: node scripts/verify-production-commit.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_COMMIT="$PREVIOUS_PILOT_SHA" \
+          VORTA_PRODUCTION_URL="$PILOT_LIVE_URL" \
+          node scripts/verify-production-commit.mjs
 
       - name: Enforce deployed pilot-live release result
         if: always()
