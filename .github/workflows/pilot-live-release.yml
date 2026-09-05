@@ -1,11 +1,17 @@
 name: Vorta pilot-live release
 
 on:
-  workflow_run:
-    workflows:
-      - Vorta Quality Gate
-    types:
-      - completed
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact current main commit SHA to promote after all pilot blockers are approved
+        required: true
+        type: string
+      confirm_live_release:
+        description: Confirm this is an intentional live-data pilot release
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -16,14 +22,12 @@ concurrency:
 
 jobs:
   release:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
-    name: Promote and verify exact green pilot-live commit
+    if: inputs.confirm_live_release == true
+    name: Gate, promote and verify exact pilot-live commit
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
-      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      EXPECTED_COMMIT: ${{ inputs.release_sha }}
       PILOT_LIVE_URL: https://pilot-live--vorta-app.netlify.app
       VORTA_E2E_EMAIL: demo@vorta.network
       VORTA_E2E_PASSWORD: ${{ secrets.VORTA_E2E_PASSWORD }}
@@ -33,10 +37,10 @@ jobs:
       VITE_SUPABASE_ANON_KEY: sb_publishable_JCxOUB33InqPhTJWwDVRfQ_Yi3P6NBq
 
     steps:
-      - name: Check out exact tested commit
+      - name: Check out exact requested commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.release_sha }}
           fetch-depth: 0
           show-progress: false
 
@@ -49,16 +53,24 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci --silent
 
-      - name: Refuse stale release candidates
+      - name: Refuse stale or non-main release candidates
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main pilot-live --quiet
           current_main="$(git rev-parse origin/main)"
-          if [ "$current_main" != "$EXPECTED_COMMIT" ]; then
-            echo "main moved from $EXPECTED_COMMIT to $current_main after the quality gate; refusing stale promotion." >&2
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$EXPECTED_COMMIT" != "$current_main" ]; then
+            echo "Requested release $EXPECTED_COMMIT is not current main $current_main; refusing promotion." >&2
             exit 1
           fi
+          if [ "$checked_out" != "$EXPECTED_COMMIT" ]; then
+            echo "Checked-out commit $checked_out does not match requested release $EXPECTED_COMMIT." >&2
+            exit 1
+          fi
+
+      - name: Run full production build and performance gate
+        run: npm run build
 
       - name: Verify authenticated browser-test secret
         shell: bash
@@ -98,6 +110,17 @@ jobs:
             tests/browser/maintenance-manager-live-boundary-evidence.spec.ts \
             --project=desktop-1920 \
             --config=playwright.config.ts
+
+      - name: Reconfirm main has not moved during release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          current_main="$(git rev-parse origin/main)"
+          if [ "$current_main" != "$EXPECTED_COMMIT" ]; then
+            echo "main moved from $EXPECTED_COMMIT to $current_main during release verification; refusing stale promotion." >&2
+            exit 1
+          fi
 
       - name: Capture rollback commit
         shell: bash
@@ -153,7 +176,7 @@ jobs:
           steps.deployed_regression.outcome == 'failure'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: pilot-live-release-failure-${{ github.event.workflow_run.head_sha }}
+          name: pilot-live-release-failure-${{ inputs.release_sha }}
           path: |
             playwright-report
             test-results
