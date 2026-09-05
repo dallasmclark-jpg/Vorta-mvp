@@ -28,6 +28,14 @@ const assistant = read(
 );
 const supabaseClient = read("src/lib/supabaseClient.ts");
 const browserWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
+const engineerPortal = read("src/screens/EngineerPortal/EngineerPortal.tsx");
+const engineerIdentity = read("src/screens/EngineerPortal/engineerIdentity.ts");
+const engineerSkills = read("src/screens/EngineerPortal/EngineerSkillsLiveScreens.tsx");
+const engineerWork = read("src/screens/EngineerPortal/EngineerWorkLiveScreens.tsx");
+const engineerEquipment = read("src/screens/EngineerPortal/EngineerEquipmentLiveScreens.tsx");
+const engineerSkillsFunction = read("supabase/functions/engineer-skills-data/index.ts");
+const engineerWorkFunction = read("supabase/functions/engineer-work-data/index.ts");
+const engineerEquipmentFunction = read("supabase/functions/engineer-equipment-data/index.ts");
 
 for (const retired of [
   ".github/workflows/audit-apply-patch.yml",
@@ -75,6 +83,34 @@ assert.doesNotMatch(assistant, /MutationObserver|stopImmediatePropagation|docume
 assert.match(supabaseClient, /signal\?: AbortSignal/);
 assert.match(supabaseClient, /signal:\s*invocationSignal\(options\)/);
 assert.match(supabaseClient, /invocationSignal\(options\)\?\.aborted/);
+
+// Engineer portal audit contracts: active routes must be live-only and self/site scoped.
+assert.match(engineerPortal, /EngineerSkillsLiveScreens/);
+assert.match(engineerPortal, /EngineerWorkLiveScreens/);
+assert.match(engineerPortal, /EngineerEquipmentLiveScreens/);
+assert.doesNotMatch(engineerPortal, /EngineerCoreScreens|EngineerStoresEquipmentFilter/);
+assert.doesNotMatch(engineerSkills, /DEMO_|MOCK_|skills-matrix-data|engineers-data/);
+assert.doesNotMatch(engineerWork, /DEMO_|MOCK_|\.from\("work_orders"\)/);
+assert.doesNotMatch(engineerEquipment, /DEMO_|MOCK_|getEquipmentList|getEquipmentComponents/);
+assert.match(engineerSkills, /engineer-skills-data/);
+assert.match(engineerWork, /engineer-work-data/);
+assert.match(engineerEquipment, /engineer-equipment-data/);
+assert.match(engineerIdentity, /\.eq\("profile_id", profileId\)/);
+assert.doesNotMatch(engineerIdentity, /loadEngineerByExactName|exact-name identity|full-name identity/);
+
+for (const endpoint of [
+  engineerSkillsFunction,
+  engineerWorkFunction,
+  engineerEquipmentFunction,
+]) {
+  assert.match(endpoint, /\.eq\("profile_id", user\.id\)/);
+  assert.match(endpoint, /\.from\("user_site_access"\)/);
+  assert.match(endpoint, /roleKey\(access\.app_role\) !== "engineer"/);
+  assert.doesNotMatch(endpoint, /user_metadata.*engineer_id|raw_user_meta_data.*engineer_id/);
+}
+assert.match(engineerWorkFunction, /\.eq\("site_id", siteId\)/);
+assert.match(engineerWorkFunction, /\.ilike\("assigned_engineer", String\(engineer\.full_name\)\)/);
+assert.match(engineerEquipmentFunction, /\.eq\("organisation_id", profile\.organisation_id\)/);
 
 assert.match(browserWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
 assert.match(browserWorkflow, /maintenance-manager-dashboard-resilience\.spec\.ts/);
