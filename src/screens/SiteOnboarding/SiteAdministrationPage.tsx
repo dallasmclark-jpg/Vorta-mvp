@@ -39,7 +39,9 @@ const ROLES = [
 ] as const;
 
 const fieldClass =
-  "h-10 rounded-lg border border-slate-700 bg-[#0b0e14] px-3 text-sm text-slate-200 outline-none disabled:opacity-50";
+  "h-10 rounded-lg border border-slate-700 px-3 text-sm text-slate-200 outline-none disabled:opacity-50";
+const fieldStyle = { backgroundColor: "#0b0e14" };
+const panelStyle = { backgroundColor: "#11151d" };
 
 const roleLabel = (value: string) =>
   value === "site_owner"
@@ -80,7 +82,7 @@ export function SiteAdministrationPage(): JSX.Element {
     try {
       setData((await invoke({ action: "list" })) as AdminPayload);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Site administration could not be loaded.");
+      setError(loadError instanceof Error ? loadError.message : "Could not load site administration.");
     } finally {
       setLoading(false);
     }
@@ -130,13 +132,13 @@ export function SiteAdministrationPage(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-slate-100">
+    <div className="min-h-screen text-slate-100" style={{ backgroundColor: "#0b0e14" }}>
       <header className="flex h-16 items-center justify-between border-b border-slate-800 px-6">
         <VortaLogo />
         <Link to="/dashboard" className="text-sm text-slate-400">Back to Vorta</Link>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-8">
+      <main className="mx-auto w-full px-4 py-8" style={{ maxWidth: "64rem" }}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-white">People & access</h1>
@@ -145,22 +147,22 @@ export function SiteAdministrationPage(): JSX.Element {
           <button type="button" onClick={() => void load()} disabled={loading || working} className="h-10 rounded-lg border border-slate-700 px-4 text-sm text-slate-300 disabled:opacity-50">Refresh</button>
         </div>
 
-        {message && <p className="mt-5 text-sm text-emerald-400">{message}</p>}
+        {message && <p className="mt-5 text-sm text-blue-400">{message}</p>}
         {error && <p className="mt-5 text-sm text-red-400">{error}</p>}
 
-        <section className="mt-6 rounded-xl border border-slate-800 bg-[#11151d] p-5">
+        <section className="mt-6 rounded-xl border border-slate-800 p-5" style={panelStyle}>
           <h2 className="font-semibold text-white">Invite team member</h2>
-          <form onSubmit={submitInvite} className="mt-4 grid gap-3 md:grid-cols-4">
-            <input className={fieldClass} value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Full name" disabled={working} />
-            <input className={fieldClass} type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Work email" required disabled={working} />
-            <select className={fieldClass} value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} disabled={working}>
+          <form onSubmit={submitInvite} className="mt-4 flex flex-wrap gap-3">
+            <input className={`${fieldClass} flex-1`} style={{ ...fieldStyle, minWidth: "12rem" }} value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Full name" disabled={working} />
+            <input className={`${fieldClass} flex-1`} style={{ ...fieldStyle, minWidth: "12rem" }} type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Work email" required disabled={working} />
+            <select className={`${fieldClass} flex-1`} style={{ ...fieldStyle, minWidth: "12rem" }} value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} disabled={working}>
               {ROLES.filter(([role]) => isOwner || role !== "site_admin").map(([role, label]) => <option key={role} value={role}>{label}</option>)}
             </select>
             <button type="submit" disabled={working || !inviteEmail.trim()} className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-50">Invite</button>
           </form>
         </section>
 
-        <section className="mt-6 overflow-hidden rounded-xl border border-slate-800 bg-[#11151d]">
+        <section className="mt-6 rounded-xl border border-slate-800" style={panelStyle}>
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
             <h2 className="font-semibold text-white">Site members</h2>
             <span className="text-xs text-slate-500">{members.length} active</span>
@@ -177,8 +179,8 @@ export function SiteAdministrationPage(): JSX.Element {
                 const isSelf = member.userId === currentUserId;
                 const canManage = isOwner || member.role !== "site_admin";
                 return (
-                  <div key={member.userId} className="grid gap-3 px-5 py-4 md:grid-cols-3 md:items-center">
-                    <div>
+                  <div key={member.userId} className="flex flex-wrap items-center gap-3 px-5 py-4">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-200">
                         {member.fullName || member.email || "Vorta user"}{memberIsOwner ? " · Site Owner" : ""}{isSelf ? " · You" : ""}
                       </p>
@@ -190,6 +192,7 @@ export function SiteAdministrationPage(): JSX.Element {
                     ) : (
                       <select
                         className={fieldClass}
+                        style={{ ...fieldStyle, minWidth: "12rem" }}
                         aria-label={`Role for ${member.fullName || member.email || "member"}`}
                         value={member.portalRole || member.role}
                         disabled={working || !canManage}
@@ -199,9 +202,9 @@ export function SiteAdministrationPage(): JSX.Element {
                       </select>
                     )}
 
-                    <div className="flex gap-2 md:justify-end">
-                      {isOwner && !memberIsOwner && !isSelf && <button type="button" disabled={working} onClick={() => void transfer(member)} className="h-9 rounded-lg border border-slate-700 px-3 text-xs text-slate-300">Transfer ownership</button>}
-                      {!memberIsOwner && !isSelf && canManage && <button type="button" disabled={working} onClick={() => void act({ action: "deactivate", targetUserId: member.userId }, "User access deactivated.")} className="h-9 rounded-lg border border-slate-700 px-3 text-xs text-red-300">Deactivate</button>}
+                    <div className="flex gap-2">
+                      {isOwner && !memberIsOwner && !isSelf && <button type="button" disabled={working} onClick={() => void transfer(member)} className="h-10 rounded-lg border border-slate-700 px-3 text-xs text-slate-300">Transfer ownership</button>}
+                      {!memberIsOwner && !isSelf && canManage && <button type="button" disabled={working} onClick={() => void act({ action: "deactivate", targetUserId: member.userId }, "User access deactivated.")} className="h-10 rounded-lg border border-slate-700 px-3 text-xs text-red-400">Deactivate</button>}
                     </div>
                   </div>
                 );
@@ -211,7 +214,7 @@ export function SiteAdministrationPage(): JSX.Element {
         </section>
 
         {Boolean(data?.invitations.length) && (
-          <section className="mt-6 rounded-xl border border-slate-800 bg-[#11151d] p-5">
+          <section className="mt-6 rounded-xl border border-slate-800 p-5" style={panelStyle}>
             <h2 className="font-semibold text-white">Pending invitations</h2>
             <div className="mt-3 divide-y divide-slate-800">
               {data?.invitations.map((invitation) => (
