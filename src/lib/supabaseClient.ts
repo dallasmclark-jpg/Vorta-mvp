@@ -172,6 +172,7 @@ const MAINTENANCE_SESSION_CACHE_PREFIX =
 
 type FunctionInvokeOptions = {
   body?: unknown;
+  signal?: AbortSignal;
 };
 
 type FunctionInvocationResult = {
@@ -213,6 +214,20 @@ function invocationBody(
   }
 
   return null;
+}
+
+function invocationSignal(
+  options?: unknown,
+): AbortSignal | undefined {
+  if (
+    options &&
+    typeof options === "object" &&
+    "signal" in options
+  ) {
+    return (options as FunctionInvokeOptions).signal;
+  }
+
+  return undefined;
 }
 
 function invocationCacheKey(
@@ -367,6 +382,7 @@ async function invokeMaintenanceProxy(
       body: JSON.stringify(
         invocationBody(options) ?? {},
       ),
+      signal: invocationSignal(options),
     },
   );
 
@@ -413,6 +429,10 @@ async function invokeMaintenanceNetwork(
         options,
       );
     } catch (error) {
+      if (invocationSignal(options)?.aborted) {
+        throw error;
+      }
+
       console.warn(
         "Maintenance data proxy unavailable; falling back to Supabase",
         error,
