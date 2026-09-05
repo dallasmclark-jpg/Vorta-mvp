@@ -5,13 +5,13 @@ import { usePrimaryAskVortaVisibility } from "../AiOperations/usePrimaryAskVorta
 import { EngineerAskVortaScreen } from "./EngineerAskVortaScreen";
 import { EngineerBottomNavStyles } from "./EngineerBottomNavStyles";
 import { EngineerCalendarAiBridge } from "./EngineerCalendarAiBridge";
+import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import {
   EngineerEquipmentDetailScreen,
   EngineerEquipmentScreen,
-  EngineerHomeScreen,
   EngineerSpareDetailScreen,
-} from "./EngineerCoreScreens";
-import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
+  EngineerStoresScreen,
+} from "./EngineerEquipmentLiveScreens";
 import {
   ENGINEER_PRIMARY_NAV,
   ENGINEER_SECONDARY_NAV,
@@ -34,7 +34,6 @@ import {
   EngineerSkillDetailScreen,
   EngineerSkillsScreen,
 } from "./EngineerSkillsLiveScreens";
-import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
 import {
   EngineerMyWorkScreen,
@@ -100,12 +99,12 @@ export const EngineerPortal = (): JSX.Element => {
       <EngineerVortaSelectBridge />
       <Routes>
         <Route path="vorta" element={<EngineerAskVortaScreen />} />
-        <Route path="home" element={<EngineerHomeScreen />} />
+        <Route path="home" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="work" element={<EngineerMyWorkScreen />} />
         <Route path="work/:workOrderId" element={<EngineerWorkOrderDetailScreen />} />
         <Route path="equipment" element={<EngineerEquipmentScreen />} />
         <Route path="equipment/:equipmentId" element={<EngineerEquipmentDetailScreen />} />
-        <Route path="stores" element={<EngineerStoresEquipmentFilter />} />
+        <Route path="stores" element={<EngineerStoresScreen />} />
         <Route path="stores/:partNumber" element={<EngineerSpareDetailScreen />} />
         <Route path="skills" element={<EngineerSkillsScreen />} />
         <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
@@ -129,7 +128,7 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="training" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="certifications" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="bookings" element={<Navigate to="/engineer/skills" replace />} />
-        <Route path="opportunities" element={<Navigate to="/engineer/home" replace />} />
+        <Route path="opportunities" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="ai-recommendations" element={<Navigate to="/engineer/vorta" replace />} />
         <Route path="career-path" element={<Navigate to="/engineer/skills" replace />} />
         <Route path="*" element={<Navigate to="/engineer/vorta" replace />} />
