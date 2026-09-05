@@ -18,6 +18,7 @@ interface EngineerIdentityRow {
   department_id: string | null;
   discipline: string | null;
   shift_pattern: string | null;
+  profile_id?: string | null;
 }
 
 function normalizeHumanName(value: unknown): string | null {
@@ -68,16 +69,29 @@ export function authenticatedEngineerDisplayName(session: Session | null): strin
 export function authenticatedEngineerId(session: Session | null): string | null {
   if (!session?.user) return null;
 
-  // Engineer ownership is deliberately taken only from app_metadata because
-  // user_metadata is user-editable. RLS then limits the engineers row to an
-  // authorised site before it can be returned.
+  // Server-controlled app metadata is retained only as a migration-safe fallback.
+  // The authoritative identity is engineers.profile_id -> auth.users.id.
   return normalizeIdentifier(session.user.app_metadata?.engineer_id);
+}
+
+async function loadEngineerByProfileId(
+  profileId: string,
+): Promise<EngineerRosterIdentity | null> {
+  const { data, error } = await supabase
+    .from("engineers")
+    .select("id, full_name, site_id, department_id, discipline, shift_pattern, profile_id")
+    .eq("profile_id", profileId)
+    .limit(2);
+
+  if (error) throw error;
+  if (!data || data.length !== 1) return null;
+  return toRosterIdentity(data[0] as EngineerIdentityRow);
 }
 
 async function loadEngineerById(engineerId: string): Promise<EngineerRosterIdentity | null> {
   const { data, error } = await supabase
     .from("engineers")
-    .select("id, full_name, site_id, department_id, discipline, shift_pattern")
+    .select("id, full_name, site_id, department_id, discipline, shift_pattern, profile_id")
     .eq("id", engineerId)
     .maybeSingle();
 
@@ -86,43 +100,34 @@ async function loadEngineerById(engineerId: string): Promise<EngineerRosterIdent
   return toRosterIdentity(data as EngineerIdentityRow);
 }
 
-async function loadEngineerByExactName(
-  displayName: string,
-): Promise<EngineerRosterIdentity | null> {
-  const expected = normalizeHumanName(displayName);
-  if (!expected) return null;
-
-  // The engineers table is site-scoped by RLS. Filtering after the authorised
-  // read avoids fuzzy ownership and handles harmless case/spacing differences.
-  const { data, error } = await supabase
-    .from("engineers")
-    .select("id, full_name, site_id, department_id, discipline, shift_pattern")
-    .limit(100);
-
-  if (error) throw error;
-
-  const matches = ((data ?? []) as EngineerIdentityRow[]).filter(
-    (engineer) => normalizeHumanName(engineer.full_name) === expected,
-  );
-
-  if (matches.length !== 1) return null;
-  return toRosterIdentity(matches[0]);
-}
-
 export async function resolveAuthenticatedEngineerIdentity(
   session: Session | null,
 ): Promise<EngineerRosterIdentity | null> {
   if (!session?.user) return null;
 
   try {
-    const engineerId = authenticatedEngineerId(session);
-    if (engineerId) {
-      return await loadEngineerById(engineerId);
+    const linkedIdentity = await loadEngineerByProfileId(session.user.id);
+    const metadataEngineerId = authenticatedEngineerId(session);
+
+    if (linkedIdentity) {
+      if (
+        metadataEngineerId &&
+        metadataEngineerId !== linkedIdentity.id
+      ) {
+        console.warn(
+          "Authenticated engineer identity is inconsistent between profile link and app metadata.",
+        );
+        return null;
+      }
+      return linkedIdentity;
     }
 
-    const displayName = authenticatedEngineerDisplayName(session);
-    if (!displayName) return null;
-    return await loadEngineerByExactName(displayName);
+    if (!metadataEngineerId) return null;
+
+    // Temporary compatibility path for a server-controlled app_metadata mapping
+    // that has not yet been backfilled into engineers.profile_id. Never fall back
+    // to user_metadata or a human-name match for ownership.
+    return await loadEngineerById(metadataEngineerId);
   } catch (error) {
     console.warn("Authenticated engineer identity could not be resolved:", error);
     return null;
@@ -138,7 +143,9 @@ export function workOrderIsAssignedToEngineer(
   const fullName = normalizeHumanName(identity.fullName);
   if (!assigned || !fullName) return false;
 
-  // Do not use fuzzy matching for personal work ownership. The source assignment
-  // must resolve to the authenticated engineer exactly.
+  // Work orders currently store a source-system assignee label rather than a
+  // foreign key. Until that import contract is normalised, require an exact
+  // normalised full-name match after identity itself has been resolved from the
+  // authoritative profile link.
   return assigned === fullName;
 }
