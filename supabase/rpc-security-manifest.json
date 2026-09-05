@@ -3,11 +3,11 @@
   "migrationVersion": "20260904103500",
   "migrationName": "register_engineer_calendar_rpc_security",
   "invariants": {
-    "authenticatedCallable": 82,
+    "authenticatedCallable": 84,
     "reviewedRead": 58,
-    "reviewedMutation": 24,
+    "reviewedMutation": 26,
     "securityDefiner": 6,
-    "securityInvoker": 76,
+    "securityInvoker": 78,
     "anonymousCallable": 0,
     "manifestDrift": 0
   },

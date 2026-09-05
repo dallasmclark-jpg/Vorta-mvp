@@ -140,6 +140,13 @@ function exceptionType(
 function parseColleague(value: unknown, index: number): EngineerRotaColleague {
   const label = `colleagues[${index}]`;
   const item = record(value, label);
+  const isAvailable = booleanValue(
+    read(item, "isAvailable", "is_available"),
+    `${label}.isAvailable`,
+  );
+
+  // Absence reasons for other engineers are private. The rota only needs to
+  // communicate whether cover is available, never why a colleague is absent.
   return {
     engineerId: stringValue(read(item, "engineerId", "engineer_id"), `${label}.engineerId`),
     fullName: stringValue(read(item, "fullName", "full_name"), `${label}.fullName`),
@@ -147,8 +154,8 @@ function parseColleague(value: unknown, index: number): EngineerRotaColleague {
     employmentType: nullableString(read(item, "employmentType", "employment_type")),
     teamNames: stringArray(read(item, "teamNames", "team_names"), `${label}.teamNames`),
     rosterSource: stringValue(read(item, "rosterSource", "roster_source"), `${label}.rosterSource`),
-    exceptionType: exceptionType(read(item, "exceptionType", "exception_type"), `${label}.exceptionType`),
-    isAvailable: booleanValue(read(item, "isAvailable", "is_available"), `${label}.isAvailable`),
+    exceptionType: isAvailable ? null : "unavailable",
+    isAvailable,
     isContractor: booleanValue(read(item, "isContractor", "is_contractor"), `${label}.isContractor`),
   };
 }
@@ -171,6 +178,24 @@ function parseCalendarItem(value: unknown, index: number): EngineerRotaCalendarI
   const rawColleagues = item.colleagues;
   if (!Array.isArray(rawColleagues)) return unavailable(`${label}.colleagues must be an array.`);
 
+  const holidayClashCount = integer(
+    read(item, "holidayClashCount", "holiday_clash_count"),
+    `${label}.holidayClashCount`,
+  );
+  const sicknessCount = integer(
+    read(item, "sicknessCount", "sickness_count"),
+    `${label}.sicknessCount`,
+  );
+  const trainingCount = integer(
+    read(item, "trainingCount", "training_count"),
+    `${label}.trainingCount`,
+  );
+  const rawUnavailableCount = integer(
+    read(item, "unavailableCount", "unavailable_count"),
+    `${label}.unavailableCount`,
+  );
+  const privateReasonTotal = holidayClashCount + sicknessCount + trainingCount;
+
   return {
     shiftDate: dateOnly(read(item, "shiftDate", "shift_date"), `${label}.shiftDate`),
     shiftType: rawShiftType,
@@ -178,10 +203,12 @@ function parseCalendarItem(value: unknown, index: number): EngineerRotaCalendarI
     personalStatus,
     shiftEngineerCount: integer(read(item, "shiftEngineerCount", "shift_engineer_count"), `${label}.shiftEngineerCount`),
     availableEngineerCount: integer(read(item, "availableEngineerCount", "available_engineer_count"), `${label}.availableEngineerCount`),
-    holidayClashCount: integer(read(item, "holidayClashCount", "holiday_clash_count"), `${label}.holidayClashCount`),
-    sicknessCount: integer(read(item, "sicknessCount", "sickness_count"), `${label}.sicknessCount`),
-    trainingCount: integer(read(item, "trainingCount", "training_count"), `${label}.trainingCount`),
-    unavailableCount: integer(read(item, "unavailableCount", "unavailable_count"), `${label}.unavailableCount`),
+    // Keep the existing UI contract but redact all reason-specific colleague
+    // counts. The generic unavailable total is sufficient for cover planning.
+    holidayClashCount: 0,
+    sicknessCount: 0,
+    trainingCount: 0,
+    unavailableCount: Math.max(rawUnavailableCount, privateReasonTotal),
     contractorEngineerCount: integer(read(item, "contractorEngineerCount", "contractor_engineer_count"), `${label}.contractorEngineerCount`),
     colleagues: rawColleagues.map(parseColleague),
   };
