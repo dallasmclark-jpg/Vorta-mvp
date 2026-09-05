@@ -111,7 +111,10 @@ export function MaintenancePortalHardening(): JSX.Element {
 
         [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"],
         [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"]:focus,
-        [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"]:focus-visible {
+        [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"]:focus-visible,
+        [data-vorta-global-ai-panel="true"] [data-vorta-global-ai-input="true"],
+        [data-vorta-global-ai-panel="true"] [data-vorta-global-ai-input="true"]:focus,
+        [data-vorta-global-ai-panel="true"] [data-vorta-global-ai-input="true"]:focus-visible {
           border: 0 !important;
           outline: 0 solid transparent !important;
           box-shadow: none !important;
