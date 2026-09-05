@@ -32,7 +32,10 @@ import {
   EngineerProfileSettingsScreen,
   EngineerSiteAlertsScreen,
 } from "./EngineerSecondaryScreens";
-import { EngineerSkillDetailScreen, EngineerSkillsScreen } from "./EngineerSkillsScreens";
+import {
+  EngineerSkillDetailScreen,
+  EngineerSkillsScreen,
+} from "./EngineerSkillsLiveScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
 
