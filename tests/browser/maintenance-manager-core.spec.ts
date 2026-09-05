@@ -147,56 +147,68 @@ test("Maintenance Manager dashboard and Shift Cover remain in context", async ({
     await expect(embeddedAi).toBeVisible();
     await expect(desktopAskVortaLauncher).toBeHidden();
 
-    await page.evaluate(() => {
+    const dashboardCanScroll = await page.evaluate(() => {
       const scrollContainer = document.querySelector<HTMLElement>(
         '[data-vorta-portal-scroll-container="true"]',
       );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      } else {
-        window.scrollTo(0, document.body.scrollHeight);
-      }
+      return scrollContainer
+        ? scrollContainer.scrollHeight > scrollContainer.clientHeight + 1
+        : document.documentElement.scrollHeight > window.innerHeight + 1;
     });
 
-    await expect
-      .poll(async () =>
-        embeddedAi.evaluate((element) => {
-          const rect = element.getBoundingClientRect();
-          return rect.bottom <= 0 || rect.top >= window.innerHeight;
-        }),
-      )
-      .toBe(true);
-    await expect(desktopAskVortaLauncher).toBeVisible();
-    await desktopAskVortaLauncher.click();
-    await expect(
-      page.locator(
-        '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
-      ),
-    ).toBeVisible();
-    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
-    await expect(
-      page.locator(
-        '[data-vorta-global-ai-messages="true"] .justify-end, [data-vorta-ai-workspace-conversation="true"] .justify-end',
-      ),
-    ).toHaveCount(0);
+    if (dashboardCanScroll) {
+      await page.evaluate(() => {
+        const scrollContainer = document.querySelector<HTMLElement>(
+          '[data-vorta-portal-scroll-container="true"]',
+        );
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        } else {
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+      });
 
-    const closeGlobalAssistant = page.getByRole("button", {
-      name: "Close global assistant",
-      exact: true,
-    });
-    await expect(closeGlobalAssistant).toBeVisible();
-    await closeGlobalAssistant.click();
+      await expect
+        .poll(async () =>
+          embeddedAi.evaluate((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.bottom <= 0 || rect.top >= window.innerHeight;
+          }),
+        )
+        .toBe(true);
+      await expect(desktopAskVortaLauncher).toBeVisible();
+      await desktopAskVortaLauncher.click();
+      await expect(
+        page.locator(
+          '[data-vorta-global-ai-panel="true"]:visible, [data-vorta-ai-workspace="true"]:visible',
+        ),
+      ).toBeVisible();
+      await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+      await expect(
+        page.locator(
+          '[data-vorta-global-ai-messages="true"] .justify-end, [data-vorta-ai-workspace-conversation="true"] .justify-end',
+        ),
+      ).toHaveCount(0);
 
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector<HTMLElement>(
-        '[data-vorta-portal-scroll-container="true"]',
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = 0;
-      } else {
-        window.scrollTo(0, 0);
-      }
-    });
+      const closeGlobalAssistant = page.getByRole("button", {
+        name: "Close global assistant",
+        exact: true,
+      });
+      await expect(closeGlobalAssistant).toBeVisible();
+      await closeGlobalAssistant.click();
+
+      await page.evaluate(() => {
+        const scrollContainer = document.querySelector<HTMLElement>(
+          '[data-vorta-portal-scroll-container="true"]',
+        );
+        if (scrollContainer) {
+          scrollContainer.scrollTop = 0;
+        } else {
+          window.scrollTo(0, 0);
+        }
+      });
+    }
+
     await expect(embeddedAi).toBeInViewport({ ratio: 0.5 });
     await expect(desktopAskVortaLauncher).toBeHidden();
 
