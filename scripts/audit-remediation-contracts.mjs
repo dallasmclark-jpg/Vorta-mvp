@@ -26,6 +26,7 @@ const aiOperations = read("src/screens/AiOperations/AiOperations.tsx");
 const assistant = read(
   "src/screens/AiOperations/GlobalMaintenanceAiAssistantWithFaultsV2.tsx",
 );
+const supabaseClient = read("src/lib/supabaseClient.ts");
 const browserWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
 
 for (const retired of [
@@ -70,6 +71,10 @@ assert.match(aiOperations, /const SkillsMatrixRouteEntry = lazy/);
 assert.match(aiOperations, /const EquipmentWorkOrders = lazy/);
 assert.match(aiOperations, /<Suspense fallback=\{<RouteLoader \/>\}>/);
 assert.doesNotMatch(assistant, /MutationObserver|stopImmediatePropagation|document\.querySelector/);
+
+assert.match(supabaseClient, /signal\?: AbortSignal/);
+assert.match(supabaseClient, /signal:\s*invocationSignal\(options\)/);
+assert.match(supabaseClient, /invocationSignal\(options\)\?\.aborted/);
 
 assert.match(browserWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
 assert.match(browserWorkflow, /maintenance-manager-dashboard-resilience\.spec\.ts/);
