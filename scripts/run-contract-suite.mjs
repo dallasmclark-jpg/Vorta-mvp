@@ -54,6 +54,7 @@ const contracts = [
   ["VOR-070 Historical Validation", "scripts/vor-070-historical-validation-contracts.mjs"],
   ["VOR-077 spare photo stock matching", "scripts/vor-077-spare-photo-contracts.mjs"],
   ["VOR-084 live Ask Vorta evidence activity", "scripts/vor-084-live-evidence-activity-contracts.mjs"],
+  ["VOR-087 universal Ask Vorta disclosure", "scripts/vor-087-universal-disclosure-contracts.mjs"],
   ["VOR-020 to VOR-024 audit actions", "scripts/vor-020-024-audit-actions-contracts.mjs"],
   ["Mobile dashboard", "scripts/mobile-dashboard-contracts.mjs"],
   ["Mobile portal audit", "scripts/mobile-portal-audit-contracts.mjs"],

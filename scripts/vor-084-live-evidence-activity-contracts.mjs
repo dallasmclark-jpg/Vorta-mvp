@@ -10,6 +10,7 @@ const toolExecution = read("netlify/functions/ask-vorta/tool-execution.mts");
 const sparePhoto = read("netlify/functions/ask-vorta/spare-photo-identification.mts");
 const service = read("src/screens/AiOperations/vortaAgentService.ts");
 const workspace = read("src/screens/AiOperations/AskVortaWorkspaceBase.tsx");
+const liveActivity = read("src/screens/AiOperations/AskVortaLiveEvidenceActivity.tsx");
 const shell = read("index.html");
 
 assert.match(
@@ -133,43 +134,51 @@ for (const marker of [
 
 for (const marker of [
   'data-vorta-ai-live-evidence-activity="true"',
-  "Checking Vorta evidence",
-  "MAX_VISIBLE_PROGRESS_STEPS = 6",
+  'data-vorta-ai-single-status="true"',
+  'data-vorta-ai-single-status-icon="true"',
+  'data-vorta-ai-single-status-label="true"',
+  "currentProgressStep",
   "ASK_VORTA_PROGRESS_EVENT",
   "ASK_VORTA_PROGRESS_RESET_EVENT",
-  "<CheckCircle2",
+  "Starting the relevant evidence checks",
 ]) {
-  assert.ok(workspace.includes(marker), `Workspace live activity is missing ${marker}`);
+  assert.ok(liveActivity.includes(marker), `Shared live activity is missing ${marker}`);
 }
+assert.doesNotMatch(
+  liveActivity,
+  /completedCount|checked\s*<|MAX_VISIBLE_PROGRESS_STEPS|rounded-full border px-2 py-1/,
+  "Ask Vorta loading must stay a single live status rather than reintroducing counters, step pills or a multi-stage rail",
+);
+assert.ok(
+  workspace.includes("SharedAskVortaLiveEvidenceActivity"),
+  "Desktop/tablet workspace must render the shared live evidence activity",
+);
 assert.doesNotMatch(
   workspace,
   /Choosing and checking the relevant Vorta sources/,
   "The old opaque loading message must be retired from desktop/tablet",
-);
-assert.match(
-  workspace,
-  /className="fixed inset-0 z-\[70\] hidden min-h-0 bg-gray-950 md:flex"/,
-  "The live activity enhancement must remain inside the desktop/tablet workspace boundary",
 );
 
 for (const marker of [
   "@property --vorta-evidence-pulse-angle",
   "@keyframes vorta-evidence-border-pulse",
   "conic-gradient(from var(--vorta-evidence-pulse-angle)",
-  "width:min(440px,calc(100vw - 48px))!important",
+  '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
+  'data-vorta-ai-single-status-icon="true"',
+  'data-vorta-ai-single-status-label="true"',
+  "max-width:440px!important",
   "height:44px!important",
-  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7{display:none!important}',
-  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child{display:block!important',
-  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child>svg{display:none!important}',
-  '[data-vorta-ai-live-evidence-activity="true"] .min-h-7:last-child .min-w-0 .text-xs.text-slate-500{display:none!important}',
   '[data-vorta-ask-vorta-stock-loading-rail="true"]{display:none!important}',
 ]) {
-  assert.ok(shell.includes(marker), `VOR-085 branded single-status presentation is missing ${marker}`);
+  assert.ok(shell.includes(marker), `Universal branded single-status presentation is missing ${marker}`);
 }
-assert.match(
-  shell,
-  /@media\(min-width:769px\)/,
-  "VOR-085 presentation changes must remain desktop/tablet-only",
+const singleStatusStyle = shell.indexOf(
+  '[data-vorta-ai-live-evidence-activity="true"][data-vorta-ai-single-status="true"]',
+);
+const desktopOnlyMedia = shell.indexOf("@media(min-width:769px){");
+assert.ok(
+  singleStatusStyle >= 0 && desktopOnlyMedia > singleStatusStyle,
+  "The single-status Vorta pulse must be defined before the desktop-only media block so phone, tablet and desktop share the same loading standard",
 );
 assert.doesNotMatch(
   shell,
@@ -178,5 +187,5 @@ assert.doesNotMatch(
 );
 
 console.log(
-  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, immediate truthful spare-photo image status, overlapping Stores lookup, JSON compatibility, branded single-status pulse loading and desktop/tablet-only presentation are protected.",
+  "VOR-084/VOR-085 live Ask Vorta evidence contracts passed: source-driven progress, truthful spare-photo stages, overlapping Stores lookup, JSON compatibility and one branded live status across phone, tablet and desktop are protected.",
 );
