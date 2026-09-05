@@ -37,44 +37,22 @@ const initialForm: SignupForm = {
   siteLocation: "",
 };
 
-const fieldClass =
-  "h-11 w-full rounded-lg border border-slate-700 bg-[#0b0e14] px-3 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50";
+const fieldClass = "h-11 w-full rounded-lg border border-slate-700 bg-[#0b0e14] px-3 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50";
 const labelClass = "mb-1 block text-sm text-slate-300";
 
 export function SiteSignupPage(): JSX.Element {
-  const [form, setForm] = useState<SignupForm>(initialForm);
+  const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationSent, setVerificationSent] = useState(false);
-
   const update = (field: keyof SignupForm, value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
 
   const canSubmit = Boolean(
-    form.fullName.trim() &&
-      form.email.trim() &&
-      form.password.length >= 8 &&
-      form.organisationName.trim() &&
-      form.industry &&
-      form.country.trim() &&
-      form.siteName.trim(),
+    form.fullName.trim() && form.email.trim() && form.password.length >= 8 &&
+    form.organisationName.trim() && form.industry && form.country.trim() &&
+    form.siteName.trim(),
   );
-
-  const bootstrap = async (): Promise<void> => {
-    const { error: bootstrapError } = await supabase.rpc(
-      "vorta_bootstrap_site_owner",
-      {
-        p_full_name: form.fullName.trim(),
-        p_organisation_name: form.organisationName.trim(),
-        p_industry: form.industry,
-        p_country: form.country.trim(),
-        p_site_name: form.siteName.trim(),
-        p_site_location: form.siteLocation.trim() || null,
-      },
-    );
-    if (bootstrapError) throw bootstrapError;
-    window.location.assign("/dashboard");
-  };
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -83,31 +61,40 @@ export function SiteSignupPage(): JSX.Element {
     setSubmitting(true);
 
     try {
+      const metadata = {
+        full_name: form.fullName.trim(),
+        vorta_signup_intent: "site_owner",
+        vorta_organisation_name: form.organisationName.trim(),
+        vorta_industry: form.industry,
+        vorta_country: form.country.trim(),
+        vorta_site_name: form.siteName.trim(),
+        vorta_site_location: form.siteLocation.trim() || null,
+      };
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: form.email.trim().toLowerCase(),
         password: form.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?setup=site`,
-          data: {
-            full_name: form.fullName.trim(),
-            vorta_signup_intent: "site_owner",
-            vorta_organisation_name: form.organisationName.trim(),
-            vorta_industry: form.industry,
-            vorta_country: form.country.trim(),
-            vorta_site_name: form.siteName.trim(),
-            vorta_site_location: form.siteLocation.trim() || null,
-          },
+          data: metadata,
         },
       });
       if (signUpError) throw signUpError;
-      if (data.session) return void (await bootstrap());
-      setVerificationSent(true);
+      if (!data.session) {
+        setVerificationSent(true);
+        return;
+      }
+      const { error: bootstrapError } = await supabase.rpc("vorta_bootstrap_site_owner", {
+        p_full_name: metadata.full_name,
+        p_organisation_name: metadata.vorta_organisation_name,
+        p_industry: metadata.vorta_industry,
+        p_country: metadata.vorta_country,
+        p_site_name: metadata.vorta_site_name,
+        p_site_location: metadata.vorta_site_location,
+      });
+      if (bootstrapError) throw bootstrapError;
+      window.location.assign("/dashboard");
     } catch (signupError) {
-      setError(
-        signupError instanceof Error
-          ? signupError.message
-          : "Vorta could not create the site account.",
-      );
+      setError(signupError instanceof Error ? signupError.message : "Vorta could not create the site account.");
     } finally {
       setSubmitting(false);
     }
@@ -119,57 +106,33 @@ export function SiteSignupPage(): JSX.Element {
         <section className="w-full max-w-lg rounded-xl border border-slate-800 bg-[#11151d] p-6 text-center">
           <VortaLogo />
           <h1 className="mt-6 text-2xl font-semibold text-white">Verify your work email</h1>
-          <p className="mt-3 text-sm text-slate-400">
-            We sent a verification link to {form.email.trim()}. Open it to create the organisation, site and Site Owner access.
-          </p>
-          <Link to="/" className="mt-6 inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-200">
-            Return to sign in
-          </Link>
+          <p className="mt-3 text-sm text-slate-400">Open the verification link sent to {form.email.trim()} to activate your Vorta site.</p>
+          <Link to="/" className="mt-6 inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-200">Return to sign in</Link>
         </section>
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-slate-100">
-      <header className="flex h-16 items-center border-b border-slate-800 px-6">
+    <main className="min-h-screen bg-[#0b0e14] px-4 py-8 text-slate-100">
+      <section className="mx-auto w-full max-w-2xl rounded-xl border border-slate-800 bg-[#11151d] p-6">
         <Link to="/" aria-label="Vorta home"><VortaLogo /></Link>
-      </header>
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <section className="rounded-xl border border-slate-800 bg-[#11151d] p-6">
-          <h1 className="text-2xl font-semibold text-white">Create your Vorta site</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            The first verified account becomes the Site Owner and manages site access.
-          </p>
+        <h1 className="mt-6 text-2xl font-semibold text-white">Set up your Vorta account</h1>
+        <p className="mt-2 text-sm text-slate-400">Create your company site. The first verified account becomes its Site Owner.</p>
 
-          <form onSubmit={submit} className="mt-6 space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label><span className={labelClass}>Full name</span><input className={fieldClass} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
-              <label><span className={labelClass}>Work email</span><input className={fieldClass} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
-              <label className="sm:col-span-2"><span className={labelClass}>Password</span><input className={fieldClass} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
-            </div>
-
-            <div className="grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2">
-              <label className="sm:col-span-2"><span className={labelClass}>Company name</span><input className={fieldClass} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
-              <label><span className={labelClass}>Industry</span><select className={fieldClass} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
-              <label><span className={labelClass}>Country</span><input className={fieldClass} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
-            </div>
-
-            <div className="grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2">
-              <label><span className={labelClass}>Site name</span><input className={fieldClass} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
-              <label><span className={labelClass}>Site location</span><input className={fieldClass} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
-            </div>
-
-            {error && <p className="text-sm text-red-400">{error}</p>}
-            <button type="submit" disabled={!canSubmit || submitting} className="h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white disabled:opacity-50">
-              {submitting ? "Creating account…" : "Create Vorta site"}
-            </button>
-            <p className="text-xs text-slate-500">
-              Site Owner authority can later be transferred to another active Site Admin.
-            </p>
-          </form>
-        </section>
-      </main>
-    </div>
+        <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label><span className={labelClass}>Full name</span><input className={fieldClass} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
+          <label><span className={labelClass}>Work email</span><input className={fieldClass} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
+          <label className="sm:col-span-2"><span className={labelClass}>Password</span><input className={fieldClass} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
+          <label className="sm:col-span-2"><span className={labelClass}>Company name</span><input className={fieldClass} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
+          <label><span className={labelClass}>Industry</span><select className={fieldClass} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
+          <label><span className={labelClass}>Country</span><input className={fieldClass} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
+          <label><span className={labelClass}>Site name</span><input className={fieldClass} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
+          <label><span className={labelClass}>Location</span><input className={fieldClass} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
+          {error && <p className="text-sm text-red-400 sm:col-span-2">{error}</p>}
+          <button type="submit" disabled={!canSubmit || submitting} className="h-11 rounded-lg bg-blue-600 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2">{submitting ? "Creating account…" : "Create Vorta site"}</button>
+        </form>
+      </section>
+    </main>
   );
 }
