@@ -37,10 +37,8 @@ const initialForm: SignupForm = {
   siteLocation: "",
 };
 
-const fieldClass = "h-11 w-full rounded-lg border border-slate-700 px-3 text-sm text-slate-200 outline-none disabled:opacity-50";
-const fieldStyle = { backgroundColor: "#0b0e14" };
-const labelClass = "mb-1 block text-sm text-slate-300";
-const fullRow = { gridColumn: "1 / -1" };
+const fieldClass = "h-11 w-full border border-slate-700 px-3 text-sm text-slate-200";
+const darkField = { backgroundColor: "#0b0e14" };
 
 export function SiteSignupPage(): JSX.Element {
   const [form, setForm] = useState(initialForm);
@@ -52,16 +50,14 @@ export function SiteSignupPage(): JSX.Element {
 
   const canSubmit = Boolean(
     form.fullName.trim() && form.email.trim() && form.password.length >= 8 &&
-    form.organisationName.trim() && form.industry && form.country.trim() &&
-    form.siteName.trim(),
+    form.organisationName.trim() && form.industry && form.country.trim() && form.siteName.trim(),
   );
 
-  const submit = async (event: React.FormEvent): Promise<void> => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canSubmit || submitting) return;
     setError(null);
     setSubmitting(true);
-
     try {
       const metadata = {
         full_name: form.fullName.trim(),
@@ -96,7 +92,7 @@ export function SiteSignupPage(): JSX.Element {
       if (bootstrapError) throw bootstrapError;
       window.location.assign("/dashboard");
     } catch (signupError) {
-      setError(signupError instanceof Error ? signupError.message : "Vorta could not create the site account.");
+      setError(signupError instanceof Error ? signupError.message : "Could not create the site account.");
     } finally {
       setSubmitting(false);
     }
@@ -104,35 +100,34 @@ export function SiteSignupPage(): JSX.Element {
 
   if (verificationSent) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4 text-slate-100" style={{ backgroundColor: "#0b0e14" }}>
-        <section className="w-full rounded-xl border border-slate-800 p-6 text-center" style={{ backgroundColor: "#11151d", maxWidth: "32rem" }}>
+      <main className="flex min-h-screen items-center justify-center p-4 text-slate-100" style={darkField}>
+        <section className="w-full border border-slate-800 p-6 text-center" style={{ backgroundColor: "#11151d", maxWidth: 512 }}>
           <VortaLogo />
           <h1 className="mt-6 text-2xl font-semibold text-white">Verify your work email</h1>
-          <p className="mt-3 text-sm text-slate-400">Open the verification link sent to {form.email.trim()} to activate your Vorta site.</p>
-          <Link to="/" className="mt-6 inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-200">Return to sign in</Link>
+          <p className="mt-3 text-sm text-slate-400">Use the verification link sent to {form.email.trim()}.</p>
+          <Link to="/" className="mt-6 inline-flex h-11 items-center border border-slate-700 px-4 text-sm text-slate-200">Return to sign in</Link>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 text-slate-100" style={{ backgroundColor: "#0b0e14" }}>
-      <section className="mx-auto w-full rounded-xl border border-slate-800 p-6" style={{ backgroundColor: "#11151d", maxWidth: "42rem" }}>
+    <main className="min-h-screen p-4 text-slate-100" style={darkField}>
+      <section className="mx-auto w-full border border-slate-800 p-6" style={{ backgroundColor: "#11151d", maxWidth: 672 }}>
         <Link to="/" aria-label="Vorta home"><VortaLogo /></Link>
         <h1 className="mt-6 text-2xl font-semibold text-white">Set up your Vorta account</h1>
-        <p className="mt-2 text-sm text-slate-400">Create your company site. The first verified account becomes its Site Owner.</p>
-
-        <form onSubmit={submit} className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(14rem,1fr))" }}>
-          <label><span className={labelClass}>Full name</span><input className={fieldClass} style={fieldStyle} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
-          <label><span className={labelClass}>Work email</span><input className={fieldClass} style={fieldStyle} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
-          <label style={fullRow}><span className={labelClass}>Password</span><input className={fieldClass} style={fieldStyle} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
-          <label style={fullRow}><span className={labelClass}>Company name</span><input className={fieldClass} style={fieldStyle} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
-          <label><span className={labelClass}>Industry</span><select className={fieldClass} style={fieldStyle} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
-          <label><span className={labelClass}>Country</span><input className={fieldClass} style={fieldStyle} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
-          <label><span className={labelClass}>Site name</span><input className={fieldClass} style={fieldStyle} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
-          <label><span className={labelClass}>Location</span><input className={fieldClass} style={fieldStyle} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
-          {error && <p className="text-sm text-red-400" style={fullRow}>{error}</p>}
-          <button type="submit" disabled={!canSubmit || submitting} className="h-11 rounded-lg bg-blue-600 text-sm font-semibold text-white disabled:opacity-50" style={fullRow}>{submitting ? "Creating account…" : "Create Vorta site"}</button>
+        <p className="mt-2 text-sm text-slate-400">Create your company site. The first verified account becomes Site Owner.</p>
+        <form onSubmit={submit} className="mt-6 grid gap-4">
+          <label>Full name<input className={fieldClass} style={darkField} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
+          <label>Work email<input className={fieldClass} style={darkField} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
+          <label>Password<input className={fieldClass} style={darkField} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
+          <label>Company name<input className={fieldClass} style={darkField} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
+          <label>Industry<select className={fieldClass} style={darkField} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
+          <label>Country<input className={fieldClass} style={darkField} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
+          <label>Site name<input className={fieldClass} style={darkField} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
+          <label>Location<input className={fieldClass} style={darkField} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <button type="submit" disabled={!canSubmit || submitting} className="h-11 bg-blue-600 text-sm font-semibold text-white disabled:opacity-50">{submitting ? "Creating…" : "Create Vorta site"}</button>
         </form>
       </section>
     </main>
