@@ -32,9 +32,9 @@ import {
   EngineerSiteAlertsScreen,
 } from "./EngineerSecondaryScreens";
 import {
-  EngineerSkillDetailScreen,
-  EngineerSkillsScreen,
-} from "./EngineerSkillsLiveScreens";
+  EngineerSkillSelfAssessmentScreen,
+  EngineerSkillsWorkflowScreen,
+} from "./EngineerSkillsWorkflowScreens";
 import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
 import {
   EngineerMyWorkScreen,
@@ -107,12 +107,15 @@ export const EngineerPortal = (): JSX.Element => {
         <Route path="equipment/:equipmentId" element={<EngineerEquipmentDetailScreen />} />
         <Route path="stores" element={<EngineerStoresScreen />} />
         <Route path="stores/:partNumber" element={<EngineerSpareDetailScreen />} />
-        <Route path="skills" element={<EngineerSkillsScreen />} />
+        <Route path="skills" element={<EngineerSkillsWorkflowScreen />} />
         <Route
           path="skills/equipment/:equipmentId"
           element={<EngineerEquipmentCompetencyScreen />}
         />
-        <Route path="skills/:skillName" element={<EngineerSkillDetailScreen />} />
+        <Route
+          path="skills/:skillName"
+          element={<EngineerSkillSelfAssessmentScreen />}
+        />
 
         <Route path="handover" element={<EngineerHandoverScreen />} />
         <Route path="rota" element={<EngineerRotaScreen />} />
