@@ -16,11 +16,11 @@ assert.equal(manifest.schemaVersion, 1);
 assert.equal(manifest.migrationVersion, "20260904103500");
 assert.equal(manifest.migrationName, "register_engineer_calendar_rpc_security");
 assert.deepEqual(manifest.invariants, {
-  authenticatedCallable: 82,
+  authenticatedCallable: 84,
   reviewedRead: 58,
-  reviewedMutation: 24,
+  reviewedMutation: 26,
   securityDefiner: 6,
-  securityInvoker: 76,
+  securityInvoker: 78,
   anonymousCallable: 0,
   manifestDrift: 0,
 });
@@ -107,10 +107,10 @@ for (const expected of [
   );
 }
 
-assert.match(liveHealthGate, /reviewedAuthenticatedMutationRpcCount\),\s*24/);
+assert.match(liveHealthGate, /reviewedAuthenticatedMutationRpcCount\),\s*26/);
 assert.match(liveHealthGate, /reviewedAuthenticatedReadRpcCount\),\s*58/);
 assert.match(liveHealthGate, /authenticatedSecurityDefinerRpcCount\),\s*6/);
-assert.match(liveHealthGate, /authenticatedSecurityInvokerRpcCount\),\s*76/);
+assert.match(liveHealthGate, /authenticatedSecurityInvokerRpcCount\),\s*78/);
 assert.match(liveHealthGate, /anonymousVortaRpcCount\),\s*0/);
 assert.match(liveHealthGate, /rpcSecurityManifestDriftCount\),\s*0/);
 
