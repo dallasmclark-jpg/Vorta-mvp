@@ -442,6 +442,24 @@ export function siteRiskMovementAnswer(
   const topChangeText = topChange
     ? ` The largest recorded metric movement was ${topChange.label.toLowerCase()}, ${formatted(topChange.previous, topChange.integer)} → ${formatted(topChange.current, topChange.integer)} (${signed(topChange.delta, topChange.integer ? 0 : 1)}).`
     : " No supporting metric changed in the two returned daily snapshots.";
+  const findings = changes.length > 0
+    ? changes.slice(0, 5).map((item, index) => ({
+        category: "risk",
+        severity:
+          index === 0 && direction === "worsened"
+            ? "high"
+            : "medium",
+        title: item.label,
+        detail:
+          `${formatted(item.previous, item.integer)} on ${previousDate} → ${formatted(item.current, item.integer)} on ${currentDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
+      }))
+    : [{
+        category: "risk",
+        severity: "info",
+        title: "No verified daily risk movement",
+        detail:
+          `Site risk remained ${current.riskScore.toFixed(1)} ${current.riskLevel} from ${previousDate} to ${currentDate}; all ${metrics.length} verified comparison metrics were unchanged.`,
+      }];
 
   return {
     ...base,
@@ -480,18 +498,7 @@ export function siteRiskMovementAnswer(
       (item) =>
         `${item.label}: ${formatted(item.previous, item.integer)} on ${previous.snapshotDate} → ${formatted(item.current, item.integer)} on ${current.snapshotDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
     ),
-    findings: changes.slice(0, 5).map((item, index) => ({
-      category: "risk",
-      severity:
-        index === 0 && direction === "worsened"
-          ? "high"
-          : Math.abs(item.delta) > 0
-            ? "medium"
-            : "info",
-      title: item.label,
-      detail:
-        `${formatted(item.previous, item.integer)} on ${previousDate} → ${formatted(item.current, item.integer)} on ${currentDate} (${signed(item.delta, item.integer ? 0 : 1)}).`,
-    })),
+    findings,
     missingData: [
       "The daily snapshots do not prove which work, spare, skill, absence or equipment event caused the movement.",
       ...(requestedShiftComparison
