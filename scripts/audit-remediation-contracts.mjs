@@ -30,10 +30,21 @@ const supabaseClient = read("src/lib/supabaseClient.ts");
 const browserWorkflow = read(".github/workflows/maintenance-manager-quality.yml");
 const engineerPortal = read("src/screens/EngineerPortal/EngineerPortal.tsx");
 const engineerIdentity = read("src/screens/EngineerPortal/engineerIdentity.ts");
-const engineerSkills = read("src/screens/EngineerPortal/EngineerSkillsLiveScreens.tsx");
+const engineerSkillsList = read("src/screens/EngineerPortal/EngineerSkillsLiveScreens.tsx");
+const engineerSkillsWorkflow = read("src/screens/EngineerPortal/EngineerSkillsWorkflowScreens.tsx");
+const engineerEquipmentCompetency = read("src/screens/EngineerPortal/EngineerEquipmentCompetencyScreen.tsx");
+const competencyReviewPanel = read("src/screens/EngineerPortal/EquipmentCompetencyReviewPanel.tsx");
+const skillsMatrixRoute = read("src/screens/AiOperations/SkillsMatrixRouteEntry.tsx");
 const engineerWork = read("src/screens/EngineerPortal/EngineerWorkLiveScreens.tsx");
 const engineerEquipment = read("src/screens/EngineerPortal/EngineerEquipmentLiveScreens.tsx");
 const engineerSkillsFunction = read("supabase/functions/engineer-skills-data/index.ts");
+const engineerSkillSelfAssessmentFunction = read("supabase/functions/engineer-skill-self-assessment/index.ts");
+const engineerEquipmentSelfAssessmentFunction = read("supabase/functions/engineer-equipment-self-assessment/index.ts");
+const competencyReviewDataFunction = read("supabase/functions/equipment-competency-review-data/index.ts");
+const competencyAssessmentFunction = read("supabase/functions/equipment-competency-assessment/index.ts");
+const competencyLifecycleMigration = read(
+  "supabase/migrations/20260905193114_engineer_competency_pending_review_lifecycle.sql",
+);
 const engineerWorkFunction = read("supabase/functions/engineer-work-data/index.ts");
 const engineerEquipmentFunction = read("supabase/functions/engineer-equipment-data/index.ts");
 
@@ -85,14 +96,29 @@ assert.match(supabaseClient, /signal:\s*invocationSignal\(options\)/);
 assert.match(supabaseClient, /invocationSignal\(options\)\?\.aborted/);
 
 // Engineer portal audit contracts: active routes must be live-only and self/site scoped.
-assert.match(engineerPortal, /EngineerSkillsLiveScreens/);
+assert.match(engineerPortal, /EngineerSkillsWorkflowScreens/);
+assert.match(engineerPortal, /EngineerSkillsWorkflowScreen/);
+assert.match(engineerPortal, /EngineerSkillSelfAssessmentScreen/);
+assert.match(engineerPortal, /EngineerEquipmentCompetencyScreen/);
+assert.match(engineerPortal, /skills\/equipment\/:equipmentId/);
 assert.match(engineerPortal, /EngineerWorkLiveScreens/);
 assert.match(engineerPortal, /EngineerEquipmentLiveScreens/);
-assert.doesNotMatch(engineerPortal, /EngineerCoreScreens|EngineerStoresEquipmentFilter/);
-assert.doesNotMatch(engineerSkills, /DEMO_|MOCK_|skills-matrix-data|engineers-data/);
+assert.doesNotMatch(engineerPortal, /EngineerCoreScreens|EngineerStoresEquipmentFilter|EngineerSkillDetailScreen/);
+assert.doesNotMatch(engineerSkillsList, /DEMO_|MOCK_|skills-matrix-data|engineers-data/);
 assert.doesNotMatch(engineerWork, /DEMO_|MOCK_|\.from\("work_orders"\)/);
 assert.doesNotMatch(engineerEquipment, /DEMO_|MOCK_|getEquipmentList|getEquipmentComponents/);
-assert.match(engineerSkills, /engineer-skills-data/);
+assert.match(engineerSkillsList, /engineer-skills-data/);
+assert.match(engineerSkillsWorkflow, /engineer-skills-data/);
+assert.match(engineerSkillsWorkflow, /engineer-skill-self-assessment/);
+assert.doesNotMatch(engineerSkillsWorkflow, /\.from\("engineer_skills"\)[\s\S]*?\.update\(/);
+assert.match(engineerEquipmentCompetency, /engineer-equipment-self-assessment/);
+assert.match(engineerEquipmentCompetency, /authoritative|independent review/i);
+assert.match(competencyReviewPanel, /equipment-competency-review-data/);
+assert.match(competencyReviewPanel, /assessmentId:\s*item\.id/);
+assert.match(competencyReviewPanel, /action:\s*"validate"|review\(item, "validate"\)/);
+assert.match(competencyReviewPanel, /review\(item, "reject"\)/);
+assert.match(skillsMatrixRoute, /EquipmentCompetencyReviewPanel/);
+assert.match(skillsMatrixRoute, /maintenance_manager/);
 assert.match(engineerWork, /engineer-work-data/);
 assert.match(engineerEquipment, /engineer-equipment-data/);
 assert.match(engineerIdentity, /\.eq\("profile_id", profileId\)/);
@@ -103,14 +129,38 @@ for (const endpoint of [
   engineerWorkFunction,
   engineerEquipmentFunction,
 ]) {
-  assert.match(endpoint, /\.eq\("profile_id", user\.id\)/);
+  assert.match(endpoint, /\.eq\("profile_id",\s*user\.id\)/);
   assert.match(endpoint, /\.from\("user_site_access"\)/);
-  assert.match(endpoint, /roleKey\(access\.app_role\) !== "engineer"/);
+  assert.match(endpoint, /roleKey\(access\.app_role\)\s*!==\s*"engineer"/);
   assert.doesNotMatch(endpoint, /user_metadata.*engineer_id|raw_user_meta_data.*engineer_id/);
 }
 assert.match(engineerWorkFunction, /\.eq\("site_id", siteId\)/);
 assert.match(engineerWorkFunction, /\.ilike\("assigned_engineer", String\(engineer\.full_name\)\)/);
 assert.match(engineerEquipmentFunction, /\.eq\("organisation_id", profile\.organisation_id\)/);
+
+// SKL-004: self-assessment must be pending evidence, never an authoritative browser write.
+assert.match(engineerSkillSelfAssessmentFunction, /\.eq\("profile_id",\s*user\.id\)/);
+assert.match(engineerSkillSelfAssessmentFunction, /verification_status:\s*"pending"/);
+assert.match(engineerSkillSelfAssessmentFunction, /verified_by:\s*null/);
+assert.doesNotMatch(engineerSkillSelfAssessmentFunction, /manager_rating|validated_rating/);
+assert.match(competencyLifecycleMigration, /revoke update \(self_rating\).*authenticated/is);
+
+// SKL-005: equipment competency follows proposal -> authorised review -> audited validation/rejection.
+assert.match(competencyLifecycleMigration, /equipment_competency_one_pending_idx/);
+assert.match(competencyLifecycleMigration, /assessment_status in \('pending','validated','rejected','superseded'\)/);
+assert.match(competencyLifecycleMigration, /reviewed_by_profile_id/);
+assert.match(competencyLifecycleMigration, /reviewed_by_engineer_id/);
+assert.match(competencyLifecycleMigration, /review_outcome/);
+assert.match(competencyLifecycleMigration, /assessor_authority[\s\S]*'SELF'/);
+assert.match(engineerEquipmentSelfAssessmentFunction, /vorta_submit_equipment_competency_self_assessment/);
+assert.match(engineerEquipmentSelfAssessmentFunction, /authoritativeCapabilityUnchanged:\s*true/);
+assert.match(competencyReviewDataFunction, /MANAGER_ROLES/);
+assert.match(competencyReviewDataFunction, /QUALIFIED_PEER/);
+assert.match(competencyReviewDataFunction, /practice_authority/);
+assert.match(competencyAssessmentFunction, /pendingAssessment\?\.assessor_profile_id\s*===\s*user\.id|pendingAssessment\?\.assessor_profile_id===user\.id/);
+assert.match(competencyAssessmentFunction, /vorta_reject_equipment_competency_self_assessment/);
+assert.match(competencyAssessmentFunction, /vorta_apply_equipment_competency_assessment/);
+assert.match(competencyAssessmentFunction, /vorta_refresh_engineer_equipment_scores/);
 
 assert.match(browserWorkflow, /maintenance-manager-work-orders\.spec\.ts/);
 assert.match(browserWorkflow, /maintenance-manager-dashboard-resilience\.spec\.ts/);
