@@ -37,8 +37,10 @@ const initialForm: SignupForm = {
   siteLocation: "",
 };
 
-const fieldClass = "h-11 w-full rounded-lg border border-slate-700 bg-[#0b0e14] px-3 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50";
+const fieldClass = "h-11 w-full rounded-lg border border-slate-700 px-3 text-sm text-slate-200 outline-none disabled:opacity-50";
+const fieldStyle = { backgroundColor: "#0b0e14" };
 const labelClass = "mb-1 block text-sm text-slate-300";
+const fullRow = { gridColumn: "1 / -1" };
 
 export function SiteSignupPage(): JSX.Element {
   const [form, setForm] = useState(initialForm);
@@ -102,8 +104,8 @@ export function SiteSignupPage(): JSX.Element {
 
   if (verificationSent) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0b0e14] p-4 text-slate-100">
-        <section className="w-full max-w-lg rounded-xl border border-slate-800 bg-[#11151d] p-6 text-center">
+      <main className="flex min-h-screen items-center justify-center p-4 text-slate-100" style={{ backgroundColor: "#0b0e14" }}>
+        <section className="w-full rounded-xl border border-slate-800 p-6 text-center" style={{ backgroundColor: "#11151d", maxWidth: "32rem" }}>
           <VortaLogo />
           <h1 className="mt-6 text-2xl font-semibold text-white">Verify your work email</h1>
           <p className="mt-3 text-sm text-slate-400">Open the verification link sent to {form.email.trim()} to activate your Vorta site.</p>
@@ -114,23 +116,23 @@ export function SiteSignupPage(): JSX.Element {
   }
 
   return (
-    <main className="min-h-screen bg-[#0b0e14] px-4 py-8 text-slate-100">
-      <section className="mx-auto w-full max-w-2xl rounded-xl border border-slate-800 bg-[#11151d] p-6">
+    <main className="min-h-screen px-4 py-8 text-slate-100" style={{ backgroundColor: "#0b0e14" }}>
+      <section className="mx-auto w-full rounded-xl border border-slate-800 p-6" style={{ backgroundColor: "#11151d", maxWidth: "42rem" }}>
         <Link to="/" aria-label="Vorta home"><VortaLogo /></Link>
         <h1 className="mt-6 text-2xl font-semibold text-white">Set up your Vorta account</h1>
         <p className="mt-2 text-sm text-slate-400">Create your company site. The first verified account becomes its Site Owner.</p>
 
-        <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label><span className={labelClass}>Full name</span><input className={fieldClass} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
-          <label><span className={labelClass}>Work email</span><input className={fieldClass} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
-          <label className="sm:col-span-2"><span className={labelClass}>Password</span><input className={fieldClass} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
-          <label className="sm:col-span-2"><span className={labelClass}>Company name</span><input className={fieldClass} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
-          <label><span className={labelClass}>Industry</span><select className={fieldClass} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
-          <label><span className={labelClass}>Country</span><input className={fieldClass} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
-          <label><span className={labelClass}>Site name</span><input className={fieldClass} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
-          <label><span className={labelClass}>Location</span><input className={fieldClass} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
-          {error && <p className="text-sm text-red-400 sm:col-span-2">{error}</p>}
-          <button type="submit" disabled={!canSubmit || submitting} className="h-11 rounded-lg bg-blue-600 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2">{submitting ? "Creating account…" : "Create Vorta site"}</button>
+        <form onSubmit={submit} className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(14rem,1fr))" }}>
+          <label><span className={labelClass}>Full name</span><input className={fieldClass} style={fieldStyle} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} autoComplete="name" /></label>
+          <label><span className={labelClass}>Work email</span><input className={fieldClass} style={fieldStyle} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} autoComplete="email" /></label>
+          <label style={fullRow}><span className={labelClass}>Password</span><input className={fieldClass} style={fieldStyle} type="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
+          <label style={fullRow}><span className={labelClass}>Company name</span><input className={fieldClass} style={fieldStyle} value={form.organisationName} onChange={(e) => update("organisationName", e.target.value)} /></label>
+          <label><span className={labelClass}>Industry</span><select className={fieldClass} style={fieldStyle} value={form.industry} onChange={(e) => update("industry", e.target.value)}><option value="">Select industry</option>{INDUSTRIES.map((industry) => <option key={industry}>{industry}</option>)}</select></label>
+          <label><span className={labelClass}>Country</span><input className={fieldClass} style={fieldStyle} value={form.country} onChange={(e) => update("country", e.target.value)} /></label>
+          <label><span className={labelClass}>Site name</span><input className={fieldClass} style={fieldStyle} value={form.siteName} onChange={(e) => update("siteName", e.target.value)} /></label>
+          <label><span className={labelClass}>Location</span><input className={fieldClass} style={fieldStyle} value={form.siteLocation} onChange={(e) => update("siteLocation", e.target.value)} /></label>
+          {error && <p className="text-sm text-red-400" style={fullRow}>{error}</p>}
+          <button type="submit" disabled={!canSubmit || submitting} className="h-11 rounded-lg bg-blue-600 text-sm font-semibold text-white disabled:opacity-50" style={fullRow}>{submitting ? "Creating account…" : "Create Vorta site"}</button>
         </form>
       </section>
     </main>
