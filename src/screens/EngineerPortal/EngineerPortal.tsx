@@ -9,9 +9,7 @@ import {
   EngineerEquipmentDetailScreen,
   EngineerEquipmentScreen,
   EngineerHomeScreen,
-  EngineerMyWorkScreen,
   EngineerSpareDetailScreen,
-  EngineerWorkOrderDetailScreen,
 } from "./EngineerCoreScreens";
 import { EngineerDatabaseImages } from "./EngineerDatabaseImages";
 import {
@@ -38,6 +36,10 @@ import {
 } from "./EngineerSkillsLiveScreens";
 import { EngineerStoresEquipmentFilter } from "./EngineerStoresEquipmentFilter";
 import { EngineerVortaSelectBridge } from "./EngineerVortaSelectBridge";
+import {
+  EngineerMyWorkScreen,
+  EngineerWorkOrderDetailScreen,
+} from "./EngineerWorkLiveScreens";
 
 const engineerNavByPath = new Map(
   [...ENGINEER_PRIMARY_NAV, ...ENGINEER_SECONDARY_NAV].map((item) => [item.to, item]),
