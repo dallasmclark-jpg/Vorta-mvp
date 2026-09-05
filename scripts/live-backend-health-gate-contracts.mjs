@@ -50,13 +50,17 @@ if (!configuredSiteId && configuredEmail === "demo@vorta.network") {
   process.env.VORTA_E2E_SITE_ID = demoSiteId;
 }
 
-const hasMaintenanceTestContext = Boolean(
-  process.env.VORTA_E2E_EMAIL ||
-    process.env.VORTA_E2E_SITE_ID ||
-    process.env.VORTA_E2E_PASSWORD,
-);
+// The full contract suite is executed by many parallel workflows. Running the
+// same authenticated database health RPC in every one creates a CI thundering
+// herd and can manufacture statement-timeout failures under otherwise healthy
+// production conditions. Keep structural coverage everywhere, but execute the
+// live authenticated health assertion only in the single Maintenance Manager
+// release gate (or when explicitly requested locally/CI).
+const liveHealthRequested =
+  process.env.VORTA_RUN_LIVE_BACKEND_HEALTH === "true" ||
+  process.env.GITHUB_WORKFLOW === "Maintenance Manager quality gate";
 
-if (hasMaintenanceTestContext) {
+if (liveHealthRequested) {
   for (const name of [
     "VITE_SUPABASE_URL",
     "VITE_SUPABASE_ANON_KEY",
@@ -66,12 +70,14 @@ if (hasMaintenanceTestContext) {
   ]) {
     assert.ok(
       String(process.env[name] ?? "").trim(),
-      `${name} is required when the authenticated Maintenance Manager test context is configured`,
+      `${name} is required when the authenticated live backend health gate is requested`,
     );
   }
 
   await import("./live-demo-backend-health.mjs");
   console.log("Authenticated live backend health gate passed.");
 } else {
-  console.log("Live backend health structure passed; authenticated check is reserved for the protected Maintenance Manager CI context.");
+  console.log(
+    "Live backend health structure passed; authenticated execution is serialized to the Maintenance Manager release gate.",
+  );
 }
