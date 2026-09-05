@@ -108,6 +108,16 @@ export function MaintenancePortalHardening(): JSX.Element {
           min-width: 2.75rem;
           height: 2.75rem !important;
         }
+
+        [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"],
+        [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"]:focus,
+        [data-vorta-maintenance-portal="true"] [data-vorta-global-ai-input="true"]:focus-visible {
+          border: 0 !important;
+          outline: 0 solid transparent !important;
+          box-shadow: none !important;
+          --tw-ring-color: transparent !important;
+          --tw-ring-shadow: 0 0 #0000 !important;
+        }
       }
 
       @media (max-width: 420px) {
