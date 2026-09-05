@@ -313,11 +313,6 @@ export function AskVortaDesktopWorkspaceExperience(): JSX.Element {
 
       if (target.closest(EXPAND_SELECTOR)) {
         schedule(() => restoreWorkspaceView(), 0);
-        return;
-      }
-
-      if (target.closest('[aria-label="Ask Vorta AI"]')) {
-        schedule(() => openWorkspace(), 0);
       }
     };
 
